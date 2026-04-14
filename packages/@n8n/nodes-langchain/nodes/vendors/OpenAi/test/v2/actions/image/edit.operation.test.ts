@@ -1,23 +1,23 @@
 import FormData from 'form-data';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/image/edit.operation';
 
-jest.mock('../../../../helpers/binary-data');
-jest.mock('../../../../transport');
-jest.mock('form-data', () => jest.fn());
+vi.mock('../../../../helpers/binary-data');
+vi.mock('../../../../transport');
+vi.mock('form-data', () => vi.fn());
 
-const mockFormData = jest.mocked(FormData);
+const mockFormData = vi.mocked(FormData);
 
 describe('Image Edit Operation', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: vi.Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockFormDataInstance: jest.Mocked<FormData>;
-	const apiRequestSpy = jest.spyOn(transport, 'apiRequest');
-	const getBinaryDataFileSpy = jest.spyOn(binaryDataHelpers, 'getBinaryDataFile');
+	let mockFormDataInstance: vi.Mocked<FormData>;
+	const apiRequestSpy = vi.spyOn(transport, 'apiRequest');
+	const getBinaryDataFileSpy = vi.spyOn(binaryDataHelpers, 'getBinaryDataFile');
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -31,18 +31,18 @@ describe('Image Edit Operation', () => {
 		});
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		mockExecuteFunctions.helpers.prepareBinaryData = jest.fn();
-		mockExecuteFunctions.helpers.binaryToBuffer = jest.fn();
+		mockExecuteFunctions.helpers.prepareBinaryData = vi.fn();
+		mockExecuteFunctions.helpers.binaryToBuffer = vi.fn();
 
 		mockFormDataInstance = {
-			append: jest.fn(),
-			getHeaders: jest.fn().mockReturnValue({ 'content-type': 'multipart/form-data' }),
-		} as unknown as jest.Mocked<FormData>;
+			append: vi.fn(),
+			getHeaders: vi.fn().mockReturnValue({ 'content-type': 'multipart/form-data' }),
+		} as unknown as vi.Mocked<FormData>;
 		mockFormData.mockImplementation(() => mockFormDataInstance);
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('successful execution with DALL-E 2', () => {
@@ -79,7 +79,7 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
@@ -160,13 +160,11 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -220,7 +218,7 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
@@ -269,7 +267,7 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValueOnce(mockImageFile).mockResolvedValueOnce(mockMaskFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock)
 				.mockResolvedValueOnce(mockImageFile.fileContent)
 				.mockResolvedValueOnce(mockMaskFile.fileContent);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
@@ -352,13 +350,11 @@ describe('Image Edit Operation', () => {
 			getBinaryDataFileSpy
 				.mockResolvedValueOnce(mockBinaryFile1)
 				.mockResolvedValueOnce(mockBinaryFile2);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock)
 				.mockResolvedValueOnce(mockBinaryFile1.fileContent)
 				.mockResolvedValueOnce(mockBinaryFile2.fileContent);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -441,13 +437,11 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -488,7 +482,7 @@ describe('Image Edit Operation', () => {
 			const mockApiResponse = {};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
@@ -533,13 +527,11 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -573,7 +565,7 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
@@ -613,7 +605,7 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
@@ -674,13 +666,11 @@ describe('Image Edit Operation', () => {
 			getBinaryDataFileSpy
 				.mockResolvedValueOnce(mockBinaryFile1)
 				.mockResolvedValueOnce(mockBinaryFile2);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock)
 				.mockResolvedValueOnce(mockBinaryFile1.fileContent)
 				.mockResolvedValueOnce(mockBinaryFile2.fileContent);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
 
 			await execute.call(mockExecuteFunctions, 0);
 

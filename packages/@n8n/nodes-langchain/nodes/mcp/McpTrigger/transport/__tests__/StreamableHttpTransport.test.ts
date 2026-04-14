@@ -15,7 +15,7 @@ describe('StreamableHttpTransport', () => {
 
 		it('should accept sessionIdGenerator option and use it for transport type', () => {
 			const response = createMockResponse();
-			const generator = jest.fn().mockReturnValue('custom-session');
+			const generator = vi.fn().mockReturnValue('custom-session');
 
 			const transport = new StreamableHttpTransport({ sessionIdGenerator: generator }, response);
 
@@ -25,7 +25,7 @@ describe('StreamableHttpTransport', () => {
 
 		it('should accept onsessioninitialized callback option', () => {
 			const response = createMockResponse();
-			const onInit = jest.fn();
+			const onInit = vi.fn();
 
 			const transport = new StreamableHttpTransport(
 				{

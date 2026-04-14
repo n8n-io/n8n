@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode, IWebhookFunctions, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { createMockLogger, createMockRequest, createMockResponse } from './helpers';
@@ -6,27 +6,27 @@ import { McpTrigger } from '../McpTrigger.node';
 import { McpServer } from '../McpServer';
 
 // Mock the McpServer
-jest.mock('../McpServer', () => ({
+vi.mock('../McpServer', () => ({
 	McpServer: {
-		instance: jest.fn(),
+		instance: vi.fn(),
 	},
 	MCP_LIST_TOOLS_REQUEST_MARKER: 'mcp_list_tools_request',
 }));
 
 // Mock webhook utils from nodes-base
-jest.mock('n8n-nodes-base/dist/nodes/Webhook/utils', () => ({
-	validateWebhookAuthentication: jest.fn(),
+vi.mock('n8n-nodes-base/dist/nodes/Webhook/utils', () => ({
+	validateWebhookAuthentication: vi.fn(),
 }));
 
 // Mock getConnectedTools from utils
-jest.mock('@utils/helpers', () => ({
-	getConnectedTools: jest.fn().mockResolvedValue([]),
+vi.mock('@utils/helpers', () => ({
+	getConnectedTools: vi.fn().mockResolvedValue([]),
 }));
 
 describe('McpTrigger', () => {
 	let mcpTrigger: McpTrigger;
-	let mockMcpServer: jest.Mocked<McpServer>;
-	let mockContext: jest.Mocked<IWebhookFunctions>;
+	let mockMcpServer: vi.Mocked<McpServer>;
+	let mockContext: vi.Mocked<IWebhookFunctions>;
 	let mockLogger: ReturnType<typeof createMockLogger>;
 
 	beforeEach(() => {
@@ -34,33 +34,33 @@ describe('McpTrigger', () => {
 		mockLogger = createMockLogger();
 
 		mockMcpServer = {
-			handleSetupRequest: jest.fn().mockResolvedValue(undefined),
-			handlePostMessage: jest.fn().mockResolvedValue({
+			handleSetupRequest: vi.fn().mockResolvedValue(undefined),
+			handlePostMessage: vi.fn().mockResolvedValue({
 				wasToolCall: false,
 				toolCallInfo: undefined,
 				messageId: undefined,
 				relaySessionId: undefined,
 				needsListToolsRelay: false,
 			}),
-			handleDeleteRequest: jest.fn().mockResolvedValue(undefined),
-			handleStreamableHttpSetup: jest.fn().mockResolvedValue(undefined),
-			getSessionId: jest.fn().mockReturnValue(undefined),
-		} as unknown as jest.Mocked<McpServer>;
+			handleDeleteRequest: vi.fn().mockResolvedValue(undefined),
+			handleStreamableHttpSetup: vi.fn().mockResolvedValue(undefined),
+			getSessionId: vi.fn().mockReturnValue(undefined),
+		} as unknown as vi.Mocked<McpServer>;
 
-		(McpServer.instance as jest.Mock).mockReturnValue(mockMcpServer);
+		(McpServer.instance as vi.Mock).mockReturnValue(mockMcpServer);
 
 		mockContext = mock<IWebhookFunctions>({
-			getWebhookName: jest.fn().mockReturnValue('setup'),
-			getRequestObject: jest.fn(),
-			getResponseObject: jest.fn(),
-			getNode: jest.fn(),
+			getWebhookName: vi.fn().mockReturnValue('setup'),
+			getRequestObject: vi.fn(),
+			getResponseObject: vi.fn(),
+			getNode: vi.fn(),
 			logger: mockLogger,
-			getCredentials: jest.fn().mockResolvedValue({} as ICredentialDataDecryptedObject),
+			getCredentials: vi.fn().mockResolvedValue({} as ICredentialDataDecryptedObject),
 		});
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('description', () => {
@@ -318,7 +318,7 @@ describe('McpTrigger', () => {
 
 	describe('authentication', () => {
 		it('should rethrow non-authorization errors', async () => {
-			const { validateWebhookAuthentication } = jest.requireMock(
+			const { validateWebhookAuthentication } = vi.requireMock(
 				'n8n-nodes-base/dist/nodes/Webhook/utils',
 			);
 
@@ -341,10 +341,10 @@ describe('McpTrigger', () => {
 		});
 
 		it('should return 401 for authentication errors', async () => {
-			const { WebhookAuthorizationError } = jest.requireActual(
+			const { WebhookAuthorizationError } = vi.requireActual(
 				'n8n-nodes-base/dist/nodes/Webhook/error',
 			);
-			const { validateWebhookAuthentication } = jest.requireMock(
+			const { validateWebhookAuthentication } = vi.requireMock(
 				'n8n-nodes-base/dist/nodes/Webhook/utils',
 			);
 
@@ -375,7 +375,7 @@ describe('McpTrigger', () => {
 	describe('list tools relay', () => {
 		it('should return list tools relay data when needed', async () => {
 			// Reset validateWebhookAuthentication to resolve (not reject)
-			const { validateWebhookAuthentication } = jest.requireMock(
+			const { validateWebhookAuthentication } = vi.requireMock(
 				'n8n-nodes-base/dist/nodes/Webhook/utils',
 			);
 			validateWebhookAuthentication.mockResolvedValue(undefined);

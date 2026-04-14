@@ -4,9 +4,9 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { DocumentDefaultDataLoader } from '../DocumentDefaultDataLoader.node';
 
-jest.mock('@langchain/textsplitters', () => ({
-	RecursiveCharacterTextSplitter: jest.fn().mockImplementation(() => ({
-		splitDocuments: jest.fn(
+vi.mock('@langchain/textsplitters', () => ({
+	RecursiveCharacterTextSplitter: vi.fn().mockImplementation(() => ({
+		splitDocuments: vi.fn(
 			async (docs: Array<Record<string, unknown>>): Promise<Array<Record<string, unknown>>> =>
 				docs.map((doc) => ({ ...doc, split: true })),
 		),
@@ -18,13 +18,13 @@ describe('DocumentDefaultDataLoader', () => {
 
 	beforeEach(() => {
 		loader = new DocumentDefaultDataLoader();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should supply data with recursive char text splitter', async () => {
 		const context = {
-			getNode: jest.fn(() => ({ typeVersion: 1.1 })),
-			getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+			getNode: vi.fn(() => ({ typeVersion: 1.1 })),
+			getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 				switch (paramName) {
 					case 'dataType':
 						return 'json';
@@ -46,10 +46,10 @@ describe('DocumentDefaultDataLoader', () => {
 	});
 
 	it('should supply data with custom text splitter', async () => {
-		const customSplitter = { splitDocuments: jest.fn(async (docs) => docs) };
+		const customSplitter = { splitDocuments: vi.fn(async (docs) => docs) };
 		const context = {
-			getNode: jest.fn(() => ({ typeVersion: 1.1 })),
-			getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+			getNode: vi.fn(() => ({ typeVersion: 1.1 })),
+			getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 				switch (paramName) {
 					case 'dataType':
 						return 'json';
@@ -61,7 +61,7 @@ describe('DocumentDefaultDataLoader', () => {
 						return;
 				}
 			}),
-			getInputConnectionData: jest.fn(async () => customSplitter),
+			getInputConnectionData: vi.fn(async () => customSplitter),
 		} as unknown as ISupplyDataFunctions;
 		await loader.supplyData.call(context, 0);
 		expect(context.getInputConnectionData).toHaveBeenCalledWith(

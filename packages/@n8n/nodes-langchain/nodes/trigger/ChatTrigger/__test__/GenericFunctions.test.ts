@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
 
 import { ChatTriggerAuthorizationError } from '../error';
@@ -8,7 +8,7 @@ describe('validateAuth', () => {
 	const mockContext = mock<IWebhookFunctions>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('authentication = none', () => {

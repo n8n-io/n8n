@@ -1,5 +1,5 @@
 import * as helpers from '@utils/helpers';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -13,14 +13,14 @@ import * as transport from './transport';
 
 describe('GoogleGemini Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
-	const getConnectedToolsMock = jest.spyOn(helpers, 'getConnectedTools');
-	const downloadFileMock = jest.spyOn(utils, 'downloadFile');
-	const uploadFileMock = jest.spyOn(utils, 'uploadFile');
-	const transferFileMock = jest.spyOn(utils, 'transferFile');
+	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
+	const getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
+	const downloadFileMock = vi.spyOn(utils, 'downloadFile');
+	const uploadFileMock = vi.spyOn(utils, 'uploadFile');
+	const transferFileMock = vi.spyOn(utils, 'transferFile');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 1 } as INode);
 	});
 
@@ -1763,11 +1763,11 @@ describe('GoogleGemini Node', () => {
 
 	describe('Video -> Generate', () => {
 		beforeEach(() => {
-			jest.useFakeTimers({ advanceTimers: true });
+			vi.useFakeTimers({ advanceTimers: true });
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should generate video using Veo model', async () => {
@@ -1833,8 +1833,8 @@ describe('GoogleGemini Node', () => {
 			});
 
 			const promise = video.generate.execute.call(executeFunctionsMock, 0);
-			await jest.advanceTimersByTimeAsync(5000);
-			await jest.advanceTimersByTimeAsync(5000);
+			await vi.advanceTimersByTimeAsync(5000);
+			await vi.advanceTimersByTimeAsync(5000);
 			const result = await promise;
 
 			expect(result).toEqual([

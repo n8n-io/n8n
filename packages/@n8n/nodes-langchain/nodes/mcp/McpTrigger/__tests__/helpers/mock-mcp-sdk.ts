@@ -5,14 +5,14 @@ import type { McpTransport, TransportType } from '../../transport/Transport';
 /**
  * Creates a mock MCP Server
  */
-export function createMockServer(): jest.Mocked<Server> {
+export function createMockServer(): vi.Mocked<Server> {
 	return {
-		connect: jest.fn().mockResolvedValue(undefined),
-		close: jest.fn().mockResolvedValue(undefined),
-		setRequestHandler: jest.fn(),
+		connect: vi.fn().mockResolvedValue(undefined),
+		close: vi.fn().mockResolvedValue(undefined),
+		setRequestHandler: vi.fn(),
 		onclose: undefined,
 		onerror: undefined,
-	} as unknown as jest.Mocked<Server>;
+	} as unknown as vi.Mocked<Server>;
 }
 
 /**
@@ -21,13 +21,13 @@ export function createMockServer(): jest.Mocked<Server> {
 export function createMockTransport(
 	sessionId: string,
 	transportType: TransportType = 'sse',
-): jest.Mocked<McpTransport> {
+): vi.Mocked<McpTransport> {
 	return {
 		transportType,
 		sessionId,
-		send: jest.fn().mockResolvedValue(undefined),
-		handleRequest: jest.fn().mockResolvedValue(undefined),
-		close: jest.fn().mockResolvedValue(undefined),
+		send: vi.fn().mockResolvedValue(undefined),
+		handleRequest: vi.fn().mockResolvedValue(undefined),
+		close: vi.fn().mockResolvedValue(undefined),
 		onclose: undefined,
-	} as unknown as jest.Mocked<McpTransport>;
+	} as unknown as vi.Mocked<McpTransport>;
 }

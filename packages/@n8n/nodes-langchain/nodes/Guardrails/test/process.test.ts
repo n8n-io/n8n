@@ -1,42 +1,42 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-jest.mock('../helpers/model', () => ({
-	createLLMCheckFn: jest.fn(() => jest.fn()),
+vi.mock('../helpers/model', () => ({
+	createLLMCheckFn: vi.fn(() => vi.fn()),
 }));
 
-jest.mock('../actions/checks/jailbreak', () => ({
-	createJailbreakCheckFn: jest.fn(() => jest.fn()),
+vi.mock('../actions/checks/jailbreak', () => ({
+	createJailbreakCheckFn: vi.fn(() => vi.fn()),
 	JAILBREAK_PROMPT: 'DEFAULT_JAILBREAK',
 }));
 
-jest.mock('../actions/checks/keywords', () => ({
-	createKeywordsCheckFn: jest.fn(() => jest.fn()),
+vi.mock('../actions/checks/keywords', () => ({
+	createKeywordsCheckFn: vi.fn(() => vi.fn()),
 }));
 
-jest.mock('../actions/checks/nsfw', () => ({
-	createNSFWCheckFn: jest.fn(() => jest.fn()),
+vi.mock('../actions/checks/nsfw', () => ({
+	createNSFWCheckFn: vi.fn(() => vi.fn()),
 	NSFW_SYSTEM_PROMPT: 'DEFAULT_NSFW',
 }));
 
-jest.mock('../actions/checks/pii', () => ({
-	createPiiCheckFn: jest.fn(() => jest.fn()),
-	createCustomRegexCheckFn: jest.fn(() => jest.fn()),
+vi.mock('../actions/checks/pii', () => ({
+	createPiiCheckFn: vi.fn(() => vi.fn()),
+	createCustomRegexCheckFn: vi.fn(() => vi.fn()),
 }));
 
-jest.mock('../actions/checks/secretKeys', () => ({
-	createSecretKeysCheckFn: jest.fn(() => jest.fn()),
+vi.mock('../actions/checks/secretKeys', () => ({
+	createSecretKeysCheckFn: vi.fn(() => vi.fn()),
 }));
 
-jest.mock('../actions/checks/topicalAlignment', () => ({
-	createTopicalAlignmentCheckFn: jest.fn(() => jest.fn()),
+vi.mock('../actions/checks/topicalAlignment', () => ({
+	createTopicalAlignmentCheckFn: vi.fn(() => vi.fn()),
 	TOPICAL_ALIGNMENT_SYSTEM_PROMPT: 'DEFAULT_TOPICAL',
 }));
 
-jest.mock('../actions/checks/urls', () => ({
-	createUrlsCheckFn: jest.fn(() => jest.fn()),
+vi.mock('../actions/checks/urls', () => ({
+	createUrlsCheckFn: vi.fn(() => vi.fn()),
 }));
 
 import { createJailbreakCheckFn } from '../actions/checks/jailbreak';
@@ -50,11 +50,11 @@ import { process as processGuardrails } from '../actions/process';
 import { createLLMCheckFn } from '../helpers/model';
 
 describe('Guardrails Process', () => {
-	let exec: jest.Mocked<IExecuteFunctions>;
+	let exec: vi.Mocked<IExecuteFunctions>;
 	let node: INode;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		exec = mockDeep<IExecuteFunctions>();
 		node = {
 			id: 'test',
@@ -91,13 +91,13 @@ describe('Guardrails Process', () => {
 	});
 
 	it('Sanitize: Throws NodeOperationError When Any Preflight Check Fails', async () => {
-		const piiCheck = jest.fn().mockImplementation(() => ({
+		const piiCheck = vi.fn().mockImplementation(() => ({
 			guardrailName: 'personalData',
 			tripwireTriggered: false,
 			executionFailed: true,
 			info: {},
 		}));
-		(createPiiCheckFn as jest.Mock).mockReturnValueOnce(piiCheck);
+		(createPiiCheckFn as vi.Mock).mockReturnValueOnce(piiCheck);
 		setParams({
 			text: 'txt',
 			operation: 'sanitize',
@@ -112,8 +112,8 @@ describe('Guardrails Process', () => {
 	it('Classify: Unexpected Error In Input Stage Throws', async () => {
 		setParams({ text: 't', operation: 'classify', guardrails: { keywords: 'x' } });
 		const model = {} as BaseChatModel;
-		(createKeywordsCheckFn as jest.Mock).mockReturnValueOnce(
-			jest.fn(() => {
+		(createKeywordsCheckFn as vi.Mock).mockReturnValueOnce(
+			vi.fn(() => {
 				throw new Error('boom');
 			}),
 		);
@@ -123,8 +123,8 @@ describe('Guardrails Process', () => {
 	it('Classify: Non-Unexpected Failure Returns Failed Results', async () => {
 		setParams({ text: 't', operation: 'classify', guardrails: { keywords: 'x' } });
 		const model = {} as BaseChatModel;
-		(createKeywordsCheckFn as jest.Mock).mockReturnValueOnce(
-			jest.fn(() => ({ guardrailName: 'keywords', tripwireTriggered: true, info: {} })),
+		(createKeywordsCheckFn as vi.Mock).mockReturnValueOnce(
+			vi.fn(() => ({ guardrailName: 'keywords', tripwireTriggered: true, info: {} })),
 		);
 		const res = await processGuardrails.call(exec, 0, model);
 		expect(res.failed).not.toBeNull();
@@ -140,15 +140,15 @@ describe('Guardrails Process', () => {
 			guardrails: { pii: { value: { entities: ['EMAIL'] } }, keywords: 'foo' },
 		});
 		const model = {} as BaseChatModel;
-		(createPiiCheckFn as jest.Mock).mockReturnValueOnce(
-			jest.fn(() => ({
+		(createPiiCheckFn as vi.Mock).mockReturnValueOnce(
+			vi.fn(() => ({
 				guardrailName: 'personalData',
 				tripwireTriggered: false,
 				info: { maskEntities: { EMAIL: ['abc'] } },
 			})),
 		);
-		(createKeywordsCheckFn as jest.Mock).mockReturnValueOnce(
-			jest.fn(() => ({ guardrailName: 'keywords', tripwireTriggered: false, info: {} })),
+		(createKeywordsCheckFn as vi.Mock).mockReturnValueOnce(
+			vi.fn(() => ({ guardrailName: 'keywords', tripwireTriggered: false, info: {} })),
 		);
 		const res = await processGuardrails.call(exec, 0, model);
 		expect(res.failed).toBeNull();
@@ -164,8 +164,8 @@ describe('Guardrails Process', () => {
 			guardrails: { secretKeys: { value: { permissiveness: 0.5 } } },
 		});
 		const model = {} as BaseChatModel;
-		(createSecretKeysCheckFn as jest.Mock).mockReturnValueOnce(
-			jest.fn(() => ({ guardrailName: 'secretKeys', tripwireTriggered: true, info: {} })),
+		(createSecretKeysCheckFn as vi.Mock).mockReturnValueOnce(
+			vi.fn(() => ({ guardrailName: 'secretKeys', tripwireTriggered: true, info: {} })),
 		);
 		const res = await processGuardrails.call(exec, 0, model);
 		expect(res.failed).not.toBeNull();
@@ -178,8 +178,8 @@ describe('Guardrails Process', () => {
 		setParams({ text: 'inp', operation: 'classify', guardrails: { keywords: 'x' } });
 		exec.continueOnFail.mockReturnValue(true);
 		const model = {} as BaseChatModel;
-		(createKeywordsCheckFn as jest.Mock).mockReturnValueOnce(
-			jest.fn(() => {
+		(createKeywordsCheckFn as vi.Mock).mockReturnValueOnce(
+			vi.fn(() => {
 				throw new Error('kaboom');
 			}),
 		);
@@ -220,32 +220,32 @@ describe('Guardrails Process', () => {
 			},
 		});
 		const model = {} as BaseChatModel;
-		(createPiiCheckFn as jest.Mock).mockReturnValue(
-			jest.fn(() => ({ guardrailName: 'pii', tripwireTriggered: false, info: {} })),
+		(createPiiCheckFn as vi.Mock).mockReturnValue(
+			vi.fn(() => ({ guardrailName: 'pii', tripwireTriggered: false, info: {} })),
 		);
-		(createCustomRegexCheckFn as jest.Mock).mockReturnValue(
-			jest.fn(() => ({ guardrailName: 'customRegex', tripwireTriggered: false, info: {} })),
+		(createCustomRegexCheckFn as vi.Mock).mockReturnValue(
+			vi.fn(() => ({ guardrailName: 'customRegex', tripwireTriggered: false, info: {} })),
 		);
-		(createKeywordsCheckFn as jest.Mock).mockReturnValue(
-			jest.fn(() => ({ guardrailName: 'keywords', tripwireTriggered: false, info: {} })),
+		(createKeywordsCheckFn as vi.Mock).mockReturnValue(
+			vi.fn(() => ({ guardrailName: 'keywords', tripwireTriggered: false, info: {} })),
 		);
-		(createJailbreakCheckFn as jest.Mock).mockReturnValue(
-			jest.fn(() => ({ guardrailName: 'jailbreak', tripwireTriggered: false, info: {} })),
+		(createJailbreakCheckFn as vi.Mock).mockReturnValue(
+			vi.fn(() => ({ guardrailName: 'jailbreak', tripwireTriggered: false, info: {} })),
 		);
-		(createNSFWCheckFn as jest.Mock).mockReturnValue(
-			jest.fn(() => ({ guardrailName: 'nsfw', tripwireTriggered: false, info: {} })),
+		(createNSFWCheckFn as vi.Mock).mockReturnValue(
+			vi.fn(() => ({ guardrailName: 'nsfw', tripwireTriggered: false, info: {} })),
 		);
-		(createTopicalAlignmentCheckFn as jest.Mock).mockReturnValue(
-			jest.fn(() => ({ guardrailName: 'topicalAlignment', tripwireTriggered: false, info: {} })),
+		(createTopicalAlignmentCheckFn as vi.Mock).mockReturnValue(
+			vi.fn(() => ({ guardrailName: 'topicalAlignment', tripwireTriggered: false, info: {} })),
 		);
-		(createSecretKeysCheckFn as jest.Mock).mockReturnValue(
-			jest.fn(() => ({ guardrailName: 'secret', tripwireTriggered: false, info: {} })),
+		(createSecretKeysCheckFn as vi.Mock).mockReturnValue(
+			vi.fn(() => ({ guardrailName: 'secret', tripwireTriggered: false, info: {} })),
 		);
-		(createUrlsCheckFn as jest.Mock).mockReturnValue(
-			jest.fn(() => ({ guardrailName: 'urls', tripwireTriggered: false, info: {} })),
+		(createUrlsCheckFn as vi.Mock).mockReturnValue(
+			vi.fn(() => ({ guardrailName: 'urls', tripwireTriggered: false, info: {} })),
 		);
-		(createLLMCheckFn as jest.Mock).mockReturnValue(
-			jest.fn(() => ({ guardrailName: 'custom', tripwireTriggered: false, info: {} })),
+		(createLLMCheckFn as vi.Mock).mockReturnValue(
+			vi.fn(() => ({ guardrailName: 'custom', tripwireTriggered: false, info: {} })),
 		);
 
 		await processGuardrails.call(exec, 0, model);

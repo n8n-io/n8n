@@ -6,7 +6,7 @@ import { makeZodSchemaFromAttributes } from '../helpers';
 import { processItem } from '../processItem';
 import type { AttributeDefinition } from '../types';
 
-jest.mock('@utils/tracing', () => ({
+vi.mock('@utils/tracing', () => ({
 	getTracingConfig: () => ({}),
 }));
 

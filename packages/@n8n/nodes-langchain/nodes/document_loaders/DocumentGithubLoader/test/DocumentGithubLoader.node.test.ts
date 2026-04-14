@@ -4,35 +4,35 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { DocumentGithubLoader } from '../DocumentGithubLoader.node';
 
-jest.mock('@langchain/textsplitters', () => ({
-	RecursiveCharacterTextSplitter: jest.fn().mockImplementation(() => ({
-		splitDocuments: jest.fn(
+vi.mock('@langchain/textsplitters', () => ({
+	RecursiveCharacterTextSplitter: vi.fn().mockImplementation(() => ({
+		splitDocuments: vi.fn(
 			async (docs: Array<{ [key: string]: unknown }>): Promise<Array<{ [key: string]: unknown }>> =>
 				docs.map((doc) => ({ ...doc, split: true })),
 		),
 	})),
 }));
-jest.mock('@langchain/community/document_loaders/web/github', () => ({
-	GithubRepoLoader: jest.fn().mockImplementation(() => ({
-		load: jest.fn(async () => [{ pageContent: 'doc1' }, { pageContent: 'doc2' }]),
+vi.mock('@langchain/community/document_loaders/web/github', () => ({
+	GithubRepoLoader: vi.fn().mockImplementation(() => ({
+		load: vi.fn(async () => [{ pageContent: 'doc1' }, { pageContent: 'doc2' }]),
 	})),
 }));
 
-const mockLogger = { debug: jest.fn() };
+const mockLogger = { debug: vi.fn() };
 
 describe('DocumentGithubLoader', () => {
 	let loader: DocumentGithubLoader;
 
 	beforeEach(() => {
 		loader = new DocumentGithubLoader();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should supply data with recursive char text splitter', async () => {
 		const context = {
 			logger: mockLogger,
-			getNode: jest.fn(() => ({ typeVersion: 1.1 })),
-			getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+			getNode: vi.fn(() => ({ typeVersion: 1.1 })),
+			getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 				switch (paramName) {
 					case 'repository':
 						return 'owner/repo';
@@ -46,12 +46,12 @@ describe('DocumentGithubLoader', () => {
 						return;
 				}
 			}),
-			getCredentials: jest.fn().mockResolvedValue({
+			getCredentials: vi.fn().mockResolvedValue({
 				accessToken: 'token',
 				server: 'https://api.github.com',
 			}),
-			addInputData: jest.fn(() => ({ index: 0 })),
-			addOutputData: jest.fn(),
+			addInputData: vi.fn(() => ({ index: 0 })),
+			addOutputData: vi.fn(),
 		} as unknown as ISupplyDataFunctions;
 		await loader.supplyData.call(context, 0);
 
@@ -62,11 +62,11 @@ describe('DocumentGithubLoader', () => {
 	});
 
 	it('should use custom text splitter when textSplittingMode is custom', async () => {
-		const customSplitter = { splitDocuments: jest.fn(async (docs) => docs) };
+		const customSplitter = { splitDocuments: vi.fn(async (docs) => docs) };
 		const context = {
 			logger: mockLogger,
-			getNode: jest.fn(() => ({ typeVersion: 1.1 })),
-			getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+			getNode: vi.fn(() => ({ typeVersion: 1.1 })),
+			getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 				switch (paramName) {
 					case 'repository':
 						return 'owner/repo';
@@ -80,13 +80,13 @@ describe('DocumentGithubLoader', () => {
 						return;
 				}
 			}),
-			getCredentials: jest.fn().mockResolvedValue({
+			getCredentials: vi.fn().mockResolvedValue({
 				accessToken: 'token',
 				server: 'https://api.github.com',
 			}),
-			getInputConnectionData: jest.fn(async () => customSplitter),
-			addInputData: jest.fn(() => ({ index: 0 })),
-			addOutputData: jest.fn(),
+			getInputConnectionData: vi.fn(async () => customSplitter),
+			addInputData: vi.fn(() => ({ index: 0 })),
+			addOutputData: vi.fn(),
 		} as unknown as ISupplyDataFunctions;
 		await loader.supplyData.call(context, 0);
 

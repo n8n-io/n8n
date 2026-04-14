@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
@@ -12,7 +12,7 @@ describe('ToolHttpRequest', () => {
 	const executeFunctions = mock<ISupplyDataFunctions>({ helpers });
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		executeFunctions.getNode.mockReturnValue(
 			mock<INode>({
 				type: 'n8n-nodes-base.httpRequest',

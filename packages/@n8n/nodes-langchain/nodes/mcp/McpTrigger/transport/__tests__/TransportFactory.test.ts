@@ -43,7 +43,7 @@ describe('TransportFactory', () => {
 
 		it('should pass sessionIdGenerator option', () => {
 			const response = createMockResponse();
-			const customGenerator = jest.fn().mockReturnValue('custom-session-id');
+			const customGenerator = vi.fn().mockReturnValue('custom-session-id');
 
 			const transport = factory.createStreamableHttp(
 				{ sessionIdGenerator: customGenerator },
@@ -55,7 +55,7 @@ describe('TransportFactory', () => {
 
 		it('should pass onsessioninitialized callback', () => {
 			const response = createMockResponse();
-			const onSessionInit = jest.fn();
+			const onSessionInit = vi.fn();
 
 			const transport = factory.createStreamableHttp(
 				{ onsessioninitialized: onSessionInit },

@@ -1,13 +1,13 @@
-import { jest } from '@jest/globals';
+import { vi } from '@vi/globals';
 import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
 
 import { ChatTrigger } from '../ChatTrigger.node';
 import type { LoadPreviousSessionChatOption } from '../types';
 
-jest.mock('../GenericFunctions', () => ({
-	validateAuth: jest.fn(),
+vi.mock('../GenericFunctions', () => ({
+	validateAuth: vi.fn(),
 }));
 
 describe('ChatTrigger Node', () => {
@@ -17,16 +17,16 @@ describe('ChatTrigger Node', () => {
 	let chatTrigger: ChatTrigger;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		chatTrigger = new ChatTrigger();
 
 		// Provide socket methods required by the streaming keepalive configuration
 		mockRequest.socket = {
 			...mockRequest.socket,
-			setTimeout: jest.fn(),
-			setNoDelay: jest.fn(),
-			setKeepAlive: jest.fn(),
+			setTimeout: vi.fn(),
+			setNoDelay: vi.fn(),
+			setKeepAlive: vi.fn(),
 		} as unknown as Request['socket'];
 
 		mockContext.getRequestObject.mockReturnValue(mockRequest);
@@ -106,7 +106,7 @@ describe('ChatTrigger Node', () => {
 			// Mock memory with chat history
 			const mockMemory = {
 				chatHistory: {
-					getMessages: jest.fn().mockReturnValueOnce(mockMessages),
+					getMessages: vi.fn().mockReturnValueOnce(mockMessages),
 				},
 			};
 
@@ -144,7 +144,7 @@ describe('ChatTrigger Node', () => {
 			mockContext.getWebhookName.mockReturnValue('default');
 			mockContext.getMode.mockReturnValue('production' as any);
 			mockContext.getBodyData.mockReturnValue({ message: 'Hello' });
-			(mockContext.helpers.returnJsonArray as any) = jest.fn().mockReturnValue([]);
+			(mockContext.helpers.returnJsonArray as any) = vi.fn().mockReturnValue([]);
 			mockResponse.writeHead.mockImplementation(() => mockResponse);
 			mockResponse.flushHeaders.mockImplementation(() => undefined);
 		});

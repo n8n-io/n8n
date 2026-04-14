@@ -1,25 +1,25 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
 
-jest.mock('../transport', () => ({
-	apiRequest: jest.fn(),
-	pollTaskResult: jest.fn(),
+vi.mock('../transport', () => ({
+	apiRequest: vi.fn(),
+	pollTaskResult: vi.fn(),
 }));
 
-jest.mock('@utils/helpers', () => ({
-	getConnectedTools: jest.fn().mockResolvedValue([]),
+vi.mock('@utils/helpers', () => ({
+	getConnectedTools: vi.fn().mockResolvedValue([]),
 }));
 
-jest.mock('zod-to-json-schema', () => ({
+vi.mock('zod-to-json-schema', () => ({
 	__esModule: true,
-	default: jest.fn(),
+	default: vi.fn(),
 }));
 
-jest.mock('n8n-workflow', () => {
-	const actual = jest.requireActual('n8n-workflow');
+vi.mock('n8n-workflow', () => {
+	const actual = vi.requireActual('n8n-workflow');
 	return {
 		...actual,
-		accumulateTokenUsage: jest.fn(),
+		accumulateTokenUsage: vi.fn(),
 	};
 });
 
@@ -30,8 +30,8 @@ import { execute as videoT2VExecute } from '../actions/video/generate.t2v.operat
 import { execute as videoI2VExecute } from '../actions/video/generate.i2v.operation';
 import { apiRequest, pollTaskResult } from '../transport';
 
-const mockApiRequest = apiRequest as jest.Mock;
-const mockPollTaskResult = pollTaskResult as jest.Mock;
+const mockApiRequest = apiRequest as vi.Mock;
+const mockPollTaskResult = pollTaskResult as vi.Mock;
 
 describe('AlicloudModelStudio Operations', () => {
 	let mockExecuteFunctions: ReturnType<typeof mock<IExecuteFunctions>>;
@@ -43,7 +43,7 @@ describe('AlicloudModelStudio Operations', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Text: message', () => {

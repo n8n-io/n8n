@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { proxyFetch } from '@n8n/ai-utilities';
@@ -9,16 +9,16 @@ import { proxyFetch } from '@n8n/ai-utilities';
 import type { McpAuthenticationOption, McpServerTransport } from '../types';
 import { connectMcpClient, getAuthHeaders, tryRefreshOAuth2Token } from '../utils';
 
-jest.mock('@modelcontextprotocol/sdk/client/index.js');
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
-jest.mock('@modelcontextprotocol/sdk/client/sse.js');
-jest.mock('@n8n/ai-utilities', () => ({
-	proxyFetch: jest.fn(),
+vi.mock('@modelcontextprotocol/sdk/client/index.js');
+vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
+vi.mock('@modelcontextprotocol/sdk/client/sse.js');
+vi.mock('@n8n/ai-utilities', () => ({
+	proxyFetch: vi.fn(),
 }));
 
-const mockedProxyFetch = proxyFetch as jest.MockedFunction<typeof proxyFetch>;
+const mockedProxyFetch = proxyFetch as vi.MockedFunction<typeof proxyFetch>;
 
-const MockedClient = Client as jest.MockedClass<typeof Client>;
+const MockedClient = Client as vi.MockedClass<typeof Client>;
 
 describe('utils', () => {
 	describe('tryRefreshOAuth2Token', () => {
@@ -168,11 +168,11 @@ describe('utils', () => {
 
 	describe('connectMcpClient', () => {
 		const mockClient = {
-			connect: jest.fn(),
+			connect: vi.fn(),
 		};
 
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			MockedClient.mockImplementation(() => mockClient as unknown as Client);
 		});
 
@@ -183,7 +183,7 @@ describe('utils', () => {
 			[McpServerTransport, typeof StreamableHTTPClientTransport | typeof SSEClientTransport]
 		>)('%s transport', (transport, Transport) => {
 			it('should connect successfully and pass a custom fetch', async () => {
-				(Transport as jest.Mock).mockImplementation(() => ({}));
+				(Transport as vi.Mock).mockImplementation(() => ({}));
 				mockClient.connect.mockResolvedValue(undefined);
 
 				const result = await connectMcpClient({
@@ -196,12 +196,12 @@ describe('utils', () => {
 
 				expect(result.ok).toBe(true);
 				expect(Transport).toHaveBeenCalledTimes(1);
-				const transportOpts = (Transport as jest.Mock).mock.calls[0][1];
+				const transportOpts = (Transport as vi.Mock).mock.calls[0][1];
 				expect(transportOpts.fetch).toBeDefined();
 			});
 
 			it('should return auth error on 401 during connect', async () => {
-				(Transport as jest.Mock).mockImplementation(() => ({}));
+				(Transport as vi.Mock).mockImplementation(() => ({}));
 				mockClient.connect.mockRejectedValueOnce(new Error('Request failed with status 401'));
 
 				const result = await connectMcpClient({
@@ -219,7 +219,7 @@ describe('utils', () => {
 			});
 
 			it('should return connection error on non-auth failure', async () => {
-				(Transport as jest.Mock).mockImplementation(() => ({}));
+				(Transport as vi.Mock).mockImplementation(() => ({}));
 				mockClient.connect.mockRejectedValueOnce(new Error('Connection refused'));
 
 				const result = await connectMcpClient({
@@ -237,7 +237,7 @@ describe('utils', () => {
 
 			it('should inject auth headers into fetch requests', async () => {
 				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+				(Transport as vi.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
 					capturedFetch = opts?.fetch;
 					return {};
 				});
@@ -270,7 +270,7 @@ describe('utils', () => {
 
 			it('should preserve SDK headers passed as a Headers instance', async () => {
 				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+				(Transport as vi.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
 					capturedFetch = opts?.fetch;
 					return {};
 				});
@@ -306,13 +306,13 @@ describe('utils', () => {
 
 			it('should retry on 401 response with refreshed headers from onUnauthorized', async () => {
 				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+				(Transport as vi.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
 					capturedFetch = opts?.fetch;
 					return {};
 				});
 				mockClient.connect.mockResolvedValue(undefined);
 
-				const onUnauthorized = jest
+				const onUnauthorized = vi
 					.fn()
 					.mockResolvedValue({ Authorization: 'Bearer refreshed-token' });
 
@@ -347,13 +347,13 @@ describe('utils', () => {
 
 			it('should use refreshed headers for subsequent requests after 401 retry', async () => {
 				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+				(Transport as vi.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
 					capturedFetch = opts?.fetch;
 					return {};
 				});
 				mockClient.connect.mockResolvedValue(undefined);
 
-				const onUnauthorized = jest
+				const onUnauthorized = vi
 					.fn()
 					.mockResolvedValue({ Authorization: 'Bearer refreshed-token' });
 
@@ -389,13 +389,13 @@ describe('utils', () => {
 
 			it('should not retry on 401 when onUnauthorized returns null', async () => {
 				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+				(Transport as vi.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
 					capturedFetch = opts?.fetch;
 					return {};
 				});
 				mockClient.connect.mockResolvedValue(undefined);
 
-				const onUnauthorized = jest.fn().mockResolvedValue(null);
+				const onUnauthorized = vi.fn().mockResolvedValue(null);
 
 				await connectMcpClient({
 					serverTransport: transport,
@@ -417,7 +417,7 @@ describe('utils', () => {
 
 			it('should not retry on 401 when onUnauthorized is not provided', async () => {
 				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+				(Transport as vi.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
 					capturedFetch = opts?.fetch;
 					return {};
 				});

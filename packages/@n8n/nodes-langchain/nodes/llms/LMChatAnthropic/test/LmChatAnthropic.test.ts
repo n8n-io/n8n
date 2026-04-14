@@ -9,24 +9,24 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { LmChatAnthropic } from '../LmChatAnthropic.node';
 
-jest.mock('@langchain/anthropic');
-jest.mock('@n8n/ai-utilities', () => ({
-	getConnectionHintNoticeField: jest
+vi.mock('@langchain/anthropic');
+vi.mock('@n8n/ai-utilities', () => ({
+	getConnectionHintNoticeField: vi
 		.fn()
 		.mockReturnValue({ displayName: '', name: 'notice', type: 'notice', default: '' }),
-	makeN8nLlmFailedAttemptHandler: jest.fn(),
-	N8nLlmTracing: jest.fn(),
-	getProxyAgent: jest.fn(),
+	makeN8nLlmFailedAttemptHandler: vi.fn(),
+	N8nLlmTracing: vi.fn(),
+	getProxyAgent: vi.fn(),
 }));
 
-const MockedChatAnthropic = jest.mocked(ChatAnthropic);
-const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
-const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
-const mockedGetProxyAgent = jest.mocked(getProxyAgent);
+const MockedChatAnthropic = vi.mocked(ChatAnthropic);
+const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
+const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
+const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 
 describe('LmChatAnthropic', () => {
 	let lmChatAnthropic: LmChatAnthropic;
-	let mockContext: jest.Mocked<ISupplyDataFunctions>;
+	let mockContext: vi.Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -42,18 +42,18 @@ describe('LmChatAnthropic', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			node,
-		) as jest.Mocked<ISupplyDataFunctions>;
+		) as vi.Mocked<ISupplyDataFunctions>;
 
 		// Setup default mocks
-		mockContext.getCredentials = jest.fn().mockResolvedValue({
+		mockContext.getCredentials = vi.fn().mockResolvedValue({
 			apiKey: 'test-api-key',
 		});
-		mockContext.getNode = jest.fn().mockReturnValue(node);
-		mockContext.getNodeParameter = jest.fn();
+		mockContext.getNode = vi.fn().mockReturnValue(node);
+		mockContext.getNodeParameter = vi.fn();
 
 		// Mock the constructors/functions properly
 		MockedN8nLlmTracing.mockImplementation(() => ({}) as N8nLlmTracing);
-		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
+		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
 		return mockContext;
 	};
@@ -66,11 +66,11 @@ describe('LmChatAnthropic', () => {
 
 	beforeEach(() => {
 		lmChatAnthropic = new LmChatAnthropic();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('node description', () => {
@@ -103,7 +103,7 @@ describe('LmChatAnthropic', () => {
 		it('should create ChatAnthropic instance with basic configuration (version >= 1.3)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.3 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -142,7 +142,7 @@ describe('LmChatAnthropic', () => {
 		it('should create ChatAnthropic instance with basic configuration (version < 1.3)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.2 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'claude-3-5-sonnet-20241022';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -170,7 +170,7 @@ describe('LmChatAnthropic', () => {
 				url: customURL,
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -196,7 +196,7 @@ describe('LmChatAnthropic', () => {
 				topP: 0.9,
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -223,7 +223,7 @@ describe('LmChatAnthropic', () => {
 		it('should remove topP from model when not explicitly set', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return { temperature: 0.7 };
 				return undefined;
@@ -243,7 +243,7 @@ describe('LmChatAnthropic', () => {
 		it('should keep topP on model when explicitly set', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return { topP: 0.9 };
 				return undefined;
@@ -262,7 +262,7 @@ describe('LmChatAnthropic', () => {
 		it('should remove temperature when topP is set but temperature is not', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return { topP: 0.9 };
 				return undefined;
@@ -283,7 +283,7 @@ describe('LmChatAnthropic', () => {
 		it('should keep temperature when both topP and temperature are set', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return { topP: 0.9, temperature: 0.8 };
 				return undefined;
@@ -309,7 +309,7 @@ describe('LmChatAnthropic', () => {
 				maxTokensToSample: 4096,
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -342,7 +342,7 @@ describe('LmChatAnthropic', () => {
 				thinking: true,
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -377,7 +377,7 @@ describe('LmChatAnthropic', () => {
 				topP: 0.9,
 			};
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return options;
 				return undefined;
@@ -409,7 +409,7 @@ describe('LmChatAnthropic', () => {
 		it('should create N8nLlmTracing callback with tokens usage parser', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -428,7 +428,7 @@ describe('LmChatAnthropic', () => {
 		it('should create failed attempt handler without gateway handler for direct API', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -447,7 +447,7 @@ describe('LmChatAnthropic', () => {
 				url: 'https://ai-gateway.example.com',
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -470,7 +470,7 @@ describe('LmChatAnthropic', () => {
 				url: gatewayURL,
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -480,7 +480,7 @@ describe('LmChatAnthropic', () => {
 			let capturedHandler: ((error: unknown) => void) | undefined;
 			mockedMakeN8nLlmFailedAttemptHandler.mockImplementation((_ctx, handler) => {
 				capturedHandler = handler as (error: unknown) => void;
-				return jest.fn();
+				return vi.fn();
 			});
 
 			await lmChatAnthropic.supplyData.call(mockContext, 0);
@@ -500,7 +500,7 @@ describe('LmChatAnthropic', () => {
 		it('should throw when model is empty (v1.3)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.3 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return '';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -515,7 +515,7 @@ describe('LmChatAnthropic', () => {
 		it('should throw when model is empty (v1.2)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.2 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return '';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -537,7 +537,7 @@ describe('LmChatAnthropic', () => {
 				url: gatewayURL,
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return gatewayModel;
 				if (paramName === 'options') return {};
 				return undefined;

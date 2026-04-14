@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { MongoClient } from 'mongodb';
 import type { ILoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 
@@ -16,8 +16,8 @@ import {
 	VECTOR_INDEX_NAME,
 } from './VectorStoreMongoDBAtlas.node';
 
-jest.mock('mongodb', () => ({
-	MongoClient: jest.fn(),
+vi.mock('mongodb', () => ({
+	MongoClient: vi.fn(),
 }));
 
 describe('VectorStoreMongoDBAtlas', () => {
@@ -27,23 +27,23 @@ describe('VectorStoreMongoDBAtlas', () => {
 	const dataFunctions = mock<ISupplyDataFunctions>({ helpers: dataHelpers });
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('.createMongoClient', () => {
 		const mockContext = mock<ISupplyDataFunctions>({
-			getCredentials: jest.fn(),
+			getCredentials: vi.fn(),
 		});
 		const mockClient = {
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn().mockResolvedValue(undefined),
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
 		};
-		const MockMongoClient = MongoClient as jest.MockedClass<typeof MongoClient>;
+		const MockMongoClient = MongoClient as vi.MockedClass<typeof MongoClient>;
 
 		it('should create a fresh client on every call', async () => {
 			const mockClient2 = {
-				connect: jest.fn().mockResolvedValue(undefined),
-				close: jest.fn().mockResolvedValue(undefined),
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
 			};
 			MockMongoClient.mockImplementationOnce(
 				() => mockClient as unknown as MongoClient,
@@ -138,28 +138,28 @@ describe('VectorStoreMongoDBAtlas', () => {
 	});
 
 	describe('.getCollections', () => {
-		const MockMongoClient = MongoClient as jest.MockedClass<typeof MongoClient>;
+		const MockMongoClient = MongoClient as vi.MockedClass<typeof MongoClient>;
 
 		it('should create and close its own client', async () => {
 			const mockCollections = [{ name: 'Col1' }, { name: 'Col2' }];
 			const mockClient = {
-				connect: jest.fn().mockResolvedValue(undefined),
-				close: jest.fn().mockResolvedValue(undefined),
-				db: jest.fn().mockReturnValue({
-					listCollections: jest.fn().mockReturnValue({
-						toArray: jest.fn().mockResolvedValue(mockCollections),
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
+				db: vi.fn().mockReturnValue({
+					listCollections: vi.fn().mockReturnValue({
+						toArray: vi.fn().mockResolvedValue(mockCollections),
 					}),
 				}),
 			};
 			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
 
 			const context = mock<ILoadOptionsFunctions>({
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					configurationType: 'connectionString',
 					connectionString: 'mongodb://localhost:27017',
 					database: 'testdb',
 				}),
-				getNode: jest.fn().mockReturnValue({ typeVersion: 1.1 }),
+				getNode: vi.fn().mockReturnValue({ typeVersion: 1.1 }),
 			});
 
 			const result = await getCollections.call(context);
@@ -176,23 +176,23 @@ describe('VectorStoreMongoDBAtlas', () => {
 
 		it('should close client even when an error occurs', async () => {
 			const mockClient = {
-				connect: jest.fn().mockResolvedValue(undefined),
-				close: jest.fn().mockResolvedValue(undefined),
-				db: jest.fn().mockReturnValue({
-					listCollections: jest.fn().mockReturnValue({
-						toArray: jest.fn().mockRejectedValue(new Error('db error')),
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
+				db: vi.fn().mockReturnValue({
+					listCollections: vi.fn().mockReturnValue({
+						toArray: vi.fn().mockRejectedValue(new Error('db error')),
 					}),
 				}),
 			};
 			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
 
 			const context = mock<ILoadOptionsFunctions>({
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					configurationType: 'connectionString',
 					connectionString: 'mongodb://localhost:27017',
 					database: 'testdb',
 				}),
-				getNode: jest.fn().mockReturnValue({ typeVersion: 1.1 }),
+				getNode: vi.fn().mockReturnValue({ typeVersion: 1.1 }),
 			});
 
 			await expect(getCollections.call(context)).rejects.toThrow('Error: db error');

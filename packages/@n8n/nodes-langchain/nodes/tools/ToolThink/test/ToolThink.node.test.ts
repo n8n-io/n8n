@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { DynamicTool } from '@langchain/classic/tools';
 import type {
 	IExecuteFunctions,
@@ -67,7 +67,7 @@ describe('ToolThink', () => {
 
 	describe('execute', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should execute think tool and return input as result', async () => {
@@ -79,9 +79,9 @@ describe('ToolThink', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.1, name: 'test think tool' })),
-				getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.1, name: 'test think tool' })),
+				getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'description':
 							return 'Tool for thinking';
@@ -119,9 +119,9 @@ describe('ToolThink', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.1, name: 'test think tool' })),
-				getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.1, name: 'test think tool' })),
+				getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'description':
 							return 'Tool for thinking';
@@ -164,9 +164,9 @@ describe('ToolThink', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1, name: 'My Thinking Tool' })),
-				getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'My Thinking Tool' })),
+				getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'description':
 							return 'Tool for thinking';

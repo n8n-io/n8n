@@ -1,26 +1,26 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { createToolCallingAgent } from '@langchain/classic/agents';
 import type { Tool } from '@langchain/classic/tools';
 
 import * as commonHelpers from '../../../common';
 import { createAgentSequence } from '../createAgentSequence';
 
-jest.mock('@langchain/classic/agents', () => ({
-	createToolCallingAgent: jest.fn(),
+vi.mock('@langchain/classic/agents', () => ({
+	createToolCallingAgent: vi.fn(),
 }));
 
-jest.mock('@langchain/core/runnables', () => ({
+vi.mock('@langchain/core/runnables', () => ({
 	RunnableSequence: {
-		from: jest.fn(),
+		from: vi.fn(),
 	},
 }));
 
-jest.mock('../../../common', () => ({
-	getAgentStepsParser: jest.fn(),
-	fixEmptyContentMessage: jest.fn(),
+vi.mock('../../../common', () => ({
+	getAgentStepsParser: vi.fn(),
+	fixEmptyContentMessage: vi.fn(),
 }));
 
 describe('createAgentSequence', () => {
@@ -29,17 +29,17 @@ describe('createAgentSequence', () => {
 	const mockTool = mock<Tool>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should create agent sequence without fallback', () => {
 		const mockAgent = mock<any>();
 		const mockRunnableSequence = mock<any>();
-		const mockStepsParser = jest.fn();
+		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
-		jest.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
+		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
 		const result = createAgentSequence(mockModel, [mockTool], mockPrompt, options);
@@ -67,15 +67,15 @@ describe('createAgentSequence', () => {
 		const mockFallbackAgent = mock<any>();
 		const mockAgentWithFallback = mock<any>();
 		const mockRunnableSequence = mock<any>();
-		const mockStepsParser = jest.fn();
+		const mockStepsParser = vi.fn();
 
-		mockAgent.withFallbacks = jest.fn().mockReturnValue(mockAgentWithFallback);
+		mockAgent.withFallbacks = vi.fn().mockReturnValue(mockAgentWithFallback);
 
-		(createToolCallingAgent as jest.Mock)
+		(createToolCallingAgent as vi.Mock)
 			.mockReturnValueOnce(mockAgent)
 			.mockReturnValueOnce(mockFallbackAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
-		jest.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
+		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
 		createAgentSequence(
@@ -115,11 +115,11 @@ describe('createAgentSequence', () => {
 		const mockAgent = mock<any>();
 		const mockRunnableSequence = mock<any>();
 		const mockOutputParser = mock<any>();
-		const mockStepsParser = jest.fn();
+		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
-		jest.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
+		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
 		createAgentSequence(mockModel, [mockTool], mockPrompt, options, mockOutputParser);
@@ -131,11 +131,11 @@ describe('createAgentSequence', () => {
 		const mockAgent = mock<any>();
 		const mockRunnableSequence = mock<any>();
 		const mockMemory = mock<any>();
-		const mockStepsParser = jest.fn();
+		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
-		jest.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
+		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
 		createAgentSequence(mockModel, [mockTool], mockPrompt, options, undefined, mockMemory);
@@ -146,11 +146,11 @@ describe('createAgentSequence', () => {
 	it('should set streamRunnable to false for agents', () => {
 		const mockAgent = mock<any>();
 		const mockRunnableSequence = mock<any>();
-		const mockStepsParser = jest.fn();
+		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
-		jest.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
+		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
 		createAgentSequence(mockModel, [mockTool], mockPrompt, options);
@@ -165,11 +165,11 @@ describe('createAgentSequence', () => {
 	it('should handle null fallback model', () => {
 		const mockAgent = mock<any>();
 		const mockRunnableSequence = mock<any>();
-		const mockStepsParser = jest.fn();
+		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
-		jest.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
+		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
 		createAgentSequence(mockModel, [mockTool], mockPrompt, options, undefined, undefined, null);
@@ -187,11 +187,11 @@ describe('createAgentSequence', () => {
 		const mockAgent = mock<any>();
 		const mockRunnableSequence = mock<any>();
 		const mockTool2 = mock<Tool>();
-		const mockStepsParser = jest.fn();
+		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
-		jest.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
+		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
 		createAgentSequence(mockModel, [mockTool, mockTool2], mockPrompt, options);

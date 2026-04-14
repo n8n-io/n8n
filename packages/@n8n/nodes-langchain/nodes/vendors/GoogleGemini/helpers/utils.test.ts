@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IBinaryData, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -14,16 +14,16 @@ import {
 } from './utils';
 import * as transport from '../transport';
 
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mockedAxios = axios as vi.Mocked<typeof axios>;
 
 describe('GoogleGemini -> utils', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
+	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.useFakeTimers({ advanceTimers: true });
+		vi.clearAllMocks();
+		vi.useFakeTimers({ advanceTimers: true });
 	});
 
 	describe('downloadFile', () => {
@@ -180,7 +180,7 @@ describe('GoogleGemini -> utils', () => {
 			});
 
 			const promise = uploadFile.call(mockExecuteFunctions, fileContent, mimeType);
-			await jest.advanceTimersByTimeAsync(1000);
+			await vi.advanceTimersByTimeAsync(1000);
 			const file = await promise;
 
 			expect(file).toEqual({
@@ -223,7 +223,7 @@ describe('GoogleGemini -> utils', () => {
 					state: 'ACTIVE',
 				});
 
-			jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+			vi.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
 				callback();
 				return {} as any;
 			});
@@ -271,8 +271,8 @@ describe('GoogleGemini -> utils', () => {
 	describe('transferFile', () => {
 		it('should transfer file from URL using axios', async () => {
 			const mockStream = {
-				pipe: jest.fn(),
-				on: jest.fn(),
+				pipe: vi.fn(),
+				on: vi.fn(),
 			} as any;
 
 			mockedAxios.get.mockResolvedValue({
@@ -394,8 +394,8 @@ describe('GoogleGemini -> utils', () => {
 			};
 
 			const mockStream = {
-				pipe: jest.fn(),
-				on: jest.fn(),
+				pipe: vi.fn(),
+				on: vi.fn(),
 			} as any;
 
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('data');
@@ -456,8 +456,8 @@ describe('GoogleGemini -> utils', () => {
 
 		it('should throw error when upload URL is not received', async () => {
 			const mockStream = {
-				pipe: jest.fn(),
-				on: jest.fn(),
+				pipe: vi.fn(),
+				on: vi.fn(),
 			} as any;
 
 			mockedAxios.get.mockResolvedValue({
@@ -487,8 +487,8 @@ describe('GoogleGemini -> utils', () => {
 
 		it('should poll until file is active and throw error on failure', async () => {
 			const mockStream = {
-				pipe: jest.fn(),
-				on: jest.fn(),
+				pipe: vi.fn(),
+				on: vi.fn(),
 			} as any;
 
 			mockedAxios.get.mockResolvedValue({
@@ -523,7 +523,7 @@ describe('GoogleGemini -> utils', () => {
 				error: { message: 'Processing failed' },
 			});
 
-			jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+			vi.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
 				callback();
 				return {} as any;
 			});
@@ -569,8 +569,8 @@ describe('GoogleGemini -> utils', () => {
 			const fileSearchStoreName = 'fileSearchStores/abc123';
 			const displayName = 'test-file.pdf';
 			const mockStream = {
-				pipe: jest.fn(),
-				on: jest.fn(),
+				pipe: vi.fn(),
+				on: vi.fn(),
 			} as any;
 
 			mockedAxios.get.mockResolvedValue({
@@ -604,7 +604,7 @@ describe('GoogleGemini -> utils', () => {
 				},
 			});
 
-			jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+			vi.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
 				callback();
 				return {} as any;
 			});
@@ -707,8 +707,8 @@ describe('GoogleGemini -> utils', () => {
 			};
 
 			const mockStream = {
-				pipe: jest.fn(),
-				on: jest.fn(),
+				pipe: vi.fn(),
+				on: vi.fn(),
 			} as any;
 
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('data');
@@ -756,8 +756,8 @@ describe('GoogleGemini -> utils', () => {
 			const fileSearchStoreName = 'fileSearchStores/abc123';
 			const displayName = 'test-file.pdf';
 			const mockStream = {
-				pipe: jest.fn(),
-				on: jest.fn(),
+				pipe: vi.fn(),
+				on: vi.fn(),
 			} as any;
 
 			mockedAxios.get.mockResolvedValue({
@@ -795,7 +795,7 @@ describe('GoogleGemini -> utils', () => {
 				},
 			});
 
-			jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+			vi.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
 				callback();
 				return {} as any;
 			});
@@ -819,8 +819,8 @@ describe('GoogleGemini -> utils', () => {
 			const fileSearchStoreName = 'fileSearchStores/abc123';
 			const displayName = 'test-file.pdf';
 			const mockStream = {
-				pipe: jest.fn(),
-				on: jest.fn(),
+				pipe: vi.fn(),
+				on: vi.fn(),
 			} as any;
 
 			mockedAxios.get.mockResolvedValue({
@@ -852,7 +852,7 @@ describe('GoogleGemini -> utils', () => {
 				},
 			});
 
-			jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+			vi.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
 				callback();
 				return {} as any;
 			});
@@ -898,8 +898,8 @@ describe('GoogleGemini -> utils', () => {
 			const fileSearchStoreName = 'fileSearchStores/abc123';
 			const displayName = 'test-file.pdf';
 			const mockStream = {
-				pipe: jest.fn(),
-				on: jest.fn(),
+				pipe: vi.fn(),
+				on: vi.fn(),
 			} as any;
 
 			mockedAxios.get.mockResolvedValue({

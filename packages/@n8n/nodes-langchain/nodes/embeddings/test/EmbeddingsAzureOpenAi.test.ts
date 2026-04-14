@@ -6,24 +6,24 @@ import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { EmbeddingsAzureOpenAi } from '../EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node';
 
-jest.mock('@langchain/openai');
+vi.mock('@langchain/openai');
 
 class MockProxyAgent {}
 
-jest.mock('@n8n/ai-utilities', () => {
-	const actual = jest.requireActual('@n8n/ai-utilities');
+vi.mock('@n8n/ai-utilities', () => {
+	const actual = vi.requireActual('@n8n/ai-utilities');
 	return {
 		...actual,
-		logWrapper: jest.fn().mockImplementation(() => jest.fn()),
-		getProxyAgent: jest.fn().mockImplementation(() => new MockProxyAgent()),
+		logWrapper: vi.fn().mockImplementation(() => vi.fn()),
+		getProxyAgent: vi.fn().mockImplementation(() => new MockProxyAgent()),
 	};
 });
 
-const MockedAzureOpenAIEmbeddings = jest.mocked(AzureOpenAIEmbeddings);
+const MockedAzureOpenAIEmbeddings = vi.mocked(AzureOpenAIEmbeddings);
 
 describe('AzureOpenAIEmbeddings', () => {
 	let embeddingsAzureOpenAi: EmbeddingsAzureOpenAi;
-	let mockContext: jest.Mocked<ISupplyDataFunctions>;
+	let mockContext: vi.Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -39,30 +39,30 @@ describe('AzureOpenAIEmbeddings', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			node,
-		) as jest.Mocked<ISupplyDataFunctions>;
+		) as vi.Mocked<ISupplyDataFunctions>;
 
 		// Setup default mocks
-		mockContext.getCredentials = jest.fn().mockResolvedValue({
+		mockContext.getCredentials = vi.fn().mockResolvedValue({
 			apiKey: 'test-api-key',
 		});
-		mockContext.getNode = jest.fn().mockReturnValue(node);
-		mockContext.getNodeParameter = jest.fn();
+		mockContext.getNode = vi.fn().mockReturnValue(node);
+		mockContext.getNodeParameter = vi.fn();
 		mockContext.logger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		};
 		return mockContext;
 	};
 
 	beforeEach(() => {
 		embeddingsAzureOpenAi = new EmbeddingsAzureOpenAi();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('supplyData', () => {
@@ -75,7 +75,7 @@ describe('AzureOpenAIEmbeddings', () => {
 				apiVersion: 'v1',
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'text-embedding-3-large';
 				if (paramName === 'options') return {};
 				return undefined;

@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { BaseChatMemory } from '@langchain/classic/memory';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';

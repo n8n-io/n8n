@@ -1,23 +1,23 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { ChromaClient, CloudClient } from 'chromadb';
 import { Chroma } from '@langchain/community/vectorstores/chroma';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import * as ChromaNode from './VectorStoreChromaDB.node';
 
 // Mock external modules
-jest.mock('chromadb', () => {
+vi.mock('chromadb', () => {
 	return {
-		ChromaClient: jest.fn(),
-		CloudClient: jest.fn(),
+		ChromaClient: vi.fn(),
+		CloudClient: vi.fn(),
 	};
 });
 
-jest.mock('@langchain/community/vectorstores/chroma', () => {
+vi.mock('@langchain/community/vectorstores/chroma', () => {
 	const state: { ctorArgs?: unknown[] } = { ctorArgs: undefined };
 	class Chroma {
-		static fromDocuments = jest.fn();
-		static fromExistingCollection = jest.fn();
-		similaritySearchVectorWithScore = jest.fn();
+		static fromDocuments = vi.fn();
+		static fromExistingCollection = vi.fn();
+		similaritySearchVectorWithScore = vi.fn();
 		constructor(...args: unknown[]) {
 			state.ctorArgs = args;
 		}
@@ -25,7 +25,7 @@ jest.mock('@langchain/community/vectorstores/chroma', () => {
 	return { Chroma, __state: state };
 });
 
-jest.mock(
+vi.mock(
 	'@n8n/ai-utilities',
 	() => ({
 		createVectorStoreNode: (config: {
@@ -57,21 +57,21 @@ jest.mock(
 	}),
 	{ virtual: true },
 );
-jest.mock('../shared/descriptions', () => ({ chromaCollectionRLC: {} }), { virtual: true });
+vi.mock('../shared/descriptions', () => ({ chromaCollectionRLC: {} }), { virtual: true });
 
-const MockChromaClient = ChromaClient as jest.MockedClass<typeof ChromaClient>;
-const MockCloudClient = CloudClient as jest.MockedClass<typeof CloudClient>;
-const MockChroma = Chroma as jest.MockedClass<typeof Chroma>;
+const MockChromaClient = ChromaClient as vi.MockedClass<typeof ChromaClient>;
+const MockCloudClient = CloudClient as vi.MockedClass<typeof CloudClient>;
+const MockChroma = Chroma as vi.MockedClass<typeof Chroma>;
 
 describe('VectorStoreChromaDB.node', () => {
 	const helpers = mock<ISupplyDataFunctions['helpers']>();
 	const dataFunctions = mock<ISupplyDataFunctions>({ helpers });
 	dataFunctions.logger = {
-		info: jest.fn(),
-		debug: jest.fn(),
-		error: jest.fn(),
-		warn: jest.fn(),
-		verbose: jest.fn(),
+		info: vi.fn(),
+		debug: vi.fn(),
+		error: vi.fn(),
+		warn: vi.fn(),
+		verbose: vi.fn(),
 	} as unknown as ISupplyDataFunctions['logger'];
 
 	const selfHostedCredentials = {
@@ -88,17 +88,17 @@ describe('VectorStoreChromaDB.node', () => {
 	};
 
 	const mockChromaClientInstance = {
-		deleteCollection: jest.fn(),
-		listCollections: jest.fn(),
+		deleteCollection: vi.fn(),
+		listCollections: vi.fn(),
 	};
 
 	const mockCloudClientInstance = {
-		deleteCollection: jest.fn(),
-		listCollections: jest.fn(),
+		deleteCollection: vi.fn(),
+		listCollections: vi.fn(),
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		MockChromaClient.mockReturnValue(mockChromaClientInstance as unknown as ChromaClient);
 		MockCloudClient.mockReturnValue(mockCloudClientInstance as unknown as CloudClient);
 	});
@@ -107,14 +107,14 @@ describe('VectorStoreChromaDB.node', () => {
 		it('should create self-hosted client correctly', async () => {
 			const mockEmbeddings = {};
 			const mockVectorStore = {
-				similaritySearchVectorWithScore: jest.fn(),
+				similaritySearchVectorWithScore: vi.fn(),
 			};
 
-			MockChroma.fromExistingCollection = jest.fn().mockResolvedValue(mockVectorStore);
+			MockChroma.fromExistingCollection = vi.fn().mockResolvedValue(mockVectorStore);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(selfHostedCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(selfHostedCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					if (name === 'chromaCollection') return 'test-collection';
 					if (name === 'authentication') return 'chromaSelfHostedApi';
 					return undefined;
@@ -147,11 +147,11 @@ describe('VectorStoreChromaDB.node', () => {
 			const mockEmbeddings = {};
 			const mockVectorStore = {};
 
-			MockChroma.fromExistingCollection = jest.fn().mockResolvedValue(mockVectorStore);
+			MockChroma.fromExistingCollection = vi.fn().mockResolvedValue(mockVectorStore);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(cloudCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(cloudCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					if (name === 'chromaCollection') return 'test-collection';
 					if (name === 'authentication') return 'chromaCloudApi';
 					return undefined;
@@ -185,11 +185,11 @@ describe('VectorStoreChromaDB.node', () => {
 			const mockEmbeddings = {};
 			const mockDocuments = [{ pageContent: 'test', metadata: {} }];
 
-			MockChroma.fromDocuments = jest.fn().mockResolvedValue(undefined);
+			MockChroma.fromDocuments = vi.fn().mockResolvedValue(undefined);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(selfHostedCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(selfHostedCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					if (name === 'chromaCollection') return 'test-collection';
 					if (name === 'options') return { clearCollection: true };
 					if (name === 'authentication') return 'chromaSelfHostedApi';
@@ -216,11 +216,11 @@ describe('VectorStoreChromaDB.node', () => {
 			const mockEmbeddings = {};
 			const mockDocuments = [{ pageContent: 'test', metadata: {} }];
 
-			MockChroma.fromDocuments = jest.fn().mockResolvedValue(undefined);
+			MockChroma.fromDocuments = vi.fn().mockResolvedValue(undefined);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(selfHostedCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(selfHostedCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					if (name === 'chromaCollection') return 'test-collection';
 					if (name === 'options') return { clearCollection: false };
 					if (name === 'authentication') return 'chromaSelfHostedApi';
@@ -247,8 +247,8 @@ describe('VectorStoreChromaDB.node', () => {
 			mockChromaClientInstance.listCollections.mockResolvedValue(collections as any);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(selfHostedCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(selfHostedCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					if (name === 'authentication') return 'chromaSelfHostedApi';
 					return undefined;
 				}),
@@ -273,8 +273,8 @@ describe('VectorStoreChromaDB.node', () => {
 			mockChromaClientInstance.listCollections.mockRejectedValue(new Error('401 Unauthorized'));
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(selfHostedCredentials),
-				getNodeParameter: jest.fn((name: string) => {
+				getCredentials: vi.fn().mockResolvedValue(selfHostedCredentials),
+				getNodeParameter: vi.fn((name: string) => {
 					if (name === 'authentication') return 'chromaSelfHostedApi';
 					return undefined;
 				}),

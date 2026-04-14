@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { DynamicTool } from '@langchain/classic/tools';
 import {
 	type IExecuteFunctions,
@@ -12,7 +12,7 @@ import { ToolCode } from './ToolCode.node';
 describe('ToolCode', () => {
 	describe('supplyData', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should read name from node name on version >=1.2', async () => {
@@ -20,8 +20,8 @@ describe('ToolCode', () => {
 
 			const supplyDataResult = await node.supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
-					getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
+					getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 						switch (paramName) {
 							case 'description':
 								return 'description text';
@@ -54,8 +54,8 @@ describe('ToolCode', () => {
 
 			const supplyDataResult = await node.supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1.1, name: 'wrong name' })),
-					getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1.1, name: 'wrong name' })),
+					getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 						switch (paramName) {
 							case 'description':
 								return 'description text';
@@ -86,7 +86,7 @@ describe('ToolCode', () => {
 
 	describe('execute', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should execute code tool and return result', async () => {
@@ -98,9 +98,9 @@ describe('ToolCode', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
-				getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
+				getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'description':
 							return 'description text';
@@ -116,12 +116,12 @@ describe('ToolCode', () => {
 							return;
 					}
 				}),
-				getMode: jest.fn(() => 'manual'),
+				getMode: vi.fn(() => 'manual'),
 			});
 
 			// Mock the DynamicTool.invoke method
 			const mockResult = 'test result';
-			DynamicTool.prototype.invoke = jest.fn().mockResolvedValue(mockResult);
+			DynamicTool.prototype.invoke = vi.fn().mockResolvedValue(mockResult);
 
 			const result = await node.execute.call(mockExecute);
 
@@ -152,9 +152,9 @@ describe('ToolCode', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
-				getNodeParameter: jest.fn().mockImplementation((paramName, _itemIndex) => {
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
+				getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'description':
 							return 'description text';
@@ -170,11 +170,11 @@ describe('ToolCode', () => {
 							return;
 					}
 				}),
-				getMode: jest.fn(() => 'manual'),
+				getMode: vi.fn(() => 'manual'),
 			});
 
 			// Mock the DynamicTool.invoke method
-			DynamicTool.prototype.invoke = jest
+			DynamicTool.prototype.invoke = vi
 				.fn()
 				.mockResolvedValueOnce('result for first query')
 				.mockResolvedValueOnce('result for second query');

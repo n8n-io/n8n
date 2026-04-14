@@ -2,18 +2,18 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let capturedDeleteDocuments!: (this: any, payload: any) => Promise<unknown>;
 
-jest.mock('@langchain/qdrant', () => {
+vi.mock('@langchain/qdrant', () => {
 	class QdrantVectorStore {
-		static fromDocuments = jest.fn();
-		static fromExistingCollection = jest.fn();
-		similaritySearch = jest.fn();
-		similaritySearchWithScore = jest.fn();
-		similaritySearchVectorWithScore = jest.fn();
+		static fromDocuments = vi.fn();
+		static fromExistingCollection = vi.fn();
+		similaritySearch = vi.fn();
+		similaritySearchWithScore = vi.fn();
+		similaritySearchVectorWithScore = vi.fn();
 	}
 	return { QdrantVectorStore };
 });
 
-jest.mock('@n8n/ai-utilities', () => ({
+vi.mock('@n8n/ai-utilities', () => ({
 	createVectorStoreNode: (config: any) => {
 		capturedDeleteDocuments = config.methods?.actionHandler?.deleteDocuments;
 		return class BaseNode {
@@ -27,21 +27,21 @@ jest.mock('@n8n/ai-utilities', () => ({
 	},
 }));
 
-jest.mock('../VectorStoreQdrant/Qdrant.utils', () => ({
-	createQdrantClient: jest.fn(),
+vi.mock('../VectorStoreQdrant/Qdrant.utils', () => ({
+	createQdrantClient: vi.fn(),
 }));
 
 import { QdrantVectorStore } from '@langchain/qdrant';
 import { createQdrantClient } from '../VectorStoreQdrant/Qdrant.utils';
 import { ChatHubVectorStoreQdrant } from './ChatHubVectorStoreQdrant.node';
 
-const MockQdrantVectorStore = QdrantVectorStore as jest.MockedClass<typeof QdrantVectorStore>;
-const MockCreateQdrantClient = createQdrantClient as jest.MockedFunction<typeof createQdrantClient>;
+const MockQdrantVectorStore = QdrantVectorStore as vi.MockedClass<typeof QdrantVectorStore>;
+const MockCreateQdrantClient = createQdrantClient as vi.MockedFunction<typeof createQdrantClient>;
 
 describe('ChatHubVectorStoreQdrant', () => {
 	const mockClient = {
-		createPayloadIndex: jest.fn(),
-		delete: jest.fn(),
+		createPayloadIndex: vi.fn(),
+		delete: vi.fn(),
 	};
 
 	const credentials = {
@@ -52,24 +52,24 @@ describe('ChatHubVectorStoreQdrant', () => {
 
 	const mockNode = { name: 'ChatHubVectorStoreQdrant' } as any;
 	const mockLogger = {
-		debug: jest.fn(),
-		info: jest.fn(),
-		error: jest.fn(),
-		warn: jest.fn(),
-		verbose: jest.fn(),
+		debug: vi.fn(),
+		info: vi.fn(),
+		error: vi.fn(),
+		warn: vi.fn(),
+		verbose: vi.fn(),
 	} as any;
 
 	function makeContext(userId: string) {
 		return {
 			additionalData: { userId },
-			getCredentials: jest.fn().mockResolvedValue(credentials),
-			getNode: jest.fn().mockReturnValue(mockNode),
+			getCredentials: vi.fn().mockResolvedValue(credentials),
+			getNode: vi.fn().mockReturnValue(mockNode),
 			logger: mockLogger,
 		} as any;
 	}
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		MockCreateQdrantClient.mockReturnValue(mockClient as any);
 		mockClient.createPayloadIndex.mockResolvedValue(undefined);
 	});
@@ -87,10 +87,10 @@ describe('ChatHubVectorStoreQdrant', () => {
 					userId: 'user-123',
 				},
 			};
-			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
-				similaritySearch: jest.fn().mockResolvedValue([doc]),
-				similaritySearchWithScore: jest.fn().mockResolvedValue([]),
-				similaritySearchVectorWithScore: jest.fn().mockResolvedValue([]),
+			MockQdrantVectorStore.fromExistingCollection = vi.fn().mockResolvedValue({
+				similaritySearch: vi.fn().mockResolvedValue([doc]),
+				similaritySearchWithScore: vi.fn().mockResolvedValue([]),
+				similaritySearchVectorWithScore: vi.fn().mockResolvedValue([]),
 			});
 
 			const node = new ChatHubVectorStoreQdrant();
@@ -119,10 +119,10 @@ describe('ChatHubVectorStoreQdrant', () => {
 					userId: 'user-123',
 				},
 			};
-			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
-				similaritySearch: jest.fn().mockResolvedValue([]),
-				similaritySearchWithScore: jest.fn().mockResolvedValue([[doc, 0.9]]),
-				similaritySearchVectorWithScore: jest.fn().mockResolvedValue([]),
+			MockQdrantVectorStore.fromExistingCollection = vi.fn().mockResolvedValue({
+				similaritySearch: vi.fn().mockResolvedValue([]),
+				similaritySearchWithScore: vi.fn().mockResolvedValue([[doc, 0.9]]),
+				similaritySearchVectorWithScore: vi.fn().mockResolvedValue([]),
 			});
 
 			const node = new ChatHubVectorStoreQdrant();
@@ -148,10 +148,10 @@ describe('ChatHubVectorStoreQdrant', () => {
 					userId: 'user-123',
 				},
 			};
-			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
-				similaritySearch: jest.fn().mockResolvedValue([]),
-				similaritySearchWithScore: jest.fn().mockResolvedValue([]),
-				similaritySearchVectorWithScore: jest.fn().mockResolvedValue([[doc, 0.8]]),
+			MockQdrantVectorStore.fromExistingCollection = vi.fn().mockResolvedValue({
+				similaritySearch: vi.fn().mockResolvedValue([]),
+				similaritySearchWithScore: vi.fn().mockResolvedValue([]),
+				similaritySearchVectorWithScore: vi.fn().mockResolvedValue([[doc, 0.8]]),
 			});
 
 			const node = new ChatHubVectorStoreQdrant();
@@ -167,11 +167,11 @@ describe('ChatHubVectorStoreQdrant', () => {
 		});
 
 		it('should inject userId into similaritySearch', async () => {
-			const originalSearch = jest.fn().mockResolvedValue([]);
-			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
+			const originalSearch = vi.fn().mockResolvedValue([]);
+			MockQdrantVectorStore.fromExistingCollection = vi.fn().mockResolvedValue({
 				similaritySearch: originalSearch,
-				similaritySearchWithScore: jest.fn().mockResolvedValue([]),
-				similaritySearchVectorWithScore: jest.fn().mockResolvedValue([]),
+				similaritySearchWithScore: vi.fn().mockResolvedValue([]),
+				similaritySearchVectorWithScore: vi.fn().mockResolvedValue([]),
 			});
 
 			const node = new ChatHubVectorStoreQdrant();
@@ -196,10 +196,10 @@ describe('ChatHubVectorStoreQdrant', () => {
 		});
 
 		it('should convert flat anotherFilter into Qdrant must conditions (retrieve-as-tool path)', async () => {
-			const originalSearchVectorWithScore = jest.fn().mockResolvedValue([]);
-			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
-				similaritySearch: jest.fn().mockResolvedValue([]),
-				similaritySearchWithScore: jest.fn().mockResolvedValue([]),
+			const originalSearchVectorWithScore = vi.fn().mockResolvedValue([]);
+			MockQdrantVectorStore.fromExistingCollection = vi.fn().mockResolvedValue({
+				similaritySearch: vi.fn().mockResolvedValue([]),
+				similaritySearchWithScore: vi.fn().mockResolvedValue([]),
 				similaritySearchVectorWithScore: originalSearchVectorWithScore,
 			});
 
@@ -227,7 +227,7 @@ describe('ChatHubVectorStoreQdrant', () => {
 
 	describe('populateVectorStore', () => {
 		it('should add userId to every document before insertion', async () => {
-			MockQdrantVectorStore.fromDocuments = jest.fn().mockResolvedValue(undefined);
+			MockQdrantVectorStore.fromDocuments = vi.fn().mockResolvedValue(undefined);
 
 			const documents = [
 				{ pageContent: 'doc1', metadata: { agentId: 'agent-1', fileKnowledgeId: 'k1' } },
@@ -254,7 +254,7 @@ describe('ChatHubVectorStoreQdrant', () => {
 		});
 
 		it('should strip metadata fields not in the allowed insert set', async () => {
-			MockQdrantVectorStore.fromDocuments = jest.fn().mockResolvedValue(undefined);
+			MockQdrantVectorStore.fromDocuments = vi.fn().mockResolvedValue(undefined);
 
 			const documents = [
 				{

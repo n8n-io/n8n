@@ -8,25 +8,25 @@ import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { EmbeddingsOpenAi } from '../EmbeddingsOpenAI/EmbeddingsOpenAi.node';
 
-jest.mock('@langchain/openai');
+vi.mock('@langchain/openai');
 
 class MockProxyAgent {}
 
-jest.mock('@n8n/ai-utilities', () => {
-	const actual = jest.requireActual('@n8n/ai-utilities');
+vi.mock('@n8n/ai-utilities', () => {
+	const actual = vi.requireActual('@n8n/ai-utilities');
 	return {
 		...actual,
-		logWrapper: jest.fn().mockImplementation(() => jest.fn()),
-		getProxyAgent: jest.fn().mockImplementation(() => new MockProxyAgent()),
+		logWrapper: vi.fn().mockImplementation(() => vi.fn()),
+		getProxyAgent: vi.fn().mockImplementation(() => new MockProxyAgent()),
 	};
 });
 
-const MockedOpenAIEmbeddings = jest.mocked(OpenAIEmbeddings);
+const MockedOpenAIEmbeddings = vi.mocked(OpenAIEmbeddings);
 const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 describe('EmbeddingsOpenAi', () => {
 	let embeddingsOpenAi: EmbeddingsOpenAi;
-	let mockContext: jest.Mocked<ISupplyDataFunctions>;
+	let mockContext: vi.Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -42,36 +42,36 @@ describe('EmbeddingsOpenAi', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			node,
-		) as jest.Mocked<ISupplyDataFunctions>;
+		) as vi.Mocked<ISupplyDataFunctions>;
 
-		mockContext.getCredentials = jest.fn().mockResolvedValue({
+		mockContext.getCredentials = vi.fn().mockResolvedValue({
 			apiKey: 'test-api-key',
 		});
-		mockContext.getNode = jest.fn().mockReturnValue(node);
-		mockContext.getNodeParameter = jest.fn();
+		mockContext.getNode = vi.fn().mockReturnValue(node);
+		mockContext.getNodeParameter = vi.fn();
 		mockContext.logger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		};
 		return mockContext;
 	};
 
 	beforeEach(() => {
 		embeddingsOpenAi = new EmbeddingsOpenAi();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('supplyData', () => {
 		it('should create OpenAIEmbeddings with basic configuration', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'text-embedding-3-small';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -103,7 +103,7 @@ describe('EmbeddingsOpenAi', () => {
 				headerValue: 'custom-value',
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'text-embedding-3-small';
 				if (paramName === 'options') return {};
 				return undefined;
@@ -138,7 +138,7 @@ describe('EmbeddingsOpenAi', () => {
 				headerValue: 'custom-value',
 			});
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'text-embedding-3-small';
 				if (paramName === 'options') return {};
 				return undefined;

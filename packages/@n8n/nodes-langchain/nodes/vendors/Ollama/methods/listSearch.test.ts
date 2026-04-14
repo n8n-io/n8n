@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import * as transport from '../transport';
@@ -6,10 +6,10 @@ import { modelSearch } from './listSearch';
 
 describe('Ollama List Search Methods', () => {
 	const loadOptionsFunctionsMock = mockDeep<ILoadOptionsFunctions>();
-	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
+	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('modelSearch', () => {

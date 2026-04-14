@@ -1,6 +1,6 @@
 import { AzureKeyCredential, SearchIndexClient } from '@azure/search-documents';
 import { AzureAISearchVectorStore } from '@langchain/community/vectorstores/azure_aisearch';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	ISupplyDataFunctions,
 	ILoadOptionsFunctions,
@@ -15,11 +15,11 @@ import {
 	transformDocumentsForAzure,
 } from './VectorStoreAzureAISearch.node';
 
-jest.mock('@langchain/community/vectorstores/azure_aisearch');
-jest.mock('@azure/identity');
-jest.mock('@azure/search-documents');
+vi.mock('@langchain/community/vectorstores/azure_aisearch');
+vi.mock('@azure/identity');
+vi.mock('@azure/search-documents');
 
-const MockedSearchIndexClient = SearchIndexClient as jest.MockedClass<typeof SearchIndexClient>;
+const MockedSearchIndexClient = SearchIndexClient as vi.MockedClass<typeof SearchIndexClient>;
 
 describe('VectorStoreAzureAISearch', () => {
 	const vectorStore = new VectorStoreAzureAISearch();
@@ -27,7 +27,7 @@ describe('VectorStoreAzureAISearch', () => {
 	const executeFunctions = mock<ISupplyDataFunctions>({ helpers });
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		executeFunctions.addInputData.mockReturnValue({ index: 0 });
 	});
 
@@ -137,12 +137,12 @@ describe('VectorStoreAzureAISearch', () => {
 	});
 
 	describe('clearIndex functionality', () => {
-		const mockDeleteIndex = jest.fn().mockResolvedValue(undefined);
+		const mockDeleteIndex = vi.fn().mockResolvedValue(undefined);
 		const mockContext = mock<IExecuteFunctions>();
-		const mockLogger = { debug: jest.fn() };
+		const mockLogger = { debug: vi.fn() };
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			// Setup mock for SearchIndexClient
 			MockedSearchIndexClient.mockImplementation(

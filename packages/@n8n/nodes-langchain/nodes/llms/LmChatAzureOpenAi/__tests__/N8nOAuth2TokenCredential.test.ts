@@ -6,12 +6,12 @@ import { N8nOAuth2TokenCredential } from '../credentials/N8nOAuth2TokenCredentia
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 
 // Mock ClientOAuth2
-jest.mock('@n8n/client-oauth2', () => {
+vi.mock('@n8n/client-oauth2', () => {
 	return {
-		ClientOAuth2: jest.fn().mockImplementation(() => {
+		ClientOAuth2: vi.fn().mockImplementation(() => {
 			return {
 				credentials: {
-					getToken: jest.fn().mockResolvedValue({
+					getToken: vi.fn().mockResolvedValue({
 						data: {
 							access_token: 'fresh-test-token',
 							expires_on: 1234567890,
@@ -63,7 +63,7 @@ describe('N8nOAuth2TokenCredential', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getToken', () => {

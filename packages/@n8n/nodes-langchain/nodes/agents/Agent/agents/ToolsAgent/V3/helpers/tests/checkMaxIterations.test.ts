@@ -1,5 +1,5 @@
 import type { RequestResponseMetadata } from '@utils/agent-execution';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
 import type { INode, EngineResponse } from 'n8n-workflow';
 
@@ -9,7 +9,7 @@ describe('checkMaxIterations', () => {
 	const mockNode = mock<INode>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should not throw when response is undefined', () => {

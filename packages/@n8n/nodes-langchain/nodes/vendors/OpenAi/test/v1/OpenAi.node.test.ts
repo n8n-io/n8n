@@ -43,11 +43,11 @@ const createExecuteFunctionsMock = (parameters: IDataObject) => {
 
 describe('OpenAi, Assistant resource', () => {
 	beforeEach(() => {
-		(transport as any).apiRequest = jest.fn();
+		(transport as any).apiRequest = vi.fn();
 	});
 
 	it('create => should throw an error if an assistant with the same name already exists', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({
 			data: [{ name: 'name' }],
 			has_more: false,
 		});
@@ -69,7 +69,7 @@ describe('OpenAi, Assistant resource', () => {
 	});
 
 	it('create => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({});
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({});
 
 		await assistant.create.execute.call(
 			createExecuteFunctionsMock({
@@ -110,7 +110,7 @@ describe('OpenAi, Assistant resource', () => {
 	});
 
 	it('create => should throw error if more then 20 files selected', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({});
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({});
 
 		try {
 			await assistant.create.execute.call(
@@ -129,7 +129,7 @@ describe('OpenAi, Assistant resource', () => {
 	});
 
 	it('delete => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({});
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({});
 
 		await assistant.deleteAssistant.execute.call(
 			createExecuteFunctionsMock({
@@ -144,7 +144,7 @@ describe('OpenAi, Assistant resource', () => {
 	});
 
 	it('list => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({
 			data: [
 				{ name: 'name1', id: 'id-1', model: 'gpt-model', other: 'other' },
 				{ name: 'name2', id: 'id-2', model: 'gpt-model', other: 'other' },
@@ -177,10 +177,10 @@ describe('OpenAi, Assistant resource', () => {
 	});
 
 	it('update => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({
 			tools: [{ type: 'existing_tool' }],
 		});
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({});
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({});
 
 		await assistant.update.execute.call(
 			createExecuteFunctionsMock({
@@ -219,10 +219,10 @@ describe('OpenAi, Assistant resource', () => {
 	});
 
 	it('update => should call apiRequest with file_ids as an array for search', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({
 			tools: [{ type: 'existing_tool' }],
 		});
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({});
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({});
 
 		await assistant.update.execute.call(
 			createExecuteFunctionsMock({
@@ -261,10 +261,10 @@ describe('OpenAi, Assistant resource', () => {
 	});
 
 	it('update => should call apiRequest with file_ids as strings for search', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({
 			tools: [{ type: 'existing_tool' }],
 		});
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({});
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({});
 
 		await assistant.update.execute.call(
 			createExecuteFunctionsMock({
@@ -305,11 +305,11 @@ describe('OpenAi, Assistant resource', () => {
 
 describe('OpenAi, Audio resource', () => {
 	beforeEach(() => {
-		(transport as any).apiRequest = jest.fn();
+		(transport as any).apiRequest = vi.fn();
 	});
 
 	it('generate => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({});
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({});
 
 		const returnData = await audio.generate.execute.call(
 			createExecuteFunctionsMock({
@@ -342,7 +342,7 @@ describe('OpenAi, Audio resource', () => {
 	});
 
 	it('transcribe => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({ text: 'transcribtion' });
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({ text: 'transcribtion' });
 
 		const returnData = await audio.transcribe.execute.call(
 			createExecuteFunctionsMock({
@@ -374,7 +374,7 @@ describe('OpenAi, Audio resource', () => {
 	});
 
 	it('translate => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({ text: 'translations' });
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({ text: 'translations' });
 
 		const returnData = await audio.translate.execute.call(
 			createExecuteFunctionsMock({
@@ -405,11 +405,11 @@ describe('OpenAi, Audio resource', () => {
 
 describe('OpenAi, File resource', () => {
 	beforeEach(() => {
-		(transport as any).apiRequest = jest.fn();
+		(transport as any).apiRequest = vi.fn();
 	});
 
 	it('deleteFile => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({});
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({});
 
 		await file.deleteFile.execute.call(
 			createExecuteFunctionsMock({
@@ -422,7 +422,7 @@ describe('OpenAi, File resource', () => {
 	});
 
 	it('list => should return list of files', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({
 			data: [{ file: 'file1' }, { file: 'file2' }, { file: 'file3' }],
 		});
 
@@ -446,7 +446,7 @@ describe('OpenAi, File resource', () => {
 	});
 
 	it('upload => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({ success: true });
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({ success: true });
 
 		const returnData = await file.upload.execute.call(
 			createExecuteFunctionsMock({
@@ -477,11 +477,11 @@ describe('OpenAi, File resource', () => {
 
 describe('OpenAi, Image resource', () => {
 	beforeEach(() => {
-		(transport as any).apiRequest = jest.fn();
+		(transport as any).apiRequest = vi.fn();
 	});
 
 	it('generate => should call apiRequest with correct parameters, return binary', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({ data: [{ b64_json: 'image1' }] });
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({ data: [{ b64_json: 'image1' }] });
 
 		const returnData = await image.generate.execute.call(
 			createExecuteFunctionsMock({
@@ -514,7 +514,7 @@ describe('OpenAi, Image resource', () => {
 	});
 
 	it('generate => should call apiRequest with correct parameters, return urls', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({ data: [{ url: 'image-url' }] });
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({ data: [{ url: 'image-url' }] });
 
 		const returnData = await image.generate.execute.call(
 			createExecuteFunctionsMock({
@@ -548,7 +548,7 @@ describe('OpenAi, Image resource', () => {
 	});
 
 	it('analyze => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({ success: true });
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({ success: true });
 
 		const returnData = await image.analyze.execute.call(
 			createExecuteFunctionsMock({
@@ -587,11 +587,11 @@ describe('OpenAi, Image resource', () => {
 
 describe('OpenAi, Text resource', () => {
 	beforeEach(() => {
-		(transport as any).apiRequest = jest.fn();
+		(transport as any).apiRequest = vi.fn();
 	});
 
 	it('classify => should call apiRequest with correct parameters', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({ results: [{ flagged: true }] });
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({ results: [{ flagged: true }] });
 
 		const returnData = await text.classify.execute.call(
 			createExecuteFunctionsMock({
@@ -611,7 +611,7 @@ describe('OpenAi, Text resource', () => {
 	});
 
 	it('message => should call apiRequest with correct parameters, no tool call', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValueOnce({
+		(transport.apiRequest as vi.Mock).mockResolvedValueOnce({
 			choices: [{ message: { tool_calls: undefined } }],
 		});
 

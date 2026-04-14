@@ -4,7 +4,7 @@ import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
 import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
 import type { Tool } from '@langchain/classic/tools';
@@ -31,13 +31,13 @@ import {
 
 function getFakeOutputParser(returnSchema?: ZodType): N8nOutputParser {
 	const fakeOutputParser = mock<N8nOutputParser>();
-	(fakeOutputParser.getSchema as jest.Mock).mockReturnValue(returnSchema);
+	(fakeOutputParser.getSchema as vi.Mock).mockReturnValue(returnSchema);
 	return fakeOutputParser;
 }
 
 function createMockOutputParser(parseReturnValue?: Record<string, unknown>): N8nOutputParser {
 	const mockParser = mock<N8nOutputParser>();
-	(mockParser.parse as jest.Mock).mockResolvedValue(parseReturnValue);
+	(mockParser.parse as vi.Mock).mockResolvedValue(parseReturnValue);
 
 	return mockParser;
 }
@@ -45,7 +45,7 @@ function createMockOutputParser(parseReturnValue?: Record<string, unknown>): N8n
 const mockHelpers = mock<IExecuteFunctions['helpers']>();
 const mockContext = mock<IExecuteFunctions>({ helpers: mockHelpers });
 
-beforeEach(() => jest.resetAllMocks());
+beforeEach(() => vi.resetAllMocks());
 
 describe('getOutputParserSchema', () => {
 	it('should return a default schema if getSchema returns undefined', () => {
@@ -252,7 +252,7 @@ describe('getChatModel', () => {
 	it('should return the model if it is a valid chat model', async () => {
 		// Cast fakeChatModel as any
 		const fakeChatModel = mock<BaseChatModel>();
-		fakeChatModel.bindTools = jest.fn();
+		fakeChatModel.bindTools = vi.fn();
 		fakeChatModel.lc_namespace = ['chat_models'];
 		mockContext.getInputConnectionData.mockResolvedValue(fakeChatModel);
 
@@ -301,7 +301,7 @@ describe('getChatModel', () => {
 
 	it('should return undefined when requested index is out of bounds', async () => {
 		const fakeChatModel1 = mock<BaseChatModel>();
-		fakeChatModel1.bindTools = jest.fn();
+		fakeChatModel1.bindTools = vi.fn();
 		fakeChatModel1.lc_namespace = ['chat_models'];
 
 		mockContext.getInputConnectionData.mockResolvedValue([fakeChatModel1]);
@@ -415,10 +415,10 @@ describe('prepareMessages', () => {
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
 		mockContext.logger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		};
 
 		const messages = await prepareMessages(mockContext, 0, {

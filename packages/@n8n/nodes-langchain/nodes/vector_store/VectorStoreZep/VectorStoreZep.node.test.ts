@@ -1,6 +1,6 @@
 import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
 import { ZepCloudVectorStore } from '@langchain/community/vectorstores/zep_cloud';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 
 import { VectorStoreZep } from './VectorStoreZep.node';
@@ -11,7 +11,7 @@ describe('VectorStoreZep', () => {
 	const executeFunctions = mock<ISupplyDataFunctions>({ helpers });
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		executeFunctions.addInputData.mockReturnValue({ index: 0 });
 	});

@@ -12,7 +12,7 @@ export function createMockTool(
 		invokeError?: Error;
 		metadata?: Record<string, unknown>;
 	} = {},
-): jest.Mocked<Tool> {
+): vi.Mocked<Tool> {
 	const {
 		description = `Mock tool: ${toolName}`,
 		invokeReturn = { result: 'success' },
@@ -20,7 +20,7 @@ export function createMockTool(
 		metadata,
 	} = opts;
 
-	const invoke = jest.fn().mockImplementation(async () => {
+	const invoke = vi.fn().mockImplementation(async () => {
 		await Promise.resolve();
 		if (invokeError) {
 			throw invokeError;
@@ -34,12 +34,12 @@ export function createMockTool(
 		schema: z.object({}),
 		invoke,
 		metadata,
-	} as unknown as jest.Mocked<Tool>;
+	} as unknown as vi.Mocked<Tool>;
 }
 
 /**
  * Creates multiple mock tools
  */
-export function createMockTools(toolNames: string[]): Array<jest.Mocked<Tool>> {
+export function createMockTools(toolNames: string[]): Array<vi.Mocked<Tool>> {
 	return toolNames.map((n) => createMockTool(n));
 }

@@ -3,17 +3,17 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import * as transport from '../../transport';
 import { modelSearch } from '../listSearch';
 
-jest.mock('../../transport');
+vi.mock('../../transport');
 
 describe('modelSearch', () => {
-	let mockContext: jest.Mocked<ILoadOptionsFunctions>;
+	let mockContext: vi.Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
 		mockContext = {
-			getCredentials: jest.fn(),
-		} as unknown as jest.Mocked<ILoadOptionsFunctions>;
+			getCredentials: vi.fn(),
+		} as unknown as vi.Mocked<ILoadOptionsFunctions>;
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Official OpenAI API', () => {
@@ -22,7 +22,7 @@ describe('modelSearch', () => {
 				url: 'https://api.openai.com/v1',
 			});
 
-			(transport.apiRequest as jest.Mock).mockResolvedValue({
+			(transport.apiRequest as vi.Mock).mockResolvedValue({
 				data: [
 					{ id: 'gpt-4' },
 					{ id: 'gpt-3.5-turbo' },
@@ -46,7 +46,7 @@ describe('modelSearch', () => {
 				url: 'https://ai-assistant.n8n.io/v1',
 			});
 
-			(transport.apiRequest as jest.Mock).mockResolvedValue({
+			(transport.apiRequest as vi.Mock).mockResolvedValue({
 				data: [{ id: 'gpt-4' }, { id: 'whisper-1' }, { id: 'dall-e-2' }],
 			});
 
@@ -62,7 +62,7 @@ describe('modelSearch', () => {
 				url: 'https://custom-llm-provider.com/v1',
 			});
 
-			(transport.apiRequest as jest.Mock).mockResolvedValue({
+			(transport.apiRequest as vi.Mock).mockResolvedValue({
 				data: [
 					{ id: 'llama-3-70b' },
 					{ id: 'mistral-large' },

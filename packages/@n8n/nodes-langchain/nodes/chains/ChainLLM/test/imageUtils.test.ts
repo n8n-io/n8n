@@ -1,7 +1,7 @@
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatOllama } from '@langchain/ollama';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -13,11 +13,11 @@ import {
 import type { MessageTemplate } from '../methods/types';
 
 // Mock ChatGoogleGenerativeAI and ChatOllama
-jest.mock('@langchain/google-genai', () => ({
+vi.mock('@langchain/google-genai', () => ({
 	ChatGoogleGenerativeAI: class MockChatGoogleGenerativeAI {},
 }));
 
-jest.mock('@langchain/ollama', () => ({
+vi.mock('@langchain/ollama', () => ({
 	ChatOllama: class MockChatOllama {},
 }));
 
@@ -27,7 +27,7 @@ const createMockExecuteFunctions = () => {
 	// Add missing helpers property with mocked getBinaryDataBuffer
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	mockExec.helpers = {
-		getBinaryDataBuffer: jest.fn().mockResolvedValue(Buffer.from('Test image data')),
+		getBinaryDataBuffer: vi.fn().mockResolvedValue(Buffer.from('Test image data')),
 	} as any;
 	return mockExec;
 };
@@ -53,9 +53,9 @@ describe('imageUtils', () => {
 	});
 
 	describe('createImageMessage', () => {
-		let mockContext: jest.Mocked<IExecuteFunctions>;
+		let mockContext: vi.Mocked<IExecuteFunctions>;
 		let mockBuffer: Buffer;
-		let mockBinaryData: jest.Mocked<IBinaryData>;
+		let mockBinaryData: vi.Mocked<IBinaryData>;
 
 		beforeEach(() => {
 			mockContext = createMockExecuteFunctions();
@@ -64,7 +64,7 @@ describe('imageUtils', () => {
 
 			// Mock required methods
 			mockContext.getInputData.mockReturnValue([{ binary: { data: mockBinaryData }, json: {} }]);
-			(mockContext.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(mockBuffer);
+			(mockContext.helpers.getBinaryDataBuffer as vi.Mock).mockResolvedValue(mockBuffer);
 			mockContext.getInputConnectionData.mockResolvedValue({});
 			mockContext.getNode.mockReturnValue({ name: 'TestNode' } as INode);
 		});

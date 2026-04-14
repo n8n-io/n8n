@@ -8,34 +8,34 @@ import { getChatModel, runLLMValidation } from '../../helpers/model';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { StructuredOutputParser } from '@langchain/core/output_parsers';
 
-jest.mock('@langchain/core/prompts', () => ({
+vi.mock('@langchain/core/prompts', () => ({
 	ChatPromptTemplate: {
-		fromMessages: jest.fn(() => ({
-			format: jest.fn(),
-			pipe: jest.fn().mockReturnValue({
-				pipe: jest.fn().mockReturnValue({
-					invoke: jest.fn(),
+		fromMessages: vi.fn(() => ({
+			format: vi.fn(),
+			pipe: vi.fn().mockReturnValue({
+				pipe: vi.fn().mockReturnValue({
+					invoke: vi.fn(),
 				}),
 			}),
 		})),
 	},
 }));
 
-jest.mock('@langchain/classic/agents', () => ({
-	AgentExecutor: jest.fn().mockImplementation(() => ({
-		invoke: jest.fn(),
+vi.mock('@langchain/classic/agents', () => ({
+	AgentExecutor: vi.fn().mockImplementation(() => ({
+		invoke: vi.fn(),
 	})),
-	createToolCallingAgent: jest.fn(() => ({
+	createToolCallingAgent: vi.fn(() => ({
 		streamRunnable: false,
 	})),
 }));
 
-jest.mock('@langchain/core/output_parsers', () => ({
-	StructuredOutputParser: jest.fn().mockImplementation(() => ({
-		invoke: jest.fn(),
-		getFormatInstructions: jest.fn().mockReturnValue('Format instructions'),
+vi.mock('@langchain/core/output_parsers', () => ({
+	StructuredOutputParser: vi.fn().mockImplementation(() => ({
+		invoke: vi.fn(),
+		getFormatInstructions: vi.fn().mockReturnValue('Format instructions'),
 	})),
-	OutputParserException: jest.fn().mockImplementation((message) => ({
+	OutputParserException: vi.fn().mockImplementation((message) => ({
 		message,
 		name: 'OutputParserException',
 	})),
@@ -47,21 +47,21 @@ describe('model helper', () => {
 
 	beforeEach(() => {
 		mockModel = {
-			invoke: jest.fn(),
+			invoke: vi.fn(),
 		} as any;
 
 		mockExecuteFunctions = {
-			getInputConnectionData: jest.fn(),
+			getInputConnectionData: vi.fn(),
 		} as any;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getChatModel', () => {
 		it('should return model when getInputConnectionData returns a single model', async () => {
-			(mockExecuteFunctions.getInputConnectionData as jest.Mock).mockResolvedValue(mockModel);
+			(mockExecuteFunctions.getInputConnectionData as vi.Mock).mockResolvedValue(mockModel);
 
 			const result = await getChatModel.call(mockExecuteFunctions);
 
@@ -74,7 +74,7 @@ describe('model helper', () => {
 
 		it('should return first model when getInputConnectionData returns an array', async () => {
 			const models = [mockModel, {} as BaseChatModel];
-			(mockExecuteFunctions.getInputConnectionData as jest.Mock).mockResolvedValue(models);
+			(mockExecuteFunctions.getInputConnectionData as vi.Mock).mockResolvedValue(models);
 
 			const result = await getChatModel.call(mockExecuteFunctions);
 
@@ -86,7 +86,7 @@ describe('model helper', () => {
 		});
 
 		it('should handle empty array from getInputConnectionData', async () => {
-			(mockExecuteFunctions.getInputConnectionData as jest.Mock).mockResolvedValue([]);
+			(mockExecuteFunctions.getInputConnectionData as vi.Mock).mockResolvedValue([]);
 
 			const result = await getChatModel.call(mockExecuteFunctions);
 
@@ -97,12 +97,12 @@ describe('model helper', () => {
 	describe('runLLMValidation', () => {
 		it('should return failed GuardrailResult when agent execution fails', async () => {
 			const mockAgentExecutor = {
-				invoke: jest.fn().mockRejectedValue(new Error('Agent execution failed')),
+				invoke: vi.fn().mockRejectedValue(new Error('Agent execution failed')),
 			};
 
-			jest
-				.mocked((await import('@langchain/classic/agents')).AgentExecutor)
-				.mockImplementation(() => mockAgentExecutor as unknown as AgentExecutor);
+			vi.mocked((await import('@langchain/classic/agents')).AgentExecutor).mockImplementation(
+				() => mockAgentExecutor as unknown as AgentExecutor,
+			);
 
 			const result = await runLLMValidation('test-guardrail', 'Test input', {
 				model: mockModel,
@@ -124,12 +124,12 @@ describe('model helper', () => {
 
 		it('should return failed GuardrailResult when agent does not call tool', async () => {
 			const mockAgentExecutor = {
-				invoke: jest.fn().mockResolvedValue({}), // No tool call
+				invoke: vi.fn().mockResolvedValue({}), // No tool call
 			};
 
-			jest
-				.mocked((await import('@langchain/classic/agents')).AgentExecutor)
-				.mockImplementation(() => mockAgentExecutor as unknown as AgentExecutor);
+			vi.mocked((await import('@langchain/classic/agents')).AgentExecutor).mockImplementation(
+				() => mockAgentExecutor as unknown as AgentExecutor,
+			);
 
 			const result = await runLLMValidation('test-guardrail', 'Test input', {
 				model: mockModel,
@@ -147,25 +147,25 @@ describe('model helper', () => {
 		});
 
 		it('should use provided systemMessage instead of default rules', async () => {
-			const invokeMock = jest.fn().mockResolvedValue({
+			const invokeMock = vi.fn().mockResolvedValue({
 				content: [{ type: 'text', text: '{"confidenceScore":0.6,"flagged":true}' }],
 			});
-			jest.mocked(ChatPromptTemplate.fromMessages).mockImplementationOnce(
+			vi.mocked(ChatPromptTemplate.fromMessages).mockImplementationOnce(
 				() =>
 					({
-						pipe: jest.fn().mockReturnValue({ invoke: invokeMock }),
+						pipe: vi.fn().mockReturnValue({ invoke: invokeMock }),
 					}) as unknown as any,
 			);
 
-			jest.mocked(StructuredOutputParser).mockImplementationOnce(
+			vi.mocked(StructuredOutputParser).mockImplementationOnce(
 				() =>
 					({
-						getFormatInstructions: jest.fn().mockReturnValue('Format instructions'),
-						parse: jest.fn().mockResolvedValue({ confidenceScore: 0.6, flagged: true }),
+						getFormatInstructions: vi.fn().mockReturnValue('Format instructions'),
+						parse: vi.fn().mockResolvedValue({ confidenceScore: 0.6, flagged: true }),
 					}) as unknown as any,
 			);
 
-			const model = { invoke: jest.fn() } as unknown as BaseChatModel;
+			const model = { invoke: vi.fn() } as unknown as BaseChatModel;
 			await runLLMValidation('test-guardrail', 'Input text', {
 				model,
 				prompt: 'System Prompt',

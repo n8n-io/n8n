@@ -4,16 +4,16 @@ import type { SessionStore } from '../SessionStore';
 
 describe('SessionManager', () => {
 	let manager: SessionManager;
-	let mockStore: jest.Mocked<SessionStore>;
+	let mockStore: vi.Mocked<SessionStore>;
 
 	beforeEach(() => {
 		mockStore = {
-			register: jest.fn().mockResolvedValue(undefined),
-			validate: jest.fn().mockResolvedValue(true),
-			unregister: jest.fn().mockResolvedValue(undefined),
-			getTools: jest.fn(),
-			setTools: jest.fn(),
-			clearTools: jest.fn(),
+			register: vi.fn().mockResolvedValue(undefined),
+			validate: vi.fn().mockResolvedValue(true),
+			unregister: vi.fn().mockResolvedValue(undefined),
+			getTools: vi.fn(),
+			setTools: vi.fn(),
+			clearTools: vi.fn(),
 		};
 		manager = new SessionManager(mockStore);
 	});
@@ -174,7 +174,7 @@ describe('SessionManager', () => {
 
 	describe('store management', () => {
 		it('should allow swapping session store', () => {
-			const newStore = { ...mockStore } as jest.Mocked<SessionStore>;
+			const newStore = { ...mockStore } as vi.Mocked<SessionStore>;
 			manager.setStore(newStore);
 			expect(manager.getStore()).toBe(newStore);
 		});

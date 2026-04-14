@@ -2,8 +2,8 @@
 
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { OutputParserException } from '@langchain/core/output_parsers';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { normalizeItems } from 'n8n-core';
 import type {
 	ISupplyDataFunctions,
@@ -53,12 +53,12 @@ describe('OutputParserAutofixing', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	function getMockedRetryChain(output: string) {
-		return jest.fn().mockReturnValue({
-			invoke: jest.fn().mockResolvedValue({
+		return vi.fn().mockReturnValue({
+			invoke: vi.fn().mockResolvedValue({
 				content: output,
 			}),
 		});
@@ -177,7 +177,7 @@ describe('OutputParserAutofixing', () => {
 
 		it('should throw non-OutputParserException errors immediately without retry', async () => {
 			const customError = new Error('Database connection error');
-			const retryChainSpy = jest.fn();
+			const retryChainSpy = vi.fn();
 
 			mockStructuredOutputParser.parse.mockRejectedValueOnce(customError);
 

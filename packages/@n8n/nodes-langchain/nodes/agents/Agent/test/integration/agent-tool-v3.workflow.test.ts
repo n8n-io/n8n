@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { WorkflowTestData } from 'n8n-workflow';
 
 // CI has cold-start overhead on the first test (coverage instrumentation, module loading)
-jest.setTimeout(10_000);
+vi.setTimeout(10_000);
 
 /**
  * Helper to create a standard OpenAI chat completion response.
