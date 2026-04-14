@@ -21,11 +21,11 @@ import { DataTableNameConflictError } from '@/modules/data-table/errors/data-tab
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ProjectService } from '@/services/project.service.ee';
 import {
 	getProjectIdForDataTable,
 	getDataTableListFilter,
 	resolveProjectIdForCreate,
+	scopeProjectIds,
 } from './data-tables.service';
 
 const handleError = (error: unknown, res: express.Response): express.Response => {
@@ -81,20 +81,22 @@ export = {
 
 				const isGlobalOwnerOrAdmin = ['global:owner', 'global:admin'].includes(req.user.role.slug);
 
-				if (requestedProjectId && !isGlobalOwnerOrAdmin) {
-					const ids = Array.isArray(requestedProjectId) ? requestedProjectId : [requestedProjectId];
-					const accessibleIds = await Container.get(ProjectService).getProjectIdsWithScope(
-						req.user,
-						['dataTable:listProject'],
-						ids,
-					);
-					if (accessibleIds.length !== ids.length) throw new ForbiddenError();
+				const accessibleProjectIds = isGlobalOwnerOrAdmin
+					? undefined
+					: await scopeProjectIds(req.user, requestedProjectId);
+
+				if (
+					!isGlobalOwnerOrAdmin &&
+					Array.isArray(accessibleProjectIds) &&
+					accessibleProjectIds.length === 0
+				) {
+					return res.json({ data: [], nextCursor: null });
 				}
 
 				const finalFilter = await getDataTableListFilter(
 					req.user.id,
 					isGlobalOwnerOrAdmin,
-					requestedProjectId,
+					isGlobalOwnerOrAdmin ? requestedProjectId : accessibleProjectIds,
 					restFilter,
 				);
 
