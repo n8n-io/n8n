@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isPlaceholderString, hasPlaceholderDeep } from './placeholder';
+import { isPlaceholderString, hasPlaceholderDeep, extractPlaceholderLabel } from './placeholder';
 
 describe('isPlaceholderString', () => {
 	it('returns true for a valid placeholder sentinel', () => {
@@ -52,5 +52,59 @@ describe('hasPlaceholderDeep', () => {
 	it('returns false for null and undefined', () => {
 		expect(hasPlaceholderDeep(null)).toBe(false);
 		expect(hasPlaceholderDeep(undefined)).toBe(false);
+	});
+});
+
+describe('extractPlaceholderLabel', () => {
+	it('extracts label from PLACEHOLDER_VALUE format', () => {
+		expect(extractPlaceholderLabel('<__PLACEHOLDER_VALUE__Your email address__>')).toBe(
+			'Your email address',
+		);
+	});
+
+	it('extracts label from PLACEHOLDER__: format', () => {
+		expect(extractPlaceholderLabel('<__PLACEHOLDER__: some hint__>')).toBe('some hint');
+	});
+
+	it('extracts label from PLACEHOLDER__ format', () => {
+		expect(extractPlaceholderLabel('<__PLACEHOLDER__api_key__>')).toBe('api_key');
+	});
+
+	it('returns undefined for non-placeholder strings', () => {
+		expect(extractPlaceholderLabel('user@example.com')).toBeUndefined();
+		expect(extractPlaceholderLabel('hello')).toBeUndefined();
+	});
+
+	it('returns undefined for non-string values', () => {
+		expect(extractPlaceholderLabel(42)).toBeUndefined();
+		expect(extractPlaceholderLabel(null)).toBeUndefined();
+		expect(extractPlaceholderLabel(undefined)).toBeUndefined();
+	});
+
+	it('returns undefined for placeholder with empty label', () => {
+		expect(extractPlaceholderLabel('<__PLACEHOLDER_VALUE____>')).toBeUndefined();
+	});
+
+	it('extracts label from nested object', () => {
+		expect(extractPlaceholderLabel({ config: { key: '<__PLACEHOLDER_VALUE__api_key__>' } })).toBe(
+			'api_key',
+		);
+	});
+
+	it('extracts label from nested array', () => {
+		expect(extractPlaceholderLabel(['a', '<__PLACEHOLDER_VALUE__email__>'])).toBe('email');
+	});
+
+	it('returns first label from deeply nested structure', () => {
+		expect(
+			extractPlaceholderLabel({
+				a: { b: [{ c: '<__PLACEHOLDER_VALUE__first__>' }] },
+				d: '<__PLACEHOLDER_VALUE__second__>',
+			}),
+		).toBe('first');
+	});
+
+	it('returns undefined when no placeholders in nested structure', () => {
+		expect(extractPlaceholderLabel({ a: { b: [1, 'hello'] } })).toBeUndefined();
 	});
 });

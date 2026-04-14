@@ -5,7 +5,7 @@
  * Separated from the tool definition so the tool stays a thin suspend/resume
  * state machine, and this logic is testable independently.
  */
-import { hasPlaceholderDeep } from '@n8n/utils';
+import { hasPlaceholderDeep, extractPlaceholderLabel } from '@n8n/utils';
 import type { IDataObject, NodeJSON, DisplayOptions } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -70,8 +70,16 @@ export async function buildSetupRequests(
 
 	// Also treat placeholder values as parameter issues so the setup wizard surfaces them
 	for (const [paramName, paramValue] of Object.entries(parameters)) {
-		if (!parameterIssues[paramName] && hasPlaceholderDeep(paramValue)) {
-			parameterIssues[paramName] = ['Contains a placeholder value - please provide the real value'];
+		if (hasPlaceholderDeep(paramValue)) {
+			const label = extractPlaceholderLabel(paramValue);
+			const message = label
+				? `Placeholder "${label}" — please provide the real value`
+				: 'Contains a placeholder value — please provide the real value';
+			if (parameterIssues[paramName]) {
+				parameterIssues[paramName].push(message);
+			} else {
+				parameterIssues[paramName] = [message];
+			}
 		}
 	}
 
