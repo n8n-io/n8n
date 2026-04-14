@@ -86,8 +86,9 @@ describe('templateFromSchema', () => {
  */
 async function runStreamFilter(
 	chunks: string[],
-): Promise<{ outputText: string; persisted: string[] }> {
+): Promise<{ outputText: string; persisted: string[]; emittedMemoryUpdates: string[] }> {
 	const persisted: string[] = [];
+	const emittedMemoryUpdates: string[] = [];
 	const stream = new TransformStream<StreamChunk>();
 	const writer = stream.writable.getWriter();
 	// eslint-disable-next-line @typescript-eslint/require-await
@@ -104,6 +105,7 @@ async function runStreamFilter(
 			if (result.done) break;
 			const chunk = result.value as StreamChunk;
 			if (chunk.type === 'text-delta') outputText += chunk.delta;
+			if (chunk.type === 'working-memory-update') emittedMemoryUpdates.push(chunk.content);
 		}
 		return outputText;
 	})();
@@ -115,7 +117,7 @@ async function runStreamFilter(
 	await writer.close();
 
 	const outputText = await readAll;
-	return { outputText, persisted };
+	return { outputText, persisted, emittedMemoryUpdates };
 }
 
 describe('WorkingMemoryStreamFilter with tag split across multiple chunks', () => {
@@ -151,6 +153,28 @@ describe('WorkingMemoryStreamFilter with tag split across multiple chunks', () =
 		const { outputText, persisted } = await runStreamFilter(['Hello <', 'div>world']);
 		expect(outputText).toBe('Hello <div>world');
 		expect(persisted).toEqual([]);
+	});
+});
+
+describe('WorkingMemoryStreamFilter emits working-memory-update chunk', () => {
+	it('emits a working-memory-update chunk when tag is detected', async () => {
+		const { emittedMemoryUpdates, persisted } = await runStreamFilter([
+			'Hello <working_memory>my state</working_memory>',
+		]);
+		expect(persisted).toEqual(['my state']);
+		expect(emittedMemoryUpdates).toEqual(['my state']);
+	});
+
+	it('emits chunk for each working memory block', async () => {
+		const { emittedMemoryUpdates } = await runStreamFilter([
+			'A<working_memory>first</working_memory> B<working_memory>second</working_memory>',
+		]);
+		expect(emittedMemoryUpdates).toEqual(['first', 'second']);
+	});
+
+	it('does not emit chunk when no working memory tags present', async () => {
+		const { emittedMemoryUpdates } = await runStreamFilter(['Just normal text']);
+		expect(emittedMemoryUpdates).toEqual([]);
 	});
 });
 
