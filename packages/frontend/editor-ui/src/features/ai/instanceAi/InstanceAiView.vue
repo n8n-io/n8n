@@ -121,11 +121,12 @@ const showEmptyStateLayout = computed(() => !store.hasMessages && !store.isHydra
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
 	pushConnectionStore.pushConnect();
-	void store.loadThreads().then(() => {
+	void store.loadThreads().then((loaded) => {
+		if (!loaded || !props.threadId) return;
 		// After threads load, validate deep-link: redirect if thread doesn't exist
-		if (props.threadId && !store.threads.some((t) => t.id === props.threadId)) {
+		if (!store.threads.some((t) => t.id === props.threadId)) {
 			void router.replace({ name: INSTANCE_AI_VIEW });
-		} else if (props.threadId && props.threadId !== store.currentThreadId) {
+		} else if (props.threadId !== store.currentThreadId) {
 			// Thread exists on server — now safe to switch
 			store.switchThread(props.threadId);
 		}
@@ -176,9 +177,9 @@ function toggleSidebarCollapse() {
 	sidebarCollapsed.value = !sidebarCollapsed.value;
 }
 
-function handleSidebarResize({ width, x }: { width: number; x: number }) {
-	// Drag below threshold → auto-collapse
-	if (x < 100) {
+function handleSidebarResize({ width }: { width: number }) {
+	// Drag below min-width threshold → auto-collapse
+	if (width <= 200) {
 		sidebarCollapsed.value = true;
 		return;
 	}
@@ -373,15 +374,17 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	userScrolledUp.value = false;
 	preview.markUserSentMessage();
 	const shouldUpdateRoute = !props.threadId;
-	void store.sendMessage(message, attachments, rootStore.pushRef);
-	// After the first message is sent, update the URL to include the thread ID
-	// so the thread is addressable and appears in the sidebar
-	if (shouldUpdateRoute) {
-		void router.replace({
-			name: INSTANCE_AI_THREAD_VIEW,
-			params: { threadId: store.currentThreadId },
-		});
-	}
+	void store.sendMessage(message, attachments, rootStore.pushRef).then(() => {
+		// After the first message is sent, update the URL to include the thread ID
+		// so the thread is addressable and appears in the sidebar.
+		// Only update the route if the thread was persisted (syncThread succeeded).
+		if (shouldUpdateRoute && store.threads.some((t) => t.id === store.currentThreadId)) {
+			void router.replace({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: store.currentThreadId },
+			});
+		}
+	});
 }
 
 function handleStop() {

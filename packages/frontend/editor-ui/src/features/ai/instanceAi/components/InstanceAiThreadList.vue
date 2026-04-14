@@ -231,7 +231,7 @@ function handleThreadAction(action: string, threadId: string) {
 
 .threadList {
 	flex: 1;
-	overflow-y: auto;
+	min-height: 0;
 	padding: var(--spacing--2xs);
 }
 

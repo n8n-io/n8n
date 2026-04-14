@@ -585,7 +585,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return { currentThreadId: currentThreadId.value, wasActive };
 	}
 
-	async function loadThreads(): Promise<void> {
+	async function loadThreads(): Promise<boolean> {
 		try {
 			const result = await fetchThreadsApi(rootStore.restApiContext);
 			for (const thread of result.threads) {
@@ -602,8 +602,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				metadata: t.metadata ?? undefined,
 			}));
 			threads.value = [...localOnly, ...serverThreads];
+			return true;
 		} catch {
 			// Silently ignore — threads will remain client-side only
+			return false;
 		}
 	}
 
