@@ -35,6 +35,8 @@ export class PrometheusMetricsService {
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
 
+	private tokenExchangeListenersRegistered = false;
+
 	private readonly gauges: Record<string, Gauge<string>> = {};
 
 	private readonly histograms: Record<string, Histogram<string>> = {};
@@ -711,6 +713,12 @@ export class PrometheusMetricsService {
 			help: 'Total number of external identities linked to existing users via token exchange.',
 		});
 		this.counters.tokenExchangeIdentityLinkedTotal.inc(0);
+
+		// Listeners reference `this.counters.*` via `this`, so they automatically
+		// pick up newly created counter objects after a re-init. Register them only
+		// once to prevent double-counting if `init()` is called more than once.
+		if (this.tokenExchangeListenersRegistered) return;
+		this.tokenExchangeListenersRegistered = true;
 
 		this.eventService.on('token-exchange-succeeded', () => {
 			this.counters.tokenExchangeRequestsTotal?.inc({ result: 'success' }, 1);
