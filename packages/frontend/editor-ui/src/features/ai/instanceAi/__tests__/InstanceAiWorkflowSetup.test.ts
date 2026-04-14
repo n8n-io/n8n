@@ -79,7 +79,7 @@ const renderComponent = createComponentRenderer(InstanceAiWorkflowSetup);
 /** Render the component and wait for the async onMounted to complete (isStoreReady = true). */
 async function renderAndWait(
 	...args: Parameters<typeof renderComponent>
-): ReturnType<typeof renderComponent> {
+): Promise<ReturnType<typeof renderComponent>> {
 	const result = renderComponent(...args);
 	// Wait for async onMounted (credential/workflow fetch) to complete so the wizard renders
 	await waitFor(() => {
