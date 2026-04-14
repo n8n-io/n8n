@@ -61,18 +61,6 @@ export class LmChatMinimax implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
-				displayName:
-					'If using JSON response format, you must include word "json" in the prompt in your chain or agent.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						'/options.responseFormat': ['json_object'],
-					},
-				},
-			},
-			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
@@ -112,25 +100,6 @@ export class LmChatMinimax implements INodeType {
 						description:
 							'The maximum number of tokens to generate in the completion. The limit depends on the selected model.',
 						type: 'number',
-					},
-					{
-						displayName: 'Response Format',
-						name: 'responseFormat',
-						default: 'text',
-						type: 'options',
-						options: [
-							{
-								name: 'Text',
-								value: 'text',
-								description: 'Regular text response',
-							},
-							{
-								name: 'JSON',
-								value: 'json_object',
-								description:
-									'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
-							},
-						],
 					},
 					{
 						displayName: 'Sampling Temperature',
@@ -181,7 +150,6 @@ export class LmChatMinimax implements INodeType {
 			timeout: number;
 			temperature?: number;
 			topP?: number;
-			responseFormat?: 'text' | 'json_object';
 		};
 
 		const hideThinking = options.hideThinking ?? true;
@@ -197,14 +165,6 @@ export class LmChatMinimax implements INodeType {
 			},
 		};
 
-		const modelKwargs: Record<string, unknown> = {};
-		if (hideThinking) {
-			modelKwargs.reasoning_split = true;
-		}
-		if (options.responseFormat) {
-			modelKwargs.response_format = { type: options.responseFormat };
-		}
-
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
 			model: modelName,
@@ -213,7 +173,7 @@ export class LmChatMinimax implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
+			modelKwargs: hideThinking ? { reasoning_split: true } : undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 

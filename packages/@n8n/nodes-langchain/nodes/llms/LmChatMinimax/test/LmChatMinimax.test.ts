@@ -128,26 +128,6 @@ describe('LmChatMinimax', () => {
 			);
 		});
 
-		it('should set response_format in modelKwargs when responseFormat is provided', async () => {
-			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'model') return 'MiniMax-M2.7';
-				if (paramName === 'options') return { responseFormat: 'json_object' };
-				return undefined;
-			});
-
-			await node.supplyData.call(ctx, 0);
-
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					modelKwargs: {
-						reasoning_split: true,
-						response_format: { type: 'json_object' },
-					},
-				}),
-			);
-		});
-
 		it('should set reasoning_split by default (hideThinking defaults to true)', async () => {
 			const ctx = setupMockContext();
 
