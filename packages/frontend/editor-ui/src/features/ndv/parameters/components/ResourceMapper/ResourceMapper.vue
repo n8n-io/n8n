@@ -106,9 +106,12 @@ function getDefaultFieldValue(field?: ResourceMapperField): string | number | bo
 
 // Reload fields to map when dependent parameters change
 watch(
-	() => props.dependentParametersValues,
-	async (currentValue, oldValue) => {
+	[() => props.dependentParametersValues, () => props.node?.name],
+	async ([currentValue, currentNodeName], [oldValue, oldNodeName]) => {
 		if (oldValue !== null && currentValue !== null && oldValue !== currentValue) {
+			// If the node identity changed at the same time, the user navigated to a different
+			// node — preserve the stored values instead of clearing them.
+			if (currentNodeName !== oldNodeName) return;
 			state.paramValue = {
 				...state.paramValue,
 				value: null,
