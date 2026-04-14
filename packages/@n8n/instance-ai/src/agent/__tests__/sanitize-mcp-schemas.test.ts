@@ -270,6 +270,56 @@ describe('sanitizeMcpToolSchemas', () => {
 		});
 	});
 
+	describe('strict mode', () => {
+		it('should throw on conflicting field descriptions in discriminated unions', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					name: z.string().describe('Table name'),
+				}),
+				z.object({
+					action: z.literal('rename'),
+					name: z.string().describe('Column name'),
+				}),
+			]);
+
+			expect(() => sanitizeZodType(union, true)).toThrow(/Description conflict for field "name"/);
+		});
+
+		it('should not throw when field descriptions are consistent', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('get'),
+					id: z.string().describe('Resource ID'),
+				}),
+				z.object({
+					action: z.literal('delete'),
+					id: z.string().describe('Resource ID'),
+				}),
+			]);
+
+			expect(() => sanitizeZodType(union, true)).not.toThrow();
+		});
+
+		it('should merge conflicting descriptions in non-strict mode', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					name: z.string().describe('Table name'),
+				}),
+				z.object({
+					action: z.literal('rename'),
+					name: z.string().describe('Column name'),
+				}),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const nameField = result.shape.name;
+
+			expect(nameField.description).toBe('For "create": Table name. For "rename": Column name');
+		});
+	});
+
 	describe('discriminated union flattening', () => {
 		it('should generate action enum description from literal descriptions', () => {
 			const union = z.discriminatedUnion('action', [

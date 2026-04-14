@@ -17,8 +17,13 @@ import { z } from 'zod';
 
 /**
  * Recursively walk a Zod schema tree and replace Anthropic-incompatible types.
+ *
+ * When `strict` is true, throws on description conflicts in discriminated unions
+ * instead of merging them. Use strict mode for first-party tool schemas to catch
+ * mismatched descriptions at construction time rather than silently degrading
+ * the schema the model sees.
  */
-export function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
+export function sanitizeZodType(schema: z.ZodTypeAny, strict = false): z.ZodTypeAny {
 	// ZodNull → replace with optional undefined (shouldn't appear standalone, but handle it)
 	if (schema instanceof z.ZodNull) {
 		return z.string().optional();
@@ -26,7 +31,7 @@ export function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
 
 	// ZodNullable<T> → T.optional()
 	if (schema instanceof z.ZodNullable) {
-		return sanitizeZodType((schema as z.ZodNullable<z.ZodTypeAny>).unwrap()).optional();
+		return sanitizeZodType((schema as z.ZodNullable<z.ZodTypeAny>).unwrap(), strict).optional();
 	}
 
 	// ZodDiscriminatedUnion — flatten to a single z.object
@@ -82,7 +87,7 @@ export function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
 
 		// Build each field with properly merged descriptions
 		for (const [fieldName, entries] of fieldMeta) {
-			const sanitizedField = sanitizeZodType(entries[0].type).optional();
+			const sanitizedField = sanitizeZodType(entries[0].type, strict).optional();
 
 			const withDesc = entries.filter(
 				(e): e is typeof e & { description: string } => !!e.description,
@@ -90,7 +95,17 @@ export function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
 			const uniqueDescs = new Set(withDesc.map((d) => d.description));
 
 			if (uniqueDescs.size > 1) {
-				// Descriptions conflict across actions — combine with action context
+				if (strict) {
+					const conflictDetails = withDesc
+						.map((d) => `  Action "${d.action}": "${d.description}"`)
+						.join('\n');
+					throw new Error(
+						`Description conflict for field "${fieldName}" in discriminated union:\n` +
+							`${conflictDetails}\n` +
+							'Harmonize to a single description across all actions that share this field.',
+					);
+				}
+				// Non-strict: combine with action context for external MCP tools
 				const combined = withDesc.map((d) => `For "${d.action}": ${d.description}`).join('. ');
 				mergedShape[fieldName] = sanitizedField.describe(combined);
 			} else {
@@ -107,7 +122,7 @@ export function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
 			.options as z.ZodTypeAny[];
 		const nonNull = options.filter((o) => !(o instanceof z.ZodNull));
 		const hadNull = nonNull.length < options.length;
-		const sanitized = nonNull.map((o) => sanitizeZodType(o));
+		const sanitized = nonNull.map((o) => sanitizeZodType(o, strict));
 
 		if (sanitized.length === 0) {
 			// All options were null — degenerate case
@@ -125,25 +140,25 @@ export function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
 		const shape = (schema as z.ZodObject<z.ZodRawShape>).shape;
 		const newShape: z.ZodRawShape = {};
 		for (const [key, value] of Object.entries(shape)) {
-			newShape[key] = sanitizeZodType(value);
+			newShape[key] = sanitizeZodType(value, strict);
 		}
 		return z.object(newShape);
 	}
 
 	// ZodOptional — recurse into inner
 	if (schema instanceof z.ZodOptional) {
-		return sanitizeZodType((schema as z.ZodOptional<z.ZodTypeAny>).unwrap()).optional();
+		return sanitizeZodType((schema as z.ZodOptional<z.ZodTypeAny>).unwrap(), strict).optional();
 	}
 
 	// ZodArray — recurse into element
 	if (schema instanceof z.ZodArray) {
-		return z.array(sanitizeZodType((schema as z.ZodArray<z.ZodTypeAny>).element));
+		return z.array(sanitizeZodType((schema as z.ZodArray<z.ZodTypeAny>).element, strict));
 	}
 
 	// ZodDefault — recurse into inner
 	if (schema instanceof z.ZodDefault) {
 		const inner = (schema as z.ZodDefault<z.ZodTypeAny>)._def.innerType;
-		return sanitizeZodType(inner).default(
+		return sanitizeZodType(inner, strict).default(
 			(schema as z.ZodDefault<z.ZodTypeAny>)._def.defaultValue(),
 		);
 	}
@@ -151,7 +166,7 @@ export function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
 	// ZodRecord — recurse into value type
 	if (schema instanceof z.ZodRecord) {
 		return z.record(
-			sanitizeZodType((schema as z.ZodRecord<z.ZodString, z.ZodTypeAny>).valueSchema),
+			sanitizeZodType((schema as z.ZodRecord<z.ZodString, z.ZodTypeAny>).valueSchema, strict),
 		);
 	}
 
@@ -180,11 +195,15 @@ export function ensureTopLevelObject(schema: z.ZodTypeAny): z.ZodTypeAny {
  * the schema in a closure at construction time — post-creation mutation
  * does not affect the JSON Schema sent to the API.
  *
+ * Uses strict mode: throws on description conflicts in discriminated unions
+ * to prevent silently degraded schemas. Harmonize field descriptions at the
+ * source instead of relying on runtime merging.
+ *
  * Preserves the original TypeScript type via the generic parameter so that
  * `z.infer<typeof sanitizedSchema>` still produces the discriminated union type.
  */
 export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
-	return ensureTopLevelObject(sanitizeZodType(schema)) as T;
+	return ensureTopLevelObject(sanitizeZodType(schema, true)) as T;
 }
 
 /**
