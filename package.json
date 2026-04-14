@@ -34,6 +34,7 @@
     "lint:styles:fix": "turbo run lint:styles:fix",
     "lint:affected": "turbo run lint --affected",
     "lint:fix": "turbo run lint:fix",
+    "lint:ci": "turbo run lint lint:styles",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "generate:third-party-licenses": "node scripts/generate-third-party-licenses.mjs",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
