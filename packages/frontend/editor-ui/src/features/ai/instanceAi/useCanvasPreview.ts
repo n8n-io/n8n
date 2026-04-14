@@ -4,6 +4,7 @@ import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import type { IconName } from '@n8n/design-system';
 import {
 	getLatestBuildResult,
+	getLatestWorkflowSetupResult,
 	getLatestExecutionId,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
@@ -282,6 +283,35 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 			activeExecutionId.value = null;
 			activeTabId.value = targetId;
 			workflowRefreshKey.value++;
+		},
+	);
+
+	// --- Refresh preview when setup-workflow / apply-workflow-credentials completes ---
+	// These tools modify the workflow (credentials, parameters) but aren't detected
+	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
+
+	const latestSetupResult = computed(() => {
+		for (let i = store.messages.length - 1; i >= 0; i--) {
+			const msg = store.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestWorkflowSetupResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestSetupResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestSetupResult.value) return;
+
+			const targetId = latestSetupResult.value.workflowId;
+
+			// Only refresh if the setup targeted the currently active workflow tab
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
+			}
 		},
 	);
 
