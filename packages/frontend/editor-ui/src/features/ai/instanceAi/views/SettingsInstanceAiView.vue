@@ -127,44 +127,44 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 				</div>
 			</template>
 
-			<div v-if="!store.isCloudManaged" :class="$style.card">
-				<div :class="$style.sectionBlock">
-					<ModelSection />
-				</div>
-			</div>
-
-			<div :class="$style.card">
-				<div :class="$style.sectionBlock">
-					<LocalGatewaySection />
-				</div>
-			</div>
-
-			<template v-if="isAdmin">
+			<template v-if="isEnabled">
 				<div v-if="!store.isCloudManaged" :class="$style.card">
 					<div :class="$style.sectionBlock">
-						<SandboxSection />
+						<ModelSection />
 					</div>
 				</div>
 
-				<div v-if="!store.isCloudManaged" :class="$style.card">
+				<div :class="$style.card">
 					<div :class="$style.sectionBlock">
-						<MemorySection />
+						<LocalGatewaySection />
 					</div>
 				</div>
 
-				<div v-if="!store.isCloudManaged" :class="$style.card">
-					<div :class="$style.sectionBlock">
-						<SearchSection />
+				<template v-if="isAdmin">
+					<div v-if="!store.isCloudManaged" :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<SandboxSection />
+						</div>
 					</div>
-				</div>
 
-				<div v-if="!store.isCloudManaged" :class="$style.card">
-					<div :class="$style.sectionBlock">
-						<AdvancedSection />
+					<div v-if="!store.isCloudManaged" :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<MemorySection />
+						</div>
 					</div>
-				</div>
 
-				<template v-if="isEnabled">
+					<div v-if="!store.isCloudManaged" :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<SearchSection />
+						</div>
+					</div>
+
+					<div v-if="!store.isCloudManaged" :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<AdvancedSection />
+						</div>
+					</div>
+
 					<div :class="$style.permissionsHeader">
 						<N8nHeading :class="$style.sectionTitle" tag="h3" size="medium">
 							{{ i18n.baseText('settings.n8nAgent.permissions.title') }}
