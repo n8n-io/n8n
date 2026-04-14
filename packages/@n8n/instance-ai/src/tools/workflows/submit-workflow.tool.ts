@@ -119,7 +119,7 @@ function enhanceBuildErrors(errors: string[]): string[] {
 
 	return [
 		...errors,
-		"Code node guidance: for large HTML, write it to a separate file (e.g., chunks/page.html), then in your SDK TypeScript use readFileSync + JSON.stringify to safely embed it. NEVER embed large HTML directly in jsCode. Call get-best-practices with 'web_app' for the full pattern.",
+		'Code node guidance: for large HTML, write it to a separate file (e.g., chunks/page.html), then in your SDK TypeScript use readFileSync + JSON.stringify to safely embed it. NEVER embed large HTML directly in jsCode. See the web app pattern in the SDK Patterns Reference.',
 	];
 }
 

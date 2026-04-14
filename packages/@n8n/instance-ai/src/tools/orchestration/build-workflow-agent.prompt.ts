@@ -24,6 +24,7 @@ import {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
+	WORKFLOW_SDK_PATTERNS,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
 // ── Shared SDK reference sections ────────────────────────────────────────────
@@ -53,9 +54,6 @@ After writing any workflow with IF, Switch, or Filter nodes, verify:
 4. **Condition expressions reference the right fields** — check that \`leftValue\` expressions use fields that actually exist in the upstream node's output.
 5. **Merge nodes use the correct mode** — \`append\` to concatenate items from branches, \`combineBySql\` or \`combineByPosition\` only when matching items across inputs. Wrong mode silently drops or duplicates data.
 
-For node-specific configuration patterns (Data Table, Google Sheets, HTTP Request auth, Code node, AI agent subnodes), read the @builderHint annotations from \`get-node-type-definition\` results.
-For workflow composition patterns (parallel branches, batch processing, fan-in, AI agents, web apps), call \`get-best-practices\` with the relevant technique name.
-
 ### AI Tool Connection Patterns
 ${AI_TOOL_PATTERNS}
 
@@ -70,11 +68,7 @@ ${BASELINE_FLOW_CONTROL}`;
 const SDK_RULES_AND_PATTERNS = [
 	SDK_CODE_RULES,
 	WORKFLOW_RULES,
-	`## Workflow Patterns (on-demand)
-
-Call \`get-best-practices\` when you need code examples for workflow composition patterns.
-Key techniques: workflow_composition (parallel branches, batch processing, fan-in, executeOnce, alwaysOutputData), ai_agent_patterns (agents with tools, fromAi, structured output), web_app (SPA served from webhooks).
-Pass "list" to see all available techniques. Use these BEFORE writing code for complex workflow shapes.`,
+	'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
 	'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
 	'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
 	'## Node-Specific Configuration Guides',
@@ -107,8 +101,8 @@ When called with failure details for an existing workflow, start from the pre-lo
 - Do NOT retry the same failing approach more than twice — ask the user instead.
 
 ## Mandatory Process
-1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, workflow_composition, ai_agent_patterns, web_app, etc.), call \`get-suggested-nodes\` first for curated recommendations. For complex workflow shapes (parallel branches, batch processing, AI agents, web apps), also call \`get-best-practices\` with the relevant technique name for code examples. Then use \`search-nodes\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`get-node-type-definition\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Read and follow @builderHint annotations** in search results and type definitions — they contain required parameter structures and critical configuration rules that prevent runtime crashes.
-2. **Build**: Write TypeScript SDK code and call \`build-workflow\`. Follow the SDK Code Rules and @builderHint guidance from the type definitions.
+1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`get-suggested-nodes\` first for curated recommendations. Then use \`search-nodes\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`get-node-type-definition\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Read and follow @builderHint annotations** in search results and type definitions — they contain required parameter structures and critical configuration rules that prevent runtime crashes.
+2. **Build**: Write TypeScript SDK code and call \`build-workflow\`. Follow the SDK patterns below exactly.
 3. **Fix errors**: If \`build-workflow\` returns errors, use **patch mode**: call \`build-workflow\` with \`patches\` (array of \`{old_str, new_str}\` replacements). Patches apply to your last submitted code, or auto-fetch from the saved workflow if \`workflowId\` is given. Much faster than resending full code.
 4. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`get-workflow-as-code\` first to see the current code if you need to identify what to replace.
 4. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
@@ -322,7 +316,7 @@ When called with failure details for an existing workflow, start from the pre-lo
 ## Sandbox-Specific Rules
 
 - **Full TypeScript/JavaScript support** — you can use any valid TS/JS: template literals, array methods (\`.map\`, \`.filter\`, \`.join\`), string methods (\`.trim\`, \`.split\`), loops, functions, \`readFileSync\`, etc. The code is executed natively via tsx.
-- **For large HTML, use the file-based pattern.** Write HTML to \`chunks/page.html\`, then \`readFileSync\` + \`JSON.stringify\` in your SDK code. NEVER embed large HTML directly in jsCode — it will break. Call \`get-best-practices\` with 'web_app' for the full pattern.
+- **For large HTML, use the file-based pattern.** Write HTML to \`chunks/page.html\`, then \`readFileSync\` + \`JSON.stringify\` in your SDK code. NEVER embed large HTML directly in jsCode — it will break. See the web app pattern in the SDK Patterns Reference.
 - **Em-dash and Unicode**: the sandbox executes real JS so these technically work, but prefer plain hyphens for consistency with the shared SDK rules.
 
 ## Credentials
@@ -358,7 +352,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 1. **Discover credentials**: Call \`list-credentials\`. Note each credential's \`id\`, \`name\`, and \`type\`. You'll wire these into nodes as \`credentials: { credType: { id, name } }\`. If a required credential doesn't exist, mention it in your summary.
 
 2. **Discover nodes**:
-   a. If the workflow fits a known category (notification, data_persistence, chatbot, scheduling, data_transformation, data_extraction, document_processing, form_input, content_generation, triage, scraping_and_research, web_app, workflow_composition, ai_agent_patterns), call \`get-suggested-nodes\` first — it returns curated node recommendations with pattern hints and configuration notes. **Pay attention to the notes** — they prevent common configuration mistakes. For complex workflow shapes (parallel branches, batch processing, AI agents, web apps), also call \`get-best-practices\` with the relevant technique name for SDK code examples.
+   a. If the workflow fits a known category (notification, data_persistence, chatbot, scheduling, data_transformation, data_extraction, document_processing, form_input, content_generation, triage, scraping_and_research), call \`get-suggested-nodes\` first — it returns curated node recommendations with pattern hints and configuration notes. **Pay attention to the notes** — they prevent common configuration mistakes.
    b. For well-known utility nodes, skip \`search-nodes\` and use \`get-node-type-definition\` directly:
       - \`n8n-nodes-base.code\`, \`n8n-nodes-base.merge\`, \`n8n-nodes-base.set\`, \`n8n-nodes-base.if\`
       - \`n8n-nodes-base.removeDuplicates\`, \`n8n-nodes-base.httpRequest\`, \`n8n-nodes-base.switch\`
