@@ -1,6 +1,5 @@
 import { SamlAcsDto, SamlPreferences, SamlToggleDto } from '@n8n/api-types';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
-import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { Response } from 'express';
@@ -10,8 +9,9 @@ import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import { SamlInstanceSettingsLoader } from '@/instance-settings-loader/loaders/saml.instance-settings-loader';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { UrlService } from '@/services/url.service';
@@ -39,7 +39,7 @@ export class SamlController {
 		private readonly samlService: SamlService,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
-		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private readonly samlInstanceSettingsLoader: SamlInstanceSettingsLoader,
 	) {}
 
 	@Get('/metadata', { skipAuth: true })
@@ -60,7 +60,7 @@ export class SamlController {
 			signingPrivateKey: prefs.signingPrivateKey ? CREDENTIAL_BLANKING_VALUE : undefined,
 			entityID: getServiceProviderEntityId(),
 			returnUrl: getServiceProviderReturnUrl(),
-			managedByEnv: this.instanceSettingsLoaderConfig.ssoManagedByEnv,
+			managedByEnv: this.samlInstanceSettingsLoader.isConfiguredByEnv(),
 		};
 	}
 
@@ -70,8 +70,8 @@ export class SamlController {
 	@Post('/config', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
 	async configPost(_req: AuthenticatedRequest, _res: Response, @Body payload: SamlPreferences) {
-		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
-			throw new BadRequestError(
+		if (this.samlInstanceSettingsLoader.isConfiguredByEnv()) {
+			throw new ForbiddenError(
 				'SSO configuration is managed via environment variables and cannot be modified through the UI',
 			);
 		}
@@ -93,8 +93,8 @@ export class SamlController {
 		res: Response,
 		@Body { loginEnabled }: SamlToggleDto,
 	) {
-		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
-			throw new BadRequestError(
+		if (this.samlInstanceSettingsLoader.isConfiguredByEnv()) {
+			throw new ForbiddenError(
 				'SSO configuration is managed via environment variables and cannot be modified through the UI',
 			);
 		}

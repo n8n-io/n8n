@@ -1,10 +1,10 @@
-import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
 import { type Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
+import type { SamlInstanceSettingsLoader } from '@/instance-settings-loader/loaders/saml.instance-settings-loader';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
@@ -28,15 +28,14 @@ const authService = mock<AuthService>();
 const samlService = mock<SamlService>();
 const urlService = mock<UrlService>();
 const eventService = mock<EventService>();
-const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
-	ssoManagedByEnv: false,
-});
+const samlInstanceSettingsLoader = mock<SamlInstanceSettingsLoader>();
+samlInstanceSettingsLoader.isConfiguredByEnv.mockReturnValue(false);
 const controller = new SamlController(
 	authService,
 	samlService,
 	urlService,
 	eventService,
-	instanceSettingsLoaderConfig,
+	samlInstanceSettingsLoader,
 );
 
 const user = mock<User>({
@@ -253,15 +252,14 @@ describe('SAML Login Flow', () => {
 });
 
 describe('SAML env-managed write protection', () => {
-	const envManagedConfig = mock<InstanceSettingsLoaderConfig>({
-		ssoManagedByEnv: true,
-	});
+	const envManagedLoader = mock<SamlInstanceSettingsLoader>();
+	envManagedLoader.isConfiguredByEnv.mockReturnValue(true);
 	const envManagedController = new SamlController(
 		authService,
 		samlService,
 		urlService,
 		eventService,
-		envManagedConfig,
+		envManagedLoader,
 	);
 
 	test('configGet should return managedByEnv flag', async () => {
