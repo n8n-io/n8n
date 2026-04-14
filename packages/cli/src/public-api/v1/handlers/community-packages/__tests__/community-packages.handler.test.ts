@@ -164,7 +164,7 @@ describe('CommunityPackages Handler', () => {
 			await handler.updatePackage[handler.updatePackage.length - 1](req, mockResponse);
 
 			expect(mockLifecycle.update).toHaveBeenCalledWith(
-				{ name: 'n8n-nodes-test', version: undefined },
+				{ name: 'n8n-nodes-test', version: undefined, verify: false },
 				mockUser,
 				'notFound',
 			);

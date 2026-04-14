@@ -32,18 +32,28 @@ describe('CommunityPackagesLifecycleService', () => {
 
 	const user = { id: 'user123' };
 
+	const mockPackage = (installedVersion: string) =>
+		mock<InstalledPackages>({
+			installedNodes: [{ type: 'testNode', latestVersion: 1, name: 'testNode' }],
+			installedVersion,
+			authorName: 'Author',
+			authorEmail: 'author@example.com',
+		});
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
 	describe('install', () => {
 		it('should throw error if verify in options but no checksum', async () => {
+			communityNodeTypesService.getCommunityNodeTypes.mockResolvedValue([]);
 			communityNodeTypesService.findVetted.mockReturnValue(undefined);
 
 			await expect(
 				lifecycle.install({ name: 'n8n-nodes-test', verify: true, version: '1.0.0' }, user, 'ui'),
 			).rejects.toThrow('Package n8n-nodes-test is not vetted for installation');
 
+			expect(communityNodeTypesService.getCommunityNodeTypes).toHaveBeenCalled();
 			expect(communityNodeTypesService.findVetted).toHaveBeenCalledWith('n8n-nodes-test');
 		});
 
@@ -57,6 +67,7 @@ describe('CommunityPackagesLifecycleService', () => {
 		);
 
 		it('should install with checksum when verify is true', async () => {
+			communityNodeTypesService.getCommunityNodeTypes.mockResolvedValue([]);
 			communityNodeTypesService.findVetted.mockReturnValue(
 				mock<CommunityNodeType>({
 					checksum: 'checksum',
@@ -100,18 +111,8 @@ describe('CommunityPackagesLifecycleService', () => {
 
 	describe('update', () => {
 		it('should use the version from the request when updating a package', async () => {
-			const previouslyInstalledPackage = mock<InstalledPackages>({
-				installedNodes: [{ type: 'testNode', latestVersion: 1, name: 'testNode' }],
-				installedVersion: '1.0.0',
-				authorName: 'Author',
-				authorEmail: 'author@example.com',
-			});
-			const newInstalledPackage = mock<InstalledPackages>({
-				installedNodes: [{ type: 'testNode', latestVersion: 1, name: 'testNode' }],
-				installedVersion: '2.0.0',
-				authorName: 'Author',
-				authorEmail: 'author@example.com',
-			});
+			const previouslyInstalledPackage = mockPackage('1.0.0');
+			const newInstalledPackage = mockPackage('2.0.0');
 
 			communityPackagesService.findInstalledPackage.mockResolvedValue(previouslyInstalledPackage);
 			communityPackagesService.updatePackage.mockResolvedValue(newInstalledPackage);
@@ -153,6 +154,85 @@ describe('CommunityPackagesLifecycleService', () => {
 				).rejects.toThrow(`Invalid version: ${version}`);
 			},
 		);
+
+		it('should throw error if verify is true but package is not vetted', async () => {
+			communityNodeTypesService.getCommunityNodeTypes.mockResolvedValue([]);
+			communityNodeTypesService.findVetted.mockReturnValue(undefined);
+
+			await expect(
+				lifecycle.update(
+					{ name: 'n8n-nodes-test', version: '2.0.0', verify: true },
+					user,
+					'badRequest',
+				),
+			).rejects.toThrow('Package n8n-nodes-test is not vetted for installation');
+		});
+
+		it('should update with checksum when verify is true and version matches latest', async () => {
+			communityNodeTypesService.getCommunityNodeTypes.mockResolvedValue([]);
+			communityNodeTypesService.findVetted.mockReturnValue(
+				mock<CommunityNodeType>({
+					checksum: 'vetted-checksum',
+					npmVersion: '2.0.0',
+					nodeVersions: [],
+				}),
+			);
+			const previouslyInstalledPackage = mockPackage('1.0.0');
+			const newInstalledPackage = mockPackage('2.0.0');
+			communityPackagesService.findInstalledPackage.mockResolvedValue(previouslyInstalledPackage);
+			communityPackagesService.updatePackage.mockResolvedValue(newInstalledPackage);
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+				version: undefined,
+			});
+
+			await lifecycle.update(
+				{ name: 'n8n-nodes-test', version: '2.0.0', verify: true },
+				user,
+				'badRequest',
+			);
+
+			expect(communityPackagesService.updatePackage).toHaveBeenCalledWith(
+				'n8n-nodes-test',
+				previouslyInstalledPackage,
+				'2.0.0',
+				'vetted-checksum',
+			);
+		});
+
+		it('should use version-specific checksum from nodeVersions when targeting older version', async () => {
+			communityNodeTypesService.getCommunityNodeTypes.mockResolvedValue([]);
+			communityNodeTypesService.findVetted.mockReturnValue(
+				mock<CommunityNodeType>({
+					checksum: 'latest-checksum',
+					npmVersion: '2.0.0',
+					nodeVersions: [{ npmVersion: '1.0.0', checksum: 'v1-checksum' }],
+				}),
+			);
+			const previouslyInstalledPackage = mockPackage('0.5.0');
+			const newInstalledPackage = mockPackage('1.0.0');
+			communityPackagesService.findInstalledPackage.mockResolvedValue(previouslyInstalledPackage);
+			communityPackagesService.updatePackage.mockResolvedValue(newInstalledPackage);
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+				version: undefined,
+			});
+
+			await lifecycle.update(
+				{ name: 'n8n-nodes-test', version: '1.0.0', verify: true },
+				user,
+				'badRequest',
+			);
+
+			expect(communityPackagesService.updatePackage).toHaveBeenCalledWith(
+				'n8n-nodes-test',
+				previouslyInstalledPackage,
+				'1.0.0',
+				'v1-checksum',
+			);
+		});
 
 		it('should throw NotFoundError when package missing and whenMissing is notFound', async () => {
 			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
