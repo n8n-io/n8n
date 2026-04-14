@@ -67,21 +67,30 @@ export class EmbedAuthController {
 		res: Response,
 		redirect?: string,
 	) {
-		const { user, subject, issuer, kid } = await this.tokenExchangeService.embedLogin(subjectToken);
+		try {
+			const { user, subject, issuer, kid } =
+				await this.tokenExchangeService.embedLogin(subjectToken);
 
-		this.authService.issueCookie(res, user, true, req.browserId, true, {
-			sameSite: 'none',
-			secure: true,
-		});
+			this.authService.issueCookie(res, user, true, req.browserId, true, {
+				sameSite: 'none',
+				secure: true,
+			});
 
-		this.eventService.emit('embed-login', {
-			subject,
-			issuer,
-			kid,
-			clientIp: req.ip ?? 'unknown',
-		});
+			this.eventService.emit('embed-login', {
+				subject,
+				issuer,
+				kid,
+				clientIp: req.ip ?? 'unknown',
+			});
 
-		const safePath = validateRedirectUrl(redirect ?? '');
-		res.redirect(this.urlService.getInstanceBaseUrl() + safePath);
+			const safePath = validateRedirectUrl(redirect ?? '');
+			res.redirect(this.urlService.getInstanceBaseUrl() + safePath);
+		} catch (error) {
+			this.eventService.emit('embed-login-failed', {
+				failureReason: error instanceof Error ? error.message : 'internal_error',
+				clientIp: req.ip ?? 'unknown',
+			});
+			throw error;
+		}
 	}
 }

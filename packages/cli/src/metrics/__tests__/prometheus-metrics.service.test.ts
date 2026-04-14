@@ -258,8 +258,8 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			expect(promClient.Gauge).toHaveBeenCalledTimes(3); // version metric + active workflow count metric + instance role metric
-			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
-			expect(eventService.on).not.toHaveBeenCalled();
+			expect(promClient.Counter).toHaveBeenCalledTimes(6); // token exchange metrics (always registered)
+			expect(eventService.on).toHaveBeenCalledTimes(6); // token exchange event listeners
 		});
 
 		it('should not set up queue metrics if enabled and on scaling mode but instance is not main', async () => {
@@ -271,8 +271,8 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			expect(promClient.Gauge).toHaveBeenCalledTimes(2); // version metric + active workflow count metric
-			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
-			expect(eventService.on).not.toHaveBeenCalled();
+			expect(promClient.Counter).toHaveBeenCalledTimes(6); // token exchange metrics (always registered)
+			expect(eventService.on).toHaveBeenCalledTimes(6); // token exchange event listeners
 		});
 
 		it('should setup active workflow count metric', async () => {
@@ -822,6 +822,173 @@ describe('PrometheusMetricsService', () => {
 			const mockSet = jest.fn();
 			expect(() => config.collect.call({ set: mockSet })).not.toThrow();
 			expect(mockSet).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('token exchange metrics', () => {
+		// Helper to capture an eventService.on handler by event name
+		const getEventServiceHandler = (eventName: string) => {
+			const call = (eventService.on as jest.Mock).mock.calls.find((c) => c[0] === eventName);
+			return call ? call[1] : undefined;
+		};
+
+		it('should register all 6 token exchange counters on init', async () => {
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_token_exchange_requests_total',
+				help: 'Total number of token exchange requests.',
+				labelNames: ['result'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_token_exchange_failures_total',
+				help: 'Total number of token exchange failures broken down by reason.',
+				labelNames: ['reason'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_embed_login_requests_total',
+				help: 'Total number of embed login requests.',
+				labelNames: ['result'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_embed_login_failures_total',
+				help: 'Total number of embed login failures broken down by reason.',
+				labelNames: ['reason'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_token_exchange_jit_provisioning_total',
+				help: 'Total number of users JIT-provisioned via token exchange.',
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_token_exchange_identity_linked_total',
+				help: 'Total number of external identities linked to existing users via token exchange.',
+			});
+		});
+
+		it('should pre-seed result label combos on request counters', async () => {
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ result: 'success' }, 0);
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ result: 'failure' }, 0);
+		});
+
+		it('should increment token exchange success counter on token-exchange-succeeded', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-succeeded');
+			handler({});
+
+			// @ts-expect-error private field
+			expect(
+				prometheusMetricsService.counters.tokenExchangeRequestsTotal?.inc,
+			).toHaveBeenCalledWith({ result: 'success' }, 1);
+		});
+
+		it('should increment token exchange failure counter and normalize reason on token-exchange-failed', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-failed');
+			handler({ failureReason: 'Unknown key id' });
+
+			// @ts-expect-error private field
+			expect(
+				prometheusMetricsService.counters.tokenExchangeRequestsTotal?.inc,
+			).toHaveBeenCalledWith({ result: 'failure' }, 1);
+			// @ts-expect-error private field
+			expect(
+				prometheusMetricsService.counters.tokenExchangeFailuresTotal?.inc,
+			).toHaveBeenCalledWith({ reason: 'unknown_key' }, 1);
+		});
+
+		it('should map unknown failure reason to "other"', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-failed');
+			handler({ failureReason: 'Some completely new error XYZ' });
+
+			// @ts-expect-error private field
+			expect(
+				prometheusMetricsService.counters.tokenExchangeFailuresTotal?.inc,
+			).toHaveBeenCalledWith({ reason: 'other' }, 1);
+		});
+
+		it('should map role-related failure reasons to "role_not_allowed"', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-failed');
+
+			handler({ failureReason: "Role 'global:admin' is not allowed for this token exchange key" });
+			// @ts-expect-error private field
+			expect(
+				prometheusMetricsService.counters.tokenExchangeFailuresTotal?.inc,
+			).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
+
+			handler({ failureReason: "Unrecognized role 'custom:role' cannot be assigned to new user" });
+			// @ts-expect-error private field
+			expect(
+				prometheusMetricsService.counters.tokenExchangeFailuresTotal?.inc,
+			).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
+
+			handler({ failureReason: 'Cannot provision global:owner role via token exchange' });
+			// @ts-expect-error private field
+			expect(
+				prometheusMetricsService.counters.tokenExchangeFailuresTotal?.inc,
+			).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
+		});
+
+		it('should increment embed login success counter on embed-login', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('embed-login');
+			handler({});
+
+			// @ts-expect-error private field
+			expect(prometheusMetricsService.counters.embedLoginRequestsTotal?.inc).toHaveBeenCalledWith(
+				{ result: 'success' },
+				1,
+			);
+		});
+
+		it('should increment embed login failure counter and normalize reason on embed-login-failed', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('embed-login-failed');
+			handler({ failureReason: 'Token verification failed' });
+
+			// @ts-expect-error private field
+			expect(prometheusMetricsService.counters.embedLoginRequestsTotal?.inc).toHaveBeenCalledWith(
+				{ result: 'failure' },
+				1,
+			);
+			// @ts-expect-error private field
+			expect(prometheusMetricsService.counters.embedLoginFailuresTotal?.inc).toHaveBeenCalledWith(
+				{ reason: 'invalid_signature' },
+				1,
+			);
+		});
+
+		it('should increment JIT provisioning counter on token-exchange-user-provisioned', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-user-provisioned');
+			handler({});
+
+			// @ts-expect-error private field
+			expect(
+				prometheusMetricsService.counters.tokenExchangeJitProvisioningTotal?.inc,
+			).toHaveBeenCalledWith(1);
+		});
+
+		it('should increment identity linked counter on token-exchange-identity-linked', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-identity-linked');
+			handler({});
+
+			// @ts-expect-error private field
+			expect(
+				prometheusMetricsService.counters.tokenExchangeIdentityLinkedTotal?.inc,
+			).toHaveBeenCalledWith(1);
 		});
 	});
 });

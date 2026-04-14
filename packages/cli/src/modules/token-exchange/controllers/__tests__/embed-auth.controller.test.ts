@@ -184,8 +184,8 @@ describe('EmbedAuthController', () => {
 	});
 
 	describe('error propagation', () => {
-		it('should not emit audit event or issue cookie on failure', async () => {
-			const req = mock<AuthlessRequest>({ browserId: 'browser-id-789' });
+		it('should emit embed-login-failed and rethrow on failure', async () => {
+			const req = mock<AuthlessRequest>({ browserId: 'browser-id-789', ip: '10.0.0.1' });
 			const res = mock<Response>();
 			const query = new EmbedLoginQueryDto({ token: 'bad-token' });
 			tokenExchangeService.embedLogin.mockRejectedValue(new Error('Token verification failed'));
@@ -194,8 +194,12 @@ describe('EmbedAuthController', () => {
 				'Token verification failed',
 			);
 			expect(authService.issueCookie).not.toHaveBeenCalled();
-			expect(eventService.emit).not.toHaveBeenCalled();
 			expect(res.redirect).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith('embed-login', expect.anything());
+			expect(eventService.emit).toHaveBeenCalledWith('embed-login-failed', {
+				failureReason: 'Token verification failed',
+				clientIp: '10.0.0.1',
+			});
 		});
 	});
 });

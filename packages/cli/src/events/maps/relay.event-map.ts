@@ -788,6 +788,11 @@ export type RelayEventMap = {
 		clientIp: string;
 	};
 
+	'embed-login-failed': {
+		failureReason: string;
+		clientIp: string;
+	};
+
 	'token-exchange-identity-linked': {
 		userId: string;
 		sub: string;
