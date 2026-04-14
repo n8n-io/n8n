@@ -1605,14 +1605,15 @@ describe('GET /data-tables with projectId filter', () => {
 		expect(response.body.data[0].name).toBe('team-table');
 	});
 
-	test('should return 403 when filtering by a project the user is not a member of', async () => {
+	test('should return empty results when filtering by a project the user is not a member of', async () => {
 		const teamProject = await createTeamProject('Team No Filter Access');
 		// member is NOT added to teamProject
 
 		const filter = JSON.stringify({ projectId: teamProject.id });
 		const response = await authMemberAgent.get('/data-tables').query({ filter });
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(0);
 	});
 
 	test('should allow filtering by the user personal project id', async () => {
