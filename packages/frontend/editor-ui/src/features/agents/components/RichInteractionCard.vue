@@ -184,10 +184,10 @@ const parsed = computed(() => {
 }
 
 .optionDot {
-	width: 8px;
-	height: 8px;
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
 	border-radius: 50%;
-	border: 1px solid var(--color--text--tint-2);
+	border: var(--border-width) var(--border-style) var(--color--text--tint-2);
 	flex-shrink: 0;
 }
 

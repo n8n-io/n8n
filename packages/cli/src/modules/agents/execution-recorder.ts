@@ -172,7 +172,7 @@ export class ExecutionRecorder {
 				// Flat array (backward compat)
 				this.toolCalls.push({ name, input, output: undefined });
 
-				// Timeline event
+				// Timeline event — success is set to false until a tool-result confirms completion
 				this.timeline.push({
 					type: 'tool-call',
 					name,
@@ -181,7 +181,7 @@ export class ExecutionRecorder {
 					output: undefined as unknown,
 					startTime: Date.now(),
 					endTime: 0,
-					success: true,
+					success: false,
 				});
 			} else if (part.type === 'tool-result' && 'toolName' in part) {
 				const name = part.toolName;

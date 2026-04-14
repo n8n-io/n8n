@@ -80,8 +80,12 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		stopAutoRefresh();
 		if (!autoRefresh.value || !currentProjectId) return;
 		refreshTimer = setTimeout(async () => {
-			if (currentProjectId) {
-				await fetchThreads(currentProjectId, currentAgentId ?? undefined);
+			try {
+				if (currentProjectId) {
+					await fetchThreads(currentProjectId, currentAgentId ?? undefined);
+				}
+			} catch {
+				// Swallow refresh errors so the cycle continues
 			}
 			startAutoRefresh();
 		}, AUTO_REFRESH_INTERVAL_MS);

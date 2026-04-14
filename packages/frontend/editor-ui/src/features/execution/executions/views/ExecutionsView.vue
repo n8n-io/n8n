@@ -13,6 +13,7 @@ import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useExecutionsStore } from '../executions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { storeToRefs } from 'pinia';
 import { onBeforeMount, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
@@ -25,8 +26,11 @@ const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const insightsStore = useInsightsStore();
+const settingsStore = useSettingsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
+
+const isAgentsView = () => settingsStore.isModuleActive('agents') && route.query.view === 'agents';
 const overview = useProjectPages();
 
 const {
@@ -50,7 +54,7 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('executionsList.workflowExecutions'));
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 
-	if (route.query.view !== 'agents') {
+	if (!isAgentsView()) {
 		await executionsStore.initialize();
 	}
 });
@@ -82,7 +86,7 @@ async function loadWorkflows() {
 function onDocumentVisibilityChange() {
 	if (document.visibilityState === 'hidden') {
 		executionsStore.stopAutoRefreshInterval();
-	} else if (route.query.view !== 'agents') {
+	} else if (!isAgentsView()) {
 		void executionsStore.startAutoRefreshInterval();
 	}
 }

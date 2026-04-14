@@ -144,7 +144,7 @@ export class AgentsController {
 			{ cursor?: string; limit?: string; agentId?: string }
 		>,
 	) {
-		const limit = Math.min(Number(req.query.limit) || 20, 100);
+		const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
 		return await this.agentExecutionService.getThreads(
 			req.params.projectId,
 			limit,

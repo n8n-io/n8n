@@ -101,8 +101,11 @@ export class AgentExecutionService {
 			return id;
 		});
 
-		// Replace platform mentions (e.g. Slack's <@U0ANB4K6611>) with the agent name
-		const cleanedMessage = params.userMessage.replace(/@[A-Z0-9]+/g, `@${agentName}`).trim();
+		// Replace platform mentions (e.g. Slack's <@U0ANB4K6611> or plain @U0ANB4K6611)
+		const cleanedMessage = params.userMessage
+			.replace(/<@[A-Z0-9]+>/gi, `@${agentName}`)
+			.replace(/@[A-Z0-9]{8,}/gi, `@${agentName}`)
+			.trim();
 
 		// Store agent-specific metadata
 		const metadata: Array<{ key: string; value: string }> = [
@@ -237,10 +240,13 @@ export class AgentExecutionService {
 	 * No FK cascade exists on execution_entity.threadId, so we delete explicitly.
 	 */
 	async deleteThread(projectId: string, threadId: string): Promise<boolean> {
-		// Delete executions linked to this thread first
+		// Verify ownership before deleting anything
+		const thread = await this.executionThreadRepository.findOneBy({ id: threadId, projectId });
+		if (!thread) return false;
+
 		await this.executionRepository.delete({ threadId });
-		// Then delete the thread itself (with project ownership check)
-		return await this.executionThreadRepository.deleteByIdAndProjectId(threadId, projectId);
+		await this.executionThreadRepository.delete({ id: threadId });
+		return true;
 	}
 
 	/**
