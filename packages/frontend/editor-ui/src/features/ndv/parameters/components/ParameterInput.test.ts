@@ -64,7 +64,8 @@ beforeEach(() => {
 	mockNodeTypesState = getNodeTypesStateMock();
 	mockCompletionResult = {};
 	mockBuilderState.trackWorkflowBuilderJourney.mockClear();
-	mockIsPlaceholderValue.mockClear();
+	mockIsPlaceholderValue.mockReset();
+	mockExtractPlaceholderLabels.mockReset().mockReturnValue([]);
 	mockBuilderState.isAIBuilderEnabled = true;
 });
 
