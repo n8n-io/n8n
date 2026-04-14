@@ -16,7 +16,7 @@ import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { getTools } from './loadOptions';
 import type { McpToolIncludeMode } from './types';
-import { createCallTool, getSelectedTools, mcpToolToDynamicTool } from './utils';
+import { buildMcpToolName, createCallTool, getSelectedTools, mcpToolToDynamicTool } from './utils';
 import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
@@ -100,15 +100,20 @@ async function connectAndGetTools(
 		return { client, mcpTools: null, error: client.error };
 	}
 
-	const allTools = await getAllTools(client.result);
-	const mcpTools = getSelectedTools({
-		tools: allTools,
-		mode: config.mode,
-		includeTools: config.includeTools,
-		excludeTools: config.excludeTools,
-	});
+	try {
+		const allTools = await getAllTools(client.result);
+		const mcpTools = getSelectedTools({
+			tools: allTools,
+			mode: config.mode,
+			includeTools: config.includeTools,
+			excludeTools: config.excludeTools,
+		});
 
-	return { client: client.result, mcpTools, error: null };
+		return { client: client.result, mcpTools, error: null };
+	} catch (error) {
+		await client.result.close();
+		throw error;
+	}
 }
 
 export class McpClientTool implements INodeType {
@@ -355,6 +360,11 @@ export class McpClientTool implements INodeType {
 			throw error;
 		};
 
+		const signal = this.getExecutionCancelSignal();
+		if (signal?.aborted) {
+			return setError(new NodeOperationError(node, 'Execution was cancelled', { itemIndex }));
+		}
+
 		const { client, mcpTools, error } = await connectAndGetTools(this, config);
 
 		if (error) {
@@ -365,6 +375,7 @@ export class McpClientTool implements INodeType {
 		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
 
 		if (!mcpTools?.length) {
+			await client.close();
 			return setError(
 				new NodeOperationError(node, 'MCP Server returned no tools', {
 					itemIndex,
@@ -374,25 +385,39 @@ export class McpClientTool implements INodeType {
 			);
 		}
 
-		const tools = mcpTools.map((tool) =>
-			logWrapper(
-				mcpToolToDynamicTool(
-					tool,
-					createCallTool(tool.name, client, config.timeout, (errorMessage) => {
-						const error = new NodeOperationError(node, errorMessage, { itemIndex });
-						void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
-						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
-					}),
-				),
-				this,
-			),
-		);
+		try {
+			const tools = mcpTools.map((tool) => {
+				const prefixedName = buildMcpToolName(node.name, tool.name);
+				return logWrapper(
+					mcpToolToDynamicTool(
+						{ ...tool, name: prefixedName },
+						createCallTool(
+							tool.name,
+							client,
+							config.timeout,
+							(errorMessage) => {
+								const error = new NodeOperationError(node, errorMessage, { itemIndex });
+								void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
+								this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, {
+									error,
+								});
+							},
+							() => this.getExecutionCancelSignal(),
+						),
+					),
+					this,
+				);
+			});
 
-		this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
+			this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
 
-		const toolkit = new StructuredToolkit(tools);
+			const toolkit = new StructuredToolkit(tools);
 
-		return { response: toolkit, closeFunction: async () => await client.close() };
+			return { response: toolkit, closeFunction: async () => await client.close() };
+		} catch (e) {
+			await client.close();
+			throw e;
+		}
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -401,6 +426,11 @@ export class McpClientTool implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const signal = this.getExecutionCancelSignal();
+			if (signal?.aborted) {
+				throw new NodeOperationError(node, 'Execution was cancelled', { itemIndex });
+			}
+
 			const item = items[itemIndex];
 			const config = getNodeConfig(this, itemIndex);
 
@@ -410,13 +440,12 @@ export class McpClientTool implements INodeType {
 				throw new NodeOperationError(node, error.error, { itemIndex });
 			}
 
-			if (!mcpTools?.length) {
-				throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
-			}
+			try {
+				if (!mcpTools?.length) {
+					throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
+				}
 
-			for (const tool of mcpTools) {
 				// Check for tool name in item.json.tool (for toolkit execution from agent)
-				// or item.tool (for direct execution)
 				if (!item.json.tool || typeof item.json.tool !== 'string') {
 					throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
 						itemIndex,
@@ -424,36 +453,42 @@ export class McpClientTool implements INodeType {
 				}
 
 				const toolName = item.json.tool;
-				if (toolName === tool.name) {
-					// Extract the tool name from arguments before passing to MCP
-					const { tool: _, ...toolArguments } = item.json;
-					const schema: JSONSchema7 = tool.inputSchema;
-					// When additionalProperties is not explicitly true, filter to schema-defined properties.
-					// Otherwise, pass all arguments through
-					const sanitizedToolArguments: IDataObject =
-						schema.additionalProperties !== true
-							? pick(toolArguments, Object.keys(schema.properties ?? {}))
-							: toolArguments;
+				for (const tool of mcpTools) {
+					const prefixedName = buildMcpToolName(node.name, tool.name);
+					if (toolName === prefixedName) {
+						// Extract the tool name from arguments before passing to MCP
+						const { tool: _, ...toolArguments } = item.json;
+						const schema: JSONSchema7 = tool.inputSchema;
+						// When additionalProperties is not explicitly true, filter to schema-defined properties.
+						// Otherwise, pass all arguments through
+						const sanitizedToolArguments: IDataObject =
+							schema.additionalProperties !== true
+								? pick(toolArguments, Object.keys(schema.properties ?? {}))
+								: toolArguments;
 
-					const params: {
-						name: string;
-						arguments: IDataObject;
-					} = {
-						name: tool.name,
-						arguments: sanitizedToolArguments,
-					};
-					const result = await client.callTool(params, CallToolResultSchema, {
-						timeout: config.timeout,
-					});
-					returnData.push({
-						json: {
-							response: result.content as IDataObject,
-						},
-						pairedItem: {
-							item: itemIndex,
-						},
-					});
+						const params: {
+							name: string;
+							arguments: IDataObject;
+						} = {
+							name: tool.name,
+							arguments: sanitizedToolArguments,
+						};
+						const result = await client.callTool(params, CallToolResultSchema, {
+							timeout: config.timeout,
+							signal: this.getExecutionCancelSignal(),
+						});
+						returnData.push({
+							json: {
+								response: result.content as IDataObject,
+							},
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
+					}
 				}
+			} finally {
+				await client.close();
 			}
 		}
 

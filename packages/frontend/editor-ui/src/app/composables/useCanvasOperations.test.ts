@@ -22,6 +22,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	createTestNode,
+	createTestNodeProperties,
 	createTestWorkflow,
 	createTestWorkflowObject,
 	mockNode,
@@ -3788,6 +3789,33 @@ describe('useCanvasOperations', () => {
 			expect(workflowDocumentStoreInstance.setConnections).toHaveBeenCalled();
 		});
 
+		it('should set connections even when workflowId is initially empty', async () => {
+			const workflowsStore = useWorkflowsStore();
+			// Simulate the state after resetWorkspace() — workflowId is cleared
+			workflowsStore.workflow.id = '';
+
+			const testConnections = {
+				'Node 1': { main: [[{ node: 'Node 2', type: 'main' as const, index: 0 }]] },
+			};
+			const newWorkflowId = 'new-workflow-id';
+			const workflow = createTestWorkflow({
+				id: newWorkflowId,
+				nodes: [createTestNode()],
+				connections: testConnections,
+			});
+
+			const { initializeWorkspace } = useCanvasOperations();
+			await initializeWorkspace(workflow);
+
+			// initState creates a new document store for the workflow ID.
+			// Without the fix, the computed workflowDocumentStore would be undefined
+			// (empty workflowId at start) and setConnections would be silently skipped.
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(newWorkflowId),
+			);
+			expect(workflowDocumentStore.setConnections).toHaveBeenCalledWith(testConnections);
+		});
+
 		it('should initialize node data from node type description', async () => {
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 			const type = SET_NODE_TYPE;
@@ -3796,12 +3824,12 @@ describe('useCanvasOperations', () => {
 				name: type,
 				version,
 				properties: [
-					{
+					createTestNodeProperties({
 						displayName: 'Value',
 						name: 'value',
 						type: 'boolean',
 						default: true,
-					},
+					}),
 				],
 			});
 
@@ -4570,7 +4598,7 @@ describe('useCanvasOperations', () => {
 				renameNode: vi.fn(),
 			});
 
-			const setWorkflowName = vi.spyOn(workflowState, 'setWorkflowName');
+			const setNameSpy = vi.spyOn(workflowDocumentStoreInstance, 'setName');
 
 			const canvasOperations = useCanvasOperations();
 			const workflowDataWithName = {
@@ -4581,10 +4609,7 @@ describe('useCanvasOperations', () => {
 
 			await canvasOperations.importWorkflowData(workflowDataWithName, 'file');
 
-			expect(setWorkflowName).toHaveBeenCalledWith({
-				newName: 'Test Workflow Name',
-				setStateDirty: true,
-			});
+			expect(setNameSpy).toHaveBeenCalledWith('Test Workflow Name');
 		});
 
 		it('should not crash when importing nodes that exceed maxNodes limit', async () => {
@@ -6298,9 +6323,9 @@ describe('useCanvasOperations', () => {
 			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
 
 			const { addNode } = useCanvasOperations();
-			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			const addConnectionSpy = vi.spyOn(docStore, 'addConnection');
-			const removeConnectionSpy = vi.spyOn(docStore, 'removeConnection');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			const addConnectionSpy = vi.spyOn(workflowDocumentStore, 'addConnection');
+			const removeConnectionSpy = vi.spyOn(workflowDocumentStore, 'removeConnection');
 
 			// Act: Add HITL node
 			await nextTick();

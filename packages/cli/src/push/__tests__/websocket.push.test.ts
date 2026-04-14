@@ -114,6 +114,26 @@ describe('WebSocketPush', () => {
 		expect(mockWebSocket1.send).not.toHaveBeenCalled();
 	});
 
+	it('does not remove replaced connection when old connection closes', () => {
+		const oldSocket = createMockWebSocket();
+		const newSocket = createMockWebSocket();
+
+		webSocketPush.add(pushRef1, userId, oldSocket);
+		expect(webSocketPush.hasPushRef(pushRef1)).toBe(true);
+
+		// Second add with same pushRef replaces the connection and closes old one
+		webSocketPush.add(pushRef1, userId, newSocket);
+
+		// Old connection's close event fires — should NOT remove the new connection
+		oldSocket.emit('close');
+		expect(webSocketPush.hasPushRef(pushRef1)).toBe(true);
+
+		// New connection still works
+		webSocketPush.sendToOne(pushMessage, pushRef1);
+		expect(newSocket.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		expect(oldSocket.send).not.toHaveBeenCalled();
+	});
+
 	it('emits message event when connection receives data', async () => {
 		jest.useRealTimers();
 		const mockOnMessageReceived = jest.fn();

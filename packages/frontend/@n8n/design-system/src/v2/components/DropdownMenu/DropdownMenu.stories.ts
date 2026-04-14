@@ -871,6 +871,47 @@ export const LazyLoadingSubmenu: Story = {
 	},
 };
 
+export const TruncatedLabelsWithTooltip: Story = {
+	render: (args) => ({
+		components: { DropdownMenu },
+		setup() {
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+			return { args, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<p style="margin-bottom: 16px; color: var(--color--text--tint-1);">
+				Hover over items with long labels to see the full text in a tooltip.
+				Short labels (under 20 characters) won't show a tooltip.
+			</p>
+			<DropdownMenu
+				:items="args.items"
+				show-full-label-on-hover
+				@select="handleSelect"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{ id: 'short', label: 'Short label', icon: { type: 'icon', value: 'file' } },
+			{ id: 'medium', label: 'A medium-length label', icon: { type: 'icon', value: 'file' } },
+			{
+				id: 'long',
+				label: 'This is a very long workflow name that will be truncated',
+				icon: { type: 'icon', value: 'file' },
+			},
+			{
+				id: 'longer',
+				label: 'Another extremely long label that definitely exceeds the dropdown width',
+				icon: { type: 'icon', value: 'file' },
+			},
+		] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
 export const EmptyState: Story = {
 	render: (args) => ({
 		components: { DropdownMenu },

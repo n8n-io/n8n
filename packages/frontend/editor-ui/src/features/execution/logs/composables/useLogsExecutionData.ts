@@ -13,7 +13,6 @@ import {
 	findSubExecutionLocator,
 	mergeStartData,
 } from '@/features/execution/logs/logs.utils';
-import { parse } from 'flatted';
 import { useToast } from '@/app/composables/useToast';
 import type { LatestNodeInfo, LogEntry, LogTreeFilter } from '../logs.types';
 import { isChatNode } from '@/app/utils/aiUtils';
@@ -128,9 +127,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 
 		try {
 			const subExecution = await workflowsStore.fetchExecutionDataById(locator.executionId);
-			const data = subExecution?.data
-				? (parse(subExecution.data as unknown as string) as IRunExecutionData)
-				: undefined;
+			const data = subExecution?.data ?? undefined;
 
 			if (!data || !subExecution) {
 				throw Error('Data is missing');

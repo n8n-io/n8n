@@ -9,6 +9,7 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	user: { id: 'user-1' } as RedactionContext['user'],
 	redactExecutionData: undefined,
 	userCanReveal: false,
+	hasDynamicCredentials: false,
 	memo: new Map(),
 	...overrides,
 });
@@ -195,6 +196,27 @@ describe('FullItemRedactionStrategy', () => {
 			await strategy.apply(execution, makeContext({ redactExecutionData: undefined }));
 
 			expect(execution.data.redactionInfo?.reason).toBe('workflow_redaction_policy');
+		});
+
+		it('sets reason "dynamic_credentials" when hasDynamicCredentials is true', async () => {
+			const execution = makeExecution({
+				NodeA: [
+					{
+						startTime: 0,
+						executionIndex: 0,
+						executionTime: 0,
+						executionStatus: 'success',
+						source: [],
+						data: { main: [[{ json: { x: 1 } }]] },
+					},
+				],
+			});
+
+			await strategy.apply(execution, makeContext({ hasDynamicCredentials: true }));
+
+			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
+			expect(item.redaction?.reason).toBe('dynamic_credentials');
+			expect(execution.data.redactionInfo?.reason).toBe('dynamic_credentials');
 		});
 	});
 

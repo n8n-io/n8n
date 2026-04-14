@@ -142,7 +142,7 @@ export class CredentialModal extends BaseModal {
 	}
 
 	get oauthConnectButton() {
-		return this.root.getByTestId('oauth-connect-button');
+		return this.root.getByTestId('quick-connect-button');
 	}
 
 	get oauthConnectSuccessBanner() {

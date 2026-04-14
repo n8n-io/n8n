@@ -1,6 +1,8 @@
+import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Project, Variables } from '@n8n/db';
-import type { ITaskData, IWorkflowSettings } from 'n8n-workflow';
+import type { CredentialsEntity, Project, Variables } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
+import type { ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
@@ -8,7 +10,9 @@ import {
 	getVariables,
 	preserveInputOverride,
 	removeDefaultValues,
+	replaceInvalidCredentials,
 	shouldRestartParentExecution,
+	validatePinDataSize,
 } from '@/workflow-helpers';
 
 describe('workflow-helpers', () => {
@@ -176,6 +180,94 @@ describe('preserveInputOverride', () => {
 	});
 });
 
+describe('replaceInvalidCredentials', () => {
+	const credentialsRepository = mockInstance(CredentialsRepository);
+
+	afterEach(() => jest.clearAllMocks());
+
+	function makeWorkflow(credentials: Record<string, { id: string | null; name: string }>) {
+		return {
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0] as [number, number],
+					parameters: {},
+					credentials,
+				},
+			],
+			connections: {},
+		} as unknown as IWorkflowBase;
+	}
+
+	it('should resolve credentials by name scoped to the given project', async () => {
+		const cred = { id: 'cred-1', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([cred]);
+
+		const workflow = makeWorkflow({ httpHeaderAuth: { id: null, name: 'My Cred' } });
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(credentialsRepository.findByNameAndTypeInProject).toHaveBeenCalledWith(
+			'My Cred',
+			'httpHeaderAuth',
+			'project-1',
+		);
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'cred-1',
+			name: 'My Cred',
+		});
+	});
+
+	it('should not resolve when no matching credential exists in the project', async () => {
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([]);
+
+		const workflow = makeWorkflow({ httpHeaderAuth: { id: null, name: 'Unknown' } });
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: null,
+			name: 'Unknown',
+		});
+	});
+
+	it('should not resolve when multiple credentials match in the project', async () => {
+		const cred1 = { id: 'cred-1', name: 'Dup' } as CredentialsEntity;
+		const cred2 = { id: 'cred-2', name: 'Dup' } as CredentialsEntity;
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([cred1, cred2]);
+
+		const workflow = makeWorkflow({ httpHeaderAuth: { id: null, name: 'Dup' } });
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: null,
+			name: 'Dup',
+		});
+	});
+
+	it('should fall back to name lookup within project when credential ID is not found', async () => {
+		const cred = { id: 'cred-new', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findOneBy.mockResolvedValueOnce(null);
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([cred]);
+
+		const workflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-deleted', name: 'My Cred' },
+		});
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(credentialsRepository.findByNameAndTypeInProject).toHaveBeenCalledWith(
+			'My Cred',
+			'httpHeaderAuth',
+			'project-1',
+		);
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'cred-new',
+			name: 'My Cred',
+		});
+	});
+});
+
 describe('removeDefaultValues', () => {
 	const DEFAULT_EXECUTION_TIMEOUT = 3600;
 	const DEFAULT = 'DEFAULT';
@@ -285,5 +377,66 @@ describe('removeDefaultValues', () => {
 		const originalSettings = { ...settings };
 		removeDefaultValues(settings, DEFAULT_EXECUTION_TIMEOUT);
 		expect(settings).toEqual(originalSettings);
+	});
+});
+
+describe('validatePinDataSize', () => {
+	const baseWorkflow: IWorkflowBase = {
+		id: '1',
+		name: 'Test',
+		nodes: [],
+		connections: {},
+		active: false,
+		isArchived: false,
+		activeVersionId: null,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	};
+
+	it('should pass when pinData is undefined', () => {
+		expect(() => validatePinDataSize(baseWorkflow)).not.toThrow();
+	});
+
+	it('should pass when pinData is not set', () => {
+		expect(() => validatePinDataSize({ ...baseWorkflow, pinData: undefined })).not.toThrow();
+	});
+
+	it('should pass when pinData is small', () => {
+		expect(() =>
+			validatePinDataSize({
+				...baseWorkflow,
+				pinData: { myNode: [{ json: { key: 'value' } }] },
+			}),
+		).not.toThrow();
+	});
+
+	it('should throw when pinData exceeds MAX_PINNED_DATA_SIZE', () => {
+		const largeValue = 'x'.repeat(MAX_PINNED_DATA_SIZE + 1);
+		expect(() =>
+			validatePinDataSize({
+				...baseWorkflow,
+				pinData: { myNode: [{ json: { data: largeValue } }] },
+			}),
+		).toThrow(
+			`Pinned data exceeds the maximum allowed size of ${MAX_PINNED_DATA_SIZE / (1024 * 1024)} MB`,
+		);
+	});
+
+	it('should throw when workflow + pinData exceeds total size limit', () => {
+		const limit = MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE;
+		// Make pinData ~10 MB (under 12 MB limit)
+		const pinDataSize = 10 * 1024 * 1024;
+		const largeValue = 'x'.repeat(pinDataSize);
+		// Make the workflow itself large enough so that workflow + pinData > limit
+		const largeNodes = 'y'.repeat(limit - pinDataSize);
+		expect(() =>
+			validatePinDataSize({
+				...baseWorkflow,
+				staticData: { filler: largeNodes },
+				pinData: { myNode: [{ json: { data: largeValue } }] },
+			}),
+		).toThrow(
+			`Workflow with pinned data exceeds the maximum allowed size of ${Math.floor(limit / (1024 * 1024))} MB`,
+		);
 	});
 });

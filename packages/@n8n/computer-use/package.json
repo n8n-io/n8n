@@ -1,0 +1,56 @@
+{
+  "name": "@n8n/computer-use",
+  "version": "0.3.0",
+  "description": "Local AI gateway for n8n Instance AI — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
+  "bin": {
+    "n8n-computer-use": "dist/cli.js"
+  },
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "start": "node dist/cli.js http://localhost:5678 --allowed-origins http://localhost:5678",
+    "dev": "pnpm build && (pnpm watch & pnpm start)",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "jest",
+    "test:unit": "jest",
+    "test:dev": "jest --watch"
+  },
+  "main": "dist/cli.js",
+  "exports": {
+    ".": "./dist/cli.js",
+    "./daemon": "./dist/daemon.js",
+    "./config": "./dist/config.js",
+    "./logger": "./dist/logger.js",
+    "./gateway-session": "./dist/gateway-session.js"
+  },
+  "module": "src/cli.ts",
+  "types": "dist/cli.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "@anthropic-ai/sandbox-runtime": "^0.0.42",
+    "@inquirer/prompts": "^8.3.2",
+    "@jitsi/robotjs": "^0.6.21",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "@n8n/mcp-browser": "workspace:*",
+    "@vscode/ripgrep": "^1.17.1",
+    "eventsource": "^3.0.6",
+    "node-screenshots": "^0.2.8",
+    "picocolors": "catalog:",
+    "sharp": "^0.34.5",
+    "yargs-parser": "21.1.1",
+    "zod": "catalog:",
+    "zod-to-json-schema": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/yargs-parser": "21.0.0"
+  }
+}

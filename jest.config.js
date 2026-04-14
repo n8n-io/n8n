@@ -9,6 +9,7 @@ const tsJestOptions = {
 		...compilerOptions,
 		declaration: false,
 		sourceMap: true,
+		rootDir: '.',
 	},
 };
 

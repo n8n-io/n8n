@@ -1,0 +1,39 @@
+{
+	"prompt": "Get all the Linear issues created in the last 2 weeks. Filter them for issues created for a different team than the one the creator is in. I have this team mapping to use: Alice (alice@company.com) belongs to Frontend, Bob (bob@company.com) to Backend, Carol (carol@company.com) to Backend. Store this mapping in the workflow and use it to filter cross-team issues. Then calculate the number of tickets per creator and post the list (ordered descending) to a Slack channel called #cross-team-reports. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "complex",
+	"tags": ["build", "linear", "slack", "schedule", "data-processing"],
+	"triggerType": "schedule",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "Multiple issues from different creators, some cross-team, some same-team",
+			"dataSetup": "The data source returns 8 issues total. Within the last 2 weeks: Alice (alice@company.com) created 3 issues for team 'Backend' and 1 for team 'Frontend', Bob (bob@company.com) created 1 issue for team 'Frontend', Carol (carol@company.com) created 1 issue for team 'Backend'. Outside the 2-week window (3 weeks ago): Alice created 1 issue for team 'Backend', Bob created 1 issue for team 'Frontend'. The people/teams data maps Alice to team 'Frontend', Bob to team 'Backend', and Carol to team 'Backend'. The Slack post node returns a success response.",
+			"successCriteria": "The workflow executes without errors. Only the 6 issues from the last 2 weeks are processed \u2014 the 2 older issues are excluded. The cross-team filter correctly identifies Alice's 3 Backend issues and Bob's 1 Frontend issue as cross-team. Carol's issue is filtered out (same team). The count per creator shows Alice: 3, Bob: 1. The list is sorted descending by count. The result is posted to Slack."
+		},
+		{
+			"name": "multi-team-creator",
+			"description": "A creator belongs to multiple teams, issues for any of their teams are not cross-team",
+			"dataSetup": "The data source returns 4 issues from the last 2 weeks. Alice (alice@company.com) created 2 issues for team 'Backend' and 1 for team 'AI'. Bob (bob@company.com) created 1 issue for team 'Frontend'. The people/teams data maps Alice to teams ['Frontend', 'AI'] and Bob to team 'Backend'. So Alice's 2 Backend issues are cross-team (not in her teams), but her AI issue is not cross-team. Bob's Frontend issue is cross-team. The Slack post node returns a success response.",
+			"successCriteria": "The workflow correctly handles multi-team membership. Alice's AI issue is excluded from the cross-team report (AI is one of her teams). Alice has more cross-team issues than Bob. The report is sorted descending by count, with Alice listed first."
+		},
+		{
+			"name": "no-cross-team-issues",
+			"description": "All issues are created for the creator's own team",
+			"dataSetup": "The data source returns 4 issues from the last 2 weeks: Alice (alice@company.com) created 2 issues for team 'Frontend', Bob (bob@company.com) created 2 issues for team 'Backend'. The people/teams data maps Alice to 'Frontend' and Bob to 'Backend'. All issues match the creator's team. The Slack post node returns a success response.",
+			"successCriteria": "The workflow executes without errors. The cross-team filter removes all issues. The workflow handles the empty result gracefully \u2014 either posting a 'no cross-team issues' message or completing without error."
+		},
+		{
+			"name": "unknown-creator",
+			"description": "An issue creator is not in the people/teams list",
+			"dataSetup": "The data source returns 4 issues from the last 2 weeks. Two are by Alice (alice@company.com, mapped to team 'Frontend'), two are by Dave (dave@company.com) who is not in the people/teams data at all. The Slack post node returns a success response.",
+			"successCriteria": "The workflow handles the unknown creator without crashing. Dave's issues are either excluded from the cross-team report or handled with a sensible default. Alice's cross-team issues are still correctly processed."
+		},
+		{
+			"name": "api-error",
+			"description": "Linear API returns an authentication error",
+			"dataSetup": "The Linear/data source node returns an authentication error. The Slack post node returns a success response.",
+			"successCriteria": "The workflow handles the API error gracefully. It should not crash silently or post empty/misleading data to Slack. The error is either reported or the workflow stops cleanly.",
+			"requires": "mock-server"
+		}
+	]
+}

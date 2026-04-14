@@ -4,7 +4,7 @@ import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import { stringify } from 'qs';
 
-import { setAxiosAgents } from './utils';
+import { setAxiosAgents } from './axios-utils';
 
 // Global axios defaults
 
