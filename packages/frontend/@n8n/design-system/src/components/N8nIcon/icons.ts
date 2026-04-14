@@ -153,7 +153,6 @@ import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLoader2 from '~icons/lucide/loader2';
-import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLock from '~icons/lucide/lock';
 import IconLucideLogIn from '~icons/lucide/log-in';
 import IconLucideLogOut from '~icons/lucide/log-out';

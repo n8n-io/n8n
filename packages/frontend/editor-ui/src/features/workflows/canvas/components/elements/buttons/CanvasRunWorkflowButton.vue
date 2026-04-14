@@ -13,7 +13,6 @@ import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nText,
-	N8nTooltip,
 	type ActionDropdownItem,
 } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -29,7 +28,6 @@ const props = defineProps<{
 	waitingForWebhook?: boolean;
 	executing?: boolean;
 	disabled?: boolean;
-	disabledReason?: string;
 	hideTooltip?: boolean;
 	label?: string;
 	size?: 'small' | 'medium' | 'large';
@@ -88,23 +86,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 <template>
 	<div :class="[$style.component, isSplitButton ? $style.split : '']">
-		<N8nTooltip v-if="disabled && disabledReason" :content="disabledReason" placement="top">
-			<N8nButton
-				variant="solid"
-				:class="$style.button"
-				:aria-label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
-				:disabled="true"
-				:size="size ?? 'large'"
-				icon="flask-conical"
-				data-test-id="execute-workflow-button"
-			>
-				<span :class="$style.buttonContent">
-					{{ label }}
-				</span>
-			</N8nButton>
-		</N8nTooltip>
 		<KeyboardShortcutTooltip
-			v-else
 			:label="label"
 			:shortcut="{ metaKey: true, keys: ['↵'] }"
 			:disabled="executing || hideTooltip"
