@@ -92,12 +92,15 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.section">
-		<N8nHeading tag="h2" size="small">
-			{{ i18n.baseText('instanceAi.filesystem.label') }}
-		</N8nHeading>
-
 		<div :class="$style.switchRow">
-			<span :class="$style.switchLabel">{{ i18n.baseText('instanceAi.filesystem.label') }}</span>
+			<div>
+				<N8nHeading tag="h2" size="small">
+					{{ i18n.baseText('instanceAi.filesystem.label') }}
+				</N8nHeading>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('instanceAi.filesystem.description') }}
+				</N8nText>
+			</div>
 			<ElSwitch
 				:model-value="!isLocalGatewayDisabled"
 				:disabled="store.isLocalGatewayDisabled"
