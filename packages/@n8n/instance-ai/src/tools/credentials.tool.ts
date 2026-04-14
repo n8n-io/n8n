@@ -319,13 +319,7 @@ export function createCredentialsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'credentials',
 		description:
-			'Manage credentials. Actions:\n' +
-			'• list — list credentials accessible to the current user (paginated, filterable by type)\n' +
-			'• get — get credential metadata by ID (never returns secrets)\n' +
-			'• delete — permanently delete a credential (irreversible)\n' +
-			'• search-types — search available credential types by keyword\n' +
-			'• setup — open the credential setup UI for the user to select or create credentials\n' +
-			'• test — test whether a credential is valid and can connect to its service',
+			'Manage credentials — list, get, delete, search available types, set up new credentials, and test connections.',
 		inputSchema,
 		suspendSchema,
 		resumeSchema,

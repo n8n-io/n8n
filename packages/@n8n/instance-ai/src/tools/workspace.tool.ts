@@ -372,26 +372,11 @@ export function createWorkspaceTool(context: InstanceAiContext) {
 		});
 	}
 
-	const hasFolders = !!context.workspaceService.listFolders;
 	const inputSchema = buildInputSchema(context);
-
-	const folderActions = hasFolders
-		? '\n' +
-			'  - list-folders: list folders in a project\n' +
-			'  - create-folder: create a new folder\n' +
-			'  - delete-folder: delete a folder\n' +
-			'  - move-workflow-to-folder: move a workflow into a folder'
-		: '';
 
 	return createTool({
 		id: 'workspace',
-		description:
-			'Manage workspace resources. Actions:\n' +
-			'  - list-projects: list accessible projects\n' +
-			'  - list-tags: list available tags\n' +
-			'  - tag-workflow: assign tags to a workflow\n' +
-			'  - cleanup-test-executions: delete test execution records' +
-			folderActions,
+		description: 'Manage workspace resources — projects, tags, folders, and execution cleanup.',
 		inputSchema,
 		suspendSchema,
 		resumeSchema,

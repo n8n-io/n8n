@@ -172,11 +172,7 @@ async function handleBestPractices(input: Extract<Input, { action: 'best-practic
 export function createTemplatesTool() {
 	return createTool({
 		id: 'templates',
-		description:
-			'Search n8n workflow templates or get best practices. Actions:\n' +
-			'- search-structures: find reference workflow patterns as mermaid diagrams\n' +
-			'- search-parameters: find how specific nodes are typically configured\n' +
-			'- best-practices: get workflow building guidance for a specific technique',
+		description: 'Search n8n workflow templates or get best practices.',
 		inputSchema,
 		execute: async (input: Input) => {
 			switch (input.action) {

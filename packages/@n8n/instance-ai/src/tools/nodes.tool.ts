@@ -342,13 +342,7 @@ export function createNodesTool(
 	return createTool({
 		id: 'nodes',
 		description:
-			'Work with n8n node types. Actions:\n' +
-			'- list — list available node types, optionally filtered\n' +
-			'- search — search nodes by name or AI connection type\n' +
-			'- describe — get detailed node description (properties, credentials, I/O)\n' +
-			'- type-definition — get TypeScript type definitions for nodes\n' +
-			'- suggested — get curated node recommendations by workflow technique category\n' +
-			"- explore-resources — query real resources for a node's RLC parameters",
+			'Work with n8n node types — discover, search, describe, get type definitions, and explore real resources.',
 		inputSchema: fullInputSchema,
 		execute: async (input: FullInput) => {
 			switch (input.action) {

@@ -603,34 +603,10 @@ export function createWorkflowsTool(
 
 	const inputSchema = buildInputSchema(context, surface);
 
-	const hasVersions = !!context.workflowService.listVersions;
-	const hasNamedVersions = !!context.workflowService.updateVersion;
-
-	const versionLines = hasVersions
-		? '\n' +
-			'• list-versions — list version history for a workflow\n' +
-			'• get-version — get full details of a specific version\n' +
-			'• restore-version — restore a workflow to a previous version'
-		: '';
-	const updateVersionLine = hasNamedVersions
-		? '\n• update-version — update name/description of a version'
-		: '';
-	const getAsCodeLine =
-		surface !== 'orchestrator' ? '\n• get-as-code — convert a workflow to TypeScript SDK code' : '';
-
 	return createTool({
 		id: 'workflows',
 		description:
-			'Manage workflows. Actions:\n' +
-			'• list — list workflows accessible to the current user\n' +
-			'• get — get full details of a specific workflow' +
-			getAsCodeLine +
-			'\n• delete — archive a workflow (soft delete)\n' +
-			'• setup — open the workflow setup UI for credential/parameter configuration\n' +
-			'• publish — publish a workflow version to production\n' +
-			'• unpublish — stop a workflow from running in production' +
-			versionLines +
-			updateVersionLine,
+			'Manage workflows — list, inspect, delete, set up, publish, unpublish, and manage versions.',
 		inputSchema,
 		suspendSchema,
 		resumeSchema,

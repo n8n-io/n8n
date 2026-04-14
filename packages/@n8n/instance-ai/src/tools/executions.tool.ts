@@ -197,13 +197,7 @@ export function createExecutionsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'executions',
 		description:
-			'Manage workflow executions. Actions:\n' +
-			'• list — list recent executions, filter by workflow/status\n' +
-			'• get — get execution status without blocking (poll running ones)\n' +
-			'• run — execute a workflow and wait for completion\n' +
-			'• debug — analyze a failed execution with structured diagnostics\n' +
-			'• get-node-output — retrieve raw output of a specific node\n' +
-			'• stop — cancel a running execution',
+			'Manage workflow executions — list, inspect, run, debug, get node output, and stop.',
 		inputSchema,
 		suspendSchema,
 		resumeSchema,

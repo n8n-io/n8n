@@ -242,6 +242,14 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
 /**
  * Sanitize all MCP tool schemas in-place for Anthropic compatibility.
  * Mutates the tool objects' inputSchema and outputSchema properties.
+ *
+ * Uses non-strict mode (no build-time errors on conflicts) because external
+ * MCP tools are third-party and we can't enforce description harmonization.
+ * In practice, external MCP tools come from JSON Schema → Zod conversion
+ * and rarely produce ZodDiscriminatedUnion, so the flattening path is
+ * unlikely to be hit. If it is, conflicting descriptions are merged with
+ * action context (e.g. 'For "create": ... For "delete": ...') rather than
+ * throwing.
  */
 export function sanitizeMcpToolSchemas(tools: ToolsInput): ToolsInput {
 	for (const tool of Object.values(tools)) {

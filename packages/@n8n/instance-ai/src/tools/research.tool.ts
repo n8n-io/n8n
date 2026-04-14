@@ -183,10 +183,7 @@ async function handleFetchUrl(
 export function createResearchTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'research',
-		description:
-			'Search the web or fetch page content. Actions:\n' +
-			'• web-search — search for information (API docs, error messages, guides)\n' +
-			'• fetch-url — fetch a page and extract content as markdown',
+		description: 'Search the web or fetch page content.',
 		inputSchema,
 		suspendSchema: domainGatingSuspendSchema,
 		resumeSchema: domainGatingResumeSchema,

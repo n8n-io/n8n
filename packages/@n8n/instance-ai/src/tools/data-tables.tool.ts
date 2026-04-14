@@ -536,11 +536,7 @@ export function createDataTablesTool(
 
 		return createTool({
 			id: 'data-tables',
-			description:
-				'Manage data tables. Actions:\n' +
-				'• list — list data tables in a project\n' +
-				'• schema — get column definitions for a data table\n' +
-				'• query — query rows with optional filtering',
+			description: 'Manage data tables — list, get schema, and query rows.',
 			inputSchema,
 			execute: async (input: ReadOnlyInput) => {
 				switch (input.action) {
@@ -559,19 +555,7 @@ export function createDataTablesTool(
 
 	return createTool({
 		id: 'data-tables',
-		description:
-			'Manage data tables. Actions:\n' +
-			'• list — list data tables in a project\n' +
-			'• schema — get column definitions for a data table\n' +
-			'• query — query rows with optional filtering\n' +
-			'• create — create a new data table with typed columns\n' +
-			'• delete — permanently delete a data table\n' +
-			'• add-column — add a column to a data table\n' +
-			'• delete-column — remove a column from a data table\n' +
-			'• rename-column — rename a column in a data table\n' +
-			'• insert-rows — insert rows into a data table\n' +
-			'• update-rows — update rows matching a filter\n' +
-			'• delete-rows — delete rows matching a filter',
+		description: 'Manage data tables — list, query, create, modify columns, and manage rows.',
 		inputSchema,
 		suspendSchema: confirmationSuspendSchema,
 		resumeSchema: confirmationResumeSchema,

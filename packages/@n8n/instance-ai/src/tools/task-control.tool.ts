@@ -94,11 +94,7 @@ async function handleCorrectTask(
 export function createTaskControlTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'task-control',
-		description:
-			'Manage tasks and background work. Actions:\n' +
-			'• update-checklist — write or update a visible task checklist (replaces previous list)\n' +
-			'• cancel-task — cancel a running background task by ID\n' +
-			'• correct-task — send a correction to a running background task',
+		description: 'Manage tasks and background work.',
 		inputSchema,
 		execute: async (input: Input) => {
 			switch (input.action) {
