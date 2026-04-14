@@ -10,7 +10,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const i18n = useI18n();
@@ -106,7 +106,6 @@ async function loadMore() {
 				<thead>
 					<tr>
 						<th>{{ i18n.baseText('agentSessions.agentName') }}</th>
-						<th>{{ i18n.baseText('agentSessions.status') }}</th>
 						<th>{{ i18n.baseText('agentSessions.lastMessage') }}</th>
 						<th>{{ i18n.baseText('agentSessions.duration') }}</th>
 						<th>{{ i18n.baseText('agentSessions.tokenUsage') }}</th>
@@ -123,12 +122,6 @@ async function loadMore() {
 						@click="onRowClick(thread)"
 					>
 						<td>{{ thread.agentName }}</td>
-						<td>
-							<span :class="$style.statusCell">
-								<N8nIcon icon="status-completed" color="success" />
-								{{ i18n.baseText('agentSessions.success') }}
-							</span>
-						</td>
 						<td>{{ formatDate(thread.updatedAt) }}</td>
 						<td>{{ formatDuration(thread.totalDuration) }}</td>
 						<td>{{ formatTokens(thread.totalPromptTokens + thread.totalCompletionTokens) }}</td>
@@ -144,13 +137,13 @@ async function loadMore() {
 					</tr>
 					<template v-if="sessionsStore.loading && !sessionsStore.threads.length">
 						<tr v-for="item in 5" :key="item">
-							<td v-for="col in 7" :key="col">
+							<td v-for="col in 6" :key="col">
 								<ElSkeletonItem />
 							</td>
 						</tr>
 					</template>
 					<tr>
-						<td colspan="7" style="text-align: center">
+						<td colspan="6" style="text-align: center">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
 								<span data-test-id="agent-sessions-empty">
 									{{ i18n.baseText('agentSessions.empty') }}
@@ -195,15 +188,5 @@ async function loadMore() {
 	&:hover {
 		background-color: var(--color--foreground--tint-2);
 	}
-}
-
-.statusCell {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.statusIcon {
-	color: var(--color--success);
 }
 </style>

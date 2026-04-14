@@ -14,7 +14,7 @@ import { useExecutionsStore } from '../executions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { storeToRefs } from 'pinia';
-import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeMount, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -54,6 +54,17 @@ onMounted(async () => {
 		await executionsStore.initialize();
 	}
 });
+
+// When switching from agents view back to workflows, initialize the executions
+// store if it hasn't been loaded yet (skipped on mount when ?view=agents).
+watch(
+	() => route.query.view,
+	async (newView, oldView) => {
+		if (oldView === 'agents' && newView !== 'agents') {
+			await executionsStore.initialize();
+		}
+	},
+);
 
 onBeforeUnmount(() => {
 	executionsStore.reset();

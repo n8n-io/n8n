@@ -341,10 +341,12 @@ export class AgentsService {
 			reader.releaseLock();
 		}
 
-		// Record the resumed execution if we have the context.
+		// Always record resumed executions — even if they suspend again (chained HITL).
 		// Don't repeat the original user message — the pre-suspension execution already has it.
-		if (threadId && userId && projectId && !recorder.suspended) {
-			this.pendingUserMessages.delete(agentId);
+		if (threadId && userId && projectId) {
+			if (!recorder.suspended) {
+				this.pendingUserMessages.delete(agentId);
+			}
 			const messageRecord = recorder.getMessageRecord();
 			void this.agentExecutionService
 				.recordMessage({
