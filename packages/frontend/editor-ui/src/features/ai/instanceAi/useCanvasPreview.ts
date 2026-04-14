@@ -251,8 +251,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
 	// Auto-open logic:
 	//   - Preview closed + live build/user message: auto-open to this workflow
-	//   - Preview open on same workflow: refresh it (workflowRefreshKey++)
-	//   - Preview open on different artifact: don't switch — user chose that tab
+	//   - Preview open: switch to this workflow and refresh (workflowRefreshKey++)
 	//   - Thread switch with canvas open: restore canvas with new thread's workflow
 	//   - Thread switch with canvas closed: stay closed
 	watch(
@@ -277,12 +276,6 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 				const next = new Map(workflowExecutions.value);
 				next.delete(targetId);
 				workflowExecutions.value = next;
-			}
-
-			// If preview is already open on a different artifact, don't switch
-			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== targetId) {
-				workflowRefreshKey.value++;
-				return;
 			}
 
 			wasCanvasOpenBeforeSwitch.value = false;
@@ -312,15 +305,6 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 			if (!exec) return;
 
 			if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
-
-			// If preview is already open on a different artifact, don't switch
-			if (
-				isPreviewVisible.value &&
-				activeTabId.value !== null &&
-				activeTabId.value !== exec.workflowId
-			) {
-				return;
-			}
 
 			activeExecutionId.value = exec.executionId;
 			activeTabId.value = exec.workflowId;
@@ -356,12 +340,6 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 				!userSentMessage.value &&
 				!wasCanvasOpenBeforeSwitch.value
 			) {
-				return;
-			}
-
-			// If preview is already open on a different artifact, don't switch
-			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== targetId) {
-				dataTableRefreshKey.value++;
 				return;
 			}
 

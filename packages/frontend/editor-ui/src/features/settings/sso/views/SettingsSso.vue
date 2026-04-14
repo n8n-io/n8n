@@ -111,33 +111,31 @@ onMounted(() => {
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</p>
-		<!-- Protocol selector — rendered independently, like pre-PR2 -->
-		<div
-			v-if="hasAnySsoEnabled"
-			data-test-id="sso-auth-protocol-select"
-			:class="shared.settingsItem"
-		>
-			<div :class="shared.settingsItemLabel">
-				<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
-				<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
-			</div>
-			<div :class="shared.settingsItemControl">
-				<N8nSelect
-					filterable
-					size="medium"
-					:model-value="authProtocol"
-					:placeholder="i18n.baseText('parameterInput.select')"
-					@update:model-value="onAuthProtocolUpdated"
-					@keydown.stop
-				>
-					<N8nOption
-						v-for="{ label, value } in options"
-						:key="value"
-						:value="value"
-						:label="label"
-						data-test-id="credential-select-option"
-					/>
-				</N8nSelect>
+		<!-- Protocol selector — rendered independently outside form v-ifs for E2E timing -->
+		<div v-if="hasAnySsoEnabled" :class="[shared.card, $style.protocolCard]">
+			<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
+				<div :class="shared.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
+				</div>
+				<div :class="shared.settingsItemControl">
+					<N8nSelect
+						filterable
+						size="medium"
+						:model-value="authProtocol"
+						:placeholder="i18n.baseText('parameterInput.select')"
+						@update:model-value="onAuthProtocolUpdated"
+						@keydown.stop
+					>
+						<N8nOption
+							v-for="{ label, value } in options"
+							:key="value"
+							:value="value"
+							:label="label"
+							data-test-id="credential-select-option"
+						/>
+					</N8nSelect>
+				</div>
 			</div>
 		</div>
 		<div
@@ -219,6 +217,14 @@ onMounted(() => {
 		content: '↗';
 		margin-left: 2px;
 	}
+}
+
+.protocolCard {
+	margin-bottom: 0;
+	padding-bottom: 0;
+	border-bottom: none;
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 .actionBox {

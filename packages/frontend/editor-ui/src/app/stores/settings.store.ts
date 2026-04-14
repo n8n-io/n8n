@@ -150,7 +150,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
-	const isChatFeatureEnabled = computed(() => isModuleActive('chat-hub'));
+	const isChatFeatureEnabled = computed(
+		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
+	);
 
 	const isCustomRolesFeatureEnabled = computed(
 		() => settings.value.enterprise?.customRoles ?? false,

@@ -2,6 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
 import { NodeSearchEngine } from './node-search-engine';
+import { AI_CONNECTION_TYPES } from './node-search-engine.types';
 import type { InstanceAiContext } from '../../types';
 
 export const searchNodesInputSchema = z.object({
@@ -10,11 +11,9 @@ export const searchNodesInputSchema = z.object({
 		.optional()
 		.describe('Search query to match against node names, display names, aliases, and descriptions'),
 	connectionType: z
-		.string()
+		.enum(AI_CONNECTION_TYPES)
 		.optional()
-		.describe(
-			'AI connection type to search for sub-nodes (e.g., "ai_languageModel", "ai_memory", "ai_tool", "ai_embedding", "ai_vectorStore")',
-		),
+		.describe('Filter results by AI sub-node connection type.'),
 	limit: z
 		.number()
 		.optional()
@@ -31,8 +30,9 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 			'input/output connection types, and available resource/operation discriminators. ' +
 			'Use this to discover which nodes to use when building workflows. ' +
 			'When a node has discriminators, use them with get-node-type-definition to get the exact schema. ' +
-			'IMPORTANT: Use short, specific queries — search by service name (e.g., "Gmail", "Airtable", "Slack") ' +
-			'not by action descriptions. Never prefix queries with "n8n".',
+			'Use short, specific queries — search by service name (e.g., "Gmail", "Airtable", "Slack") ' +
+			'not by action descriptions. Never prefix queries with "n8n". ' +
+			'For AI Agent workflows, set connectionType="ai_tool" to find tool variants of regular nodes.',
 		inputSchema: searchNodesInputSchema,
 		outputSchema: z.object({
 			results: z.array(
