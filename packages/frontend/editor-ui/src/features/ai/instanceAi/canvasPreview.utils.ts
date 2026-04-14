@@ -101,7 +101,8 @@ export function getLatestExecutionId(node: InstanceAiAgentNode): LatestExecution
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		if (
-			tc.toolName === 'run-workflow' &&
+			tc.toolName === 'executions' &&
+			(tc.args as Record<string, unknown> | undefined)?.action === 'run' &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
@@ -116,35 +117,32 @@ export function getLatestExecutionId(node: InstanceAiAgentNode): LatestExecution
 	return undefined;
 }
 
-const DATA_TABLE_TOOL_NAMES = new Set([
-	'create-data-table',
-	'insert-data-table-rows',
-	'update-data-table-rows',
-	'delete-data-table-rows',
-	'add-data-table-column',
-	'delete-data-table-column',
-	'rename-data-table-column',
-	'move-data-table-column',
+const DATA_TABLE_MUTATION_ACTIONS = new Set([
+	'create',
+	'insert-rows',
+	'update-rows',
+	'delete-rows',
+	'add-column',
+	'delete-column',
+	'rename-column',
 ]);
 
-/** Per-tool check that the result indicates a successful mutation. */
+/** Per-action check that the result indicates a successful mutation. */
 const RESULT_VALIDATORS: Record<string, (result: Record<string, unknown>) => boolean> = {
-	'insert-data-table-rows': (r) => typeof r.insertedCount === 'number',
-	'update-data-table-rows': (r) => typeof r.updatedCount === 'number',
-	'add-data-table-column': (r) =>
-		r.column !== null && r.column !== undefined && typeof r.column === 'object',
-	'delete-data-table-rows': (r) => r.success === true,
-	'delete-data-table-column': (r) => r.success === true,
-	'rename-data-table-column': (r) => r.success === true,
-	'move-data-table-column': (r) => r.success === true,
+	'insert-rows': (r) => typeof r.insertedCount === 'number',
+	'update-rows': (r) => typeof r.updatedCount === 'number',
+	'add-column': (r) => r.column !== null && r.column !== undefined && typeof r.column === 'object',
+	'delete-rows': (r) => r.success === true,
+	'delete-column': (r) => r.success === true,
+	'rename-column': (r) => r.success === true,
 };
 
 function extractDataTableId(
-	toolName: string,
+	action: string,
 	result: Record<string, unknown>,
 	args: Record<string, unknown> | undefined,
 ): string | undefined {
-	if (toolName === 'create-data-table') {
+	if (action === 'create') {
 		if (result.table && typeof result.table === 'object') {
 			const table = result.table as Record<string, unknown>;
 			if (typeof table.id === 'string') return table.id;
@@ -152,7 +150,7 @@ function extractDataTableId(
 		return undefined;
 	}
 
-	const isValid = RESULT_VALIDATORS[toolName];
+	const isValid = RESULT_VALIDATORS[action];
 	if (isValid?.(result) && typeof args?.dataTableId === 'string') {
 		return args.dataTableId;
 	}
@@ -171,14 +169,15 @@ export function getLatestDeletedDataTableId(node: InstanceAiAgentNode): string |
 	}
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
+		const args = tc.args as Record<string, unknown> | undefined;
 		if (
-			tc.toolName === 'delete-data-table' &&
+			tc.toolName === 'data-tables' &&
+			args?.action === 'delete' &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
 		) {
 			const result = tc.result as Record<string, unknown>;
-			const args = tc.args as Record<string, unknown> | undefined;
 			if (result.success === true && typeof args?.dataTableId === 'string') {
 				return args.dataTableId;
 			}
@@ -194,15 +193,17 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 	}
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
+		const args = tc.args as Record<string, unknown> | undefined;
+		const action = typeof args?.action === 'string' ? args.action : '';
 		if (
-			DATA_TABLE_TOOL_NAMES.has(tc.toolName) &&
+			tc.toolName === 'data-tables' &&
+			DATA_TABLE_MUTATION_ACTIONS.has(action) &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
 		) {
 			const result = tc.result as Record<string, unknown>;
-			const args = tc.args as Record<string, unknown> | undefined;
-			const dataTableId = extractDataTableId(tc.toolName, result, args);
+			const dataTableId = extractDataTableId(action, result, args);
 			if (dataTableId) {
 				return { dataTableId, toolCallId: tc.toolCallId };
 			}
@@ -228,7 +229,8 @@ function collectExecutionResults(node: InstanceAiAgentNode, results: Map<string,
 	// Process parent's own toolCalls first, then children — children's results
 	// are more recent (the orchestrator delegates to children) and should win.
 	for (const tc of node.toolCalls) {
-		if (tc.toolName !== 'run-workflow' || tc.isLoading) continue;
+		const tcArgs = tc.args as Record<string, unknown> | undefined;
+		if (!(tc.toolName === 'executions' && tcArgs?.action === 'run') || tc.isLoading) continue;
 		const result = tc.result;
 		const args = tc.args;
 		if (

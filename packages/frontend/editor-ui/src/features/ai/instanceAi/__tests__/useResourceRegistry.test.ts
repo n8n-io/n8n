@@ -302,7 +302,8 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'cities1' } },
 							}),
 						],
