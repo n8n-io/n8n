@@ -10,14 +10,14 @@ const asyncExecFile = promisify(execFile);
 
 const REQUEST_TIMEOUT = 30000;
 
-const WINDOWS_NPM_CLI_RELATIVE_PATHS = [
-	'node_modules/npm/bin/npm-cli.js',
-	'../node_modules/npm/bin/npm-cli.js',
+const WINDOWS_NPM_CLI_RELATIVE_PATH = 'node_modules/npm/bin/npm-cli.js';
+const WINDOWS_NPM_CLI_CANDIDATE_PATHS = [
+	WINDOWS_NPM_CLI_RELATIVE_PATH,
+	`../${WINDOWS_NPM_CLI_RELATIVE_PATH}`,
 ];
-
 const WINDOWS_NPM_PREFIX_SCRIPT_RELATIVE_PATH = 'node_modules/npm/bin/npm-prefix.js';
 
-let windowsNpmCliPath: string | undefined;
+let cachedWindowsNpmCliPath: string | undefined;
 
 const NPM_ERROR_PATTERNS = {
 	PACKAGE_NOT_FOUND: [NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR],
@@ -74,47 +74,71 @@ async function pathExists(path: string): Promise<boolean> {
 	}
 }
 
+function stdoutToString(stdout: string | Buffer, trim = false): string {
+	const value = typeof stdout === 'string' ? stdout : stdout.toString();
+	return trim ? value.trim() : value;
+}
+
+async function resolveWindowsDefaultNpmCliPath(nodeDirectory: string): Promise<string | undefined> {
+	for (const relativePath of WINDOWS_NPM_CLI_CANDIDATE_PATHS) {
+		const candidatePath = join(nodeDirectory, relativePath);
+		console.log('trying', candidatePath);
+		if (await pathExists(candidatePath)) {
+			console.log(candidatePath, 'worked as default path');
+			return candidatePath;
+		}
+	}
+
+	return undefined;
+}
+
+async function resolveWindowsPrefixNpmCliPath(nodeDirectory: string): Promise<string | undefined> {
+	const npmPrefixScriptPath = join(nodeDirectory, WINDOWS_NPM_PREFIX_SCRIPT_RELATIVE_PATH);
+	console.log('trying npm-prefix', npmPrefixScriptPath);
+	if (!(await pathExists(npmPrefixScriptPath))) {
+		return undefined;
+	}
+
+	try {
+		const { stdout } = await asyncExecFile(process.execPath, [npmPrefixScriptPath]);
+		const globalPrefix = stdoutToString(stdout, true);
+		if (!globalPrefix) {
+			return undefined;
+		}
+
+		const globalPrefixNpmCliPath = join(globalPrefix, WINDOWS_NPM_CLI_RELATIVE_PATH);
+		console.log('global prefix npm-cli', globalPrefixNpmCliPath);
+		if (isAbsolute(globalPrefixNpmCliPath) && (await pathExists(globalPrefixNpmCliPath))) {
+			console.log('using global prefix npm-cli path');
+			return globalPrefixNpmCliPath;
+		}
+	} catch (error) {
+		console.log('npm-prefix fallback failed', error);
+	}
+
+	return undefined;
+}
+
 async function resolveWindowsNpmCliPath(): Promise<string> {
-	if (windowsNpmCliPath) {
+	if (cachedWindowsNpmCliPath) {
 		console.log('cached');
-		return windowsNpmCliPath;
+		return cachedWindowsNpmCliPath;
 	}
 
 	const nodeDirectory = dirname(process.execPath);
 	console.log('nodeDirectory', nodeDirectory);
-	let defaultNpmCliPath: string | undefined;
-	for (const relativePath of WINDOWS_NPM_CLI_RELATIVE_PATHS) {
-		const candidatePath = join(nodeDirectory, relativePath);
-		console.log('trying ', candidatePath);
-		if (await pathExists(candidatePath)) {
-			console.log(candidatePath, ' worked as default path');
-			defaultNpmCliPath = candidatePath;
-			break;
-		}
-	}
+	const defaultNpmCliPath = await resolveWindowsDefaultNpmCliPath(nodeDirectory);
 
-	const npmPrefixScriptPath = join(nodeDirectory, WINDOWS_NPM_PREFIX_SCRIPT_RELATIVE_PATH);
-	console.log('trying npm-prefix', npmPrefixScriptPath);
-	if (await pathExists(npmPrefixScriptPath)) {
-		try {
-			const { stdout } = await asyncExecFile(process.execPath, [npmPrefixScriptPath]);
-			const globalPrefix = String(stdout).trim();
-			const globalPrefixNpmCliPath = join(globalPrefix, 'node_modules/npm/bin/npm-cli.js');
-			console.log('global prefix npm-cli', globalPrefixNpmCliPath);
-			if (isAbsolute(globalPrefixNpmCliPath) && (await pathExists(globalPrefixNpmCliPath))) {
-				console.log('using global prefix npm-cli path');
-				windowsNpmCliPath = globalPrefixNpmCliPath;
-				return windowsNpmCliPath;
-			}
-		} catch (error) {
-			console.log('npm-prefix fallback failed', error);
-		}
+	const prefixNpmCliPath = await resolveWindowsPrefixNpmCliPath(nodeDirectory);
+	if (prefixNpmCliPath) {
+		cachedWindowsNpmCliPath = prefixNpmCliPath;
+		return cachedWindowsNpmCliPath;
 	}
 
 	if (defaultNpmCliPath) {
 		console.log('using default npm-cli path');
-		windowsNpmCliPath = defaultNpmCliPath;
-		return windowsNpmCliPath;
+		cachedWindowsNpmCliPath = defaultNpmCliPath;
+		return cachedWindowsNpmCliPath;
 	}
 
 	console.log('fail');
@@ -130,12 +154,12 @@ async function executeNpmCli(args: string[], cwd?: string): Promise<string> {
 			[npmCliPath, ...args],
 			cwd ? { cwd } : undefined,
 		);
-		return typeof stdout === 'string' ? stdout : stdout.toString();
+		return stdoutToString(stdout);
 	}
 
 	console.log('not win', process.env.npm_execpath, process.execPath);
 	const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
-	return typeof stdout === 'string' ? stdout : stdout.toString();
+	return stdoutToString(stdout);
 }
 
 /**
