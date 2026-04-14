@@ -6,6 +6,7 @@ import type { PushMessage } from '@n8n/api-types';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useInstanceAiStore } from '../instanceAi.store';
 import type { IWorkflowDb } from '@/Interface';
 
 const props = withDefaults(
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
+const instanceAiStore = useInstanceAiStore();
 const previewRef = useTemplateRef<InstanceType<typeof WorkflowPreview>>('previewComponent');
 
 const workflow = ref<IWorkflowDb | null>(null);
@@ -100,19 +102,32 @@ watch(
 // preview loads the execution it may still be running or waiting (e.g. Wait
 // node). Poll until the execution finishes so the iframe can reload with the
 // final node statuses.
+//
+// While the agent is streaming we poll indefinitely. Once streaming stops we
+// allow a short grace window (MAX_POST_STREAM_POLLS) for the execution to
+// finish before giving up.
 const POLL_INTERVAL_MS = 1_500;
-const MAX_POLLS = 40; // ~60 s total
+const MAX_POST_STREAM_POLLS = 5; // ~7.5 s grace after streaming ends
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
+let postStreamAttempts = 0;
 
 function stopPolling() {
 	if (pollTimer !== null) {
 		clearTimeout(pollTimer);
 		pollTimer = null;
 	}
+	postStreamAttempts = 0;
 }
 
-async function pollExecutionUntilDone(executionId: string, attempt = 0) {
-	if (attempt >= MAX_POLLS || executionId !== props.executionId) return;
+async function pollExecutionUntilDone(executionId: string) {
+	if (executionId !== props.executionId) return;
+
+	if (instanceAiStore.isStreaming) {
+		postStreamAttempts = 0;
+	} else {
+		postStreamAttempts++;
+		if (postStreamAttempts > MAX_POST_STREAM_POLLS) return;
+	}
 
 	try {
 		const execution = await workflowsStore.fetchExecutionDataById(executionId);
@@ -132,7 +147,7 @@ async function pollExecutionUntilDone(executionId: string, attempt = 0) {
 	}
 
 	pollTimer = setTimeout(() => {
-		void pollExecutionUntilDone(executionId, attempt + 1);
+		void pollExecutionUntilDone(executionId);
 	}, POLL_INTERVAL_MS);
 }
 
