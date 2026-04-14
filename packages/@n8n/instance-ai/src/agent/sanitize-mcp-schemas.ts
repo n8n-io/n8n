@@ -93,20 +93,22 @@ export function sanitizeZodType(schema: z.ZodTypeAny, strict = false): z.ZodType
 			// Only the first variant's type is used (entries[0].type), so differing
 			// enum values in other variants would be silently lost.
 			if (strict && entries.length > 1) {
+				const unwrapOptional = (t: z.ZodTypeAny): z.ZodTypeAny =>
+					t instanceof z.ZodOptional ? unwrapOptional(t.unwrap() as z.ZodTypeAny) : t;
+
 				const enumEntries = entries.filter((e) => {
-					const raw = e.type instanceof z.ZodOptional ? e.type.unwrap() : e.type;
-					return raw instanceof z.ZodEnum;
+					return unwrapOptional(e.type) instanceof z.ZodEnum;
 				});
 				if (enumEntries.length > 1) {
 					const valueSets = enumEntries.map((e) => {
-						const raw = e.type instanceof z.ZodOptional ? e.type.unwrap() : e.type;
+						const raw = unwrapOptional(e.type);
 						return (raw as z.ZodEnum<[string, ...string[]]>).options.slice().sort().join(',');
 					});
 					const uniqueValues = new Set(valueSets);
 					if (uniqueValues.size > 1) {
 						const conflictDetails = enumEntries
 							.map((e) => {
-								const raw = e.type instanceof z.ZodOptional ? e.type.unwrap() : e.type;
+								const raw = unwrapOptional(e.type);
 								const vals = (raw as z.ZodEnum<[string, ...string[]]>).options;
 								return `  Action "${e.action}": [${vals.join(', ')}]`;
 							})
