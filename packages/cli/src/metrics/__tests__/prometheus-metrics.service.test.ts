@@ -879,9 +879,8 @@ describe('PrometheusMetricsService', () => {
 			handler({});
 
 			// @ts-expect-error private field
-			expect(
-				prometheusMetricsService.counters.tokenExchangeRequestsTotal?.inc,
-			).toHaveBeenCalledWith({ result: 'success' }, 1);
+			const succeedReqCounter = prometheusMetricsService.counters.tokenExchangeRequestsTotal;
+			expect(succeedReqCounter?.inc).toHaveBeenCalledWith({ result: 'success' }, 1);
 		});
 
 		it('should increment token exchange failure counter and normalize reason on token-exchange-failed', async () => {
@@ -891,13 +890,11 @@ describe('PrometheusMetricsService', () => {
 			handler({ failureReason: 'Unknown key id' });
 
 			// @ts-expect-error private field
-			expect(
-				prometheusMetricsService.counters.tokenExchangeRequestsTotal?.inc,
-			).toHaveBeenCalledWith({ result: 'failure' }, 1);
+			const failReqCounter = prometheusMetricsService.counters.tokenExchangeRequestsTotal;
+			expect(failReqCounter?.inc).toHaveBeenCalledWith({ result: 'failure' }, 1);
 			// @ts-expect-error private field
-			expect(
-				prometheusMetricsService.counters.tokenExchangeFailuresTotal?.inc,
-			).toHaveBeenCalledWith({ reason: 'unknown_key' }, 1);
+			const failuresCounter = prometheusMetricsService.counters.tokenExchangeFailuresTotal;
+			expect(failuresCounter?.inc).toHaveBeenCalledWith({ reason: 'unknown_key' }, 1);
 		});
 
 		it('should map unknown failure reason to "other"', async () => {
@@ -907,33 +904,25 @@ describe('PrometheusMetricsService', () => {
 			handler({ failureReason: 'Some completely new error XYZ' });
 
 			// @ts-expect-error private field
-			expect(
-				prometheusMetricsService.counters.tokenExchangeFailuresTotal?.inc,
-			).toHaveBeenCalledWith({ reason: 'other' }, 1);
+			const otherCounter = prometheusMetricsService.counters.tokenExchangeFailuresTotal;
+			expect(otherCounter?.inc).toHaveBeenCalledWith({ reason: 'other' }, 1);
 		});
 
 		it('should map role-related failure reasons to "role_not_allowed"', async () => {
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventServiceHandler('token-exchange-failed');
+			// @ts-expect-error private field
+			const roleCounter = prometheusMetricsService.counters.tokenExchangeFailuresTotal;
 
 			handler({ failureReason: "Role 'global:admin' is not allowed for this token exchange key" });
-			// @ts-expect-error private field
-			expect(
-				prometheusMetricsService.counters.tokenExchangeFailuresTotal?.inc,
-			).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
+			expect(roleCounter?.inc).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
 
 			handler({ failureReason: "Unrecognized role 'custom:role' cannot be assigned to new user" });
-			// @ts-expect-error private field
-			expect(
-				prometheusMetricsService.counters.tokenExchangeFailuresTotal?.inc,
-			).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
+			expect(roleCounter?.inc).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
 
 			handler({ failureReason: 'Cannot provision global:owner role via token exchange' });
-			// @ts-expect-error private field
-			expect(
-				prometheusMetricsService.counters.tokenExchangeFailuresTotal?.inc,
-			).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
+			expect(roleCounter?.inc).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
 		});
 
 		it('should increment embed login success counter on embed-login', async () => {
@@ -974,9 +963,8 @@ describe('PrometheusMetricsService', () => {
 			handler({});
 
 			// @ts-expect-error private field
-			expect(
-				prometheusMetricsService.counters.tokenExchangeJitProvisioningTotal?.inc,
-			).toHaveBeenCalledWith(1);
+			const jitCounter = prometheusMetricsService.counters.tokenExchangeJitProvisioningTotal;
+			expect(jitCounter?.inc).toHaveBeenCalledWith(1);
 		});
 
 		it('should increment identity linked counter on token-exchange-identity-linked', async () => {
@@ -986,9 +974,8 @@ describe('PrometheusMetricsService', () => {
 			handler({});
 
 			// @ts-expect-error private field
-			expect(
-				prometheusMetricsService.counters.tokenExchangeIdentityLinkedTotal?.inc,
-			).toHaveBeenCalledWith(1);
+			const linkedCounter = prometheusMetricsService.counters.tokenExchangeIdentityLinkedTotal;
+			expect(linkedCounter?.inc).toHaveBeenCalledWith(1);
 		});
 	});
 });
