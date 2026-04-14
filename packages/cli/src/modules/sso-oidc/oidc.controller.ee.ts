@@ -9,6 +9,7 @@ import { Request, Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
@@ -47,8 +48,8 @@ export class OidcController {
 		@Body payload: OidcConfigDto,
 	) {
 		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
-			throw new BadRequestError(
-				'OIDC configuration is managed via environment variables and cannot be modified through the UI',
+			throw new ForbiddenError(
+				'OIDC configuration is managed via environment variables and cannot be modified through the API',
 			);
 		}
 		await this.oidcService.updateConfig(payload);

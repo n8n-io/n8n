@@ -4,7 +4,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Patch, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { ProvisioningService } from './provisioning.service.ee';
 
@@ -34,8 +34,8 @@ export class ProvisioningController {
 		}
 
 		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
-			throw new BadRequestError(
-				'Provisioning configuration is managed via environment variables and cannot be modified through the UI',
+			throw new ForbiddenError(
+				'Provisioning configuration is managed via environment variables and cannot be modified through the API',
 			);
 		}
 

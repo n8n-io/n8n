@@ -259,6 +259,31 @@ describe('OidcController', () => {
 		});
 	});
 
+	describe('OIDC env-managed write protection', () => {
+		const envManagedConfig = mock<InstanceSettingsLoaderConfig>({ ssoManagedByEnv: true });
+		const envManagedController = new OidcController(
+			oidcService,
+			authService,
+			urlService,
+			globalConfig,
+			logger,
+			envManagedConfig,
+		);
+
+		test('saveConfiguration should reject writes when managed by env', async () => {
+			const req = mock<AuthenticatedRequest>();
+			const res = mock<Response>();
+
+			await expect(
+				envManagedController.saveConfiguration(req, res, {
+					clientId: 'id',
+					clientSecret: 'secret',
+					discoveryEndpoint: 'https://example.com',
+				} as any),
+			).rejects.toThrow('cannot be modified through the API');
+		});
+	});
+
 	describe('redirectToAuthProvider', () => {
 		test('Should redirect to generated authorization URL', async () => {
 			const req = mock<Request>();

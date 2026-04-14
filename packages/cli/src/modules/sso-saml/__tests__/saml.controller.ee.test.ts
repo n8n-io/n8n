@@ -266,7 +266,7 @@ describe('SAML env-managed write protection', () => {
 
 		await expect(
 			envManagedController.configPost(req, res, { loginEnabled: true } as any),
-		).rejects.toThrow('cannot be modified through the UI');
+		).rejects.toThrow('cannot be modified through the API');
 	});
 
 	test('toggleEnabledPost should reject writes when managed by env', async () => {
@@ -275,6 +275,6 @@ describe('SAML env-managed write protection', () => {
 
 		await expect(
 			envManagedController.toggleEnabledPost(req, res, { loginEnabled: true }),
-		).rejects.toThrow('cannot be modified through the UI');
+		).rejects.toThrow('cannot be modified through the API');
 	});
 });

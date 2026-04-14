@@ -71,7 +71,7 @@ export class SamlController {
 	async configPost(_req: AuthenticatedRequest, _res: Response, @Body payload: SamlPreferences) {
 		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
 			throw new ForbiddenError(
-				'SSO configuration is managed via environment variables and cannot be modified through the UI',
+				'SSO configuration is managed via environment variables and cannot be modified through the API',
 			);
 		}
 		const result = await this.samlService.setSamlPreferences(payload);
@@ -94,7 +94,7 @@ export class SamlController {
 	) {
 		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
 			throw new ForbiddenError(
-				'SSO configuration is managed via environment variables and cannot be modified through the UI',
+				'SSO configuration is managed via environment variables and cannot be modified through the API',
 			);
 		}
 		await this.samlService.setSamlPreferences({ loginEnabled });

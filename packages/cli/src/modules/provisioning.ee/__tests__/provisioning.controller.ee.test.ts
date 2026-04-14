@@ -72,6 +72,21 @@ describe('ProvisioningController', () => {
 			expect(res.status).toHaveBeenCalledWith(403);
 		});
 
+		it('should reject writes when managed by env', async () => {
+			const envManagedConfig = mock<InstanceSettingsLoaderConfig>({ ssoManagedByEnv: true });
+			const envManagedController = new ProvisioningController(
+				provisioningService,
+				licenseState,
+				envManagedConfig,
+			);
+
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+
+			await expect(envManagedController.patchConfig(req, res)).rejects.toThrow(
+				'cannot be modified through the API',
+			);
+		});
+
 		it('should patch the provisioning config', async () => {
 			const configResponse: ProvisioningConfigDto = {
 				scopesProvisionInstanceRole: false,
