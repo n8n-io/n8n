@@ -76,16 +76,6 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_PERSONAL_SPACE_SHARING_ENABLED')
 	personalSpaceSharingEnabled: boolean = true;
 
-	// --- SSO ---
-
-	/** When true, SSO connection config is read from env vars on every startup. */
-	@Env('N8N_SSO_MANAGED_BY_ENV')
-	ssoManagedByEnv: boolean = false;
-
-	/** User role provisioning mode: disabled, instance_role, or instance_and_project_roles. */
-	@Env('N8N_SSO_USER_ROLE_PROVISIONING')
-	ssoUserRoleProvisioning: string = 'disabled';
-
 	// --- SAML ---
 
 	/** XML metadata string from the identity provider. */

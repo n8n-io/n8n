@@ -60,7 +60,6 @@ export class SamlController {
 			signingPrivateKey: prefs.signingPrivateKey ? CREDENTIAL_BLANKING_VALUE : undefined,
 			entityID: getServiceProviderEntityId(),
 			returnUrl: getServiceProviderReturnUrl(),
-			managedByEnv: this.instanceSettingsLoaderConfig.ssoManagedByEnv,
 		};
 	}
 

@@ -260,17 +260,6 @@ describe('SAML env-managed write protection', () => {
 		envManagedConfig,
 	);
 
-	test('configGet should return managedByEnv flag', async () => {
-		Object.defineProperty(samlService, 'samlPreferences', {
-			get: () => ({ loginEnabled: false }),
-			configurable: true,
-		});
-
-		const result = await envManagedController.configGet();
-
-		expect(result).toHaveProperty('managedByEnv', true);
-	});
-
 	test('configPost should reject writes when managed by env', async () => {
 		const req = mock<AuthenticatedRequest>();
 		const res = mock<Response>();
