@@ -35,6 +35,14 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-send-button');
 	}
 
+	getStopButton(): Locator {
+		return this.page.getByTestId('instance-ai-stop-button');
+	}
+
+	getAttachButton(): Locator {
+		return this.page.getByTestId('chat-input-attach-button');
+	}
+
 	getUserMessages(): Locator {
 		return this.page.getByTestId('instance-ai-user-message');
 	}
@@ -103,6 +111,14 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-questions-skip');
 	}
 
+	getQuestionsBackButton(): Locator {
+		return this.page.getByTestId('instance-ai-questions-back');
+	}
+
+	getQuestionsForwardButton(): Locator {
+		return this.page.getByTestId('instance-ai-questions-forward');
+	}
+
 	// ── Feedback ──────────────────────────────────────────────────────
 
 	getMessageRating(): Locator {
@@ -141,6 +157,16 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('workflow-preview-iframe');
 	}
 
+	// ── Settings ──────────────────────────────────────────────────────
+
+	getSettingsContainer(): Locator {
+		return this.page.getByTestId('n8n-agent-settings');
+	}
+
+	getSettingsEnableToggle(): Locator {
+		return this.page.getByTestId('n8n-agent-enable-toggle');
+	}
+
 	// ── Artifacts ─────────────────────────────────────────────────────
 
 	getArtifactCards(): Locator {
@@ -148,11 +174,15 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getArtifactsPanelToggle(): Locator {
-		return this.page.getByRole('button', { name: /artifacts/i });
+		return this.page.getByTestId('instance-ai-artifacts-toggle');
+	}
+
+	getArtifactsPanel(): Locator {
+		return this.page.getByTestId('instance-ai-artifacts-panel');
 	}
 
 	getArtifactsPanelRows(): Locator {
-		return this.page.locator('[class*="artifactRow"]');
+		return this.page.getByTestId('instance-ai-artifact-row');
 	}
 
 	// ── Timeline Details ──────────────────────────────────────────────

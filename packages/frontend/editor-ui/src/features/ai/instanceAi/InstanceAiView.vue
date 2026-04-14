@@ -425,6 +425,7 @@ function handleStop() {
 					/>
 					<N8nIconButton
 						v-if="!preview.isPreviewVisible.value"
+						data-test-id="instance-ai-artifacts-toggle"
 						icon="panel-right"
 						variant="ghost"
 						size="medium"

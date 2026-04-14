@@ -70,7 +70,7 @@ const artifactIconMap: Record<string, IconName> = {
 </script>
 
 <template>
-	<div :class="$style.panel">
+	<div :class="$style.panel" data-test-id="instance-ai-artifacts-panel">
 		<!-- Artifacts section -->
 		<div :class="[$style.section, $style.card]">
 			<N8nHeading :class="$style.sectionTitle" tag="h3" size="small" bold>
@@ -82,6 +82,7 @@ const artifactIconMap: Record<string, IconName> = {
 					v-for="artifact in artifacts"
 					:key="artifact.id"
 					:class="$style.artifactRow"
+					data-test-id="instance-ai-artifact-row"
 					@click="handleArtifactClick(artifact, $event)"
 				>
 					<span :class="$style.artifactIconWrap">

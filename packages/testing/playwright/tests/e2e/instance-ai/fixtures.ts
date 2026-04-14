@@ -60,6 +60,13 @@ export const test = base.extend<InstanceAiFixtures>({
 
 	instanceAiProxySetup: [
 		async ({ services, backendUrl }, use, testInfo) => {
+			// In local mode (no container), skip proxy setup entirely —
+			// the local runner calls Anthropic directly without proxy.
+			if (!services) {
+				await use(undefined);
+				return;
+			}
+
 			const testSlug = slugify(testInfo.title);
 			const folder = `instance-ai/${testSlug}`;
 

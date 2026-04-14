@@ -299,7 +299,7 @@ export const test = base.extend<
 	},
 
 	services: async ({ n8nContainer }, use) => {
-		await use(n8nContainer.services);
+		await use(n8nContainer?.services ?? null!);
 	},
 });
 

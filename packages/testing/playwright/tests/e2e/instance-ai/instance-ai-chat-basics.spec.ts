@@ -35,6 +35,22 @@ test.describe(
 			await expect(n8n.instanceAi.getAssistantMessages().first()).toBeVisible();
 		});
 
+		test('should cancel streaming response', async ({ n8n }) => {
+			await n8n.navigate.toInstanceAi();
+
+			await n8n.instanceAi.sendMessage(
+				'Build a workflow that fetches data from a public JSON API, transforms each item, and saves the result',
+			);
+
+			// The stop button should appear while the agent is streaming
+			await expect(n8n.instanceAi.getStopButton()).toBeVisible({ timeout: 30_000 });
+			await n8n.instanceAi.getStopButton().click();
+
+			// After cancellation, the send button and chat input should be available again
+			await expect(n8n.instanceAi.getSendButton()).toBeVisible({ timeout: 30_000 });
+			await expect(n8n.instanceAi.getChatInput()).toBeEnabled();
+		});
+
 		test('should persist messages after page reload', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
