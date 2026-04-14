@@ -424,13 +424,13 @@ describe('CommunityPackagesService', () => {
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				1,
 				['pack', `${PACKAGE_NAME}@latest`, `--registry=${testBlockRegistry}`, '--quiet'],
-				{ cwd: testBlockDownloadDir },
+				{ cwd: testBlockDownloadDir, shell: true },
 			);
 
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				2,
 				['install', ...testBlockNpmInstallArgs.split(' ')],
-				{ cwd: testBlockPackageDir },
+				{ cwd: testBlockPackageDir, shell: true },
 			);
 
 			// Check execFile was called only for tar command
