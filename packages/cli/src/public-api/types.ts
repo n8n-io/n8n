@@ -2,7 +2,7 @@ import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type {
 	AddDataTableRowsDto,
-	CreateDataTableDto,
+	PublicApiCreateDataTableDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -257,7 +257,7 @@ export declare namespace DataTableRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, CreateDataTableDto, {}>;
+	type Create = AuthenticatedRequest<{}, {}, PublicApiCreateDataTableDto, {}>;
 
 	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
