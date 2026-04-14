@@ -5133,8 +5133,6 @@
 	"instanceAi.confirmation.approveAll": "Approve all",
 	"instanceAi.gatewayConfirmation.allowForSession": "Allow for session",
 	"instanceAi.gatewayConfirmation.allowOnce": "Allow once",
-	"instanceAi.gatewayConfirmation.alwaysAllow": "Always allow",
-	"instanceAi.gatewayConfirmation.alwaysDeny": "Always deny",
 	"instanceAi.gatewayConfirmation.denyOnce": "Deny once",
 	"instanceAi.gatewayConfirmation.prompt": "n8n AI wants to access '{resources}' on Computer Use",
 	"instanceAi.askUser.placeholder": "Type your answer...",
