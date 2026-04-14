@@ -80,6 +80,8 @@ export type PubSubCommandMap = {
 	'display-workflow-activation-error': {
 		workflowId: string;
 		errorMessage: string;
+		errorDescription?: string;
+		nodeId?: string;
 	};
 
 	'relay-execution-lifecycle-event': PushMessage & {
