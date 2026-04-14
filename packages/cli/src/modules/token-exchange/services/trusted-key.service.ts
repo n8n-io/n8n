@@ -9,7 +9,7 @@ import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In, Not } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
@@ -18,12 +18,15 @@ import { TrustedKeySourceRepository } from '../database/repositories/trusted-key
 import { TrustedKeyRepository } from '../database/repositories/trusted-key.repository';
 import { TokenExchangeConfig } from '../token-exchange.config';
 import type {
+	JwksKeySource,
+	JwtAlgorithm,
 	ResolvedTrustedKey,
 	StaticKeySource,
 	TrustedKeyData,
 	TrustedKeySource,
 } from '../token-exchange.schemas';
 import { TrustedKeyDataSchema, TrustedKeySourceSchema } from '../token-exchange.schemas';
+import { JwksResolverService } from './jwks-resolver';
 
 type AlgorithmFamily = 'RSA' | 'EC' | 'EdDSA';
 
@@ -76,6 +79,7 @@ export class TrustedKeyService {
 		private readonly trustedKeyRepository: TrustedKeyRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dbLockService: DbLockService,
+		private readonly jwksResolverService: JwksResolverService,
 	) {
 		this.logger = logger.scoped('token-exchange');
 	}
@@ -326,12 +330,20 @@ export class TrustedKeyService {
 	}
 
 	private getRefreshIntervalMs(source: TrustedKeySourceEntity): number {
-		switch (source.type) {
-			case 'static':
-			case 'jwks':
-			default:
-				return this.config.keyRefreshIntervalSeconds * Time.seconds.toMilliseconds;
+		if (source.type === 'jwks') {
+			try {
+				const config = jsonParse<Record<string, unknown>>(source.config);
+				if (typeof config.cacheTtlSeconds === 'number' && config.cacheTtlSeconds > 0) {
+					return config.cacheTtlSeconds * Time.seconds.toMilliseconds;
+				}
+			} catch (e) {
+				this.logger.warn('Failed to parse source configuration for jwks source', {
+					id: source.id,
+					error: e,
+				});
+			}
 		}
+		return this.config.keyRefreshIntervalSeconds * Time.seconds.toMilliseconds;
 	}
 
 	/**
@@ -368,9 +380,8 @@ export class TrustedKeyService {
 		source: TrustedKeySourceEntity,
 		tx: EntityManager,
 	): Promise<void> {
-		this.logger.debug('Refreshing source', { source });
-		const resolvedKeys = this.resolveKeysForSource(source);
-		if (!resolvedKeys) {
+		const result = await this.resolveKeysForSource(source);
+		if (!result) {
 			// Mark as refreshed so the source is skipped until the next interval,
 			// even though no keys were resolved (e.g. unsupported source type).
 			await tx.update(TrustedKeySourceEntity, source.id, {
@@ -380,11 +391,14 @@ export class TrustedKeyService {
 			return;
 		}
 
+		const keys = result.keys;
+		const cacheTtlSeconds = result.cacheTtlSeconds;
+
 		// 1. DELETE old keys for this source
 		await tx.delete(TrustedKeyEntity, { sourceId: source.id });
 
 		// 2. INSERT new keys
-		for (const key of resolvedKeys) {
+		for (const key of keys) {
 			await tx.save(TrustedKeyEntity, {
 				sourceId: source.id,
 				kid: key.kid,
@@ -393,29 +407,37 @@ export class TrustedKeyService {
 			});
 		}
 
-		// 3. UPDATE source status
-		await tx.update(TrustedKeySourceEntity, source.id, {
-			status: 'healthy',
+		// 3. UPDATE source status, and persist observed cache TTL for refresh scheduling
+		const updatePayload: Partial<TrustedKeySourceEntity> = {
+			status: 'healthy' as const,
 			lastError: null,
 			lastRefreshedAt: new Date(),
-		});
+		};
+		if (cacheTtlSeconds !== undefined) {
+			const config = jsonParse<Record<string, unknown>>(source.config);
+			config.cacheTtlSeconds = cacheTtlSeconds;
+			updatePayload.config = JSON.stringify(config);
+		}
+		await tx.update(TrustedKeySourceEntity, source.id, updatePayload);
 	}
 
 	/**
 	 * Resolve keys for a source by type. Returns `undefined` for
 	 * unsupported types (signalling the caller should skip).
+	 *
+	 * Static sources return a plain array. JWKS sources return an object
+	 * with keys and observed cache TTL for refresh scheduling.
 	 */
-	private resolveKeysForSource(
+	private async resolveKeysForSource(
 		source: TrustedKeySourceEntity,
-	): Array<{ kid: string; data: TrustedKeyData }> | undefined {
+	): Promise<
+		{ keys: Array<{ kid: string; data: TrustedKeyData }>; cacheTtlSeconds?: number } | undefined
+	> {
 		switch (source.type) {
 			case 'static':
 				return this.resolveKeysForStaticSource(source);
 			case 'jwks':
-				this.logger.warn('JWKS key sources are not yet supported, skipping', {
-					sourceId: source.id,
-				});
-				return undefined;
+				return await this.resolveKeysForJwksSource(source);
 			default:
 				this.logger.warn('Unknown key source type, skipping', {
 					sourceId: source.id,
@@ -425,9 +447,44 @@ export class TrustedKeyService {
 		}
 	}
 
-	private resolveKeysForStaticSource(
+	private async resolveKeysForJwksSource(
 		source: TrustedKeySourceEntity,
-	): Array<{ kid: string; data: TrustedKeyData }> {
+	): Promise<{ keys: Array<{ kid: string; data: TrustedKeyData }>; cacheTtlSeconds: number }> {
+		let jwksConfig: JwksKeySource;
+		try {
+			jwksConfig = jsonParse<JwksKeySource>(source.config);
+		} catch {
+			throw new UnexpectedError('Invalid JWKS source config: malformed JSON');
+		}
+
+		const result = await this.jwksResolverService.resolveKeys(jwksConfig);
+
+		if (result.skipped.length > 0) {
+			this.logger.debug(`JWKS "${jwksConfig.url}": skipped ${result.skipped.length} key(s)`, {
+				skipped: result.skipped,
+			});
+		}
+
+		return {
+			keys: result.keys.map((key) => ({
+				kid: key.kid,
+				data: {
+					algorithms: key.algorithms as JwtAlgorithm[],
+					keyMaterial: key.keyMaterial,
+					issuer: key.issuer,
+					expectedAudience: key.expectedAudience,
+					allowedRoles: key.allowedRoles,
+					expiresAt: new Date(Date.now() + result.ttlSeconds * 1000).toISOString(),
+				},
+			})),
+			cacheTtlSeconds: result.ttlSeconds,
+		};
+	}
+
+	private resolveKeysForStaticSource(source: TrustedKeySourceEntity): {
+		keys: Array<{ kid: string; data: TrustedKeyData }>;
+		cacheTtlSeconds?: number;
+	} {
 		let rawConfig: unknown;
 		try {
 			rawConfig = JSON.parse(source.config);
@@ -441,7 +498,9 @@ export class TrustedKeyService {
 		const staticConfigs = configResult.data.filter(
 			(s): s is StaticKeySource => s.type === 'static',
 		);
-		return this.resolveStaticKeys(staticConfigs);
+		return {
+			keys: this.resolveStaticKeys(staticConfigs),
+		};
 	}
 
 	// ─── Private: key resolution ───────────────────────────────────────

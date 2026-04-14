@@ -109,7 +109,7 @@ async function confirm(decision: string) {
 				v-for="opt in otherOptions"
 				:key="opt.decision"
 				variant="outline"
-				size="small"
+				size="medium"
 				:label="opt.label"
 				@click="confirm(opt.decision)"
 			/>
@@ -147,6 +147,7 @@ async function confirm(decision: string) {
 .root {
 	border: var(--border);
 	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
 }
 
 .body {
