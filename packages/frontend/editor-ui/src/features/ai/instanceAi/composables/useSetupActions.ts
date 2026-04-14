@@ -167,7 +167,7 @@ export function useSetupActions(deps: {
 		isApplying.value = true;
 		applyError.value = null;
 
-		const postSuccess = await deps.store.confirmAction(
+		const postResult = await deps.store.confirmAction(
 			deps.requestId.value,
 			true,
 			undefined,
@@ -182,15 +182,15 @@ export function useSetupActions(deps: {
 			},
 		);
 
-		if (!postSuccess) {
+		if (!postResult) {
 			isApplying.value = false;
 			applyError.value = 'Failed to send confirmation. Try again.';
 			return;
 		}
 
-		// If the run was already cancelled/expired (e.g. 404 returned as success),
-		// don't wait for a tool result that will never arrive — gracefully dismiss.
-		if (deps.store.isConfirmationGone(deps.requestId.value)) {
+		// The run was already cancelled/expired (404) —
+		// don't wait for a tool result that will never arrive.
+		if (postResult === 'expired') {
 			isApplying.value = false;
 			isSubmitted.value = true;
 			isDeferred.value = true;
@@ -224,7 +224,7 @@ export function useSetupActions(deps: {
 
 		applyError.value = null;
 
-		const postSuccess = await deps.store.confirmAction(
+		const postResult = await deps.store.confirmAction(
 			deps.requestId.value,
 			true,
 			undefined,
@@ -240,13 +240,13 @@ export function useSetupActions(deps: {
 			},
 		);
 
-		if (!postSuccess) {
+		if (!postResult) {
 			applyError.value = 'Failed to send trigger test request. Try again.';
 			return;
 		}
 
-		// If the run was already cancelled/expired, don't wait for a tool result.
-		if (deps.store.isConfirmationGone(deps.requestId.value)) {
+		// The run was already cancelled/expired (404) — don't wait for a tool result.
+		if (postResult === 'expired') {
 			isSubmitted.value = true;
 			isDeferred.value = true;
 			deps.store.resolveConfirmation(deps.requestId.value, 'deferred');

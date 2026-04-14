@@ -279,15 +279,13 @@ async function handleContinue() {
 
 	isSubmitted.value = true;
 
-	const success = await store.confirmAction(props.requestId, true, undefined, credentials);
-	if (success) {
-		if (store.isConfirmationGone(props.requestId)) {
-			// Run was swept/cancelled — show deferred state instead of approved
-			isDeferred.value = true;
-			store.resolveConfirmation(props.requestId, 'deferred');
-		} else {
-			store.resolveConfirmation(props.requestId, 'approved');
-		}
+	const result = await store.confirmAction(props.requestId, true, undefined, credentials);
+	if (result === 'expired') {
+		// Run was swept/cancelled — show deferred state instead of approved
+		isDeferred.value = true;
+		store.resolveConfirmation(props.requestId, 'deferred');
+	} else if (result) {
+		store.resolveConfirmation(props.requestId, 'approved');
 	} else {
 		isSubmitted.value = false;
 	}
