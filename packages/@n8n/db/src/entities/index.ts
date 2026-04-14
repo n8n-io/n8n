@@ -9,6 +9,7 @@ import {
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
+import { DeploymentKey } from './deployment-key';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
@@ -58,6 +59,7 @@ export {
 	CredentialsEntity,
 	CredentialDependency,
 	type CredentialDependencyType,
+	DeploymentKey,
 	Folder,
 	Project,
 	ProjectRelation,
@@ -101,6 +103,7 @@ export const entities = {
 	AuthIdentity,
 	CredentialsEntity,
 	CredentialDependency,
+	DeploymentKey,
 	Folder,
 	Project,
 	ProjectRelation,

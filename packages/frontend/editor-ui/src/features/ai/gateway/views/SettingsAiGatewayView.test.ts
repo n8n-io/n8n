@@ -63,7 +63,7 @@ describe('SettingsAiGatewayView', () => {
 			await waitFor(() => expect(screen.getByTestId('settings-ai-gateway')).toBeInTheDocument());
 			const store = useAiGatewayStore();
 			await waitFor(() => expect(store.balance).toBe(42));
-			expect(screen.getByText('$42.00')).toBeInTheDocument();
+			expect(screen.getByText('$42.00 remaining')).toBeInTheDocument();
 		});
 
 		it('should not render the balance before data loads', () => {
@@ -72,7 +72,7 @@ describe('SettingsAiGatewayView', () => {
 
 			expect(screen.queryByTestId('ai-gateway-topup-button')).not.toBeNull(); // button present
 			// number not yet visible (balance undefined)
-			expect(screen.queryByText('$42.00')).not.toBeInTheDocument();
+			expect(screen.queryByText('$42.00 remaining')).not.toBeInTheDocument();
 		});
 
 		it('should open top-up modal when "Top up credits" button is clicked', async () => {

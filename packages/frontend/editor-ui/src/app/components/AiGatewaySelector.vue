@@ -104,7 +104,11 @@ function onBadgeClick(event: MouseEvent): void {
 					v-if="aiGatewayEnabled && balance !== undefined"
 					:clickable="!readonly"
 					size="small"
-					:text="i18n.baseText('aiGateway.wallet.balanceRemaining', { interpolate: { balance: `$${Number(balance).toFixed(2)}` } })"
+					:text="
+						i18n.baseText('aiGateway.wallet.balanceRemaining', {
+							interpolate: { balance: `$${Number(balance).toFixed(2)}` },
+						})
+					"
 					:hover-text="!readonly ? i18n.baseText('aiGateway.toggle.topUp') : undefined"
 					@click="onBadgeClick"
 				/>

@@ -655,7 +655,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 		});
 
-		it('should handle special characters in package name and version safely for checkIfVersionExistsOrThrow', async () => {
+		it('should reject CLI output that is not valid semver', async () => {
 			const specialPackageName = 'test-package; rm -rf /';
 			const specialVersion = '1.0.0 && echo "hacked"';
 
@@ -668,24 +668,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 				stderr: '',
 			});
 
-			const result = await checkIfVersionExistsOrThrow(
-				specialPackageName,
-				specialVersion,
-				registryUrl,
-			);
-			expect(result).toBe(true);
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith(
-				'npm',
-				[
-					'view',
-					`${specialPackageName}@${specialVersion}`,
-					'version',
-					`--registry=${registryUrl}`,
-					'--json',
-				],
-				undefined,
-			);
+			await expect(
+				checkIfVersionExistsOrThrow(specialPackageName, specialVersion, registryUrl),
+			).rejects.toThrow('Failed to check package version existence');
 		});
 
 		it('should handle 404 errors in CLI fallback', async () => {
@@ -752,6 +737,35 @@ describe('checkIfVersionExistsOrThrow', () => {
 	});
 
 	describe('Helper functions', () => {
+		it('should return true when CLI resolves a dist-tag to a semver version', async () => {
+			nock(registryUrl)
+				.get(`/${encodeURIComponent(packageName)}/beta`)
+				.replyWithError('Network failure');
+
+			mockAsyncExec.mockResolvedValue({
+				stdout: JSON.stringify('1.2.3'),
+				stderr: '',
+			});
+
+			const result = await checkIfVersionExistsOrThrow(packageName, 'beta', registryUrl);
+			expect(result).toBe(true);
+		});
+
+		it('should reject dist-tag when CLI returns non-semver output', async () => {
+			nock(registryUrl)
+				.get(`/${encodeURIComponent(packageName)}/beta`)
+				.replyWithError('Network failure');
+
+			mockAsyncExec.mockResolvedValue({
+				stdout: JSON.stringify('not-a-version'),
+				stderr: '',
+			});
+
+			await expect(checkIfVersionExistsOrThrow(packageName, 'beta', registryUrl)).rejects.toThrow(
+				'Failed to check package version existence',
+			);
+		});
+
 		it('should sanitize registry URL by removing trailing slashes', async () => {
 			const registryWithSlashes = 'https://registry.npmjs.org///';
 

@@ -59,7 +59,7 @@ describe('AiGatewaySelector', () => {
 			mockBalance.value = 5;
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 
-			expect(screen.getByText('$5.00')).toBeInTheDocument();
+			expect(screen.getByText('$5.00 remaining')).toBeInTheDocument();
 		});
 
 		it('should not show balance badge when balance is undefined', () => {
@@ -200,7 +200,7 @@ describe('AiGatewaySelector', () => {
 			const uiStore = useUIStore();
 			vi.spyOn(uiStore, 'openModalWithData');
 
-			await userEvent.click(screen.getByText('$5.00'));
+			await userEvent.click(screen.getByText('$5.00 remaining'));
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
