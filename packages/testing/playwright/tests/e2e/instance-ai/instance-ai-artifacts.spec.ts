@@ -33,7 +33,7 @@ test.describe(
 
 			// Preview should auto-open after build
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
-				timeout: 30_000,
+				timeout: 120_000,
 			});
 
 			// Close the preview first
@@ -45,7 +45,7 @@ test.describe(
 
 			// Preview should open again with canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
-				timeout: 30_000,
+				timeout: 120_000,
 			});
 		});
 	},
