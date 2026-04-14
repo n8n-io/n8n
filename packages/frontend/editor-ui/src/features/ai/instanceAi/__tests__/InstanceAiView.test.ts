@@ -79,6 +79,8 @@ describe('InstanceAiView', () => {
 		store.loadThreads.mockResolvedValue(undefined);
 		store.fetchCredits.mockResolvedValue(undefined);
 		store.loadHistoricalMessages.mockResolvedValue('applied');
+		store.connectSSE.mockResolvedValue(undefined);
+		store.closeSSE.mockReturnValue(undefined);
 		settingsStore.isLocalGatewayDisabled = true;
 		settingsStore.refreshModuleSettings.mockResolvedValue(undefined);
 		pushStore.pushConnect.mockReturnValue(undefined);
