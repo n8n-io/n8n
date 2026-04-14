@@ -2,11 +2,21 @@ import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import axios from 'axios';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
+import { access } from 'node:fs/promises';
+import { basename, dirname, isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
 
 const asyncExecFile = promisify(execFile);
 
 const REQUEST_TIMEOUT = 30000;
+
+const WINDOWS_NPM_CLI_RELATIVE_PATHS = [
+	'node_modules/npm/bin/npm-cli.js',
+	'../node_modules/npm/bin/npm-cli.js',
+	'../lib/node_modules/npm/bin/npm-cli.js',
+];
+
+let windowsNpmCliPath: string | undefined;
 
 const NPM_ERROR_PATTERNS = {
 	PACKAGE_NOT_FOUND: [NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR],
@@ -54,6 +64,68 @@ function matchesErrorPattern(message: string, patterns: readonly string[]): bool
 	return patterns.some((pattern) => message.includes(pattern));
 }
 
+async function pathExists(path: string): Promise<boolean> {
+	try {
+		await access(path);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+async function resolveWindowsNpmCliPath(): Promise<string> {
+	if (windowsNpmCliPath) {
+		console.log('cached');
+		return windowsNpmCliPath;
+	}
+
+	const npmExecPath = process.env.npm_execpath;
+	console.log('npm_execpath', npmExecPath);
+	if (
+		typeof npmExecPath === 'string' &&
+		npmExecPath.length > 0 &&
+		isAbsolute(npmExecPath) &&
+		basename(npmExecPath).toLowerCase() === 'npm-cli.js' &&
+		(await pathExists(npmExecPath))
+	) {
+		windowsNpmCliPath = npmExecPath;
+		console.log('using npm_execpath');
+		return windowsNpmCliPath;
+	}
+
+	const nodeDirectory = dirname(process.execPath);
+	console.log('nodeDirectory', nodeDirectory);
+	for (const relativePath of WINDOWS_NPM_CLI_RELATIVE_PATHS) {
+		const candidatePath = join(nodeDirectory, relativePath);
+		console.log('trying ', candidatePath);
+		if (await pathExists(candidatePath)) {
+			console.log(candidatePath, ' worked');
+			windowsNpmCliPath = candidatePath;
+			return windowsNpmCliPath;
+		}
+	}
+
+	console.log('fail');
+	throw new UnexpectedError('Failed to locate npm CLI. Please ensure npm is installed.');
+}
+
+async function executeNpmCli(args: string[], cwd?: string): Promise<string> {
+	if (process.platform === 'win32') {
+		console.log('is win');
+		const npmCliPath = await resolveWindowsNpmCliPath();
+		const { stdout } = await asyncExecFile(
+			process.execPath,
+			[npmCliPath, ...args],
+			cwd ? { cwd } : undefined,
+		);
+		return typeof stdout === 'string' ? stdout : stdout.toString();
+	}
+
+	console.log('not win', process.env.npm_execpath, process.execPath);
+	const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
+	return typeof stdout === 'string' ? stdout : stdout.toString();
+}
+
 /**
  * Executes an npm command with proper error handling.
  * @param args - Array of npm command arguments
@@ -68,8 +140,7 @@ export async function executeNpmCommand(
 	const { cwd, doNotHandleError } = options;
 
 	try {
-		const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
-		return typeof stdout === 'string' ? stdout : stdout.toString();
+		return await executeNpmCli(args, cwd);
 	} catch (error) {
 		if (doNotHandleError) {
 			throw error;
