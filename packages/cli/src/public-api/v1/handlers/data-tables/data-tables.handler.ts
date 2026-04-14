@@ -2,7 +2,6 @@ import {
 	PublicApiListDataTableQueryDto,
 	PublicApiCreateDataTableDto,
 	UpdateDataTableDto,
-	type DataTableListFilter,
 } from '@n8n/api-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Container } from '@n8n/di';
@@ -25,8 +24,8 @@ import {
 	getProjectIdForDataTable,
 	getDataTableListFilter,
 	resolveProjectIdForCreate,
-	scopeProjectIds,
 } from './data-tables.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 const handleError = (error: unknown, res: express.Response): express.Response => {
 	if (error instanceof DataTableNotFoundError) {
@@ -76,27 +75,24 @@ export = {
 
 				const { offset, limit, filter, sortBy } = payload.data;
 
-				const providedFilter: DataTableListFilter = filter ?? {};
+				const providedFilter = filter ?? {};
 				const { projectId: requestedProjectId, ...restFilter } = providedFilter;
 
 				const isGlobalOwnerOrAdmin = ['global:owner', 'global:admin'].includes(req.user.role.slug);
 
-				const accessibleProjectIds = isGlobalOwnerOrAdmin
-					? undefined
-					: await scopeProjectIds(req.user, requestedProjectId);
-
-				if (
-					!isGlobalOwnerOrAdmin &&
-					Array.isArray(accessibleProjectIds) &&
-					accessibleProjectIds.length === 0
-				) {
-					return res.json({ data: [], nextCursor: null });
+				if (requestedProjectId && !isGlobalOwnerOrAdmin) {
+					const accessibleIds = await Container.get(ProjectService).getProjectIdsWithScope(
+						req.user,
+						['dataTable:listProject'],
+						[requestedProjectId],
+					);
+					if (!accessibleIds.length) return res.json({ data: [], nextCursor: null });
 				}
 
 				const finalFilter = await getDataTableListFilter(
 					req.user.id,
 					isGlobalOwnerOrAdmin,
-					isGlobalOwnerOrAdmin ? requestedProjectId : accessibleProjectIds,
+					requestedProjectId,
 					restFilter,
 				);
 

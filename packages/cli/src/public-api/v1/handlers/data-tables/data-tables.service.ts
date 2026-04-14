@@ -25,20 +25,6 @@ export async function getProjectIdForDataTable(dataTableId: string): Promise<str
 	return dataTable.project.id;
 }
 
-export async function scopeProjectIds(
-	user: User,
-	requestedProjectId: string | string[] | undefined,
-): Promise<string[] | undefined> {
-	if (!requestedProjectId) return undefined;
-
-	const ids = Array.isArray(requestedProjectId) ? requestedProjectId : [requestedProjectId];
-	return await Container.get(ProjectService).getProjectIdsWithScope(
-		user,
-		['dataTable:listProject'],
-		ids,
-	);
-}
-
 export async function getDataTableListFilter(
 	userId: string,
 	isGlobalOwnerOrAdmin: boolean,
