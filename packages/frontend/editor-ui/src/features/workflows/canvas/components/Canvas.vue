@@ -722,6 +722,7 @@ async function onFitBounds(nodes: GraphNode[]) {
 async function onFitView() {
 	if (document.hidden) {
 		fitViewWhileHidden = true;
+		return;
 	}
 	await fitView({ maxZoom: defaultZoom, padding: 0.2 });
 }
