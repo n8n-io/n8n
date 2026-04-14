@@ -775,7 +775,7 @@ export class AgentRuntime {
 		await this.flushTelemetry(options);
 
 		if (this.config.titleGeneration && options?.persistence?.threadId && this.config.memory) {
-			void generateThreadTitle({
+			const titlePromise = generateThreadTitle({
 				memory: this.config.memory,
 				threadId: options.persistence.threadId,
 				resourceId: options.persistence.resourceId,
@@ -783,6 +783,9 @@ export class AgentRuntime {
 				agentModel: this.config.model,
 				turnDelta: list.turnDelta(),
 			});
+			if (this.config.titleGeneration.sync) {
+				await titlePromise;
+			}
 		}
 
 		return {
@@ -1097,7 +1100,7 @@ export class AgentRuntime {
 			await this.saveToMemory(list, options);
 
 			if (this.config.titleGeneration && options?.persistence && this.config.memory) {
-				void generateThreadTitle({
+				const titlePromise = generateThreadTitle({
 					memory: this.config.memory,
 					threadId: options.persistence.threadId,
 					resourceId: options.persistence.resourceId,
@@ -1105,6 +1108,9 @@ export class AgentRuntime {
 					agentModel: this.config.model,
 					turnDelta: list.turnDelta(),
 				});
+				if (this.config.titleGeneration.sync) {
+					await titlePromise;
+				}
 			}
 
 			await this.cleanupRun(runId);

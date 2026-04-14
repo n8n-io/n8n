@@ -8,12 +8,14 @@ export interface ExecutionThread {
 	projectId: string;
 	sessionNumber: number;
 	title: string | null;
+	emoji: string | null;
 	totalPromptTokens: number;
 	totalCompletionTokens: number;
 	totalCost: number;
 	totalDuration: number;
 	createdAt: string;
 	updatedAt: string;
+	firstMessage?: string | null;
 }
 
 export interface ThreadExecution {

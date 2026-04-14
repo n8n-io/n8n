@@ -169,6 +169,13 @@ export class AgentExecutionService {
 			duration: record.duration,
 		});
 
+		// Title generation now runs synchronously (sync: true) before the stream
+		// ends, so by this point the memory thread should have the title.
+		// Sync it to our execution thread on the first message.
+		if (created) {
+			await this.syncTitleFromMemory(threadId);
+		}
+
 		return executionId;
 	}
 
@@ -211,7 +218,14 @@ export class AgentExecutionService {
 		try {
 			const memoryThread = await this.n8nMemory.getThread(threadId);
 			if (memoryThread?.title) {
-				await this.executionThreadRepository.update(threadId, { title: memoryThread.title });
+				const emoji =
+					memoryThread.metadata && typeof memoryThread.metadata.emoji === 'string'
+						? memoryThread.metadata.emoji
+						: null;
+				await this.executionThreadRepository.update(threadId, {
+					title: memoryThread.title,
+					...(emoji && { emoji }),
+				});
 			}
 		} catch {
 			// Memory thread may not exist (agent without memory configured) — ignore
@@ -234,12 +248,41 @@ export class AgentExecutionService {
 	 * Optionally filtered by agentId.
 	 */
 	async getThreads(projectId: string, limit: number, cursor?: string, agentId?: string) {
-		return await this.executionThreadRepository.findByProjectIdPaginated(
+		const page = await this.executionThreadRepository.findByProjectIdPaginated(
 			projectId,
 			limit,
 			cursor,
 			agentId,
 		);
+
+		if (page.threads.length === 0) return page;
+
+		// Fetch the first userMessage for each thread in a single query.
+		// Uses a correlated subquery to get the lowest executionId per thread.
+		const threadIds = page.threads.map((t) => t.id);
+		const firstMessages = await this.executionMetadataRepository
+			.createQueryBuilder('m')
+			.innerJoin('execution_entity', 'e', 'e.id = m.executionId')
+			.select(['e.threadId AS threadId', 'm.value AS value'])
+			.where('e.threadId IN (:...threadIds)', { threadIds })
+			.andWhere("m.key = 'userMessage'")
+			.andWhere("m.value != ''")
+			.andWhere(
+				'e.id = (SELECT MIN(e2.id) FROM execution_entity e2 ' +
+					'INNER JOIN execution_metadata m2 ON m2.executionId = e2.id ' +
+					"WHERE e2.threadId = e.threadId AND m2.key = 'userMessage' AND m2.value != '')",
+			)
+			.getRawMany<{ threadId: string; value: string }>();
+
+		const messageMap = new Map(firstMessages.map((r) => [r.threadId, r.value]));
+
+		return {
+			...page,
+			threads: page.threads.map((t) => ({
+				...t,
+				firstMessage: messageMap.get(t.id) ?? null,
+			})),
+		};
 	}
 
 	/**

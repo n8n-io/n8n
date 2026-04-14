@@ -3,7 +3,7 @@ import { truncate } from '@n8n/utils';
 import { useToast } from '@/app/composables/useToast';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
-import { AGENT_SESSIONS_LIST_VIEW } from '@/features/agents/constants';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import type {
 	ExecutionThread,
 	ThreadExecution,
@@ -284,7 +284,7 @@ function highlightJson(value: unknown, indent = 0): string {
 
 function goBack() {
 	void router.push({
-		name: AGENT_SESSIONS_LIST_VIEW,
+		name: AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
 	});
 }

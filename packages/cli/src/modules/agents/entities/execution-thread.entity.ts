@@ -17,9 +17,13 @@ export class ExecutionThread extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 255 })
 	agentName: string;
 
-	/** LLM-generated summary of the first user message, synced from the memory thread. */
+	/** LLM-generated summary of the first user message. */
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	title: string | null;
+
+	/** Emoji representing the session topic. */
+	@Column({ type: 'varchar', length: 8, nullable: true })
+	emoji: string | null;
 
 	@ManyToOne(() => Project, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'projectId' })

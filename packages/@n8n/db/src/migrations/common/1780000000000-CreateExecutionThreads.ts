@@ -42,6 +42,7 @@ export class CreateExecutionThreads1780000000000 implements ReversibleMigration 
 				{ name: 'totalCost', type: 'real', spec: 'NOT NULL DEFAULT 0' },
 				{ name: 'totalDuration', type: 'integer', spec: 'NOT NULL DEFAULT 0' },
 				{ name: 'title', type: 'varchar(255)', spec: '' },
+				{ name: 'emoji', type: 'varchar(8)', spec: '' },
 			];
 			for (const col of extraColumns) {
 				const colName = escape.columnName(col.name);

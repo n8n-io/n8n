@@ -9,7 +9,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { getAgent, updateAgent, deleteAgent } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
-import { AGENTS_LIST_VIEW } from '../constants';
+import { AGENTS_LIST_VIEW, AGENT_SESSION_DETAIL_VIEW } from '../constants';
+import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -26,6 +27,7 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const message = useMessage();
+const sessionsStore = useAgentSessionsStore();
 
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
@@ -141,6 +143,13 @@ async function onHeaderAction(action: string) {
 	}
 }
 
+function openSession(threadId: string) {
+	void router.push({
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value, threadId },
+	});
+}
+
 async function initialize() {
 	agent.value = null;
 	chatActive.value = false;
@@ -152,6 +161,7 @@ async function initialize() {
 
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
+	void sessionsStore.fetchThreads(projectId.value, agentId.value);
 
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
@@ -206,10 +216,12 @@ watch(agentId, initialize, { immediate: true });
 					:agent-icon="agentIcon"
 					:project-id="projectId"
 					:agent-id="agentId"
+					:sessions="sessionsStore.threads"
 					@send-message="startChat"
 					@update:name="updateName"
 					@update:description="updateDescription"
 					@update:icon="agentIcon = $event"
+					@select-session="openSession"
 				/>
 				<AgentChatPanel
 					v-else
