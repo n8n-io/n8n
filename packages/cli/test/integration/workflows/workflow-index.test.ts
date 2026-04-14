@@ -93,6 +93,7 @@ describe('WorkflowIndexService Integration', () => {
 			publicApi: false,
 			projectId: uuid(),
 			projectType: 'personal',
+			source: 'ui',
 		});
 
 		await retryUntil(async () => {
@@ -134,6 +135,7 @@ describe('WorkflowIndexService Integration', () => {
 			workflow: savedWorkflow,
 			workflowId: savedWorkflow.id,
 			publicApi: false,
+			source: 'ui',
 		});
 
 		// Wait for both draft and published entries to be indexed with their expected content
@@ -191,6 +193,7 @@ describe('WorkflowIndexService Integration', () => {
 				publicApi: false,
 				projectId: uuid(),
 				projectType: 'personal',
+				source: 'ui',
 			});
 
 			await retryUntil(async () => {

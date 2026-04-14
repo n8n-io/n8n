@@ -36,6 +36,7 @@ describe('LogStreamingEventRelay', () => {
 				publicApi: false,
 				projectId: 'proj123',
 				projectType: 'personal',
+				source: 'ui',
 			};
 
 			eventService.emit('workflow-created', event);
@@ -126,6 +127,7 @@ describe('LogStreamingEventRelay', () => {
 					activeVersionId: 'version-abc-123',
 				}),
 				publicApi: false,
+				source: 'ui',
 			};
 
 			eventService.emit('workflow-activated', event);
@@ -162,6 +164,7 @@ describe('LogStreamingEventRelay', () => {
 				}),
 				publicApi: false,
 				deactivatedVersionId: 'version-xyz-789',
+				source: 'ui',
 			};
 
 			eventService.emit('workflow-deactivated', event);
@@ -255,6 +258,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				workflow: mock<IWorkflowDb>({ id: 'wf101', name: 'Updated Workflow' }),
 				publicApi: false,
+				source: 'ui',
 			};
 
 			eventService.emit('workflow-saved', event);
@@ -284,6 +288,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				workflow: mock<IWorkflowDb>({ id: 'wf101', name: 'Updated Workflow' }),
 				publicApi: false,
+				source: 'ui',
 				settingsChanged: {
 					saveDataErrorExecution: {
 						from: 'none',
@@ -333,6 +338,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				workflow: mock<IWorkflowDb>({ id: 'wf101', name: 'Updated Workflow' }),
 				publicApi: false,
+				source: 'ui',
 				// settingsChanged is not included when no settings changed
 			};
 
