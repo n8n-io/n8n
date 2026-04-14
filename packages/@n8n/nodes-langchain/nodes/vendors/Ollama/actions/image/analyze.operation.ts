@@ -383,7 +383,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const inputType = this.getNodeParameter('inputType', i, 'binary') as string;
 	const text = this.getNodeParameter('text', i, '') as string;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
-	const options = this.getNodeParameter('options', i, {}) as MessageOptions;
+	const { think, ...options } = this.getNodeParameter('options', i, {}) as MessageOptions;
 
 	let images: string[];
 
@@ -436,25 +436,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.filter(Boolean);
 	}
 
-	const thinkOption = processedOptions.think;
-	delete processedOptions.think;
-
-	const body: {
-		model: string;
-		messages: OllamaMessage[];
-		stream: boolean;
-		options: Partial<MessageOptions>;
-		think?: boolean;
-	} = {
+	const body = {
 		model,
 		messages,
 		stream: false,
 		options: processedOptions,
+		think,
 	};
-
-	if (thinkOption !== undefined && !thinkOption) {
-		body.think = false;
-	}
 
 	const response: OllamaChatResponse = await apiRequest.call(this, 'POST', '/api/chat', {
 		body,

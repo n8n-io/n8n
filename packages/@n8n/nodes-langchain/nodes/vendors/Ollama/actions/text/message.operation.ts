@@ -381,17 +381,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const messages = this.getNodeParameter('messages.values', i, []) as OllamaMessage[];
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
-	const options = this.getNodeParameter('options', i, {}) as MessageOptions;
+	const { think, system, ...options } = this.getNodeParameter('options', i, {}) as MessageOptions;
 	const { tools, connectedTools } = await getTools.call(this);
 
-	if (options.system) {
+	if (system) {
 		messages.unshift({
 			role: 'system',
-			content: options.system,
+			content: system,
 		});
 	}
-
-	delete options.system;
 
 	const processedOptions = { ...options };
 	if (processedOptions.stop && typeof processedOptions.stop === 'string') {
@@ -401,27 +399,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			.filter(Boolean);
 	}
 
-	const thinkOption = processedOptions.think;
-	delete processedOptions.think;
-
-	const body: {
-		model: string;
-		messages: OllamaMessage[];
-		stream: boolean;
-		tools: OllamaTool[];
-		options: Partial<MessageOptions>;
-		think?: boolean;
-	} = {
+	const body = {
 		model,
 		messages,
 		stream: false,
 		tools,
 		options: processedOptions,
+		think,
 	};
-
-	if (thinkOption !== undefined && !thinkOption) {
-		body.think = false;
-	}
 
 	let response: OllamaChatResponse = await apiRequest.call(this, 'POST', '/api/chat', {
 		body,
