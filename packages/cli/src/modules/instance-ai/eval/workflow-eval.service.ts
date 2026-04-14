@@ -68,6 +68,9 @@ export class WorkflowEvalService {
 
 		// Phase 3: Judge (when successCriteria is provided)
 		if (options.successCriteria) {
+			this.logger.info(
+				`[WorkflowEval] Judge requested via orchestrator for workflow ${workflowId}`,
+			);
 			result.verification = await this.runJudge(
 				workflowId,
 				user,

@@ -197,10 +197,11 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 **Credentials**: Call \`list-credentials\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow.
 
 **Post-build flow** (for direct builds via \`build-workflow-with-agent\`):
-1. Builder finishes → the builder already verifies the workflow using mock execution internally. Do not re-verify.
-2. If the workflow has mocked credentials, missing parameters, or unconfigured triggers → call \`setup-workflow\` with the workflowId so the user can configure them through the setup UI.
-3. When \`setup-workflow\` returns \`deferred: true\`, respect the user's decision — do not retry with \`setup-credentials\` or any other setup tool. The user chose to set things up later.
-4. Only call \`publish-workflow\` when the user explicitly asks to publish. Never publish automatically.
+1. Builder finishes → **always run \`run-workflow\` with \`useLlmMockExecution=true\`**. Derive \`successCriteria\` from the user's request — be specific about data flow, not just "it should work." Include: which nodes should execute, what fields should flow between them, and what the final output should contain. Also pass \`scenarioHints\` describing realistic mock data with specific field names and values that match what the workflow nodes expect (e.g. "GitHub API returns 3 issues each with title, html_url, created_at, and assignee.login fields").
+2. Read the verdict. If \`pass=false\` and failureCategory is \`builder_issue\`, immediately fix the workflow by calling \`build-workflow-with-agent\` with the existing workflowId and include the verdict reasoning so the builder knows what to fix. After the fix, verify again. If the same issue repeats, stop and explain it to the user. If failureCategory is \`mock_issue\` or \`framework_issue\`, skip the fix — these are not caused by the workflow.
+3. If the workflow has mocked credentials, missing parameters, or unconfigured triggers → call \`setup-workflow\` with the workflowId so the user can configure them through the setup UI.
+4. When \`setup-workflow\` returns \`deferred: true\`, respect the user's decision — do not retry with \`setup-credentials\` or any other setup tool. The user chose to set things up later.
+5. Only call \`publish-workflow\` when the user explicitly asks to publish. Never publish automatically.
 
 ## Tool Usage
 
