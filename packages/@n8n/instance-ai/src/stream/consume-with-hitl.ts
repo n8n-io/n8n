@@ -7,6 +7,7 @@ import {
 	executeResumableStream,
 	type ResumableStreamSource,
 } from '../runtime/resumable-stream-executor';
+import type { WorkSummary } from '../stream/work-summary-accumulator';
 
 export interface ConsumeWithHitlOptions {
 	agent: Agent;
@@ -31,6 +32,8 @@ export interface ConsumeWithHitlOptions {
 export interface ConsumeWithHitlResult {
 	/** Promise that resolves to the agent's full text output (including post-resume text). */
 	text: Promise<string>;
+	/** Accumulated tool call outcomes observed during stream consumption. */
+	workSummary: WorkSummary;
 }
 
 /**
@@ -77,5 +80,5 @@ export async function consumeStreamWithHitl(
 		llmStepTraceHooks: options.llmStepTraceHooks,
 	});
 
-	return { text: result.text ?? options.stream.text };
+	return { text: result.text ?? options.stream.text, workSummary: result.workSummary };
 }

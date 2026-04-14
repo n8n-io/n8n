@@ -20,6 +20,10 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(InstanceAiSettingsService).loadFromDb();
 		await import('./instance-ai.controller');
 
+		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
+			await import('./instance-ai-test.controller');
+		}
+
 		// Fire-and-forget: clean up expired conversation threads on startup
 		const { InstanceAiMemoryService } = await import('./instance-ai-memory.service');
 		const { InstanceAiService } = await import('./instance-ai.service');
@@ -39,15 +43,13 @@ export class InstanceAiModule implements ModuleInterface {
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = service.isEnabled();
-		const localGateway = service.isLocalFilesystemAvailable();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
-		const localGatewayFallbackDirectory = service.getLocalFilesystemDirectory();
+		const optinModalDismissed = settingsService.getAdminSettings().optinModalDismissed;
 		return {
 			enabled,
-			localGateway,
 			localGatewayDisabled,
-			localGatewayFallbackDirectory,
 			proxyEnabled: service.isProxyEnabled(),
+			optinModalDismissed,
 		};
 	}
 

@@ -4,20 +4,24 @@ export interface IssuedTokenResult {
 	accessToken: string;
 	expiresIn: number;
 	subject: string;
+	subjectUserId: string;
 	issuer: string;
 	actor?: string;
+	actorUserId?: string;
 }
 
 export interface IssuedJwtPayload {
 	iss: string;
 	sub: string;
 	act?: { sub: string };
-	scope?: string[];
-	resource?: string;
+	scope?: string;
+	resource?: string[];
 	iat: number;
 	exp: number;
 	jti: string;
 }
+
+export const TOKEN_EXCHANGE_ISSUER = 'n8n-token-exchange';
 
 export type TokenExchangeAuditEvent =
 	| {

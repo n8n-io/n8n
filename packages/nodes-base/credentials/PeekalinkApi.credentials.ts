@@ -1,4 +1,9 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class PeekalinkApi implements ICredentialType {
 	name = 'peekalinkApi';
@@ -16,4 +21,24 @@ export class PeekalinkApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.peekalink.io',
+			url: '/',
+			method: 'POST',
+			body: {
+				link: 'https://www.example.com',
+			},
+		},
+	};
 }
