@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import ModelSection from '../components/settings/ModelSection.vue';
 import LocalGatewaySection from '../components/settings/LocalGatewaySection.vue';
@@ -16,6 +17,7 @@ import AdvancedSection from '../components/settings/AdvancedSection.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
+const settingsStore = useSettingsStore();
 const store = useInstanceAiSettingsStore();
 
 const isAdmin = computed(() => store.canManage);
@@ -46,7 +48,9 @@ const permissionKeys: Array<{ key: keyof InstanceAiPermissions; labelKey: BaseTe
 	},
 ];
 
-const isEnabled = computed(() => store.settings?.enabled ?? false);
+const isEnabled = computed(
+	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
+);
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));
@@ -97,7 +101,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 							</span>
 						</div>
 						<ElSwitch
-							:class="$style.toggle"
 							:model-value="isEnabled"
 							:disabled="store.isSaving"
 							data-test-id="n8n-agent-enable-toggle"
@@ -141,7 +144,7 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 				</div>
 
 				<template v-if="isAdmin">
-					<div v-if="!store.isCloudManaged" :class="$style.card">
+					<div v-if="!store.isCloudManaged && !store.isProxyEnabled" :class="$style.card">
 						<div :class="$style.sectionBlock">
 							<SandboxSection />
 						</div>
@@ -153,7 +156,7 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 						</div>
 					</div>
 
-					<div v-if="!store.isCloudManaged" :class="$style.card">
+					<div v-if="!store.isCloudManaged && !store.isProxyEnabled" :class="$style.card">
 						<div :class="$style.sectionBlock">
 							<SearchSection />
 						</div>
@@ -271,10 +274,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 .sectionBlock {
 	padding: var(--spacing--sm);
 	background: var(--color--background--light-3);
-}
-
-.toggle {
-	--switch--color--background--active: var(--color--primary);
 }
 
 .settingsRow {
