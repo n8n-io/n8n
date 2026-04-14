@@ -34,6 +34,7 @@ import * as changeCase from 'change-case';
 import sortBy from 'lodash/sortBy';
 import type { NodeViewItemSection } from './views/viewsData';
 
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
@@ -294,6 +295,14 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 		element.properties.tag = {
 			type: 'info',
 			text: i18n.baseText('generic.betaProper'),
+		};
+	} else if (
+		useSettingsStore().isAiGatewayEnabled &&
+		useAiGatewayStore().isNodeSupported(element.properties.name)
+	) {
+		element.properties.tag = {
+			text: i18n.baseText('generic.freeCredits'),
+			pill: true,
 		};
 	}
 

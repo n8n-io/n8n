@@ -9,7 +9,7 @@ info:
   license:
     name: Sustainable Use License
     url: https://github.com/n8n-io/n8n/blob/master/LICENSE.md
-  version: 1.1.1
+  version: 1.1.0
 externalDocs:
   description: n8n API documentation
   url: https://docs.n8n.io/api/
@@ -36,6 +36,12 @@ tags:
     description: Operations about data tables and their rows
   - name: Projects
     description: Operations about projects
+  - name: CommunityPackage
+    description: Operations about community packages
+  - name: Discover
+    description: API capability discovery
+  - name: Insights
+    description: Operations about insights
 
 paths:
   /audit:
@@ -74,6 +80,10 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
+  /workflows/{id}/archive:
+    $ref: './handlers/workflows/spec/paths/workflows.id.archive.yml'
+  /workflows/{id}/unarchive:
+    $ref: './handlers/workflows/spec/paths/workflows.id.unarchive.yml'
   /workflows/{id}/transfer:
     $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
   /workflows/{id}/tags:
@@ -110,6 +120,14 @@ paths:
     $ref: './handlers/projects/spec/paths/projects.projectId.users.yml'
   /projects/{projectId}/users/{userId}:
     $ref: './handlers/projects/spec/paths/projects.projectId.users.userId.yml'
+  /community-packages:
+    $ref: './handlers/community-packages/spec/paths/community-packages.yml'
+  /community-packages/{name}:
+    $ref: './handlers/community-packages/spec/paths/community-packages.packageName.yml'
+  /discover:
+    $ref: './handlers/discover/spec/paths/discover.yml'
+  /insights/summary:
+    $ref: './handlers/insights/spec/paths/insights.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'
@@ -122,6 +140,11 @@ components:
       type: apiKey
       in: header
       name: X-N8N-API-KEY
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
 security:
   - ApiKeyAuth: []
+  - BearerAuth: []

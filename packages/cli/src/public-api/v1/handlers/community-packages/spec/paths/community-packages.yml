@@ -1,0 +1,45 @@
+post:
+  x-eov-operation-id: installPackage
+  x-eov-operation-handler: v1/handlers/community-packages/community-packages.handler
+  tags:
+    - CommunityPackage
+  summary: Install a community package
+  description: Install a community package by npm name and optional version.
+  requestBody:
+    description: Package to install.
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/installCommunityPackageRequest.yml'
+  responses:
+    '200':
+      description: Package installed successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/communityPackage.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+  security:
+    - ApiKeyAuth: []
+get:
+  x-eov-operation-id: getInstalledPackages
+  x-eov-operation-handler: v1/handlers/community-packages/community-packages.handler
+  tags:
+    - CommunityPackage
+  summary: List installed community packages
+  description: Retrieve all installed community packages with pending update info.
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/communityPackageList.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+  security:
+    - ApiKeyAuth: []

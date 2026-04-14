@@ -17,7 +17,6 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
-	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
 	IconOrEmojiSchema,
 	isResourceLocatorValue,
@@ -103,7 +102,6 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import {
-	N8nButton,
 	N8nIcon,
 	N8nIconPicker,
 	N8nInput,
@@ -113,7 +111,7 @@ import {
 	N8nSwitch2,
 } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
@@ -176,7 +174,7 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -271,23 +269,41 @@ const isJsonPasswordField = computed<boolean>(() => {
 	return props.parameter.type === 'json' && isSecretParameter.value;
 });
 
+function hasRedactedLeaf(obj: unknown): boolean {
+	if (obj === '***') return true;
+	if (Array.isArray(obj)) return obj.some(hasRedactedLeaf);
+	if (typeof obj === 'object' && obj !== null) {
+		return Object.values(obj as Record<string, unknown>).some(hasRedactedLeaf);
+	}
+	return false;
+}
+
 // Custom Auth: only credential with top-level "json" field; mask after save (backend redacts by type, not secret flag)
 const isCustomAuthJsonField = computed<boolean>(() => {
 	return props.eventSource === 'credentials' && props.parameter.name === 'json';
 });
 const isCredentialJsonValueRedacted = computed<boolean>(() => {
-	return (
-		props.modelValue === CREDENTIAL_BLANKING_VALUE || props.modelValue === CREDENTIAL_EMPTY_VALUE
-	);
-});
-const showCredentialJsonOverlay = computed<boolean>(() => {
-	return isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value;
-});
-// In dialog, when Custom Auth json is redacted show blank (never show placeholder)
-const credentialJsonEditorValue = computed<string>(() => {
-	if (isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value) {
-		return '';
+	const val = props.modelValue;
+	if (val === CREDENTIAL_EMPTY_VALUE) return true;
+	// New: detect shaped-redacted JSON (backend replaces leaf values with ***)
+	if (isCustomAuthJsonField.value) {
+		try {
+			return hasRedactedLeaf(JSON.parse(String(val)));
+		} catch {
+			return false;
+		}
 	}
+	return false;
+});
+const isRedactedCustomAuthJson = computed<boolean>(
+	() => isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value,
+);
+
+const credentialJsonEditorValue = computed<string>(() => {
+	if (!isRedactedCustomAuthJson.value) return modelValueString.value;
+	// Empty json field — show empty editor so the user knows to fill it in
+	if (props.modelValue === CREDENTIAL_EMPTY_VALUE) return '';
+	// Shaped-redacted JSON: backend already formatted with *** leaves — show as-is
 	return modelValueString.value;
 });
 
@@ -339,7 +355,19 @@ const iconPickerValue = computed<DesignSystemIconOrEmoji | undefined>({
 	},
 });
 
-const editorRows = computed(() => getTypeOption('rows'));
+const editorRows = computed(() => {
+	const configuredRows = getTypeOption('rows') as number | undefined;
+	if (configuredRows !== undefined) return configuredRows;
+
+	// Auto-detect: when the stored value contains newlines, use a textarea
+	// so newlines are preserved natively without pipe substitution
+	const value = props.modelValue;
+	if (props.parameter.type === 'string' && typeof value === 'string' && value.includes('\n')) {
+		return Math.max(2, value.split('\n').length);
+	}
+
+	return undefined;
+});
 
 const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefined>(() => {
 	return getTypeOption('editor');
@@ -425,13 +453,6 @@ const displayValue = computed(() => {
 		h.push(((255 - bigint) & 255) / 255);
 
 		returnValue = 'rgba(' + h.join() + ')';
-	}
-
-	if (returnValue !== undefined && returnValue !== null && props.parameter.type === 'string') {
-		const rows = editorRows.value;
-		if (rows === undefined || rows === 1) {
-			returnValue = (returnValue as string).toString().replace(/\n/g, '|');
-		}
 	}
 
 	return returnValue as string;
@@ -726,9 +747,9 @@ function isRemoteParameterOption(option: INodePropertyOptions) {
 
 function credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 	// Update the values on the node
-	workflowState.updateNodeProperties(updateInformation);
+	workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
 
-	const updateNode = workflowsStore.getNodeByName(updateInformation.name);
+	const updateNode = workflowDocumentStore?.value?.getNodeByName(updateInformation.name) ?? null;
 
 	if (updateNode) {
 		// Update the issues
@@ -780,6 +801,7 @@ async function loadRemoteParameterOptions() {
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
+			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
 		const loadOptions = getTypeOption('loadOptions');
@@ -1135,12 +1157,6 @@ function onJsonPasswordFieldChange(value: string) {
 }
 
 function onUpdateTextInput(value: string) {
-	if (
-		props.parameter.type === 'string' &&
-		(editorRows.value === undefined || editorRows.value === 1)
-	) {
-		value = value.replace(/\|/g, '\n');
-	}
 	valueChanged(value);
 	onTextInputChange(value);
 }
@@ -1693,38 +1709,9 @@ onUpdated(async () => {
 					</template>
 				</JsEditor>
 
-				<div
-					v-else-if="showCredentialJsonOverlay"
-					:class="$style.credentialJsonOverlay"
-					data-test-id="credential-json-overlay"
-				>
-					<JsonEditor
-						:model-value="'***\n***\n***'"
-						:is-read-only="true"
-						:rows="editorRows"
-						:class="$style.credentialJsonEditor"
-					/>
-					<div :class="$style.credentialJsonOverlayButton">
-						<N8nButton
-							size="small"
-							secondary
-							icon="pencil"
-							data-test-id="credential-json-edit-button"
-							@click="valueChanged('')"
-						>
-							{{ i18n.baseText('parameterInput.edit') }}
-						</N8nButton>
-					</div>
-				</div>
-
 				<JsonEditor
-					v-else-if="
-						parameter.type === 'json' &&
-						!codeEditDialogVisible &&
-						!showCredentialJsonOverlay &&
-						!isSecretParameter
-					"
-					:model-value="modelValueString"
+					v-else-if="parameter.type === 'json' && !codeEditDialogVisible && !isSecretParameter"
+					:model-value="credentialJsonEditorValue"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"
 					@update:model-value="valueChangedDebounced"
@@ -2287,31 +2274,5 @@ onUpdated(async () => {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
 	}
-}
-
-.credentialJsonOverlay {
-	position: relative;
-}
-
-.credentialJsonTextarea {
-	pointer-events: none;
-}
-
-.credentialJsonTextarea :global(.input) {
-	color: var(--color--text--tint-2);
-	letter-spacing: 0.05em;
-}
-
-.credentialJsonOverlayButton {
-	position: absolute;
-	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	pointer-events: none;
-}
-
-.credentialJsonOverlayButton > * {
-	pointer-events: auto;
 }
 </style>

@@ -25,6 +25,8 @@ test.describe(
 				services,
 				testInfo,
 				load: { type: 'preloaded', count: 10_000 },
+				trigger: 'kafka',
+				nodeCount: 60,
 				timeoutMs: 600_000,
 			});
 		});

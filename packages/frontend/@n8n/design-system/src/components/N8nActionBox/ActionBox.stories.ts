@@ -17,6 +17,12 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: {
+				component:
+					'A card-like call-to-action container with title, description, and action areas.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

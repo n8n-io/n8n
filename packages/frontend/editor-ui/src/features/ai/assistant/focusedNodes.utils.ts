@@ -1,4 +1,4 @@
-import type { IConnections, INodeIssues } from 'n8n-workflow';
+import type { IConnections } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { FocusedNode, FocusedNodesContextPayload } from './focusedNodes.types';
 
@@ -60,7 +60,7 @@ export function buildFocusedNodesPayload(
 		let issues: Record<string, string[]> | undefined;
 		if (node.issues) {
 			issues = {};
-			const nodeIssues = node.issues as INodeIssues;
+			const nodeIssues = node.issues;
 			if (nodeIssues.parameters) {
 				for (const [param, paramIssues] of Object.entries(nodeIssues.parameters)) {
 					if (Array.isArray(paramIssues)) {

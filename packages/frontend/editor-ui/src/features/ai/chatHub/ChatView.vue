@@ -645,6 +645,7 @@ function handleSelectPrompt(prompt: string) {
 	if (selectedModel.value) {
 		telemetry.track('User clicked chat hub suggested prompt', {
 			...flattenModel(selectedModel.value.model),
+			source: 'chat_hub',
 		});
 	}
 

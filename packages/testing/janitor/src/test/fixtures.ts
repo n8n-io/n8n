@@ -29,7 +29,6 @@ const defaultTestConfig: DefineConfigInput = {
 };
 
 export const test = base.extend<RuleTestContext>({
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	project: async ({ task: _ }, use) => {
 		const project = new Project({ useInMemoryFileSystem: true });
 		setConfig(defineConfig(defaultTestConfig));

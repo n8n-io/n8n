@@ -11,6 +11,9 @@ importers:
       '@actions/github':
         specifier: 9.0.0
         version: 9.0.0
+      '@octokit/core':
+        specifier: 7.0.6
+        version: 7.0.6
       conventional-changelog:
         specifier: 7.2.0
         version: 7.2.0(conventional-commits-filter@5.0.0)
@@ -20,6 +23,9 @@ importers:
       glob:
         specifier: 13.0.6
         version: 13.0.6
+      minimatch:
+        specifier: 10.2.4
+        version: 10.2.4
       semver:
         specifier: 7.7.4
         version: 7.7.4
@@ -28,7 +34,7 @@ importers:
         version: 6.0.1
     devDependencies:
       conventional-changelog-angular:
-        specifier: ^8.3.0
+        specifier: 8.3.0
         version: 8.3.0
 
 packages:

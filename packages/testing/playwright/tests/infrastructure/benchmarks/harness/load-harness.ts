@@ -14,11 +14,13 @@ import {
 	formatDiagnosticValue,
 	resolveMetricQuery,
 } from '../../../../utils/benchmark';
-import type { TriggerHandle, ExecutionMetrics } from '../../../../utils/benchmark';
-
-export type LoadProfile =
-	| { type: 'steady'; ratePerSecond: number; durationSeconds: number }
-	| { type: 'preloaded'; count: number };
+import type {
+	TriggerHandle,
+	NodeOutputSize,
+	ExecutionMetrics,
+	TriggerType,
+	LoadProfile,
+} from '../../../../utils/benchmark';
 
 export interface LoadTestOptions {
 	handle: TriggerHandle;
@@ -27,6 +29,12 @@ export interface LoadTestOptions {
 	testInfo: TestInfo;
 	load: LoadProfile;
 	timeoutMs: number;
+	/** Trigger type recorded as a dimension in BigQuery */
+	trigger: TriggerType;
+	/** Node count recorded as a dimension in BigQuery */
+	nodeCount: number;
+	/** Node output size recorded as a dimension in BigQuery */
+	nodeOutputSize?: NodeOutputSize;
 	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
 	metricQuery?: string;
 }
@@ -40,9 +48,21 @@ export interface LoadTestOptions {
  * (direct mode: `n8n_workflow_success_total`, queue mode: `n8n_scaling_mode_queue_jobs_completed`).
  */
 export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMetrics> {
-	const { handle, api, services, testInfo, load, timeoutMs } = options;
+	const { handle, api, services, testInfo, load, timeoutMs, trigger } = options;
 	const metricQuery = options.metricQuery ?? resolveMetricQuery(testInfo);
 	testInfo.setTimeout(timeoutMs + 120_000);
+
+	const mode = testInfo.project.name.replace(':infrastructure', '').replace('benchmark-', '');
+
+	const dimensions: Record<string, string | number> = { trigger, mode };
+	if (options.nodeCount !== undefined) dimensions.nodes = options.nodeCount;
+	if (options.nodeOutputSize !== undefined) dimensions.output = options.nodeOutputSize;
+	if (load.type === 'steady') {
+		dimensions.rate = load.ratePerSecond;
+		dimensions.duration_s = load.durationSeconds;
+	} else {
+		dimensions.messages = load.count;
+	}
 
 	const obs = services.observability;
 
@@ -117,11 +137,11 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 	const durations = await sampleExecutionDurations(api.workflows, workflowId);
 	const metrics = buildMetrics(throughputResult.totalCompleted, 0, totalDurationMs, durations);
 
-	await attachLoadTestResults(testInfo, testInfo.title, metrics);
+	await attachLoadTestResults(testInfo, dimensions, metrics);
 
 	// Diagnostics
 	const diagnostics = await collectDiagnostics(obs.metrics, totalDurationMs);
-	await attachDiagnostics(testInfo, testInfo.title, diagnostics);
+	await attachDiagnostics(testInfo, dimensions, diagnostics);
 	const fmt = formatDiagnosticValue;
 	console.log(
 		`[DIAG] ${testInfo.title}\n` +
