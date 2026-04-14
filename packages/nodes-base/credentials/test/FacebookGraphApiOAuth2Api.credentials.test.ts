@@ -20,10 +20,10 @@ describe('FacebookGraphApiOAuth2Api Credential', () => {
 
 	it('should use the correct OAuth2 endpoints', () => {
 		const authUrlProp = credential.properties.find((p) => p.name === 'authUrl');
-		expect(authUrlProp?.default).toBe('https://www.facebook.com/v19.0/dialog/oauth');
+		expect(authUrlProp?.default).toBe('https://www.facebook.com/v25.0/dialog/oauth');
 
 		const tokenUrlProp = credential.properties.find((p) => p.name === 'accessTokenUrl');
-		expect(tokenUrlProp?.default).toBe('https://graph.facebook.com/v19.0/oauth/access_token');
+		expect(tokenUrlProp?.default).toBe('https://graph.facebook.com/v25.0/oauth/access_token');
 	});
 
 	it('should have custom scopes toggle defaulting to false', () => {
