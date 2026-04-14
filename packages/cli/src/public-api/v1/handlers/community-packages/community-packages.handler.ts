@@ -27,7 +27,7 @@ export = {
 
 			try {
 				const installedPackage = await lifecycle.install(
-					{ name: req.body.name, version: req.body.version, verify: req.body.verify ?? false },
+					{ name: req.body.name, version: req.body.version, verify: req.body.verify ?? true },
 					req.user,
 					'publicApi',
 				);
@@ -70,7 +70,7 @@ export = {
 					{
 						name: req.params.name,
 						version: req.body?.version,
-						verify: req.body?.verify ?? false,
+						verify: req.body?.verify ?? true,
 					},
 					req.user,
 					'notFound',
