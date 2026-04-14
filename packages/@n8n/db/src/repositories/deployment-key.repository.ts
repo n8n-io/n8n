@@ -13,10 +13,6 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 		return await this.findOne({ where: { type, status: 'active' } });
 	}
 
-	async findById(id: string): Promise<DeploymentKey | null> {
-		return await this.findOne({ where: { id } });
-	}
-
 	async findAllByType(type: string): Promise<DeploymentKey[]> {
 		return await this.find({ where: { type } });
 	}
