@@ -1041,24 +1041,8 @@ const isExecutionDisabled = computed(() => {
 });
 
 const isRunWorkflowButtonVisible = computed(
-	() =>
-		!isOnlyChatTriggerNodeActive.value ||
-		chatTriggerNodePinnedData.value ||
-		(isDemoRoute.value && canExecuteOnCanvas.value),
+	() => !isOnlyChatTriggerNodeActive.value || chatTriggerNodePinnedData.value,
 );
-
-const executionDisabledReason = computed(() => {
-	if (
-		isDemoRoute.value &&
-		canExecuteOnCanvas.value &&
-		containsChatTriggerNodes.value &&
-		isOnlyChatTriggerNodeActive.value &&
-		!chatTriggerNodePinnedData.value
-	) {
-		return i18n.baseText('nodeView.runButtonText.chatTriggerOnly');
-	}
-	return undefined;
-});
 const isStopExecutionButtonVisible = computed(
 	() => isWorkflowRunning.value && !isExecutionWaitingForWebhook.value,
 );
@@ -1859,7 +1843,6 @@ onBeforeUnmount(() => {
 					v-if="isRunWorkflowButtonVisible"
 					:waiting-for-webhook="isExecutionWaitingForWebhook"
 					:disabled="isExecutionDisabled"
-					:disabled-reason="executionDisabledReason"
 					:executing="isWorkflowRunning"
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
