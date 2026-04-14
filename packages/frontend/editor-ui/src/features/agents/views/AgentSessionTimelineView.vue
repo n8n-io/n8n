@@ -9,9 +9,9 @@ import type {
 	ThreadExecution,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import RichInteractionCard from '@/features/agents/components/RichInteractionCard.vue';
-import ToolResultJson from '@/features/ai/instanceAi/components/ToolResultJson.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
+import VueMarkdown from 'vue-markdown-render';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -40,6 +40,7 @@ interface TimelineItem {
 	toolName?: string;
 	toolCallId?: string;
 	timestamp: number;
+	resumed?: boolean;
 }
 
 const i18n = useI18n();
@@ -95,6 +96,8 @@ function parseTimeline(execution: ThreadExecution): TimelineEvent[] {
 const timelineItems = computed<TimelineItem[]>(() => {
 	const items: TimelineItem[] = [];
 	for (const exec of executions.value) {
+		const isResumed = getMetadata(exec, 'hitlStatus') === 'resumed';
+		let resumedTagUsed = false;
 		const userMsg = getMetadata(exec, 'userMessage');
 		if (userMsg) {
 			items.push({
@@ -109,11 +112,14 @@ const timelineItems = computed<TimelineItem[]>(() => {
 		if (events.length > 0) {
 			for (const event of events) {
 				if (event.type === 'text') {
+					const showResumed = isResumed && !resumedTagUsed;
+					if (showResumed) resumedTagUsed = true;
 					items.push({
 						kind: 'text',
 						executionId: exec.id,
 						content: event.content as string,
 						timestamp: (event.timestamp as number) ?? 0,
+						resumed: showResumed,
 					});
 				} else if (event.type === 'tool-call') {
 					const tc = event as unknown as ToolCallEvent;
@@ -231,15 +237,49 @@ const triggerIcon = computed(() => {
 	return triggerSource.value === 'slack' ? 'slack' : 'bolt-filled';
 });
 
-function escapeHtml(text: string): string {
-	return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/** Parse a value that might be a JSON string into an object for display. */
+function ensureParsed(value: unknown): unknown {
+	if (typeof value === 'string') {
+		try {
+			return JSON.parse(value);
+		} catch {
+			return value;
+		}
+	}
+	return value;
 }
 
-function highlightAgentName(text: string): string {
-	if (!thread.value?.agentName) return escapeHtml(text);
-	const escaped = escapeHtml(text);
-	const name = escapeHtml(thread.value.agentName);
-	return escaped.replace(new RegExp(`@${name}`, 'gi'), `<strong>@${name}</strong>`);
+function escapeHtml(text: string): string {
+	return text
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+}
+
+function highlightJson(value: unknown, indent = 0): string {
+	const pad = '  '.repeat(indent);
+	const padInner = '  '.repeat(indent + 1);
+	if (value === null) return '<span class="json-bool">null</span>';
+	if (typeof value === 'boolean') return `<span class="json-bool">${value}</span>`;
+	if (typeof value === 'number') return `<span class="json-number">${value}</span>`;
+	if (typeof value === 'string')
+		return `<span class="json-string">&quot;${escapeHtml(value)}&quot;</span>`;
+	if (Array.isArray(value)) {
+		if (value.length === 0) return '[]';
+		const items = value.map((v) => `${padInner}${highlightJson(v, indent + 1)}`);
+		return `[\n${items.join(',\n')}\n${pad}]`;
+	}
+	if (typeof value === 'object') {
+		const entries = Object.entries(value as Record<string, unknown>);
+		if (entries.length === 0) return '{}';
+		const lines = entries.map(
+			([k, v]) =>
+				`${padInner}<span class="json-key">&quot;${escapeHtml(k)}&quot;</span>: ${highlightJson(v, indent + 1)}`,
+		);
+		return `{\n${lines.join(',\n')}\n${pad}}`;
+	}
+	return escapeHtml(String(value));
 }
 
 function goBack() {
@@ -305,17 +345,28 @@ function selectItem(idx: number) {
 								<span :class="$style.cardLabel">
 									{{ i18n.baseText('agentSessions.timeline.user') }}
 								</span>
-								<!-- eslint-disable vue/no-v-html -->
-								<div :class="$style.cardBody" v-html="highlightAgentName(item.content!)" />
-								<!-- eslint-enable vue/no-v-html -->
+								<VueMarkdown
+									:source="item.content ?? ''"
+									class="agent-markdown"
+									:class="$style.cardBody"
+								/>
 							</template>
 
 							<!-- Assistant text -->
 							<template v-else-if="item.kind === 'text'">
-								<span :class="$style.cardLabel">
-									{{ thread?.agentName ?? i18n.baseText('agentSessions.timeline.assistant') }}
-								</span>
-								<div :class="$style.cardBody">{{ item.content }}</div>
+								<div :class="$style.cardHeader">
+									<span :class="$style.cardLabel">
+										{{ thread?.agentName ?? i18n.baseText('agentSessions.timeline.assistant') }}
+									</span>
+									<span v-if="item.resumed" :class="[$style.badge, $style.badgeResumed]">
+										Resumed
+									</span>
+								</div>
+								<VueMarkdown
+									:source="item.content ?? ''"
+									class="agent-markdown"
+									:class="$style.cardBody"
+								/>
 							</template>
 
 							<!-- Tool call -->
@@ -431,6 +482,12 @@ function selectItem(idx: number) {
 								}}
 							</span>
 						</div>
+						<div v-if="selectedItem.resumed" :class="$style.detailRow">
+							<span :class="$style.detailLabel">{{
+								i18n.baseText('agentSessions.timeline.status')
+							}}</span>
+							<span :class="[$style.badge, $style.badgeResumed]"> Resumed </span>
+						</div>
 					</div>
 
 					<!-- Content -->
@@ -448,13 +505,23 @@ function selectItem(idx: number) {
 								<div :class="$style.detailSectionLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}
 								</div>
-								<ToolResultJson :value="selectedItem.toolCall.input" />
+								<!-- eslint-disable vue/no-v-html -->
+								<pre
+									:class="$style.json"
+									v-html="highlightJson(ensureParsed(selectedItem.toolCall.input))"
+								/>
+								<!-- eslint-enable vue/no-v-html -->
 							</div>
 							<div :class="$style.detailSection">
 								<div :class="$style.detailSectionLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</div>
-								<ToolResultJson :value="selectedItem.toolCall.output" />
+								<!-- eslint-disable vue/no-v-html -->
+								<pre
+									:class="$style.json"
+									v-html="highlightJson(ensureParsed(selectedItem.toolCall.output))"
+								/>
+								<!-- eslint-enable vue/no-v-html -->
 							</div>
 						</template>
 					</template>
@@ -465,7 +532,11 @@ function selectItem(idx: number) {
 					</template>
 					<template v-else-if="selectedItem.kind === 'user' || selectedItem.kind === 'text'">
 						<div :class="$style.detailSection">
-							<div :class="$style.messageContent">{{ selectedItem.content }}</div>
+							<VueMarkdown
+								:source="selectedItem.content ?? ''"
+								class="agent-markdown"
+								:class="$style.messageContent"
+							/>
 						</div>
 					</template>
 				</template>
@@ -660,7 +731,6 @@ function selectItem(idx: number) {
 	margin-top: var(--spacing--4xs);
 	font-size: var(--font-size--sm);
 	color: var(--color--text);
-	white-space: pre-wrap;
 }
 
 .cardMeta {
@@ -691,6 +761,11 @@ function selectItem(idx: number) {
 .badgeError {
 	background-color: var(--color--danger--tint-4);
 	color: var(--color--danger);
+}
+
+.badgeResumed {
+	background-color: var(--color--primary--tint-2);
+	color: var(--color--primary);
 }
 
 .detailPanel {
@@ -777,7 +852,6 @@ function selectItem(idx: number) {
 .messageContent {
 	font-size: var(--font-size--sm);
 	color: var(--color--text);
-	white-space: pre-wrap;
 	line-height: var(--line-height--xl);
 }
 
@@ -796,5 +870,82 @@ function selectItem(idx: number) {
 	justify-content: center;
 	height: 100%;
 	color: var(--color--text--tint-2);
+}
+</style>
+
+<style lang="scss">
+.agent-markdown {
+	ul,
+	ol {
+		padding-left: var(--spacing--xl);
+		margin: var(--spacing--3xs) 0;
+	}
+
+	p {
+		margin: var(--spacing--3xs) 0;
+	}
+
+	p:first-child {
+		margin-top: 0;
+	}
+
+	p:last-child {
+		margin-bottom: 0;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--bold);
+		margin: var(--spacing--2xs) 0 var(--spacing--4xs);
+	}
+
+	h1:first-child,
+	h2:first-child,
+	h3:first-child {
+		margin-top: 0;
+	}
+
+	code {
+		font-size: var(--font-size--3xs);
+		background-color: var(--color--foreground--tint-1);
+		padding: 1px var(--spacing--4xs);
+		border-radius: var(--radius--sm);
+	}
+
+	pre {
+		font-size: var(--font-size--3xs);
+		background-color: var(--color--foreground--tint-1);
+		padding: var(--spacing--2xs);
+		border-radius: var(--radius);
+		overflow-x: auto;
+		margin: var(--spacing--3xs) 0;
+
+		code {
+			background: none;
+			padding: 0;
+		}
+	}
+}
+
+.json-key {
+	color: var(--color--primary);
+}
+
+.json-string {
+	color: var(--color--success);
+}
+
+.json-number {
+	color: var(--color--warning);
+}
+
+.json-bool {
+	color: var(--color--text--tint-1);
+	font-style: italic;
 }
 </style>
