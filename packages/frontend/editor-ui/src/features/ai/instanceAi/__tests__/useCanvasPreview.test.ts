@@ -486,7 +486,7 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
-		test('does not switch tab when viewing a different artifact', async () => {
+		test('switches to latest artifact when a new workflow is built while viewing different artifact', async () => {
 			const ctx = setup();
 			registerDataTable(ctx.store, 'dt-1', 'Table', 'proj-1');
 			registerWorkflow(ctx.store, 'wf-1');
@@ -508,9 +508,9 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			// Should stay on data table — user chose that tab
-			expect(ctx.activeDataTableId.value).toBe('dt-1');
-			expect(ctx.activeWorkflowId.value).toBeNull();
+			// Should switch to the newly built workflow
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
 		});
 
 		test('increments workflowRefreshKey on each build', async () => {
@@ -551,8 +551,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-run',
-								toolName: 'run-workflow',
-								args: { workflowId: 'wf-1' },
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
 								result: { executionId: 'exec-1' },
 							}),
 						],
@@ -573,8 +573,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-run',
-								toolName: 'run-workflow',
-								args: { workflowId: 'wf-1' },
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
 								result: { executionId: 'exec-historical' },
 							}),
 						],
@@ -623,8 +623,8 @@ describe('useCanvasPreview', () => {
 							}),
 							makeToolCall({
 								toolCallId: 'tc-run',
-								toolName: 'run-workflow',
-								args: { workflowId: 'wf-1' },
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
 								result: { executionId: 'exec-1' },
 							}),
 						],
@@ -650,7 +650,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
 						],
@@ -672,7 +673,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
 						],
@@ -695,7 +697,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
 						],
@@ -718,7 +721,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1' } },
 							}),
 						],
@@ -743,8 +747,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'delete-data-table',
-								args: { dataTableId: 'dt-1' },
+								toolName: 'data-tables',
+								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
 						],
@@ -766,8 +770,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'delete-data-table',
-								args: { dataTableId: 'dt-other' },
+								toolName: 'data-tables',
+								args: { action: 'delete', dataTableId: 'dt-other' },
 								result: { success: true },
 							}),
 						],
@@ -790,8 +794,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'delete-data-table',
-								args: { dataTableId: 'dt-1' },
+								toolName: 'data-tables',
+								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
 						],
@@ -840,8 +844,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'run-workflow',
-								args: { workflowId },
+								toolName: 'executions',
+								args: { action: 'run', workflowId },
 								result: { executionId, status: 'success', ...(finishedAt ? { finishedAt } : {}) },
 							}),
 						],

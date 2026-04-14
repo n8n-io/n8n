@@ -1,4 +1,5 @@
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
+import { isPlaceholderString } from '@n8n/utils';
 import type { INodeProperties } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
@@ -65,11 +66,17 @@ export function credGroupKey(req: InstanceAiWorkflowSetupNode): string {
 	return credType;
 }
 
-/** Check if a parameter value is meaningfully set (not empty, null, or an empty resource locator). */
+/** Check if a parameter value is meaningfully set (not empty, null, placeholder, or an empty resource locator). */
 export function isParamValueSet(val: unknown): boolean {
 	if (val === undefined || val === null || val === '') return false;
+	if (isPlaceholderString(val)) return false;
 	if (isResourceLocatorValue(val)) {
-		return val.value !== '' && val.value !== null && val.value !== undefined;
+		return (
+			val.value !== '' &&
+			val.value !== null &&
+			val.value !== undefined &&
+			!isPlaceholderString(val.value)
+		);
 	}
 	return true;
 }

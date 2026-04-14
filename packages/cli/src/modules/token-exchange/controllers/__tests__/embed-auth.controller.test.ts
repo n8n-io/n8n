@@ -134,6 +134,55 @@ describe('EmbedAuthController', () => {
 		});
 	});
 
+	describe('redirect parameter', () => {
+		it('should redirect to the specified local path via GET', async () => {
+			const req = mock<AuthlessRequest>({ browserId: 'browser-id-123' });
+			const res = mock<Response>();
+			const query = new EmbedLoginQueryDto({ token: 'subject-token', redirectTo: '/workflow/123' });
+			tokenExchangeService.embedLogin.mockResolvedValue(embedLoginResult);
+
+			await controller.getLogin(req, res, query);
+
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/workflow/123');
+		});
+
+		it('should redirect to the specified local path via POST', async () => {
+			const req = mock<AuthlessRequest>({ browserId: 'browser-id-456' });
+			const res = mock<Response>();
+			const body = new EmbedLoginBodyDto({ token: 'subject-token', redirectTo: '/credentials' });
+			tokenExchangeService.embedLogin.mockResolvedValue(embedLoginResult);
+
+			await controller.postLogin(req, res, body);
+
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/credentials');
+		});
+
+		it.each([['https://evil.com/phishing'], ['//evil.com/phishing'], ['javascript:alert(1)']])(
+			'should reject external redirect %s and default to /',
+			async (maliciousUrl) => {
+				const req = mock<AuthlessRequest>({ browserId: 'browser-id-123' });
+				const res = mock<Response>();
+				const query = new EmbedLoginQueryDto({ token: 'subject-token', redirectTo: maliciousUrl });
+				tokenExchangeService.embedLogin.mockResolvedValue(embedLoginResult);
+
+				await controller.getLogin(req, res, query);
+
+				expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
+			},
+		);
+
+		it('should default to / when redirect is empty', async () => {
+			const req = mock<AuthlessRequest>({ browserId: 'browser-id-123' });
+			const res = mock<Response>();
+			const query = new EmbedLoginQueryDto({ token: 'subject-token', redirectTo: '' });
+			tokenExchangeService.embedLogin.mockResolvedValue(embedLoginResult);
+
+			await controller.getLogin(req, res, query);
+
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
+		});
+	});
+
 	describe('error propagation', () => {
 		it('should not emit audit event or issue cookie on failure', async () => {
 			const req = mock<AuthlessRequest>({ browserId: 'browser-id-789' });

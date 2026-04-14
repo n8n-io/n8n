@@ -75,11 +75,13 @@ export function handleBuildOutcome(
 		outcome.mockedCredentialTypes && outcome.mockedCredentialTypes.length > 0
 			? outcome.mockedCredentialTypes
 			: undefined;
+	const hasUnresolvedPlaceholders = outcome.hasUnresolvedPlaceholders ?? undefined;
 	const updatedState: WorkflowLoopState = {
 		...state,
 		workflowId: outcome.workflowId ?? state.workflowId,
 		lastTaskId: outcome.taskId,
 		mockedCredentialTypes: mockedCredentialTypes ?? state.mockedCredentialTypes,
+		hasUnresolvedPlaceholders: hasUnresolvedPlaceholders ?? state.hasUnresolvedPlaceholders,
 	};
 
 	if (outcome.triggerType === 'trigger_only') {
@@ -90,6 +92,7 @@ export function handleBuildOutcome(
 				workflowId: outcome.workflowId,
 				summary: outcome.summary,
 				mockedCredentialTypes,
+				hasUnresolvedPlaceholders: updatedState.hasUnresolvedPlaceholders,
 			},
 			attempt,
 		};
@@ -138,6 +141,7 @@ export function handleVerificationVerdict(
 					workflowId: verdict.workflowId,
 					summary: verdict.summary,
 					mockedCredentialTypes: state.mockedCredentialTypes,
+					hasUnresolvedPlaceholders: state.hasUnresolvedPlaceholders,
 				},
 				attempt,
 			};
@@ -152,6 +156,7 @@ export function handleVerificationVerdict(
 					workflowId: verdict.workflowId,
 					summary: verdict.summary,
 					mockedCredentialTypes: state.mockedCredentialTypes,
+					hasUnresolvedPlaceholders: state.hasUnresolvedPlaceholders,
 				},
 				attempt,
 			};
