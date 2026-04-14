@@ -429,7 +429,7 @@ export async function startBuildWorkflowAgentTask(
 								const nudgeStream = await subAgent.stream(
 									'You wrote code to /src/workflow.ts but stopped without calling submit-workflow. Call submit-workflow now to save and validate the workflow.',
 									{
-										maxSteps: BUILDER_MAX_STEPS,
+										maxSteps: MAX_STEPS.BUILDER,
 										abortSignal: signal,
 										providerOptions: {
 											anthropic: { cacheControl: { type: 'ephemeral' } },
