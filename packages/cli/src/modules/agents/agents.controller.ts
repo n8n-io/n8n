@@ -1,17 +1,7 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { AuthenticatedRequest } from '@n8n/db';
 
-import {
-	Body,
-	Delete,
-	Get,
-	Param,
-	Patch,
-	Post,
-	Put,
-	ProjectScope,
-	RestController,
-} from '@n8n/decorators';
+import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
 import {
@@ -209,7 +199,6 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/publish')
-	@ProjectScope('agent:publish')
 	async publish(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -219,7 +208,6 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/unpublish')
-	@ProjectScope('agent:unpublish')
 	async unpublish(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,

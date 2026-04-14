@@ -1,7 +1,6 @@
 export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list'] as const;
 
 export const RESOURCES = {
-	agent: ['publish', 'unpublish', ...DEFAULT_OPERATIONS] as const,
 	aiAssistant: ['manage'] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
