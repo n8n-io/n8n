@@ -5,6 +5,7 @@ import { mock } from 'jest-mock-extended';
 import type { EventService } from '@/events/event.service';
 import type { Response } from 'express';
 import { ProjectController } from '@/controllers/project.controller';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UserManagementMailer } from '@/user-management/email';
 
@@ -13,12 +14,14 @@ describe('ProjectController', () => {
 	const projectsService = mock<ProjectService>();
 	const projectRepository = mock<ProjectRepository>();
 	const userManagementMailer = mock<UserManagementMailer>();
+	const provisioningService = mock<ProvisioningService>();
 
 	const controller = new ProjectController(
 		projectsService as unknown as ProjectService,
 		projectRepository as unknown as ProjectRepository,
 		eventService as unknown as EventService,
 		userManagementMailer as unknown as UserManagementMailer,
+		provisioningService as unknown as ProvisioningService,
 	);
 
 	const makeRes = () => {
@@ -45,6 +48,7 @@ describe('ProjectController', () => {
 				{ id: 'p2', name: 'Project 2' },
 			];
 			(projectsService.getAccessibleProjectsAndCount as jest.Mock).mockResolvedValue([projects, 2]);
+			(projectsService.addUserScopes as jest.Mock).mockResolvedValue(projects);
 
 			const res = makeRes();
 			const query = { skip: 0, take: 10, search: 'test', type: 'team' as const };
@@ -52,6 +56,7 @@ describe('ProjectController', () => {
 			await controller.getAllProjects(req, res, query as any);
 
 			expect(projectsService.getAccessibleProjectsAndCount).toHaveBeenCalledWith(req.user, query);
+			expect(projectsService.addUserScopes).toHaveBeenCalledWith(req.user, projects);
 			expect(res.json).toHaveBeenCalledWith({ count: 2, data: projects });
 		});
 
@@ -116,6 +121,7 @@ describe('ProjectController', () => {
 	it('emits team-project-updated on changeProjectUserRole and returns 204', async () => {
 		// Arrange
 		const projectId = 'p2';
+		provisioningService.isProjectRoleManaged.mockResolvedValue(false);
 		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
 			{ userId: 'u1', role: { slug: 'project:admin' } },
 			{ userId: 'u2', role: { slug: 'project:editor' } },

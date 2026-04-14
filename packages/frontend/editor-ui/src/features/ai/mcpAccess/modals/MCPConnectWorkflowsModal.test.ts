@@ -9,6 +9,7 @@ import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.con
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { type Mock } from 'vitest';
 
 vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
@@ -65,7 +66,7 @@ const telemetry = useTelemetry();
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
-let mockOnEnableMcpAccess: ReturnType<typeof vi.fn>;
+let mockOnEnableMcpAccess: Mock;
 
 describe('MCPConnectWorkflowsModal', () => {
 	beforeEach(() => {

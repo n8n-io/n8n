@@ -28,7 +28,7 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
-export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc';
+export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc' | 'token-exchange';
 
 export interface IUserManagementSettings {
 	quota: number;
@@ -54,7 +54,6 @@ export interface IEnterpriseSettings {
 	binaryDataS3: boolean;
 	workerView: boolean;
 	advancedPermissions: boolean;
-	apiKeyScopes: boolean;
 	workflowDiffs: boolean;
 	namedVersions: boolean;
 	provisioning: boolean;
@@ -65,6 +64,7 @@ export interface IEnterpriseSettings {
 	};
 	customRoles: boolean;
 	personalSpacePolicy: boolean;
+	dataRedaction: boolean;
 }
 
 export interface FrontendSettings {
@@ -131,6 +131,7 @@ export interface FrontendSettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
+		managedByEnv: boolean;
 		saml: {
 			loginLabel: string;
 			loginEnabled: boolean;
@@ -215,6 +216,10 @@ export interface FrontendSettings {
 		credits: number;
 		setup: boolean;
 	};
+	aiGateway?: {
+		enabled: boolean;
+		creditsQuota: number;
+	};
 	ai: {
 		allowSendingParameterValues: boolean;
 	};
@@ -233,6 +238,7 @@ export interface FrontendSettings {
 
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];
+	canvasOnly: boolean;
 	envFeatureFlags: N8nEnvFeatFlags;
 }
 
@@ -266,6 +272,16 @@ export type FrontendModuleSettings = {
 		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
 		semanticSearch: ChatHubSemanticSearchSettings;
 		agentUploadMaxSizeMb: number;
+	};
+
+	/**
+	 * Client settings for instance AI module.
+	 */
+	'instance-ai'?: {
+		enabled: boolean;
+		localGatewayDisabled: boolean;
+		proxyEnabled: boolean;
+		optinModalDismissed: boolean;
 	};
 
 	/**

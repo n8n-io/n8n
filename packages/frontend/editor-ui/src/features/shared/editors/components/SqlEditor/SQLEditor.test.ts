@@ -77,6 +77,7 @@ describe('SqlEditor.vue', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: {
+						id: 'test',
 						nodes,
 						connections: {},
 					},
@@ -88,9 +89,12 @@ describe('SqlEditor.vue', () => {
 		const workflowsStore = useWorkflowsStore();
 		workflowsStore.workflow.id = 'test-workflow';
 		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
-		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-			shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))),
+
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
+		vi.mocked(workflowDocumentStore).getNodeByName.mockReturnValue(nodes[0]);
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 	});
 
 	afterAll(() => {

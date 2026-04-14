@@ -1,12 +1,12 @@
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import ProjectDeleteDialog from './ProjectDeleteDialog.vue';
 import { createTestProject } from '../__tests__/utils';
+import { useProjectsStore } from '../projects.store';
 
-const renderComponent = createComponentRenderer(ProjectDeleteDialog, {
-	pinia: createTestingPinia(),
-});
+const renderComponent = createComponentRenderer(ProjectDeleteDialog);
 
 const currentProject = createTestProject({
 	id: 'xyz123',
@@ -18,13 +18,17 @@ describe('ProjectDeleteDialog', () => {
 
 	beforeEach(() => {
 		user = userEvent.setup();
+
+		createTestingPinia();
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
+		projectsStore.globalProjectPermissions = { list: true };
 	});
 
 	it('should render the dialog with correct title and content when project is empty', async () => {
 		const { findByRole, getByRole, queryAllByRole } = renderComponent({
 			props: {
 				currentProject,
-				projects: [],
 				modelValue: true,
 				resourceCounts: {
 					credentials: 0,
@@ -46,7 +50,6 @@ describe('ProjectDeleteDialog', () => {
 			renderComponent({
 				props: {
 					currentProject,
-					projects: [],
 					modelValue: true,
 					resourceCounts: {
 						credentials: 0,

@@ -99,7 +99,10 @@ const getExecuteSingleFunctions = (
 
 describe('RoutingNode', () => {
 	const nodeTypes = NodeTypes();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 
 	describe('getRequestOptionsFromParameters', () => {
 		const tests: Array<{

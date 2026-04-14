@@ -108,10 +108,7 @@ async function executeSimpleChain({
 	const chain = prompt.pipe(llm).pipe(outputParser).withConfig(getTracingConfig(context));
 
 	// Execute the chain
-	const response = await chain.invoke({
-		query,
-		signal: context.getExecutionCancelSignal(),
-	});
+	const response = await chain.invoke({ query }, { signal: context.getExecutionCancelSignal() });
 
 	// Ensure response is always returned as an array
 	return [response];

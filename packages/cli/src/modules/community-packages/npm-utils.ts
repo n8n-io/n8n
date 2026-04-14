@@ -1,6 +1,7 @@
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import axios from 'axios';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
+import { valid } from 'semver';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -24,6 +25,16 @@ interface NpmCommandOptions {
 function isDnsError(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);
 	return message.includes('getaddrinfo') || message.includes('ENOTFOUND');
+}
+
+/**
+ * Type guard for errors thrown by `executeNpmCommand` with `doNotHandleError: true`
+ * (e.g. npm outdated exits with code 1 when updates exist).
+ */
+export function isNpmExecErrorWithStdout(
+	error: unknown,
+): error is { code: number; stdout: string } {
+	return typeof error === 'object' && error !== null && 'code' in error && 'stdout' in error;
 }
 
 function isNpmError(error: unknown): boolean {
@@ -175,8 +186,12 @@ export async function checkIfVersionExistsOrThrow(
 				{ doNotHandleError: true },
 			);
 
-			const versionInfo = jsonParse(stdout);
-			if (versionInfo === version) {
+			const resolvedVersion = jsonParse<string>(stdout);
+			const isResolvedSemver =
+				typeof resolvedVersion === 'string' && valid(resolvedVersion) !== null;
+			const isExactSemver = valid(version) !== null;
+
+			if (isResolvedSemver && (!isExactSemver || resolvedVersion === version)) {
 				return true;
 			}
 
