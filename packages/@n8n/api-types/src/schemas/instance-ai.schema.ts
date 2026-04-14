@@ -965,7 +965,7 @@ const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
 const PLANNER_RENDER_HINT_TOOLS = new Set(['plan']);
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
-	if (toolName === 'update-tasks') return 'tasks';
+	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
 	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
 	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';

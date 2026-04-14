@@ -1,3 +1,4 @@
+export { MAX_STEPS } from './constants/max-steps';
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
 export { generateCompactionSummary } from './compaction';
@@ -6,10 +7,25 @@ export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export {
 	createInstanceAiTraceContext,
+	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
 	releaseTraceClient,
 	withCurrentTraceSpan,
 } from './tracing/langsmith-tracing';
+export {
+	IdRemapper,
+	TraceIndex,
+	TraceWriter,
+	parseTraceJsonl,
+	PURE_REPLAY_TOOLS,
+} from './tracing/trace-replay';
+export type {
+	TraceEvent,
+	TraceHeader,
+	TraceToolCall,
+	TraceToolSuspend,
+	TraceToolResume,
+} from './tracing/trace-replay';
 export { createInstanceAgent } from './agent/instance-agent';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';

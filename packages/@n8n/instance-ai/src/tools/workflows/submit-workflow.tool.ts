@@ -8,6 +8,7 @@
 
 import { createTool } from '@mastra/core/tools';
 import type { Workspace } from '@mastra/core/workspace';
+import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { validateWorkflow, layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
@@ -36,6 +37,8 @@ export interface SubmitWorkflowAttempt {
 	mockedCredentialsByNode?: Record<string, string[]>;
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData?: Record<string, Array<Record<string, unknown>>>;
+	/** Whether any node parameters contain unresolved placeholder values. */
+	hasUnresolvedPlaceholders?: boolean;
 	errors?: string[];
 }
 
@@ -346,6 +349,10 @@ export function createSubmitWorkflowTool(
 				(n) => n.type?.endsWith?.('Trigger') || n.type?.endsWith?.('trigger'),
 			);
 			const triggerNodeTypes = triggers.map((t) => t.type).filter(Boolean);
+
+			// Scan node parameters for unresolved placeholder values
+			const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
+
 			await reportAttempt({
 				success: true,
 				workflowId: savedId,
@@ -359,6 +366,7 @@ export function createSubmitWorkflowTool(
 					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 						? mockResult.verificationPinData
 						: undefined,
+				hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 			});
 			return {
 				success: true,

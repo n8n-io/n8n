@@ -81,7 +81,7 @@ const steps = computed((): TimelineStep[] => {
 			result.push({
 				type: 'tool-call',
 				icon: tc.isLoading ? 'spinner' : getToolIcon(tc.toolName),
-				label: getToolLabel(tc.toolName),
+				label: getToolLabel(tc.toolName, tc.args),
 				isLoading: tc.isLoading,
 				toggleLabel: getToggleLabel(tc),
 				hideLabel: getHideLabel(tc),

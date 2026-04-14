@@ -79,6 +79,30 @@ describe('formatWorkflowLoopGuidance', () => {
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('"unknown"');
 		});
+
+		it('should trigger setup-workflow guidance when hasUnresolvedPlaceholders is true (no mocked credentials)', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Built with placeholders',
+				workflowId: 'wf-ph-1',
+				hasUnresolvedPlaceholders: true,
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('setup-workflow');
+			expect(result).toContain('wf-ph-1');
+		});
+
+		it('should trigger setup-workflow guidance when both mocked credentials and placeholders exist', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Built with mocks and placeholders',
+				mockedCredentialTypes: ['gmailOAuth2'],
+				hasUnresolvedPlaceholders: true,
+				workflowId: 'wf-ph-2',
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('setup-workflow');
+		});
 	});
 
 	// ── verify ─────────────────────────────────────────────────────────────────
