@@ -751,6 +751,21 @@ describe('checkIfVersionExistsOrThrow', () => {
 			expect(result).toBe(true);
 		});
 
+		it('should reject dist-tag when CLI returns non-semver output', async () => {
+			nock(registryUrl)
+				.get(`/${encodeURIComponent(packageName)}/beta`)
+				.replyWithError('Network failure');
+
+			mockAsyncExec.mockResolvedValue({
+				stdout: JSON.stringify('not-a-version'),
+				stderr: '',
+			});
+
+			await expect(checkIfVersionExistsOrThrow(packageName, 'beta', registryUrl)).rejects.toThrow(
+				'Failed to check package version existence',
+			);
+		});
+
 		it('should sanitize registry URL by removing trailing slashes', async () => {
 			const registryWithSlashes = 'https://registry.npmjs.org///';
 
