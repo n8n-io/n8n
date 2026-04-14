@@ -13,7 +13,8 @@ import type {
 	InstanceAiTraceRunInit,
 	ServiceProxyConfig,
 } from '../types';
-import { IdRemapper, TraceIndex, TraceWriter, PURE_REPLAY_TOOLS } from './trace-replay';
+import type { IdRemapper, TraceIndex, TraceWriter } from './trace-replay';
+import { PURE_REPLAY_TOOLS } from './trace-replay';
 import { isRecord } from '../utils/stream-helpers';
 
 const DEFAULT_PROJECT_NAME = 'instance-ai';
@@ -744,10 +745,13 @@ function createTraceContext(
 	traceKind: InstanceAiTraceContext['traceKind'],
 	rootRun: InstanceAiTraceRun,
 	actorRun: InstanceAiTraceRun,
-	proxyHeaders?: Record<string, string>,
+	getProxyHeaders?: () => Promise<Record<string, string>>,
 ): InstanceAiTraceContext {
-	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> =>
-		proxyHeaders ? await proxyHeaderStore.run(proxyHeaders, fn) : await fn();
+	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> => {
+		if (!getProxyHeaders) return await fn();
+		const headers = await getProxyHeaders();
+		return await proxyHeaderStore.run(headers, fn);
+	};
 
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
@@ -997,7 +1001,7 @@ function pureReplayWrapTool(
 		requestContextSchema: tool.requestContextSchema,
 		execute: async (_input, _context) => {
 			const event = traceIndex.next(agentRole, tool.id);
-			return idRemapper.remapOutput(event.output);
+			return await Promise.resolve(idRemapper.remapOutput(event.output));
 		},
 		mastra: tool.mastra,
 		requireApproval: tool.requireApproval,
@@ -1124,7 +1128,7 @@ function recordWrapTools(
 
 /**
  * Creates a minimal InstanceAiTraceContext that only supports trace replay/record
- * wrapping — no LangSmith integration. Used when N8N_INSTANCE_AI_TRACE_REPLAY is
+ * wrapping — no LangSmith integration. Used when E2E_TESTS is
  * set but LangSmith isn't configured.
  */
 export function createTraceReplayOnlyContext(): InstanceAiTraceContext {
@@ -1147,8 +1151,8 @@ export function createTraceReplayOnlyContext(): InstanceAiTraceContext {
 		actorRun: stubRun,
 		messageRun: stubRun,
 		orchestratorRun: stubRun,
-		startChildRun: async () => stubRun,
-		withRunTree: async (_run, fn) => fn(),
+		startChildRun: async () => await Promise.resolve(stubRun),
+		withRunTree: async (_run, fn) => await fn(),
 		finishRun: async () => {},
 		failRun: async () => {},
 		toHeaders: () => ({}),
@@ -1290,12 +1294,13 @@ export async function createInstanceAiTraceContext(
 			'message_turn',
 			messageRun,
 			orchestratorRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createTraceRuns);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createTraceRuns);
 	}
 	return await createTraceRuns();
 }
@@ -1319,12 +1324,13 @@ export async function continueInstanceAiTraceContext(
 			'message_turn',
 			existingContext.rootRun,
 			orchestratorRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createContinuation);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createContinuation);
 	}
 	return await createContinuation();
 }
@@ -1370,12 +1376,13 @@ export async function createDetachedSubAgentTraceContext(
 			'detached_subagent',
 			rootRun,
 			rootRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createDetachedRuns);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createDetachedRuns);
 	}
 	return await createDetachedRuns();
 }

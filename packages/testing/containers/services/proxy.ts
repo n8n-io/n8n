@@ -176,12 +176,12 @@ export class ProxyServer {
 			let files: string[];
 			try {
 				files = await fs.readdir(targetDir);
-			} catch (err) {
-				if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
 					console.log(`No expectations directory: ${targetDir}, skipping`);
 					return;
 				}
-				throw err;
+				throw error;
 			}
 			const jsonFiles = files.filter((file) => file.endsWith('.json')).sort();
 			const expectations: Expectation[] = [];
@@ -234,7 +234,7 @@ export class ProxyServer {
 
 			if (expectations.length > 0) {
 				console.log('Loading expectations:', expectations.length);
-				await this.withRetry(() => this.client.mockAnyResponse(expectations));
+				await this.withRetry(async () => await this.client.mockAnyResponse(expectations));
 			}
 		} catch (error) {
 			console.log('Error loading expectations:', error);
@@ -268,7 +268,7 @@ export class ProxyServer {
 
 	async clearAllExpectations(): Promise<void> {
 		try {
-			await this.withRetry(() => this.client.clear('', 'ALL'));
+			await this.withRetry(async () => await this.client.clear('', 'ALL'));
 		} catch (error) {
 			throw new Error(`Failed to clear ProxyServer: ${JSON.stringify(error)}`);
 		}
@@ -328,14 +328,14 @@ export class ProxyServer {
 				options?.pathOrRequestDefinition,
 			);
 
-			if (recordedExpectations.length === 0) {
-				return;
-			}
-
 			const targetDir = join(this.expectationsDir, folderName);
 
 			if (options?.clearDir) {
 				await fs.rm(targetDir, { recursive: true, force: true });
+			}
+
+			if (recordedExpectations.length === 0) {
+				return;
 			}
 
 			await fs.mkdir(targetDir, { recursive: true });

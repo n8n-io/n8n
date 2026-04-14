@@ -151,6 +151,7 @@ import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLoader2 from '~icons/lucide/loader2';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLock from '~icons/lucide/lock';
@@ -183,6 +184,7 @@ import IconLucidePencilOff from '~icons/lucide/pencil-off';
 import IconLucidePin from '~icons/lucide/pin';
 import IconLucidePlay from '~icons/lucide/play';
 import IconLucidePlug from '~icons/lucide/plug';
+import IconLucidePlugZap from '~icons/lucide/plug-zap';
 import IconLucidePlus from '~icons/lucide/plus';
 import IconLucidePocketKnife from '~icons/lucide/pocket-knife';
 import IconLucidePower from '~icons/lucide/power';
@@ -405,6 +407,7 @@ export const deprecatedIconSet = {
 	play: IconLucidePlay,
 	'play-circle': IconLucideCirclePlay,
 	plug: IconLucidePlug,
+	'plug-zap': IconLucidePlugZap,
 	plus: IconLucidePlus,
 	'plus-circle': IconLucideCirclePlus,
 	'plus-square': IconLucideSquarePlus,
@@ -646,6 +649,7 @@ export const updatedIconSet = {
 	pin: IconLucidePin,
 	play: IconLucidePlay,
 	plug: IconLucidePlug,
+	'plug-zap': IconLucidePlugZap,
 	plus: IconLucidePlus,
 	'pocket-knife': IconLucidePocketKnife,
 	power: IconLucidePower,

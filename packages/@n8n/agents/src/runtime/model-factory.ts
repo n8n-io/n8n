@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import type { EmbeddingModel, LanguageModel } from 'ai';
+import type * as Undici from 'undici';
 
 import type { ModelConfig } from '../types/sdk/agent';
 
@@ -24,13 +25,13 @@ function isLanguageModel(config: unknown): config is LanguageModel {
  * providers would bypass the proxy without this.
  */
 function getProxyFetch(): FetchFn | undefined {
-	const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
 	if (!proxyUrl) return undefined;
 
-	const { ProxyAgent } = require('undici') as typeof import('undici');
+	const { ProxyAgent } = require('undici') as typeof Undici;
 	const dispatcher = new ProxyAgent(proxyUrl);
-	return ((url, init) =>
-		globalThis.fetch(url, {
+	return (async (url, init) =>
+		await globalThis.fetch(url, {
 			...init,
 			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
 			dispatcher,

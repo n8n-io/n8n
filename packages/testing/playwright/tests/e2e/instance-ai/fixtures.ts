@@ -49,7 +49,6 @@ export const instanceAiTestConfig = {
 			N8N_INSTANCE_AI_MODEL: 'anthropic/claude-sonnet-4-6',
 			N8N_INSTANCE_AI_MODEL_API_KEY: ANTHROPIC_API_KEY,
 			N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED: 'true',
-			N8N_INSTANCE_AI_TRACE_REPLAY: 'true',
 		},
 	},
 } as const;
@@ -132,11 +131,12 @@ export const test = base.extend<InstanceAiFixtures>({
 						// between different LLM call types (title gen vs orchestrator
 						// vs sub-agent) which may arrive in different order during replay.
 						const request = expectation.httpRequest as {
+							// eslint-disable-next-line id-denylist -- `string` is MockServer's body matcher field name
 							body?: { type?: string; string?: string; json?: Record<string, unknown> };
 						};
 						if (request?.body) {
 							const raw =
-								request.body.string ??
+								request.body['string'] ??
 								(request.body.json ? JSON.stringify(request.body.json) : undefined);
 							if (raw) {
 								try {
@@ -153,6 +153,7 @@ export const test = base.extend<InstanceAiFixtures>({
 										const snippet = system.slice(0, 80);
 										request.body = {
 											type: 'STRING',
+											// eslint-disable-next-line id-denylist -- `string` is MockServer's body matcher field name
 											string: snippet,
 											subString: true,
 										} as unknown as typeof request.body;

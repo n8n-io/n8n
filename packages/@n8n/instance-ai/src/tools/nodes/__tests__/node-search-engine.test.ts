@@ -88,6 +88,33 @@ const expressionOutputNode = makeNode({
 	outputs: '={{["main","ai_tool"]}}',
 });
 
+const dataTableToolNode = makeNode({
+	name: 'n8n-nodes-base.dataTableTool',
+	displayName: 'n8n Data Table Tool',
+	description: 'Read, create, update, and delete rows in n8n data tables from an AI agent',
+	outputs: ['ai_tool'],
+});
+
+const googleCalendarNode = makeNode({
+	name: 'n8n-nodes-base.googleCalendar',
+	displayName: 'Google Calendar',
+	description: 'Consume Google Calendar API',
+});
+
+const googleCalendarToolNode = makeNode({
+	name: 'n8n-nodes-base.googleCalendarTool',
+	displayName: 'Google Calendar Tool',
+	description: 'Consume Google Calendar API as a tool for AI agents',
+	outputs: ['ai_tool'],
+});
+
+const slackToolNode = makeNode({
+	name: 'n8n-nodes-base.slackTool',
+	displayName: 'Slack Tool',
+	description: 'Send messages to Slack from an AI agent',
+	outputs: ['ai_tool'],
+});
+
 const allNodes = [
 	httpNode,
 	setNode,
@@ -98,6 +125,10 @@ const allNodes = [
 	embeddingNode,
 	vectorStoreNode,
 	expressionOutputNode,
+	dataTableToolNode,
+	googleCalendarNode,
+	googleCalendarToolNode,
+	slackToolNode,
 ];
 
 // ---------------------------------------------------------------------------
@@ -165,6 +196,19 @@ describe('NodeSearchEngine', () => {
 			const httpResult = results.find((r) => r.name === 'n8n-nodes-base.httpRequest');
 			expect(httpResult?.version).toBe(1);
 		});
+
+		it('should handle multi-word queries by splitting into terms', () => {
+			const results = engine.searchByName('data table tool');
+			const dataTableResult = results.find((r) => r.name === 'n8n-nodes-base.dataTableTool');
+			expect(dataTableResult).toBeDefined();
+		});
+
+		it('should find nodes when multi-word query matches display name partially', () => {
+			const results = engine.searchByName('google calendar');
+			const names = results.map((r) => r.name);
+			expect(names).toContain('n8n-nodes-base.googleCalendar');
+			expect(names).toContain('n8n-nodes-base.googleCalendarTool');
+		});
 	});
 
 	// -----------------------------------------------------------------------
@@ -200,6 +244,24 @@ describe('NodeSearchEngine', () => {
 		it('should respect the limit parameter', () => {
 			const results = engine.searchByConnectionType('ai_languageModel', 1);
 			expect(results.length).toBeLessThanOrEqual(1);
+		});
+
+		it('should find tool nodes with multi-word name filter', () => {
+			const results = engine.searchByConnectionType('ai_tool', 10, 'data table tool');
+			const dataTableResult = results.find((r) => r.name === 'n8n-nodes-base.dataTableTool');
+			expect(dataTableResult).toBeDefined();
+		});
+
+		it('should find google calendar tool via connectionType + query', () => {
+			const results = engine.searchByConnectionType('ai_tool', 10, 'google calendar');
+			const calendarTool = results.find((r) => r.name === 'n8n-nodes-base.googleCalendarTool');
+			expect(calendarTool).toBeDefined();
+		});
+
+		it('should not return regular nodes when filtering by connectionType', () => {
+			const results = engine.searchByConnectionType('ai_tool', 10, 'google calendar');
+			const regularCalendar = results.find((r) => r.name === 'n8n-nodes-base.googleCalendar');
+			expect(regularCalendar).toBeUndefined();
 		});
 	});
 

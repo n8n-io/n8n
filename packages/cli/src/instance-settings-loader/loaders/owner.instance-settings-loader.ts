@@ -51,14 +51,10 @@ export class OwnerInstanceSettingsLoader {
 	}
 
 	async run(): Promise<'created' | 'skipped'> {
-		const { ownerManagedByEnv, ownerEmail, ownerPasswordHash } = this.instanceSettingsLoaderConfig;
+		const { ownerManagedByEnv } = this.instanceSettingsLoaderConfig;
 
 		if (!ownerManagedByEnv) {
-			if (ownerEmail || ownerPasswordHash) {
-				this.logger.warn(
-					'N8N_INSTANCE_OWNER_EMAIL or N8N_INSTANCE_OWNER_PASSWORD_HASH is set but N8N_INSTANCE_OWNER_MANAGED_BY_ENV is not enabled — ignoring owner env vars',
-				);
-			}
+			this.logger.debug('Owner is not managed by environment variables, skipping');
 			return 'skipped';
 		}
 
