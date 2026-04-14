@@ -114,7 +114,6 @@ export function getProjects(): Project[] {
 		projects.push({
 			name: 'e2e',
 			testDir: './tests/e2e',
-			testIgnore: '**/instance-ai-workflow-evals/**',
 			grepInvert: ALLOW_CONTAINER_ONLY ? undefined : CONTAINER_ONLY,
 			fullyParallel: true,
 			use: { baseURL: getFrontendUrl() },
@@ -122,7 +121,7 @@ export function getProjects(): Project[] {
 		projects.push(
 			{
 				name: 'instance-ai-workflow-evals',
-				testDir: './tests/e2e/instance-ai-workflow-evals',
+				testDir: './tests/instance-ai-workflow-evals',
 				testMatch: '*.spec.ts',
 				fullyParallel: true,
 				timeout: 600_000,
@@ -131,7 +130,7 @@ export function getProjects(): Project[] {
 			},
 			{
 				name: 'instance-ai-workflow-evals-cleanup',
-				testDir: './tests/e2e/instance-ai-workflow-evals',
+				testDir: './tests/instance-ai-workflow-evals',
 				testMatch: 'cleanup.ts',
 			},
 		);
@@ -141,7 +140,6 @@ export function getProjects(): Project[] {
 				{
 					name: `${name}:e2e`,
 					testDir: './tests/e2e',
-					testIgnore: '**/instance-ai-workflow-evals/**',
 					timeout: name === 'sqlite' ? 60000 : 180000, // 60 seconds for sqlite container test, 180 for other modes to allow startup
 					fullyParallel: true,
 					use: { containerConfig: config },
