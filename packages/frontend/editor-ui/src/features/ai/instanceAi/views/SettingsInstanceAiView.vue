@@ -91,21 +91,23 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 		<template v-else>
 			<template v-if="isAdmin">
 				<div :class="$style.card">
-					<div :class="$style.settingsRow">
-						<div :class="$style.settingsRowLeft">
-							<span :class="$style.settingsRowLabel">
+					<div :class="$style.sectionBlock">
+						<div :class="$style.enableSection">
+							<N8nHeading tag="h2" size="small">
 								{{ i18n.baseText('settings.n8nAgent.enable.label') }}
-							</span>
-							<span :class="$style.settingsRowDescription">
-								{{ i18n.baseText('settings.n8nAgent.enable.description') }}
-							</span>
+							</N8nHeading>
+							<div :class="$style.switchRow">
+								<span :class="$style.switchDescription">
+									{{ i18n.baseText('settings.n8nAgent.enable.description') }}
+								</span>
+								<ElSwitch
+									:model-value="isEnabled"
+									:disabled="store.isSaving"
+									data-test-id="n8n-agent-enable-toggle"
+									@update:model-value="handleEnabledToggle"
+								/>
+							</div>
 						</div>
-						<ElSwitch
-							:model-value="isEnabled"
-							:disabled="store.isSaving"
-							data-test-id="n8n-agent-enable-toggle"
-							@update:model-value="handleEnabledToggle"
-						/>
 					</div>
 				</div>
 
@@ -131,12 +133,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 			</template>
 
 			<template v-if="isEnabled">
-				<div v-if="!store.isCloudManaged" :class="$style.card">
-					<div :class="$style.sectionBlock">
-						<ModelSection />
-					</div>
-				</div>
-
 				<div :class="$style.card">
 					<div :class="$style.sectionBlock">
 						<LocalGatewaySection />
@@ -144,30 +140,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 				</div>
 
 				<template v-if="isAdmin">
-					<div v-if="!store.isCloudManaged && !store.isProxyEnabled" :class="$style.card">
-						<div :class="$style.sectionBlock">
-							<SandboxSection />
-						</div>
-					</div>
-
-					<div v-if="!store.isCloudManaged" :class="$style.card">
-						<div :class="$style.sectionBlock">
-							<MemorySection />
-						</div>
-					</div>
-
-					<div v-if="!store.isCloudManaged && !store.isProxyEnabled" :class="$style.card">
-						<div :class="$style.sectionBlock">
-							<SearchSection />
-						</div>
-					</div>
-
-					<div v-if="!store.isCloudManaged" :class="$style.card">
-						<div :class="$style.sectionBlock">
-							<AdvancedSection />
-						</div>
-					</div>
-
 					<div :class="$style.permissionsHeader">
 						<N8nHeading :class="$style.sectionTitle" tag="h3" size="medium">
 							{{ i18n.baseText('settings.n8nAgent.permissions.title') }}
@@ -214,6 +186,38 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 									:label="i18n.baseText('settings.n8nAgent.permissions.blocked')"
 								/>
 							</N8nSelect>
+						</div>
+					</div>
+				</template>
+
+				<div v-if="!store.isProxyEnabled" :class="$style.card">
+					<div :class="$style.sectionBlock">
+						<ModelSection />
+					</div>
+				</div>
+
+				<template v-if="isAdmin">
+					<div v-if="!store.isProxyEnabled" :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<SandboxSection />
+						</div>
+					</div>
+
+					<div :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<MemorySection />
+						</div>
+					</div>
+
+					<div v-if="!store.isProxyEnabled" :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<SearchSection />
+						</div>
+					</div>
+
+					<div :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<AdvancedSection />
 						</div>
 					</div>
 				</template>
@@ -334,6 +338,24 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 .permissionSelect {
 	width: 178px;
 	flex-shrink: 0;
+}
+
+.enableSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.switchRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing--4xs) 0;
+}
+
+.switchDescription {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 
 .footer {

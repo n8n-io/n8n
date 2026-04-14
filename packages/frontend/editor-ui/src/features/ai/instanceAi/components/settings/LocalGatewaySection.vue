@@ -202,6 +202,20 @@ onMounted(() => {
 	padding: var(--spacing--4xs) 0;
 }
 
+.switchLabelWithInfo {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.infoIcon {
+	color: var(--color--text--tint-1);
+
+	&:hover {
+		color: var(--color--text);
+	}
+}
+
 .switchLabel {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
