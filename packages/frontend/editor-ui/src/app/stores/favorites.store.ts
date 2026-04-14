@@ -11,8 +11,6 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 	const favorites = ref<UserFavorite[]>([]);
 	const initialized = ref(false);
 
-	const favoriteIds = computed(() => new Set(favorites.value.map((f) => f.resourceId)));
-
 	const workflowFavoriteIds = computed(() =>
 		favorites.value.filter((f) => f.resourceType === 'workflow').map((f) => f.resourceId),
 	);
@@ -84,7 +82,6 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 
 	return {
 		favorites,
-		favoriteIds,
 		workflowFavoriteIds,
 		projectFavoriteIds,
 		dataTableFavoriteIds,

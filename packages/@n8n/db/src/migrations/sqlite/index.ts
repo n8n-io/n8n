@@ -153,7 +153,7 @@ import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/177485
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
 import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
 import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
-import { CreateFavoritesTable1775828513000 } from '../common/1775828513000-CreateFavoritesTable';
+import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
 import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
 import type { Migration } from '../migration-types';
 
@@ -314,7 +314,7 @@ const sqliteMigrations: Migration[] = [
 	CreateTokenExchangeJtiTable1775116241000,
 	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
 	CreateTrustedKeyTables1776000000000,
-	CreateFavoritesTable1775828513000,
+	CreateFavoritesTable1776150756000,
 ];
 
 export { sqliteMigrations };

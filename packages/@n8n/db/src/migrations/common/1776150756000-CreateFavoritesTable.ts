@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateFavoritesTable1775828513000 implements ReversibleMigration {
+export class CreateFavoritesTable1776150756000 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('user_favorites')
 			.withColumns(

@@ -133,6 +133,8 @@ export class FavoritesService {
 
 		if (existing) return existing;
 
+		await this.assertResourceExists(resourceId, resourceType);
+
 		const count = await this.userFavoriteRepository.count({ where: { userId } });
 		if (count >= this.MAX_FAVORITES) {
 			throw new BadRequestError(`Favorites limit of ${this.MAX_FAVORITES} reached`);
@@ -140,6 +142,32 @@ export class FavoritesService {
 
 		const favorite = this.userFavoriteRepository.create({ userId, resourceId, resourceType });
 		return await this.userFavoriteRepository.save(favorite);
+	}
+
+	private async assertResourceExists(
+		resourceId: string,
+		resourceType: FavoriteResourceType,
+	): Promise<void> {
+		let exists: boolean;
+
+		switch (resourceType) {
+			case 'workflow':
+				exists = await this.workflowRepository.existsBy({ id: resourceId });
+				break;
+			case 'project':
+				exists = await this.projectRepository.existsBy({ id: resourceId });
+				break;
+			case 'dataTable':
+				exists = await this.dataTableRepository.existsBy({ id: resourceId });
+				break;
+			case 'folder':
+				exists = await this.folderRepository.existsBy({ id: resourceId });
+				break;
+		}
+
+		if (!exists) {
+			throw new NotFoundError(`${resourceType} with id "${resourceId}" not found`);
+		}
 	}
 
 	async removeFavorite(userId: string, resourceId: string, resourceType: FavoriteResourceType) {
