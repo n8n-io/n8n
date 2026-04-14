@@ -83,6 +83,16 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-panel-confirm-deny');
 	}
 
+	// ── Domain Access ─────────────────────────────────────────────────
+
+	getDomainAccessApproveButton(): Locator {
+		return this.page.getByTestId('domain-access-primary');
+	}
+
+	getDomainAccessDenyButton(): Locator {
+		return this.page.getByTestId('domain-access-deny');
+	}
+
 	// ── Plan Review ───────────────────────────────────────────────────
 
 	getPlanReviewPanel(): Locator {
@@ -197,12 +207,18 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-artifact-row');
 	}
 
-	// ── Subagent Summaries ───────────────────────────────────────────
+	// ── Response Group Summaries ─────────────────────────────────────
 
 	getSubagentSummaries(): Locator {
 		return this.getAssistantMessages()
 			.locator('button')
 			.filter({ hasText: /subagent/i });
+	}
+
+	getToolCallSummaries(): Locator {
+		return this.getAssistantMessages()
+			.locator('button')
+			.filter({ hasText: /tool call/i });
 	}
 
 	// ── Timeline Details ──────────────────────────────────────────────

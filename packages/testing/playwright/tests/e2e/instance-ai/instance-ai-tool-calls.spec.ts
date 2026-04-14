@@ -41,5 +41,54 @@ test.describe(
 			// After expanding, the trigger should have aria-expanded="true"
 			await expect(subagentButton).toHaveAttribute('aria-expanded', 'true', { timeout: 5_000 });
 		});
+
+		test('should show tool call steps for web search', async ({ n8n }) => {
+			await n8n.navigate.toInstanceAi();
+
+			await n8n.instanceAi.sendMessage(
+				'Search the web to find what the latest LTS version of Node.js is',
+			);
+
+			// The researcher may trigger domain access approval — approve it
+			const approveButton = n8n.instanceAi.getDomainAccessApproveButton().first();
+			await expect(approveButton).toBeVisible({ timeout: 90_000 });
+			await approveButton.click();
+
+			await n8n.instanceAi.waitForResponseComplete();
+
+			// Response should contain useful content from the web search
+			await expect(n8n.instanceAi.getAssistantMessages().first()).not.toHaveText('');
+
+			// Expand the tool calls summary to reveal individual steps
+			const toolCallsButton = n8n.instanceAi.getToolCallSummaries().first();
+			await expect(toolCallsButton).toBeVisible({ timeout: 30_000 });
+			await toolCallsButton.click();
+			await expect(toolCallsButton).toHaveAttribute('aria-expanded', 'true', { timeout: 5_000 });
+
+			// Tool call steps should be visible (web-search renders as ToolCallStep)
+			await expect(n8n.instanceAi.getToolCallSteps().first()).toBeVisible({ timeout: 5_000 });
+		});
+
+		test('should show tool call steps for fetch URL', async ({ n8n }) => {
+			await n8n.navigate.toInstanceAi();
+
+			await n8n.instanceAi.sendMessage(
+				'Fetch the content from https://example.com and summarize what the page is about',
+			);
+
+			// The researcher may trigger domain access approval — approve it
+			const approveButton = n8n.instanceAi.getDomainAccessApproveButton().first();
+			await expect(approveButton).toBeVisible({ timeout: 90_000 });
+			await approveButton.click();
+
+			await n8n.instanceAi.waitForResponseComplete();
+
+			// Response should contain content from the fetched URL
+			await expect(n8n.instanceAi.getAssistantMessages().first()).not.toHaveText('');
+
+			// fetch-url renders as a ToolCallStep directly in the timeline
+			// (single tool calls are not collapsed into a summary)
+			await expect(n8n.instanceAi.getToolCallSteps().first()).toBeVisible({ timeout: 10_000 });
+		});
 	},
 );
