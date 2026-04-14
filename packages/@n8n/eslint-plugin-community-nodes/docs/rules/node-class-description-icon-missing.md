@@ -1,6 +1,6 @@
 # Node class description must have an `icon` property defined (`@n8n/community-nodes/node-class-description-icon-missing`)
 
-💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
+❌ This rule is **deprecated**. Use [`require-node-description-fields`](require-node-description-fields.md) instead.
 
 💡 This rule is manually fixable by [editor suggestions](https://eslint.org/docs/latest/use/core-concepts#rule-suggestions).
 
