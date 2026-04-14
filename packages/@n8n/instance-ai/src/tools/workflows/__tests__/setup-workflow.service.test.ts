@@ -382,7 +382,7 @@ describe('buildSetupRequests', () => {
 			credentials: [],
 			properties: [{ name: 'email', displayName: 'Email', type: 'string', required: true }],
 		});
-		(context.nodeService as Record<string, unknown>).getParameterIssues = jest
+		(context.nodeService as unknown as Record<string, unknown>).getParameterIssues = jest
 			.fn()
 			.mockResolvedValue({ email: ['Parameter "Email" is required'] });
 
