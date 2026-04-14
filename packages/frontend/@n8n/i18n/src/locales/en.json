@@ -5172,6 +5172,7 @@
 	"instanceAi.workflowSetup.apply": "Apply",
 	"instanceAi.workflowSetup.applyCompleted": "Apply completed",
 	"instanceAi.workflowSetup.later": "Skip setup for now",
+	"instanceAi.workflowSetup.loading": "Loading setup…",
 	"instanceAi.workflowSetup.applying": "Applying changes…",
 	"instanceAi.workflowSetup.applied": "Workflow configured",
 	"instanceAi.workflowSetup.partiallyApplied": "Partially configured — some nodes skipped",
