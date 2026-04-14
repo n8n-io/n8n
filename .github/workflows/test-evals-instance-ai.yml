@@ -74,20 +74,6 @@ jobs:
           docker logs n8n-eval --tail 30
           exit 1
 
-      - name: Reset database and create owner
-        run: |
-          echo "Resetting database..."
-          HTTP_CODE=$(curl -s -o /tmp/reset-response.txt -w "%{http_code}" -X POST http://localhost:5678/rest/e2e/reset \
-            -H "Content-Type: application/json" \
-            -d '{"owner":{"email":"nathan@n8n.io","password":"PlaywrightTest123","firstName":"Nathan","lastName":"Owner"},"admin":{"email":"admin@n8n.io","password":"PlaywrightTest123","firstName":"Admin","lastName":"User"},"members":[],"chat":{"email":"chat@n8n.io","password":"PlaywrightTest123","firstName":"Chat","lastName":"User"}}')
-          echo "Reset response: $HTTP_CODE"
-          cat /tmp/reset-response.txt
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "::error::Database reset failed with HTTP $HTTP_CODE"
-            docker logs n8n-eval --tail 50
-            exit 1
-          fi
-
       - name: Run Instance AI Evals
         continue-on-error: true
         run: >-
@@ -98,6 +84,7 @@ jobs:
           ${{ inputs.filter && format('--grep "{0}"', inputs.filter) || '' }}
         env:
           N8N_BASE_URL: http://localhost:5678
+          RESET_E2E_DB: 'true'
           N8N_EVAL_EMAIL: nathan@n8n.io
           N8N_EVAL_PASSWORD: PlaywrightTest123
           N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
