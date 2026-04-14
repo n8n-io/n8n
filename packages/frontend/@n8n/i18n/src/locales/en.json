@@ -5416,7 +5416,7 @@
 	"instanceAi.activitySummary.messages": "{count} messages",
 	"instanceAi.activitySummary.questions": "{count} answered questions",
 	"instanceAi.activitySummary.subagents": "{count} subagents",
-	"instanceAi.filesystem.label": "Local gateway",
+	"instanceAi.filesystem.label": "Computer use",
 	"instanceAi.filesystem.connected": "Files connected",
 	"instanceAi.filesystem.connectWaiting": "Connecting...",
 	"instanceAi.filesystem.copied": "Copied!",
