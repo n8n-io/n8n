@@ -68,10 +68,7 @@ function isNameConflictError(error: unknown): boolean {
 
 const listAction = z.object({
 	action: z.literal('list').describe('List data tables in a project'),
-	projectId: z
-		.string()
-		.optional()
-		.describe('Project ID to list tables from. Defaults to personal project.'),
+	projectId: z.string().optional().describe('Project ID. Defaults to personal project.'),
 });
 
 const schemaAction = z.object({
@@ -82,7 +79,7 @@ const schemaAction = z.object({
 const queryAction = z.object({
 	action: z.literal('query').describe('Query rows from a data table with optional filtering'),
 	dataTableId: z.string().describe('ID of the data table'),
-	filter: filterSchema.optional().describe('Row filter conditions (optional)'),
+	filter: filterSchema.optional().describe('Row filter conditions'),
 	limit: z
 		.number()
 		.int()
@@ -96,10 +93,7 @@ const queryAction = z.object({
 const createAction = z.object({
 	action: z.literal('create').describe('Create a new data table with typed columns'),
 	name: z.string().min(1).max(128).describe('Table name'),
-	projectId: z
-		.string()
-		.optional()
-		.describe('Project ID to create the table in. Defaults to personal project.'),
+	projectId: z.string().optional().describe('Project ID. Defaults to personal project.'),
 	columns: z
 		.array(
 			z.object({
@@ -113,7 +107,7 @@ const createAction = z.object({
 
 const deleteAction = z.object({
 	action: z.literal('delete').describe('Permanently delete a data table and all its rows'),
-	dataTableId: z.string().describe('ID of the data table to delete'),
+	dataTableId: z.string().describe('ID of the data table'),
 });
 
 const addColumnAction = z.object({
@@ -126,13 +120,13 @@ const addColumnAction = z.object({
 const deleteColumnAction = z.object({
 	action: z.literal('delete-column').describe('Remove a column from a data table'),
 	dataTableId: z.string().describe('ID of the data table'),
-	columnId: z.string().describe('ID of the column to delete'),
+	columnId: z.string().describe('ID of the column'),
 });
 
 const renameColumnAction = z.object({
 	action: z.literal('rename-column').describe('Rename a column in a data table'),
 	dataTableId: z.string().describe('ID of the data table'),
-	columnId: z.string().describe('ID of the column to rename'),
+	columnId: z.string().describe('ID of the column'),
 	newName: z.string().describe('New column name'),
 });
 

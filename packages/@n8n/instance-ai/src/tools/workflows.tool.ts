@@ -50,21 +50,17 @@ const setupAction = z.object({
 });
 
 const publishBaseAction = z.object({
-	action: z.literal('publish').describe('Publish a workflow version to production'),
+	action: z
+		.literal('publish')
+		.describe('Publish a workflow version to production (omit versionId for latest draft)'),
 	workflowId: z.string().describe('ID of the workflow'),
 	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
-	versionId: z.string().optional().describe('Version ID (omit to publish latest draft)'),
+	versionId: z.string().optional().describe('Version ID'),
 });
 
 const publishExtendedAction = publishBaseAction.extend({
-	name: z
-		.string()
-		.optional()
-		.describe('Name for this published version (e.g. "v1.2 — added retry logic")'),
-	description: z
-		.string()
-		.optional()
-		.describe('Description of what this version does or what changed'),
+	name: z.string().optional().describe('Name for the version'),
+	description: z.string().optional().describe('Description for the version'),
 });
 
 const unpublishAction = z.object({
@@ -95,15 +91,11 @@ const restoreVersionAction = z.object({
 const updateVersionAction = z.object({
 	action: z
 		.literal('update-version')
-		.describe('Update the name or description of a workflow version'),
+		.describe('Update the name or description of a workflow version (null to clear a field)'),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().describe('Version ID'),
-	name: z.string().nullable().optional().describe('New name for the version (null to clear)'),
-	description: z
-		.string()
-		.nullable()
-		.optional()
-		.describe('New description for the version (null to clear)'),
+	name: z.string().nullable().optional().describe('Name for the version'),
+	description: z.string().nullable().optional().describe('Description for the version'),
 });
 
 // ── Suspend / resume schemas ────────────────────────────────────────────────
