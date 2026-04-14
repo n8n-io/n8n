@@ -21,10 +21,7 @@ export async function cliConfirmResourceAccess(
 		message: `Grant permission — ${resource.toolGroup}: ${sanitizeForTerminal(resource.resource)}`,
 		choices: [
 			{ name: 'Allow once', value: 'allowOnce' as ResourceDecision },
-			{
-				name: `Allow ${resource.toolGroup} for session`,
-				value: 'allowForSession' as ResourceDecision,
-			},
+			{ name: 'Allow for session', value: 'allowForSession' as ResourceDecision },
 			{ name: 'Always allow', value: 'alwaysAllow' as ResourceDecision },
 			{ name: 'Deny once', value: 'denyOnce' as ResourceDecision },
 			{ name: 'Always deny', value: 'alwaysDeny' as ResourceDecision },

@@ -13,6 +13,7 @@ import type { SettingsStore } from './settings-store';
 export class GatewaySession {
 	private _dir: string;
 	private _permissions: Record<ToolGroup, PermissionMode>;
+	private readonly sessionAllows: Map<ToolGroup, Set<string>> = new Map();
 
 	constructor(
 		defaults: { permissions: Record<ToolGroup, PermissionMode>; dir: string },
@@ -67,13 +68,32 @@ export class GatewaySession {
 	 * Evaluation order:
 	 *  1. Persistent deny list  → 'deny'  (takes absolute priority even in Allow mode)
 	 *  2. Persistent allow list → 'allow'
-	 *  3. Group mode            → via getGroupMode() (includes cross-group constraints)
+	 *  3. Session allow set     → 'allow'
+	 *  4. Group mode            → via getGroupMode() (includes cross-group constraints)
 	 */
 	check(toolGroup: ToolGroup, resource: string): PermissionMode {
 		const rp = this.settingsStore.getResourcePermissions(toolGroup);
 		if (rp.deny.includes(resource)) return 'deny';
 		if (rp.allow.includes(resource)) return 'allow';
+		if (this.hasSessionAllow(toolGroup, resource)) return 'allow';
 		return this.getGroupMode(toolGroup);
+	}
+
+	// ---------------------------------------------------------------------------
+	// Session-scoped allow rules
+	// ---------------------------------------------------------------------------
+
+	allowForSession(toolGroup: ToolGroup, resource: string): void {
+		let set = this.sessionAllows.get(toolGroup);
+		if (!set) {
+			set = new Set();
+			this.sessionAllows.set(toolGroup, set);
+		}
+		set.add(resource);
+	}
+
+	clearSessionRules(): void {
+		this.sessionAllows.clear();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -95,6 +115,14 @@ export class GatewaySession {
 	/** Flush pending persistent writes — must be called on shutdown. */
 	async flush(): Promise<void> {
 		return await this.settingsStore.flush();
+	}
+
+	// ---------------------------------------------------------------------------
+	// Private helpers
+	// ---------------------------------------------------------------------------
+
+	private hasSessionAllow(toolGroup: ToolGroup, resource: string): boolean {
+		return this.sessionAllows.get(toolGroup)?.has(resource) ?? false;
 	}
 }
 

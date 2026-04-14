@@ -77,6 +77,8 @@ function makeSession(overrides: Partial<GatewaySession> = {}): jest.Mocked<Gatew
 		setPermissions: jest.fn(),
 		setDir: jest.fn(),
 		getGroupMode: jest.fn().mockReturnValue('allow'),
+		allowForSession: jest.fn(),
+		clearSessionRules: jest.fn(),
 		alwaysAllow: jest.fn(),
 		alwaysDeny: jest.fn(),
 		flush: jest.fn().mockResolvedValue(undefined),
@@ -149,16 +151,15 @@ describe('GatewayClient.checkPermissions', () => {
 			expect(session.alwaysAllow).not.toHaveBeenCalled();
 		});
 
-		it('allowForSession — elevates the tool group permission to allow for the session', async () => {
+		it('allowForSession — allows the specific resource for the session', async () => {
 			const session = makeSession();
 			const confirmResourceAccess = jest.fn().mockResolvedValue('allowForSession');
 			const client = makeClient(session, confirmResourceAccess);
 
 			await client['dispatchToolCall']('test_tool', {});
 
-			expect(session.setPermissions).toHaveBeenCalledWith(
-				expect.objectContaining({ shell: 'allow' }),
-			);
+			expect(session.allowForSession).toHaveBeenCalledWith('shell', 'npm install');
+			expect(session.setPermissions).not.toHaveBeenCalled();
 		});
 
 		it('alwaysAllow — delegates to session.alwaysAllow', async () => {
@@ -252,9 +253,7 @@ describe('GatewayClient.checkPermissions', () => {
 			// Simulate the agent sending back _confirmation=allowForSession
 			await client['dispatchToolCall']('test_tool', { _confirmation: 'allowForSession' });
 
-			expect(session.setPermissions).toHaveBeenCalledWith(
-				expect.objectContaining({ shell: 'allow' }),
-			);
+			expect(session.allowForSession).toHaveBeenCalledWith('shell', 'npm install');
 			expect(confirmResourceAccess).not.toHaveBeenCalled();
 		});
 	});

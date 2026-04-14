@@ -121,6 +121,7 @@ export class GatewayClient {
 	/** Notify the server we're disconnecting, then close the SSE connection. */
 	async disconnect(): Promise<void> {
 		this.shouldReconnect = false;
+		this.options.session.clearSessionRules();
 
 		// POST the disconnect notification BEFORE closing EventSource.
 		// The EventSource keeps the Node.js event loop alive — if we close it
@@ -453,7 +454,7 @@ export class GatewayClient {
 				case 'allowOnce':
 					break;
 				case 'allowForSession':
-					session.setPermissions({ ...session.getAllPermissions(), [resource.toolGroup]: 'allow' });
+					session.allowForSession(resource.toolGroup, resource.resource);
 					break;
 				case 'alwaysAllow':
 					session.alwaysAllow(resource.toolGroup, resource.resource);
