@@ -243,6 +243,7 @@ describe('FavoritesService', () => {
 		it('should create and save a new favorite', async () => {
 			const favorite = mock<UserFavorite>();
 			repo.findOne.mockResolvedValue(null);
+			workflowRepository.existsBy.mockResolvedValue(true);
 			repo.count.mockResolvedValue(0);
 			repo.create.mockReturnValue(favorite);
 			repo.save.mockResolvedValue(favorite);
@@ -269,8 +270,19 @@ describe('FavoritesService', () => {
 			expect(result).toBe(existing);
 		});
 
+		it('should throw NotFoundError when resource does not exist', async () => {
+			repo.findOne.mockResolvedValue(null);
+			workflowRepository.existsBy.mockResolvedValue(false);
+
+			await expect(service.addFavorite('user1', 'res1', 'workflow')).rejects.toThrow(NotFoundError);
+
+			expect(repo.create).not.toHaveBeenCalled();
+			expect(repo.save).not.toHaveBeenCalled();
+		});
+
 		it('should throw BadRequestError when favorites limit is reached', async () => {
 			repo.findOne.mockResolvedValue(null);
+			workflowRepository.existsBy.mockResolvedValue(true);
 			repo.count.mockResolvedValue(200);
 
 			await expect(service.addFavorite('user1', 'res1', 'workflow')).rejects.toThrow(
@@ -284,6 +296,7 @@ describe('FavoritesService', () => {
 		it('should allow adding when count is one below the limit', async () => {
 			const favorite = mock<UserFavorite>();
 			repo.findOne.mockResolvedValue(null);
+			workflowRepository.existsBy.mockResolvedValue(true);
 			repo.count.mockResolvedValue(199);
 			repo.create.mockReturnValue(favorite);
 			repo.save.mockResolvedValue(favorite);
@@ -293,6 +306,32 @@ describe('FavoritesService', () => {
 			expect(repo.save).toHaveBeenCalled();
 			expect(result).toBe(favorite);
 		});
+
+		it.each([
+			{ resourceType: 'workflow' as const, repository: 'workflowRepository' },
+			{ resourceType: 'project' as const, repository: 'projectRepository' },
+			{ resourceType: 'dataTable' as const, repository: 'dataTableRepository' },
+			{ resourceType: 'folder' as const, repository: 'folderRepository' },
+		])(
+			'should check existence using the correct repository for $resourceType',
+			async ({ resourceType, repository }) => {
+				const repositories = {
+					workflowRepository,
+					projectRepository,
+					dataTableRepository,
+					folderRepository,
+				};
+				repo.findOne.mockResolvedValue(null);
+				repositories[repository as keyof typeof repositories].existsBy.mockResolvedValue(false);
+
+				await expect(service.addFavorite('user1', 'res1', resourceType)).rejects.toThrow(
+					NotFoundError,
+				);
+				expect(repositories[repository as keyof typeof repositories].existsBy).toHaveBeenCalledWith(
+					{ id: 'res1' },
+				);
+			},
+		);
 	});
 
 	describe('removeFavorite', () => {
