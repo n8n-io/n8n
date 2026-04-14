@@ -15,6 +15,7 @@ import { InstanceSettings } from 'n8n-core';
 import { ensureError, jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
 
 import { CommunityNodeTypesService } from './community-node-types.service';
+import { CommunityPackagesConfig } from './community-packages.config';
 import { CommunityPackagesService, isValidVersionSpecifier } from './community-packages.service';
 import type { CommunityPackages } from './community-packages.types';
 import type { InstalledPackages } from './installed-packages.entity';
@@ -46,6 +47,7 @@ export class CommunityPackagesLifecycleService {
 		private readonly eventService: EventService,
 		private readonly communityNodeTypesService: CommunityNodeTypesService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly communityPackagesConfig: CommunityPackagesConfig,
 	) {}
 
 	async listInstalledPackages(): Promise<PublicInstalledPackage[] | InstalledPackages[]> {
@@ -55,19 +57,23 @@ export class CommunityPackagesLifecycleService {
 
 		let pendingUpdates: CommunityPackages.AvailableUpdates | undefined;
 
-		try {
-			await executeNpmCommand(['outdated', '--json'], {
-				doNotHandleError: true,
-				cwd: this.instanceSettings.nodesDownloadDir,
-			});
-		} catch (error) {
-			if (isNpmExecErrorWithStdout(error) && error.code === 1) {
-				try {
-					pendingUpdates = jsonParse<CommunityPackages.AvailableUpdates>(error.stdout.trim());
-				} catch (parseError) {
-					this.logger.warn('Failed to parse npm outdated output', {
-						error: ensureError(parseError),
-					});
+		// Only check npm registry for updates when unverified packages are enabled.
+		// In verified-only mode, update availability is determined by Strapi CMS versions on the frontend.
+		if (this.communityPackagesConfig.unverifiedEnabled) {
+			try {
+				await executeNpmCommand(['outdated', '--json'], {
+					doNotHandleError: true,
+					cwd: this.instanceSettings.nodesDownloadDir,
+				});
+			} catch (error) {
+				if (isNpmExecErrorWithStdout(error) && error.code === 1) {
+					try {
+						pendingUpdates = jsonParse<CommunityPackages.AvailableUpdates>(error.stdout.trim());
+					} catch (parseError) {
+						this.logger.warn('Failed to parse npm outdated output', {
+							error: ensureError(parseError),
+						});
+					}
 				}
 			}
 		}
