@@ -127,25 +127,25 @@ describe('parseWorkflowCodeToBuilder', () => {
 	describe('invalid exports', () => {
 		it('should throw for a number export', () => {
 			expect(() => parseWorkflowCodeToBuilder('export default 42')).toThrow(
-				'Code must export a workflow built with the workflow() SDK function, or a valid workflow JSON object with a "nodes" array.',
+				'Code must export a workflow built with the workflow() SDK function.',
 			);
 		});
 
 		it('should throw for a string export', () => {
 			expect(() => parseWorkflowCodeToBuilder("export default 'hello'")).toThrow(
-				'Code must export a workflow built with the workflow() SDK function, or a valid workflow JSON object with a "nodes" array.',
+				'Code must export a workflow built with the workflow() SDK function.',
 			);
 		});
 
 		it('should throw for an object without nodes', () => {
 			expect(() => parseWorkflowCodeToBuilder("export default { foo: 'bar' }")).toThrow(
-				'Code must export a workflow built with the workflow() SDK function, or a valid workflow JSON object with a "nodes" array.',
+				'Code must export a workflow built with the workflow() SDK function.',
 			);
 		});
 
 		it('should throw for a boolean export', () => {
 			expect(() => parseWorkflowCodeToBuilder('export default true')).toThrow(
-				'Code must export a workflow built with the workflow() SDK function, or a valid workflow JSON object with a "nodes" array.',
+				'Code must export a workflow built with the workflow() SDK function.',
 			);
 		});
 	});

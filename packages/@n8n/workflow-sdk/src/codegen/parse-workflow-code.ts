@@ -8,6 +8,7 @@ import { interpretSDKCode, InterpreterError, SecurityError } from '../ast-interp
 import type { SDKFunctions } from '../ast-interpreter';
 import { expr as exprFn } from '../expression';
 import type { WorkflowJSON, WorkflowBuilder } from '../types/base';
+import { isWorkflowBuilder, isWorkflowJSON } from '../typeguards';
 import { workflow as workflowFn } from '../workflow-builder';
 import { nextBatch as nextBatchFn } from '../workflow-builder/control-flow-builders/next-batch';
 import { splitInBatches as splitInBatchesFn } from '../workflow-builder/control-flow-builders/split-in-batches';
@@ -661,24 +662,13 @@ export function parseWorkflowCodeToBuilder(code: string): WorkflowBuilder {
  * - Otherwise, throw with a descriptive error.
  */
 function asWorkflowBuilder(result: unknown): WorkflowBuilder {
-	if (
-		typeof result === 'object' &&
-		result !== null &&
-		typeof (result as WorkflowBuilder).regenerateNodeIds === 'function'
-	) {
-		return result as WorkflowBuilder;
+	if (isWorkflowBuilder(result)) {
+		return result;
 	}
 
-	if (
-		typeof result === 'object' &&
-		result !== null &&
-		Array.isArray((result as Record<string, unknown>).nodes)
-	) {
-		return workflowFn.fromJSON(result as WorkflowJSON);
+	if (isWorkflowJSON(result)) {
+		return workflowFn.fromJSON(result);
 	}
 
-	throw new SyntaxError(
-		'Code must export a workflow built with the workflow() SDK function, ' +
-			'or a valid workflow JSON object with a "nodes" array.',
-	);
+	throw new SyntaxError('Code must export a workflow built with the workflow() SDK function.');
 }

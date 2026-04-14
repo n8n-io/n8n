@@ -11,7 +11,9 @@ import { MCP_GET_SDK_REFERENCE_TOOL } from './workflow-builder/constants';
  * but only when the error is a workflow code parse error.
  */
 export function getSdkReferenceHint(error: unknown): string | undefined {
-	const isParseError = error instanceof Error && error.name === 'WorkflowCodeParseError';
+	const isParseError =
+		error instanceof Error &&
+		(error.name === 'WorkflowCodeParseError' || error instanceof SyntaxError);
 	if (!isParseError) return undefined;
 
 	return `Make sure your code uses the n8n Workflow SDK syntax. Call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} first to learn the correct patterns before writing workflow code.`;
