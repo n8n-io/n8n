@@ -71,10 +71,6 @@ export class OidcInstanceSettingsLoader {
 		this.logger = this.logger.scoped('instance-settings-loader');
 	}
 
-	isConfiguredByEnv(): boolean {
-		return this.instanceSettingsLoaderConfig.ssoManagedByEnv;
-	}
-
 	async run(): Promise<'created' | 'skipped'> {
 		const { ssoManagedByEnv, oidcClientId, oidcClientSecret, oidcDiscoveryEndpoint } =
 			this.instanceSettingsLoaderConfig;
