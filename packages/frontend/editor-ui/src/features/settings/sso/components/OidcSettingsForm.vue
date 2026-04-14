@@ -38,7 +38,9 @@ const {
 	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
-	shouldPromptUserToConfirmUserRoleProvisioningChange,
+	roleAssignmentTransition,
+	storedHasProjectRoles,
+	revertRoleAssignment,
 } = useUserRoleProvisioningForm(SupportedProtocols.OIDC);
 
 type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
@@ -114,13 +116,7 @@ const cannotSaveOidcSettings = computed(() => {
 });
 
 async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false) {
-	if (
-		!provisioningChangesConfirmed &&
-		shouldPromptUserToConfirmUserRoleProvisioningChange({
-			currentLoginEnabled: !!ssoStore.oidcConfig?.loginEnabled,
-			loginEnabledFormValue: ssoStore.isOidcLoginEnabled,
-		})
-	) {
+	if (!provisioningChangesConfirmed && roleAssignmentTransition.value !== 'none') {
 		showUserRoleProvisioningDialog.value = true;
 		return;
 	}
@@ -314,10 +310,14 @@ onMounted(async () => {
 			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
-				:new-provisioning-setting="userRoleProvisioning"
+				:transition-type="roleAssignmentTransition"
+				:show-project-roles-csv="storedHasProjectRoles || roleAssignment === 'instance_and_project'"
 				auth-protocol="oidc"
 				@confirm-provisioning="onOidcSettingsSave(true)"
-				@cancel="showUserRoleProvisioningDialog = false"
+				@cancel="
+					revertRoleAssignment();
+					showUserRoleProvisioningDialog = false;
+				"
 			/>
 			<div :class="$style.group">
 				<label>Authentication Context Class Reference</label>
