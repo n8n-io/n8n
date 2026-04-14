@@ -128,11 +128,22 @@ export const test = base.extend<InstanceAiFixtures>({
 					transform: (expectation) => {
 						const response = expectation.httpResponse as {
 							headers?: Record<string, string[]>;
+							cookies?: Record<string, string>;
 						};
 
 						if (response?.headers) {
+							// Strip sensitive / unnecessary metadata from recorded responses
 							delete response.headers['anthropic-organization-id'];
+							delete response.headers['set-cookie'];
+							delete response.headers['CF-RAY'];
+							// Rate-limit headers expose account tier info
+							for (const key of Object.keys(response.headers)) {
+								if (key.startsWith('anthropic-ratelimit-')) {
+									delete response.headers[key];
+								}
+							}
 						}
+						delete response?.cookies;
 
 						// Keep a minimal body matcher so the proxy can distinguish
 						// between different LLM call types (title gen vs orchestrator
