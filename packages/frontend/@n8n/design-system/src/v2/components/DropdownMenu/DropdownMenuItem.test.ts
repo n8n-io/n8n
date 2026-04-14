@@ -121,7 +121,7 @@ describe('v2/components/DropdownMenuItem', () => {
 			});
 		});
 
-		it('should show title on hover when showFullLabelOnHover is true and label is 20+ characters', async () => {
+		it('should set title when showFullLabelOnHover is true and label is 20+ characters', async () => {
 			renderMenuItem({
 				id: 'test',
 				label: 'A very long label that exceeds twenty characters',
