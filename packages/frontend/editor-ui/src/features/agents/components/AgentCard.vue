@@ -26,7 +26,8 @@ const message = useMessage();
 const { showMessage } = useToast();
 
 function getActions() {
-	const isPublished = props.agent.activeVersionId !== null;
+	const isPublished =
+		props.agent.activeVersionId !== null && props.agent.activeVersionId === props.agent.versionId;
 	return [
 		isPublished
 			? { id: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') }
