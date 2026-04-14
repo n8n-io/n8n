@@ -12,7 +12,6 @@ vi.mock('n8n-nodes-base/dist/utils/utilities', () => ({
 }));
 
 const MockedChatVertexAI = vi.mocked(ChatVertexAI);
-const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 
 describe('LmChatGoogleVertex - Thinking Budget', () => {
@@ -42,7 +41,6 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 		mockContext.getNode = vi.fn().mockReturnValue(mockNode);
 		mockContext.getNodeParameter = vi.fn();
 
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as unknown as N8nLlmTracing);
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 
 		return mockContext;

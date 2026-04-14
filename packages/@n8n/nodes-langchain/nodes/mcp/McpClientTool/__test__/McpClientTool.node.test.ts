@@ -20,8 +20,8 @@ import { buildMcpToolName } from '../utils';
 
 vi.mock('@modelcontextprotocol/sdk/client/sse.js');
 vi.mock('@modelcontextprotocol/sdk/client/index.js');
-vi.mock('@n8n/ai-utilities', () => ({
-	...vi.requireActual('@n8n/ai-utilities'),
+vi.mock('@n8n/ai-utilities', async () => ({
+	...(await vi.importActual('@n8n/ai-utilities')),
 	proxyFetch: vi.fn(),
 }));
 

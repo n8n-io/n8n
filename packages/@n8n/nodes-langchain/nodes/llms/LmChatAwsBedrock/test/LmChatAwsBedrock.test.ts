@@ -23,7 +23,6 @@ vi.mock('@n8n/ai-utilities', () => ({
 
 const MockedBedrockRuntimeClient = vi.mocked(BedrockRuntimeClient);
 const MockedChatBedrockConverse = vi.mocked(ChatBedrockConverse);
-const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
 
@@ -59,7 +58,6 @@ describe('LmChatAwsBedrock', () => {
 		mockContext.getNode = vi.fn().mockReturnValue(mockNode);
 		mockContext.getNodeParameter = vi.fn();
 
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as N8nLlmTracing);
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetNodeProxyAgent.mockReturnValue(undefined);
 		MockedBedrockRuntimeClient.mockImplementation(() => ({}) as BedrockRuntimeClient);

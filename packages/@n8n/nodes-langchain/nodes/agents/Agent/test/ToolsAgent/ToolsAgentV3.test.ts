@@ -30,8 +30,8 @@ vi.mock('@langchain/core/runnables', () => ({
 	},
 }));
 
-vi.mock('n8n-workflow', () => ({
-	...vi.requireActual('n8n-workflow'),
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual('n8n-workflow')),
 	sleep: vi.fn(),
 }));
 

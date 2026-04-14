@@ -17,7 +17,7 @@ import {
 } from '../microsoft-utils';
 
 vi.mock('@microsoft/agents-hosting', () => ({
-	MemoryStorage: vi.fn().mockImplementation(() => ({})),
+	MemoryStorage: vi.fn().mockImplementation(function () {}),
 	AgentApplication: vi.fn().mockImplementation(function (this: any, config: any) {
 		this.adapter = config.adapter;
 		this.storage = config.storage;
@@ -27,7 +27,9 @@ vi.mock('@microsoft/agents-hosting', () => ({
 		this.run = vi.fn();
 		return this;
 	}),
-	CloudAdapter: vi.fn().mockImplementation((config: any) => ({ config })),
+	CloudAdapter: vi.fn().mockImplementation(function (config: any) {
+		return { config };
+	}),
 }));
 
 vi.mock('@microsoft/agents-a365-observability', () => ({
@@ -42,16 +44,18 @@ vi.mock('@microsoft/agents-a365-observability', () => ({
 			dispose: vi.fn(),
 		}),
 	},
-	BaggageBuilder: vi.fn().mockImplementation(() => ({
-		tenantId: vi.fn().mockReturnThis(),
-		agentId: vi.fn().mockReturnThis(),
-		correlationId: vi.fn().mockReturnThis(),
-		agentName: vi.fn().mockReturnThis(),
-		conversationId: vi.fn().mockReturnThis(),
-		build: vi.fn().mockReturnValue({
-			run: vi.fn().mockImplementation((fn: any) => fn()),
-		}),
-	})),
+	BaggageBuilder: vi.fn().mockImplementation(function () {
+		return {
+			tenantId: vi.fn().mockReturnThis(),
+			agentId: vi.fn().mockReturnThis(),
+			correlationId: vi.fn().mockReturnThis(),
+			agentName: vi.fn().mockReturnThis(),
+			conversationId: vi.fn().mockReturnThis(),
+			build: vi.fn().mockReturnValue({
+				run: vi.fn().mockImplementation((fn: any) => fn()),
+			}),
+		};
+	}),
 	ObservabilityManager: {
 		configure: vi.fn().mockReturnValue({
 			start: vi.fn(),
@@ -74,9 +78,9 @@ vi.mock('@microsoft/agents-a365-runtime', () => ({
 }));
 
 vi.mock('@microsoft/agents-a365-tooling', () => ({
-	McpToolServerConfigurationService: vi.fn().mockImplementation(() => ({
-		listToolServers: vi.fn().mockResolvedValue([]),
-	})),
+	McpToolServerConfigurationService: vi.fn().mockImplementation(function () {
+		return { listToolServers: vi.fn().mockResolvedValue([]) };
+	}),
 	Utility: {
 		ValidateAuthToken: vi.fn(),
 	},
@@ -96,12 +100,6 @@ vi.mock('../../../mcp/shared/utils', () => ({
 	getAllTools: vi.fn(),
 }));
 
-vi.mock('../../../mcp/McpClientTool/utils', () => ({
-	createCallTool: vi.fn(),
-	mcpToolToDynamicTool: vi.fn(),
-	buildMcpToolName: vi.requireActual('../../../mcp/McpClientTool/utils').buildMcpToolName,
-}));
-
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'test-uuid'),
 }));
@@ -110,8 +108,20 @@ import { MemoryStorage, AgentApplication, CloudAdapter } from '@microsoft/agents
 import { invokeAgent } from '../langchain-utils';
 import { connectMcpClient, getAllTools } from '../../../mcp/shared/utils';
 import { createCallTool, mcpToolToDynamicTool } from '../../../mcp/McpClientTool/utils';
+import { McpToolServerConfigurationService } from '@microsoft/agents-a365-tooling';
 
 describe('microsoft-utils', () => {
+	beforeAll(async () => {
+		const actualMcpUtils = await vi.hoisted(
+			async () => await import('../../../mcp/McpClientTool/utils'),
+		);
+
+		vi.mock('../../../mcp/McpClientTool/utils', async () => ({
+			createCallTool: vi.fn(),
+			mcpToolToDynamicTool: vi.fn(),
+			buildMcpToolName: actualMcpUtils.buildMcpToolName,
+		}));
+	});
 	describe('createMicrosoftAgentApplication', () => {
 		const mockCredentials: MicrosoftAgent365Credentials = {
 			clientId: 'test-client-id',
@@ -587,7 +597,7 @@ describe('microsoft-utils', () => {
 
 		let mockAuthorization: any;
 
-		beforeEach(() => {
+		beforeEach(async () => {
 			vi.clearAllMocks();
 
 			mockTurnContext = {
@@ -600,13 +610,13 @@ describe('microsoft-utils', () => {
 			mockAuthorization = { exchangeToken: vi.fn() };
 
 			// Reset the mock implementation for each test
-			const { McpToolServerConfigurationService } = vi.requireMock(
-				'@microsoft/agents-a365-tooling',
-			);
+			const { McpToolServerConfigurationService } = await import('@microsoft/agents-a365-tooling');
 			mockConfigService = {
 				listToolServers: vi.fn().mockResolvedValue([]),
 			};
-			(McpToolServerConfigurationService as vi.Mock).mockImplementation(() => mockConfigService);
+			(McpToolServerConfigurationService as vi.Mock).mockImplementation(function () {
+				return mockConfigService;
+			});
 		});
 
 		test('should return undefined when no servers are configured', async () => {
@@ -1017,9 +1027,6 @@ describe('microsoft-utils', () => {
 
 				mockAuthorizationLogging = { exchangeToken: vi.fn() };
 
-				const { McpToolServerConfigurationService } = vi.requireMock(
-					'@microsoft/agents-a365-tooling',
-				);
 				mockConfigServiceLogging = {
 					listToolServers: vi
 						.fn()
@@ -1027,9 +1034,9 @@ describe('microsoft-utils', () => {
 							{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
 						]),
 				};
-				(McpToolServerConfigurationService as vi.Mock).mockImplementation(
-					() => mockConfigServiceLogging,
-				);
+				(McpToolServerConfigurationService as vi.Mock).mockImplementation(function () {
+					return mockConfigServiceLogging;
+				});
 
 				(connectMcpClient as vi.Mock).mockResolvedValue({
 					ok: true,
@@ -1342,9 +1349,6 @@ describe('microsoft-utils', () => {
 		});
 
 		test('should not set mcpToolLogs on activityCapture when no MCP tools are invoked', async () => {
-			const { McpToolServerConfigurationService } = vi.requireMock(
-				'@microsoft/agents-a365-tooling',
-			);
 			const mockConfigSvc = {
 				listToolServers: vi
 					.fn()
@@ -1352,7 +1356,9 @@ describe('microsoft-utils', () => {
 						{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
 					]),
 			};
-			(McpToolServerConfigurationService as vi.Mock).mockImplementation(() => mockConfigSvc);
+			(McpToolServerConfigurationService as vi.Mock).mockImplementation(function () {
+				return mockConfigSvc;
+			});
 			(connectMcpClient as vi.Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
 			(getAllTools as vi.Mock).mockResolvedValue([
 				{ name: 'list_events', description: 'List events' },
@@ -1386,9 +1392,6 @@ describe('microsoft-utils', () => {
 		});
 
 		test('should persist mcpToolLogs on activityCapture even when invokeAgent throws', async () => {
-			const { McpToolServerConfigurationService } = vi.requireMock(
-				'@microsoft/agents-a365-tooling',
-			);
 			const mockConfigSvc = {
 				listToolServers: vi
 					.fn()
@@ -1396,7 +1399,9 @@ describe('microsoft-utils', () => {
 						{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
 					]),
 			};
-			(McpToolServerConfigurationService as vi.Mock).mockImplementation(() => mockConfigSvc);
+			(McpToolServerConfigurationService as vi.Mock).mockImplementation(function () {
+				return mockConfigSvc;
+			});
 			(connectMcpClient as vi.Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
 			(getAllTools as vi.Mock).mockResolvedValue([
 				{ name: 'list_events', description: 'List events' },

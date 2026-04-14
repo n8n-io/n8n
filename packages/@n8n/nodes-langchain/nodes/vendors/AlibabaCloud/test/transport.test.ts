@@ -4,8 +4,8 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, getBaseUrl, pollTaskResult } from '../transport';
 
-vi.mock('n8n-workflow', () => {
-	const actual = vi.requireActual('n8n-workflow');
+vi.mock('n8n-workflow', async () => {
+	const actual = await vi.importActual('n8n-workflow');
 	return {
 		...actual,
 		sleep: vi.fn(),

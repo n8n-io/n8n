@@ -33,8 +33,10 @@ describe('RerankerCohere', () => {
 			compressDocuments: vi.fn(),
 		} as unknown as Mocked<CohereRerank>;
 
-		// Make the CohereRerank constructor return our mock instance
-		(CohereRerank as MockedClass<typeof CohereRerank>).mockImplementation(() => mockCohereRerank);
+		// Make new CohereRerank() return the mock instance
+		(CohereRerank as MockedClass<typeof CohereRerank>).mockImplementation(function () {
+			return mockCohereRerank;
+		});
 
 		// Create mock supply data functions
 		mockSupplyDataFunctions = mock<ISupplyDataFunctions>({

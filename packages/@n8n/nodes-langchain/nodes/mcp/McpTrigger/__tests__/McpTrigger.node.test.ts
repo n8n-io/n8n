@@ -341,7 +341,7 @@ describe('McpTrigger', () => {
 		});
 
 		it('should return 401 for authentication errors', async () => {
-			const { WebhookAuthorizationError } = vi.requireActual(
+			const { WebhookAuthorizationError } = await vi.importActual(
 				'n8n-nodes-base/dist/nodes/Webhook/error',
 			);
 			const { validateWebhookAuthentication } = vi.requireMock(

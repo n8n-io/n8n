@@ -11,8 +11,8 @@ import * as tracing from '@utils/tracing';
 import type { ItemContext } from '../prepareItemContext';
 import { runAgent } from '../runAgent';
 
-vi.mock('@utils/agent-execution', () => {
-	const originalModule = vi.requireActual('@utils/agent-execution');
+vi.mock('@utils/agent-execution', async () => {
+	const originalModule = await vi.importActual('@utils/agent-execution');
 	return {
 		...originalModule,
 		loadMemory: vi.fn(),
@@ -23,8 +23,8 @@ vi.mock('@utils/agent-execution', () => {
 	};
 });
 
-vi.mock('@utils/tracing', () => {
-	const originalModule = vi.requireActual('@utils/tracing');
+vi.mock('@utils/tracing', async () => {
+	const originalModule = await vi.importActual('@utils/tracing');
 	return {
 		...originalModule,
 		getTracingConfig: vi.fn(),
@@ -321,11 +321,11 @@ describe('runAgent - tracing configuration', () => {
 	it('should include tracing metadata when provided', async () => {
 		// Use real implementations instead of mocks
 		const { getTracingConfig: realGetTracingConfig } =
-			vi.requireActual<typeof tracing>('@utils/tracing');
+			await vi.importActual<typeof tracing>('@utils/tracing');
 		(tracing.getTracingConfig as vi.Mock).mockImplementation(realGetTracingConfig);
 
 		const { loadMemory: realLoadMemory, saveToMemory: realSaveToMemory } =
-			vi.requireActual<typeof agentExecution>('@utils/agent-execution');
+			await vi.importActual<typeof agentExecution>('@utils/agent-execution');
 		(agentExecution.loadMemory as vi.Mock).mockImplementation(realLoadMemory);
 		(agentExecution.saveToMemory as vi.Mock).mockImplementation(realSaveToMemory);
 

@@ -15,8 +15,8 @@ vi.mock('zod-to-json-schema', () => ({
 	default: vi.fn(),
 }));
 
-vi.mock('n8n-workflow', () => {
-	const actual = vi.requireActual('n8n-workflow');
+vi.mock('n8n-workflow', async () => {
+	const actual = await vi.importActual('n8n-workflow');
 	return {
 		...actual,
 		accumulateTokenUsage: vi.fn(),

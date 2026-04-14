@@ -49,7 +49,6 @@ describe('LmChatOpenAi', () => {
 		mockContext.getNodeParameter = vi.fn();
 
 		// Mock the constructors/functions properly
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as any);
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
 		return mockContext;

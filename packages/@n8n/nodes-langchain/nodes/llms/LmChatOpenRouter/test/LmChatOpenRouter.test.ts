@@ -14,7 +14,6 @@ vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
 
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
-const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 
@@ -48,7 +47,6 @@ describe('LmChatOpenRouter', () => {
 			return undefined;
 		});
 
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as unknown as N8nLlmTracing);
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
 		return ctx;

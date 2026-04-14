@@ -15,8 +15,8 @@ vi.mock('../../../../../utils/output_parsers/N8nOutputParser', () => ({
 	N8nStructuredOutputParser: vi.fn(),
 }));
 
-vi.mock('../../agents/ToolsAgent/common', () => ({
-	...vi.requireActual('../../agents/ToolsAgent/common'),
+vi.mock('../../agents/ToolsAgent/common', async () => ({
+	...(await vi.importActual('../../agents/ToolsAgent/common')),
 	getOptionalMemory: vi.fn(),
 }));
 

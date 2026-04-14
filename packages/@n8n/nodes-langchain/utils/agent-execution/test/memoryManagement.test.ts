@@ -19,8 +19,8 @@ import {
 import type { ToolCallData } from '../types';
 import { Mocked } from 'vitest';
 
-vi.mock('@langchain/core/messages', () => ({
-	...vi.requireActual('@langchain/core/messages'),
+vi.mock('@langchain/core/messages', async () => ({
+	...(await vi.importActual('@langchain/core/messages')),
 	trimMessages: vi.fn(),
 }));
 

@@ -20,7 +20,6 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 const MockedChatAnthropic = vi.mocked(ChatAnthropic);
-const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 
@@ -52,7 +51,6 @@ describe('LmChatAnthropic', () => {
 		mockContext.getNodeParameter = vi.fn();
 
 		// Mock the constructors/functions properly
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as N8nLlmTracing);
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
 		return mockContext;

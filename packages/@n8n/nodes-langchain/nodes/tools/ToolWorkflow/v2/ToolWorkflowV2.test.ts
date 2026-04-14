@@ -11,8 +11,8 @@ import type {
 import { WorkflowToolService } from './utils/WorkflowToolService';
 
 // Mock the sleep functions
-vi.mock('n8n-workflow', () => ({
-	...vi.requireActual('n8n-workflow'),
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual('n8n-workflow')),
 	sleep: vi.fn().mockResolvedValue(undefined),
 	sleepWithAbort: vi.fn().mockResolvedValue(undefined),
 }));

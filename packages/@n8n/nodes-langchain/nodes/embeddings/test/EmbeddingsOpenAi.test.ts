@@ -12,8 +12,8 @@ vi.mock('@langchain/openai');
 
 class MockProxyAgent {}
 
-vi.mock('@n8n/ai-utilities', () => {
-	const actual = vi.requireActual('@n8n/ai-utilities');
+vi.mock('@n8n/ai-utilities', async () => {
+	const actual = await vi.importActual('@n8n/ai-utilities');
 	return {
 		...actual,
 		logWrapper: vi.fn().mockImplementation(() => vi.fn()),
