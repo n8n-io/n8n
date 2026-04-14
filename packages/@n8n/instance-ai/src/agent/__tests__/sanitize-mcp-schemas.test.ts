@@ -1,7 +1,7 @@
 import type { ToolsInput } from '@mastra/core/agent';
 import { z } from 'zod';
 
-import { sanitizeMcpToolSchemas } from '../sanitize-mcp-schemas';
+import { sanitizeMcpToolSchemas, sanitizeZodType } from '../sanitize-mcp-schemas';
 
 function makeTools(
 	schemas: Record<string, { input?: z.ZodTypeAny; output?: z.ZodTypeAny }>,
@@ -270,38 +270,56 @@ describe('sanitizeMcpToolSchemas', () => {
 		});
 	});
 
-	describe('discriminated union description consistency', () => {
-		/**
-		 * Extracts field descriptions from all variants of a discriminated union.
-		 * Returns a map of field name → Set of unique descriptions found.
-		 */
-		function extractDescriptionsByField(
-			union: z.ZodDiscriminatedUnion<string, Array<z.ZodObject<z.ZodRawShape>>>,
-		): Map<string, Set<string>> {
-			const descriptionsByField = new Map<string, Set<string>>();
-			const discriminator = union.discriminator;
-			const variants = [...union.options.values()] as Array<z.ZodObject<z.ZodRawShape>>;
+	describe('discriminated union flattening', () => {
+		it('should generate action enum description from literal descriptions', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('list').describe('List all items'),
+				}),
+				z.object({
+					action: z.literal('get').describe('Get item by ID'),
+					id: z.string(),
+				}),
+			]);
 
-			for (const variant of variants) {
-				for (const [key, value] of Object.entries(variant.shape)) {
-					if (key === discriminator) continue;
-					const desc = value.description;
-					if (!desc) continue;
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const actionField = result.shape.action;
 
-					if (!descriptionsByField.has(key)) {
-						descriptionsByField.set(key, new Set());
-					}
-					descriptionsByField.get(key)!.add(desc);
-				}
-			}
+			expect(actionField.description).toBe('"list": List all items | "get": Get item by ID');
+		});
 
-			return descriptionsByField;
-		}
+		it('should include undescribed actions in the enum without a label', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('list').describe('List all items'),
+				}),
+				z.object({
+					action: z.literal('ping'),
+				}),
+			]);
 
-		it('should not have fields with conflicting descriptions across variants', () => {
-			// Simulates what sanitizeZodType does: first-come-first-served for descriptions.
-			// If two variants define the same field with different descriptions, only the
-			// first survives — the model sees a wrong description for the other action(s).
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const actionField = result.shape.action;
+
+			expect(actionField.description).toBe('"list": List all items | "ping"');
+		});
+
+		it('should preserve consistent field descriptions across variants', () => {
+			const sharedId = z.string().describe('Resource ID');
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('get'), id: sharedId }),
+				z.object({ action: z.literal('delete'), id: sharedId }),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const idField = result.shape.id as z.ZodOptional<z.ZodTypeAny>;
+
+			// Original description is preserved (no combined override)
+			expect(idField.description).toBe('Resource ID');
+			expect(idField.description).not.toContain('For "');
+		});
+
+		it('should combine conflicting field descriptions with action context', () => {
 			const union = z.discriminatedUnion('action', [
 				z.object({
 					action: z.literal('create'),
@@ -313,30 +331,30 @@ describe('sanitizeMcpToolSchemas', () => {
 				}),
 			]);
 
-			const descriptionsByField = extractDescriptionsByField(union);
-			const conflicts = [...descriptionsByField.entries()].filter(([, descs]) => descs.size > 1);
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const nameField = result.shape.name;
 
-			// This test intentionally has a conflict to verify the detection logic works
-			expect(conflicts).toHaveLength(1);
-			expect(conflicts[0][0]).toBe('name');
+			expect(nameField.description).toBe('For "create": Table name. For "rename": Column name');
 		});
 
-		it('should allow identical descriptions across variants', () => {
+		it('should make all non-discriminator fields optional', () => {
 			const union = z.discriminatedUnion('action', [
 				z.object({
-					action: z.literal('get'),
-					id: z.string().describe('Resource ID'),
+					action: z.literal('list'),
+					limit: z.number().describe('Max results'),
 				}),
 				z.object({
-					action: z.literal('delete'),
-					id: z.string().describe('Resource ID'),
+					action: z.literal('get'),
+					id: z.string().describe('Item ID'),
 				}),
 			]);
 
-			const descriptionsByField = extractDescriptionsByField(union);
-			const conflicts = [...descriptionsByField.entries()].filter(([, descs]) => descs.size > 1);
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
 
-			expect(conflicts).toHaveLength(0);
+			expect(result.shape.limit).toBeInstanceOf(z.ZodOptional);
+			expect(result.shape.id).toBeInstanceOf(z.ZodOptional);
+			// action is required (not optional)
+			expect(result.shape.action).not.toBeInstanceOf(z.ZodOptional);
 		});
 	});
 });

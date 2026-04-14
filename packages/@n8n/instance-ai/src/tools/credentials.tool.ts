@@ -25,6 +25,10 @@ const GENERIC_AUTH_TYPES = new Set([
 	'oAuth2Api',
 ]);
 
+// ── Shared fields (single source of truth for fields used across actions) ───
+
+const credentialIdField = z.string().describe('Credential ID');
+
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
@@ -49,12 +53,12 @@ const listAction = z.object({
 
 const getAction = z.object({
 	action: z.literal('get').describe('Get credential metadata by ID'),
-	credentialId: z.string().describe('Credential ID'),
+	credentialId: credentialIdField,
 });
 
 const deleteAction = z.object({
 	action: z.literal('delete').describe('Permanently delete a credential by ID'),
-	credentialId: z.string().describe('Credential ID'),
+	credentialId: credentialIdField,
 	credentialName: z
 		.string()
 		.optional()
@@ -106,7 +110,7 @@ const testAction = z.object({
 	action: z
 		.literal('test')
 		.describe('Test whether a credential is valid and can connect to its service'),
-	credentialId: z.string().describe('Credential ID'),
+	credentialId: credentialIdField,
 });
 
 const inputSchema = sanitizeInputSchema(

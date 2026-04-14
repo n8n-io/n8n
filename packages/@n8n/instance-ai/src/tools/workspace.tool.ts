@@ -9,6 +9,17 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 
+// ── Shared fields (single source of truth for fields used across actions) ───
+
+const workflowIdField = z.string().describe('Workflow ID');
+const workflowNameField = z
+	.string()
+	.optional()
+	.describe('Workflow name (for confirmation message)');
+const projectIdField = z.string().describe('Project ID');
+const folderIdField = z.string().describe('Folder ID');
+const folderNameField = z.string().optional().describe('Folder name (for confirmation message)');
+
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 const listProjectsAction = z.object({
@@ -23,8 +34,8 @@ const tagWorkflowAction = z.object({
 	action: z
 		.literal('tag-workflow')
 		.describe('Assign tags to a workflow, creating missing tags automatically'),
-	workflowId: z.string().describe('ID of the workflow to tag'),
-	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
+	workflowId: workflowIdField,
+	workflowName: workflowNameField,
 	tags: z.array(z.string()).min(1).describe('Tag names to assign to the workflow'),
 });
 
@@ -32,8 +43,8 @@ const cleanupTestExecutionsAction = z.object({
 	action: z
 		.literal('cleanup-test-executions')
 		.describe('Delete manual/test execution records for a workflow'),
-	workflowId: z.string().describe('ID of the workflow whose test executions to clean up'),
-	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
+	workflowId: workflowIdField,
+	workflowName: workflowNameField,
 	olderThanHours: z
 		.number()
 		.optional()
@@ -42,13 +53,13 @@ const cleanupTestExecutionsAction = z.object({
 
 const listFoldersAction = z.object({
 	action: z.literal('list-folders').describe('List folders in a project'),
-	projectId: z.string().describe('Project ID'),
+	projectId: projectIdField,
 });
 
 const createFolderAction = z.object({
 	action: z.literal('create-folder').describe('Create a new folder in a project'),
 	name: z.string().describe('Name for the new folder'),
-	projectId: z.string().describe('Project ID'),
+	projectId: projectIdField,
 	parentFolderId: z
 		.string()
 		.optional()
@@ -57,9 +68,9 @@ const createFolderAction = z.object({
 
 const deleteFolderAction = z.object({
 	action: z.literal('delete-folder').describe('Delete a folder from a project'),
-	folderId: z.string().describe('Folder ID'),
-	folderName: z.string().optional().describe('Folder name (for confirmation message)'),
-	projectId: z.string().describe('Project ID'),
+	folderId: folderIdField,
+	folderName: folderNameField,
+	projectId: projectIdField,
 	transferToFolderId: z
 		.string()
 		.optional()
@@ -74,10 +85,10 @@ const deleteFolderAction = z.object({
 
 const moveWorkflowToFolderAction = z.object({
 	action: z.literal('move-workflow-to-folder').describe('Move a workflow into a folder'),
-	workflowId: z.string().describe('ID of the workflow to move'),
-	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
-	folderId: z.string().describe('Folder ID'),
-	folderName: z.string().optional().describe('Folder name (for confirmation message)'),
+	workflowId: workflowIdField,
+	workflowName: workflowNameField,
+	folderId: folderIdField,
+	folderName: folderNameField,
 });
 
 // ── Suspend / resume schemas ────────────────────────────────────────────────

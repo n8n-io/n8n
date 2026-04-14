@@ -30,30 +30,72 @@ export function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
 	}
 
 	// ZodDiscriminatedUnion — flatten to a single z.object
-	// (discriminator becomes an enum, variant-specific fields become optional).
+	// (discriminator becomes an enum with per-action descriptions,
+	//  variant-specific fields become optional with merged descriptions).
 	// Anthropic rejects top-level unions because they produce schemas without type=object.
 	if (schema instanceof z.ZodDiscriminatedUnion) {
 		const disc = schema as z.ZodDiscriminatedUnion<string, Array<z.ZodObject<z.ZodRawShape>>>;
 		const discriminator = disc.discriminator;
 		const variants = [...disc.options.values()] as Array<z.ZodObject<z.ZodRawShape>>;
 
-		const mergedShape: z.ZodRawShape = {};
-		const discriminatorValues: string[] = [];
+		// Phase 1: Collect metadata from all variants
+		const actionMeta: Array<{ value: string; description?: string }> = [];
+		const fieldMeta = new Map<
+			string,
+			Array<{ action: string; description?: string; type: z.ZodTypeAny }>
+		>();
 
 		for (const variant of variants) {
+			let actionValue = '';
+
 			for (const [key, value] of Object.entries(variant.shape)) {
-				if (key === discriminator) {
-					if (value instanceof z.ZodLiteral) {
-						discriminatorValues.push(String(value.value));
-					}
-				} else if (!(key in mergedShape)) {
-					mergedShape[key] = sanitizeZodType(value).optional();
+				if (key === discriminator && value instanceof z.ZodLiteral) {
+					actionValue = String(value.value);
+					actionMeta.push({ value: actionValue, description: value.description });
 				}
+			}
+
+			for (const [key, value] of Object.entries(variant.shape)) {
+				if (key === discriminator) continue;
+				if (!fieldMeta.has(key)) fieldMeta.set(key, []);
+				fieldMeta.get(key)!.push({
+					action: actionValue,
+					description: value.description,
+					type: value,
+				});
 			}
 		}
 
-		if (discriminatorValues.length > 0) {
-			mergedShape[discriminator] = z.enum(discriminatorValues as [string, ...string[]]);
+		// Phase 2: Build the merged shape
+		const mergedShape: z.ZodRawShape = {};
+
+		// Build discriminator enum with per-action descriptions
+		if (actionMeta.length > 0) {
+			const enumValues = actionMeta.map((a) => a.value);
+			const actionDescParts = actionMeta.map((a) =>
+				a.description ? `"${a.value}": ${a.description}` : `"${a.value}"`,
+			);
+			mergedShape[discriminator] = z
+				.enum(enumValues as [string, ...string[]])
+				.describe(actionDescParts.join(' | '));
+		}
+
+		// Build each field with properly merged descriptions
+		for (const [fieldName, entries] of fieldMeta) {
+			const sanitizedField = sanitizeZodType(entries[0].type).optional();
+
+			const withDesc = entries.filter(
+				(e): e is typeof e & { description: string } => !!e.description,
+			);
+			const uniqueDescs = new Set(withDesc.map((d) => d.description));
+
+			if (uniqueDescs.size > 1) {
+				// Descriptions conflict across actions — combine with action context
+				const combined = withDesc.map((d) => `For "${d.action}": ${d.description}`).join('. ');
+				mergedShape[fieldName] = sanitizedField.describe(combined);
+			} else {
+				mergedShape[fieldName] = sanitizedField;
+			}
 		}
 
 		return z.object(mergedShape);
