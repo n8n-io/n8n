@@ -694,7 +694,7 @@ export class TelemetryEventRelay extends EventRelay {
 		projectId,
 		projectType,
 		uiContext,
-		source,
+		source = 'ui',
 	}: RelayEventMap['workflow-created']) {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 
@@ -743,7 +743,7 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		workflowId,
 		publicApi,
-		source,
+		source = 'ui',
 	}: RelayEventMap['workflow-activated']) {
 		this.telemetry.track('User activated workflow', {
 			user_id: user.id,
@@ -758,7 +758,7 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowId,
 		publicApi,
 		deactivatedVersionId,
-		source,
+		source = 'ui',
 	}: RelayEventMap['workflow-deactivated']) {
 		this.telemetry.track('User deactivated workflow', {
 			user_id: user.id,
@@ -788,7 +788,7 @@ export class TelemetryEventRelay extends EventRelay {
 		previousWorkflow,
 		aiBuilderAssisted,
 		settingsChanged,
-		source,
+		source = 'ui',
 	}: RelayEventMap['workflow-saved']) {
 		const isCloudDeployment = this.globalConfig.deployment.type === 'cloud';
 

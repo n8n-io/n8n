@@ -81,7 +81,7 @@ export type RelayEventMap = {
 		projectId: string;
 		projectType: string;
 		uiContext?: string;
-		source: WorkflowActionSource;
+		source?: WorkflowActionSource;
 	};
 
 	'workflow-deleted': {
@@ -109,7 +109,7 @@ export type RelayEventMap = {
 		previousWorkflow?: IWorkflowDb;
 		aiBuilderAssisted?: boolean;
 		settingsChanged?: Record<string, { from: JsonValue; to: JsonValue }>;
-		source: WorkflowActionSource;
+		source?: WorkflowActionSource;
 	};
 
 	'workflow-activated': {
@@ -117,7 +117,7 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
-		source: WorkflowActionSource;
+		source?: WorkflowActionSource;
 	};
 
 	'workflow-deactivated': {
@@ -126,7 +126,7 @@ export type RelayEventMap = {
 		workflow: IWorkflowDb;
 		publicApi: boolean;
 		deactivatedVersionId: string | null;
-		source: WorkflowActionSource;
+		source?: WorkflowActionSource;
 	};
 
 	'workflow-pre-execute': {

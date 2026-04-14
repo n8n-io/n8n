@@ -1106,7 +1106,6 @@ describe('TelemetryEventRelay', () => {
 				publicApi: false,
 				projectId: 'project123',
 				projectType: 'personal',
-				source: 'ui',
 			};
 
 			eventService.emit('workflow-created', event);
@@ -1165,7 +1164,6 @@ describe('TelemetryEventRelay', () => {
 				publicApi: false,
 				projectId: 'project123',
 				projectType: 'personal',
-				source: 'ui',
 			};
 
 			eventService.emit('workflow-created', event);
@@ -1285,7 +1283,6 @@ describe('TelemetryEventRelay', () => {
 				},
 				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
 				publicApi: false,
-				source: 'ui',
 			};
 
 			eventService.emit('workflow-saved', event);
@@ -1328,7 +1325,6 @@ describe('TelemetryEventRelay', () => {
 					settings: { credentialResolverId: 'resolver-123', redactionPolicy: undefined },
 				}),
 				publicApi: false,
-				source: 'ui',
 				settingsChanged: {
 					credentialResolverId: {
 						from: null,
@@ -1378,7 +1374,6 @@ describe('TelemetryEventRelay', () => {
 					settings: { redactionPolicy: 'all' },
 				}),
 				publicApi: false,
-				source: 'ui',
 				settingsChanged: {
 					redactionPolicy: {
 						from: 'none',
