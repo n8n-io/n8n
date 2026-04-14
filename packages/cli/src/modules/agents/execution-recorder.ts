@@ -79,7 +79,7 @@ export class ExecutionRecorder {
 				this.textBuffer.push(chunk.delta);
 				break;
 			case 'message':
-				this.processMessage(chunk.message as AgentMessage);
+				this.processMessage(chunk.message);
 				break;
 			case 'finish':
 				this.flushTextBuffer();
@@ -165,7 +165,7 @@ export class ExecutionRecorder {
 			if (part.type === 'tool-call' && 'toolName' in part) {
 				this.flushTextBuffer();
 
-				const name = part.toolName as string;
+				const name = part.toolName;
 				const input = 'input' in part ? part.input : undefined;
 				const toolCallId = 'toolCallId' in part ? String(part.toolCallId) : '';
 
@@ -184,7 +184,7 @@ export class ExecutionRecorder {
 					success: true,
 				});
 			} else if (part.type === 'tool-result' && 'toolName' in part) {
-				const name = part.toolName as string;
+				const name = part.toolName;
 				const output = 'result' in part ? part.result : undefined;
 				const toolCallId = 'toolCallId' in part ? String(part.toolCallId) : '';
 
