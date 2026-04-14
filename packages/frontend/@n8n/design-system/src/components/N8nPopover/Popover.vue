@@ -182,7 +182,7 @@ watch(
 	--popover--offset--slide-y: 0;
 	--popover--offset--origin-x: center;
 	--popover--offset--origin-y: center;
-  
+
 	border-radius: var(--radius);
 	background-color: var(--color--foreground--tint-2);
 	border: var(--border);
