@@ -40,6 +40,7 @@ const configs = {
 			'@n8n/community-nodes/node-connection-type-literal': 'error',
 			'@n8n/community-nodes/missing-paired-item': 'error',
 			'@n8n/community-nodes/require-continue-on-fail': 'error',
+			'@n8n/community-nodes/require-node-api-error': 'error',
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
@@ -66,6 +67,7 @@ const configs = {
 			'@n8n/community-nodes/node-connection-type-literal': 'error',
 			'@n8n/community-nodes/missing-paired-item': 'error',
 			'@n8n/community-nodes/require-continue-on-fail': 'error',
+			'@n8n/community-nodes/require-node-api-error': 'error',
 		},
 	},
 } satisfies Record<string, Linter.Config>;

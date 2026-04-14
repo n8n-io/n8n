@@ -64,6 +64,7 @@ export default [
 | [options-sorted-alphabetically](docs/rules/options-sorted-alphabetically.md)             | Enforce alphabetical ordering of options arrays in n8n node properties                                                                      |      | ✅ ☑️ |    |    |
 | [package-name-convention](docs/rules/package-name-convention.md)                         | Enforce correct package naming convention for n8n community nodes                                                                           | ✅ ☑️ |      |    | 💡 |
 | [require-continue-on-fail](docs/rules/require-continue-on-fail.md)                       | Require continueOnFail() handling in execute() methods of node classes                                                                      | ✅ ☑️ |      |    |    |
+| [require-node-api-error](docs/rules/require-node-api-error.md)                           | Require NodeApiError or NodeOperationError for error wrapping in catch blocks. Raw errors lose HTTP context in the n8n UI.                  | ✅ ☑️ |      |    |    |
 | [resource-operation-pattern](docs/rules/resource-operation-pattern.md)                   | Enforce proper resource/operation pattern for better UX in n8n nodes                                                                        |      | ✅ ☑️ |    |    |
 
 <!-- end auto-generated rules list -->

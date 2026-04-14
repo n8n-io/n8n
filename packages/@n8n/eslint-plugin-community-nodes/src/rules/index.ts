@@ -19,6 +19,7 @@ import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OptionsSortedAlphabeticallyRule } from './options-sorted-alphabetically.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireContinueOnFailRule } from './require-continue-on-fail.js';
+import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 
 export const rules = {
@@ -42,4 +43,5 @@ export const rules = {
 	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
 	'missing-paired-item': MissingPairedItemRule,
 	'require-continue-on-fail': RequireContinueOnFailRule,
+	'require-node-api-error': RequireNodeApiErrorRule,
 } satisfies Record<string, AnyRuleModule>;
