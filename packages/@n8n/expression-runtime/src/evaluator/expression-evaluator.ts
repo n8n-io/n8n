@@ -43,11 +43,13 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		this.pool = new IsolatePool(
 			this.createBridge,
 			config.poolSize ?? 1,
+			config.idleTimeoutMs,
 			(error) => {
 				logger.error('[IsolatePool] Failed to replenish bridge', { error });
 				config.observability?.metrics.counter('expression.pool.replenish_failed', 1);
 			},
 			logger,
+			config.observability,
 		);
 	}
 
