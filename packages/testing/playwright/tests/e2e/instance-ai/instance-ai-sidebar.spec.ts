@@ -92,12 +92,16 @@ test.describe(
 			await n8n.instanceAi.sendMessage('Second thread');
 			await n8n.instanceAi.waitForResponseComplete();
 
+			// Wait for both threads to be visible in the sidebar before interacting
+			await expect(n8n.instanceAi.sidebar.getThreadItems()).toHaveCount(2, { timeout: 10_000 });
+
 			// Hover the target thread to reveal the three-dots button, then click it
 			const targetThread = n8n.instanceAi.sidebar.getThreadByTitle('Thread to Delete');
+			await expect(targetThread).toBeVisible({ timeout: 5_000 });
 			await targetThread.hover();
 			const actionButton = n8n.instanceAi.sidebar.getThreadActionsTrigger(targetThread);
 			await expect(actionButton).toBeVisible({ timeout: 5_000 });
-			await actionButton.click({ force: true });
+			await actionButton.click();
 
 			// Click delete option in the dropdown
 			await expect(n8n.instanceAi.sidebar.getDeleteMenuItem()).toBeVisible({ timeout: 5_000 });
