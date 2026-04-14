@@ -5,6 +5,8 @@
     "dev": "N8N_BASE_URL=http://localhost:5678 N8N_EDITOR_URL=http://localhost:8080 RESET_E2E_DB=true playwright test --project=e2e",
     "test:all": "playwright test",
     "test:local": "N8N_BASE_URL=http://localhost:5680 RESET_E2E_DB=true playwright test --project=e2e",
+    "test:local:isolated": "node scripts/run-local-isolated.mjs",
+    "test:local:instance-ai": "node scripts/run-local-instance-ai.mjs",
     "test:e2e": "playwright test --project=*e2e*",
     "test:performance": "playwright test --project=performance",
     "test:infrastructure": "playwright test --project='*:infrastructure'",

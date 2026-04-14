@@ -1,7 +1,7 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import {
+	Project,
 	CredentialsEntity,
 	SharedCredentials,
 	CredentialsRepository,
@@ -9,6 +9,7 @@ import {
 	SharedCredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
+import type { User, ICredentialsDb, ScopesField } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -713,11 +714,28 @@ export class CredentialsService {
 		});
 	}
 
+	private async resolveOwningProjectIdForNewCredential(
+		user: User,
+		projectId: string | undefined,
+		entityManager?: EntityManager,
+	): Promise<string> {
+		if (projectId !== undefined) {
+			return projectId;
+		}
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+			user.id,
+			entityManager,
+		);
+		// Chat users are not allowed to create credentials even within their personal project,
+		// so even though we found the project ensure it gets found via expected scope too.
+		return personalProject.id;
+	}
+
 	async save(
 		credential: CredentialsEntity,
 		encryptedData: ICredentialsDb,
 		user: User,
-		projectId?: string,
+		projectId: string,
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 	) {
 		// To avoid side effects
@@ -728,16 +746,6 @@ export class CredentialsService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 		const result = await dbManager.transaction(async (transactionManager) => {
-			if (projectId === undefined) {
-				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
-					user.id,
-					transactionManager,
-				);
-				// Chat users are not allowed to create credentials even within their personal project,
-				// so even though we found the project ensure it gets found via expected scope too.
-				projectId = personalProject.id;
-			}
-
 			const project = await this.projectService.getProjectWithScope(
 				user,
 				projectId,
@@ -746,7 +754,10 @@ export class CredentialsService {
 			);
 
 			if (project === null) {
-				throw new BadRequestError(
+				if (!(await transactionManager.existsBy(Project, { id: projectId }))) {
+					throw new NotFoundError('Project not found');
+				}
+				throw new ForbiddenError(
 					"You don't have the permissions to save the credential in this project.",
 				);
 			}
@@ -1052,9 +1063,14 @@ export class CredentialsService {
 
 	async getCredentialScopes(user: User, credentialId: string): Promise<Scope[]> {
 		const userProjectRelations = await this.projectService.getProjectRelationsForUser(user);
+		const projectIds = [...new Set(userProjectRelations.map((pr) => pr.projectId))];
+		// Postgres rejects `IN ()`; SQLite tolerates it. Skip the query when there is no project scope.
+		if (projectIds.length === 0) {
+			return this.roleService.combineResourceScopes('credential', user, [], userProjectRelations);
+		}
 		const shared = await this.sharedCredentialsRepository.find({
 			where: {
-				projectId: In([...new Set(userProjectRelations.map((pr) => pr.projectId))]),
+				projectId: In(projectIds),
 				credentialsId: credentialId,
 			},
 		});
@@ -1217,15 +1233,17 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
+
 		await this.checkCredentialData(
 			opts.type,
 			opts.data as ICredentialDataDecryptedObject,
 			user,
-			opts.projectId ?? '',
+			targetProjectId,
 		);
-		if (this.externalSecretsConfig.externalSecretsForProjects && opts.projectId) {
+		if (this.externalSecretsConfig.externalSecretsForProjects) {
 			await validateAccessToReferencedSecretProviders(
-				opts.projectId,
+				targetProjectId,
 				opts.data as ICredentialDataDecryptedObject,
 				this.externalSecretsProviderAccessCheckService,
 				'create',
@@ -1260,7 +1278,7 @@ export class CredentialsService {
 			credentialEntity,
 			encryptedCredential,
 			user,
-			opts.projectId,
+			targetProjectId,
 			opts.data as ICredentialDataDecryptedObject,
 		);
 

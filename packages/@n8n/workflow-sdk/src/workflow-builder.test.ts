@@ -2764,7 +2764,7 @@ describe('Workflow Builder', () => {
 				version: 2,
 				config: { name: 'IF' },
 			});
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 			const ifBuilder = ifNode.onTrue!(nodeA).onFalse(nodeB);
 			const end = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'End' } });
 
@@ -2790,7 +2790,7 @@ describe('Workflow Builder', () => {
 					version: 2,
 					config: { name: `IF ${i}` },
 				});
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 				current = ifNode.onTrue!(current) as unknown as NodeInstance<string, string, unknown>;
 			}
 
