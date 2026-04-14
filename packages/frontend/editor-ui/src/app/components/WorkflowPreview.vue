@@ -216,6 +216,19 @@ watch(
 );
 
 watch(
+	() => props.mode,
+	() => {
+		if (showPreview.value) {
+			if (props.mode === 'workflow') {
+				loadWorkflow();
+			} else if (props.mode === 'execution') {
+				loadExecution();
+			}
+		}
+	},
+);
+
+watch(
 	() => props.executionId,
 	() => {
 		if (props.mode === 'execution' && props.executionId) {

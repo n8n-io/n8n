@@ -5,11 +5,11 @@ import { ProjectRelationRepository, type User } from '@n8n/db';
 import type { DataTableInfoById } from 'n8n-workflow';
 
 import type { DataTableColumn } from '../data-table-column.entity';
+import type { DataTable } from '../data-table.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableCsvImportService } from '../data-table-csv-import.service';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
-import type { DataTable } from '../data-table.entity';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';

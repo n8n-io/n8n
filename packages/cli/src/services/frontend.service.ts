@@ -251,6 +251,7 @@ export class FrontendService {
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
 			sso: {
+				managedByEnv: this.globalConfig.instanceSettingsLoader.ssoManagedByEnv,
 				saml: {
 					loginEnabled: false,
 					loginLabel: '',
