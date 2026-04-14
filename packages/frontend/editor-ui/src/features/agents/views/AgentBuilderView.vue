@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -10,9 +10,9 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
-import { MODAL_CONFIRM, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { MODAL_CONFIRM, MODAL_CANCEL, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
-import { getAgent, updateAgent, deleteAgent } from '../composables/useAgentApi';
+import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
 import { AGENTS_LIST_VIEW } from '../constants';
 import { useAgentConfig } from '../composables/useAgentConfig';
@@ -148,6 +148,7 @@ async function onHeaderAction(action: string) {
 		);
 		if (confirmed !== MODAL_CONFIRM) return;
 		await deleteAgent(rootStore.restApiContext, projectId.value, agentId.value);
+		agent.value = null; // prevent unpublished-changes guard from firing after delete
 		void router.push({ name: AGENTS_LIST_VIEW, params: { projectId: projectId.value } });
 	}
 }
@@ -159,6 +160,40 @@ function onPublished(updated: AgentResource) {
 function onUnpublished(updated: AgentResource) {
 	agent.value = updated;
 }
+
+const hasUnpublishedChanges = computed(
+	() => !!agent.value?.publishedVersion && agent.value.versionId !== agent.value.activeVersionId,
+);
+
+onBeforeRouteLeave(async (_to, _from, next) => {
+	if (!hasUnpublishedChanges.value) {
+		next();
+		return;
+	}
+
+	const response = await message.confirm(
+		locale.baseText('agents.builder.unsavedPublish.modal.description'),
+		locale.baseText('agents.builder.unsavedPublish.modal.title'),
+		{
+			confirmButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.publish'),
+			cancelButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.leave'),
+			showClose: true,
+			type: 'warning',
+		},
+	);
+
+	if (response === MODAL_CONFIRM) {
+		try {
+			await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
+		} catch {
+			return; // publish failed — stay on page
+		}
+		next();
+	} else if (response === MODAL_CANCEL) {
+		next();
+	}
+	// MODAL_CLOSE (X / Escape) → don't call next(), stay on page
+});
 
 async function initialize() {
 	agent.value = null;
