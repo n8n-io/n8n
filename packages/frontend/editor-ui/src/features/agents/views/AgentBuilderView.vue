@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
 import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
@@ -8,7 +9,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, updateAgent, deleteAgent } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -17,7 +19,6 @@ import { useAgentConfig } from '../composables/useAgentConfig';
 import { agentsEventBus } from '../agents.eventBus';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentHomeContent from '../components/AgentHomeContent.vue';
-import AgentPublishButton from '../components/AgentPublishButton.vue';
 import AgentSettingsSidebar from '../components/AgentSettingsSidebar.vue';
 
 const route = useRoute();
@@ -27,6 +28,7 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const message = useMessage();
+const { showMessage } = useToast();
 
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
@@ -48,8 +50,6 @@ const chatEndpoint = ref<'build' | 'chat'>('build');
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
-const originalConfigJson = ref('');
-const isDirty = ref(false);
 
 /**
  * An agent is considered "built" once it has instructions configured.
@@ -63,8 +63,6 @@ watch(
 	(c) => {
 		if (c) {
 			localConfig.value = deepCopy(c);
-			originalConfigJson.value = JSON.stringify(c);
-			isDirty.value = false;
 		}
 	},
 	{ immediate: true },
@@ -131,23 +129,7 @@ function onChatStreamingChange(streaming: boolean) {
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	Object.assign(localConfig.value, updates);
-	isDirty.value = JSON.stringify(localConfig.value) !== originalConfigJson.value;
-}
-
-async function saveConfig() {
-	if (!localConfig.value) return;
-	await updateConfig(projectId.value, agentId.value, localConfig.value);
-	originalConfigJson.value = JSON.stringify(localConfig.value);
-	isDirty.value = false;
-	telemetry.track('User saved agent settings', { agent_id: agentId.value });
-}
-
-function cancelConfig() {
-	if (config.value) {
-		localConfig.value = deepCopy(config.value);
-		isDirty.value = false;
-		telemetry.track('User cancelled agent settings', { agent_id: agentId.value });
-	}
+	void debouncedSave();
 }
 
 async function onConfigUpdated() {
@@ -185,8 +167,6 @@ async function initialize() {
 	agentIcon.value = { type: 'icon', value: 'robot' };
 	initialPrompt.value = undefined;
 	localConfig.value = null;
-	originalConfigJson.value = '';
-	isDirty.value = false;
 
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
@@ -213,13 +193,6 @@ watch(agentId, initialize, { immediate: true });
 					}}</N8nText>
 				</div>
 				<div :class="$style.mainHeaderRight">
-					<AgentPublishButton
-						:agent="agent"
-						:project-id="projectId"
-						:agent-id="agentId"
-						@published="onPublished"
-						@unpublished="onUnpublished"
-					/>
 					<button
 						v-if="chatActive"
 						:class="$style.toggleBtn"
@@ -282,8 +255,8 @@ watch(agentId, initialize, { immediate: true });
 			:is-dirty="isDirty"
 			:building="isBuilding"
 			@update:config="onConfigFieldUpdate"
-			@save="saveConfig"
-			@cancel="cancelConfig"
+			@published="onPublished"
+			@unpublished="onUnpublished"
 		/>
 	</div>
 </template>

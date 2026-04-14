@@ -190,7 +190,7 @@ export const updateAgentConfig = async (
 	projectId: string,
 	agentId: string,
 	config: AgentJsonConfig,
-): Promise<{ config: AgentJsonConfig }> => {
+): Promise<{ config: AgentJsonConfig; versionId: string | null }> => {
 	return await makeRestApiRequest(
 		context,
 		'PUT',
