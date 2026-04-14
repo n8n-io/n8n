@@ -629,8 +629,12 @@ export class AgentsService {
 		entity.schema = result.config;
 		entity.name = result.config.name;
 		entity.description = result.config.description ?? null;
-		// Bump versionId so frontend can detect unpublished changes via versionId !== activeVersionId.
-		entity.versionId = uuid();
+		// Start a new draft only on the first save after a publish (versionId === activeVersionId).
+		// Between publishes all saves accumulate on the same versionId so
+		// hasUnpublishedChanges (versionId !== activeVersionId) still works correctly.
+		if (entity.versionId !== null && entity.versionId === entity.activeVersionId) {
+			entity.versionId = uuid();
+		}
 
 		// Remove tool entries that are no longer referenced in the config
 		const referencedIds = new Set(

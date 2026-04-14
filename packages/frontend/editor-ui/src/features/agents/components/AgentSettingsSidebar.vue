@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ChatHubConversationModel, ChatHubProvider, ChatModelDto } from '@n8n/api-types';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -186,13 +186,26 @@ function onResizeStart(event: MouseEvent) {
 		<!-- Sidebar header -->
 		<div :class="$style.header">
 			<N8nText tag="span" bold>{{ locale.baseText('agents.settings.title') }}</N8nText>
-			<AgentPublishButton
-				:agent="agent"
-				:project-id="projectId"
-				:agent-id="agentId"
-				@published="(a) => emit('published', a)"
-				@unpublished="(a) => emit('unpublished', a)"
-			/>
+			<div :class="$style.headerRight">
+				<N8nText v-if="saveStatus !== 'idle'" tag="span" size="small" :class="$style.saveStatus">
+					{{
+						saveStatus === 'saving'
+							? locale.baseText('agents.builder.saving')
+							: locale.baseText('agents.builder.saved')
+					}}
+				</N8nText>
+				<N8nBadge v-if="config && !config.credential" theme="warning">
+					{{ locale.baseText('agents.settings.credentialsMissing') }}
+				</N8nBadge>
+				<AgentPublishButton
+					:agent="agent"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:is-saving="saveStatus === 'saving'"
+					@published="(a) => emit('published', a)"
+					@unpublished="(a) => emit('unpublished', a)"
+				/>
+			</div>
 		</div>
 
 		<div :class="$style.body">
@@ -209,6 +222,7 @@ function onResizeStart(event: MouseEvent) {
 					:credentials="credentialsByProvider"
 					:agents="chatStore.agents"
 					:is-loading="false"
+					:warn-missing-credentials="true"
 					horizontal
 					@change="onModelChange"
 					@select-credential="onSelectCredential"
@@ -358,6 +372,16 @@ function onResizeStart(event: MouseEvent) {
 	min-height: 56px;
 	padding: 0 var(--spacing--sm);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.headerRight {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.saveStatus {
+	color: var(--color--text--tint-2);
 }
 
 .body {

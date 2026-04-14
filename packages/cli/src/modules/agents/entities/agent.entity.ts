@@ -47,7 +47,7 @@ export class Agent extends WithTimestampsAndStringId {
 		}
 	>;
 
-	/** UUID that changes on every config save, mirroring how WorkflowEntity. */
+	/** UUID identifying the current draft; bumped on the first config save after each publish. */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	versionId: string | null;
 

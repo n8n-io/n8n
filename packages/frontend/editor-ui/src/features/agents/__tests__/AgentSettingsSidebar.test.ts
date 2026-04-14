@@ -113,6 +113,10 @@ describe('AgentSettingsSidebar', () => {
 				agentName: 'Test Agent',
 				updatedAt: '2026-04-09T00:00:00Z',
 				isDirty: false,
+				agent: null,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				saveStatus: 'idle',
 				...props,
 			},
 			global: {

@@ -24,6 +24,8 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		credentialId: 'cred-1',
 		activeVersionId: null,
 		publishedVersion: null,
+		tools: {},
+		updatedAt: new Date(),
 		...overrides,
 	} as unknown as Agent;
 }
@@ -56,6 +58,48 @@ describe('AgentsService', () => {
 			mock(),
 			agentPublishedVersionRepository,
 		);
+	});
+
+	describe('updateConfig', () => {
+		const config = {
+			name: 'Test Agent',
+		} as unknown as import('../json-config/agent-json-config').AgentJsonConfig;
+
+		beforeEach(() => {
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({ valid: true, config });
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+		});
+
+		it('does not bump versionId when agent has never been published (activeVersionId is null)', async () => {
+			const agent = makeAgent({ versionId: 'v1', activeVersionId: null });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {});
+
+			expect(agentRepository.save.mock.calls[0][0].versionId).toBe('v1');
+		});
+
+		it('does not bump versionId when already in a draft (versionId differs from activeVersionId)', async () => {
+			const agent = makeAgent({ versionId: 'v2', activeVersionId: 'v1' });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {});
+
+			expect(agentRepository.save.mock.calls[0][0].versionId).toBe('v2');
+		});
+
+		it('bumps versionId on the first save after publish (versionId equals activeVersionId)', async () => {
+			const agent = makeAgent({ versionId: 'v1', activeVersionId: 'v1' });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {});
+
+			const savedVersionId = agentRepository.save.mock.calls[0][0].versionId as string;
+			expect(savedVersionId).not.toBe('v1');
+			expect(savedVersionId).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+			);
+		});
 	});
 
 	describe('publishAgent', () => {

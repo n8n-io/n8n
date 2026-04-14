@@ -13,6 +13,7 @@ const props = defineProps<{
 	agent: AgentResource | null;
 	projectId: string;
 	agentId: string;
+	isSaving?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -65,18 +66,18 @@ const dropdownActions = computed(() => [
 	{
 		id: 'publish',
 		label: locale.baseText('agents.publish.dropdown.publish'),
-		disabled: !buttonConfig.value.enabled || publishing.value,
+		disabled: !buttonConfig.value.enabled || publishing.value || props.isSaving,
 	},
 	{
 		id: 'unpublish',
 		label: locale.baseText('agents.publish.dropdown.unpublish'),
-		disabled: !props.agent?.publishedVersion || publishing.value,
+		disabled: !props.agent?.publishedVersion || publishing.value || props.isSaving,
 		divided: true,
 	},
 ]);
 
 async function onPublishClick() {
-	if (publishing.value || !buttonConfig.value.enabled) return;
+	if (publishing.value || !buttonConfig.value.enabled || props.isSaving) return;
 	publishing.value = true;
 	try {
 		const updated = await publishAgent(rootStore.restApiContext, props.projectId, props.agentId);
@@ -124,7 +125,7 @@ async function onDropdownSelect(action: string) {
 		<N8nButton
 			:class="$style.groupButtonLeft"
 			:loading="publishing"
-			:disabled="!buttonConfig.enabled"
+			:disabled="!buttonConfig.enabled || isSaving"
 			variant="subtle"
 			data-testid="publish-agent-button"
 			@click="onPublishClick"
