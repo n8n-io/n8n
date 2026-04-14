@@ -6,7 +6,10 @@ import { Cipher } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
 import { SAML_PREFERENCES_DB_KEY } from '@/modules/sso-saml/constants';
+
+const PROVISIONING_MODES = ['disabled', 'instance_role', 'instance_and_project_roles'] as const;
 
 const samlLoginBindingSchema = z.enum(['redirect', 'post'], {
 	errorMap: () => ({
@@ -39,6 +42,11 @@ const samlEnvSchema = z
 		samlMappingUserPrincipalName: z.string(),
 		samlMappingInstanceRole: z.string(),
 		samlMappingProjectRoles: z.string(),
+		ssoUserRoleProvisioning: z.enum(PROVISIONING_MODES, {
+			errorMap: () => ({
+				message: `N8N_SSO_USER_ROLE_PROVISIONING must be one of: ${PROVISIONING_MODES.join(', ')}`,
+			}),
+		}),
 	})
 	.refine((data) => data.samlMetadata || data.samlMetadataUrl, {
 		message:
@@ -65,6 +73,7 @@ const samlEnvSchema = z
 			samlMappingUserPrincipalName,
 			samlMappingInstanceRole,
 			samlMappingProjectRoles,
+			ssoUserRoleProvisioning,
 		}) => {
 			const mapping = buildMapping({
 				samlMappingEmail,
@@ -76,20 +85,28 @@ const samlEnvSchema = z
 			});
 
 			return {
-				...(samlMetadata ? { metadata: samlMetadata } : {}),
-				...(samlMetadataUrl ? { metadataUrl: samlMetadataUrl } : {}),
-				loginEnabled: samlLoginEnabled,
-				...(samlLoginLabel ? { loginLabel: samlLoginLabel } : {}),
-				loginBinding: samlLoginBinding,
-				acsBinding: samlAcsBinding,
-				ignoreSSL: samlIgnoreSsl,
-				authnRequestsSigned: samlAuthnRequestsSigned,
-				wantAssertionsSigned: samlWantAssertionsSigned,
-				wantMessageSigned: samlWantMessageSigned,
-				...(samlSigningPrivateKey ? { signingPrivateKey: samlSigningPrivateKey } : {}),
-				...(samlSigningCertificate ? { signingCertificate: samlSigningCertificate } : {}),
-				relayState: samlRelayState,
-				...(mapping ? { mapping } : {}),
+				saml: {
+					...(samlMetadata ? { metadata: samlMetadata } : {}),
+					...(samlMetadataUrl ? { metadataUrl: samlMetadataUrl } : {}),
+					loginEnabled: samlLoginEnabled,
+					...(samlLoginLabel ? { loginLabel: samlLoginLabel } : {}),
+					loginBinding: samlLoginBinding,
+					acsBinding: samlAcsBinding,
+					ignoreSSL: samlIgnoreSsl,
+					authnRequestsSigned: samlAuthnRequestsSigned,
+					wantAssertionsSigned: samlWantAssertionsSigned,
+					wantMessageSigned: samlWantMessageSigned,
+					...(samlSigningPrivateKey ? { signingPrivateKey: samlSigningPrivateKey } : {}),
+					...(samlSigningCertificate ? { signingCertificate: samlSigningCertificate } : {}),
+					relayState: samlRelayState,
+					...(mapping ? { mapping } : {}),
+				},
+				provisioning: {
+					scopesProvisionInstanceRole:
+						ssoUserRoleProvisioning === 'instance_role' ||
+						ssoUserRoleProvisioning === 'instance_and_project_roles',
+					scopesProvisionProjectRoles: ssoUserRoleProvisioning === 'instance_and_project_roles',
+				},
 			};
 		},
 	);
@@ -140,7 +157,7 @@ export class SamlInstanceSettingsLoader {
 			throw new OperationalError(result.error.issues[0].message);
 		}
 
-		const preferences = result.data;
+		const { saml: preferences, provisioning } = result.data;
 
 		// Encrypt signing private key before storing
 		if (preferences.signingPrivateKey) {
@@ -152,6 +169,15 @@ export class SamlInstanceSettingsLoader {
 			value: JSON.stringify(preferences),
 			loadOnStartup: true,
 		});
+
+		await this.settingsRepository.upsert(
+			{
+				key: PROVISIONING_PREFERENCES_DB_KEY,
+				value: JSON.stringify(provisioning),
+				loadOnStartup: true,
+			},
+			{ conflictPaths: ['key'] },
+		);
 
 		// Activate SAML as the authentication method when login is enabled
 		if (preferences.loginEnabled) {

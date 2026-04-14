@@ -535,6 +535,7 @@ describe('GlobalConfig', () => {
 			samlMappingUserPrincipalName: '',
 			samlMappingInstanceRole: '',
 			samlMappingProjectRoles: '',
+			ssoUserRoleProvisioning: 'disabled',
 		},
 	} satisfies GlobalConfigShape;
 
