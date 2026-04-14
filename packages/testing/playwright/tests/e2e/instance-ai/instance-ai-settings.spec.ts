@@ -1,7 +1,15 @@
 import { test, expect } from '../../../fixtures/base';
 
-// Settings tests use base fixtures (no proxy needed) with isolated container
-test.use({ capability: { env: { TEST_ISOLATION: 'instance-ai-settings' } } });
+// Settings tests use base fixtures (no proxy needed) with isolated container.
+// The module must be enabled so its routes are registered.
+test.use({
+	capability: {
+		env: {
+			TEST_ISOLATION: 'instance-ai-settings',
+			N8N_ENABLED_MODULES: 'instance-ai',
+		},
+	},
+});
 
 test.describe(
 	'Instance AI settings @capability:proxy',
