@@ -31,12 +31,11 @@ import {
 	withTraceRun,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
-
-const PLANNER_MAX_STEPS = 30;
 
 /** Number of recent thread messages to include as planner context. */
 const MESSAGE_HISTORY_COUNT = 5;
@@ -287,7 +286,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					return await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await subAgent.stream(briefing, {
-							maxSteps: PLANNER_MAX_STEPS,
+							maxSteps: MAX_STEPS.PLANNER,
 							abortSignal: context.abortSignal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -310,7 +309,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
 							llmStepTraceHooks,
-							maxSteps: PLANNER_MAX_STEPS,
+							maxSteps: MAX_STEPS.PLANNER,
 						});
 
 						return await result.text;

@@ -216,6 +216,7 @@ const ExpressionContextProvider = defineComponent({
 // ---------------------------------------------------------------------------
 
 let previousWorkflow: IWorkflowDb | null = null;
+let isMounted = true;
 
 // ---------------------------------------------------------------------------
 // Trigger test result + disabled helpers
@@ -339,6 +340,7 @@ const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
 // ---------------------------------------------------------------------------
 
 onUnmounted(() => {
+	isMounted = false;
 	stopDeleteListener();
 	stopCreateListener();
 	if (previousWorkflow) {
@@ -364,13 +366,18 @@ onMounted(async () => {
 		console.warn('Failed to preload credentials/node types for Instance AI workflow setup', error);
 	}
 
+	if (!isMounted) return;
+
 	try {
 		const workflowData = await fetchWorkflowApi(rootStore.restApiContext, props.workflowId);
+		if (!isMounted) return;
 		previousWorkflow = { ...workflowsStore.workflow };
 		workflowsStore.setWorkflow(workflowData);
 	} catch (error) {
 		console.warn('Failed to fetch workflow for Instance AI setup', error);
 	}
+
+	if (!isMounted) return;
 
 	isStoreReady.value = true;
 
@@ -451,7 +458,11 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
 <template>
 	<div>
-		<template v-if="!isSubmitted && !isApplying">
+		<div v-if="!isStoreReady" :class="$style.submitted">
+			<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
+			<span>{{ i18n.baseText('instanceAi.workflowSetup.loading' as BaseTextKey) }}</span>
+		</div>
+		<template v-else-if="!isSubmitted && !isApplying">
 			<!-- Streamlined confirm mode: all items pre-resolved by AI -->
 			<div
 				v-if="allPreResolved && !showFullWizard"
