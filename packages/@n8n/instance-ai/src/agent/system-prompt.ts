@@ -200,7 +200,7 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 **Credentials**: Call \`list-credentials\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow.
 
 **Post-build flow** (for direct builds via \`build-workflow-with-agent\`):
-1. Builder finishes → check if the workflow has mocked credentials, missing parameters, or unconfigured triggers.
+1. Builder finishes → check if the workflow has mocked credentials, missing parameters, unresolved placeholders, or unconfigured triggers.
 2. If yes → call \`setup-workflow\` with the workflowId so the user can configure them through the setup UI.
 3. When \`setup-workflow\` returns \`deferred: true\`, respect the user's decision — do not retry with \`setup-credentials\` or any other setup tool. The user chose to set things up later.
 4. Ask the user if they want to test the workflow.

@@ -29,11 +29,10 @@
  *   pnpm test:local:isolated --grep "preview"
  *
  * Pass extra n8n env via `N8N_TEST_ENV` (the same convention `test:local`
- * uses). For example, to run instance-ai tests with a real Anthropic key:
+ * uses). For example, to enable an experimental module before n8n boots:
  *
- *   ANTHROPIC_API_KEY=sk-ant-... \
- *   N8N_TEST_ENV='{"N8N_ENABLED_MODULES":"instance-ai","N8N_INSTANCE_AI_MODEL":"anthropic/claude-sonnet-4-6","N8N_INSTANCE_AI_MODEL_API_KEY":"'"$ANTHROPIC_API_KEY"'","N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED":"true"}' \
- *   pnpm test:local:isolated tests/e2e/instance-ai
+ *   N8N_TEST_ENV='{"N8N_ENABLED_MODULES":"my-module"}' \
+ *     pnpm test:local:isolated tests/e2e/my-module
  */
 
 import { spawn, spawnSync } from 'child_process';

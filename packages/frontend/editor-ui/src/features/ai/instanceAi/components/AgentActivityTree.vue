@@ -109,7 +109,8 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 
 <style lang="scss" module>
 .reasoningTrigger {
-	color: var(--color--text--tint-2);
+	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
+	color: var(--text-color--subtler);
 }
 
 .reasoningContent {

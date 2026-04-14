@@ -26,7 +26,7 @@ const CONTAINER_ONLY = new RegExp(
 // Escape hatch: allow `@capability:*` tests to run against a pre-started local
 // n8n. Fixtures that depend on container-provided services (proxy, mailpit,
 // etc.) must detect the no-container case and skip or fall back to direct
-// network calls. Used by `pnpm test:local:instance-ai` and similar workflows.
+// network calls. Used by `pnpm test:local:isolated` and similar workflows.
 const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [

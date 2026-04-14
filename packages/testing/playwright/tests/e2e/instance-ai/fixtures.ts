@@ -59,20 +59,10 @@ export const test = base.extend<InstanceAiFixtures>({
 	},
 
 	instanceAiProxySetup: [
-		async ({ n8nContainer, backendUrl }, use, testInfo) => {
+		async ({ services, backendUrl }, use, testInfo) => {
 			const testSlug = slugify(testInfo.title);
 			const folder = `instance-ai/${testSlug}`;
 
-			// Local-run escape hatch (see `pnpm test:local:instance-ai`): when the
-			// test targets a pre-started n8n instead of a managed container, there's
-			// no proxy/mockserver to configure. The backend talks to the real
-			// Anthropic API directly; skip all record/replay wiring.
-			if (!n8nContainer) {
-				await use(undefined);
-				return;
-			}
-
-			const services = n8nContainer.services;
 			await services.proxy.clearAllExpectations();
 
 			// Cancel any leftover background tasks from previous tests so their

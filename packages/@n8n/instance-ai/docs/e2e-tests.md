@@ -290,58 +290,44 @@ This overwrites `expectations/instance-ai/<test-slug>/` with fresh recordings.
 
 ### Local-build mode (no docker, real Anthropic key)
 
-For fast iteration against a local n8n build — skips the container + proxy
-stack entirely. Tests hit the real Anthropic API directly, with no
-recording or replay.
+For fast iteration against a local n8n build — skips the container and proxy
+stack entirely. Tests hit the real Anthropic API directly. This mode does
+**not** record proxy expectations.
 
 ```bash
+cd packages/testing/playwright
 export ANTHROPIC_API_KEY=sk-ant-...
-pnpm --filter=n8n-playwright test:local:instance-ai
+pnpm test:local:instance-ai                  # full suite
+pnpm test:local:instance-ai --grep "preview" # single test
 ```
 
 Extra args flow through to `playwright test`:
 
 ```bash
 # Single file
-pnpm --filter=n8n-playwright test:local:instance-ai instance-ai-workflow-preview.spec.ts
-
-# Grep
-pnpm --filter=n8n-playwright test:local:instance-ai --grep "preview"
+pnpm test:local:instance-ai instance-ai-workflow-preview.spec.ts
 
 # Multiple instances in parallel — each gets its own random port + temp DB
-pnpm --filter=n8n-playwright test:local:instance-ai --grep "preview" &
-pnpm --filter=n8n-playwright test:local:instance-ai --grep "sidebar"  &
+pnpm test:local:instance-ai --grep "preview" &
+pnpm test:local:instance-ai --grep "sidebar"  &
 wait
 
 # Pin the port (e.g. for browser inspection at http://localhost:5680)
-N8N_BASE_URL=http://localhost:5680 pnpm --filter=n8n-playwright test:local:instance-ai --grep "preview"
+N8N_BASE_URL=http://localhost:5680 pnpm test:local:instance-ai --grep "preview"
 
 # Headed browser for visual debugging
-pnpm --filter=n8n-playwright test:local:instance-ai --grep "preview" --headed
+pnpm test:local:instance-ai --grep "preview" --headed
 ```
 
-Under the hood, `test:local:instance-ai` is a thin wrapper that pre-fills
-the four env vars n8n needs to boot the instance-ai module
-(`N8N_ENABLED_MODULES`, `N8N_INSTANCE_AI_MODEL`,
-`N8N_INSTANCE_AI_MODEL_API_KEY`, `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED`)
-over the generic `test:local:isolated` runner. The generic runner handles
-random free ports, a throwaway `N8N_USER_FOLDER` under the OS temp dir (so
-your `~/.n8n/database.sqlite` is never touched), full `@capability:*`
-inclusion, and process-group cleanup. The `instanceAiProxySetup` fixture
-detects the missing container and short-circuits all proxy + tool-trace
-setup, so every LLM call goes straight to Anthropic.
+`test:local:instance-ai` is a thin wrapper that pre-fills the instance-ai env
+vars over the generic `test:local:isolated` runner, which provides random free
+ports, a throwaway `N8N_USER_FOLDER` (so `~/.n8n` is never touched), and
+process-group cleanup. See the
+[Playwright README](../../../testing/playwright/README.md) for full details on
+`test:local:isolated`.
 
-> **Cost note:** Each run makes real Anthropic calls. Scope with `--grep`
-> or a filename while iterating; reserve full-suite runs for fixture
-> refreshes (see [Re-Recording Tests](#re-recording-tests)).
-
-> **When to use which mode:**
-> - **CI / Replay** — default, verifies tests stay green against recorded LLM traffic.
-> - **Record Mode** (container + real key) — refresh recordings when prompts/tools change.
-> - **Local-build mode** — fastest feedback loop while developing the
->   instance-ai feature itself. Useful for debugging failures the container
->   mode reproduces, or for working on code that needs to run before the
->   proxy is involved.
+> **Cost note:** Each run makes real Anthropic calls. Scope with `--grep` or
+> a filename while iterating; reserve full-suite runs for fixture refreshes.
 
 ## Re-Recording Tests
 

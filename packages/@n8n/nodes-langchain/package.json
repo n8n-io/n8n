@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.16.0",
+  "version": "2.17.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -49,9 +49,11 @@
       "dist/credentials/AzureAiSearchApi.credentials.js",
       "dist/credentials/AzureOpenAiApi.credentials.js",
       "dist/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.js",
+      "dist/credentials/BraveSearchApi.credentials.js",
       "dist/credentials/ChromaSelfHostedApi.credentials.js",
       "dist/credentials/ChromaCloudApi.credentials.js",
       "dist/credentials/CohereApi.credentials.js",
+      "dist/credentials/DaytonaApi.credentials.js",
       "dist/credentials/DeepSeekApi.credentials.js",
       "dist/credentials/GooglePalmApi.credentials.js",
       "dist/credentials/GroqApi.credentials.js",

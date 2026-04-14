@@ -1,7 +1,7 @@
 # Instance AI Playwright tests
 
 These tests cover the `/instance-ai` UI and exercise the end-to-end agent flow
-(chat → tool calls → workflow preview). They're tagged
+(chat, tool calls, workflow preview). They're tagged
 `@capability:proxy` because the standard CI run uses a MockServer proxy to
 record/replay LLM traffic instead of hitting the real Anthropic API.
 
@@ -29,29 +29,30 @@ against your local n8n build, without the docker proxy stack. Tests hit the
 real Anthropic API directly — no recording, no replay.
 
 ```bash
+cd packages/testing/playwright
 export ANTHROPIC_API_KEY=sk-ant-...
-pnpm --filter=n8n-playwright test:local:instance-ai
+pnpm test:local:instance-ai
 ```
 
 That's the whole setup. Extra args flow through to `playwright test`:
 
 ```bash
 # Single file
-pnpm --filter=n8n-playwright test:local:instance-ai instance-ai-workflow-preview.spec.ts
+pnpm test:local:instance-ai instance-ai-workflow-preview.spec.ts
 
 # Grep
-pnpm --filter=n8n-playwright test:local:instance-ai --grep "preview"
+pnpm test:local:instance-ai --grep "preview"
 
 # Multiple instances in parallel — each gets its own random port + temp DB
-pnpm --filter=n8n-playwright test:local:instance-ai --grep "preview" &
-pnpm --filter=n8n-playwright test:local:instance-ai --grep "sidebar"  &
+pnpm test:local:instance-ai --grep "preview" &
+pnpm test:local:instance-ai --grep "sidebar"  &
 wait
 
 # Pin the port (e.g. for browser inspection at http://localhost:5680)
-N8N_BASE_URL=http://localhost:5680 pnpm --filter=n8n-playwright test:local:instance-ai --grep "preview"
+N8N_BASE_URL=http://localhost:5680 pnpm test:local:instance-ai --grep "preview"
 
 # Headed browser for visual debugging
-pnpm --filter=n8n-playwright test:local:instance-ai --grep "preview" --headed
+pnpm test:local:instance-ai --grep "preview" --headed
 ```
 
 #### What `test:local:instance-ai` does

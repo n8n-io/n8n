@@ -83,7 +83,8 @@ function handleClick(e: MouseEvent) {
 }
 
 .metadata {
-	color: var(--color--text--tint-2);
+	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
+	color: var(--text-color--subtler);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

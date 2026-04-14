@@ -52,16 +52,29 @@ pnpm test:local:isolated tests/e2e/credentials/crud.spec.ts
 
 ### `test:local:isolated` — local run with full isolation
 
-`pnpm test:local:isolated` is a generalized version of `test:local` that
-boots n8n on a random free port, gives it a throwaway `N8N_USER_FOLDER`
-under the OS temp dir (so your `~/.n8n/database.sqlite` is never touched),
-and includes `@capability:*` / `@licensed` / `@db:reset` tests that the
-default `test:local` filters out. Multiple invocations can run in parallel
-without colliding.
+`pnpm test:local:isolated` is a generalized version of `test:local` for
+situations where `test:local`'s defaults aren't enough:
 
-Pass extra n8n env via the existing `N8N_TEST_ENV` convention. See
-[`tests/e2e/instance-ai/README.md`](./tests/e2e/instance-ai/README.md) for a
-worked example (running instance-ai tests against the real Anthropic API).
+- **Random free OS port** for n8n's HTTP server and the task-runner broker, so
+  multiple instances can run in parallel without colliding on `5678`/`5679`.
+  Pin a port with `N8N_BASE_URL=http://localhost:5680 …` when you need a
+  stable URL for browser inspection.
+- **Throwaway `N8N_USER_FOLDER`** under the OS temp dir (cleaned up on exit).
+  Its `database.sqlite` is fully isolated from your local `~/.n8n` install.
+- **Container-only tests included.** `@capability:*` / `@licensed` /
+  `@db:reset` tests are picked up by the local `e2e` project. Their fixtures
+  are responsible for detecting the missing container and skipping or falling
+  back.
+- **Self-managed n8n.** Boots n8n with a real readiness check against
+  `/rest/e2e/reset` (Playwright's default `webServer` favicon check is racy
+  with slower module startups) and skips Playwright's own webServer.
+
+Pass extra n8n env via `N8N_TEST_ENV` (the same convention `test:local` uses):
+
+```bash
+N8N_TEST_ENV='{"N8N_ENABLED_MODULES":"my-module"}' \
+  pnpm test:local:isolated tests/e2e/my-module
+```
 
 The two underlying env-var levers — usable independently of the script:
 

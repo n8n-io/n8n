@@ -46,7 +46,7 @@ const EXPECT_TIMEOUT = IS_DEV ? 20000 : 10000;
 
 const webServer: PlaywrightTestConfig['webServer'] = [];
 
-// Escape hatch for wrapper scripts (e.g. `pnpm test:local:instance-ai`) that
+// Escape hatch for wrapper scripts (e.g. `pnpm test:local:isolated`) that
 // manage the n8n process themselves with custom env vars and a more reliable
 // readiness check. Stops Playwright from racing to launch a second n8n.
 const SKIP_WEB_SERVER = process.env.PLAYWRIGHT_SKIP_WEBSERVER === 'true';

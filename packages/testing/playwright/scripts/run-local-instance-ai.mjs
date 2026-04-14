@@ -53,9 +53,7 @@ const testEnv = {
 };
 
 const userArgs = process.argv.slice(2);
-const hasExplicitPath = userArgs.some(
-	(a) => a.startsWith('tests/') || a.endsWith('.spec.ts'),
-);
+const hasExplicitPath = userArgs.some((a) => a.startsWith('tests/') || a.endsWith('.spec.ts'));
 
 const isolatedScript = path.join(__dirname, 'run-local-isolated.mjs');
 const args = [isolatedScript];
