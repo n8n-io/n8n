@@ -79,6 +79,10 @@ async function updateName(name: string) {
 		agent.value = updated;
 		agentName.value = updated.name;
 		updatedAt.value = updated.updatedAt;
+		// Keep config name in sync so it persists on next config save
+		if (localConfig.value) {
+			localConfig.value.name = updated.name;
+		}
 		agentsEventBus.emit('agentUpdated');
 	}
 }
