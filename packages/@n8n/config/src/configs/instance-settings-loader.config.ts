@@ -58,7 +58,7 @@ export class InstanceSettingsLoaderConfig {
 	/** Comma-separated ACR values */
 	@Env('N8N_SSO_OIDC_ACR_VALUES')
 	oidcAcrValues: string = '';
-  
+
 	/**
 	 * When true, security policy settings are managed via environment variables.
 	 * On every startup the security policy will be overridden by env vars.
