@@ -7,6 +7,8 @@ import * as fileFolder from './fileFolder/FileFolder.resource';
 import * as folder from './folder/Folder.resource';
 import type { GoogleDriveType } from './node.type';
 
+const getErrorMessage = (error: unknown) => (error instanceof Error ? error.message : 'Unknown error');
+
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
@@ -39,11 +41,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
-				if (resource === 'file' && operation === 'download') {
-					items[i].json = { error: error.message };
-				} else {
-					returnData.push({ json: { error: error.message } });
-				}
+				// Return a paired error item so n8n can route it to the dedicated error output.
+				// Swallowing download failures leaves the node with an empty result and skips the error branch.
+				returnData.push({
+					json: { error: getErrorMessage(error) },
+					pairedItem: { item: i },
+				});
 				continue;
 			}
 			throw error;
