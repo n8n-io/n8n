@@ -6,6 +6,8 @@
 
 <!-- end auto-generated rule header -->
 
+> **Deprecated:** Use [`require-node-description-fields`](require-node-description-fields.md) instead.
+
 ## Rule Details
 
 Validates that node classes define an `icon` property in their `description` object. Icons are required for nodes to display correctly in the n8n editor.
