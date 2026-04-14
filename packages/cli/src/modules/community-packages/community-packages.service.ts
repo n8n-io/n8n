@@ -259,82 +259,92 @@ export class CommunityPackagesService {
 			});
 		});
 
-		this.missingPackages = [];
+		// Initialize the missing packages list
+		this.missingPackages = [...missingPackages].map(
+			(p) => `${p.packageName}@${p.version}`,
+		);
 
 		if (missingPackages.size === 0) return;
 
 		const { reinstallMissing } = this.config;
 		if (reinstallMissing) {
-			this.logger.info('Attempting to reinstall missing packages', {
+			this.logger.info('Attempting to reinstall missing packages in the background', {
 				missingPackages: [...missingPackages],
 			});
-			const environment = process.env.ENVIRONMENT === 'staging' ? 'staging' : 'production';
 
-			const packageNames = [...missingPackages].map((p) => p.packageName);
+			// Start the background installation process without awaiting it
+			void (async () => {
+				const environment = process.env.ENVIRONMENT === 'staging' ? 'staging' : 'production';
 
-			let vettedPackages: StrapiCommunityNodeType[] = [];
-			try {
-				vettedPackages = await getCommunityNodeTypes(
-					environment,
-					{
-						filters: {
-							packageName: {
-								$in: packageNames,
-							},
-						},
-						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
-					},
-					this.config.aiNodeSdkVersion,
-				);
-			} catch (error) {
-				this.logger.error(
-					`Failed to fetch community packages from Strapi: ${ensureError(error).message}`,
-				);
-			}
+				const packageNames = [...missingPackages].map((p) => p.packageName);
 
-			for (const missingPackage of missingPackages) {
+				let vettedPackages: StrapiCommunityNodeType[] = [];
 				try {
-					const vettedPackage = vettedPackages.find(
-						(p) => p.packageName === missingPackage.packageName,
+					vettedPackages = await getCommunityNodeTypes(
+						environment,
+						{
+							filters: {
+								packageName: {
+									$in: packageNames,
+								},
+							},
+							fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
+						},
+						this.config.aiNodeSdkVersion,
 					);
-
-					let checksum: string | undefined;
-					if (vettedPackage) {
-						// Get the checksum if the required version is latest
-						if (vettedPackage.npmVersion === missingPackage.version) {
-							checksum = vettedPackage.checksum;
-						} else {
-							// Get the checksum if the required version is not latest
-							checksum = vettedPackage.nodeVersions?.find(
-								(v) => v.npmVersion === missingPackage.version,
-							)?.checksum;
-						}
-					}
-
-					await this.installPackage(missingPackage.packageName, missingPackage.version, checksum);
-					missingPackages.delete(missingPackage);
 				} catch (error) {
 					this.logger.error(
-						`Failed to reinstall community package ${missingPackage.packageName}: ${ensureError(error).message}`,
+						`Failed to fetch community packages from Strapi: ${ensureError(error).message}`,
 					);
 				}
-			}
 
-			if (missingPackages.size === 0) {
-				this.logger.info('Packages reinstalled successfully. Resuming regular initialization.');
-			}
+				for (const missingPackage of missingPackages) {
+					try {
+						const vettedPackage = vettedPackages.find(
+							(p) => p.packageName === missingPackage.packageName,
+						);
 
-			await this.loadNodesAndCredentials.postProcessLoaders();
-			this.loadNodesAndCredentials.releaseTypes();
+						let checksum: string | undefined;
+						if (vettedPackage) {
+							// Get the checksum if the required version is latest
+							if (vettedPackage.npmVersion === missingPackage.version) {
+								checksum = vettedPackage.checksum;
+							} else {
+								// Get the checksum if the required version is not latest
+								checksum = vettedPackage.nodeVersions?.find(
+									(v) => v.npmVersion === missingPackage.version,
+								)?.checksum;
+							}
+						}
+
+						await this.installPackage(missingPackage.packageName, missingPackage.version, checksum);
+
+						// Successfully installed: Remove from the missingPackages tracking list
+						const packageId = `${missingPackage.packageName}@${missingPackage.version}`;
+						this.missingPackages = this.missingPackages.filter((p) => p !== packageId);
+					} catch (error) {
+						this.logger.error(
+							`Failed to reinstall community package ${missingPackage.packageName}: ${ensureError(error).message}`,
+						);
+					}
+				}
+
+				if (this.missingPackages.length === 0) {
+					this.logger.info('All missing community packages reinstalled successfully.');
+				} else {
+					this.logger.warn(
+						`Background re-installation finished. Still missing: ${this.missingPackages.join(', ')}`,
+					);
+				}
+
+				await this.loadNodesAndCredentials.postProcessLoaders();
+				this.loadNodesAndCredentials.releaseTypes();
+			})();
 		} else {
 			this.logger.warn(
 				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
 			);
 		}
-
-		this.missingPackages = [...missingPackages].map(
-			(missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`,
-		);
 	}
 
 	async installPackage(
