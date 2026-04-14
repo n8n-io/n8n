@@ -13,7 +13,6 @@ import SplitButton from './SplitButton.vue';
 
 const props = defineProps<{
 	requestId: string;
-	toolGroup: string;
 	resource: string;
 	description: string;
 	options: string[];
@@ -31,17 +30,13 @@ interface OptionEntry {
 
 const DECISION_LABELS: Record<string, string> = {
 	allowOnce: i18n.baseText('instanceAi.gatewayConfirmation.allowOnce'),
+	allowForSession: i18n.baseText('instanceAi.gatewayConfirmation.allowForSession'),
 	denyOnce: i18n.baseText('instanceAi.gatewayConfirmation.denyOnce'),
 };
 
 const KNOWN_DECISIONS = new Set(['allowOnce', 'allowForSession', 'denyOnce']);
 
 function getDecisionLabel(decision: string): string {
-	if (decision === 'allowForSession') {
-		return i18n.baseText('instanceAi.gatewayConfirmation.allowForSession', {
-			interpolate: { toolGroup: props.toolGroup },
-		});
-	}
 	return DECISION_LABELS[decision] ?? decision;
 }
 

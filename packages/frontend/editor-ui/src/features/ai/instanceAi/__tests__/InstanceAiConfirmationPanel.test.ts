@@ -67,7 +67,7 @@ vi.mock('../components/DomainAccessApproval.vue', () => ({
 vi.mock('../components/GatewayResourceDecision.vue', () => ({
 	default: {
 		template: '<div />',
-		props: ['requestId', 'toolGroup', 'resource', 'description', 'options'],
+		props: ['requestId', 'resource', 'description', 'options'],
 	},
 }));
 vi.mock('../components/InstanceAiCredentialSetup.vue', () => ({
