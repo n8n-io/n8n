@@ -120,6 +120,7 @@ describe('AgentSettingsSidebar', () => {
 					ModelSelector: { template: '<div data-testid="model-selector-stub" />' },
 					AgentToolsPanel: { template: '<div data-testid="tools-panel-stub" />' },
 					AgentMemoryPanel: { template: '<div data-testid="memory-panel-stub" />' },
+					AgentIntegrationsPanel: { template: '<div data-testid="integrations-panel-stub" />' },
 					AgentCodeEditor: { template: '<div data-testid="code-editor-stub" />' },
 					N8nButton: {
 						template:
@@ -217,5 +218,31 @@ describe('AgentSettingsSidebar', () => {
 		const codeHeader = wrapper.findAll('button').find((b) => b.text().includes('Code'));
 		await codeHeader?.trigger('click');
 		expect(wrapper.find('[data-testid="code-editor-stub"]').exists()).toBe(true);
+	});
+
+	it('auto-expands Code section when building prop becomes true', async () => {
+		const wrapper = await renderComponent({ building: false });
+		expect(wrapper.find('[data-testid="code-editor-stub"]').exists()).toBe(false);
+
+		await wrapper.setProps({ building: true });
+		expect(wrapper.find('[data-testid="code-editor-stub"]').exists()).toBe(true);
+	});
+
+	it('expands Triggers section to show integrations panel', async () => {
+		const wrapper = await renderComponent();
+		expect(wrapper.find('[data-testid="integrations-panel-stub"]').exists()).toBe(false);
+
+		const triggersHeader = wrapper.findAll('button').find((b) => b.text().includes('Triggers'));
+		await triggersHeader?.trigger('click');
+		expect(wrapper.find('[data-testid="integrations-panel-stub"]').exists()).toBe(true);
+	});
+
+	it('expands Advanced section to show memory panel', async () => {
+		const wrapper = await renderComponent();
+		expect(wrapper.find('[data-testid="memory-panel-stub"]').exists()).toBe(false);
+
+		const advancedHeader = wrapper.findAll('button').find((b) => b.text().includes('Advanced'));
+		await advancedHeader?.trigger('click');
+		expect(wrapper.find('[data-testid="memory-panel-stub"]').exists()).toBe(true);
 	});
 });
