@@ -318,6 +318,51 @@ describe('sanitizeMcpToolSchemas', () => {
 
 			expect(nameField.description).toBe('For "create": Table name. For "rename": Column name');
 		});
+
+		it('should throw on conflicting enum values in strict mode', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					status: z.enum(['draft', 'published']),
+				}),
+				z.object({
+					action: z.literal('update'),
+					status: z.enum(['pending', 'complete']),
+				}),
+			]);
+
+			expect(() => sanitizeZodType(union, true)).toThrow(/Enum conflict for field "status"/);
+		});
+
+		it('should not throw when enum values are identical across variants', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					priority: z.enum(['low', 'medium', 'high']),
+				}),
+				z.object({
+					action: z.literal('update'),
+					priority: z.enum(['low', 'medium', 'high']),
+				}),
+			]);
+
+			expect(() => sanitizeZodType(union, true)).not.toThrow();
+		});
+
+		it('should not throw on enum conflicts in non-strict mode', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					status: z.enum(['draft', 'published']),
+				}),
+				z.object({
+					action: z.literal('update'),
+					status: z.enum(['pending', 'complete']),
+				}),
+			]);
+
+			expect(() => sanitizeZodType(union)).not.toThrow();
+		});
 	});
 
 	describe('discriminated union flattening', () => {

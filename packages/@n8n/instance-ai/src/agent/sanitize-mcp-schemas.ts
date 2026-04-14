@@ -89,6 +89,37 @@ export function sanitizeZodType(schema: z.ZodTypeAny, strict = false): z.ZodType
 		for (const [fieldName, entries] of fieldMeta) {
 			const sanitizedField = sanitizeZodType(entries[0].type, strict).optional();
 
+			// Detect enum value conflicts across variants.
+			// Only the first variant's type is used (entries[0].type), so differing
+			// enum values in other variants would be silently lost.
+			if (strict && entries.length > 1) {
+				const enumEntries = entries.filter((e) => {
+					const raw = e.type instanceof z.ZodOptional ? e.type.unwrap() : e.type;
+					return raw instanceof z.ZodEnum;
+				});
+				if (enumEntries.length > 1) {
+					const valueSets = enumEntries.map((e) => {
+						const raw = e.type instanceof z.ZodOptional ? e.type.unwrap() : e.type;
+						return (raw as z.ZodEnum<[string, ...string[]]>).options.slice().sort().join(',');
+					});
+					const uniqueValues = new Set(valueSets);
+					if (uniqueValues.size > 1) {
+						const conflictDetails = enumEntries
+							.map((e) => {
+								const raw = e.type instanceof z.ZodOptional ? e.type.unwrap() : e.type;
+								const vals = (raw as z.ZodEnum<[string, ...string[]]>).options;
+								return `  Action "${e.action}": [${vals.join(', ')}]`;
+							})
+							.join('\n');
+						throw new Error(
+							`Enum conflict for field "${fieldName}" in discriminated union:\n` +
+								`${conflictDetails}\n` +
+								'Harmonize enum values across all actions that share this field.',
+						);
+					}
+				}
+			}
+
 			const withDesc = entries.filter(
 				(e): e is typeof e & { description: string } => !!e.description,
 			);
