@@ -108,6 +108,9 @@ describe('AgentSettingsSidebar', () => {
 			props: {
 				config: mockConfig,
 				agentTools: {},
+				projectId: 'test-project',
+				agentId: 'test-agent',
+				agentName: 'Test Agent',
 				updatedAt: '2026-04-09T00:00:00Z',
 				isDirty: false,
 				...props,

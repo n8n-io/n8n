@@ -35,6 +35,7 @@ const agentId = computed(() => route.params.agentId as string);
 // UI state
 const chatActive = ref(false);
 const settingsVisible = ref(true);
+const isBuilding = ref(false);
 const agentName = ref('');
 const agentDescription = ref<string | null>(null);
 const agentIcon = ref<IconOrEmoji>({ type: 'icon', value: 'robot' });
@@ -93,10 +94,57 @@ async function updateDescription(description: string) {
 	}
 }
 
-function startChat(msg: string) {
-	initialPrompt.value = msg;
-	chatActive.value = true;
-	telemetry.track('User started agent chat', { agent_id: agentId.value });
+async function buildFromPrompt(msg: string) {
+	if (isBuilding.value) return;
+
+	isBuilding.value = true;
+	settingsVisible.value = true;
+	telemetry.track('User started agent build', { agent_id: agentId.value });
+
+	try {
+		const { baseUrl } = rootStore.restApiContext;
+		const browserId = localStorage.getItem('n8n-browserId') ?? '';
+		const url = `${baseUrl}/projects/${projectId.value}/agents/v2/${agentId.value}/build`;
+
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'browser-id': browserId },
+			credentials: 'include',
+			body: JSON.stringify({ message: msg }),
+		});
+
+		if (!response.ok || !response.body) return;
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+
+			buffer += decoder.decode(value, { stream: true });
+			const lines = buffer.split('\n');
+			buffer = lines.pop() ?? '';
+
+			for (const line of lines) {
+				if (!line.startsWith('data: ')) continue;
+				try {
+					const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
+					if (data.configUpdated !== undefined || data.toolUpdated !== undefined) {
+						await onConfigUpdated();
+					}
+				} catch {
+					// skip malformed JSON
+				}
+			}
+		}
+
+		// Final refresh after stream ends
+		await onConfigUpdated();
+	} finally {
+		isBuilding.value = false;
+	}
 }
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
@@ -144,6 +192,7 @@ async function onHeaderAction(action: string) {
 async function initialize() {
 	agent.value = null;
 	chatActive.value = false;
+	isBuilding.value = false;
 	agentIcon.value = { type: 'icon', value: 'robot' };
 	initialPrompt.value = undefined;
 	localConfig.value = null;
@@ -156,7 +205,7 @@ async function initialize() {
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
 		void router.replace({ query: { ...route.query, prompt: undefined } });
-		startChat(prompt);
+		void buildFromPrompt(prompt);
 	}
 }
 
@@ -206,7 +255,7 @@ watch(agentId, initialize, { immediate: true });
 					:agent-icon="agentIcon"
 					:project-id="projectId"
 					:agent-id="agentId"
-					@send-message="startChat"
+					@send-message="buildFromPrompt"
 					@update:name="updateName"
 					@update:description="updateDescription"
 					@update:icon="agentIcon = $event"
@@ -227,8 +276,12 @@ watch(agentId, initialize, { immediate: true });
 			v-if="settingsVisible"
 			:config="localConfig"
 			:agent-tools="agent?.tools ?? {}"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:agent-name="agentName"
 			:updated-at="updatedAt"
 			:is-dirty="isDirty"
+			:building="isBuilding"
 			@update:config="onConfigFieldUpdate"
 			@save="saveConfig"
 			@cancel="cancelConfig"
