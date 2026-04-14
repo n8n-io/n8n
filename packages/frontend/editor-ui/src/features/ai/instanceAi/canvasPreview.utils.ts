@@ -13,6 +13,12 @@ export interface BuildResult {
 	toolCallId: string;
 }
 
+export interface WorkflowSetupResult {
+	workflowId: string;
+	/** Unique per operation — changes even when the same workflow is set up again. */
+	toolCallId: string;
+}
+
 export interface DataTableResult {
 	dataTableId: string;
 	/** Unique per operation — changes even when the same table is modified again. */
@@ -39,6 +45,39 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 			const result = tc.result as Record<string, unknown>;
 			if (result.success === true && typeof result.workflowId === 'string') {
 				return { workflowId: result.workflowId, toolCallId: tc.toolCallId };
+			}
+		}
+	}
+	return undefined;
+}
+
+const WORKFLOW_SETUP_TOOLS = new Set(['setup-workflow', 'apply-workflow-credentials']);
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the workflowId
+ * (from args) and toolCallId from the latest successful setup-workflow /
+ * apply-workflow-credentials tool result. These tools modify the workflow
+ * (credentials, parameters) but don't return workflowId in the result.
+ */
+export function getLatestWorkflowSetupResult(
+	node: InstanceAiAgentNode,
+): WorkflowSetupResult | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestWorkflowSetupResult(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		if (
+			WORKFLOW_SETUP_TOOLS.has(tc.toolName) &&
+			!tc.isLoading &&
+			tc.result &&
+			typeof tc.result === 'object'
+		) {
+			const result = tc.result as Record<string, unknown>;
+			const args = tc.args as Record<string, unknown> | undefined;
+			if (result.success === true && typeof args?.workflowId === 'string') {
+				return { workflowId: args.workflowId, toolCallId: tc.toolCallId };
 			}
 		}
 	}

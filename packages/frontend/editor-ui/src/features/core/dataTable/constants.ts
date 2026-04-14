@@ -24,6 +24,7 @@ export const DATA_TABLE_CARD_ACTIONS = {
 	DELETE: 'delete',
 	CLEAR: 'clear',
 	DOWNLOAD_CSV: 'download-csv',
+	FAVORITE: 'favorite',
 	IMPORT_CSV: 'import-csv',
 };
 

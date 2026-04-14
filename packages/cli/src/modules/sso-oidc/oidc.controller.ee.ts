@@ -9,6 +9,7 @@ import { Request, Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { OidcInstanceSettingsLoader } from '@/instance-settings-loader/loaders/oidc.instance-settings-loader';
 import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
@@ -24,6 +25,7 @@ export class OidcController {
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly oidcSettingsLoader: OidcInstanceSettingsLoader,
 	) {}
 
 	@Get('/config')
@@ -45,6 +47,11 @@ export class OidcController {
 		_res: Response,
 		@Body payload: OidcConfigDto,
 	) {
+		if (this.oidcSettingsLoader.isConfiguredByEnv()) {
+			throw new BadRequestError(
+				'OIDC configuration is managed via environment variables and cannot be modified through the UI',
+			);
+		}
 		await this.oidcService.updateConfig(payload);
 		const config = this.oidcService.getRedactedConfig();
 		return config;
