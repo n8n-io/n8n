@@ -158,7 +158,7 @@ import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common
 import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
 import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
-import { ChangeWorkflowPublishHistoryVersionFKToSetNull1776163364000 } from '../common/1776163364000-ChangeWorkflowPublishHistoryVersionFKToSetNull';
+import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
 import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
 import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
 import type { Migration } from '../migration-types';
@@ -324,7 +324,7 @@ export const postgresMigrations: Migration[] = [
 	CreateInstanceVersionHistoryTable1774854660000,
 	CreateInstanceAiTables1775000000000,
 	CreateTokenExchangeJtiTable1775116241000,
-	ChangeWorkflowPublishHistoryVersionFKToSetNull1776163364000,
+	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
 	CreateTrustedKeyTables1776000000000,
 	CreateFavoritesTable1776150756000,
 ];
