@@ -107,8 +107,7 @@ export class CommunityPackagesLifecycleService {
 		let checksum: string | undefined;
 
 		if (verify) {
-			await this.communityNodeTypesService.getCommunityNodeTypes();
-			checksum = this.communityNodeTypesService.findVetted(name)?.checksum;
+			checksum = (await this.communityNodeTypesService.findVetted(name))?.checksum;
 			if (!checksum) {
 				throw new BadRequestError(`Package ${name} is not vetted for installation`);
 			}
@@ -222,8 +221,7 @@ export class CommunityPackagesLifecycleService {
 		let checksum = args.checksum;
 
 		if (verify) {
-			await this.communityNodeTypesService.getCommunityNodeTypes();
-			const vettedPackage = this.communityNodeTypesService.findVetted(name ?? '');
+			const vettedPackage = await this.communityNodeTypesService.findVetted(name ?? '');
 			if (!vettedPackage) {
 				throw new BadRequestError(`Package ${name} is not vetted for installation`);
 			}

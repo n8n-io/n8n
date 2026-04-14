@@ -46,14 +46,12 @@ describe('CommunityPackagesLifecycleService', () => {
 
 	describe('install', () => {
 		it('should throw error if verify in options but no checksum', async () => {
-			communityNodeTypesService.getCommunityNodeTypes.mockResolvedValue([]);
-			communityNodeTypesService.findVetted.mockReturnValue(undefined);
+			communityNodeTypesService.findVetted.mockResolvedValue(undefined);
 
 			await expect(
 				lifecycle.install({ name: 'n8n-nodes-test', verify: true, version: '1.0.0' }, user, 'ui'),
 			).rejects.toThrow('Package n8n-nodes-test is not vetted for installation');
 
-			expect(communityNodeTypesService.getCommunityNodeTypes).toHaveBeenCalled();
 			expect(communityNodeTypesService.findVetted).toHaveBeenCalledWith('n8n-nodes-test');
 		});
 
@@ -67,8 +65,7 @@ describe('CommunityPackagesLifecycleService', () => {
 		);
 
 		it('should install with checksum when verify is true', async () => {
-			communityNodeTypesService.getCommunityNodeTypes.mockResolvedValue([]);
-			communityNodeTypesService.findVetted.mockReturnValue(
+			communityNodeTypesService.findVetted.mockResolvedValue(
 				mock<CommunityNodeType>({
 					checksum: 'checksum',
 				}),
@@ -156,8 +153,7 @@ describe('CommunityPackagesLifecycleService', () => {
 		);
 
 		it('should throw error if verify is true but package is not vetted', async () => {
-			communityNodeTypesService.getCommunityNodeTypes.mockResolvedValue([]);
-			communityNodeTypesService.findVetted.mockReturnValue(undefined);
+			communityNodeTypesService.findVetted.mockResolvedValue(undefined);
 
 			await expect(
 				lifecycle.update(
@@ -169,8 +165,7 @@ describe('CommunityPackagesLifecycleService', () => {
 		});
 
 		it('should update with checksum when verify is true and version matches latest', async () => {
-			communityNodeTypesService.getCommunityNodeTypes.mockResolvedValue([]);
-			communityNodeTypesService.findVetted.mockReturnValue(
+			communityNodeTypesService.findVetted.mockResolvedValue(
 				mock<CommunityNodeType>({
 					checksum: 'vetted-checksum',
 					npmVersion: '2.0.0',
@@ -202,8 +197,7 @@ describe('CommunityPackagesLifecycleService', () => {
 		});
 
 		it('should use version-specific checksum from nodeVersions when targeting older version', async () => {
-			communityNodeTypesService.getCommunityNodeTypes.mockResolvedValue([]);
-			communityNodeTypesService.findVetted.mockReturnValue(
+			communityNodeTypesService.findVetted.mockResolvedValue(
 				mock<CommunityNodeType>({
 					checksum: 'latest-checksum',
 					npmVersion: '2.0.0',
