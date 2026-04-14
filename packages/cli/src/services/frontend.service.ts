@@ -528,7 +528,7 @@ export class FrontendService {
 		if (isAiGatewayEnabled) {
 			this.settings.aiGateway = {
 				enabled: true,
-				creditsQuota: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_CREDITS) ?? 0,
+				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
 			};
 		}
 

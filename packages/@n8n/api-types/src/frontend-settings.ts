@@ -217,7 +217,7 @@ export interface FrontendSettings {
 	};
 	aiGateway?: {
 		enabled: boolean;
-		creditsQuota: number;
+		budget: number;
 	};
 	ai: {
 		allowSendingParameterValues: boolean;

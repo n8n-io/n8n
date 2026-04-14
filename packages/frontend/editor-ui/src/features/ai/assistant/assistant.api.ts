@@ -133,11 +133,11 @@ export async function getGatewayConfig(ctx: IRestApiContext): Promise<AiGatewayC
 	return await makeRestApiRequest(ctx, 'GET', '/ai/gateway/config');
 }
 
-export async function getGatewayCredits(ctx: IRestApiContext): Promise<{
-	creditsQuota: number;
-	creditsRemaining: number;
+export async function getGatewayWallet(ctx: IRestApiContext): Promise<{
+	budget: number;
+	balance: number;
 }> {
-	return await makeRestApiRequest(ctx, 'GET', '/ai/gateway/credits');
+	return await makeRestApiRequest(ctx, 'GET', '/ai/gateway/wallet');
 }
 
 export async function getGatewayUsage(
