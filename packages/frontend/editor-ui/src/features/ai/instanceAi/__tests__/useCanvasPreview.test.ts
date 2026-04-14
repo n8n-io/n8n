@@ -486,7 +486,7 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
-		test('does not switch tab when viewing a different artifact', async () => {
+		test('switches to latest artifact when a new workflow is built while viewing different artifact', async () => {
 			const ctx = setup();
 			registerDataTable(ctx.store, 'dt-1', 'Table', 'proj-1');
 			registerWorkflow(ctx.store, 'wf-1');
@@ -508,9 +508,9 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			// Should stay on data table — user chose that tab
-			expect(ctx.activeDataTableId.value).toBe('dt-1');
-			expect(ctx.activeWorkflowId.value).toBeNull();
+			// Should switch to the newly built workflow
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
 		});
 
 		test('increments workflowRefreshKey on each build', async () => {

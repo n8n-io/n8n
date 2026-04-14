@@ -17,14 +17,13 @@ import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
+import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
 const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'create-tasks', 'delegate']);
-
-const FALLBACK_MAX_STEPS = 10;
 
 function generateAgentId(): string {
 	return `agent-${nanoid(6)}`;
@@ -193,7 +192,7 @@ export async function startDetachedDelegateTask(
 				return await withTraceParentContext(traceParent, async () => {
 					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 					const stream = await subAgent.stream(briefingMessage, {
-						maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
+						maxSteps: context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK,
 						abortSignal: signal,
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -312,7 +311,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					return await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await subAgent.stream(briefingMessage, {
-							maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
+							maxSteps: context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK,
 							abortSignal: context.abortSignal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },

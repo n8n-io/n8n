@@ -29,5 +29,5 @@ jobs:
       - name: Build and Test
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm lint
+          build-command: pnpm lint:ci
           node-version: ${{ inputs.nodeVersion }}
