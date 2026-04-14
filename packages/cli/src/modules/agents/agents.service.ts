@@ -40,6 +40,7 @@ import { AgentJsonConfigSchema } from './json-config/agent-json-config';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { Agent } from './entities/agent.entity';
+import { AgentPublishedVersion } from './entities/agent-published-version.entity';
 import {
 	buildFromJson,
 	type MemoryFactory,
@@ -48,7 +49,6 @@ import {
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentRepository } from './repositories/agent.repository';
-import { AgentPublishedVersion } from './entities/agent-published-version.entity';
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 
 export interface ExecuteAgentData {
@@ -71,12 +71,12 @@ export class AgentsService {
 		{ agent: agents.Agent; agentId: string; userId?: string }
 	>(30 * Time.minutes.toMilliseconds);
 
-	/** Build a cache key that includes the user so different users get isolated runtimes. */
+	/** Cache key for draft/builder executions. */
 	private runtimeKey(agentId: string, userId?: string): string {
 		return userId ? `${agentId}:${userId}` : agentId;
 	}
 
-	/** Remove all cached runtimes for an agent (across all users). */
+	/** Remove all cached draft runtimes for an agent (all users). */
 	private clearRuntimes(agentId: string): void {
 		for (const key of this.runtimes.keys()) {
 			if (key === agentId || key.startsWith(`${agentId}:`)) {
@@ -212,6 +212,10 @@ export class AgentsService {
 			await trx.save(agent);
 		});
 
+		// Evict any cached draft runtime so integration executions pick up
+		// the new published snapshot on their next request.
+		this.clearRuntimes(agentId);
+
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId });
 
 		return agent;
@@ -229,6 +233,14 @@ export class AgentsService {
 			agent.activeVersionId = null;
 			await trx.save(agent);
 		});
+
+		this.clearRuntimes(agentId);
+
+		// Drop any live chat-integration connections so webhook endpoints stop
+		// accepting events immediately — before the 30-minute TTL would have expired.
+		// Lazy import avoids the circular DI dependency (ChatIntegrationService → AgentsService).
+		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
+		await Container.get(ChatIntegrationService).disconnect(agentId);
 
 		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
 		return agent;
@@ -428,6 +440,60 @@ export class AgentsService {
 				threadId,
 				resourceId: userId,
 			},
+		});
+
+		const reader = resultStream.stream.getReader();
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				if (value.type === 'tool-call-suspended') {
+					this.logger.info('Chat: tool-call-suspended chunk received', {
+						agentId,
+						toolCallId: value.toolCallId,
+						toolName: value.toolName,
+					});
+				}
+				yield value;
+			}
+		} finally {
+			reader.releaseLock();
+		}
+	}
+
+	/**
+	 * Execute a published agent for a chat integration (Slack, Discord, etc.).
+	 *
+	 * Mirrors the live-webhooks pattern: load the published snapshot and run that,
+	 * never the current draft. Throws NotFoundError if the agent is not published.
+	 */
+	async *executeForChatPublished(
+		agentId: string,
+		message: string,
+		threadId: string,
+		userId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): AsyncGenerator<StreamChunk> {
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+
+		const publishedSchema = agentEntity.publishedVersion?.schema;
+		if (!agentEntity.activeVersionId || !publishedSchema) {
+			throw new NotFoundError(`Agent ${agentId} is not published`);
+		}
+
+		// Always reconstruct from the published snapshot — no caching.
+		// Integration traffic must always run the published version, never a cached draft.
+		const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
+		const agentInstance = await this.reconstructFromConfig(
+			publishedAgentData,
+			credentialProvider,
+			userId,
+		);
+
+		const resultStream = await agentInstance.stream(message, {
+			persistence: { threadId, resourceId: userId },
 		});
 
 		const reader = resultStream.stream.getReader();

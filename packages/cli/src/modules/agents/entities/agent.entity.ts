@@ -1,6 +1,6 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, JoinColumn, ManyToOne, OneToOne, type Relation } from '@n8n/typeorm';
+import { Column, Entity, ManyToOne, JoinColumn, OneToOne, type Relation } from '@n8n/typeorm';
 
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { AgentPublishedVersion } from './agent-published-version.entity';
@@ -52,7 +52,9 @@ export class Agent extends WithTimestampsAndStringId {
 	versionId: string | null;
 
 	/**
-	 * Set to the agent's versionId at publish time; null when never published or after unpublish.
+	 * FK to AgentPublishedVersion.versionId — the currently active published snapshot.
+	 * Null when never published or after unpublish. Mirrors the WorkflowEntity pattern
+	 * where activeVersionId is a real pointer into the version history table.
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	activeVersionId: string | null;

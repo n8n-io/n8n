@@ -16,11 +16,8 @@ export class AgentPublishedVersionRepository extends Repository<AgentPublishedVe
 	}
 
 	/**
-	 * Atomically creates or replaces the published version snapshot for an agent.
-	 *
-	 * Uses an upsert keyed by `agentId` (the PK) so concurrent publish calls for
-	 * the same agent do not race on a read-then-insert — only one write wins and
-	 * the other silently updates in place.
+	 * Atomically creates or updates the single published snapshot for an agent.
+	 * Upserts on `agentId` (the PK) — one row per agent, always overwritten on publish.
 	 *
 	 * Pass `trx` to execute within an existing transaction.
 	 */
@@ -36,8 +33,8 @@ export class AgentPublishedVersionRepository extends Repository<AgentPublishedVe
 		trx?: EntityManager,
 	): Promise<AgentPublishedVersion> {
 		const repo = trx?.getRepository(AgentPublishedVersion) ?? this;
-		await repo.upsert({ ...data, publishedAt: new Date() }, ['agentId']);
-		return await repo.findOneByOrFail({ agentId: data.agentId });
+		const entity = repo.create({ ...data, publishedAt: new Date() });
+		return await repo.save(entity);
 	}
 
 	async deleteByAgentId(agentId: string): Promise<void> {

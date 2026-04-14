@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { Agent } from '../entities/agent.entity';
-import { AgentPublishedVersion } from '../entities/agent-published-version.entity';
+import type { AgentPublishedVersion } from '../entities/agent-published-version.entity';
 import { AgentPublishedVersionRepository } from '../repositories/agent-published-version.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentsService } from '../agents.service';
@@ -122,7 +122,7 @@ describe('AgentsService', () => {
 		});
 
 		it('calls savePublishedVersion with the correct payload', async () => {
-			const agent = makeAgent();
+			const agent = makeAgent({ versionId });
 			const publishedVersion = mock<AgentPublishedVersion>();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentPublishedVersionRepository.savePublishedVersion.mockResolvedValue(publishedVersion);
@@ -169,11 +169,11 @@ describe('AgentsService', () => {
 	});
 
 	describe('unpublishAgent', () => {
-		let mockTrx: { delete: jest.Mock; save: jest.Mock };
+		let mockTrx: { save: jest.Mock; delete: jest.Mock };
 		let mockTransaction: jest.Mock;
 
 		beforeEach(() => {
-			mockTrx = { delete: jest.fn(), save: jest.fn() };
+			mockTrx = { save: jest.fn(), delete: jest.fn() };
 			mockTransaction = jest.fn(async (cb: (trx: typeof mockTrx) => Promise<void>) => cb(mockTrx));
 			Object.defineProperty(agentRepository, 'manager', {
 				value: { transaction: mockTransaction },
@@ -185,15 +185,6 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
 			await expect(service.unpublishAgent(agentId, projectId)).rejects.toThrow(NotFoundError);
-		});
-
-		it('deletes the published version row within a transaction', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await service.unpublishAgent(agentId, projectId);
-
-			expect(mockTrx.delete).toHaveBeenCalledWith(AgentPublishedVersion, { agentId });
 		});
 
 		it('clears publishedVersion and activeVersionId and saves within a transaction', async () => {

@@ -46,42 +46,40 @@ describe('AgentPublishedVersionRepository', () => {
 			publishedById: 'user-1',
 		};
 
-		it('writes the snapshot atomically via upsert keyed by agentId', async () => {
+		it('creates and saves the snapshot, returning the saved entity', async () => {
+			const entity = mock<AgentPublishedVersion>();
 			const saved = mock<AgentPublishedVersion>();
-			jest
-				.spyOn(repository, 'upsert')
-				.mockResolvedValue({ identifiers: [], generatedMaps: [], raw: [] });
-			jest.spyOn(repository, 'findOneByOrFail').mockResolvedValue(saved);
+			jest.spyOn(repository, 'create').mockReturnValue(entity);
+			jest.spyOn(repository, 'save').mockResolvedValue(saved);
 
 			const result = await repository.savePublishedVersion(payload);
 
-			expect(repository.upsert).toHaveBeenCalledWith(
+			expect(repository.create).toHaveBeenCalledWith(
 				expect.objectContaining({ ...payload, publishedAt: expect.any(Date) }),
-				['agentId'],
 			);
-			expect(repository.findOneByOrFail).toHaveBeenCalledWith({ agentId: payload.agentId });
+			expect(repository.save).toHaveBeenCalledWith(entity);
 			expect(result).toBe(saved);
 		});
 
 		it('uses the transaction-scoped repository when trx is provided', async () => {
+			const entity = mock<AgentPublishedVersion>();
 			const saved = mock<AgentPublishedVersion>();
 			const trxRepo = {
-				upsert: jest.fn().mockResolvedValue({ identifiers: [], generatedMaps: [], raw: [] }),
-				findOneByOrFail: jest.fn().mockResolvedValue(saved),
+				create: jest.fn().mockReturnValue(entity),
+				save: jest.fn().mockResolvedValue(saved),
 			};
 			const mockTrx = { getRepository: jest.fn().mockReturnValue(trxRepo) };
 
-			jest.spyOn(repository, 'upsert');
+			jest.spyOn(repository, 'save');
 
 			const result = await repository.savePublishedVersion(payload, mockTrx as never);
 
 			// Uses the trx-scoped repo, not `this`
-			expect(repository.upsert).not.toHaveBeenCalled();
-			expect(trxRepo.upsert).toHaveBeenCalledWith(
+			expect(repository.save).not.toHaveBeenCalled();
+			expect(trxRepo.create).toHaveBeenCalledWith(
 				expect.objectContaining({ ...payload, publishedAt: expect.any(Date) }),
-				['agentId'],
 			);
-			expect(trxRepo.findOneByOrFail).toHaveBeenCalledWith({ agentId: payload.agentId });
+			expect(trxRepo.save).toHaveBeenCalledWith(entity);
 			expect(result).toBe(saved);
 		});
 	});

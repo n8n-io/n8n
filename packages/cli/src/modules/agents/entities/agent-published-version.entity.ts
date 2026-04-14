@@ -8,6 +8,7 @@ import {
 	PrimaryColumn,
 	type Relation,
 } from '@n8n/typeorm';
+
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { Agent } from './agent.entity';
 
@@ -16,7 +17,7 @@ export class AgentPublishedVersion extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	agentId: string;
 
-	@OneToOne('Agent', 'publishedVersion', { onDelete: 'CASCADE' })
+	@OneToOne('Agent', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
 	agent: Relation<Agent>;
 
