@@ -330,7 +330,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 						toast.showError(
 							{ ...error, message: '' },
 							locale.baseText('settings.sourceControl.error.not.connected.title'),
-							locale.baseText('settings.sourceControl.error.not.connected.message'),
+							{ message: locale.baseText('settings.sourceControl.error.not.connected.message') },
 						);
 						break;
 					default:

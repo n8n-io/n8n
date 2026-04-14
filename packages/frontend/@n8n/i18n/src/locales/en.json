@@ -3576,6 +3576,7 @@
 	"workflowActivator.active": "Active",
 	"workflowActivator.inactive": "Inactive",
 	"workflowActivator.showError.title": "Workflow could not be {newStateName}",
+	"workflowActivator.showError.nodeError": "Error in node \"{nodeName}\":",
 	"workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message": "Please resolve outstanding issues before publishing",
 	"workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title": "{count} node has issues, fix them before publishing. | {count} nodes have issues, fix them before publishing.",
 	"workflowActivator.showMessage.activeChangedWorkflowIdUndefined.message": "Please save it before activating",
