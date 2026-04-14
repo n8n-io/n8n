@@ -7,8 +7,8 @@
 import { interpretSDKCode, InterpreterError, SecurityError } from '../ast-interpreter';
 import type { SDKFunctions } from '../ast-interpreter';
 import { expr as exprFn } from '../expression';
-import type { WorkflowJSON, WorkflowBuilder } from '../types/base';
 import { isWorkflowBuilder, isWorkflowJSON } from '../typeguards';
+import type { WorkflowJSON, WorkflowBuilder } from '../types/base';
 import { workflow as workflowFn } from '../workflow-builder';
 import { nextBatch as nextBatchFn } from '../workflow-builder/control-flow-builders/next-batch';
 import { splitInBatches as splitInBatchesFn } from '../workflow-builder/control-flow-builders/split-in-batches';
