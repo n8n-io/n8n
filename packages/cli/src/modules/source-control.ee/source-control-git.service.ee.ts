@@ -101,7 +101,9 @@ export class SourceControlGitService {
 		if (!(await this.hasRemote(sourceControlPreferences.repositoryUrl))) {
 			if (sourceControlPreferences.connected && sourceControlPreferences.repositoryUrl) {
 				const instanceOwner = await this.ownershipService.getInstanceOwner();
-				await this.initRepository(sourceControlPreferences, instanceOwner);
+				await this.initRepository(sourceControlPreferences, instanceOwner, {
+					tolerateTrackingFetchFailure: true,
+				});
 			}
 		}
 
@@ -222,6 +224,7 @@ export class SourceControlGitService {
 			'repositoryUrl' | 'branchName' | 'initRepo' | 'connectionType'
 		>,
 		user: User,
+		options?: { tolerateTrackingFetchFailure?: boolean },
 	): Promise<void> {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (Promise)');
@@ -253,7 +256,7 @@ export class SourceControlGitService {
 			user.email ?? SOURCE_CONTROL_DEFAULT_EMAIL,
 		);
 
-		await this.trackRemoteIfReady(branchName);
+		await this.trackRemoteIfReady(branchName, options?.tolerateTrackingFetchFailure);
 
 		if (initRepo) {
 			try {
@@ -271,10 +274,18 @@ export class SourceControlGitService {
 	 * If this is a new local repository being set up after remote is ready,
 	 * then set this local to start tracking remote's target branch.
 	 */
-	private async trackRemoteIfReady(targetBranch: string) {
+	private async trackRemoteIfReady(targetBranch: string, tolerateFetchFailure: boolean = false) {
 		if (!this.git) return;
 
-		await this.fetch();
+		try {
+			await this.fetch();
+		} catch (error) {
+			if (!tolerateFetchFailure) {
+				throw error;
+			}
+			this.logger.warn('Failed to fetch during remote tracking setup', { error });
+			return; // Don't fail startup initialization for recoverable remote issues
+		}
 
 		const { currentBranch, branches: remoteBranches } = await this.getBranches();
 

@@ -63,7 +63,7 @@ describe('composable integration', () => {
 	// 2. Tab auto-switches to executed workflow
 	// -----------------------------------------------------------------------
 	describe('tab auto-switch on execution', () => {
-		test('does not switch tab when viewing a different artifact', async () => {
+		test('switches to latest artifact when execution completes on different workflow', async () => {
 			h.registerWorkflow('wf-1', 'Workflow A');
 			h.registerWorkflow('wf-2', 'Workflow B');
 			h.selectTab('wf-2');
@@ -74,8 +74,8 @@ describe('composable integration', () => {
 			h.addExecutionResult('wf-1', 'exec-1');
 			await h.flush();
 
-			// Should stay on wf-2 — user chose that tab
-			expect(h.activeTabId.value).toBe('wf-2');
+			// Should switch to the workflow that was just built and executed
+			expect(h.activeTabId.value).toBe('wf-1');
 		});
 
 		test('auto-opens preview when streaming and build result appears', async () => {
