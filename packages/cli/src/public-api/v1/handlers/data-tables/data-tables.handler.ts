@@ -81,12 +81,12 @@ export = {
 				const isGlobalOwnerOrAdmin = ['global:owner', 'global:admin'].includes(req.user.role.slug);
 
 				if (requestedProjectId && !isGlobalOwnerOrAdmin) {
-					const accessibleIds = await Container.get(ProjectService).getProjectIdsWithScope(
+					const projectWithScope = await Container.get(ProjectService).getProjectWithScope(
 						req.user,
+						requestedProjectId,
 						['dataTable:listProject'],
-						[requestedProjectId],
 					);
-					if (!accessibleIds.length) return res.json({ data: [], nextCursor: null });
+					if (!projectWithScope) return res.json({ data: [], nextCursor: null });
 				}
 
 				const finalFilter = await getDataTableListFilter(
