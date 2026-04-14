@@ -28,6 +28,7 @@ import {
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
+import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -103,8 +104,6 @@ function buildOutcome(
 		summary: finalText,
 	};
 }
-
-const BUILDER_MAX_STEPS = 60;
 
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
 
@@ -408,7 +407,7 @@ export async function startBuildWorkflowAgentTask(
 						const hitlResult = await withTraceParentContext(traceParent, async () => {
 							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 							const stream = await subAgent.stream(briefing, {
-								maxSteps: BUILDER_MAX_STEPS,
+								maxSteps: MAX_STEPS.BUILDER,
 								abortSignal: signal,
 								providerOptions: {
 									anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -531,7 +530,7 @@ export async function startBuildWorkflowAgentTask(
 					const hitlResult = await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await subAgent.stream(briefing, {
-							maxSteps: BUILDER_MAX_STEPS,
+							maxSteps: MAX_STEPS.BUILDER,
 							abortSignal: signal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
