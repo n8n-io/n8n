@@ -74,6 +74,17 @@ jobs:
           docker logs n8n-eval --tail 30
           exit 1
 
+      - name: Create test user
+        run: |
+          curl -sf -X POST http://localhost:5678/rest/e2e/reset \
+            -H "Content-Type: application/json" \
+            -d '{
+              "owner":{"email":"nathan@n8n.io","password":"PlaywrightTest123","firstName":"Eval","lastName":"Owner"},
+              "admin":{"email":"admin@n8n.io","password":"PlaywrightTest123","firstName":"Admin","lastName":"User"},
+              "members":[],
+              "chat":{"email":"chat@n8n.io","password":"PlaywrightTest123","firstName":"Chat","lastName":"User"}
+            }'
+
       - name: Run Instance AI Evals
         continue-on-error: true
         working-directory: packages/@n8n/instance-ai
