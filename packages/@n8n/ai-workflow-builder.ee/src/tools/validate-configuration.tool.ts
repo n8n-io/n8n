@@ -1,4 +1,6 @@
 import { tool } from '@langchain/core/tools';
+import { workflow as workflowSdk } from '@n8n/workflow-sdk';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -51,6 +53,29 @@ export function createValidateConfigurationTool(
 				const fromAiViolations = validateFromAi(workflow, parsedNodeTypes);
 				const parameterViolations = validateParameters(workflow, parsedNodeTypes);
 
+				// Run workflow-sdk graph validators (includes filterNodeValidator
+				// which catches fixedCollection key mistakes like rules.rules vs rules.values)
+				const graphViolationMessages: string[] = [];
+				if (workflow.nodes.length > 0) {
+					try {
+						const builder = workflowSdk.fromJSON(workflow as unknown as WorkflowJSON);
+						const graphValidation = builder.validate({
+							// Instance AI builds workflows incrementally — nodes are added before
+							// connections, so disconnected nodes and missing triggers are expected
+							allowDisconnectedNodes: true,
+							allowNoTrigger: true,
+						});
+						for (const error of graphValidation.errors) {
+							graphViolationMessages.push(error.message);
+						}
+						for (const warning of graphValidation.warnings) {
+							graphViolationMessages.push(warning.message);
+						}
+					} catch {
+						// If fromJSON fails (e.g. incomplete workflow), skip graph validation
+					}
+				}
+
 				const allViolations = [
 					...agentViolations,
 					...toolViolations,
@@ -58,12 +83,15 @@ export function createValidateConfigurationTool(
 					...parameterViolations,
 				];
 
+				// Combine programmatic violations with graph validation messages
+				const allMessages = [...allViolations.map((v) => v.description), ...graphViolationMessages];
+
 				let message: string;
-				if (allViolations.length === 0) {
+				if (allMessages.length === 0) {
 					message =
 						'Configuration is valid. Agent prompts, tools, $fromAI usage, and required parameters are correct.';
 				} else {
-					message = `Found ${allViolations.length} configuration issues:\n${allViolations.map((v) => `- ${v.description}`).join('\n')}`;
+					message = `Found ${allMessages.length} configuration issues:\n${allMessages.map((m) => `- ${m}`).join('\n')}`;
 				}
 
 				reporter.complete({ message });
@@ -74,6 +102,7 @@ export function createValidateConfigurationTool(
 						tools: toolViolations,
 						fromAi: fromAiViolations,
 						parameters: parameterViolations,
+						graphValidation: graphViolationMessages,
 					},
 				});
 			} catch (error) {
