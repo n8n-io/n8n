@@ -757,46 +757,6 @@ export class InstanceAiController {
 		throw new ForbiddenError('Invalid API key');
 	}
 
-	// ── Test-only trace replay endpoints ─────────────────────────────────────
-
-	@Post('/test/tool-trace', { skipAuth: true })
-	loadToolTrace(req: Request) {
-		this.assertTraceReplayEnabled();
-		const { slug, events } = req.body as { slug: string; events?: unknown[] };
-		if (events) {
-			this.instanceAiService.loadTraceEvents(slug, events);
-		}
-		// Always activate the slug (marks which test is about to run)
-		this.instanceAiService.activateTraceSlug(slug);
-		return { ok: true, count: events?.length ?? 0 };
-	}
-
-	@Get('/test/tool-trace/:slug', { skipAuth: true })
-	getToolTrace(req: Request) {
-		this.assertTraceReplayEnabled();
-		return { events: this.instanceAiService.getTraceEvents(req.params.slug) };
-	}
-
-	@Delete('/test/tool-trace/:slug', { skipAuth: true })
-	clearToolTrace(req: Request) {
-		this.assertTraceReplayEnabled();
-		this.instanceAiService.clearTraceEvents(req.params.slug);
-		return { ok: true };
-	}
-
-	@Post('/test/drain-background-tasks', { skipAuth: true })
-	drainBackgroundTasks() {
-		this.assertTraceReplayEnabled();
-		const cancelled = this.instanceAiService.cancelAllBackgroundTasks();
-		return { ok: true, cancelled };
-	}
-
-	private assertTraceReplayEnabled(): void {
-		if (!process.env.N8N_INSTANCE_AI_TRACE_REPLAY) {
-			throw new ForbiddenError('Trace replay is not enabled');
-		}
-	}
-
 	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {
 		// No `event:` field — events are discriminated by data.type per streaming-protocol.md
 		res.write(`id: ${stored.id}\ndata: ${JSON.stringify(stored.event)}\n\n`);
