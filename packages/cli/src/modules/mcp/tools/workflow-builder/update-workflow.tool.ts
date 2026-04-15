@@ -134,7 +134,7 @@ export const createUpdateWorkflowTool = (
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
 				pinData: workflowJson.pinData,
-				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
+				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
 			});
 
 			resolveNodeWebhookIds(workflowUpdateData, nodeTypes);
