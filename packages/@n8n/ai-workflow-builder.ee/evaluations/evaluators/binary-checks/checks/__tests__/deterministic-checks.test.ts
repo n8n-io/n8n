@@ -8,6 +8,7 @@ import { noCodeImports } from '../no-code-imports';
 import { noEmptySetNodes } from '../no-empty-set-nodes';
 import { noUnnecessaryCodeNodes } from '../no-unnecessary-code-nodes';
 import { noUnreachableNodes } from '../no-unreachable-nodes';
+import { referencesReachableNodes } from '../references-reachable-nodes';
 import {
 	hasNodes,
 	hasTrigger,
@@ -1289,5 +1290,340 @@ describe('no_code_imports', () => {
 	it('passes for empty workflow', async () => {
 		const result = await noCodeImports.run(makeWorkflow({ nodes: [] }), makeCtx());
 		expect(result.pass).toBe(true);
+	});
+});
+
+describe('references_reachable_nodes', () => {
+	it('passes for empty workflow', async () => {
+		const result = await referencesReachableNodes.run(makeWorkflow({ nodes: [] }), makeCtx());
+		expect(result.pass).toBe(true);
+	});
+
+	it('passes when referencing an upstream node', async () => {
+		const result = await referencesReachableNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [200, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{ name: 'val', value: "={{ $('Trigger').first().json.data }}", type: 'string' },
+								],
+							},
+						},
+					},
+				],
+				connections: {
+					['Trigger']: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+				},
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('fails when referencing a non-existent node', async () => {
+		const result = await referencesReachableNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{ name: 'val', value: "={{ $('Ghost').first().json.data }}", type: 'string' },
+								],
+							},
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('Set');
+	});
+
+	it('fails when referencing a downstream node', async () => {
+		const result = await referencesReachableNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						name: 'SetA',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [200, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{ name: 'val', value: "={{ $('SetB').first().json.data }}", type: 'string' },
+								],
+							},
+						},
+					},
+					{ name: 'SetB', type: 'n8n-nodes-base.set', typeVersion: 3, position: [400, 0] },
+				],
+				connections: {
+					['Trigger']: { main: [[{ node: 'SetA', type: 'main', index: 0 }]] },
+					['SetA']: { main: [[{ node: 'SetB', type: 'main', index: 0 }]] },
+				},
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('SetA');
+	});
+
+	it('fails when referencing a transitive downstream node', async () => {
+		const result = await referencesReachableNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						name: 'SetA',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [200, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{ name: 'val', value: "={{ $('SetC').first().json.data }}", type: 'string' },
+								],
+							},
+						},
+					},
+					{ name: 'SetB', type: 'n8n-nodes-base.set', typeVersion: 3, position: [400, 0] },
+					{ name: 'SetC', type: 'n8n-nodes-base.set', typeVersion: 3, position: [600, 0] },
+				],
+				connections: {
+					['Trigger']: { main: [[{ node: 'SetA', type: 'main', index: 0 }]] },
+					['SetA']: { main: [[{ node: 'SetB', type: 'main', index: 0 }]] },
+					['SetB']: { main: [[{ node: 'SetC', type: 'main', index: 0 }]] },
+				},
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('SetA');
+	});
+
+	it('fails when referencing a node on a parallel IF branch', async () => {
+		// TrueNode references FalseNode — FalseNode is not an ancestor of TrueNode
+		const result = await referencesReachableNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{ name: 'IF', type: 'n8n-nodes-base.if', typeVersion: 1, position: [200, 0] },
+					{
+						name: 'TrueNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [400, -100],
+						parameters: {
+							assignments: {
+								assignments: [
+									{ name: 'val', value: "={{ $('FalseNode').first().json.data }}", type: 'string' },
+								],
+							},
+						},
+					},
+					{ name: 'FalseNode', type: 'n8n-nodes-base.set', typeVersion: 3, position: [400, 100] },
+				],
+				connections: {
+					['Trigger']: { main: [[{ node: 'IF', type: 'main', index: 0 }]] },
+					IF: {
+						main: [
+							[{ node: 'TrueNode', type: 'main', index: 0 }],
+							[{ node: 'FalseNode', type: 'main', index: 0 }],
+						],
+					},
+				},
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('TrueNode');
+	});
+
+	it('fails when referencing a node on a different unconnected chain', async () => {
+		const result = await referencesReachableNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Trigger1',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						name: 'NodeA',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [200, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{ name: 'val', value: "={{ $('NodeB').first().json.data }}", type: 'string' },
+								],
+							},
+						},
+					},
+					{
+						name: 'Trigger2',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 200],
+					},
+					{ name: 'NodeB', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 200] },
+				],
+				connections: {
+					['Trigger1']: { main: [[{ node: 'NodeA', type: 'main', index: 0 }]] },
+					['Trigger2']: { main: [[{ node: 'NodeB', type: 'main', index: 0 }]] },
+				},
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('NodeA');
+	});
+
+	it('passes when no expressions are present', async () => {
+		const result = await referencesReachableNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: { mode: 'manual' },
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('passes when node has no parameters', async () => {
+		const result = await referencesReachableNodes.run(
+			makeWorkflow({
+				nodes: [{ name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [0, 0] }],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('passes when referencing a node upstream through a merge', async () => {
+		const result = await referencesReachableNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{ name: 'FetchA', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, -100] },
+					{ name: 'FetchB', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 100] },
+					{ name: 'Merge', type: 'n8n-nodes-base.merge', typeVersion: 1, position: [400, 0] },
+					{
+						name: 'Consumer',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [600, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{ name: 'val', value: "={{ $('FetchA').first().json.data }}", type: 'string' },
+								],
+							},
+						},
+					},
+				],
+				connections: {
+					['Trigger']: {
+						main: [
+							[
+								{ node: 'FetchA', type: 'main', index: 0 },
+								{ node: 'FetchB', type: 'main', index: 0 },
+							],
+						],
+					},
+					['FetchA']: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+					['FetchB']: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+					['Merge']: { main: [[{ node: 'Consumer', type: 'main', index: 0 }]] },
+				},
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('reports both non-existent and non-ancestor in the same node', async () => {
+		const result = await referencesReachableNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						name: 'SetA',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [200, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{ name: 'a', value: "={{ $('Ghost').first().json }}", type: 'string' },
+									{ name: 'b', value: "={{ $('SetB').first().json }}", type: 'string' },
+								],
+							},
+						},
+					},
+					{ name: 'SetB', type: 'n8n-nodes-base.set', typeVersion: 3, position: [400, 0] },
+				],
+				connections: {
+					['Trigger']: { main: [[{ node: 'SetA', type: 'main', index: 0 }]] },
+					['SetA']: { main: [[{ node: 'SetB', type: 'main', index: 0 }]] },
+				},
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('SetA');
 	});
 });
