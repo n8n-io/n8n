@@ -711,13 +711,13 @@ describe('InstanceAiController', () => {
 			expect(scopeOf('gatewayInit')).toBeUndefined();
 		});
 
-		it('should initialize gateway with valid key and body', () => {
+		it('should initialize gateway with valid key and body', async () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			instanceAiService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/home/user' });
 			const payload = { rootPath: '/home/user', tools: [], toolCategories: [] };
 
-			const result = controller.gatewayInit(gatewayReq, res, payload);
+			const result = await controller.gatewayInit(gatewayReq, res, payload);
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.initGateway).toHaveBeenCalledWith(
@@ -738,12 +738,12 @@ describe('InstanceAiController', () => {
 			);
 		});
 
-		it('should return sessionKey when pairing token is consumed', () => {
+		it('should return sessionKey when pairing token is consumed', async () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			instanceAiService.consumePairingToken.mockReturnValue('new-session-key');
 			const gatewayReq = makeGatewayReq('pairing-token', { rootPath: '/tmp' });
 
-			const result = controller.gatewayInit(gatewayReq, res, {
+			const result = await controller.gatewayInit(gatewayReq, res, {
 				rootPath: '/tmp',
 				tools: [],
 				toolCategories: [],
@@ -752,11 +752,11 @@ describe('InstanceAiController', () => {
 			expect(result).toEqual({ ok: true, sessionKey: 'new-session-key' });
 		});
 
-		it('should accept static env var key', () => {
+		it('should accept static env var key', async () => {
 			instanceAiService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('static-key', { rootPath: '/tmp' });
 
-			const result = controller.gatewayInit(gatewayReq, res, {
+			const result = await controller.gatewayInit(gatewayReq, res, {
 				rootPath: '/tmp',
 				tools: [],
 				toolCategories: [],
