@@ -5,9 +5,8 @@ import type {
 	INodeIssueObjectProperty,
 	INodeParameters,
 	INodeTypeDescription,
-	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -135,14 +134,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
 		return workflowsStore.findNodeByPartialId(partialId);
-	}
-
-	function getParentNodes(
-		nodeName: string,
-		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
-		depth = -1,
-	): string[] {
-		return workflowsStore.workflowObject.getParentNodes(nodeName, type, depth);
 	}
 
 	function getNodesByIds(ids: string[]): INodeUi[] {
@@ -339,7 +330,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		getNodes,
 		findNodeByPartialId,
 		getNodesByIds,
-		getParentNodes,
 
 		// Write
 		setNodes,
