@@ -26,17 +26,7 @@ import {
 	isSplitInBatchesBuilder,
 	extractSplitInBatchesBuilder,
 } from '../type-guards';
-
-/**
- * Assert that input is a plain (non-null, non-array) object.
- * Throws a descriptive TypeError when called with a string, number, null, or array.
- */
-export function assertPlainObject(input: unknown, fnName: string, hint: string): void {
-	if (typeof input !== 'object' || input === null || Array.isArray(input)) {
-		const received = input === null ? 'null' : Array.isArray(input) ? 'an array' : typeof input;
-		throw new TypeError(`${fnName}() requires ${hint}, but received ${received}.`);
-	}
-}
+export { assertPlainObject } from '../validation-helpers';
 
 /**
  * Type guard to check if a value is an InputTarget
