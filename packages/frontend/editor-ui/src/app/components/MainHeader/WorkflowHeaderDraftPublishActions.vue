@@ -599,10 +599,7 @@ defineExpose({
 .publishButtonWrapper {
 	position: relative;
 	display: inline-flex;
-	margin-right: var(--spacing--2xs);
-	box-shadow:
-		0 1px 3px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-300)),
-		0 0 0 1.5px light-dark(transparent, var(--color--black-alpha-100));
+	margin-inline: var(--spacing--2xs);
 }
 
 .buttonGroup {
