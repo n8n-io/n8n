@@ -39,10 +39,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
+				const errorMessage = error instanceof Error ? error.message : `${error}`;
 				if (resource === 'file' && operation === 'download') {
-					items[i].json = { error: error.message };
+					returnData.push({
+						...items[i],
+						json: { error: errorMessage },
+					});
 				} else {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({ json: { error: errorMessage } });
 				}
 				continue;
 			}
