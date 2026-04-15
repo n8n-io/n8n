@@ -83,7 +83,7 @@ export class Mailgun implements INodeType {
 				default: {},
 				placeholder: 'Add Header',
 				description:
-					'Arbitrary email headers sent as h:Header-Name (e.g. h:X-Custom-Header). Reply-To can also be set here if needed.',
+					'Arbitrary email headers sent as h:Header-Name (e.g. h:X-Custom-Header)',
 				options: [
 					{
 						name: 'headers',
