@@ -130,12 +130,15 @@ test.describe(
 				timeout: 10_000,
 			});
 
-			// Second execution
+			// Second execution — wait for it to actually run and complete so we
+			// don't race against stale success indicators from the first run.
 			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
-
-			// Should succeed again - success indicators should still be visible
+			await expect(n8n.instanceAi.getPreviewRunningNodes().first()).toBeVisible({
+				timeout: 10_000,
+			});
+			await expect(n8n.instanceAi.getPreviewRunningNodes()).toHaveCount(0, { timeout: 30_000 });
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators().first()).toBeVisible({
-				timeout: 30_000,
+				timeout: 10_000,
 			});
 		});
 	},

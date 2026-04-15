@@ -194,7 +194,11 @@ describe('usePostMessageHandler', () => {
 		it('should override workflow id to "demo" in iframe context when canExecute is not set', async () => {
 			// Simulate iframe context
 			const originalParent = Object.getOwnPropertyDescriptor(window, 'parent');
-			Object.defineProperty(window, 'parent', { value: { postMessage: vi.fn() }, writable: true });
+			Object.defineProperty(window, 'parent', {
+				value: { postMessage: vi.fn() },
+				writable: true,
+				configurable: true,
+			});
 
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
@@ -225,7 +229,11 @@ describe('usePostMessageHandler', () => {
 
 			// Simulate iframe context
 			const originalParent = Object.getOwnPropertyDescriptor(window, 'parent');
-			Object.defineProperty(window, 'parent', { value: { postMessage: vi.fn() }, writable: true });
+			Object.defineProperty(window, 'parent', {
+				value: { postMessage: vi.fn() },
+				writable: true,
+				configurable: true,
+			});
 
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
@@ -417,7 +425,11 @@ describe('usePostMessageHandler', () => {
 
 			// Simulate iframe context
 			const originalParent = Object.getOwnPropertyDescriptor(window, 'parent');
-			Object.defineProperty(window, 'parent', { value: { postMessage: vi.fn() }, writable: true });
+			Object.defineProperty(window, 'parent', {
+				value: { postMessage: vi.fn() },
+				writable: true,
+				configurable: true,
+			});
 
 			const mockSetPinData = vi.fn();
 			const storeRef = shallowRef({ setPinData: mockSetPinData } as never);

@@ -183,8 +183,12 @@ export function useChatState(
 			// still be in progress when the first message is sent.
 			if (!pushConnectionStore.isConnected) {
 				await new Promise<void>((resolve, reject) => {
-					const timeout = setTimeout(() => reject(new Error('Push connection timeout')), 10_000);
-					const stop = watch(
+					let stop = () => {};
+					const timeout = setTimeout(() => {
+						stop();
+						reject(new Error('Push connection timeout'));
+					}, 10_000);
+					stop = watch(
 						() => pushConnectionStore.isConnected,
 						(connected) => {
 							if (connected) {
