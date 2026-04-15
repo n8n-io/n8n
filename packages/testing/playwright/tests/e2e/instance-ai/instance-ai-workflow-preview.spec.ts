@@ -52,11 +52,8 @@ test.describe(
 
 			await n8n.instanceAi.waitForResponseComplete();
 
-			// All three nodes should show the success indicator. Allow time for
-			// the preview component to poll the execution and reload the iframe.
-			await expect(n8n.instanceAi.getPreviewSuccessIndicators()).toHaveCount(3, {
-				timeout: 30_000,
-			});
+			// All three nodes should show the success indicator.
+			await expect(n8n.instanceAi.getPreviewSuccessIndicators()).toHaveCount(3);
 			// No node should still be in the running/waiting state.
 			await expect(n8n.instanceAi.getPreviewRunningNodes()).toHaveCount(0);
 		});

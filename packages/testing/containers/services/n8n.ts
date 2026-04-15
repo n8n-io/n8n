@@ -145,6 +145,21 @@ async function createContainer(
 		container = container.withCopyContentToContainer(filesToMount);
 	}
 
+	// Local FE iteration: bind-mount the editor-ui dist so frontend changes
+	// are picked up without rebuilding the docker image.
+	// Usage: N8N_DEV_EDITOR_UI_DIST=/path/to/editor-ui/dist pnpm test:container:sqlite ...
+	// Note: n8n writes helper assets into this dir on startup, so mount must be rw.
+	const devEditorUiDist = process.env.N8N_DEV_EDITOR_UI_DIST;
+	if (devEditorUiDist) {
+		container = container.withBindMounts([
+			{
+				source: devEditorUiDist,
+				target: '/home/node/.cache/n8n/public',
+				mode: 'rw',
+			},
+		]);
+	}
+
 	if (resourceQuota) {
 		container = container.withResourcesQuota(resourceQuota);
 	}
