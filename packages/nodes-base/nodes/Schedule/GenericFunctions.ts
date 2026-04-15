@@ -87,9 +87,9 @@ export function recurrenceCheck(
 export function createCronDayConstraintEvaluator(
 	cronExpression: CronExpression,
 	timezone: string,
-	requireDayOfMonthAndDayOfWeekMatch = false,
+	enforceDayOfMonthAndDayOfWeekMatch = false,
 ) {
-	if (!requireDayOfMonthAndDayOfWeekMatch) return () => true;
+	if (!enforceDayOfMonthAndDayOfWeekMatch) return () => true;
 
 	const [, , , dayOfMonth, , dayOfWeek] = new CronTime(cronExpression, timezone).toJSON();
 

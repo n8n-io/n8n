@@ -16,12 +16,16 @@ const mockedMoment = jest.mocked(moment);
 
 function mockMomentTz(values: {
 	hour?: number;
+	date?: number;
+	day?: number;
 	dayOfYear?: number;
 	week?: number;
 	month?: number;
 }) {
 	const tzObj = {
 		hour: () => values.hour ?? 0,
+		date: () => values.date ?? 1,
+		day: () => values.day ?? 0,
 		dayOfYear: () => values.dayOfYear ?? 1,
 		week: () => values.week ?? 1,
 		month: () => values.month ?? 0,
@@ -634,22 +638,22 @@ describe('createCronDayConstraintEvaluator', () => {
 	});
 
 	it('should always pass when option is disabled', () => {
-		jest.setSystemTime(new Date('2026-03-18T12:00:00.000Z'));
+		mockMomentTz({ date: 18, day: 3 });
 		const evaluator = createCronDayConstraintEvaluator('0 22 11 2-31 * 1', 'UTC', false);
 		expect(evaluator()).toBe(true);
 	});
 
 	it('should enforce AND semantics when both DOM and DOW are constrained', () => {
-		jest.setSystemTime(new Date('2026-03-18T12:00:00.000Z')); // Wednesday, day 18
+		mockMomentTz({ date: 18, day: 3 }); // Wednesday, day 18
 		const evaluator = createCronDayConstraintEvaluator('0 22 11 2-31 * 1', 'UTC', true);
 		expect(evaluator()).toBe(false);
 
-		jest.setSystemTime(new Date('2026-03-23T12:00:00.000Z')); // Monday, day 23
+		mockMomentTz({ date: 23, day: 1 }); // Monday, day 23
 		expect(evaluator()).toBe(true);
 	});
 
 	it('should be a no-op when DOM normalizes to wildcard', () => {
-		jest.setSystemTime(new Date('2026-03-18T12:00:00.000Z')); // Not Monday
+		mockMomentTz({ date: 18, day: 3 }); // Not Monday
 		const evaluator = createCronDayConstraintEvaluator('0 22 11 1-31 * 1', 'UTC', true);
 		expect(evaluator()).toBe(true);
 	});

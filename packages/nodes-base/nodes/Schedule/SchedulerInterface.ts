@@ -13,7 +13,6 @@ export type ScheduleInterval =
 	| {
 			field: 'cronExpression';
 			expression: CronExpression;
-			requireDayOfMonthAndDayOfWeekMatch?: boolean;
 	  }
 	| {
 			field: 'seconds';

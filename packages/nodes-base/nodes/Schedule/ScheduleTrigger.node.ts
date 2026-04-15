@@ -25,7 +25,7 @@ export class ScheduleTrigger implements INodeType {
 		icon: 'node:schedule-trigger',
 		iconColor: 'black',
 		group: ['trigger', 'schedule'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Triggers the workflow on a given schedule',
 		eventTriggerDescription: '',
 		activationMessage:
@@ -413,22 +413,23 @@ export class ScheduleTrigger implements INodeType {
 								displayOptions: {
 									show: {
 										field: ['cronExpression'],
+										'@version': [1, 1.1, 1.2, 1.3],
 									},
 								},
 								default: '',
 							},
 							{
-								displayName: 'Require both Day of Month and Day of Week',
-								name: 'requireDayOfMonthAndDayOfWeekMatch',
-								type: 'boolean',
+								displayName:
+									'When both Day of Month and Day of Week are constrained, this node requires both to match (AND).',
+								name: 'dayConstraintNoticeAnd',
+								type: 'notice',
 								displayOptions: {
 									show: {
 										field: ['cronExpression'],
+										'@version': [{ _cnd: { gte: 1.4 } }],
 									},
 								},
-								default: false,
-								description:
-									'If enabled, trigger only when both fields match (AND). Has no effect if either field is wildcard (*)',
+								default: '',
 							},
 							{
 								displayName: 'Expression',
@@ -498,20 +499,22 @@ export class ScheduleTrigger implements INodeType {
 				interval,
 				cronExpression,
 				recurrence: intervalToRecurrence(interval, i),
-				shouldExecute:
-					interval.field === 'cronExpression'
-						? createCronDayConstraintEvaluator(
-								cronExpression,
-								timezone,
-								interval.requireDayOfMonthAndDayOfWeekMatch,
-							)
-						: () => true,
+				shouldEnforceDayConstraint: version >= 1.4 && interval.field === 'cronExpression',
 			};
 		});
 
 		if (this.getMode() !== 'manual') {
-			for (const { interval, cronExpression, recurrence, shouldExecute } of rules) {
+			for (const { interval, cronExpression, recurrence, shouldEnforceDayConstraint } of rules) {
 				try {
+					const shouldExecute =
+						interval.field === 'cronExpression'
+							? createCronDayConstraintEvaluator(
+									cronExpression,
+									timezone,
+									shouldEnforceDayConstraint,
+								)
+							: () => true;
+
 					const cron: Cron = {
 						expression: cronExpression,
 						recurrence,

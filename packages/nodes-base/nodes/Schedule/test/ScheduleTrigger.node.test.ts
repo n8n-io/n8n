@@ -107,6 +107,56 @@ describe('ScheduleTrigger', () => {
 			).rejects.toBeInstanceOf(n8nWorkflow.NodeOperationError);
 		});
 
+		it('should keep OR semantics for cron expressions in version 1.3', async () => {
+			jest.setSystemTime(new Date('2026-03-18T12:00:00.000Z')); // Wednesday
+
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone: 'UTC',
+				node: {
+					typeVersion: 1.3,
+					parameters: {
+						rule: {
+							interval: [
+								{
+									field: 'cronExpression',
+									expression: '0 * * 2-31 * 1',
+								},
+							],
+						},
+					},
+				},
+				workflowStaticData: {},
+			});
+
+			jest.advanceTimersByTime(2 * 60 * 1000);
+			expect(emit).toHaveBeenCalledTimes(2);
+		});
+
+		it('should enforce AND semantics for cron expressions in version 1.4', async () => {
+			jest.setSystemTime(new Date('2026-03-18T12:00:00.000Z')); // Wednesday
+
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone: 'UTC',
+				node: {
+					typeVersion: 1.4,
+					parameters: {
+						rule: {
+							interval: [
+								{
+									field: 'cronExpression',
+									expression: '0 * * 2-31 * 1',
+								},
+							],
+						},
+					},
+				},
+				workflowStaticData: {},
+			});
+
+			jest.advanceTimersByTime(2 * 60 * 1000);
+			expect(emit).not.toHaveBeenCalled();
+		});
+
 		it('should emit when manually executed', async () => {
 			const { emit, manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
 				mode: 'manual',
