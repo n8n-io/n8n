@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { isPlaceholderString, hasPlaceholderDeep, extractPlaceholderLabel } from './placeholder';
+import {
+	isPlaceholderString,
+	hasPlaceholderDeep,
+	isPlaceholderValue,
+	extractPlaceholderLabels,
+	findPlaceholderDetails,
+	formatPlaceholderPath,
+} from './placeholder';
 
 describe('isPlaceholderString', () => {
 	it('returns true for a valid placeholder sentinel', () => {
@@ -55,56 +62,105 @@ describe('hasPlaceholderDeep', () => {
 	});
 });
 
-describe('extractPlaceholderLabel', () => {
+describe('isPlaceholderValue', () => {
+	it('returns true for a placeholder string', () => {
+		expect(isPlaceholderValue('<__PLACEHOLDER_VALUE__hint__>')).toBe(true);
+	});
+
+	it('returns true for alternative placeholder format', () => {
+		expect(isPlaceholderValue('<__PLACEHOLDER__api_key__>')).toBe(true);
+	});
+
+	it('returns false for regular strings', () => {
+		expect(isPlaceholderValue('hello')).toBe(false);
+	});
+
+	it('returns false for non-string values', () => {
+		expect(isPlaceholderValue(42)).toBe(false);
+		expect(isPlaceholderValue(null)).toBe(false);
+	});
+});
+
+describe('extractPlaceholderLabels', () => {
 	it('extracts label from PLACEHOLDER_VALUE format', () => {
-		expect(extractPlaceholderLabel('<__PLACEHOLDER_VALUE__Your email address__>')).toBe(
+		expect(extractPlaceholderLabels('<__PLACEHOLDER_VALUE__Your email address__>')).toEqual([
 			'Your email address',
-		);
+		]);
 	});
 
 	it('extracts label from PLACEHOLDER__: format', () => {
-		expect(extractPlaceholderLabel('<__PLACEHOLDER__: some hint__>')).toBe('some hint');
+		expect(extractPlaceholderLabels('<__PLACEHOLDER__: some hint__>')).toEqual(['some hint']);
 	});
 
 	it('extracts label from PLACEHOLDER__ format', () => {
-		expect(extractPlaceholderLabel('<__PLACEHOLDER__api_key__>')).toBe('api_key');
+		expect(extractPlaceholderLabels('<__PLACEHOLDER__api_key__>')).toEqual(['api_key']);
 	});
 
-	it('returns undefined for non-placeholder strings', () => {
-		expect(extractPlaceholderLabel('user@example.com')).toBeUndefined();
-		expect(extractPlaceholderLabel('hello')).toBeUndefined();
+	it('returns empty array for non-placeholder strings', () => {
+		expect(extractPlaceholderLabels('user@example.com')).toEqual([]);
 	});
 
-	it('returns undefined for non-string values', () => {
-		expect(extractPlaceholderLabel(42)).toBeUndefined();
-		expect(extractPlaceholderLabel(null)).toBeUndefined();
-		expect(extractPlaceholderLabel(undefined)).toBeUndefined();
+	it('returns empty array for non-string values', () => {
+		expect(extractPlaceholderLabels(42)).toEqual([]);
+		expect(extractPlaceholderLabels(null)).toEqual([]);
 	});
 
-	it('returns undefined for placeholder with empty label', () => {
-		expect(extractPlaceholderLabel('<__PLACEHOLDER_VALUE____>')).toBeUndefined();
+	it('returns empty array for placeholder with empty label', () => {
+		expect(extractPlaceholderLabels('<__PLACEHOLDER_VALUE____>')).toEqual([]);
 	});
 
-	it('extracts label from nested object', () => {
-		expect(extractPlaceholderLabel({ config: { key: '<__PLACEHOLDER_VALUE__api_key__>' } })).toBe(
-			'api_key',
+	it('extracts multiple labels from embedded placeholders', () => {
+		const code =
+			'const key = "<__PLACEHOLDER_VALUE__api_key__>"; const url = "<__PLACEHOLDER_VALUE__base_url__>";';
+		expect(extractPlaceholderLabels(code)).toEqual(['api_key', 'base_url']);
+	});
+});
+
+describe('findPlaceholderDetails', () => {
+	it('finds placeholder in a flat string', () => {
+		expect(findPlaceholderDetails('<__PLACEHOLDER_VALUE__email__>')).toEqual([
+			{ path: [], label: 'email' },
+		]);
+	});
+
+	it('finds placeholder nested in an object', () => {
+		expect(findPlaceholderDetails({ config: { key: '<__PLACEHOLDER_VALUE__api_key__>' } })).toEqual(
+			[{ path: ['config', 'key'], label: 'api_key' }],
 		);
 	});
 
-	it('extracts label from nested array', () => {
-		expect(extractPlaceholderLabel(['a', '<__PLACEHOLDER_VALUE__email__>'])).toBe('email');
+	it('finds placeholder nested in an array', () => {
+		expect(findPlaceholderDetails(['a', '<__PLACEHOLDER_VALUE__email__>'])).toEqual([
+			{ path: ['[1]'], label: 'email' },
+		]);
 	});
 
-	it('returns first label from deeply nested structure', () => {
-		expect(
-			extractPlaceholderLabel({
-				a: { b: [{ c: '<__PLACEHOLDER_VALUE__first__>' }] },
-				d: '<__PLACEHOLDER_VALUE__second__>',
-			}),
-		).toBe('first');
+	it('finds multiple placeholders in deeply nested structure', () => {
+		const result = findPlaceholderDetails({
+			a: { b: [{ c: '<__PLACEHOLDER_VALUE__first__>' }] },
+			d: '<__PLACEHOLDER_VALUE__second__>',
+		});
+		expect(result).toEqual([
+			{ path: ['a', 'b', '[0]', 'c'], label: 'first' },
+			{ path: ['d'], label: 'second' },
+		]);
 	});
 
-	it('returns undefined when no placeholders in nested structure', () => {
-		expect(extractPlaceholderLabel({ a: { b: [1, 'hello'] } })).toBeUndefined();
+	it('returns empty array when no placeholders exist', () => {
+		expect(findPlaceholderDetails({ a: { b: [1, 'hello'] } })).toEqual([]);
+	});
+});
+
+describe('formatPlaceholderPath', () => {
+	it('returns "parameters" for empty path', () => {
+		expect(formatPlaceholderPath([])).toBe('parameters');
+	});
+
+	it('formats simple path', () => {
+		expect(formatPlaceholderPath(['config', 'key'])).toBe('config.key');
+	});
+
+	it('preserves array indices', () => {
+		expect(formatPlaceholderPath(['items', '[0]', 'value'])).toBe('items[0].value');
 	});
 });

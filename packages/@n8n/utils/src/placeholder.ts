@@ -4,6 +4,11 @@ const PLACEHOLDER_VALUE_PREFIX = '<__PLACEHOLDER_VALUE__';
 
 const PLACEHOLDER_REGEX = /<__PLACEHOLDER.*?__>/;
 
+export interface PlaceholderDetail {
+	path: string[];
+	label: string;
+}
+
 /** Check if a value is a placeholder sentinel string (format: `<__PLACEHOLDER_VALUE__hint__>`). */
 export function isPlaceholderString(value: unknown): boolean {
 	return (
@@ -23,45 +28,86 @@ export function hasPlaceholderDeep(value: unknown): boolean {
 	return false;
 }
 
+/** Checks if a value is a placeholder value (matches the placeholder regex pattern). */
+export function isPlaceholderValue(value: unknown): boolean {
+	if (typeof value !== 'string') return false;
+	return !!value.match(PLACEHOLDER_REGEX);
+}
+
 /**
- * Extract the human-readable hint label from the first placeholder sentinel found in a value.
- * Handles both direct string placeholders and nested objects/arrays (recurses to find the first match).
- * Returns `undefined` if no placeholder is found or the label is empty.
+ * Extracts the label from a single placeholder string.
+ * Handles formats like:
+ * - <__PLACEHOLDER_VALUE__label__>
+ * - <__PLACEHOLDER__: label__>
  */
-export function extractPlaceholderLabel(value: unknown): string | undefined {
-	if (typeof value === 'string') {
-		const match = value.match(PLACEHOLDER_REGEX);
-		if (!match) return undefined;
+function extractLabelFromPlaceholder(placeholder: string): string {
+	let label = placeholder.slice(PLACEHOLDER_PREFIX.length, -PLACEHOLDER_SUFFIX.length);
 
-		let label = match[0].slice(PLACEHOLDER_PREFIX.length, -PLACEHOLDER_SUFFIX.length);
+	if (label.startsWith('_VALUE__')) {
+		label = label.slice('_VALUE__'.length);
+	} else if (label.startsWith('__:')) {
+		label = label.slice('__:'.length);
+	} else if (label.startsWith('__')) {
+		label = label.slice('__'.length);
+	}
 
-		if (label.startsWith('_VALUE__')) {
-			label = label.slice('_VALUE__'.length);
-		} else if (label.startsWith('__:')) {
-			label = label.slice('__:'.length);
-		} else if (label.startsWith('__')) {
-			label = label.slice('__'.length);
+	return label.trim();
+}
+
+/**
+ * Extracts all placeholder labels from a string value.
+ * Handles both cases where the entire value is a placeholder and where
+ * placeholders are embedded within code (e.g., Code node).
+ * Returns an array of labels found.
+ */
+export function extractPlaceholderLabels(value: unknown): string[] {
+	if (typeof value !== 'string') return [];
+
+	const labels: string[] = [];
+	const regex = new RegExp(PLACEHOLDER_REGEX.source, 'g');
+	let match;
+
+	while ((match = regex.exec(value)) !== null) {
+		const label = extractLabelFromPlaceholder(match[0]);
+		if (label.length > 0) {
+			labels.push(label);
 		}
+	}
 
-		label = label.trim();
-		return label.length > 0 ? label : undefined;
+	return labels;
+}
+
+/**
+ * Recursively searches through a value (object, array, or primitive) to find
+ * all placeholder values and their paths.
+ */
+export function findPlaceholderDetails(value: unknown, path: string[] = []): PlaceholderDetail[] {
+	if (typeof value === 'string') {
+		const labels = extractPlaceholderLabels(value);
+		return labels.map((label) => ({ path, label }));
 	}
 
 	if (Array.isArray(value)) {
-		for (const item of value) {
-			const result = extractPlaceholderLabel(item);
-			if (result) return result;
-		}
-		return undefined;
+		return value.flatMap((item, index) => findPlaceholderDetails(item, [...path, `[${index}]`]));
 	}
 
 	if (value !== null && typeof value === 'object') {
-		for (const nested of Object.values(value as Record<string, unknown>)) {
-			const result = extractPlaceholderLabel(nested);
-			if (result) return result;
-		}
-		return undefined;
+		return Object.entries(value).flatMap(([key, nested]) =>
+			findPlaceholderDetails(nested, [...path, key]),
+		);
 	}
 
-	return undefined;
+	return [];
+}
+
+/**
+ * Formats a path array into a dot-notation string for display.
+ * Array indices are preserved as [N] without leading dots.
+ */
+export function formatPlaceholderPath(path: string[]): string {
+	if (path.length === 0) return 'parameters';
+
+	return path
+		.map((segment, index) => (segment.startsWith('[') || index === 0 ? segment : `.${segment}`))
+		.join('');
 }
