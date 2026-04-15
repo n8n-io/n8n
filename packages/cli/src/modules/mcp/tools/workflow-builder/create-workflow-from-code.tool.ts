@@ -134,6 +134,8 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 		}
 
+		let newWorkflow: WorkflowEntity | undefined;
+
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
 				'@n8n/ai-workflow-builder'
@@ -144,7 +146,7 @@ export const createCreateWorkflowFromCodeTool = (
 			const result = await handler.parseAndValidate(strippedCode);
 			const workflowJson = result.workflow;
 
-			const newWorkflow = new WorkflowEntity();
+			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
 				name: name ?? workflowJson.name ?? 'Untitled Workflow',
 				...(description ? { description } : {}),
@@ -208,6 +210,39 @@ export const createCreateWorkflowFromCodeTool = (
 				structuredContent: output,
 			};
 		} catch (error) {
+			// If the workflow was already persisted to the DB (has an ID) but a post-save
+			// operation failed (e.g. external hooks, event emission), report success to
+			// prevent MCP clients from retrying and creating duplicate workflows.
+			if (newWorkflow?.id) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				const baseUrl = urlService.getInstanceBaseUrl();
+				const workflowUrl = `${baseUrl}/workflow/${newWorkflow.id}`;
+
+				telemetryPayload.results = {
+					success: true,
+					data: {
+						workflowId: newWorkflow.id,
+						nodeCount: newWorkflow.nodes.length,
+						postSaveError: errorMessage,
+					},
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+				const output = {
+					workflowId: newWorkflow.id,
+					name: newWorkflow.name,
+					nodeCount: newWorkflow.nodes.length,
+					url: workflowUrl,
+					autoAssignedCredentials: [],
+					note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
+				};
+
+				return {
+					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+					structuredContent: output,
+				};
+			}
+
 			const errorMessage = error instanceof Error ? error.message : String(error);
 
 			telemetryPayload.results = {
