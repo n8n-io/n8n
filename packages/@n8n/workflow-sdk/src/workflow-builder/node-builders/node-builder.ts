@@ -33,7 +33,7 @@ import {
  */
 export function assertPlainObject(input: unknown, fnName: string, hint: string): void {
 	if (typeof input !== 'object' || input === null || Array.isArray(input)) {
-		const received = Array.isArray(input) ? 'an array' : typeof input;
+		const received = input === null ? 'null' : Array.isArray(input) ? 'an array' : typeof input;
 		throw new TypeError(`${fnName}() requires ${hint}, but received ${received}.`);
 	}
 }

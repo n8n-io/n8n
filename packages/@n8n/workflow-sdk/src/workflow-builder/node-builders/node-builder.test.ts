@@ -809,6 +809,20 @@ describe('Node Builder', () => {
 			}).toThrow(/received an array/);
 		});
 
+		it('node() should report null input as null in the error message', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node(null);
+			}).toThrow(/received null/);
+		});
+
+		it('trigger() should report null input as null in the error message', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				trigger(null);
+			}).toThrow(/received null/);
+		});
+
 		it('should not crash when config is undefined', () => {
 			expect(() => {
 				// @ts-expect-error intentional misuse
