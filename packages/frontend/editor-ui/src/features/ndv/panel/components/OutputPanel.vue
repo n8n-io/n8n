@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { NodeConnectionTypes, type IRunData, type Workflow } from 'n8n-workflow';
+import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
 import { storeToRefs } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import RunDataAi from '@/features/ndv/runData/components/ai/RunDataAi.vue';
 import { useNodeType } from '@/app/composables/useNodeType';
@@ -42,7 +43,7 @@ type OutputTypeKey = keyof typeof OUTPUT_TYPE;
 type OutputType = (typeof OUTPUT_TYPE)[OutputTypeKey];
 
 type Props = {
-	workflowObject: Workflow;
+	workflowObject: WorkflowObjectAccessors;
 	runIndex: number;
 	isReadOnly?: boolean;
 	linkedRuns?: boolean;

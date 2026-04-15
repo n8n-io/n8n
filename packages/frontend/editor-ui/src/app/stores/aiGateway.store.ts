@@ -6,7 +6,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
 	getGatewayConfig,
-	getGatewayCredits,
+	getGatewayWallet,
 	getGatewayUsage,
 } from '@/features/ai/assistant/assistant.api';
 
@@ -18,8 +18,8 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	const rootStore = useRootStore();
 
 	const config = ref<AiGatewayConfigDto | null>(null);
-	const creditsRemaining = ref<number | undefined>(undefined);
-	const creditsQuota = ref<number | undefined>(undefined);
+	const balance = ref<number | undefined>(undefined);
+	const budget = ref<number | undefined>(undefined);
 	const usageEntries = ref<AiGatewayUsageEntry[]>([]);
 	const usageTotal = ref<number>(0);
 	const fetchError = ref<Error | null>(null);
@@ -34,11 +34,11 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		}
 	}
 
-	async function fetchCredits(): Promise<void> {
+	async function fetchWallet(): Promise<void> {
 		try {
-			const data = await getGatewayCredits(rootStore.restApiContext);
-			creditsRemaining.value = data.creditsRemaining;
-			creditsQuota.value = data.creditsQuota;
+			const data = await getGatewayWallet(rootStore.restApiContext);
+			balance.value = data.balance;
+			budget.value = data.budget;
 			fetchError.value = null;
 		} catch (error) {
 			fetchError.value = toError(error);
@@ -77,13 +77,13 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 
 	return {
 		config,
-		creditsRemaining,
-		creditsQuota,
+		balance,
+		budget,
 		usageEntries,
 		usageTotal,
 		fetchError,
 		fetchConfig,
-		fetchCredits,
+		fetchWallet,
 		fetchUsage,
 		fetchMoreUsage,
 		isNodeSupported,

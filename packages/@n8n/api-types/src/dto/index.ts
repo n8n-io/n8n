@@ -163,11 +163,12 @@ export {
 	type RoleProjectMembersResponse,
 } from './roles/role-project-members-response.dto';
 
-export { OidcConfigDto } from './oidc/config.dto';
+export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
+export { PublicApiCreateDataTableDto } from './data-table/public-api-create-data-table.dto';
 export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
 export { DeleteDataTableRowsDto } from './data-table/delete-data-table-rows.dto';
 export { UpsertDataTableRowDto } from './data-table/upsert-data-table-row.dto';
