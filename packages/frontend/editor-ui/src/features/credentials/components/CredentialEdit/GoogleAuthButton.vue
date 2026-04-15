@@ -73,7 +73,7 @@
 
 	&:disabled {
 		svg {
-			filter: brightness(0.6);
+			opacity: 0.56;
 		}
 		cursor: not-allowed;
 	}

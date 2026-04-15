@@ -44,7 +44,7 @@ const buttonLabel = computed(() => {
 </script>
 
 <template>
-	<N8nTooltip :disabled="!disabled || !disabledTooltip" placement="right">
+	<N8nTooltip :disabled="!disabled || !disabledTooltip" placement="top">
 		<template #content>{{ disabledTooltip }}</template>
 		<template #default>
 			<GoogleAuthButton
