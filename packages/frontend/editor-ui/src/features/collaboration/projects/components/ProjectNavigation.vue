@@ -194,7 +194,7 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="small"
+					size="medium"
 					:class="[$style.chevron, favoritesCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
@@ -237,7 +237,7 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="small"
+					size="medium"
 					:class="[$style.chevron, projectsCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
@@ -356,6 +356,6 @@ onBeforeUnmount(() => {
 }
 
 .groupSpacer {
-	height: var(--spacing--4xs);
+	height: var(--spacing--5xs);
 }
 </style>

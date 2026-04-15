@@ -23,6 +23,7 @@ import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
 import Schema from './custom/schema.svg';
 import Spinner from './custom/spinner.svg';
+import StarFilled from './custom/star-filled.svg';
 import StatusCanceled from './custom/status-canceled.svg';
 import StatusCompleted from './custom/status-completed.svg';
 import StatusError from './custom/status-error.svg';
@@ -481,6 +482,7 @@ export const updatedIconSet = {
 	'status-new': StatusNew,
 	'status-unknown': StatusUnknown,
 	'status-warning': StatusWarning,
+	'star-filled': StarFilled,
 	'vector-square': VectorSquare,
 	'continue-on-error': Continue,
 	'always-output-data': EmptyOutput,
@@ -682,6 +684,7 @@ export const updatedIconSet = {
 	'square-minus': IconLucideSquareMinus,
 	'square-pen': IconLucideSquarePen,
 	'square-plus': IconLucideSquarePlus,
+	star: IconLucideStar,
 	'sticky-note': IconLucideStickyNote,
 	sun: IconLucideSun,
 	table: IconLucideTable,
@@ -719,7 +722,6 @@ export const updatedIconSet = {
 	loader: IconLucideLoader2,
 	'loader-circle': IconLucideLoaderCircle,
 	'quick-connect': IconLucideFlame,
-	star: IconLucideStar,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward

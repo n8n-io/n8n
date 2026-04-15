@@ -22,7 +22,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
-import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -385,6 +385,8 @@ const projectDescription = computed(() => {
 	return null;
 });
 
+const favoriteIcon = computed(() => (isProjectFavorited.value ? 'star-filled' : 'star'));
+
 const projectHeaderRef = ref<HTMLElement | null>(null);
 const { width: projectHeaderWidth } = useElementSize(projectHeaderRef);
 
@@ -451,27 +453,15 @@ const onSelect = (action: string) => {
 						</div>
 					</template>
 				</div>
-				<N8nTooltip
+				<N8nIcon
 					v-if="isTeamProject"
-					:content="
-						isProjectFavorited ? i18n.baseText('favorites.remove') : i18n.baseText('favorites.add')
-					"
-				>
-					<N8nIconButton
-						:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
-						icon="star"
-						variant="ghost"
-						size="small"
-						:aria-label="
-							isProjectFavorited
-								? i18n.baseText('favorites.remove')
-								: i18n.baseText('favorites.add')
-						"
-						:aria-pressed="isProjectFavorited"
-						data-test-id="project-favorite-btn"
-						@click.stop="onToggleProjectFavorite"
-					/>
-				</N8nTooltip>
+					:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
+					:icon="favoriteIcon"
+					variant="ghost"
+					size="medium"
+					data-test-id="project-favorite-btn"
+					@click.stop="onToggleProjectFavorite"
+				/>
 			</div>
 			<div
 				v-if="route.name !== VIEWS.PROJECT_SETTINGS"
@@ -553,19 +543,14 @@ const onSelect = (action: string) => {
 }
 
 .favoriteBtn {
+	cursor: pointer;
 	color: var(--color--text--tint-2);
+	margin-top: var(--spacing--5xs);
 	margin-left: var(--spacing--2xs);
-	opacity: 0;
-	transition:
-		opacity 0.15s ease,
-		color 0.15s ease;
+	opacity: 0.6;
 
 	&.favoriteBtnActive {
 		color: var(--color--warning);
-	}
-
-	&:hover {
-		color: var(--color--text);
 	}
 }
 
