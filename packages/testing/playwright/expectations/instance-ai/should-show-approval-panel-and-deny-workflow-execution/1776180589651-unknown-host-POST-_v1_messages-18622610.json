@@ -1,0 +1,67 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"type": "STRING",
+			"string": "[{\"type\":\"text\",\"text\":\"Generate a concise title (max 60 chars) summarizing what",
+			"subString": true
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["2486"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"server-timing": ["x-originResponse;dur=2489"],
+			"request-id": ["req_011Ca3uEdFH1ZeT3HpefDcXN"],
+			"cf-cache-status": ["DYNAMIC"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Tue, 14 Apr 2026 15:29:20 GMT"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-6",
+				"id": "msg_01UR9k4JepRJ2bn8An2Ydkbm",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "The screenshot shows a **single red pixel** (1×1 pixel image).\n\nIt's a minimal PNG file containing just one pixel with a red color value. This is often used as a **placeholder image**, for **tracking pixels** (web beacons), or simply as a **test image** to verify image handling functionality."
+					}
+				],
+				"stop_reason": "end_turn",
+				"stop_sequence": null,
+				"stop_details": null,
+				"usage": {
+					"input_tokens": 226,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 72,
+					"service_tier": "standard",
+					"inference_geo": "global"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC02IiwiaWQiOiJtc2dfMDFVUjlrNEplcFJKMmJuOEFuMllka2JtIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiVGhlIHNjcmVlbnNob3Qgc2hvd3MgYSAqKnNpbmdsZSByZWQgcGl4ZWwqKiAoMcOXMSBwaXhlbCBpbWFnZSkuXG5cbkl0J3MgYSBtaW5pbWFsIFBORyBmaWxlIGNvbnRhaW5pbmcganVzdCBvbmUgcGl4ZWwgd2l0aCBhIHJlZCBjb2xvciB2YWx1ZS4gVGhpcyBpcyBvZnRlbiB1c2VkIGFzIGEgKipwbGFjZWhvbGRlciBpbWFnZSoqLCBmb3IgKip0cmFja2luZyBwaXhlbHMqKiAod2ViIGJlYWNvbnMpLCBvciBzaW1wbHkgYXMgYSAqKnRlc3QgaW1hZ2UqKiB0byB2ZXJpZnkgaW1hZ2UgaGFuZGxpbmcgZnVuY3Rpb25hbGl0eS4ifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MjI2LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NzIsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fQ=="
+		}
+	},
+	"id": "1776180589651-unknown-host-POST-_v1_messages-18622610.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}
