@@ -15,6 +15,11 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
+vi.mock('../instanceAi.api', () => ({
+	createGatewayLink: vi.fn(),
+	getGatewayStatus: vi.fn(),
+}));
+
 const renderComponent = createComponentRenderer(LocalGatewaySection);
 
 describe('LocalGatewaySection', () => {
