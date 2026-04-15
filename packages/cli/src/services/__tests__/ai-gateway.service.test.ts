@@ -10,6 +10,9 @@ import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Project, User, UserRepository } from '@n8n/db';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { UrlService } from '@/services/url.service';
+
+const INSTANCE_BASE_URL = 'https://my-n8n.example.com';
 
 const BASE_URL = 'http://gateway.test';
 const INSTANCE_ID = 'test-instance-id';
@@ -34,6 +37,9 @@ function makeService({
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
 	userRepository = mock<UserRepository>({ findOneBy: jest.fn().mockResolvedValue(null) }),
+	urlService = mock<UrlService>({
+		getInstanceBaseUrl: jest.fn().mockReturnValue(INSTANCE_BASE_URL),
+	}),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
@@ -53,6 +59,7 @@ function makeService({
 		instanceSettings,
 		ownershipService,
 		userRepository,
+		urlService,
 	);
 }
 
@@ -189,9 +196,19 @@ describe('AiGatewayService', () => {
 						'x-n8n-version': N8N_VERSION,
 						'x-instance-id': INSTANCE_ID,
 					},
-					body: JSON.stringify({ licenseCert: LICENSE_CERT }),
+					body: JSON.stringify({ licenseCert: LICENSE_CERT, instanceUrl: INSTANCE_BASE_URL }),
 				}),
 			);
+		});
+
+		it('includes instanceUrl in token body', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService();
+
+			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
+
+			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+			expect(body.instanceUrl).toBe(INSTANCE_BASE_URL);
 		});
 
 		it('includes userEmail and userName in token body when user exists', async () => {
@@ -215,6 +232,7 @@ describe('AiGatewayService', () => {
 						licenseCert: LICENSE_CERT,
 						userEmail: 'alice@example.com',
 						userName: 'Alice Smith',
+						instanceUrl: INSTANCE_BASE_URL,
 					}),
 				}),
 			);
@@ -245,7 +263,7 @@ describe('AiGatewayService', () => {
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
 			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
-			expect(body).toEqual({ licenseCert: LICENSE_CERT });
+			expect(body).toEqual({ licenseCert: LICENSE_CERT, instanceUrl: INSTANCE_BASE_URL });
 		});
 
 		it('caches config and token — second call makes no additional fetches', async () => {
@@ -416,7 +434,7 @@ describe('AiGatewayService', () => {
 				`${BASE_URL}/v1/gateway/credentials`,
 				expect.objectContaining({
 					method: 'POST',
-					body: JSON.stringify({ licenseCert: LICENSE_CERT }),
+					body: JSON.stringify({ licenseCert: LICENSE_CERT, instanceUrl: INSTANCE_BASE_URL }),
 				}),
 			);
 			expect(fetchMock).toHaveBeenNthCalledWith(2, `${BASE_URL}/v1/gateway/wallet`, {
