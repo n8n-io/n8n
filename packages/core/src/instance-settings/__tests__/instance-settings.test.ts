@@ -216,6 +216,7 @@ describe('InstanceSettings', () => {
 	describe('initialize', () => {
 		const mockRepo = {
 			findActiveByType: jest.fn(),
+			create: jest.fn().mockImplementation((entity) => entity),
 			save: jest.fn(),
 		};
 
@@ -225,6 +226,7 @@ describe('InstanceSettings', () => {
 			mockFs.existsSync.mockReturnValue(false);
 			mockFs.mkdirSync.mockReturnValue('');
 			mockFs.writeFileSync.mockReturnValue();
+			mockRepo.create.mockImplementation((entity) => entity);
 
 			settings = createInstanceSettings({ encryptionKey: 'test_key' });
 		});
@@ -255,8 +257,13 @@ describe('InstanceSettings', () => {
 
 			await settings.initialize(mockRepo);
 
+			expect(mockRepo.create).toHaveBeenCalledWith({
+				type: 'instance.id',
+				value: derivedId,
+				status: 'active',
+				algorithm: null,
+			});
 			expect(mockRepo.save).toHaveBeenCalledWith({
-				id: expect.any(String),
 				type: 'instance.id',
 				value: derivedId,
 				status: 'active',
