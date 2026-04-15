@@ -288,6 +288,47 @@ ANTHROPIC_API_KEY=sk-... pnpm --filter=n8n-playwright test:container:sqlite --gr
 
 This overwrites `expectations/instance-ai/<test-slug>/` with fresh recordings.
 
+### Local-build mode (no docker, real Anthropic key)
+
+For fast iteration against a local n8n build — skips the container and proxy
+stack entirely. Tests hit the real Anthropic API directly. This mode does
+**not** record proxy expectations.
+
+```bash
+cd packages/testing/playwright
+export ANTHROPIC_API_KEY=sk-ant-...
+pnpm test:local:instance-ai                  # full suite
+pnpm test:local:instance-ai --grep "preview" # single test
+```
+
+Extra args flow through to `playwright test`:
+
+```bash
+# Single file
+pnpm test:local:instance-ai instance-ai-workflow-preview.spec.ts
+
+# Multiple instances in parallel — each gets its own random port + temp DB
+pnpm test:local:instance-ai --grep "preview" &
+pnpm test:local:instance-ai --grep "sidebar"  &
+wait
+
+# Pin the port (e.g. for browser inspection at http://localhost:5680)
+N8N_BASE_URL=http://localhost:5680 pnpm test:local:instance-ai --grep "preview"
+
+# Headed browser for visual debugging
+pnpm test:local:instance-ai --grep "preview" --headed
+```
+
+`test:local:instance-ai` is a thin wrapper that pre-fills the instance-ai env
+vars over the generic `test:local:isolated` runner, which provides random free
+ports, a throwaway `N8N_USER_FOLDER` (so `~/.n8n` is never touched), and
+process-group cleanup. See the
+[Playwright README](../../../testing/playwright/README.md) for full details on
+`test:local:isolated`.
+
+> **Cost note:** Each run makes real Anthropic calls. Scope with `--grep` or
+> a filename while iterating; reserve full-suite runs for fixture refreshes.
+
 ## Re-Recording Tests
 
 When Instance AI prompts, tools, or behavior change, recordings may need updating:

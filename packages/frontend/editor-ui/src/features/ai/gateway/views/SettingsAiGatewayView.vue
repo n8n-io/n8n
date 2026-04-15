@@ -30,11 +30,11 @@ const isAppending = ref(false);
 const offset = ref(0);
 const PAGE_SIZE = 50;
 
-const creditsRemaining = computed(() => aiGatewayStore.creditsRemaining);
-const creditsBadgeText = computed(() =>
-	creditsRemaining.value !== undefined
-		? i18n.baseText('aiGateway.credentialMode.creditsShort', {
-				interpolate: { count: String(creditsRemaining.value) },
+const walletBalance = computed(() => aiGatewayStore.balance);
+const walletBadgeText = computed(() =>
+	walletBalance.value !== undefined
+		? i18n.baseText('aiGateway.wallet.balanceRemaining', {
+				interpolate: { balance: `$${Number(walletBalance.value).toFixed(2)}` },
 			})
 		: undefined,
 );
@@ -81,8 +81,8 @@ const tableHeaders = ref<Array<TableHeader<AiGatewayUsageEntry>>>([
 		resize: false,
 	},
 	{
-		title: i18n.baseText('settings.n8nConnect.usage.col.credits'),
-		key: 'creditsDeducted',
+		title: i18n.baseText('settings.n8nConnect.usage.col.cost'),
+		key: 'cost',
 		width: 100,
 		disableSort: true,
 		resize: false,
@@ -137,7 +137,7 @@ async function loadMore(): Promise<void> {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.n8nConnect.title'));
-	await Promise.all([aiGatewayStore.fetchCredits(), load()]);
+	await Promise.all([aiGatewayStore.fetchWallet(), load()]);
 });
 </script>
 
@@ -148,9 +148,9 @@ onMounted(async () => {
 				<div :class="$style.headingRow">
 					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.n8nConnect.title') }}</N8nHeading>
 					<N8nActionPill
-						v-if="creditsBadgeText"
+						v-if="walletBadgeText"
 						size="medium"
-						:text="creditsBadgeText"
+						:text="walletBadgeText"
 						data-test-id="ai-gateway-header-credits-badge"
 					/>
 				</div>
@@ -159,7 +159,7 @@ onMounted(async () => {
 				</N8nText>
 			</div>
 			<N8nButton
-				:label="i18n.baseText('settings.n8nConnect.credits.topUp')"
+				:label="i18n.baseText('settings.n8nConnect.wallet.topUp')"
 				icon="hand-coins"
 				variant="solid"
 				data-test-id="ai-gateway-topup-button"
@@ -224,8 +224,8 @@ onMounted(async () => {
 					<template #[`item.outputTokens`]="{ item }">
 						{{ formatTokens(item.outputTokens) }}
 					</template>
-					<template #[`item.creditsDeducted`]="{ item }">
-						{{ item.creditsDeducted }}
+					<template #[`item.cost`]="{ item }">
+						{{ `$${Number(item.cost).toFixed(4)}` }}
 					</template>
 				</N8nDataTableServer>
 
