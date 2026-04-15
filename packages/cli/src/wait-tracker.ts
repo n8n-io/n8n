@@ -165,11 +165,6 @@ export class WaitTracker {
 				startedAt: fullExecutionData.startedAt,
 			};
 
-			const lastNodeName = fullExecutionData.data.resultData.lastNodeExecuted ?? '';
-			const resumedNode = fullExecutionData.workflowData.nodes?.find(
-				(n) => n.name === lastNodeName,
-			);
-
 			try {
 				await this.workflowRunner.run(data, false, false, executionId);
 			} catch (error) {
@@ -186,10 +181,6 @@ export class WaitTracker {
 			this.eventService.emit('execution-resumed', {
 				executionId,
 				workflowId,
-				workflowName: fullExecutionData.workflowData.name,
-				nodeName: lastNodeName,
-				nodeId: resumedNode?.id,
-				nodeType: resumedNode?.type,
 				resumeSource: 'timer',
 				responseAt: new Date(),
 			});

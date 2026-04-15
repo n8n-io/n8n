@@ -253,20 +253,11 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
-	private emitExecutionResumedEvent(
-		execution: IExecutionResponse,
-		executionId: string,
-		lastNodeExecuted: string,
-	) {
+	private emitExecutionResumedEvent(execution: IExecutionResponse, executionId: string) {
 		const resumeSource: 'webhook' | 'form' = this.includeForms ? 'form' : 'webhook';
-		const resumedNode = execution.workflowData.nodes?.find((n) => n.name === lastNodeExecuted);
 		this.eventService.emit('execution-resumed', {
 			executionId,
 			workflowId: execution.workflowData.id,
-			workflowName: execution.workflowData.name,
-			nodeName: lastNodeExecuted,
-			nodeId: resumedNode?.id,
-			nodeType: resumedNode?.type,
 			resumeSource,
 			responseAt: new Date(),
 		});
@@ -345,7 +336,7 @@ export class WaitingWebhooks implements IWebhookManager {
 
 			const runExecutionData = execution.data;
 
-			this.emitExecutionResumedEvent(execution, executionId, lastNodeExecuted);
+			this.emitExecutionResumedEvent(execution, executionId);
 
 			return await new Promise((resolve, reject) => {
 				void WebhookHelpers.executeWebhook(

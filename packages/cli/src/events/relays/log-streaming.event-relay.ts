@@ -772,10 +772,6 @@ export class LogStreamingEventRelay extends EventRelay {
 	private executionWaiting({
 		executionId,
 		workflowId,
-		workflowName,
-		nodeName,
-		nodeId,
-		nodeType,
 		waitTill,
 	}: RelayEventMap['execution-waiting']) {
 		void this.eventBus.sendAuditEvent({
@@ -783,10 +779,6 @@ export class LogStreamingEventRelay extends EventRelay {
 			payload: {
 				executionId,
 				workflowId,
-				workflowName,
-				nodeName,
-				nodeId,
-				nodeType,
 				waitTill: waitTill?.toISOString() ?? null,
 			},
 		});
@@ -795,10 +787,6 @@ export class LogStreamingEventRelay extends EventRelay {
 	private executionResumed({
 		executionId,
 		workflowId,
-		workflowName,
-		nodeName,
-		nodeId,
-		nodeType,
 		resumeSource,
 		responseAt,
 	}: RelayEventMap['execution-resumed']) {
@@ -807,10 +795,6 @@ export class LogStreamingEventRelay extends EventRelay {
 			payload: {
 				executionId,
 				workflowId,
-				workflowName,
-				nodeName,
-				nodeId,
-				nodeType,
 				resumeSource,
 				responseAt: responseAt.toISOString(),
 			},

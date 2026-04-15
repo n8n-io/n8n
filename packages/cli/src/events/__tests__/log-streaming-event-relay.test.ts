@@ -1900,10 +1900,6 @@ describe('LogStreamingEventRelay', () => {
 			const event: RelayEventMap['execution-waiting'] = {
 				executionId: 'exec-waiting-123',
 				workflowId: 'wf-waiting-456',
-				workflowName: 'Waiting Workflow',
-				nodeName: 'Wait Node',
-				nodeId: 'node-wait-id',
-				nodeType: 'n8n-nodes-base.wait',
 				waitTill,
 			};
 
@@ -1914,10 +1910,6 @@ describe('LogStreamingEventRelay', () => {
 				payload: {
 					executionId: 'exec-waiting-123',
 					workflowId: 'wf-waiting-456',
-					workflowName: 'Waiting Workflow',
-					nodeName: 'Wait Node',
-					nodeId: 'node-wait-id',
-					nodeType: 'n8n-nodes-base.wait',
 					waitTill: waitTill.toISOString(),
 				},
 			});
@@ -1927,10 +1919,6 @@ describe('LogStreamingEventRelay', () => {
 			const event: RelayEventMap['execution-waiting'] = {
 				executionId: 'exec-waiting-indefinite',
 				workflowId: 'wf-waiting-789',
-				workflowName: 'Send And Wait Workflow',
-				nodeName: 'Send and Wait',
-				nodeId: 'node-saw-id',
-				nodeType: 'n8n-nodes-base.sendAndWait',
 				waitTill: null,
 			};
 
@@ -1941,10 +1929,6 @@ describe('LogStreamingEventRelay', () => {
 				payload: {
 					executionId: 'exec-waiting-indefinite',
 					workflowId: 'wf-waiting-789',
-					workflowName: 'Send And Wait Workflow',
-					nodeName: 'Send and Wait',
-					nodeId: 'node-saw-id',
-					nodeType: 'n8n-nodes-base.sendAndWait',
 					waitTill: null,
 				},
 			});
@@ -1957,10 +1941,6 @@ describe('LogStreamingEventRelay', () => {
 				const event: RelayEventMap['execution-resumed'] = {
 					executionId: 'exec-resumed-123',
 					workflowId: 'wf-resumed-456',
-					workflowName: 'Resumed Workflow',
-					nodeName: 'Wait Node',
-					nodeId: 'node-wait-id',
-					nodeType: 'n8n-nodes-base.wait',
 					resumeSource,
 					responseAt,
 				};
@@ -1972,10 +1952,6 @@ describe('LogStreamingEventRelay', () => {
 					payload: {
 						executionId: 'exec-resumed-123',
 						workflowId: 'wf-resumed-456',
-						workflowName: 'Resumed Workflow',
-						nodeName: 'Wait Node',
-						nodeId: 'node-wait-id',
-						nodeType: 'n8n-nodes-base.wait',
 						resumeSource,
 						responseAt: responseAt.toISOString(),
 					},

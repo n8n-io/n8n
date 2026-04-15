@@ -171,7 +171,6 @@ describe('WaitTracker', () => {
 				expect.objectContaining({
 					executionId: execution.id,
 					workflowId: execution.workflowData.id,
-					workflowName: execution.workflowData.name,
 					resumeSource: 'timer',
 				}),
 			);
