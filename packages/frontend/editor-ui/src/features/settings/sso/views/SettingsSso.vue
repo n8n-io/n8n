@@ -10,6 +10,7 @@ import { ElDialog } from 'element-plus';
 import {
 	N8nActionBox,
 	N8nButton,
+	N8nCallout,
 	N8nHeading,
 	N8nOption,
 	N8nSelect,
@@ -76,9 +77,11 @@ onBeforeRouteLeave((_to, _from, next) => {
 
 async function onSaveAndLeave() {
 	showUnsavedChangesDialog.value = false;
-	await activeForm.value?.onSave();
-	pendingNext.value?.();
-	pendingNext.value = null;
+	const saved = await activeForm.value?.onSave();
+	if (saved) {
+		pendingNext.value?.();
+		pendingNext.value = null;
+	}
 }
 
 function onLeaveWithoutSaving() {
@@ -111,6 +114,13 @@ onMounted(() => {
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</p>
+		<N8nCallout
+			v-if="ssoStore.ssoManagedByEnv"
+			theme="warning"
+			style="margin-bottom: var(--spacing--lg)"
+		>
+			{{ i18n.baseText('settings.sso.settings.oidc.overrideBanner') }}
+		</N8nCallout>
 		<!-- Protocol selector — rendered independently outside form v-ifs for E2E timing -->
 		<div v-if="hasAnySsoEnabled" :class="[shared.card, $style.protocolCard]">
 			<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
@@ -122,6 +132,7 @@ onMounted(() => {
 					<N8nSelect
 						filterable
 						size="medium"
+						:disabled="ssoStore.ssoManagedByEnv"
 						:model-value="authProtocol"
 						:placeholder="i18n.baseText('parameterInput.select')"
 						@update:model-value="onAuthProtocolUpdated"

@@ -41,6 +41,30 @@ export function useWorkflowDocumentGraph() {
 		return workflowsStore.workflowObject.getConnectionsBetweenNodes(sources, targets);
 	}
 
+	function getConnectedNodes(direction: 'upstream' | 'downstream', nodeName: string): string[] {
+		let checkNodes: string[];
+		if (direction === 'downstream') {
+			checkNodes = workflowsStore.workflowObject.getChildNodes(nodeName);
+		} else if (direction === 'upstream') {
+			checkNodes = workflowsStore.workflowObject.getParentNodes(nodeName);
+		} else {
+			throw new Error(`The direction "${direction}" is not supported!`);
+		}
+
+		// Find also all nodes which are connected to the child nodes via a non-main input
+		let connectedNodes: string[] = [];
+		checkNodes.forEach((checkNode) => {
+			connectedNodes = [
+				...connectedNodes,
+				checkNode,
+				...workflowsStore.workflowObject.getParentNodes(checkNode, 'ALL_NON_MAIN'),
+			];
+		});
+
+		// Remove duplicates
+		return [...new Set(connectedNodes)];
+	}
+
 	// -----------------------------------------------------------------------
 	// Node lookup (returns INode from Workflow class, not INodeUi)
 	// -----------------------------------------------------------------------
@@ -59,6 +83,7 @@ export function useWorkflowDocumentGraph() {
 		getChildNodes,
 		getParentNodesByDepth,
 		getConnectionsBetweenNodes,
+		getConnectedNodes,
 
 		// Node lookup
 		getNodeByNameFromWorkflow,

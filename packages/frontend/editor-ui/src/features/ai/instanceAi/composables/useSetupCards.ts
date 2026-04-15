@@ -1,6 +1,7 @@
 import type { Ref } from 'vue';
 import { computed, ref, watch } from 'vue';
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
+import { hasPlaceholderDeep } from '@n8n/utils';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -309,6 +310,8 @@ export function useSetupCards(
 				if (storeNode) {
 					const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
 					if (Object.keys(liveIssues).length > 0) return false;
+					// Also check for remaining placeholder values in node parameters
+					if (hasPlaceholderDeep(storeNode.parameters)) return false;
 				}
 			}
 		}

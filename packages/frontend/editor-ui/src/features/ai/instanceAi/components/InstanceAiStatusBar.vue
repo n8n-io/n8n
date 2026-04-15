@@ -29,7 +29,7 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 		const roleLabel = ROLE_LABELS[activeChild.role] ?? activeChild.role;
 		const activeTool = activeChild.toolCalls.find((tc) => tc.isLoading);
 		if (activeTool) {
-			const toolLabel = getToolLabel(activeTool.toolName);
+			const toolLabel = getToolLabel(activeTool.toolName, activeTool.args);
 			return { label: roleLabel, detail: toolLabel };
 		}
 		return { label: roleLabel };
@@ -38,7 +38,7 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 	// Check root-level active tools
 	const activeTool = tree.toolCalls.find((tc) => tc.isLoading);
 	if (activeTool) {
-		const toolLabel = getToolLabel(activeTool.toolName);
+		const toolLabel = getToolLabel(activeTool.toolName, activeTool.args);
 		return { label: toolLabel };
 	}
 

@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { N8nCallout, N8nIcon } from '@n8n/design-system';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import DataSection from './DataSection.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
@@ -21,15 +22,23 @@ defineSlots<{
 const { getToolLabel } = useToolLabel();
 
 function getDisplayLabel(tc: InstanceAiToolCallState): string {
-	const label = getToolLabel(tc.toolName) || tc.toolName;
+	const label = getToolLabel(tc.toolName, tc.args as Record<string, unknown>) || tc.toolName;
 	if (tc.toolName === 'delegate') {
 		const role = typeof tc.args?.role === 'string' ? tc.args.role : '';
 		return role ? `${label} (${role})` : label;
 	}
-	if (tc.toolName === 'web-search' && typeof tc.args?.query === 'string') {
+	if (
+		tc.toolName === 'research' &&
+		tc.args?.action === 'web-search' &&
+		typeof tc.args?.query === 'string'
+	) {
 		return `${label}: "${tc.args.query}"`;
 	}
-	if (tc.toolName === 'fetch-url' && typeof tc.args?.url === 'string') {
+	if (
+		tc.toolName === 'research' &&
+		tc.args?.action === 'fetch-url' &&
+		typeof tc.args?.url === 'string'
+	) {
 		return `${label}: ${tc.args.url}`;
 	}
 	return label;
@@ -59,16 +68,20 @@ function getDisplayLabel(tc: InstanceAiToolCallState): string {
 				{{ props.label ?? getDisplayLabel(props.toolCall) }}
 			</TimelineStepButton>
 		</CollapsibleTrigger>
-		<CollapsibleContent>
+		<AnimatedCollapsibleContent>
 			<DataSection v-if="props.toolCall.args">
 				<ToolResultJson :value="props.toolCall.args" />
 			</DataSection>
 			<DataSection v-if="props.toolCall.result !== undefined">
-				<ToolResultRenderer :result="props.toolCall.result" :tool-name="props.toolCall.toolName" />
+				<ToolResultRenderer
+					:result="props.toolCall.result"
+					:tool-name="props.toolCall.toolName"
+					:tool-args="props.toolCall.args"
+				/>
 			</DataSection>
 			<N8nCallout v-if="props.toolCall.error !== undefined" theme="danger">
 				{{ props.toolCall.error }}
 			</N8nCallout>
-		</CollapsibleContent>
+		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 </template>
