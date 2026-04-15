@@ -17,8 +17,11 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
+import { mock } from 'jest-mock-extended';
 import { randomString } from 'n8n-workflow';
 import validator from 'validator';
+
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
@@ -501,6 +504,20 @@ describe('Public API endpoints with API key scopes', () => {
 				});
 			});
 			describe('POST /credentials/:id/test', () => {
+				const mockCredentialsTester = mock<CredentialsTester>();
+				Container.set(CredentialsTester, mockCredentialsTester);
+
+				beforeEach(() => {
+					mockCredentialsTester.testCredentials.mockResolvedValue({
+						status: 'OK',
+						message: 'Connection successful!',
+					});
+				});
+
+				afterEach(() => {
+					mockCredentialsTester.testCredentials.mockClear();
+				});
+
 				test('should test credential when API key has "credential:read" scope', async () => {
 					const owner = await createOwnerWithApiKey({ scopes: ['credential:read'] });
 					const authOwnerAgent = testServer.publicApiAgentFor(owner);
@@ -523,6 +540,7 @@ describe('Public API endpoints with API key scopes', () => {
 					expect(response.statusCode).toBe(403);
 				});
 			});
+
 			describe('DELETE /credentials/:id', () => {
 				test('should delete credential when API key has "credential:delete" scope', async () => {
 					const owner = await createOwnerWithApiKey({ scopes: ['credential:delete'] });

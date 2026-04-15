@@ -384,9 +384,11 @@ describe('GET /credentials/:id', () => {
 	});
 
 	test('should return owned credential for member', async () => {
-		const savedCredential = await saveCredential(dbCredential(), { user: member });
+		const memberWithReadScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
+		const authMemberWithReadScopeAgent = testServer.publicApiAgentFor(memberWithReadScope);
+		const savedCredential = await saveCredential(dbCredential(), { user: memberWithReadScope });
 
-		const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
+		const response = await authMemberWithReadScopeAgent.get(`/credentials/${savedCredential.id}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toMatchObject({
