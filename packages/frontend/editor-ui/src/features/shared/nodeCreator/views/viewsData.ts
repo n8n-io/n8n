@@ -427,7 +427,7 @@ export function TriggerView() {
 					name: WEBHOOK_NODE_TYPE,
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
-					iconData: { type: 'icon', icon: 'webhook' },
+					icon: 'node:webhook',
 				},
 			},
 			{
