@@ -1,0 +1,129 @@
+{
+  "name": "Test workflow - disabled node partial execution",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-node",
+      "name": "When clicking 'Test workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "first-node-field",
+              "name": "firstData",
+              "value": "={{ $json.value }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "first-node",
+      "name": "First Node",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "disabled-node-field",
+              "name": "disabledData",
+              "value": "={{ $json.firstData }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "disabled-node",
+      "name": "Disabled Node",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [650, 300],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "final-node-field",
+              "name": "finalData",
+              "value": "={{ $json.firstData }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "final-node",
+      "name": "Final Node",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [850, 300]
+    }
+  ],
+  "pinData": {
+    "When clicking 'Test workflow'": [
+      {
+        "json": {
+          "value": "test data"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking 'Test workflow'": {
+      "main": [
+        [
+          {
+            "node": "First Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "First Node": {
+      "main": [
+        [
+          {
+            "node": "Disabled Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disabled Node": {
+      "main": [
+        [
+          {
+            "node": "Final Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "test-version",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "test-instance"
+  },
+  "id": "test-workflow",
+  "tags": []
+}
