@@ -470,6 +470,36 @@ describe('Public API endpoints with API key scopes', () => {
 					expect(sharedCredential.credentials.name).toBe(payload.name);
 				});
 			});
+			describe('GET /credentials/:id', () => {
+				test('should retrieve credential when API key has "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:read'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+					expect(response.statusCode).toBe(200);
+					expect(response.body).toMatchObject({
+						id: savedCredential.id,
+						name: savedCredential.name,
+						type: savedCredential.type,
+					});
+					expect(response.body).not.toHaveProperty('data');
+					expect(response.body).not.toHaveProperty('shared');
+				});
+
+				test('should fail to retrieve credential when API key doesn\'t have "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['tag:create'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
 			describe('DELETE /credentials/:id', () => {
 				test('should delete credential when API key has "credential:delete" scope', async () => {
 					const owner = await createOwnerWithApiKey({ scopes: ['credential:delete'] });

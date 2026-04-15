@@ -92,6 +92,23 @@ export = {
 			});
 		},
 	],
+	getCredential: [
+		publicApiScope('credential:read'),
+		projectScope('credential:read', 'credential'),
+		async (
+			req: CredentialRequest.Get,
+			res: express.Response,
+		): Promise<express.Response<Partial<CredentialsEntity> | { message: string }>> => {
+			const { id: credentialId } = req.params;
+
+			const credential = await getCredential(credentialId);
+			if (!credential) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			return res.json(sanitizeCredentials(credential as CredentialsEntity));
+		},
+	],
 	createCredential: [
 		validCredentialType,
 		validCredentialsProperties,

@@ -365,6 +365,52 @@ describe('GET /credentials', () => {
 	});
 });
 
+describe('GET /credentials/:id', () => {
+	test('should return owned credential for owner without credential data', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject({
+			id: savedCredential.id,
+			name: savedCredential.name,
+			type: savedCredential.type,
+		});
+		expect(response.body).not.toHaveProperty('data');
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
+	test('should return owned credential for member', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: member });
+
+		const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject({
+			id: savedCredential.id,
+			name: savedCredential.name,
+			type: savedCredential.type,
+		});
+		expect(response.body).not.toHaveProperty('data');
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
+	test('should not return non-owned credential for member', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 404 if credential does not exist', async () => {
+		const response = await authOwnerAgent.get('/credentials/123');
+
+		expect(response.statusCode).toBe(404);
+	});
+});
+
 describe('DELETE /credentials/:id', () => {
 	test('should delete owned cred for owner', async () => {
 		const savedCredential = await saveCredential(dbCredential(), { user: owner });
