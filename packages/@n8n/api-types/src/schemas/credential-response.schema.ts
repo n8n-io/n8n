@@ -1,10 +1,9 @@
 import { z } from 'zod';
 
 /**
- * Plain credential row after creation
- * Used by the public API to validate results from `CredentialsService.createUnmanagedCredential`.
+ * Plain credential row in public API responses.
  */
-export const publicApiCreatedCredentialSchema = z.object({
+export const publicApiCredentialResponseSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	type: z.string(),
@@ -17,4 +16,4 @@ export const publicApiCreatedCredentialSchema = z.object({
 	updatedAt: z.coerce.date(),
 });
 
-export type PublicApiCreatedCredential = z.infer<typeof publicApiCreatedCredentialSchema>;
+export type PublicApiCredentialResponse = z.infer<typeof publicApiCredentialResponseSchema>;

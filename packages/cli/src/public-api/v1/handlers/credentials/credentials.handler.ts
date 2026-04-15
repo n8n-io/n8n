@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { LicenseState } from '@n8n/backend-common';
+import type { PublicApiCredentialResponse } from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -31,6 +32,7 @@ import {
 	toJsonSchema,
 	updateCredential,
 } from './credentials.service';
+import { toPublicApiCredentialResponse } from './credentials.mapper';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import {
 	publicApiScope,
@@ -100,7 +102,7 @@ export = {
 		async (
 			req: CredentialRequest.Get,
 			res: express.Response,
-		): Promise<express.Response<Partial<CredentialsEntity> | { message: string }>> => {
+		): Promise<express.Response<PublicApiCredentialResponse | { message: string }>> => {
 			const { id: credentialId } = req.params;
 
 			const credential = await getCredential(credentialId);
@@ -108,7 +110,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			return res.json(sanitizeCredentials(credential as CredentialsEntity));
+			return res.json(toPublicApiCredentialResponse(credential));
 		},
 	],
 	testCredential: [
@@ -127,7 +129,7 @@ export = {
 			}
 
 			const credentialsService = Container.get(CredentialsService);
-			const decryptedData = credentialsService.decrypt(storedCredential as CredentialsEntity, true);
+			const decryptedData = credentialsService.decrypt(storedCredential, true);
 			const mergedCredentials: ICredentialsDecrypted = {
 				id: storedCredential.id,
 				name: storedCredential.name,
@@ -146,10 +148,9 @@ export = {
 		async (
 			req: CredentialRequest.Create,
 			res: express.Response,
-		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+		): Promise<express.Response<PublicApiCredentialResponse>> => {
 			const savedCredential = await saveCredential(req.body, req.user);
-
-			return res.json(sanitizeCredentials(savedCredential));
+			return res.json(savedCredential);
 		},
 	],
 	updateCredential: [
@@ -160,7 +161,7 @@ export = {
 		async (
 			req: CredentialRequest.Update,
 			res: express.Response,
-		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+		): Promise<express.Response<PublicApiCredentialResponse | { message: string }>> => {
 			const { id: credentialId } = req.params;
 
 			const existingCredential = await getCredential(credentialId);
@@ -184,7 +185,7 @@ export = {
 			try {
 				const updatedCredential = await updateCredential(existingCredential, req.user, req.body);
 
-				return res.json(sanitizeCredentials(updatedCredential as CredentialsEntity));
+				return res.json(toPublicApiCredentialResponse(updatedCredential));
 			} catch (error) {
 				if (error instanceof CredentialsIsNotUpdatableError) {
 					return res.status(400).json({ message: error.message });
@@ -231,7 +232,7 @@ export = {
 					credential = shared.credentials;
 				}
 			} else {
-				credential = (await getCredential(credentialId)) as CredentialsEntity;
+				credential = (await getCredential(credentialId)) ?? undefined;
 			}
 
 			if (!credential) {
