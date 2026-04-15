@@ -639,18 +639,11 @@ plain text / markdown → passthrough.
 
 ---
 
-## Filesystem Tools (4, conditional)
+## Filesystem Tools (dynamic, conditional)
 
-Only registered when `filesystemService` is present. Auto-detected based on
-runtime: bare metal → local FS, containers → gateway, cloud → nothing unless
-daemon connects. See `docs/filesystem-access.md`.
-
-| Tool | Description |
-|------|-------------|
-| `list-files` | List files matching a glob pattern (max 1000 results) |
-| `read-file` | Read file contents with optional line range (max 512KB) |
-| `search-files` | Search for text/regex across files (max 100 results) |
-| `get-file-tree` | Get directory structure as indented tree (max 500 entries) |
+Only registered when a `localMcpServer` (computer-use gateway) is connected.
+Tools are dynamically created from the MCP server's advertised capabilities.
+See `docs/filesystem-access.md`.
 
 ---
 

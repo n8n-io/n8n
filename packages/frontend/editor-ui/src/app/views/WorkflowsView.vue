@@ -59,6 +59,7 @@ import type {
 	WorkflowResource,
 } from '@/Interface';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -141,6 +142,7 @@ const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
+const favoritesStore = useFavoritesStore();
 const usageStore = useUsageStore();
 const insightsStore = useInsightsStore();
 const aiStarterTemplatesStore = useAITemplatesStarterCollectionStore();
@@ -217,6 +219,15 @@ const folderActions = computed<
 		label: i18n.baseText('folders.actions.create.workflow'),
 		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW,
 		disabled: readOnlyEnv.value || !hasPermissionToCreateWorkflows.value,
+	},
+	{
+		label:
+			currentFolder.value && favoritesStore.isFavorite(currentFolder.value.id, 'folder')
+				? i18n.baseText('favorites.remove')
+				: i18n.baseText('favorites.add'),
+		value: FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
+		disabled: false,
+		onlyAvailableOn: 'mainBreadcrumbs' as const,
 	},
 	{
 		label: i18n.baseText('generic.rename'),
@@ -1209,6 +1220,11 @@ const onBreadCrumbsAction = async (action: string) => {
 				content.workflowCount,
 				content.subFolderCount,
 			);
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
+			if (currentFolder.value) {
+				await favoritesStore.toggleFavorite(currentFolder.value.id, 'folder');
+			}
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
 			onNameToggle();

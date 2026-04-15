@@ -35,6 +35,7 @@ import { z } from 'zod';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
+import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -200,6 +201,7 @@ export class CredentialsController {
 			projectType: project?.type,
 			uiContext: payload.uiContext,
 			isDynamic: newCredential.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(payload.data).length > 0,
 		});
 
 		return newCredential;
@@ -288,6 +290,7 @@ export class CredentialsController {
 			credentialType: credential.type,
 			credentialId: credential.id,
 			isDynamic: newCredentialData.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
 		});
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);

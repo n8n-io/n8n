@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { UserRepository } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
@@ -17,9 +18,9 @@ interface GatewayTokenResponse {
 	expiresIn: number;
 }
 
-interface GatewayCreditsResponse {
-	creditsQuota: number;
-	creditsRemaining: number;
+interface GatewayWalletResponse {
+	budget: number;
+	balance: number;
 }
 
 @Service()
@@ -42,6 +43,7 @@ export class AiGatewayService {
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	/**
@@ -150,30 +152,33 @@ export class AiGatewayService {
 	}
 
 	/**
-	 * Returns the current credits quota and remaining credits for the given user.
+	 * Returns the current wallet (budget and remaining balance) for the given user.
 	 */
-	async getCreditsRemaining(userId: string): Promise<GatewayCreditsResponse> {
+	async getWallet(userId: string): Promise<GatewayWalletResponse> {
 		const baseUrl = this.requireBaseUrl();
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
 			throw new UserError('Failed to obtain a valid AI Gateway token.');
 		}
-		const response = await fetch(`${baseUrl}/v1/gateway/credits`, {
+		const response = await fetch(`${baseUrl}/v1/gateway/wallet`, {
 			method: 'GET',
 			headers: { Authorization: `Bearer ${jwt}` },
 		});
 
 		if (!response.ok) {
-			throw new UserError(`Failed to fetch AI Gateway credits: HTTP ${response.status}`);
+			throw new UserError(`Failed to fetch AI Gateway wallet: HTTP ${response.status}`);
 		}
 
-		const data = (await response.json()) as GatewayCreditsResponse;
-		if (typeof data.creditsQuota !== 'number' || typeof data.creditsRemaining !== 'number') {
-			throw new UserError('AI Gateway returned an invalid credits response.');
-		}
+		return this.parseWalletResponse(await response.json());
+	}
 
-		return data;
+	private parseWalletResponse(data: unknown): GatewayWalletResponse {
+		const d = data as GatewayWalletResponse;
+		if (typeof d.budget !== 'number' || typeof d.balance !== 'number') {
+			throw new UserError('AI Gateway returned an invalid wallet response.');
+		}
+		return d;
 	}
 
 	private requireBaseUrl(): string {
@@ -254,12 +259,21 @@ export class AiGatewayService {
 
 	private async fetchAndCacheToken(userId: string, key: string): Promise<string> {
 		const baseUrl = this.requireBaseUrl();
-		const licenseCert = await this.license.loadCertStr();
+		const [licenseCert, user] = await Promise.all([
+			this.license.loadCertStr(),
+			this.userRepository.findOneBy({ id: userId }),
+		]);
 
 		const response = await fetch(`${baseUrl}/v1/gateway/credentials`, {
 			method: 'POST',
 			headers: this.buildGatewayCredentialsHeaders(userId),
-			body: JSON.stringify({ licenseCert }),
+			body: JSON.stringify({
+				licenseCert,
+				...(user?.email && { userEmail: user.email }),
+				...(user && {
+					userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+				}),
+			}),
 		});
 
 		if (!response.ok) {

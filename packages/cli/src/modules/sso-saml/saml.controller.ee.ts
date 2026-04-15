@@ -13,6 +13,7 @@ import { EventService } from '@/events/event.service';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { UrlService } from '@/services/url.service';
+import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 
 import {
@@ -141,7 +142,7 @@ export class SamlController {
 						return res.redirect(this.urlService.getInstanceBaseUrl() + '/saml/onboarding');
 					} else {
 						const safeRedirectUrl = payload.RelayState
-							? this.validateRedirectUrl(payload.RelayState)
+							? validateRedirectUrl(payload.RelayState)
 							: '/';
 						return res.redirect(this.urlService.getInstanceBaseUrl() + safeRedirectUrl);
 					}
@@ -193,7 +194,7 @@ export class SamlController {
 			// ignore
 		}
 
-		return await this.handleInitSSO(res, this.validateRedirectUrl(redirectUrl));
+		return await this.handleInitSSO(res, validateRedirectUrl(redirectUrl));
 	}
 
 	/**
@@ -229,27 +230,5 @@ export class SamlController {
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}
-	}
-
-	/**
-	 * Validates that a redirect URL is safe (relative path only, no external redirects)
-	 */
-	private validateRedirectUrl(redirectUrl: string): string {
-		if (typeof redirectUrl !== 'string' || redirectUrl.trim() === '') {
-			return '/';
-		}
-
-		const trimmed = redirectUrl.trim();
-
-		// Only allow paths starting with /
-		if (!trimmed.startsWith('/')) {
-			return '/';
-		}
-		// Reject protocol-relative URLs (//example.com)
-		if (trimmed.startsWith('//')) {
-			return '/';
-		}
-
-		return trimmed;
 	}
 }
