@@ -169,8 +169,8 @@ async function buildFromPrompt(msg: string) {
 	} finally {
 		if (buildAbortController === abortController) {
 			buildAbortController = null;
+			isBuilding.value = false;
 		}
-		isBuilding.value = false;
 	}
 }
 
