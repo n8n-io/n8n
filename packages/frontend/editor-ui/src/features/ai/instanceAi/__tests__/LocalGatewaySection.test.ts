@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import LocalGatewaySection from '../components/settings/LocalGatewaySection.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -18,79 +19,77 @@ const renderComponent = createComponentRenderer(LocalGatewaySection);
 
 describe('LocalGatewaySection', () => {
 	let store: ReturnType<typeof useInstanceAiSettingsStore>;
+	let settingsStore: ReturnType<typeof useSettingsStore>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		store = useInstanceAiSettingsStore();
+		settingsStore = useSettingsStore();
+		settingsStore.moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				optinModalDismissed: true,
+				cloudManaged: false,
+			},
+		};
 		store.$patch({ preferences: { localGatewayDisabled: false } });
 	});
 
-	it('shows heading', () => {
-		const { getByText } = renderComponent({
-			props: { isAdmin: false, isGatewayEnabled: true, isSaving: false },
-		});
+	it('shows heading and description', () => {
+		const { getByText } = renderComponent();
 		expect(getByText('instanceAi.filesystem.label')).toBeVisible();
+		expect(getByText('instanceAi.filesystem.description')).toBeVisible();
 	});
 
-	it('shows admin toggle when isAdmin is true', () => {
-		const { getByTestId } = renderComponent({
-			props: { isAdmin: true, isGatewayEnabled: true, isSaving: false },
-		});
-		expect(getByTestId('n8n-agent-gateway-toggle')).toBeVisible();
+	it('shows user toggle switch', () => {
+		const { container } = renderComponent();
+		const switchEl = container.querySelector('.el-switch');
+		expect(switchEl).toBeTruthy();
 	});
 
-	it('hides admin toggle when isAdmin is false', () => {
-		const { queryByTestId } = renderComponent({
-			props: { isAdmin: false, isGatewayEnabled: true, isSaving: false },
-		});
-		expect(queryByTestId('n8n-agent-gateway-toggle')).toBeNull();
+	it('disables user toggle when admin has disabled gateway', () => {
+		settingsStore.moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: true,
+				proxyEnabled: false,
+				optinModalDismissed: true,
+				cloudManaged: false,
+			},
+		};
+		const { container } = renderComponent();
+		const switchEl = container.querySelector('.el-switch');
+		expect(switchEl?.classList.contains('is-disabled')).toBe(true);
 	});
 
-	it('shows admin toggle tooltip with info icon', () => {
-		const { getByText } = renderComponent({
-			props: { isAdmin: true, isGatewayEnabled: true, isSaving: false },
-		});
-		expect(getByText('instanceAi.filesystem.adminToggle')).toBeVisible();
+	it('shows warning when admin has disabled gateway', () => {
+		settingsStore.moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: true,
+				proxyEnabled: false,
+				optinModalDismissed: true,
+				cloudManaged: false,
+			},
+		};
+		const { getByText } = renderComponent();
+		expect(getByText('settings.n8nAgent.computerUse.disabled.warning')).toBeVisible();
 	});
 
-	it('emits toggleGateway when admin toggle is clicked', async () => {
-		const { getByTestId, emitted } = renderComponent({
-			props: { isAdmin: true, isGatewayEnabled: false, isSaving: false },
-		});
-		await userEvent.click(getByTestId('n8n-agent-gateway-toggle'));
-		expect(emitted('toggleGateway')).toBeDefined();
-	});
-
-	it('disables admin toggle when isSaving is true', () => {
-		const { getByTestId } = renderComponent({
-			props: { isAdmin: true, isGatewayEnabled: true, isSaving: true },
-		});
-		expect(getByTestId('n8n-agent-gateway-toggle')).toHaveClass('is-disabled');
-	});
-
-	it('hides user toggle and content when gateway is disabled', () => {
-		const { queryByText } = renderComponent({
-			props: { isAdmin: true, isGatewayEnabled: false, isSaving: false },
-		});
-		expect(queryByText('instanceAi.filesystem.userToggle')).toBeNull();
-	});
-
-	it('shows user toggle when gateway is enabled', () => {
-		const { getByText } = renderComponent({
-			props: { isAdmin: false, isGatewayEnabled: true, isSaving: false },
-		});
-		expect(getByText('instanceAi.filesystem.userToggle')).toBeVisible();
+	it('hides warning when admin has not disabled gateway', () => {
+		const { queryByText } = renderComponent();
+		expect(queryByText('settings.n8nAgent.computerUse.disabled.warning')).toBeNull();
 	});
 
 	it('calls save immediately when user toggle is clicked', async () => {
 		const saveSpy = vi.spyOn(store, 'save').mockResolvedValue();
-		const { getByText } = renderComponent({
-			props: { isAdmin: false, isGatewayEnabled: true, isSaving: false },
-		});
+		const { container } = renderComponent();
 
-		const userToggleRow = getByText('instanceAi.filesystem.userToggle').closest('div')!;
-		const switchEl = within(userToggleRow).getByRole('switch');
+		const switchRow = container.querySelector('[class*="switchRow"]')!;
+		const switchEl = within(switchRow as HTMLElement).getByRole('switch');
 		await userEvent.click(switchEl);
 
 		expect(store.preferencesDraft.localGatewayDisabled).toBe(true);
@@ -99,17 +98,16 @@ describe('LocalGatewaySection', () => {
 
 	it('shows setup command when gateway is not connected and user toggle is on', () => {
 		store.$patch({ preferences: { localGatewayDisabled: false } });
-		const { getByText } = renderComponent({
-			props: { isAdmin: false, isGatewayEnabled: true, isSaving: false },
-		});
+		const { getByText } = renderComponent();
 		expect(getByText('instanceAi.filesystem.setupCommand')).toBeVisible();
 	});
 
 	it('hides setup content when user toggle is off', () => {
-		store.$patch({ preferences: { localGatewayDisabled: true } });
-		const { queryByText } = renderComponent({
-			props: { isAdmin: false, isGatewayEnabled: true, isSaving: false },
+		store.$patch({
+			preferences: { localGatewayDisabled: true },
+			preferencesDraft: { localGatewayDisabled: true },
 		});
+		const { queryByText } = renderComponent();
 		expect(queryByText('instanceAi.filesystem.setupCommand')).toBeNull();
 	});
 });
