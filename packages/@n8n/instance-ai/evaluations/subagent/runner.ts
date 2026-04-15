@@ -297,7 +297,12 @@ export async function runSubAgent(
 		}
 
 		// 4. Evaluate captured workflows
-		const feedback = await evaluateCapturedWorkflows(capture.workflows, testCase.prompt, modelId);
+		const feedback = await evaluateCapturedWorkflows(
+			capture.workflows,
+			testCase.prompt,
+			modelId,
+			text,
+		);
 
 		return {
 			testCase,
@@ -338,6 +343,7 @@ async function evaluateCapturedWorkflows(
 	captured: CapturedWorkflow[],
 	prompt: string,
 	modelId: string,
+	agentTextResponse: string,
 ): Promise<Feedback[]> {
 	const feedback: Feedback[] = [];
 
@@ -358,7 +364,11 @@ async function evaluateCapturedWorkflows(
 	// Run binary checks on the last captured workflow (final version)
 	const last = captured[captured.length - 1];
 	const workflowResponse = toWorkflowResponse(last);
-	const ctx: BinaryCheckContext = { prompt, modelId };
+	const ctx: BinaryCheckContext = {
+		prompt,
+		modelId,
+		...(agentTextResponse ? { agentTextResponse } : {}),
+	};
 	const binaryFeedback = await runBinaryChecks(workflowResponse, ctx);
 	feedback.push(...binaryFeedback);
 

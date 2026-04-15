@@ -17,8 +17,16 @@ export const noEmptySetNodes: BinaryCheck = {
 		const empty: string[] = [];
 		for (const node of setNodes) {
 			const params = node.parameters ?? {};
-			const assignments = params.assignments as { assignments?: unknown[] } | undefined;
 
+			// Raw/JSON mode uses jsonOutput instead of assignments
+			if (params.mode === 'raw') {
+				if (!params.jsonOutput) {
+					empty.push(node.name);
+				}
+				continue;
+			}
+
+			const assignments = params.assignments as { assignments?: unknown[] } | undefined;
 			const count = Array.isArray(assignments?.assignments) ? assignments.assignments.length : 0;
 
 			if (count === 0) {

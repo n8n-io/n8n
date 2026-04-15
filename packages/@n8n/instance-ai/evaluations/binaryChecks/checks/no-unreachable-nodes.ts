@@ -11,9 +11,10 @@ function buildForwardAdjacency(connections: Record<string, unknown>): Map<string
 	return adj;
 }
 
-function buildReverseAdjacency(connections: Record<string, unknown>): Map<string, Set<string>> {
+function buildReverseAiAdjacency(connections: Record<string, unknown>): Map<string, Set<string>> {
 	const rev = new Map<string, Set<string>>();
-	forEachConnection(connections, (source, _connType, link) => {
+	forEachConnection(connections, (source, connType, link) => {
+		if (!connType.startsWith('ai_')) return;
 		if (!rev.has(link.node)) rev.set(link.node, new Set());
 		rev.get(link.node)!.add(source);
 	});
@@ -74,7 +75,7 @@ export const noUnreachableNodes: BinaryCheck = {
 
 		const connections = workflow.connections ?? {};
 		const forward = buildForwardAdjacency(connections);
-		const reverse = buildReverseAdjacency(connections);
+		const reverse = buildReverseAiAdjacency(connections);
 
 		const reachable = bfsReachable(
 			triggers.map((t) => t.name),

@@ -134,9 +134,23 @@ const DYNAMIC_OUTPUT_TYPES = new Set([
 
 /** Extract the known output field names for a node, or undefined if unknown. */
 function getKnownOutputFields(node: WorkflowNodeResponse): Set<string> | undefined {
-	// Set nodes: output fields are exactly the assignment names
+	// Set nodes: output fields are only known when the node doesn't pass through
+	// input fields. The include parameter (default 'all') or includeOtherFields
+	// boolean (v3.3+) controls this. We can only infer exact output when neither
+	// passes input through.
 	if (node.type === SET_NODE_TYPE) {
 		const params = node.parameters ?? {};
+		const include = params.include as string | undefined;
+		const includeOtherFields = params.includeOtherFields as boolean | undefined;
+
+		// Default is 'all' / true — input fields pass through, so output is unknown
+		if (includeOtherFields === true || (include !== undefined && include !== 'none')) {
+			return undefined;
+		}
+
+		// If neither is explicitly set, the default behavior passes input through
+		if (include === undefined && includeOtherFields === undefined) return undefined;
+
 		const assignments = params.assignments as
 			| { assignments?: Array<{ name?: string }> }
 			| undefined;

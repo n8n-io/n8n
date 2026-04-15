@@ -35,6 +35,15 @@ interface CliArgs {
 	concurrency: number;
 }
 
+function requirePositiveInt(raw: string | undefined, flag: string): number {
+	const n = Number(raw);
+	if (!Number.isFinite(n) || n < 1 || !Number.isInteger(n)) {
+		console.error(`Invalid value for ${flag}: ${String(raw)} (expected a positive integer)`);
+		process.exit(1);
+	}
+	return n;
+}
+
 function parseArgs(argv: string[]): CliArgs {
 	const args: CliArgs = {
 		verbose: false,
@@ -56,10 +65,10 @@ function parseArgs(argv: string[]): CliArgs {
 				args.filter = argv[++i];
 				break;
 			case '--timeout':
-				args.timeoutMs = Number(argv[++i]);
+				args.timeoutMs = requirePositiveInt(argv[++i], '--timeout');
 				break;
 			case '--max-steps':
-				args.maxSteps = Number(argv[++i]);
+				args.maxSteps = requirePositiveInt(argv[++i], '--max-steps');
 				break;
 			case '--model':
 				args.modelId = argv[++i];
@@ -77,7 +86,7 @@ function parseArgs(argv: string[]): CliArgs {
 				args.experiment = argv[++i];
 				break;
 			case '--concurrency':
-				args.concurrency = Number(argv[++i]);
+				args.concurrency = requirePositiveInt(argv[++i], '--concurrency');
 				break;
 			default:
 				break;

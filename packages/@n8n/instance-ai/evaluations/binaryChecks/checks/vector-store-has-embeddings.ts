@@ -3,7 +3,7 @@ import { collectTargetsByConnectionType } from '../utils';
 
 function isVectorStoreNode(type: string): boolean {
 	const shortName = type.split('.').pop() ?? '';
-	return shortName.toLowerCase().includes('vectorstore');
+	return shortName.startsWith('vectorStore');
 }
 
 export const vectorStoreHasEmbeddings: BinaryCheck = {

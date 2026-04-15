@@ -12,7 +12,7 @@ const TOOLS_WITHOUT_PARAMETERS = new Set([
 
 function isToolNode(type: string): boolean {
 	const shortName = type.split('.').pop() ?? '';
-	return shortName.endsWith('Tool') || shortName === 'tool';
+	return shortName.endsWith('Tool') || shortName === 'tool' || /^tool[A-Z]/.test(shortName);
 }
 
 export const toolsHaveParameters: BinaryCheck = {
