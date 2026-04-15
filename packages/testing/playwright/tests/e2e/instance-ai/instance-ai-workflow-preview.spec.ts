@@ -35,11 +35,7 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewCanvasNodes()).not.toHaveCount(0);
 		});
 
-		// TODO: re-enable once the replay flow captures run-workflow ID remapping.
-		// The recording fixture isn't writing trace.jsonl for this test, so the
-		// cached run-workflow tool call uses the stale workflowId from recording
-		// (not the one created during replay), and the execution fails silently.
-		test.skip('should mark all nodes as success after execution completes', async ({ n8n }) => {
+		test('should mark all nodes as success after execution completes', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
 			// A Wait node creates a window where the downstream node is briefly
@@ -47,7 +43,8 @@ test.describe(
 			// to `success` — the bug is that it stays `running` (orange border).
 			await n8n.instanceAi.sendMessage(
 				'Build a workflow with a manual trigger, a Wait node set to 1 second, ' +
-					'and a Set node called "running state test" — then run it.',
+					'and a Set node called "running state test". After it is built, ' +
+					'call the run-workflow tool to execute it.',
 			);
 
 			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
@@ -55,8 +52,11 @@ test.describe(
 
 			await n8n.instanceAi.waitForResponseComplete();
 
-			// All three nodes should show the success indicator.
-			await expect(n8n.instanceAi.getPreviewSuccessIndicators()).toHaveCount(3);
+			// All three nodes should show the success indicator. Allow time for
+			// the preview component to poll the execution and reload the iframe.
+			await expect(n8n.instanceAi.getPreviewSuccessIndicators()).toHaveCount(3, {
+				timeout: 30_000,
+			});
 			// No node should still be in the running/waiting state.
 			await expect(n8n.instanceAi.getPreviewRunningNodes()).toHaveCount(0);
 		});

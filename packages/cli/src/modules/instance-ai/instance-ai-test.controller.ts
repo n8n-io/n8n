@@ -1,6 +1,6 @@
 import { WorkflowRepository } from '@n8n/db';
 import { RestController, Get, Post, Delete, Param } from '@n8n/decorators';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
@@ -32,13 +32,13 @@ export class InstanceAiTestController {
 	}
 
 	@Get('/test/tool-trace/:slug', { skipAuth: true })
-	getToolTrace(_req: Request, @Param('slug') slug: string) {
+	getToolTrace(_req: Request, _res: Response, @Param('slug') slug: string) {
 		this.assertTraceReplayEnabled();
 		return { events: this.instanceAiService.getTraceEvents(slug) };
 	}
 
 	@Delete('/test/tool-trace/:slug', { skipAuth: true })
-	clearToolTrace(_req: Request, @Param('slug') slug: string) {
+	clearToolTrace(_req: Request, _res: Response, @Param('slug') slug: string) {
 		this.assertTraceReplayEnabled();
 		this.instanceAiService.clearTraceEvents(slug);
 		return { ok: true };

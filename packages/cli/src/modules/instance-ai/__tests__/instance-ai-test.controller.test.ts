@@ -13,7 +13,7 @@ jest.mock('../eval/execution.service', () => ({
 }));
 
 import type { WorkflowRepository } from '@n8n/db';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -81,8 +81,9 @@ describe('InstanceAiTestController', () => {
 			const events = [{ kind: 'tool-call' }];
 			instanceAiService.getTraceEvents.mockReturnValue(events);
 			const req = mock<Request>();
+			const res = mock<Response>();
 
-			const result = controller.getToolTrace(req, 'my-test');
+			const result = controller.getToolTrace(req, res, 'my-test');
 
 			expect(instanceAiService.getTraceEvents).toHaveBeenCalledWith('my-test');
 			expect(result).toEqual({ events });
@@ -91,16 +92,18 @@ describe('InstanceAiTestController', () => {
 		it('should throw ForbiddenError when trace replay is not enabled', () => {
 			delete process.env.E2E_TESTS;
 			const req = mock<Request>();
+			const res = mock<Response>();
 
-			expect(() => controller.getToolTrace(req, 'my-test')).toThrow(ForbiddenError);
+			expect(() => controller.getToolTrace(req, res, 'my-test')).toThrow(ForbiddenError);
 		});
 	});
 
 	describe('clearToolTrace', () => {
 		it('should clear trace events for slug', () => {
 			const req = mock<Request>();
+			const res = mock<Response>();
 
-			const result = controller.clearToolTrace(req, 'my-test');
+			const result = controller.clearToolTrace(req, res, 'my-test');
 
 			expect(instanceAiService.clearTraceEvents).toHaveBeenCalledWith('my-test');
 			expect(result).toEqual({ ok: true });
@@ -109,8 +112,9 @@ describe('InstanceAiTestController', () => {
 		it('should throw ForbiddenError when trace replay is not enabled', () => {
 			delete process.env.E2E_TESTS;
 			const req = mock<Request>();
+			const res = mock<Response>();
 
-			expect(() => controller.clearToolTrace(req, 'my-test')).toThrow(ForbiddenError);
+			expect(() => controller.clearToolTrace(req, res, 'my-test')).toThrow(ForbiddenError);
 		});
 	});
 
