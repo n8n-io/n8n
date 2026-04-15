@@ -13,6 +13,7 @@ describe('OidcInstanceSettingsLoader', () => {
 
 	const validConfig: Partial<InstanceSettingsLoaderConfig> = {
 		ssoManagedByEnv: true,
+		ssoProtocol: 'oidc',
 		oidcClientId: 'my-client-id',
 		oidcClientSecret: 'my-client-secret',
 		oidcDiscoveryEndpoint: 'https://idp.example.com/.well-known/openid-configuration',
@@ -25,6 +26,7 @@ describe('OidcInstanceSettingsLoader', () => {
 	const createLoader = (configOverrides: Partial<InstanceSettingsLoaderConfig> = {}) => {
 		const config = {
 			ssoManagedByEnv: false,
+			ssoProtocol: '',
 			oidcClientId: '',
 			oidcClientSecret: '',
 			oidcDiscoveryEndpoint: '',
@@ -76,6 +78,40 @@ describe('OidcInstanceSettingsLoader', () => {
 	it('should throw when ssoUserRoleProvisioning is an invalid value', async () => {
 		const loader = createLoader({ ...validConfig, ssoUserRoleProvisioning: 'invalid' });
 		await expect(loader.run()).rejects.toThrow('N8N_SSO_USER_ROLE_PROVISIONING must be one of');
+	});
+
+	it('should skip when ssoProtocol is set to saml', async () => {
+		const loader = createLoader({ ...validConfig, ssoProtocol: 'saml' });
+
+		const result = await loader.run();
+
+		expect(result).toBe('skipped');
+		expect(settingsRepository.upsert).not.toHaveBeenCalled();
+	});
+
+	it('should run when ssoProtocol is explicitly set to oidc', async () => {
+		const loader = createLoader({ ...validConfig, ssoProtocol: 'oidc' });
+
+		const result = await loader.run();
+
+		expect(result).toBe('created');
+		expect(settingsRepository.upsert).toHaveBeenCalled();
+	});
+
+	it('should throw when ssoProtocol is not set', async () => {
+		const loader = createLoader({ ...validConfig, ssoProtocol: '' });
+
+		await expect(loader.run()).rejects.toThrow(
+			'N8N_SSO_PROTOCOL is required when N8N_SSO_MANAGED_BY_ENV is enabled',
+		);
+	});
+
+	it('should throw when ssoProtocol has an invalid value', async () => {
+		const loader = createLoader({ ...validConfig, ssoProtocol: 'ldap' });
+
+		await expect(loader.run()).rejects.toThrow(
+			'N8N_SSO_PROTOCOL is required when N8N_SSO_MANAGED_BY_ENV is enabled',
+		);
 	});
 
 	it('should handle messy ACR values with extra commas and whitespace', async () => {

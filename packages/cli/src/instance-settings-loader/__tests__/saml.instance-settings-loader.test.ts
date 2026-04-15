@@ -13,6 +13,7 @@ describe('SamlInstanceSettingsLoader', () => {
 
 	const validConfig: Partial<InstanceSettingsLoaderConfig> = {
 		ssoManagedByEnv: true,
+		ssoProtocol: 'saml',
 		samlMetadata: '<xml>metadata</xml>',
 		samlMetadataUrl: '',
 		samlLoginEnabled: false,
@@ -38,6 +39,7 @@ describe('SamlInstanceSettingsLoader', () => {
 	const createLoader = (configOverrides: Partial<InstanceSettingsLoaderConfig> = {}) => {
 		const config = {
 			ssoManagedByEnv: false,
+			ssoProtocol: '',
 			samlMetadata: '',
 			samlMetadataUrl: '',
 			samlLoginEnabled: false,
@@ -79,15 +81,64 @@ describe('SamlInstanceSettingsLoader', () => {
 		expect(settingsRepository.save).not.toHaveBeenCalled();
 	});
 
-	it('should throw when neither metadata nor metadataUrl is provided', async () => {
+	it('should skip when ssoProtocol is set to oidc', async () => {
+		const loader = createLoader({ ...validConfig, ssoProtocol: 'oidc' });
+
+		const result = await loader.run();
+
+		expect(result).toBe('skipped');
+		expect(settingsRepository.save).not.toHaveBeenCalled();
+	});
+
+	it('should run when ssoProtocol is explicitly set to saml', async () => {
+		const loader = createLoader({ ...validConfig, ssoProtocol: 'saml' });
+
+		const result = await loader.run();
+
+		expect(result).toBe('created');
+		expect(settingsRepository.save).toHaveBeenCalled();
+	});
+
+	it('should throw when ssoProtocol is saml but neither metadata nor metadataUrl is provided', async () => {
 		const loader = createLoader({
 			...validConfig,
+			ssoProtocol: 'saml',
 			samlMetadata: '',
 			samlMetadataUrl: '',
 		});
 
 		await expect(loader.run()).rejects.toThrow(
 			'At least one of N8N_SSO_SAML_METADATA or N8N_SSO_SAML_METADATA_URL is required',
+		);
+	});
+
+	it('should throw when ssoProtocol is not set', async () => {
+		const loader = createLoader({ ...validConfig, ssoProtocol: '' });
+
+		await expect(loader.run()).rejects.toThrow(
+			'N8N_SSO_PROTOCOL is required when N8N_SSO_MANAGED_BY_ENV is enabled',
+		);
+	});
+
+	it('should throw when ssoProtocol has an invalid value', async () => {
+		const loader = createLoader({ ...validConfig, ssoProtocol: 'ldap' });
+
+		await expect(loader.run()).rejects.toThrow(
+			'N8N_SSO_PROTOCOL is required when N8N_SSO_MANAGED_BY_ENV is enabled',
+		);
+	});
+
+	it('should warn when SAML env vars are set but ssoManagedByEnv is false', async () => {
+		const loader = createLoader({
+			ssoManagedByEnv: false,
+			samlMetadata: '<xml>metadata</xml>',
+		});
+
+		const result = await loader.run();
+
+		expect(result).toBe('skipped');
+		expect(logger.warn).toHaveBeenCalledWith(
+			'N8N_SSO_SAML_* env vars are set but N8N_SSO_MANAGED_BY_ENV is not enabled — ignoring SSO env vars',
 		);
 	});
 

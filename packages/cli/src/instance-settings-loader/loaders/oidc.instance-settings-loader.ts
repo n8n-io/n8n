@@ -11,9 +11,9 @@ import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 import { OIDC_PREFERENCES_DB_KEY } from '@/modules/sso-oidc/constants';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
 
-const PROVISIONING_MODES = ['disabled', 'instance_role', 'instance_and_project_roles'] as const;
+import { provisioningSchema, ssoProtocolSchema } from './sso-schemas';
 
-const ssoEnvSchema = z
+const oidcEnvSchema = z
 	.object({
 		oidcClientId: z
 			.string()
@@ -32,32 +32,19 @@ const ssoEnvSchema = z
 			}),
 		}),
 		oidcAcrValues: z.string(),
-		ssoUserRoleProvisioning: z.enum(PROVISIONING_MODES, {
-			errorMap: () => ({
-				message: `N8N_SSO_USER_ROLE_PROVISIONING must be one of: ${PROVISIONING_MODES.join(', ')}`,
-			}),
-		}),
 	})
 	.transform((input) => ({
-		oidc: {
-			clientId: input.oidcClientId,
-			clientSecret: input.oidcClientSecret,
-			discoveryEndpoint: input.oidcDiscoveryEndpoint,
-			loginEnabled: input.oidcLoginEnabled,
-			prompt: input.oidcPrompt,
-			authenticationContextClassReference: input.oidcAcrValues
-				? input.oidcAcrValues
-						.split(',')
-						.map((v) => v.trim())
-						.filter(Boolean)
-				: [],
-		},
-		provisioning: {
-			scopesProvisionInstanceRole:
-				input.ssoUserRoleProvisioning === 'instance_role' ||
-				input.ssoUserRoleProvisioning === 'instance_and_project_roles',
-			scopesProvisionProjectRoles: input.ssoUserRoleProvisioning === 'instance_and_project_roles',
-		},
+		clientId: input.oidcClientId,
+		clientSecret: input.oidcClientSecret,
+		discoveryEndpoint: input.oidcDiscoveryEndpoint,
+		loginEnabled: input.oidcLoginEnabled,
+		prompt: input.oidcPrompt,
+		authenticationContextClassReference: input.oidcAcrValues
+			? input.oidcAcrValues
+					.split(',')
+					.map((v) => v.trim())
+					.filter(Boolean)
+			: [],
 	}));
 
 @Service()
@@ -84,15 +71,29 @@ export class OidcInstanceSettingsLoader {
 			return 'skipped';
 		}
 
-		this.logger.info('N8N_SSO_MANAGED_BY_ENV is enabled — applying OIDC SSO env vars');
-
-		const result = ssoEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
-
-		if (!result.success) {
-			throw new InstanceBootstrappingError(result.error.issues[0].message);
+		const protocolResult = ssoProtocolSchema.safeParse(this.instanceSettingsLoaderConfig);
+		if (!protocolResult.success) {
+			throw new InstanceBootstrappingError(protocolResult.error.issues[0].message);
 		}
 
-		const { oidc, provisioning } = result.data;
+		if (protocolResult.data.ssoProtocol !== 'oidc') {
+			return 'skipped';
+		}
+
+		this.logger.info('N8N_SSO_MANAGED_BY_ENV is enabled — applying OIDC SSO env vars');
+
+		const oidcResult = oidcEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
+		if (!oidcResult.success) {
+			throw new InstanceBootstrappingError(oidcResult.error.issues[0].message);
+		}
+
+		const provisioningResult = provisioningSchema.safeParse(this.instanceSettingsLoaderConfig);
+		if (!provisioningResult.success) {
+			throw new InstanceBootstrappingError(provisioningResult.error.issues[0].message);
+		}
+
+		const oidc = oidcResult.data;
+		const provisioning = provisioningResult.data;
 
 		await this.settingsRepository.upsert(
 			{

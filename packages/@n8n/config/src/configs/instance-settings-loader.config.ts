@@ -33,6 +33,10 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_SSO_MANAGED_BY_ENV')
 	ssoManagedByEnv: boolean = false;
 
+	/** Required when ssoManagedByEnv is true. Selects which SSO protocol to configure: 'saml' or 'oidc'. */
+	@Env('N8N_SSO_PROTOCOL')
+	ssoProtocol: string = '';
+
 	/** User role provisioning mode: disabled, instance_role, or instance_and_project_roles. */
 	@Env('N8N_SSO_USER_ROLE_PROVISIONING')
 	ssoUserRoleProvisioning: string = 'disabled';

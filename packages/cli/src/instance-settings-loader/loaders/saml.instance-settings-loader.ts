@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
 import { SAML_PREFERENCES_DB_KEY } from '@/modules/sso-saml/constants';
 
-const PROVISIONING_MODES = ['disabled', 'instance_role', 'instance_and_project_roles'] as const;
+import { provisioningSchema, ssoProtocolSchema } from './sso-schemas';
 
 const samlLoginBindingSchema = z.enum(['redirect', 'post'], {
 	errorMap: () => ({
@@ -42,11 +42,6 @@ const samlEnvSchema = z
 		samlMappingUserPrincipalName: z.string(),
 		samlMappingInstanceRole: z.string(),
 		samlMappingProjectRoles: z.string(),
-		ssoUserRoleProvisioning: z.enum(PROVISIONING_MODES, {
-			errorMap: () => ({
-				message: `N8N_SSO_USER_ROLE_PROVISIONING must be one of: ${PROVISIONING_MODES.join(', ')}`,
-			}),
-		}),
 	})
 	.refine((data) => data.samlMetadata || data.samlMetadataUrl, {
 		message:
@@ -73,7 +68,6 @@ const samlEnvSchema = z
 			samlMappingUserPrincipalName,
 			samlMappingInstanceRole,
 			samlMappingProjectRoles,
-			ssoUserRoleProvisioning,
 		}) => {
 			const mapping = buildMapping({
 				samlMappingEmail,
@@ -85,28 +79,20 @@ const samlEnvSchema = z
 			});
 
 			return {
-				saml: {
-					...(samlMetadata ? { metadata: samlMetadata } : {}),
-					...(samlMetadataUrl ? { metadataUrl: samlMetadataUrl } : {}),
-					loginEnabled: samlLoginEnabled,
-					...(samlLoginLabel ? { loginLabel: samlLoginLabel } : {}),
-					loginBinding: samlLoginBinding,
-					acsBinding: samlAcsBinding,
-					ignoreSSL: samlIgnoreSsl,
-					authnRequestsSigned: samlAuthnRequestsSigned,
-					wantAssertionsSigned: samlWantAssertionsSigned,
-					wantMessageSigned: samlWantMessageSigned,
-					...(samlSigningPrivateKey ? { signingPrivateKey: samlSigningPrivateKey } : {}),
-					...(samlSigningCertificate ? { signingCertificate: samlSigningCertificate } : {}),
-					relayState: samlRelayState,
-					...(mapping ? { mapping } : {}),
-				},
-				provisioning: {
-					scopesProvisionInstanceRole:
-						ssoUserRoleProvisioning === 'instance_role' ||
-						ssoUserRoleProvisioning === 'instance_and_project_roles',
-					scopesProvisionProjectRoles: ssoUserRoleProvisioning === 'instance_and_project_roles',
-				},
+				...(samlMetadata ? { metadata: samlMetadata } : {}),
+				...(samlMetadataUrl ? { metadataUrl: samlMetadataUrl } : {}),
+				loginEnabled: samlLoginEnabled,
+				...(samlLoginLabel ? { loginLabel: samlLoginLabel } : {}),
+				loginBinding: samlLoginBinding,
+				acsBinding: samlAcsBinding,
+				ignoreSSL: samlIgnoreSsl,
+				authnRequestsSigned: samlAuthnRequestsSigned,
+				wantAssertionsSigned: samlWantAssertionsSigned,
+				wantMessageSigned: samlWantMessageSigned,
+				...(samlSigningPrivateKey ? { signingPrivateKey: samlSigningPrivateKey } : {}),
+				...(samlSigningCertificate ? { signingCertificate: samlSigningCertificate } : {}),
+				relayState: samlRelayState,
+				...(mapping ? { mapping } : {}),
 			};
 		},
 	);
@@ -149,15 +135,38 @@ export class SamlInstanceSettingsLoader {
 	}
 
 	async run(): Promise<'created' | 'skipped'> {
-		if (!this.instanceSettingsLoaderConfig.ssoManagedByEnv) return 'skipped';
+		const { ssoManagedByEnv, samlMetadata, samlMetadataUrl } = this.instanceSettingsLoaderConfig;
 
-		const result = samlEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
-
-		if (!result.success) {
-			throw new OperationalError(result.error.issues[0].message);
+		if (!ssoManagedByEnv) {
+			if (samlMetadata || samlMetadataUrl) {
+				this.logger.warn(
+					'N8N_SSO_SAML_* env vars are set but N8N_SSO_MANAGED_BY_ENV is not enabled — ignoring SSO env vars',
+				);
+			}
+			return 'skipped';
 		}
 
-		const { saml: preferences, provisioning } = result.data;
+		const protocolResult = ssoProtocolSchema.safeParse(this.instanceSettingsLoaderConfig);
+		if (!protocolResult.success) {
+			throw new OperationalError(protocolResult.error.issues[0].message);
+		}
+
+		if (protocolResult.data.ssoProtocol !== 'saml') {
+			return 'skipped';
+		}
+
+		const samlResult = samlEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
+		if (!samlResult.success) {
+			throw new OperationalError(samlResult.error.issues[0].message);
+		}
+
+		const provisioningResult = provisioningSchema.safeParse(this.instanceSettingsLoaderConfig);
+		if (!provisioningResult.success) {
+			throw new OperationalError(provisioningResult.error.issues[0].message);
+		}
+
+		const preferences = samlResult.data;
+		const provisioning = provisioningResult.data;
 
 		// Encrypt signing private key before storing
 		if (preferences.signingPrivateKey) {
