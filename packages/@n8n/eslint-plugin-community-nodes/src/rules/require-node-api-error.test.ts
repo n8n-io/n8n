@@ -66,6 +66,16 @@ try {
 }`,
 		},
 		{
+			name: 'throw wrapped error stored in variable',
+			code: `
+try {
+	await apiRequest();
+} catch (error) {
+	const wrapped = new NodeApiError(this.getNode(), error as JsonObject);
+	throw wrapped;
+}`,
+		},
+		{
 			name: 'no throw in catch block',
 			code: `
 try {

@@ -14,15 +14,19 @@ function getThrowCalleeName(argument: TSESTree.Expression): string | null {
 	return null;
 }
 
-function isInsideCatchClause(node: TSESTree.Node): boolean {
+function getEnclosingCatchClause(node: TSESTree.Node): TSESTree.CatchClause | null {
 	let current: TSESTree.Node | undefined = node.parent;
 	while (current) {
 		if (current.type === AST_NODE_TYPES.CatchClause) {
-			return true;
+			return current;
 		}
 		current = current.parent;
 	}
-	return false;
+	return null;
+}
+
+function isCatchParam(catchClause: TSESTree.CatchClause, name: string): boolean {
+	return catchClause.param?.type === AST_NODE_TYPES.Identifier && catchClause.param.name === name;
 }
 
 export const RequireNodeApiErrorRule = createRule({
@@ -58,12 +62,16 @@ export const RequireNodeApiErrorRule = createRule({
 
 		return {
 			ThrowStatement(node) {
-				if (!isInsideCatchClause(node)) return;
+				const catchClause = getEnclosingCatchClause(node);
+				if (!catchClause) return;
 				if (!node.argument) return;
 
 				const { argument } = node;
 
-				if (argument.type === AST_NODE_TYPES.Identifier) {
+				if (
+					argument.type === AST_NODE_TYPES.Identifier &&
+					isCatchParam(catchClause, argument.name)
+				) {
 					context.report({ node, messageId: 'useNodeApiError' });
 					return;
 				}
