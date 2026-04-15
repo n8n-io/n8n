@@ -546,17 +546,21 @@ export function useCanvasOperations() {
 		if (!previousNode || !newNode) {
 			return;
 		}
-		const workflowObject = workflowsStore.workflowObject;
 
 		const inputNodeNames = replaceInputs
-			? uniq(workflowObject.getParentNodes(previousNode.name, 'ALL', 1))
+			? uniq(workflowDocumentStore.value?.getParentNodes(previousNode.name, 'ALL', 1))
 			: [];
 		const outputNodeNames = replaceOutputs
-			? uniq(workflowObject.getChildNodes(previousNode.name, 'ALL', 1))
+			? uniq(workflowDocumentStore.value?.getChildNodes(previousNode.name, 'ALL', 1))
 			: [];
 		const connectionPairs = [
-			...workflowObject.getConnectionsBetweenNodes(inputNodeNames, [previousNode.name]),
-			...workflowObject.getConnectionsBetweenNodes([previousNode.name], outputNodeNames),
+			...(workflowDocumentStore.value?.getConnectionsBetweenNodes(inputNodeNames, [
+				previousNode.name,
+			]) ?? []),
+			...(workflowDocumentStore.value?.getConnectionsBetweenNodes(
+				[previousNode.name],
+				outputNodeNames,
+			) ?? []),
 		];
 
 		if (trackHistory && trackBulk) {
@@ -825,7 +829,7 @@ export function useCanvasOperations() {
 	}
 
 	function updatePositionForNodeWithMultipleInputs(node: INodeUi) {
-		const inputNodes = editableWorkflowObject.value.getParentNodesByDepth(node.name, 1);
+		const inputNodes = workflowDocumentStore.value?.getParentNodesByDepth(node.name, 1) ?? [];
 
 		if (inputNodes.length > 1) {
 			inputNodes.slice(1).forEach((inputNode, index) => {
@@ -1247,7 +1251,7 @@ export function useCanvasOperations() {
 				lastInteractedWithNode.type,
 				lastInteractedWithNode.typeVersion,
 			);
-			const lastInteractedWithNodeObject = editableWorkflowObject.value.getNode(
+			const lastInteractedWithNodeObject = workflowDocumentStore.value?.getNodeByName(
 				lastInteractedWithNode.name,
 			);
 
@@ -1666,11 +1670,8 @@ export function useCanvasOperations() {
 		// Step 2: Add all downstream connected nodes from initial candidates
 		const candidateNames = new Set(initialCandidates.map((node) => node.name));
 		for (const candidate of initialCandidates) {
-			const downstream = workflowHelpers.getConnectedNodes(
-				'downstream',
-				editableWorkflowObject.value,
-				candidate.name,
-			);
+			const downstream =
+				workflowDocumentStore.value?.getConnectedNodes('downstream', candidate.name) ?? [];
 			downstream
 				// Filter the downstream nodes to find candidates that need to be shifted right.
 				.filter((name) => {
@@ -2182,7 +2183,7 @@ export function useCanvasOperations() {
 		}
 
 		const sourceNodeType = getNodeType(sourceNode);
-		const sourceWorkflowNode = editableWorkflowObject.value.getNode(sourceNode.name);
+		const sourceWorkflowNode = workflowDocumentStore.value?.getNodeByName(sourceNode.name);
 		if (!sourceWorkflowNode) {
 			return false;
 		}
@@ -2215,7 +2216,7 @@ export function useCanvasOperations() {
 		}
 
 		const targetNodeType = getNodeType(targetNode);
-		const targetWorkflowNode = editableWorkflowObject.value.getNode(targetNode.name);
+		const targetWorkflowNode = workflowDocumentStore.value?.getNodeByName(targetNode.name);
 		if (!targetWorkflowNode) {
 			return false;
 		}
@@ -2974,12 +2975,10 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		const workflowObject = workflowsStore.workflowObject; // @TODO Check if we actually need workflowObject here
-
 		logsStore.toggleOpen(true);
 
 		const payload = {
-			workflow_id: workflowObject.id,
+			workflow_id: workflowDocumentStore.value?.workflowId,
 			button_type: source,
 		};
 
