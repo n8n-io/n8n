@@ -256,6 +256,7 @@ describe('InstanceSettings', () => {
 			await settings.initialize(mockRepo);
 
 			expect(mockRepo.save).toHaveBeenCalledWith({
+				id: expect.any(String),
 				type: 'instance.id',
 				value: derivedId,
 				status: 'active',
