@@ -12,6 +12,7 @@ jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
 }));
 
+import type { WorkflowRepository } from '@n8n/db';
 import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
 
@@ -19,10 +20,13 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { InstanceAiTestController } from '../instance-ai-test.controller';
 import type { InstanceAiService } from '../instance-ai.service';
+import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 describe('InstanceAiTestController', () => {
 	const instanceAiService = mock<InstanceAiService>();
-	const controller = new InstanceAiTestController(instanceAiService);
+	const threadRepo = mock<InstanceAiThreadRepository>();
+	const workflowRepo = mock<WorkflowRepository>();
+	const controller = new InstanceAiTestController(instanceAiService, threadRepo, workflowRepo);
 
 	const originalEnv = process.env;
 
@@ -124,6 +128,30 @@ describe('InstanceAiTestController', () => {
 			delete process.env.E2E_TESTS;
 
 			expect(() => controller.drainBackgroundTasks()).toThrow(ForbiddenError);
+		});
+	});
+
+	describe('reset', () => {
+		it('should clear per-thread state and delete threads + workflows', async () => {
+			threadRepo.find.mockResolvedValue([{ id: 't1' }, { id: 't2' }] as never);
+			workflowRepo.find.mockResolvedValue([{ id: 'w1' }, { id: 'w2' }, { id: 'w3' }] as never);
+
+			const result = await controller.reset();
+
+			expect(instanceAiService.cancelAllBackgroundTasks).toHaveBeenCalled();
+			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith('t1');
+			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith('t2');
+			expect(threadRepo.clear).toHaveBeenCalled();
+			expect(workflowRepo.delete).toHaveBeenCalledWith('w1');
+			expect(workflowRepo.delete).toHaveBeenCalledWith('w2');
+			expect(workflowRepo.delete).toHaveBeenCalledWith('w3');
+			expect(result).toEqual({ ok: true, threadsDeleted: 2, workflowsDeleted: 3 });
+		});
+
+		it('should throw ForbiddenError when trace replay is not enabled', async () => {
+			delete process.env.E2E_TESTS;
+
+			await expect(controller.reset()).rejects.toThrow(ForbiddenError);
 		});
 	});
 });
