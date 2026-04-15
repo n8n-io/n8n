@@ -29,7 +29,7 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 
 				return hmac.digest('hex');
 			},
-			skipIfNoExpectedSignature: true,
+			skipIfNoExpectedSignature: !signingSecret || typeof signingSecret !== 'string',
 			getActualSignature: () => {
 				const actualSignature = req.header('linear-signature');
 				return typeof actualSignature === 'string' ? actualSignature : null;
