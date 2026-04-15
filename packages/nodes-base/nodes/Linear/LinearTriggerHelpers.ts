@@ -19,12 +19,10 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 
 				const hmac = createHmac('sha256', signingSecret);
 
-				if (Buffer.isBuffer(req.rawBody)) {
+				if (Buffer.isBuffer(req.rawBody) || typeof req.rawBody === 'string') {
 					hmac.update(req.rawBody);
 				} else {
-					const rawBodyString =
-						typeof req.rawBody === 'string' ? req.rawBody : JSON.stringify(req.rawBody);
-					hmac.update(rawBodyString);
+					return null;
 				}
 
 				return hmac.digest('hex');

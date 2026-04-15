@@ -1,20 +1,11 @@
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac } from 'crypto';
 import { verifySignature } from '../LinearTriggerHelpers';
-
-jest.mock('crypto', () => ({
-	...jest.requireActual('crypto'),
-	createHmac: jest.fn().mockReturnValue({
-		update: jest.fn().mockReturnThis(),
-		digest: jest.fn().mockReturnValue('abc123signaturehex'),
-	}),
-	timingSafeEqual: jest.fn(),
-}));
 
 describe('LinearTriggerHelpers', () => {
 	let mockWebhookFunctions: any;
 	const testSigningSecret = 'test-linear-signing-secret';
 	const testBody = '{"action":"create","type":"Issue","data":{"id":"123"}}';
-	const testSignature = 'abc123signaturehex';
+	const testSignature = createHmac('sha256', testSigningSecret).update(testBody).digest('hex');
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -98,13 +89,9 @@ describe('LinearTriggerHelpers', () => {
 				signingSecret: testSigningSecret,
 			});
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
-
 			const result = await verifySignature.call(mockWebhookFunctions);
 
 			expect(result).toBe(true);
-			expect(createHmac).toHaveBeenCalledWith('sha256', testSigningSecret);
-			expect(timingSafeEqual).toHaveBeenCalled();
 		});
 
 		it('should return false when signature is invalid', async () => {
@@ -112,13 +99,17 @@ describe('LinearTriggerHelpers', () => {
 				signingSecret: testSigningSecret,
 			});
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(false);
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				header: jest.fn().mockImplementation((header: string) => {
+					if (header === 'linear-signature') return 'invalidsignature';
+					return null;
+				}),
+				rawBody: testBody,
+			});
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
 			expect(result).toBe(false);
-			expect(createHmac).toHaveBeenCalledWith('sha256', testSigningSecret);
-			expect(timingSafeEqual).toHaveBeenCalled();
 		});
 
 		it('should return false when webhookTimestamp is too old', async () => {
@@ -145,8 +136,6 @@ describe('LinearTriggerHelpers', () => {
 			mockWebhookFunctions.getBodyData.mockReturnValue({
 				webhookTimestamp: 1700000000000 - 30_000,
 			});
-
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
