@@ -27,6 +27,12 @@ interface WritableSettings {
 
 type Settings = ReadOnlySettings & WritableSettings;
 
+/** Narrow interface so packages/core does not take a runtime dep on @n8n/db */
+interface InstanceIdRepository {
+	findActiveByType(type: string): Promise<{ value: string } | null>;
+	save(entity: { type: string; value: string; status: string; algorithm: null }): Promise<unknown>;
+}
+
 @Service()
 export class InstanceSettings {
 	/** The path to the n8n folder in which all n8n related data gets saved */
@@ -52,11 +58,12 @@ export class InstanceSettings {
 
 	/**
 	 * Fixed ID of this n8n instance, for telemetry.
-	 * Derived from encryption key. Do not confuse with `hostId`.
+	 * Derived from encryption key on first boot, then read from DB.
+	 * Do not confuse with `hostId`.
 	 *
 	 * @example '258fce876abf5ea60eb86a2e777e5e190ff8f3e36b5b37aafec6636c31d4d1f9'
 	 */
-	readonly instanceId: string;
+	instanceId: string;
 
 	readonly hmacSignatureSecret: string;
 
@@ -73,6 +80,32 @@ export class InstanceSettings {
 		this.settings = this.loadOrCreate();
 		this.instanceId = this.generateInstanceId();
 		this.hmacSignatureSecret = this.getOrGenerateHmacSignatureSecret();
+	}
+
+	/**
+	 * Two-phase init: reads or creates the instance.id deployment-key row.
+	 * Must be called after DB migrations complete, before license init.
+	 *
+	 * Precedence: N8N_INSTANCE_ID env → DB active row → derive-from-key (and persist)
+	 */
+	async initialize(repo: InstanceIdRepository): Promise<void> {
+		if (process.env.N8N_INSTANCE_ID) {
+			this.instanceId = process.env.N8N_INSTANCE_ID;
+			return;
+		}
+
+		const existing = await repo.findActiveByType('instance.id');
+		if (existing) {
+			this.instanceId = existing.value;
+			return;
+		}
+
+		await repo.save({
+			type: 'instance.id',
+			value: this.instanceId,
+			status: 'active',
+			algorithm: null,
+		});
 	}
 
 	/**
