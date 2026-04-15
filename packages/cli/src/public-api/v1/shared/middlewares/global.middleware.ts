@@ -100,7 +100,7 @@ function tagMiddleware(
 	return tagged;
 }
 
-function makeScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
+function makePublicApiScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
 	return async (
 		req: AuthenticatedRequest,
 		res: express.Response,
@@ -113,7 +113,7 @@ function makeScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
 			return;
 		}
 
-		if (!tokenGrant.scopes.includes(endpointScope)) {
+		if (!tokenGrant.apiKeyScopes?.includes(endpointScope)) {
 			res.status(403).json({ message: 'Forbidden' });
 			return;
 		}
@@ -124,13 +124,13 @@ function makeScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
 }
 
 export const publicApiScope = (apiKeyScope: ApiKeyScope) =>
-	tagMiddleware(makeScopeEnforcementMiddleware(apiKeyScope), apiKeyScope);
+	tagMiddleware(makePublicApiScopeEnforcementMiddleware(apiKeyScope), apiKeyScope);
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
 	const scope = 'scope' in config ? config.scope : config.apiKeyScope;
-	return tagMiddleware(makeScopeEnforcementMiddleware(scope), scope);
+	return tagMiddleware(makePublicApiScopeEnforcementMiddleware(scope), scope);
 };
 
 export const validLicenseWithUserQuota = (

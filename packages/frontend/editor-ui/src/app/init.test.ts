@@ -119,14 +119,19 @@ describe('Init', () => {
 		it('should correctly identify the user for telemetry', async () => {
 			const telemetryIdentifySpy = vi.spyOn(telemetry, 'identify');
 			usersStore.registerLoginHook.mockImplementation(async (hook) => {
-				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+				await hook(mock<CurrentUserResponse>({ id: 'userId', role: 'global:member' }));
 			});
 			rootStore.instanceId = 'testInstanceId';
 			rootStore.versionCli = '1.102.0';
 
 			await initializeCore();
 
-			expect(telemetryIdentifySpy).toHaveBeenCalledWith('testInstanceId', 'userId', '1.102.0');
+			expect(telemetryIdentifySpy).toHaveBeenCalledWith({
+				instanceId: 'testInstanceId',
+				userId: 'userId',
+				versionCli: '1.102.0',
+				userRole: 'global:member',
+			});
 		});
 
 		it('should initialize ssoStore with settings SSO configuration', async () => {
@@ -135,14 +140,15 @@ describe('Init', () => {
 			const oidc = { loginEnabled: false, loginUrl: '', callbackUrl: '' };
 
 			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Saml;
-			settingsStore.settings.sso = { saml, ldap, oidc };
+			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml] = true;
 
 			await initializeCore();
 
 			expect(ssoStore.initialize).toHaveBeenCalledWith({
 				authenticationMethod: UserManagementAuthenticationMethod.Saml,
-				config: { saml, ldap, oidc },
+				managedByEnv: false,
+				config: { managedByEnv: false, saml, ldap, oidc },
 				features: {
 					saml: true,
 					ldap: false,

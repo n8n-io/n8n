@@ -63,6 +63,7 @@ jobs:
             performance:
               packages/testing/performance/**
               packages/workflow/src/**
+              packages/@n8n/expression-runtime/src/**
               .github/workflows/test-bench-reusable.yml
             e2e-performance:
               packages/testing/playwright/tests/performance/**

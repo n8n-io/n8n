@@ -2,27 +2,49 @@ import type { LanguageModel } from 'ai';
 
 import { createModel } from '../runtime/model-factory';
 
+type ProviderOpts = { apiKey?: string; baseURL?: string; fetch?: typeof globalThis.fetch };
+
 jest.mock('@ai-sdk/anthropic', () => ({
-	createAnthropic: (opts?: { apiKey?: string; baseURL?: string }) => (model: string) => ({
+	createAnthropic: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'anthropic',
 		modelId: model,
 		apiKey: opts?.apiKey,
 		baseURL: opts?.baseURL,
+		fetch: opts?.fetch,
 		specificationVersion: 'v3',
 	}),
 }));
 
 jest.mock('@ai-sdk/openai', () => ({
-	createOpenAI: (opts?: { apiKey?: string; baseURL?: string }) => (model: string) => ({
+	createOpenAI: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'openai',
 		modelId: model,
 		apiKey: opts?.apiKey,
 		baseURL: opts?.baseURL,
+		fetch: opts?.fetch,
 		specificationVersion: 'v3',
 	}),
 }));
 
+const mockProxyAgent = jest.fn();
+jest.mock('undici', () => ({
+	ProxyAgent: mockProxyAgent,
+}));
+
 describe('createModel', () => {
+	const originalEnv = process.env;
+
+	beforeEach(() => {
+		process.env = { ...originalEnv };
+		delete process.env.HTTPS_PROXY;
+		delete process.env.HTTP_PROXY;
+		mockProxyAgent.mockClear();
+	});
+
+	afterAll(() => {
+		process.env = originalEnv;
+	});
+
 	it('should accept a string config', () => {
 		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
 		expect(model.provider).toBe('anthropic');
@@ -62,5 +84,31 @@ describe('createModel', () => {
 		>;
 		expect(model.provider).toBe('openai');
 		expect(model.modelId).toBe('ft:gpt-4o:my-org:custom:abc123');
+	});
+
+	it('should not pass fetch when no proxy env vars are set', () => {
+		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
+		expect(model.fetch).toBeUndefined();
+	});
+
+	it('should pass proxy-aware fetch when HTTPS_PROXY is set', () => {
+		process.env.HTTPS_PROXY = 'http://proxy:8080';
+		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
+		expect(model.fetch).toBeInstanceOf(Function);
+		expect(mockProxyAgent).toHaveBeenCalledWith('http://proxy:8080');
+	});
+
+	it('should pass proxy-aware fetch when HTTP_PROXY is set', () => {
+		process.env.HTTP_PROXY = 'http://proxy:9090';
+		const model = createModel('openai/gpt-4o') as unknown as Record<string, unknown>;
+		expect(model.fetch).toBeInstanceOf(Function);
+		expect(mockProxyAgent).toHaveBeenCalledWith('http://proxy:9090');
+	});
+
+	it('should prefer HTTPS_PROXY over HTTP_PROXY', () => {
+		process.env.HTTPS_PROXY = 'http://https-proxy:8080';
+		process.env.HTTP_PROXY = 'http://http-proxy:9090';
+		createModel('anthropic/claude-sonnet-4-5');
+		expect(mockProxyAgent).toHaveBeenCalledWith('http://https-proxy:8080');
 	});
 });

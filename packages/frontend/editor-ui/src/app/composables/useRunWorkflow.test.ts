@@ -442,7 +442,6 @@ describe('useRunWorkflow({ router })', () => {
 					[parentNodeName]: createTestNode({ name: parentNodeName }),
 					[destinationNodeName]: createTestNode({ name: destinationNodeName }),
 				};
-
 				return nodes[name];
 			});
 
@@ -1071,14 +1070,12 @@ describe('useRunWorkflow({ router })', () => {
 					if (node === 'node1') return ['node3'];
 					return [];
 				}),
-				getNode: vi.fn().mockImplementation((name: string) => {
-					const nodes: Record<string, { disabled: boolean }> = {
-						node1: { disabled: false },
-						node2: { disabled: false },
-						node3: { disabled: true },
-					};
-					return nodes[name];
-				}),
+				getNode: (name: string) => {
+					if (name === 'node1') return { disabled: false };
+					if (name === 'node2') return { disabled: false };
+					if (name === 'node3') return { disabled: true };
+					return null;
+				},
 			} as Partial<WorkflowObjectAccessors> as WorkflowObjectAccessors;
 
 			const result = consolidateRunDataAndStartNodes(
@@ -1107,12 +1104,10 @@ describe('useRunWorkflow({ router })', () => {
 			} as unknown as IRunData;
 			const workflowMock = {
 				getParentNodes: vi.fn().mockReturnValue([]),
-				getNode: vi.fn().mockImplementation((name: string) => {
-					const nodes: Record<string, { disabled: boolean }> = {
-						node1: { disabled: false },
-					};
-					return nodes[name];
-				}),
+				getNode: (name: string) => {
+					if (name === 'node1') return { disabled: false };
+					return null;
+				},
 			} as Partial<WorkflowObjectAccessors> as WorkflowObjectAccessors;
 
 			const result = consolidateRunDataAndStartNodes(
@@ -1138,13 +1133,11 @@ describe('useRunWorkflow({ router })', () => {
 			} as unknown as IRunData;
 			const workflowMock = {
 				getParentNodes: vi.fn().mockReturnValue([]),
-				getNode: vi.fn().mockImplementation((name: string) => {
-					const nodes: Record<string, { disabled: boolean }> = {
-						node1: { disabled: false },
-						node2: { disabled: false },
-					};
-					return nodes[name];
-				}),
+				getNode: (name: string) => {
+					if (name === 'node1') return { disabled: false };
+					if (name === 'node2') return { disabled: false };
+					return null;
+				},
 			} as Partial<WorkflowObjectAccessors> as WorkflowObjectAccessors;
 
 			const result = consolidateRunDataAndStartNodes(
