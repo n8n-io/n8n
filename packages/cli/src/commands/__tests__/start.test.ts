@@ -7,7 +7,10 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
+import { BinaryDataConfig } from 'n8n-core';
+
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { JwtService } from '@/services/jwt.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { DeprecationService } from '@/deprecation/deprecation.service';
@@ -34,6 +37,7 @@ authRolesService.init.mockResolvedValue(undefined);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
 deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
+deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 
 const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 loadNodesAndCredentials.init.mockResolvedValue(undefined);
@@ -122,6 +126,14 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(CommunityPackagesService, communityPackagesService);
 		Container.set(TaskRunnerModule, taskRunnerModule);
 		Container.set(DeploymentKeyRepository, deploymentKeyRepository);
+		Container.set(
+			JwtService,
+			mockInstance(JwtService, { initialize: jest.fn().mockResolvedValue(undefined) }),
+		);
+		Container.set(
+			BinaryDataConfig,
+			mockInstance(BinaryDataConfig, { initialize: jest.fn().mockResolvedValue(undefined) }),
+		);
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing

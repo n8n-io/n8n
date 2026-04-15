@@ -6,7 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 
 @Service()
 export class JwtService {
-	jwtSecret: string = '';
+	private jwtSecret: string = '';
 
 	constructor({ encryptionKey }: InstanceSettings, globalConfig: GlobalConfig) {
 		this.jwtSecret = globalConfig.userManagement.jwtSecret;
@@ -21,6 +21,38 @@ export class JwtService {
 			this.jwtSecret = createHash('sha256').update(baseKey).digest('hex');
 			Container.get(GlobalConfig).userManagement.jwtSecret = this.jwtSecret;
 		}
+	}
+
+	/**
+	 * Two-phase init: reads or creates the signing.jwt deployment-key row.
+	 * Must be called after DB migrations complete, before request handlers register.
+	 * Precedence: N8N_USER_MANAGEMENT_JWT_SECRET env → DB active row → derive-from-key (and persist)
+	 */
+	async initialize(repo: {
+		findActiveByType(type: string): Promise<{ value: string } | null>;
+		insertOrIgnore(entity: {
+			type: string;
+			value: string;
+			status: string;
+			algorithm: null;
+		}): Promise<void>;
+	}): Promise<void> {
+		if (process.env.N8N_USER_MANAGEMENT_JWT_SECRET) {
+			return;
+		}
+		const existing = await repo.findActiveByType('signing.jwt');
+		if (existing) {
+			this.jwtSecret = existing.value;
+			return;
+		}
+		await repo.insertOrIgnore({
+			type: 'signing.jwt',
+			value: this.jwtSecret,
+			status: 'active',
+			algorithm: null,
+		});
+		const winner = await repo.findActiveByType('signing.jwt');
+		if (winner) this.jwtSecret = winner.value;
 	}
 
 	sign(payload: object, options: jwt.SignOptions = {}): string {
