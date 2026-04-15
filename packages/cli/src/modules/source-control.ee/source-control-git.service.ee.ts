@@ -494,6 +494,36 @@ export class SourceControlGitService {
 		return statusResult;
 	}
 
+	/**
+	 * Returns all file paths that have ever been committed under the given directory
+	 * on the current branch. Scoped to the current branch (ancestors of HEAD) so that
+	 * data tables pushed by other instances on different branches are not mistaken
+	 * for previously-synced resources on this instance.
+	 */
+	async getHistoricallyTrackedFiles(directory: string): Promise<Set<string>> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (getHistoricallyTrackedFiles)');
+		}
+		try {
+			const output = await this.git.raw([
+				'log',
+				'--pretty=format:',
+				'--name-only',
+				'--',
+				`${directory}/`,
+			]);
+			const files = new Set(
+				output
+					.split('\n')
+					.map((line) => line.trim())
+					.filter((line) => line.length > 0),
+			);
+			return files;
+		} catch {
+			return new Set();
+		}
+	}
+
 	async getFileContent(filePath: string, commit: string = 'HEAD'): Promise<string> {
 		try {
 			if (!this.git) {
