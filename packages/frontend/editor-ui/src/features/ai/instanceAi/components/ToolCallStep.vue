@@ -46,7 +46,7 @@ function getDisplayLabel(tc: InstanceAiToolCallState): string {
 </script>
 
 <template>
-	<CollapsibleRoot v-slot="{ open: isOpen }">
+	<CollapsibleRoot v-slot="{ open: isOpen }" data-test-id="instance-ai-tool-call-step">
 		<CollapsibleTrigger as-child>
 			<TimelineStepButton>
 				<template #icon="{ isHovered }">
