@@ -35,6 +35,7 @@ const globalAdminUserWithId = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
 const globalMemberUser = mock<User>({ role: GLOBAL_MEMBER_ROLE });
 
 describe('getStatus', () => {
+	const gitService = mock<SourceControlGitService>();
 	const sourceControlImportService = mock<SourceControlImportService>();
 	const tagRepository = mock<TagRepository>();
 	const folderRepository = mock<FolderRepository>();
