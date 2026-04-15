@@ -46,7 +46,13 @@ export const RequireNodeApiErrorRule = createRule({
 	},
 	defaultOptions: [],
 	create(context) {
-		if (isFileType(context.filename, '.credentials.ts')) {
+		const isNodeFile = isFileType(context.filename, '.node.ts');
+		const isHelperFile =
+			context.filename.endsWith('.ts') &&
+			!isNodeFile &&
+			!isFileType(context.filename, '.credentials.ts');
+
+		if (!isNodeFile && !isHelperFile) {
 			return {};
 		}
 

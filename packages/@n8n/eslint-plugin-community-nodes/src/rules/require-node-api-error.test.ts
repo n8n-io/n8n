@@ -84,6 +84,16 @@ try {
 	throw error;
 }`,
 		},
+		{
+			name: 'bare re-throw in .js file (skipped)',
+			filename: '/path/to/helper.js',
+			code: `
+try {
+	apiRequest();
+} catch (error) {
+	throw error;
+}`,
+		},
 	],
 	invalid: [
 		{
