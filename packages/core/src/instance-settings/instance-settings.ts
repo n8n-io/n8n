@@ -3,7 +3,7 @@ import { InstanceSettingsConfig } from '@n8n/config';
 import type { InstanceRole, InstanceType } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { createHash, randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -88,13 +88,8 @@ export class InstanceSettings {
 	 */
 	async initialize(repo: {
 		findActiveByType(type: string): Promise<{ value: string } | null>;
-		save(entity: {
-			id: string;
-			type: string;
-			value: string;
-			status: string;
-			algorithm: null;
-		}): Promise<unknown>;
+		create(entity: { type: string; value: string; status: string; algorithm: null }): unknown;
+		save(entity: unknown): Promise<unknown>;
 	}): Promise<void> {
 		if (process.env.N8N_INSTANCE_ID) {
 			this.instanceId = process.env.N8N_INSTANCE_ID;
@@ -107,13 +102,14 @@ export class InstanceSettings {
 			return;
 		}
 
-		await repo.save({
-			id: randomUUID(),
-			type: 'instance.id',
-			value: this.instanceId,
-			status: 'active',
-			algorithm: null,
-		});
+		await repo.save(
+			repo.create({
+				type: 'instance.id',
+				value: this.instanceId,
+				status: 'active',
+				algorithm: null,
+			}),
+		);
 	}
 
 	/**
