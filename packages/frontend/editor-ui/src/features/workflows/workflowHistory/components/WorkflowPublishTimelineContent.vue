@@ -27,6 +27,7 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const { isCalloutDismissed, dismissCallout } = useCalloutHelpers();
 const isLoading = ref(true);
 const events = ref<PublishTimelineEvent[]>([]);
+const showDeletedVersionsDisclaimer = ref(false);
 
 type TimelinePeriod = {
 	status: 'published' | 'unpublished';
@@ -104,6 +105,8 @@ const periods = computed<TimelinePeriod[]>(() => {
 	});
 });
 
+const hasMultipleAuthors = computed(() => new Set(periods.value.map((x) => x.user)).size > 1);
+
 const isToday = (date: Date) => {
 	const now = new Date();
 	return (
@@ -132,7 +135,24 @@ const shouldShowDurationBadge = (idx: number) =>
 const loadTimeline = async () => {
 	isLoading.value = true;
 	try {
-		events.value = await workflowHistoryStore.getPublishTimeline(props.workflowId);
+		const [timelineEvents, firstAdoptionDate] = await Promise.all([
+			workflowHistoryStore.getPublishTimeline(props.workflowId),
+			workflowHistoryStore
+				.getVersionFirstAdoptionDate({ major: 2, minor: 17, patch: 0 })
+				.catch((e) => null),
+		]);
+		events.value = timelineEvents;
+
+		// Show disclaimer if the timeline has events from before the instance adopted v2.18,
+		// since older versions deleted publish history records during version pruning
+		if (!firstAdoptionDate) {
+			showDeletedVersionsDisclaimer.value = true;
+		} else if (timelineEvents.length > 0) {
+			const adoptionTime = new Date(firstAdoptionDate).getTime();
+			showDeletedVersionsDisclaimer.value = timelineEvents.some(
+				(e) => new Date(e.createdAt).getTime() < adoptionTime,
+			);
+		}
 	} finally {
 		isLoading.value = false;
 	}
@@ -219,7 +239,7 @@ onMounted(loadTimeline);
 									<template v-else>
 										{{ i18n.baseText('workflowHistory.publishTimeline.event.deactivated') }}
 									</template>
-									<template v-if="period.user">
+									<template v-if="period.user && hasMultipleAuthors">
 										{{ ' ' }}
 										<N8nText size="small" color="text-light">
 											{{
@@ -252,6 +272,7 @@ onMounted(loadTimeline);
 				</template>
 			</div>
 			<N8nTooltip
+				v-if="showDeletedVersionsDisclaimer"
 				placement="top"
 				:content="
 					i18n.baseText('workflowHistory.publishTimeline.deletedVersionsDisclaimer.tooltip')

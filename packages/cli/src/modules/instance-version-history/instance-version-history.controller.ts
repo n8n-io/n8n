@@ -8,13 +8,13 @@ export class InstanceVersionHistoryController {
 	constructor(private readonly service: InstanceVersionHistoryService) {}
 
 	@Get('/min-version-since')
-	async getMinVersionSince(@Query query: VersionSinceDateQueryDto) {
+	async getMinVersionSince(_req: unknown, _res: unknown, @Query query: VersionSinceDateQueryDto) {
 		const version = await this.service.getMinVersionSince(query.since);
 		return { version: version ?? null };
 	}
 
 	@Get('/date-since-version')
-	async getDateSinceVersion(@Query query: VersionQueryDto) {
+	async getDateSinceVersion(_req: unknown, _res: unknown, @Query query: VersionQueryDto) {
 		const date = await this.service.getDateSinceContinuouslyAtLeastVersion({
 			major: query.major,
 			minor: query.minor,
@@ -34,7 +34,7 @@ export class InstanceVersionHistoryController {
 	}
 
 	@Get('/first-adoption')
-	async getFirstAdoption(@Query query: VersionQueryDto) {
+	async getFirstAdoption(_req: unknown, _res: unknown, @Query query: VersionQueryDto) {
 		const date = await this.service.getFirstAdoptionDate({
 			major: query.major,
 			minor: query.minor,

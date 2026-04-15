@@ -12,6 +12,7 @@ import type {
 	PublishTimelineEvent,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
+import { getFirstAdoptionDate } from '@n8n/rest-api-client/api/instance-version-history';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -118,6 +119,12 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const getPublishTimeline = async (workflowId: string): Promise<PublishTimelineEvent[]> =>
 		await whApi.getPublishTimeline(rootStore.restApiContext, workflowId);
 
+	const getVersionFirstAdoptionDate = async (version: {
+		major: number;
+		minor: number;
+		patch: number;
+	}): Promise<string | null> => getFirstAdoptionDate(rootStore.restApiContext, version);
+
 	return {
 		getWorkflowHistory,
 		getWorkflowVersion,
@@ -126,6 +133,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		restoreWorkflow,
 		updateWorkflowHistoryVersion,
 		getPublishTimeline,
+		getVersionFirstAdoptionDate,
 		evaluatedPruneTime,
 		shouldUpgrade,
 	};
