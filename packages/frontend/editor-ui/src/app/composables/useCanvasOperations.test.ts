@@ -5634,11 +5634,6 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			);
-			vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
-				(name) => useWorkflowsStore().workflow.nodes.find((n) => n.name === name) ?? null,
-			);
 
 			const { getNodesToShift } = useCanvasOperations();
 
@@ -5699,11 +5694,6 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
-			);
-			vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
-				(name) => useWorkflowsStore().workflow.nodes.find((n) => n.name === name) ?? null,
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -5769,11 +5759,6 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
-			);
-			vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
-				(name) => useWorkflowsStore().workflow.nodes.find((n) => n.name === name) ?? null,
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -5844,11 +5829,6 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			);
-			vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
-				(name) => useWorkflowsStore().workflow.nodes.find((n) => n.name === name) ?? null,
-			);
 
 			const { getNodesToShift } = useCanvasOperations();
 			const insertPosition: [number, number] = [250, 100];
@@ -5913,11 +5893,6 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
-			);
-			vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
-				(name) => useWorkflowsStore().workflow.nodes.find((n) => n.name === name) ?? null,
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -6000,11 +5975,6 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			);
-			vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
-				(name) => useWorkflowsStore().workflow.nodes.find((n) => n.name === name) ?? null,
-			);
 
 			const { getNodesToShift } = useCanvasOperations();
 			const insertPosition: [number, number] = [250, 100];
@@ -6075,11 +6045,6 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
-			);
-			vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
-				(name) => useWorkflowsStore().workflow.nodes.find((n) => n.name === name) ?? null,
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -6164,11 +6129,6 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
-			);
-			vi.mocked(workflowDocumentStoreInstance.getChildNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getParentNodes).mockReturnValue([]);
-			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
-				(name) => useWorkflowsStore().workflow.nodes.find((n) => n.name === name) ?? null,
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
