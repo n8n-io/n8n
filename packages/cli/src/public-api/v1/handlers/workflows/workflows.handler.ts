@@ -333,7 +333,6 @@ export = {
 
 			try {
 				const workflow = await Container.get(WorkflowService).deactivateWorkflow(req.user, id, {
-					publicApi: true,
 					source: 'api',
 				});
 
