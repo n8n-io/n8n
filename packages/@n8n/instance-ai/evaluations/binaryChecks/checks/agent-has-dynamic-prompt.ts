@@ -23,8 +23,8 @@ export const agentHasDynamicPrompt: BinaryCheck = {
 			const params = node.parameters ?? {};
 			const promptType = params.promptType as string | undefined;
 
-			// auto and guardrails modes handle prompting internally
-			if (promptType === 'auto' || promptType === 'guardrails') continue;
+			// auto (default when omitted) and guardrails modes handle prompting internally
+			if (!promptType || promptType === 'auto' || promptType === 'guardrails') continue;
 
 			const textParam = params.text;
 			if (!textParam || !containsExpression(textParam)) {

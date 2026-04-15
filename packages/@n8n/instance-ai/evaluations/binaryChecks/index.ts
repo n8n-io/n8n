@@ -87,10 +87,12 @@ function resolveChecks(only: string[] | undefined, ctx: BinaryCheckContext): Bin
 
 	if (!only || only.length === 0) return eligible;
 
-	const validNames = new Set(eligible.map((c) => c.name));
-	const unknown = only.filter((name) => !validNames.has(name));
+	// Validate names against all registered checks, not just eligible ones,
+	// so LLM checks are skipped (not rejected) when modelId is missing.
+	const allNames = new Set(allChecks.map((c) => c.name));
+	const unknown = only.filter((name) => !allNames.has(name));
 	if (unknown.length > 0) {
-		const available = Array.from(validNames).join(', ');
+		const available = Array.from(allNames).join(', ');
 		throw new Error(`Unknown binary check(s): ${unknown.join(', ')}. Available: ${available}`);
 	}
 
