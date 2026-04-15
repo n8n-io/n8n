@@ -8,6 +8,7 @@
  *   LANGSMITH_API_KEY=... N8N_AI_ANTHROPIC_KEY=... \
  *     pnpm tsx scripts/annotate-dataset-tags.ts --dataset "my-dataset" [--concurrency 5] [--dry-run]
  */
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Client } from 'langsmith/client';
 import type { Example } from 'langsmith/schemas';
 import * as readline from 'node:readline';
@@ -17,7 +18,6 @@ import { z } from 'zod';
 
 import { DEFAULT_MODEL, getApiKeyEnvVar, MODEL_FACTORIES } from '../src/llm-config';
 
-// the dictionary of possible tags, with their definition
 const TAG_DEFINITIONS: Record<string, string> = {
 	requires_changes_in_workflow:
 		'The user request implies modifying an existing workflow, and will significantly change the current workflow (i.e. not simply changing the name of the workflow or the relative coordinates of the nodes)',
@@ -68,8 +68,6 @@ const tagsSchema = z.object({
 		),
 });
 
-type Tags = z.infer<typeof tagsSchema>;
-
 function buildSystemPrompt(): string {
 	const tagList = Object.entries(TAG_DEFINITIONS)
 		.map(([tag, description]) => `- "${tag}": ${description}`)
@@ -86,17 +84,14 @@ Rules:
 - Return an empty list if no tags apply.`;
 }
 
-async function generateTags(
-	llm: {
-		withStructuredOutput: <T>(schema: z.ZodType<T>) => { invoke: (input: unknown) => Promise<T> };
-	},
-	prompt: string,
-): Promise<string[]> {
+async function generateTags(llm: BaseChatModel, prompt: string): Promise<string[]> {
 	const structured = llm.withStructuredOutput(tagsSchema);
-	const result: Tags = await structured.invoke([
-		{ role: 'system', content: buildSystemPrompt() },
-		{ role: 'user', content: prompt },
-	]);
+	const result = tagsSchema.parse(
+		await structured.invoke([
+			{ role: 'system', content: buildSystemPrompt() },
+			{ role: 'user', content: prompt },
+		]),
+	);
 	return result.tags;
 }
 
@@ -147,7 +142,6 @@ async function main() {
 	}
 	const llm = await MODEL_FACTORIES[modelId]({ apiKey });
 
-	// --- Load dataset examples ---
 	console.log(pc.blue(`\nLoading examples from dataset "${datasetName}"...\n`));
 
 	const datasetInfo = await lsClient.readDataset({ datasetName });
@@ -157,8 +151,6 @@ async function main() {
 	}
 
 	console.log(pc.blue(`Found ${examples.length} examples.\n`));
-
-	// --- Check for existing annotations ---
 
 	const alreadyAnnotated = hasExistingTagAnnotations(examples);
 	if (alreadyAnnotated > 0) {
@@ -173,7 +165,6 @@ async function main() {
 		console.log();
 	}
 
-	// --- Process each example ---
 	const limit = pLimit(CONCURRENCY);
 	let completed = 0;
 	let errors = 0;
