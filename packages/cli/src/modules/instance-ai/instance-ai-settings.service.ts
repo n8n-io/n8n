@@ -392,6 +392,7 @@ export class InstanceAiSettingsService {
 
 	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
 	async isLocalGatewayDisabledForUser(userId: string): Promise<boolean> {
+		if (!this.enabled) return true;
 		if (this.config.localGatewayDisabled) return true;
 		const prefs = await this.loadUserPreferences(userId);
 		return prefs?.localGatewayDisabled ?? false;

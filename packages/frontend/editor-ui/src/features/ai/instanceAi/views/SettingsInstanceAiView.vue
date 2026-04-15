@@ -110,8 +110,10 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 						</div>
 					</div>
 				</div>
+			</template>
 
-				<div :class="$style.card">
+			<template v-if="isEnabled">
+				<div v-if="isAdmin" :class="$style.card">
 					<div :class="$style.settingsRow">
 						<div :class="$style.settingsRowLeft">
 							<span :class="$style.settingsRowLabel">
@@ -130,9 +132,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 						/>
 					</div>
 				</div>
-			</template>
-
-			<template v-if="isEnabled">
 				<div :class="$style.card">
 					<div :class="$style.sectionBlock">
 						<LocalGatewaySection />
