@@ -27,12 +27,6 @@ interface WritableSettings {
 
 type Settings = ReadOnlySettings & WritableSettings;
 
-/** Narrow interface so packages/core does not take a runtime dep on @n8n/db */
-interface InstanceIdRepository {
-	findActiveByType(type: string): Promise<{ value: string } | null>;
-	save(entity: { type: string; value: string; status: string; algorithm: null }): Promise<unknown>;
-}
-
 @Service()
 export class InstanceSettings {
 	/** The path to the n8n folder in which all n8n related data gets saved */
@@ -87,8 +81,20 @@ export class InstanceSettings {
 	 * Must be called after DB migrations complete, before license init.
 	 *
 	 * Precedence: N8N_INSTANCE_ID env → DB active row → derive-from-key (and persist)
+	 *
+	 * The repo parameter is typed inline rather than imported from @n8n/db to
+	 * avoid a circular package dependency: @n8n/db depends on n8n-core at
+	 * runtime, so n8n-core must not take a dependency on @n8n/db.
 	 */
-	async initialize(repo: InstanceIdRepository): Promise<void> {
+	async initialize(repo: {
+		findActiveByType(type: string): Promise<{ value: string } | null>;
+		save(entity: {
+			type: string;
+			value: string;
+			status: string;
+			algorithm: null;
+		}): Promise<unknown>;
+	}): Promise<void> {
 		if (process.env.N8N_INSTANCE_ID) {
 			this.instanceId = process.env.N8N_INSTANCE_ID;
 			return;
