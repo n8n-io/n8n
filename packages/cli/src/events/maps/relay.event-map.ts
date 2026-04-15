@@ -473,7 +473,8 @@ export type RelayEventMap = {
 		executionId: string;
 		workflowId: string;
 		/**
-		 * A value of null means waiting indefinitely (no timeout).
+		 * Only defined for 'interval' or 'specific time' wait modes.
+		 * Will be null for webhook/form wait modes.
 		 */
 		waitTill: Date | null;
 	};
