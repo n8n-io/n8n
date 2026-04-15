@@ -20,7 +20,7 @@ import {
 	ExecutionContextHookRegistry,
 } from 'n8n-core';
 import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
-import { ensureError, sleep, UnexpectedError } from 'n8n-workflow';
+import { ensureError, Expression, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
@@ -36,7 +36,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
@@ -78,7 +78,7 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init community packages (if enabled) */
 	protected needsCommunityPackages = false;
 
-	/** Whether to init task runner (if enabled). */
+	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
 
 	async init(): Promise<void> {
@@ -104,7 +104,7 @@ export abstract class BaseCommand<F = never> {
 			eventLoopBlockThreshold,
 			tracesSampleRate,
 			profilesSampleRate,
-			healthEndpoint: resolveHealthEndpointPath(this.globalConfig),
+			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {
 				Express: true,
 				Http: true,
@@ -155,18 +155,9 @@ export abstract class BaseCommand<F = never> {
 			);
 		}
 
-		// @TODO: Move to community-packages module
-		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
-		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
-			const { CommunityPackagesService } = await import(
-				'@/modules/community-packages/community-packages.service'
-			);
-			await Container.get(CommunityPackagesService).init();
-		}
-
 		const taskRunnersConfig = this.globalConfig.taskRunners;
 
-		if (this.needsTaskRunner && taskRunnersConfig.enabled) {
+		if (this.needsTaskRunner) {
 			if (taskRunnersConfig.insecureMode) {
 				this.logger.warn(
 					'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',
@@ -183,10 +174,31 @@ export abstract class BaseCommand<F = never> {
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
+
+		const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit } =
+			this.globalConfig.expressionEngine;
+		await Expression.initExpressionEngine({
+			engine,
+			poolSize,
+			maxCodeCacheSize,
+			bridgeTimeout,
+			bridgeMemoryLimit,
+		});
 	}
 
 	protected async stopProcess() {
 		// This needs to be overridden
+	}
+
+	protected async initCommunityPackages() {
+		// @TODO: Move to community-packages module
+		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
+		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
+			const { CommunityPackagesService } = await import(
+				'@/modules/community-packages/community-packages.service'
+			);
+			await Container.get(CommunityPackagesService).init();
+		}
 	}
 
 	protected async initCrashJournal() {
@@ -195,7 +207,11 @@ export abstract class BaseCommand<F = never> {
 
 	protected async exitSuccessFully() {
 		try {
-			await Promise.all([CrashJournal.cleanup(), this.dbConnection.close()]);
+			await Promise.all([
+				CrashJournal.cleanup(),
+				this.dbConnection.close(),
+				Expression.disposeExpressionEngine(),
+			]);
 		} finally {
 			process.exit();
 		}

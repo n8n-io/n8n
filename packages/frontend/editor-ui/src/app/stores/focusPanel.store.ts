@@ -10,6 +10,10 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from './workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { LOCAL_STORAGE_FOCUS_PANEL } from '@/app/constants';
 import { useStorage } from '@/app/composables/useStorage';
 import { watchOnce } from '@vueuse/core';
@@ -42,6 +46,11 @@ const DEFAULT_FOCUS_PANEL_DATA: FocusPanelData = { isActive: false, parameters: 
 
 export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const focusPanelStorage = useStorage(LOCAL_STORAGE_FOCUS_PANEL);
 
 	const focusPanelData = computed((): FocusPanelDataByWid => {
@@ -70,7 +79,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const focusedNodeParameters = computed<Array<RichFocusedNodeParameter | FocusedNodeParameter>>(
 		() =>
 			_focusedNodeParameters.value.map((x) => {
-				const node = workflowsStore.getNodeById(x.nodeId);
+				const node = workflowDocumentStore.value?.getNodeById(x.nodeId);
 				if (!node) return x;
 
 				const value = get(node?.parameters ?? {}, x.parameterPath.replace(/parameters\./, ''));
@@ -204,15 +213,25 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		},
 	);
 
-	// Auto-switch to 'focus' tab when a parameter is focused
+	// Auto-switch to 'focus' tab when a different parameter is focused.
+	// Compare by identity (nodeId + parameterPath) rather than object reference,
+	// because _setOptions writes to localStorage causing JSON re-parse on every call
+	// (including resize), which creates new object references without actual changes.
 	watch(
-		() => resolvedParameter.value,
-		(newValue, oldValue) => {
-			if (newValue && newValue !== oldValue) {
+		() => {
+			const p = resolvedParameter.value;
+			return p ? `${p.nodeId}:${p.parameterPath}` : null;
+		},
+		(newKey, oldKey) => {
+			if (newKey && newKey !== oldKey) {
 				selectedTab.value = 'focus';
 			}
 		},
 	);
+
+	function openFocusPanelForWorkflow(wid: string) {
+		_setOptions({ isActive: true, wid });
+	}
 
 	return {
 		focusPanelActive,
@@ -225,6 +244,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		openWithFocusedNodeParameter,
 		isRichParameter,
 		openFocusPanel,
+		openFocusPanelForWorkflow,
 		closeFocusPanel,
 		toggleFocusPanel,
 		onNewWorkflowSave,

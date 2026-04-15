@@ -11,7 +11,7 @@ import {
 	WorkflowPublishHistory,
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource, EntityManager, In } from '@n8n/typeorm';
+import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -44,8 +44,8 @@ export class ImportService {
 			sqlite: 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-pooled': 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-memory': 'PRAGMA defer_foreign_keys = OFF;',
-			postgres: 'SET session_replication_role = DEFAULT;',
-			postgresql: 'SET session_replication_role = DEFAULT;',
+			postgres: 'SET session_replication_role = ORIGIN;',
+			postgresql: 'SET session_replication_role = ORIGIN;',
 		},
 	};
 
@@ -97,7 +97,7 @@ export class ImportService {
 
 			const hasInvalidCreds = workflow.nodes.some((node) => !node.credentials?.id);
 
-			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
+			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
 			// Only remove if the workflow already exists in the database and is active
@@ -189,9 +189,9 @@ export class ImportService {
 		}
 	}
 
-	async replaceInvalidCreds(workflow: IWorkflowBase) {
+	async replaceInvalidCreds(workflow: IWorkflowBase, projectId: string) {
 		try {
-			await replaceInvalidCredentials(workflow);
+			await replaceInvalidCredentials(workflow, projectId);
 		} catch (e) {
 			this.logger.error('Failed to replace invalid credential', { error: e });
 		}
@@ -372,6 +372,7 @@ export class ImportService {
 		truncateTables: boolean,
 		keyFilePath?: string,
 		skipMigrationChecks = false,
+		skipTogglingForeignKeyConstraints = false,
 	) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
@@ -397,7 +398,9 @@ export class ImportService {
 		}
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
-			await this.disableForeignKeyConstraints(transactionManager);
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.disableForeignKeyConstraints(transactionManager);
+			}
 
 			// Get import metadata after migration validation
 			const importMetadata = await this.getImportMetadata(inputDir);
@@ -434,7 +437,9 @@ export class ImportService {
 				customEncryptionKey,
 			);
 
-			await this.enableForeignKeyConstraints(transactionManager);
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.enableForeignKeyConstraints(transactionManager);
+			}
 		});
 
 		// Cleanup decompressed files after import
@@ -507,13 +512,14 @@ export class ImportService {
 
 						await Promise.all(
 							entities.map(async (entity) => {
-								const columns = Object.keys(entity);
+								const normalizedEntity = this.normalizeEntityJsonColumns(entity, entityMetadata);
+								const columns = Object.keys(normalizedEntity);
 								const columnNames = columns.map(this.dataSource.driver.escape).join(', ');
 								const columnValues = columns.map((key) => `:${key}`).join(', ');
 
 								const [query, parameters] = this.dataSource.driver.escapeQueryWithParameters(
 									`INSERT INTO ${tableName} (${columnNames}) VALUES (${columnValues})`,
-									entity,
+									normalizedEntity,
 									{},
 								);
 
@@ -554,6 +560,50 @@ export class ImportService {
 
 			node.credentials[type] = nodeCredential;
 		}
+	}
+
+	/**
+	 * Normalise JSON column values to JSON strings before a raw INSERT.
+	 *
+	 * The export uses raw SQL (SELECT … FROM table) which bypasses TypeORM column
+	 * transformers entirely. As a result, json/simple-json column values differ by
+	 * source database:
+	 *   - SQLite  → stored as TEXT, so SELECT returns a plain string
+	 *   - Postgres → stored natively, so SELECT returns a parsed JS object/array
+	 *
+	 * Passing a raw string to a Postgres `json` column or a raw object to SQLite's
+	 * TEXT-backed column via a parameterised INSERT produces incorrect data. This
+	 * method normalises both cases to a JSON string, which both database drivers
+	 * accept correctly for json/simple-json columns.
+	 */
+	private normalizeEntityJsonColumns(
+		entity: Record<string, unknown>,
+		metadata: EntityMetadata,
+	): Record<string, unknown> {
+		const result = { ...entity };
+
+		for (const column of metadata.columns) {
+			const { databaseName, type } = column;
+			if (type !== 'json' && type !== 'simple-json') continue;
+
+			const value = result[databaseName];
+			if (value === null || value === undefined) continue;
+
+			if (typeof value === 'string') {
+				// SQLite exports json columns as serialised text — parse then re-serialise
+				// to canonical JSON so both SQLite and Postgres targets receive a valid string.
+				try {
+					result[databaseName] = JSON.stringify(JSON.parse(value));
+				} catch {
+					// Not a valid JSON string; leave as-is and let the DB validate on insert.
+				}
+			} else if (typeof value === 'object') {
+				// Postgres exports json columns as parsed objects — serialise for raw INSERT.
+				result[databaseName] = JSON.stringify(value);
+			}
+		}
+
+		return result;
 	}
 
 	async disableForeignKeyConstraints(transactionManager: EntityManager) {

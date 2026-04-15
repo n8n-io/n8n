@@ -1,12 +1,13 @@
 <script lang="ts" setup>
+import type { QuickReplyType } from '@n8n/api-types';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, ref, useSlots } from 'vue';
 import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import AskModeEmptyState from './AskModeEmptyState.vue';
 
 const emit = defineEmits<{
@@ -14,8 +15,8 @@ const emit = defineEmits<{
 }>();
 
 const assistantStore = useAssistantStore();
+const workflowId = useInjectWorkflowId();
 const settingsStore = useSettingsStore();
-const workflowState = injectWorkflowState();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
@@ -38,9 +39,12 @@ const showUsabilityNotice = computed(
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	// If there is no current session running, initialize the support chat session
 	if (!assistantStore.currentSessionId) {
-		await assistantStore.initSupportChat(content);
+		await assistantStore.initSupportChat(workflowId.value, content);
 	} else {
-		await assistantStore.sendMessage({ text: content, quickReplyType });
+		await assistantStore.sendMessage(workflowId.value, {
+			text: content,
+			quickReplyType: quickReplyType as QuickReplyType,
+		});
 	}
 	const task = assistantStore.chatSessionTask;
 	const solutionCount = assistantStore.chatMessages.filter(
@@ -59,14 +63,14 @@ async function onUserMessage(content: string, quickReplyType?: string, isFeedbac
 }
 
 async function onCodeReplace(index: number) {
-	await assistantStore.applyCodeDiff(workflowState, index);
+	await assistantStore.applyCodeDiff(workflowId.value, index);
 	telemetry.track('User clicked solution card action', {
 		action: 'replace_code',
 	});
 }
 
 async function undoCodeDiff(index: number) {
-	await assistantStore.undoCodeDiff(workflowState, index);
+	await assistantStore.undoCodeDiff(workflowId.value, index);
 	telemetry.track('User clicked solution card action', {
 		action: 'undo_code_replace',
 	});

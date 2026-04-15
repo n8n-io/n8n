@@ -16,6 +16,10 @@ import { useLogsPanelLayout } from '@/features/execution/logs/composables/useLog
 import { type KeyMap } from '@/app/composables/useKeybindings';
 import LogsViewKeyboardEventListener from './LogsViewKeyboardEventListener.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
@@ -28,7 +32,12 @@ const popOutContent = useTemplateRef('popOutContent');
 const logsStore = useLogsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
-const workflowName = computed(() => workflowsStore.workflow.name);
+const workflowDocumentStore = computed(() =>
+	workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined,
+);
+const workflowName = computed(() => workflowDocumentStore.value?.name ?? '');
 
 const {
 	height,

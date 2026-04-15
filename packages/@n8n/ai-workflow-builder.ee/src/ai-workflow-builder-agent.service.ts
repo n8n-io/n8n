@@ -215,9 +215,7 @@ export class AiWorkflowBuilderService {
 			tracer: tracingClient
 				? new LangChainTracer({
 						client: tracingClient,
-						projectName: featureFlags?.codeBuilder
-							? 'code-workflow-builder'
-							: 'n8n-workflow-builder',
+						projectName: 'code-workflow-builder',
 					})
 				: undefined,
 			instanceUrl: this.instanceUrl,
@@ -262,8 +260,6 @@ export class AiWorkflowBuilderService {
 		const { agent } = await this.getAgent(user, payload.id, payload.featureFlags);
 		const userId = user?.id?.toString();
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
-		const isCodeBuilder = payload.featureFlags?.codeBuilder ?? false;
-
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 
 		// Load historical messages from persistent storage to include in initial state.
@@ -311,7 +307,7 @@ export class AiWorkflowBuilderService {
 					userId,
 					payload.id,
 					threadId,
-					isCodeBuilder,
+					true,
 				);
 			} catch (error) {
 				this.logger?.error('Failed to track builder reply telemetry', { error });
@@ -343,6 +339,16 @@ export class AiWorkflowBuilderService {
 					feedback: decision.feedback,
 				});
 			}
+		} else if (pendingHitl.value.type === 'web_fetch_approval') {
+			const decision = resumeData as { action?: string };
+			this.sessionManager.addHitlEntry(threadId, {
+				type: 'web_fetch_decided',
+				afterMessageId: pendingHitl.triggeringMessageId,
+				url: pendingHitl.value.url,
+				domain: pendingHitl.value.domain,
+				decision:
+					(decision.action as 'allow_once' | 'allow_domain' | 'allow_all' | 'deny') ?? 'deny',
+			});
 		}
 	}
 
@@ -381,6 +387,11 @@ export class AiWorkflowBuilderService {
 		const state = await agent.getState(workflowId, userId);
 		const messages = state?.values?.messages ?? [];
 
+		// Count web_fetch tool calls
+		const webFetchToolNames = messages.filter(
+			(m: BaseMessage): m is ToolMessage => m instanceof ToolMessage && m.name === 'web_fetch',
+		);
+
 		const properties: ITelemetryTrackProperties = {
 			user_id: userId,
 			instance_id: this.instanceId,
@@ -395,15 +406,15 @@ export class AiWorkflowBuilderService {
 			}),
 			user_message_id: userMessageId,
 			code_builder: isCodeBuilder,
+			web_fetch_count: webFetchToolNames.length,
 		};
 
 		this.onTelemetryEvent('Builder replied to user message', properties);
 	}
 
-	async getSessions(workflowId: string | undefined, user?: IUser, codeBuilder?: boolean) {
+	async getSessions(workflowId: string | undefined, user?: IUser) {
 		const userId = user?.id?.toString();
-		const agentType = codeBuilder ? 'code-builder' : undefined;
-		return await this.sessionManager.getSessions(workflowId, userId, agentType);
+		return await this.sessionManager.getSessions(workflowId, userId, 'code-builder');
 	}
 
 	async getBuilderInstanceCredits(
@@ -428,14 +439,14 @@ export class AiWorkflowBuilderService {
 		workflowId: string,
 		user: IUser,
 		messageId: string,
-		codeBuilder?: boolean,
+		versionCardId?: string,
 	): Promise<boolean> {
-		const agentType = codeBuilder ? 'code-builder' : undefined;
 		return await this.sessionManager.truncateMessagesAfter(
 			workflowId,
 			user.id,
 			messageId,
-			agentType,
+			'code-builder',
+			versionCardId,
 		);
 	}
 
@@ -495,6 +506,13 @@ export class AiWorkflowBuilderService {
 		),
 	});
 
+	private static readonly webFetchApprovalInterruptSchema = z.object({
+		type: z.literal('web_fetch_approval'),
+		requestId: z.string(),
+		url: z.string(),
+		domain: z.string(),
+	});
+
 	private static readonly planInterruptSchema = z.object({
 		type: z.literal('plan'),
 		plan: z.object({
@@ -535,6 +553,15 @@ export class AiWorkflowBuilderService {
 				const parsed = AiWorkflowBuilderService.planInterruptSchema.safeParse(m);
 				if (parsed.success) return parsed.data;
 				this.logger?.warn('[HITL] Invalid plan interrupt data', {
+					errors: parsed.error.errors,
+				});
+				continue;
+			}
+
+			if (m.type === 'web_fetch_approval') {
+				const parsed = AiWorkflowBuilderService.webFetchApprovalInterruptSchema.safeParse(m);
+				if (parsed.success) return parsed.data;
+				this.logger?.warn('[HITL] Invalid web_fetch_approval interrupt data', {
 					errors: parsed.error.errors,
 				});
 				continue;

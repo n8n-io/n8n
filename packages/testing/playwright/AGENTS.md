@@ -85,8 +85,11 @@ pnpm janitor --list
 # Show detailed rule info (for AI agents)
 pnpm janitor rules --json
 
-# JSON output
-pnpm janitor --json
+# Discover test specs (for orchestration)
+pnpm janitor discover
+
+# Distribute specs across shards
+pnpm janitor orchestrate --shards=14
 ```
 
 ### Baseline (Incremental Cleanup)
@@ -417,37 +420,6 @@ const requirements: TestRequirements = {
 ```
 
 **Reference:** `config/TestRequirements.ts` for full interface definition.
-
-## Code Style
-
-- Use specialized locators: `page.getByRole('button')` over `page.locator('[role=button]')`
-- Use `nanoid()` for unique identifiers (parallel-safe)
-- API setup over UI setup when possible (faster, more reliable)
-
-## Architecture
-
-```
-Tests (*.spec.ts)
-    ↓ uses
-Composables (*Composer.ts) - Multi-step business workflows
-    ↓ orchestrates
-Page Objects (*Page.ts) - UI interactions
-    ↓ extends
-BasePage - Common utilities
-```
-
-See `CONTRIBUTING.md` for detailed patterns and conventions.
-
-## Reference Files
-
-| Purpose | File |
-|---------|------|
-| Multi-user testing | `tests/e2e/building-blocks/user-service.spec.ts` |
-| Entry points | `composables/TestEntryComposer.ts` |
-| Page object example | `pages/CanvasPage.ts` |
-| Composable example | `composables/WorkflowComposer.ts` |
-| API helpers | `services/api-helper.ts` |
-| Capabilities | `fixtures/capabilities.ts` |
 
 ## Shard Rebalancing
 

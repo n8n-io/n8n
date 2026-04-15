@@ -35,6 +35,7 @@ import { z } from 'zod';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
+import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -75,7 +76,9 @@ export class CredentialsController {
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
 			includeGlobal: query.includeGlobal,
-			externalSecretsStore: query.externalSecretsStore,
+			filters: {
+				externalSecretsStore: query.externalSecretsStore,
+			},
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared
@@ -167,6 +170,7 @@ export class CredentialsController {
 			mergedCredentials.data = this.credentialsService.unredact(
 				mergedCredentials.data,
 				decryptedData,
+				this.credentialsService.getCredentialTypeProperties(storedCredential.type),
 			);
 		}
 
@@ -197,6 +201,7 @@ export class CredentialsController {
 			projectType: project?.type,
 			uiContext: payload.uiContext,
 			isDynamic: newCredential.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(payload.data).length > 0,
 		});
 
 		return newCredential;
@@ -263,7 +268,13 @@ export class CredentialsController {
 		}
 
 		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
-		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
+		const responseData = await this.credentialsService.update(
+			credentialId,
+			newCredentialData,
+			body.data
+				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
+				: undefined,
+		);
 
 		if (responseData === null) {
 			throw new NotFoundError(`Credential ID "${credentialId}" could not be found to be updated.`);
@@ -279,6 +290,7 @@ export class CredentialsController {
 			credentialType: credential.type,
 			credentialId: credential.id,
 			isDynamic: newCredentialData.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
 		});
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);

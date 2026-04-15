@@ -1,9 +1,16 @@
 import { Logger } from '@n8n/backend-common';
+import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
-import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
+import {
+	DATA_TABLE_NODE_TYPES,
+	ensureError,
+	INode,
+	IWorkflowBase,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
@@ -21,6 +28,8 @@ const WORKFLOW_INDEXED_PLACEHOLDER_KEY = '__INDEXED__';
  */
 @Service()
 export class WorkflowIndexService {
+	private readonly batchSize: number;
+
 	constructor(
 		private readonly dependencyRepository: WorkflowDependencyRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -28,8 +37,10 @@ export class WorkflowIndexService {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly tracing: Tracing,
-		private readonly batchSize = 100,
-	) {}
+		workflowsConfig: WorkflowsConfig,
+	) {
+		this.batchSize = workflowsConfig.indexingBatchSize;
+	}
 
 	init() {
 		this.eventService.on('server-started', async (): Promise<void> => {
@@ -52,7 +63,8 @@ export class WorkflowIndexService {
 				);
 				return;
 			}
-			await this.updateIndexForPublished(workflow, workflow.activeVersionId);
+			// At activation time, the draft nodes are the published nodes.
+			await this.updateIndexForPublished(workflow, workflow.activeVersionId, workflow.nodes);
 		});
 	}
 
@@ -99,9 +111,14 @@ export class WorkflowIndexService {
 				if (dependencyType === 'draft') {
 					await this.updateIndexForDraft(workflow);
 				} else {
-					// We know activeVersionId is not null here because the finder only returns workflows
-					// that have a published version.
-					await this.updateIndexForPublished(workflow, workflow.activeVersionId!);
+					const publishedNodes = workflow.activeVersion?.nodes;
+					if (!publishedNodes) {
+						this.logger.warn(
+							`Workflow ${workflow.id} has activeVersionId but no activeVersion nodes. Skipping published index.`,
+						);
+						continue;
+					}
+					await this.updateIndexForPublished(workflow, workflow.activeVersionId!, publishedNodes);
 				}
 			}
 
@@ -129,16 +146,30 @@ export class WorkflowIndexService {
 			workflow.versionCounter,
 			/*publishedVersionId=*/ null,
 		);
-		return await this.updateIndexInternal(workflow, dependencyUpdates);
+		return await this.updateIndexInternal(
+			dependencyUpdates,
+			workflow.nodes,
+			workflow.name,
+			workflow.settings,
+		);
 	}
 
-	async updateIndexForPublished(workflow: IWorkflowBase, publishedVersionId: string) {
+	async updateIndexForPublished(
+		workflow: IWorkflowBase,
+		publishedVersionId: string,
+		publishedNodes: INode[],
+	) {
 		const dependencyUpdates = new WorkflowDependencies(
 			workflow.id,
 			workflow.versionCounter,
 			publishedVersionId,
 		);
-		return await this.updateIndexInternal(workflow, dependencyUpdates);
+		return await this.updateIndexInternal(
+			dependencyUpdates,
+			publishedNodes,
+			workflow.name,
+			workflow.settings,
+		);
 	}
 
 	async removeDependenciesForWorkflow(workflowId: string) {
@@ -163,27 +194,33 @@ export class WorkflowIndexService {
 	 *
 	 */
 	private async updateIndexInternal(
-		workflow: IWorkflowBase,
 		dependencyUpdates: WorkflowDependencies,
+		nodes: INode[],
+		workflowName?: string,
+		settings?: IWorkflowSettings,
 	) {
 		const indexType = dependencyUpdates.publishedVersionId ? 'published' : 'draft';
+		const workflowId = dependencyUpdates.workflowId;
 
 		return await this.tracing.startSpan(
 			{
 				name: 'WorkflowIndex update',
 				op: 'workflow-index.update',
 				attributes: {
-					...this.tracing.pickWorkflowAttributes(workflow),
+					...this.tracing.pickWorkflowAttributes({ id: workflowId, name: workflowName }),
 					'n8n.workflow-index.type': indexType,
 				},
 			},
 			async (span) => {
-				workflow.nodes.forEach((node) => {
+				nodes.forEach((node) => {
 					this.addNodeTypeDependencies(node, dependencyUpdates);
 					this.addCredentialDependencies(node, dependencyUpdates);
+					this.addDataTableDependencies(node, dependencyUpdates);
 					this.addWorkflowCallDependencies(node, dependencyUpdates);
 					this.addWebhookPathDependencies(node, dependencyUpdates);
 				});
+
+				this.addErrorWorkflowDependency(settings, dependencyUpdates);
 
 				// If no dependencies were extracted, add a placeholder to mark the workflow as indexed
 				if (dependencyUpdates.dependencies.length === 0) {
@@ -197,20 +234,20 @@ export class WorkflowIndexService {
 				let updated: boolean;
 				try {
 					updated = await this.dependencyRepository.updateDependenciesForWorkflow(
-						workflow.id,
+						workflowId,
 						dependencyUpdates,
 					);
 				} catch (e) {
 					const error = ensureError(e);
 					this.logger.error(
-						`Failed to update workflow ${indexType} dependency index for workflow ${workflow.id}: ${error.message}`,
+						`Failed to update workflow ${indexType} dependency index for workflow ${workflowId}: ${error.message}`,
 					);
 					this.errorReporter.error(error);
 					span.setStatus({ code: SpanStatus.error });
 					return;
 				}
 				this.logger.debug(
-					`Workflow ${indexType} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
+					`Workflow ${indexType} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflowId}`,
 				);
 				span.setStatus({ code: SpanStatus.ok });
 			},
@@ -244,6 +281,28 @@ export class WorkflowIndexService {
 		}
 	}
 
+	private addDataTableDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
+		if (!DATA_TABLE_NODE_TYPES.includes(node.type)) {
+			return;
+		}
+		const dataTableId = node.parameters?.['dataTableId'] as
+			| { mode?: string; value?: string }
+			| undefined;
+		if (!dataTableId?.value || typeof dataTableId.value !== 'string') {
+			return;
+		}
+		// Skip expression-based IDs that can't be statically resolved
+		if (dataTableId.value.includes('{')) {
+			return;
+		}
+
+		dependencyUpdates.add({
+			dependencyType: 'dataTableId',
+			dependencyKey: dataTableId.value,
+			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion, mode: dataTableId.mode },
+		});
+	}
+
 	private addWorkflowCallDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
 		if (node.type !== 'n8n-nodes-base.executeWorkflow') {
 			return;
@@ -271,6 +330,21 @@ export class WorkflowIndexService {
 				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
 			});
 		}
+	}
+
+	private addErrorWorkflowDependency(
+		settings: IWorkflowSettings | undefined,
+		dependencyUpdates: WorkflowDependencies,
+	): void {
+		const errorWorkflowId = settings?.errorWorkflow;
+		if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') {
+			return;
+		}
+		dependencyUpdates.add({
+			dependencyType: 'errorWorkflow',
+			dependencyKey: errorWorkflowId,
+			dependencyInfo: null,
+		});
 	}
 
 	private getCalledWorkflowIdFrom(node: INode): string | undefined {

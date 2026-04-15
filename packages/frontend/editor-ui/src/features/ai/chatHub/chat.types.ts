@@ -9,6 +9,7 @@ import {
 	type ChatHubProvider,
 	chatHubConversationModelSchema,
 	type ChatModelDto,
+	type ChatHubSessionType,
 	agentIconOrEmojiSchema,
 } from '@n8n/api-types';
 import type { IBinaryData } from 'n8n-workflow';
@@ -46,6 +47,7 @@ export type MessagingState =
 	| 'waitingFirstChunk'
 	| 'receiving'
 	| 'missingCredentials'
+	| 'missingDynamicCredentials'
 	| 'missingAgent'
 	| 'waitingForApproval';
 
@@ -120,4 +122,13 @@ export type ChatHubConversationModelWithCachedDisplayName = z.infer<
 
 export interface FetchOptions {
 	minLoadingTime?: number;
+	type?: ChatHubSessionType;
+}
+
+export type SemanticSearchCredentialIssue = 'unspecified' | 'notFound' | 'notShared';
+
+export interface SemanticSearchReadiness {
+	isReadyForCurrentUser: boolean;
+	vectorStoreIssue?: SemanticSearchCredentialIssue;
+	embeddingIssue?: SemanticSearchCredentialIssue;
 }

@@ -57,6 +57,20 @@ export const updateSecretProviderConnection = async (
 	);
 };
 
+export const enableSecretProviderConnection = async (
+	context: IRestApiContext,
+	providerKey: string,
+): Promise<SecretProviderConnection> => {
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/secret-providers/connections/${providerKey}`,
+		{
+			isEnabled: true,
+		},
+	);
+};
+
 export const testSecretProviderConnection = async (
 	context: IRestApiContext,
 	providerKey: string,
@@ -98,5 +112,75 @@ export const getProjectSecretProviderConnectionsByProjectId = async (
 		context,
 		'GET',
 		`/secret-providers/projects/${projectId}/connections`,
+	);
+};
+
+export const getProjectSecretProviderConnectionByKey = async (
+	context: IRestApiContext,
+	projectId: string,
+	providerKey: string,
+): Promise<SecretProviderConnection> => {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/secret-providers/projects/${projectId}/connections/${providerKey}`,
+	);
+};
+
+export const createProjectSecretProviderConnection = async (
+	context: IRestApiContext,
+	projectId: string,
+	data: {
+		providerKey: string;
+		type: string;
+		projectIds: string[];
+		settings: Record<string, unknown>;
+	},
+): Promise<SecretProviderConnection> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/secret-providers/projects/${projectId}/connections`,
+		data,
+	);
+};
+
+export const updateProjectSecretProviderConnection = async (
+	context: IRestApiContext,
+	projectId: string,
+	providerKey: string,
+	data: {
+		settings: Record<string, unknown>;
+	},
+): Promise<SecretProviderConnection> => {
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/secret-providers/projects/${projectId}/connections/${providerKey}`,
+		data,
+	);
+};
+
+export const testProjectSecretProviderConnection = async (
+	context: IRestApiContext,
+	projectId: string,
+	providerKey: string,
+): Promise<TestSecretProviderConnectionResponse> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/secret-providers/projects/${projectId}/connections/${providerKey}/test`,
+	);
+};
+
+export const deleteProjectSecretProviderConnection = async (
+	context: IRestApiContext,
+	projectId: string,
+	providerKey: string,
+): Promise<void> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/secret-providers/projects/${projectId}/connections/${providerKey}`,
 	);
 };

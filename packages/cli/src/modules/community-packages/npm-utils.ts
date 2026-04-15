@@ -1,6 +1,7 @@
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import axios from 'axios';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
+import { valid } from 'semver';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -19,11 +20,29 @@ const NPM_ERROR_PATTERNS = {
 interface NpmCommandOptions {
 	cwd?: string;
 	doNotHandleError?: boolean;
+	registry?: string;
+	authToken?: string;
+}
+
+interface NpmRequestOptions {
+	authToken?: string;
+	headers?: Record<string, string>;
+	timeout?: number;
 }
 
 function isDnsError(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);
 	return message.includes('getaddrinfo') || message.includes('ENOTFOUND');
+}
+
+/**
+ * Type guard for errors thrown by `executeNpmCommand` with `doNotHandleError: true`
+ * (e.g. npm outdated exits with code 1 when updates exist).
+ */
+export function isNpmExecErrorWithStdout(
+	error: unknown,
+): error is { code: number; stdout: string } {
+	return typeof error === 'object' && error !== null && 'code' in error && 'stdout' in error;
 }
 
 function isNpmError(error: unknown): boolean {
@@ -44,6 +63,16 @@ function matchesErrorPattern(message: string, patterns: readonly string[]): bool
 	return patterns.some((pattern) => message.includes(pattern));
 }
 
+function redactAuthTokens(text: string): string {
+	return text.replace(/_authToken=\S+/g, '_authToken=*****');
+}
+
+function registryAuthKey(registryUrl: string): string {
+	const url = new URL(registryUrl);
+	const pathname = url.pathname.replace(/\/+$/, '');
+	return `${url.host}${pathname}`;
+}
+
 /**
  * Executes an npm command with proper error handling.
  * @param args - Array of npm command arguments
@@ -55,12 +84,29 @@ export async function executeNpmCommand(
 	args: string[],
 	options: NpmCommandOptions = {},
 ): Promise<string> {
-	const { cwd, doNotHandleError } = options;
+	const { cwd, doNotHandleError, registry, authToken } = options;
+
+	const registryArgs: string[] = [];
+	if (registry) {
+		const sanitized = sanitizeRegistryUrl(registry);
+		registryArgs.push(`--registry=${sanitized}`);
+		if (authToken) registryArgs.push(`--//${registryAuthKey(sanitized)}/:_authToken=${authToken}`);
+	}
+
+	const fullArgs = [...args, ...registryArgs];
+	LoggerProxy.debug('Executing npm command', {
+		args: fullArgs.map((a) => (a.includes('_authToken=') ? a.replace(/=.+$/, '=*****') : a)),
+		cwd,
+	});
 
 	try {
-		const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
+		const { stdout } = await asyncExecFile('npm', fullArgs, cwd ? { cwd } : undefined);
 		return typeof stdout === 'string' ? stdout : stdout.toString();
 	} catch (error) {
+		if (authToken && error instanceof Error) {
+			error.message = redactAuthTokens(error.message);
+		}
+
 		if (doNotHandleError) {
 			throw error;
 		}
@@ -99,41 +145,74 @@ export async function executeNpmCommand(
 	}
 }
 
+/**
+ * Executes an HTTP GET request against an npm registry with proper defaults and error logging.
+ * @param registryUrl - Base registry URL (trailing slashes are stripped)
+ * @param path - Path to append after the registry URL (e.g. `${encodeURIComponent(pkg)}/${version}`)
+ * @param options - Optional authToken, extra headers, and timeout override
+ * @returns Parsed response body
+ * @throws The original axios error after logging, so callers can fall back to the npm CLI
+ */
+export async function executeNpmRequest<T = unknown>(
+	registryUrl: string,
+	path: string,
+	options: NpmRequestOptions = {},
+): Promise<T> {
+	const { authToken, headers: extraHeaders, timeout = REQUEST_TIMEOUT } = options;
+	const url = `${sanitizeRegistryUrl(registryUrl)}/${path}`;
+	const authHeaders = authToken ? { ['Authorization']: `Bearer ${authToken}` } : {};
+	const headers = { ...extraHeaders, ...authHeaders };
+
+	const redactedHeaders = authToken
+		? { ...headers, Authorization: 'Bearer *****' }
+		: { ...headers };
+	LoggerProxy.debug('Executing npm registry request', { url, headers: redactedHeaders, timeout });
+
+	try {
+		const { data } = await axios.get<T>(url, {
+			timeout,
+			headers: Object.keys(headers).length > 0 ? headers : undefined,
+		});
+		return data;
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		LoggerProxy.warn('Failed to execute npm registry request', { url, errorMessage });
+		throw error;
+	}
+}
+
 export async function verifyIntegrity(
 	packageName: string,
 	version: string,
 	registryUrl: string,
 	expectedIntegrity: string,
+	authToken?: string,
 ) {
-	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
+	const path = `${encodeURIComponent(packageName)}/${version}`;
 
 	try {
-		const metadata = await axios.get<{ dist: { integrity?: string } }>(`${url}/${version}`, {
-			timeout: REQUEST_TIMEOUT,
+		const metadata = await executeNpmRequest<{ dist: { integrity?: string } }>(registryUrl, path, {
+			authToken,
 		});
 
-		const integrity = metadata?.data?.dist?.integrity;
+		const integrity = metadata?.dist?.integrity;
 		if (integrity !== expectedIntegrity) {
-			throw new UnexpectedError('Checksum verification failed. Package integrity does not match.');
+			throw new UnexpectedError(
+				'Checksum verification failed. Package integrity does not match. Try restarting n8n and attempting the installation again.',
+			);
 		}
 		return;
 	} catch (error) {
 		try {
 			const stdout = await executeNpmCommand(
-				[
-					'view',
-					`${packageName}@${version}`,
-					'dist.integrity',
-					`--registry=${sanitizeRegistryUrl(registryUrl)}`,
-					'--json',
-				],
-				{ doNotHandleError: true },
+				['view', `${packageName}@${version}`, 'dist.integrity', '--json'],
+				{ doNotHandleError: true, registry: registryUrl, authToken },
 			);
 
 			const integrity = jsonParse(stdout);
 			if (integrity !== expectedIntegrity) {
 				throw new UnexpectedError(
-					'Checksum verification failed. Package integrity does not match.',
+					'Checksum verification failed. Package integrity does not match. Try restarting n8n and attempting the installation again.',
 				);
 			}
 			return;
@@ -143,7 +222,9 @@ export async function verifyIntegrity(
 					'Checksum verification failed. Please check your network connection and try again.',
 				);
 			}
-			throw new UnexpectedError('Checksum verification failed');
+			throw new UnexpectedError(
+				'Checksum verification failed. Try restarting n8n and attempting the installation again.',
+			);
 		}
 	}
 }
@@ -152,27 +233,28 @@ export async function checkIfVersionExistsOrThrow(
 	packageName: string,
 	version: string,
 	registryUrl: string,
+	authToken?: string,
 ): Promise<true> {
-	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
+	const path = `${encodeURIComponent(packageName)}/${version}`;
 
 	try {
-		await axios.get(`${url}/${version}`, { timeout: REQUEST_TIMEOUT });
+		await executeNpmRequest(registryUrl, path, { authToken });
 		return true;
 	} catch (error) {
 		try {
 			const stdout = await executeNpmCommand(
-				[
-					'view',
-					`${packageName}@${version}`,
-					'version',
-					`--registry=${sanitizeRegistryUrl(registryUrl)}`,
-					'--json',
-				],
-				{ doNotHandleError: true },
+				['view', `${packageName}@${version}`, 'version', '--json'],
+				{ doNotHandleError: true, registry: registryUrl, authToken },
 			);
 
-			const versionInfo = jsonParse(stdout);
-			if (versionInfo === version) {
+			// npm resolves dist-tags (e.g. "latest") to an actual version string,
+			// so any non-empty return value means the tag/version is resolvable.
+			const resolvedVersion = jsonParse<string>(stdout);
+			const isResolvedSemver =
+				typeof resolvedVersion === 'string' && valid(resolvedVersion) !== null;
+			const isExactSemver = valid(version) !== null;
+
+			if (isResolvedSemver && (!isExactSemver || resolvedVersion)) {
 				return true;
 			}
 

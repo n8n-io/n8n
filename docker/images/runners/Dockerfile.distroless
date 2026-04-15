@@ -12,7 +12,7 @@
 # - Uses distroless nonroot user (UID 65532)
 # ==============================================================================
 
-ARG NODE_VERSION=24.13.1
+ARG NODE_VERSION=24.14.1
 ARG PYTHON_VERSION=3.13
 
 
@@ -44,6 +44,13 @@ RUN node -e "const pkg = require('./package.json'); \
 # Install moment by default (special case for n8n cloud)
 RUN rm -f node_modules/.modules.yaml && \
     pnpm add moment@2.30.1 --prod --no-lockfile
+
+# Rebuild isolated-vm for the container platform. Install build tools as
+# fallback in case prebuild-install cannot find a prebuilt binary.
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && \
+    npm rebuild isolated-vm && \
+    apt-get purge -y python3 make g++ && apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv

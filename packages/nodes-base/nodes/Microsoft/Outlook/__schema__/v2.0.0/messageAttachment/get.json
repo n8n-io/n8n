@@ -27,7 +27,27 @@
         },
         "size": {
             "type": "integer"
+        },
+        "value": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "@odata.mediaContentType": {
+                        "type": "string"
+                    },
+                    "@odata.type": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
         }
     },
-    "version": 7
+    "version": 8
 }

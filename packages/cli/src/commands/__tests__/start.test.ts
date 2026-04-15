@@ -7,6 +7,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { DeprecationService } from '@/deprecation/deprecation.service';
@@ -26,6 +27,7 @@ import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
@@ -62,6 +64,8 @@ mockInstance(MessageEventBus);
 mockInstance(CommunityPackagesConfig);
 const communityPackagesService = mockInstance(CommunityPackagesService);
 communityPackagesService.init.mockResolvedValue(undefined);
+const taskRunnerModule = mockInstance(TaskRunnerModule);
+taskRunnerModule.start.mockResolvedValue(undefined);
 
 const instanceSettings = Container.get(InstanceSettings);
 
@@ -113,6 +117,7 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(MessageEventBus, mockInstance(MessageEventBus));
 		Container.set(CommunityPackagesConfig, mockInstance(CommunityPackagesConfig));
 		Container.set(CommunityPackagesService, communityPackagesService);
+		Container.set(TaskRunnerModule, taskRunnerModule);
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing
@@ -130,8 +135,9 @@ describe('Start - AuthRolesService initialization', () => {
 				eventLoopBlockThreshold: 0,
 			},
 			cache: { backend: 'memory' },
-			taskRunners: { enabled: false },
-		} as never;
+			taskRunners: {},
+			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+		};
 		// @ts-expect-error - Accessing protected method for testing
 		start.initCrashJournal = jest.fn().mockResolvedValue(undefined);
 		start.initLicense = jest.fn().mockResolvedValue(undefined);
@@ -141,6 +147,8 @@ describe('Start - AuthRolesService initialization', () => {
 		start.initDataDeduplicationService = jest.fn().mockResolvedValue(undefined);
 		start.initExternalHooks = jest.fn().mockResolvedValue(undefined);
 		start.initWorkflowHistory = jest.fn();
+		// @ts-expect-error - Accessing private method for testing
+		start.initInstanceSettingsLoader = jest.fn().mockResolvedValue(undefined);
 		start.cleanupTestRunner = jest.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing private method for testing
 		start.generateStaticAssets = jest.fn().mockResolvedValue(undefined);
@@ -180,8 +188,9 @@ describe('Start - AuthRolesService initialization', () => {
 					eventLoopBlockThreshold: 0,
 				},
 				cache: { backend: 'memory' },
-				taskRunners: { enabled: false },
-			} as never;
+				taskRunners: {},
+				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+			};
 
 			await start.init();
 
@@ -213,12 +222,122 @@ describe('Start - AuthRolesService initialization', () => {
 					eventLoopBlockThreshold: 0,
 				},
 				cache: { backend: 'memory' },
-				taskRunners: { enabled: false },
-			} as never;
+				taskRunners: {},
+				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+			};
 
 			await start.init();
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('init - instance settings loader initialization', () => {
+		it('should initialize instance settings loader when instanceType is main', async () => {
+			setupInstanceSettings('main', false, false);
+
+			await start.init();
+
+			// @ts-expect-error - Accessing private method for testing
+			expect(start.initInstanceSettingsLoader).toHaveBeenCalledTimes(1);
+		});
+
+		it('should NOT initialize instance settings loader when instanceType is not main', async () => {
+			setupInstanceSettings('worker', false, false);
+
+			await start.init();
+
+			// @ts-expect-error - Accessing private method for testing
+			expect(start.initInstanceSettingsLoader).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('init - multi-main follower license retry', () => {
+		const multiMainConfig = {
+			executions: { mode: 'queue' as const },
+			multiMainSetup: { enabled: true },
+			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
+			database: { type: 'sqlite' },
+			sentry: {
+				backendDsn: '',
+				environment: 'test',
+				deploymentName: 'test',
+				profilesSampleRate: 0,
+				tracesSampleRate: 0,
+				eventLoopBlockThreshold: 0,
+			},
+			cache: { backend: 'memory' },
+			taskRunners: {},
+			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
+		};
+
+		beforeEach(() => {
+			jest.useFakeTimers();
+		});
+
+		afterEach(() => {
+			jest.useRealTimers();
+			// Restore original mock so other tests aren't affected
+			license.isMultiMainLicensed = (() => true) as unknown as typeof license.isMultiMainLicensed;
+		});
+
+		it('should retry and succeed when follower finds license cert on retry', async () => {
+			setupInstanceSettings('main', true, false);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = multiMainConfig;
+
+			// First call returns false (no cert yet), second call returns true (leader wrote cert)
+			license.isMultiMainLicensed = jest
+				.fn()
+				.mockReturnValueOnce(false)
+				.mockReturnValue(true) as unknown as typeof license.isMultiMainLicensed;
+
+			const initPromise = start.init();
+
+			// Advance past the first retry delay (2s)
+			await jest.advanceTimersByTimeAsync(2_000);
+
+			await initPromise;
+
+			expect(license.reload).toHaveBeenCalledTimes(1);
+		});
+
+		it('should throw FeatureNotLicensedError when follower exhausts all retries', async () => {
+			setupInstanceSettings('main', true, false);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = multiMainConfig;
+
+			license.isMultiMainLicensed = jest
+				.fn()
+				.mockReturnValue(false) as unknown as typeof license.isMultiMainLicensed;
+
+			const initPromise = start.init().catch((error) => {
+				expect(error).toBeInstanceOf(FeatureNotLicensedError);
+				return 'rejected';
+			});
+
+			// Advance past all retry delays: 2s + 4s + 8s + 16s + 32s = 62s
+			await jest.advanceTimersByTimeAsync(62_000);
+
+			const result = await initPromise;
+			expect(result).toBe('rejected');
+			// 5 retries = 5 reload calls
+			expect(license.reload).toHaveBeenCalledTimes(5);
+		});
+
+		it('should not retry when leader fails the license check', async () => {
+			setupInstanceSettings('main', true, true);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = multiMainConfig;
+
+			license.isMultiMainLicensed = jest
+				.fn()
+				.mockReturnValue(false) as unknown as typeof license.isMultiMainLicensed;
+
+			await expect(start.init()).rejects.toThrow(FeatureNotLicensedError);
+
+			// Followers only retry via reload; leaders should fail immediately
+			expect(license.reload).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -97,6 +97,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 	async workflowExecutionCompleted(workflowData: IWorkflowBase, runData: IRun): Promise<void> {
 		// Determine the name of the statistic
 		const isSuccess = runData.status === 'success';
+		const isError = runData.status === 'error' || runData.status === 'crashed';
 		const manualExecution = runData.mode === 'manual';
 		const chatExecution = runData.mode === 'chat';
 
@@ -110,12 +111,14 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const isRootExecution =
 			isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 
+		// Only record statistics for terminal statuses (success, error, crashed)
+		// Skip non-terminal statuses like waiting, running, new, etc.
 		if (isSuccess) {
-			if (manualExecution) name = StatisticsNames.manualSuccess;
-			else name = StatisticsNames.productionSuccess;
+			name = manualExecution ? StatisticsNames.manualSuccess : StatisticsNames.productionSuccess;
+		} else if (isError) {
+			name = manualExecution ? StatisticsNames.manualError : StatisticsNames.productionError;
 		} else {
-			if (manualExecution) name = StatisticsNames.manualError;
-			else name = StatisticsNames.productionError;
+			return;
 		}
 
 		// Get the workflow id

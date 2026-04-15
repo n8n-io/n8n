@@ -1,23 +1,33 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
+import {
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
+import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
-	type Workflow,
 	type NodeConnectionType,
 	NodeConnectionTypes,
 	NodeHelpers,
 } from 'n8n-workflow';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import NDVEmptyState from './NDVEmptyState.vue';
+import RedactedDataState from './RedactedDataState.vue';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { type IRunDataDisplayMode } from '@/Interface';
@@ -32,7 +42,7 @@ type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
 	runIndex: number;
-	workflowObject: Workflow;
+	workflowObject: WorkflowObjectAccessors;
 	pushRef: string;
 	activeNodeName: string;
 	currentNodeName?: string;
@@ -79,6 +89,7 @@ const emit = defineEmits<{
 	changeInputNode: [nodeName: string, index: number];
 	execute: [];
 	activatePane: [];
+	openSettings: [];
 	displayModeChange: [IRunDataDisplayMode];
 }>();
 
@@ -95,13 +106,23 @@ const inputModes = [
 	{ value: 'debugging', label: i18n.baseText('ndv.input.fromAI') },
 ];
 
+const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowState = injectWorkflowState();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const uiStore = useUIStore();
 
-const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeName));
+const openWorkflowSettings = () => {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+};
+
+const activeNode = computed(
+	() => workflowDocumentStore?.value?.getNodeByName(props.activeNodeName) ?? null,
+);
 
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
@@ -203,7 +224,7 @@ const currentNode = computed(() => {
 	if (isActiveNodeConfig.value) {
 		// if we're mapping node we want to show the output of the mapped node
 		if (mappedNode.value) {
-			return workflowsStore.getNodeByName(mappedNode.value);
+			return workflowDocumentStore?.value?.getNodeByName(mappedNode.value) ?? null;
 		}
 
 		// in debugging mode data does get set manually and is only for debugging
@@ -211,7 +232,7 @@ const currentNode = computed(() => {
 		return activeNode.value;
 	}
 
-	return workflowsStore.getNodeByName(props.currentNodeName ?? '');
+	return workflowDocumentStore?.value?.getNodeByName(props.currentNodeName ?? '') ?? null;
 });
 
 const connectedCurrentNodeOutputs = computed(() => {
@@ -243,9 +264,15 @@ const activeNodeType = computed(() => {
 
 const waitingMessage = computed(() => {
 	const parentNode = parentNodes.value[0];
-	return (
-		parentNode &&
-		waitingNodeTooltip(workflowsStore.getNodeByName(parentNode.name), props.workflowObject)
+	if (!parentNode) return '';
+
+	const runData = workflowsStore.getWorkflowExecution?.data?.resultData?.runData;
+	const parentRunData = runData?.[parentNode.name]?.[0];
+
+	return waitingNodeTooltip(
+		workflowDocumentStore?.value?.getNodeByName(parentNode.name) ?? null,
+		props.workflowObject,
+		parentRunData?.metadata,
 	);
 });
 
@@ -314,7 +341,7 @@ function onNodeExecute() {
 	if (activeNode.value) {
 		telemetry.track('User clicked ndv button', {
 			node_type: activeNode.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			push_ref: props.pushRef,
 			pane: 'input',
 			type: 'executePrevious',
@@ -360,7 +387,7 @@ function onConnectionHelpClick() {
 	if (activeNode.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: activeNode.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			push_ref: props.pushRef,
 			pane: 'input',
 			type: 'not-connected-help',
@@ -436,7 +463,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<InputNodeSelect
 				v-if="parentNodes.length && currentNodeName"
 				:model-value="currentNodeName"
-				:workflow="workflowObject"
 				:nodes="parentNodes"
 				@update:model-value="onInputNodeChange"
 			/>
@@ -450,7 +476,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<div :class="$style.mappedNode">
 				<InputNodeSelect
 					:model-value="mappedNode"
-					:workflow="workflowObject"
 					:nodes="rootNodesParents"
 					@update:model-value="onMappedNodeSelected"
 				/>
@@ -651,6 +676,26 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<NDVEmptyState :title="i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')">
 				{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
 			</NDVEmptyState>
+		</template>
+
+		<template #data-redacted>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
+		</template>
+
+		<template #redacted-error>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
 		</template>
 	</RunData>
 </template>

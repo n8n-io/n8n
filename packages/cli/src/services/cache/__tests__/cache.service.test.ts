@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import random from 'lodash/random';
 import { sleep } from 'n8n-workflow';
 
 import config from '@/config';
@@ -37,12 +38,14 @@ for (const backend of ['memory', 'redis'] as const) {
 			});
 
 			if (backend === 'redis') {
-				test('with auto backend and queue mode, should select redis', async () => {
-					globalConfig.executions.mode = 'queue';
+				describe('when backend is redis', () => {
+					test('with auto backend and queue mode, should select redis', async () => {
+						globalConfig.executions.mode = 'queue';
 
-					await cacheService.init();
+						await cacheService.init();
 
-					expect(cacheService.isRedis()).toBe(true);
+						expect(cacheService.isRedis()).toBe(true);
+					});
 				});
 			}
 
@@ -101,10 +104,16 @@ for (const backend of ['memory', 'redis'] as const) {
 				await cacheService.set('key1', null);
 				await cacheService.set('key2', undefined);
 				await cacheService.set('key3', 'value');
+				await cacheService.set('key4', false);
+				await cacheService.set('key5', 0);
+				await cacheService.set('key6', '');
 
 				await expect(cacheService.get('key1')).resolves.toBeUndefined();
 				await expect(cacheService.get('key2')).resolves.toBeUndefined();
 				await expect(cacheService.get('key3')).resolves.toBe('value');
+				await expect(cacheService.get('key4')).resolves.toBe(false);
+				await expect(cacheService.get('key5')).resolves.toBe(0);
+				await expect(cacheService.get('key6')).resolves.toBe('');
 			});
 
 			test('should disregard zero-length keys', async () => {
@@ -125,15 +134,16 @@ for (const backend of ['memory', 'redis'] as const) {
 		});
 
 		describe('get', () => {
+			const createRefreshFn = () => jest.fn(async () => await Promise.resolve('refreshValue'));
+
 			test('should fall back to fallback value', async () => {
 				const promise = cacheService.get('key', { fallbackValue: 'fallback' });
 				await expect(promise).resolves.toBe('fallback');
 			});
 
 			test('should refresh value', async () => {
-				const promise = cacheService.get('testString', {
-					refreshFn: async () => 'refreshValue',
-				});
+				const refreshFn = createRefreshFn();
+				const promise = cacheService.get('testString', { refreshFn });
 
 				await expect(promise).resolves.toBe('refreshValue');
 			});
@@ -144,6 +154,47 @@ for (const backend of ['memory', 'redis'] as const) {
 
 				await expect(cacheService.get(nonAsciiKey)).resolves.toBe('value');
 			});
+
+			test('should treat empty array placeholder as cache hit when key is present', async () => {
+				const refreshFn = createRefreshFn();
+
+				await cacheService.set('testString', []);
+				const value = await cacheService.get('testString', { refreshFn });
+				expect(value).toEqual([]);
+				expect(refreshFn).not.toHaveBeenCalled();
+			});
+
+			if (backend === 'redis') {
+				describe('when backend is redis', () => {
+					test('should treat empty array placeholder as cache miss when key is missing', async () => {
+						const refreshFn = createRefreshFn();
+
+						const value = await cacheService.get('testString', { refreshFn });
+						expect(value).toBe('refreshValue');
+						expect(refreshFn).toHaveBeenCalledTimes(1);
+					});
+
+					test.each([
+						['an empty array', []],
+						['an array with items', ['item1', 'item2']],
+						['a string', 'value'],
+						['an empty string', ''],
+						['a number', random(1, 1000)],
+						['a zero', 0],
+						['"true"', true],
+						['"false"', false],
+						['an object', { foo: 'bar' }],
+						['an empty object', {}],
+					])('should treat a key as cache hit when value is %s', async (_type, valueToSet) => {
+						const refreshFn = createRefreshFn();
+
+						await cacheService.set('testString', valueToSet);
+						const value = await cacheService.get('testString', { refreshFn });
+						expect(value).toEqual(valueToSet);
+						expect(refreshFn).not.toHaveBeenCalled();
+					});
+				});
+			}
 		});
 
 		describe('delete', () => {
@@ -163,8 +214,8 @@ for (const backend of ['memory', 'redis'] as const) {
 					['key2', 'value2'],
 				]);
 
-				const promise = cacheService.getMany(['key1', 'key2']);
-				await expect(promise).resolves.toStrictEqual(['value1', 'value2']);
+				await expect(cacheService.get('key1')).resolves.toBe('value1');
+				await expect(cacheService.get('key2')).resolves.toBe('value2');
 			});
 
 			test('should set multiple number values', async () => {
@@ -173,8 +224,8 @@ for (const backend of ['memory', 'redis'] as const) {
 					['key2', 456],
 				]);
 
-				const promise = cacheService.getMany(['key1', 'key2']);
-				await expect(promise).resolves.toStrictEqual([123, 456]);
+				await expect(cacheService.get('key1')).resolves.toBe(123);
+				await expect(cacheService.get('key2')).resolves.toBe(456);
 			});
 
 			test('should disregard zero-length keys', async () => {
@@ -184,16 +235,30 @@ for (const backend of ['memory', 'redis'] as const) {
 			});
 		});
 
-		describe('getMany', () => {
-			test('should return undefined on missing result', async () => {
-				await cacheService.setMany([
-					['key1', 123],
-					['key2', 456],
-				]);
+		describe('getHash', () => {
+			const createHashRefreshFn = () =>
+				jest.fn(async (_key: string) => await Promise.resolve({ field: 'refreshValue' }));
 
-				const promise = cacheService.getMany(['key2', 'key3']);
-				await expect(promise).resolves.toStrictEqual([456, undefined]);
+			test('should treat hash as cache hit when key is present', async () => {
+				const refreshFn = createHashRefreshFn();
+				await cacheService.setHash('testHash', { field: 'value' });
+
+				const value = await cacheService.getHash('testHash', { refreshFn });
+				expect(value).toEqual({ field: 'value' });
+				expect(refreshFn).not.toHaveBeenCalled();
 			});
+
+			if (backend === 'redis') {
+				describe('when backend is redis', () => {
+					test('should treat empty hash placeholder as cache miss when key is missing', async () => {
+						const refreshFn = createHashRefreshFn();
+						await expect(cacheService.getHash('testHash', { refreshFn })).resolves.toEqual({
+							field: 'refreshValue',
+						});
+						expect(refreshFn).toHaveBeenCalledTimes(1);
+					});
+				});
+			}
 		});
 
 		describe('delete', () => {

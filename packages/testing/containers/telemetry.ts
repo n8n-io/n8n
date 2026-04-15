@@ -172,7 +172,7 @@ export class TelemetryRecorder {
 	 * Flush telemetry - outputs based on environment configuration
 	 *
 	 * Output modes:
-	 * - CONTAINER_TELEMETRY_WEBHOOK: Send via detached process (non-blocking, survives parent exit)
+	 * - QA_METRICS_WEBHOOK_URL: Send via detached process (non-blocking, survives parent exit)
 	 * - CONTAINER_TELEMETRY_VERBOSE=1: Full breakdown + elapsed logs (via utils.ts)
 	 * - Default: One-liner summary only
 	 */
@@ -180,7 +180,7 @@ export class TelemetryRecorder {
 		const record = this.buildRecord(success, errorMessage);
 
 		const isVerbose = process.env.CONTAINER_TELEMETRY_VERBOSE === '1';
-		const webhookUrl = process.env.CONTAINER_TELEMETRY_WEBHOOK;
+		const webhookUrl = process.env.QA_METRICS_WEBHOOK_URL;
 
 		if (webhookUrl) {
 			this.sendToWebhook(record, webhookUrl);
@@ -206,24 +206,102 @@ export class TelemetryRecorder {
 		}
 	}
 
+	private buildUnifiedPayload(record: StackTelemetryRecord): object {
+		const runId = record.ci.runId ?? null;
+		const repo = process.env.GITHUB_REPOSITORY ?? null;
+
+		const metrics: Array<{
+			metric_name: string;
+			value: number;
+			unit: string;
+			dimensions: Record<string, string | number>;
+		}> = [
+			{
+				metric_name: 'stack-startup-total',
+				value: record.timing.total,
+				unit: 'ms',
+				dimensions: {
+					stack_type: record.stack.type,
+					mains: record.stack.mains,
+					workers: record.stack.workers,
+					postgres: record.stack.postgres ? 'true' : 'false',
+					success: record.success ? 'true' : 'false',
+				},
+			},
+			{
+				metric_name: 'stack-startup-network',
+				value: record.timing.network,
+				unit: 'ms',
+				dimensions: { stack_type: record.stack.type },
+			},
+			{
+				metric_name: 'stack-startup-n8n',
+				value: record.timing.n8nStartup,
+				unit: 'ms',
+				dimensions: { stack_type: record.stack.type },
+			},
+			...Object.entries(record.timing.services).map(([service, duration]) => ({
+				metric_name: 'stack-startup-service',
+				value: duration,
+				unit: 'ms',
+				dimensions: { service, stack_type: record.stack.type },
+			})),
+			{
+				metric_name: 'container-count',
+				value: record.containers.total,
+				unit: 'count',
+				dimensions: { stack_type: record.stack.type },
+			},
+		];
+
+		return {
+			timestamp: record.timestamp,
+			benchmark_name: 'container-telemetry',
+			git: {
+				sha: record.git.sha,
+				branch: record.git.branch,
+				pr: record.git.pr ?? null,
+			},
+			ci: {
+				runId,
+				runUrl: runId && repo ? `https://github.com/${repo}/actions/runs/${runId}` : null,
+				job: record.ci.job ?? null,
+				workflow: record.ci.workflow ?? null,
+				attempt: record.ci.attempt ?? null,
+			},
+			runner: record.runner,
+			metrics,
+		};
+	}
+
 	/**
 	 * Send telemetry via a detached child process.
 	 * The process runs independently and survives parent exit, ensuring delivery
 	 * even when the main process throws/exits immediately after flush().
 	 */
 	private sendToWebhook(record: StackTelemetryRecord, webhookUrl: string): void {
-		const payload = JSON.stringify(record);
+		const webhookUser = process.env.QA_METRICS_WEBHOOK_USER;
+		const webhookPassword = process.env.QA_METRICS_WEBHOOK_PASSWORD;
+
+		if (!webhookUser || !webhookPassword) {
+			console.log('QA_METRICS_WEBHOOK_USER/PASSWORD not set, skipping telemetry.');
+			return;
+		}
+
+		const payload = JSON.stringify(this.buildUnifiedPayload(record));
+		const authHeader = `Basic ${Buffer.from(`${webhookUser}:${webhookPassword}`).toString('base64')}`;
 		const script = `
-			fetch(process.argv[1], {
+			fetch(process.argv[2], {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: process.argv[2]
+				headers: { 'Content-Type': 'application/json', 'Authorization': process.env.WEBHOOK_AUTH },
+				body: process.argv[3]
 			}).catch(() => process.exit(1));
 		`;
 
 		const child = spawn(process.execPath, ['-e', script, webhookUrl, payload], {
 			detached: true,
 			stdio: 'ignore',
+			env: { ...process.env, WEBHOOK_AUTH: authHeader },
 		});
 		child.unref();
 	}

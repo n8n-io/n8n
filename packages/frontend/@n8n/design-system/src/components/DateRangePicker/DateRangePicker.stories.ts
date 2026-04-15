@@ -4,7 +4,7 @@ import DateRangePicker from './DateRangePicker.vue';
 
 const meta = {
 	component: DateRangePicker,
-	title: 'Components v2/DateRangePicker',
+	title: 'Experimental/DateRangePicker',
 } satisfies Meta<typeof DateRangePicker>;
 
 export default meta;

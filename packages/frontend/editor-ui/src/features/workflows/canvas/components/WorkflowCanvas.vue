@@ -3,13 +3,14 @@ import type { ContextMenuAction } from '@/features/shared/contextMenu/composable
 import type { IWorkflowDb } from '@/Interface';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
+import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import type { Workflow } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
+import type { WorkflowObjectAccessors } from '@/app/types';
 
 defineOptions({
 	inheritAttrs: false,
@@ -19,13 +20,14 @@ const props = withDefaults(
 	defineProps<{
 		id?: string;
 		workflow: IWorkflowDb;
-		workflowObject: Workflow;
+		workflowObject: WorkflowObjectAccessors;
 		fallbackNodes?: IWorkflowDb['nodes'];
 		showFallbackNodes?: boolean;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
 		executing?: boolean;
 		suppressInteraction?: boolean;
+		initialViewport?: ViewportTransform | null;
 	}>(),
 	{
 		id: 'canvas',
@@ -60,7 +62,9 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {
 	if (!initialFitViewDone.value) {
-		props.eventBus.emit('fitView');
+		if (!props.initialViewport) {
+			props.eventBus.emit('fitView');
+		}
 		initialFitViewDone.value = true;
 		off();
 	}
@@ -152,6 +156,7 @@ defineExpose({
 				:read-only="readOnly"
 				:executing="executing"
 				:suppress-interaction="suppressInteraction"
+				:initial-viewport="initialViewport"
 				v-bind="$attrs"
 			/>
 		</div>

@@ -135,174 +135,176 @@ async function setupDynamicTemplateRoutes(n8n: n8nPage, hostname: string) {
 	});
 }
 
-test.describe('Workflow templates', {
-	annotation: [
-		{ type: 'owner', description: 'Adore' },
-	],
-}, () => {
-	test.describe('For api.n8n.io', () => {
-		test('Opens website when clicking templates sidebar link', async ({
-			n8n,
-			setupRequirements,
-		}) => {
-			await setupRequirements(createTemplateHostRequirements());
-			await n8n.navigate.toWorkflows();
+test.describe(
+	'Workflow templates',
+	{
+		annotation: [{ type: 'owner', description: 'Adore' }],
+	},
+	() => {
+		test.describe('For api.n8n.io', () => {
+			test('Opens website when clicking templates sidebar link', async ({
+				n8n,
+				setupRequirements,
+			}) => {
+				await setupRequirements(createTemplateHostRequirements());
+				await n8n.navigate.toWorkflows();
 
-			const templatesLink = n8n.sideBar.getTemplatesLink();
-			await expect(templatesLink).toBeVisible();
+				const templatesLink = n8n.sideBar.getTemplatesLink();
+				await expect(templatesLink).toBeVisible();
 
-			const href = await templatesLink.getAttribute('href');
-			expect(href).toContain(URLS.N8N_WORKFLOWS);
+				const href = await templatesLink.getAttribute('href');
+				expect(href).toContain(URLS.N8N_WORKFLOWS);
 
-			const url = new URL(href!);
-			const origin = await n8n.page.evaluate(() => window.location.origin);
+				const url = new URL(href!);
+				const origin = await n8n.page.evaluate(() => window.location.origin);
 
-			const utmInstance = url.searchParams.get('utm_instance');
-			expect(utmInstance).toBeTruthy();
-			expect(decodeURIComponent(utmInstance!)).toContain(origin);
+				const utmInstance = url.searchParams.get('utm_instance');
+				expect(utmInstance).toBeTruthy();
+				expect(decodeURIComponent(utmInstance!)).toContain(origin);
 
-			const utmVersion = url.searchParams.get('utm_n8n_version');
-			expect(utmVersion).toBeTruthy();
-			expect(utmVersion).toMatch(/[0-9]+\.[0-9]+\.[0-9]+/);
+				const utmVersion = url.searchParams.get('utm_n8n_version');
+				expect(utmVersion).toBeTruthy();
+				expect(utmVersion).toMatch(/[0-9]+\.[0-9]+\.[0-9]+/);
 
-			const utmAwc = url.searchParams.get('utm_awc');
-			expect(utmAwc).toBeTruthy();
-			expect(utmAwc).toMatch(/[0-9]+/);
+				const utmAwc = url.searchParams.get('utm_awc');
+				expect(utmAwc).toBeTruthy();
+				expect(utmAwc).toMatch(/[0-9]+/);
 
-			await expect(templatesLink).toHaveAttribute('target', '_blank');
+				await expect(templatesLink).toHaveAttribute('target', '_blank');
+			});
+
+			test('Redirects to website when visiting templates page directly', async ({
+				n8n,
+				setupRequirements,
+			}) => {
+				await setupRequirements(createTemplateHostRequirements());
+				await n8n.navigate.toTemplates();
+
+				await expect(n8n.templates.getPageHeading()).toBeVisible({ timeout: 10000 });
+			});
 		});
 
-		test('Redirects to website when visiting templates page directly', async ({
-			n8n,
-			setupRequirements,
-		}) => {
-			await setupRequirements(createTemplateHostRequirements());
-			await n8n.navigate.toTemplates();
+		test.describe('For a custom template host', () => {
+			const hostname = TEMPLATE_HOST.CUSTOM;
 
-			await expect(n8n.templates.getPageHeading()).toBeVisible({ timeout: 10000 });
+			test.beforeEach(async ({ n8n, setupRequirements }) => {
+				await setupRequirements(createCustomTemplateHostRequirements(hostname));
+				await setupDynamicTemplateRoutes(n8n, hostname);
+			});
+
+			test('can open onboarding flow', async ({ n8n }) => {
+				await preventNavigation(n8n);
+
+				await Promise.all([
+					n8n.page.waitForResponse(`https://${hostname}/api/workflows/templates/${TEMPLATE_ID}`),
+					n8n.page.waitForResponse('**/rest/workflows'),
+					n8n.navigate.toOnboardingTemplate(TEMPLATE_ID),
+				]);
+
+				await expect(n8n.page).toHaveURL(/.*\/workflow\/.*onboardingId=1$/);
+
+				const workflowNameOnboarding = await n8n.canvas.getWorkflowName().getAttribute('title');
+				expect(workflowNameOnboarding).toContain(`Demo: ${onboardingWorkflow.name}`);
+
+				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
+				await expect(n8n.canvas.sticky.getStickies()).toHaveCount(1);
+			});
+
+			test('can import template', async ({ n8n }) => {
+				await preventNavigation(n8n);
+
+				await Promise.all([
+					n8n.page.waitForResponse(`https://${hostname}/api/workflows/templates/${TEMPLATE_ID}`),
+					n8n.page.waitForResponse('**/rest/workflows/**'),
+					n8n.navigate.toTemplateImport(TEMPLATE_ID),
+				]);
+
+				// New workflows redirect to /workflow/<id>?new=true&templateId=1
+				await expect(n8n.page).toHaveURL(/\/workflow\/[a-zA-Z0-9_-]+\?.*templateId=1/);
+				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
+				await expect(n8n.canvas.sticky.getStickies()).toHaveCount(1);
+
+				const workflowName = await n8n.canvas.getWorkflowName().getAttribute('title');
+				expect(workflowName).toContain(onboardingWorkflow.name);
+			});
+
+			test('should save template id with the workflow', async ({ n8n }) => {
+				await n8n.templatesComposer.importFirstTemplate();
+
+				// Execute workflow to trigger autosave (imported templates don't auto-save immediately)
+				await n8n.canvas.hitExecuteWorkflow();
+
+				const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted();
+				const saveResponse = await saveResponsePromise;
+
+				const requestBody = saveResponse.request().postDataJSON();
+				expect(requestBody.meta.templateId).toBe(TEMPLATE_ID);
+			});
+
+			test('can open template with images and hides workflow screenshots', async ({ n8n }) => {
+				await n8n.navigate.toTemplate(TEMPLATE_ID);
+				await expect(n8n.templates.getDescription()).toBeVisible();
+				await expect(n8n.templates.getDescriptionImages()).toHaveCount(1);
+			});
+
+			test('renders search elements correctly', async ({ n8n }) => {
+				await n8n.navigate.toTemplates();
+
+				await expect(n8n.templates.getSearchInput()).toBeVisible();
+				await expect(n8n.templates.getAllCategoriesFilter()).toBeVisible();
+
+				const categoryFilterCount = await n8n.templates.getCategoryFilters().count();
+				expect(categoryFilterCount).toBeGreaterThan(1);
+
+				const templateCardCount = await n8n.templates.getTemplateCards().count();
+				expect(templateCardCount).toBeGreaterThan(0);
+			});
+
+			test('can filter templates by category', async ({ n8n }) => {
+				await n8n.navigate.toTemplates();
+				await expect(n8n.templates.getTemplatesLoadingContainer()).toBeHidden();
+				await expect(n8n.templates.getCategoryFilter(TEST_CATEGORY)).toBeVisible();
+
+				const initialTemplateText = await n8n.templates.getTemplateCountLabel().textContent();
+				const initialTemplateCount = parseCount(initialTemplateText);
+
+				const initialCollectionText = await n8n.templates.getCollectionCountLabel().textContent();
+				const initialCollectionCount = parseCount(initialCollectionText);
+
+				await n8n.templates.clickCategoryFilter(TEST_CATEGORY);
+				await expect(n8n.templates.getTemplatesLoadingContainer()).toBeHidden();
+
+				const finalTemplateText = await n8n.templates.getTemplateCountLabel().textContent();
+				const finalTemplateCount = parseCount(finalTemplateText);
+				expect(finalTemplateCount).toBeLessThan(initialTemplateCount);
+
+				const finalCollectionText = await n8n.templates.getCollectionCountLabel().textContent();
+				const finalCollectionCount = parseCount(finalCollectionText);
+				expect(finalCollectionCount).toBeLessThan(initialCollectionCount);
+			});
+
+			test('should preserve search query in URL', async ({ n8n }) => {
+				await n8n.navigate.toTemplates();
+				await expect(n8n.templates.getTemplatesLoadingContainer()).toBeHidden();
+				await expect(n8n.templates.getCategoryFilter(TEST_CATEGORY)).toBeVisible();
+
+				await n8n.templates.clickCategoryFilter(TEST_CATEGORY);
+				await n8n.templates.getSearchInput().fill('auto');
+
+				await expect(n8n.page).toHaveURL(/\?categories=/);
+				await expect(n8n.page).toHaveURL(/&search=/);
+
+				await n8n.page.reload();
+
+				await expect(n8n.page).toHaveURL(/\?categories=/);
+				await expect(n8n.page).toHaveURL(/&search=/);
+
+				const salesFilterLabel = n8n.templates.getCategoryFilter(TEST_CATEGORY);
+				await expect(salesFilterLabel).toBeChecked();
+				await expect(n8n.templates.getSearchInput()).toHaveValue('auto');
+
+				await expect(n8n.templates.getCategoryFilters().nth(1)).toHaveText('Sales');
+			});
 		});
-	});
-
-	test.describe('For a custom template host', () => {
-		const hostname = TEMPLATE_HOST.CUSTOM;
-
-		test.beforeEach(async ({ n8n, setupRequirements }) => {
-			await setupRequirements(createCustomTemplateHostRequirements(hostname));
-			await setupDynamicTemplateRoutes(n8n, hostname);
-		});
-
-		test('can open onboarding flow', async ({ n8n }) => {
-			await preventNavigation(n8n);
-
-			await Promise.all([
-				n8n.page.waitForResponse(`https://${hostname}/api/workflows/templates/${TEMPLATE_ID}`),
-				n8n.page.waitForResponse('**/rest/workflows'),
-				n8n.navigate.toOnboardingTemplate(TEMPLATE_ID),
-			]);
-
-			await expect(n8n.page).toHaveURL(/.*\/workflow\/.*onboardingId=1$/);
-
-			const workflowNameOnboarding = await n8n.canvas.getWorkflowName().getAttribute('title');
-			expect(workflowNameOnboarding).toContain(`Demo: ${onboardingWorkflow.name}`);
-
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
-			await expect(n8n.canvas.sticky.getStickies()).toHaveCount(1);
-		});
-
-		test('can import template', async ({ n8n }) => {
-			await preventNavigation(n8n);
-
-			await Promise.all([
-				n8n.page.waitForResponse(`https://${hostname}/api/workflows/templates/${TEMPLATE_ID}`),
-				n8n.page.waitForResponse('**/rest/workflows/**'),
-				n8n.navigate.toTemplateImport(TEMPLATE_ID),
-			]);
-
-			// New workflows redirect to /workflow/<id>?new=true&templateId=1
-			await expect(n8n.page).toHaveURL(/\/workflow\/[a-zA-Z0-9_-]+\?.*templateId=1/);
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
-			await expect(n8n.canvas.sticky.getStickies()).toHaveCount(1);
-
-			const workflowName = await n8n.canvas.getWorkflowName().getAttribute('title');
-			expect(workflowName).toContain(onboardingWorkflow.name);
-		});
-
-		test('should save template id with the workflow', async ({ n8n }) => {
-			await n8n.templatesComposer.importFirstTemplate();
-
-			// Execute workflow to trigger autosave (imported templates don't auto-save immediately)
-			await n8n.canvas.hitExecuteWorkflow();
-
-			const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted();
-			const saveResponse = await saveResponsePromise;
-
-			const requestBody = saveResponse.request().postDataJSON();
-			expect(requestBody.meta.templateId).toBe(TEMPLATE_ID);
-		});
-
-		test('can open template with images and hides workflow screenshots', async ({ n8n }) => {
-			await n8n.navigate.toTemplate(TEMPLATE_ID);
-			await expect(n8n.templates.getDescription()).toBeVisible();
-			await expect(n8n.templates.getDescription().locator('img')).toHaveCount(1);
-		});
-
-		test('renders search elements correctly', async ({ n8n }) => {
-			await n8n.navigate.toTemplates();
-
-			await expect(n8n.templates.getSearchInput()).toBeVisible();
-			await expect(n8n.templates.getAllCategoriesFilter()).toBeVisible();
-
-			const categoryFilterCount = await n8n.templates.getCategoryFilters().count();
-			expect(categoryFilterCount).toBeGreaterThan(1);
-
-			const templateCardCount = await n8n.templates.getTemplateCards().count();
-			expect(templateCardCount).toBeGreaterThan(0);
-		});
-
-		test('can filter templates by category', async ({ n8n }) => {
-			await n8n.navigate.toTemplates();
-			await expect(n8n.templates.getTemplatesLoadingContainer()).toBeHidden();
-			await expect(n8n.templates.getCategoryFilter(TEST_CATEGORY)).toBeVisible();
-
-			const initialTemplateText = await n8n.templates.getTemplateCountLabel().textContent();
-			const initialTemplateCount = parseCount(initialTemplateText);
-
-			const initialCollectionText = await n8n.templates.getCollectionCountLabel().textContent();
-			const initialCollectionCount = parseCount(initialCollectionText);
-
-			await n8n.templates.clickCategoryFilter(TEST_CATEGORY);
-			await expect(n8n.templates.getTemplatesLoadingContainer()).toBeHidden();
-
-			const finalTemplateText = await n8n.templates.getTemplateCountLabel().textContent();
-			const finalTemplateCount = parseCount(finalTemplateText);
-			expect(finalTemplateCount).toBeLessThan(initialTemplateCount);
-
-			const finalCollectionText = await n8n.templates.getCollectionCountLabel().textContent();
-			const finalCollectionCount = parseCount(finalCollectionText);
-			expect(finalCollectionCount).toBeLessThan(initialCollectionCount);
-		});
-
-		test('should preserve search query in URL', async ({ n8n }) => {
-			await n8n.navigate.toTemplates();
-			await expect(n8n.templates.getTemplatesLoadingContainer()).toBeHidden();
-			await expect(n8n.templates.getCategoryFilter(TEST_CATEGORY)).toBeVisible();
-
-			await n8n.templates.clickCategoryFilter(TEST_CATEGORY);
-			await n8n.templates.getSearchInput().fill('auto');
-
-			await expect(n8n.page).toHaveURL(/\?categories=/);
-			await expect(n8n.page).toHaveURL(/&search=/);
-
-			await n8n.page.reload();
-
-			await expect(n8n.page).toHaveURL(/\?categories=/);
-			await expect(n8n.page).toHaveURL(/&search=/);
-
-			const salesFilterLabel = n8n.templates.getCategoryFilter(TEST_CATEGORY);
-			await expect(salesFilterLabel).toBeChecked();
-			await expect(n8n.templates.getSearchInput()).toHaveValue('auto');
-
-			await expect(n8n.templates.getCategoryFilters().nth(1)).toHaveText('Sales');
-		});
-	});
-});
+	},
+);

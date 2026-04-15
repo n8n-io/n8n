@@ -27,11 +27,16 @@ export function splitBaseTail(syntaxTree: Tree, userInput: string): [string, str
 	switch (lastNode.type.name) {
 		case '.':
 			return [read(lastNode.parent, userInput).slice(0, -1), ''];
+		case '?.':
+			return [read(lastNode.parent, userInput).slice(0, -2), ''];
 		case 'MemberExpression':
 			return [read(lastNode.parent, userInput), read(lastNode, userInput)];
-		case 'PropertyName':
+		case 'PropertyName': {
 			const tail = read(lastNode, userInput);
-			return [read(lastNode.parent, userInput).slice(0, -(tail.length + 1)), tail];
+			const parentText = read(lastNode.parent, userInput);
+			const accessorLen = parentText.endsWith('?.' + tail) ? 2 : 1;
+			return [parentText.slice(0, -(tail.length + accessorLen)), tail];
+		}
 		default:
 			return ['', ''];
 	}
@@ -376,7 +381,8 @@ export const applyBracketAccessCompletion = (
 	to: number,
 ): void => {
 	const label = applyBracketAccess(completion.label);
-	const completionAtDot = view.state.sliceDoc(from - 1, from) === '.';
+	const completionAtOptionalDot = view.state.sliceDoc(from - 2, from) === '?.';
+	const completionAtDot = !completionAtOptionalDot && view.state.sliceDoc(from - 1, from) === '.';
 
 	view.dispatch({
 		...insertCompletionText(view.state, label, completionAtDot ? from - 1 : from, to),

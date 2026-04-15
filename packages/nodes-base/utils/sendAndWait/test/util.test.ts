@@ -1,3 +1,4 @@
+import type { Request, Response } from 'express';
 import { type MockProxy, mock } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
@@ -278,7 +279,7 @@ describe('Send and Wait utils tests', () => {
 
 			expect(mockSetHeader).toHaveBeenCalledWith(
 				'Content-Security-Policy',
-				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
@@ -364,7 +365,7 @@ describe('Send and Wait utils tests', () => {
 
 			expect(mockSetHeader).toHaveBeenCalledWith(
 				'Content-Security-Policy',
-				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
@@ -504,33 +505,102 @@ describe('Send and Wait utils tests', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
-		it('should return noWebhookResponse if user-agent is Microsoft Teams link preview service (SkypeSpaces)', async () => {
-			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				method: 'GET',
-				headers: {
-					'user-agent': 'SkypeSpaces/1.0a$*+',
-				},
-				query: { approved: 'true' },
-			} as any);
-
+		it('should return noWebhookResponse if user-agent is empty (Microsoft Preview Service)', async () => {
 			const send = jest.fn();
-
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				headers: {},
+				query: { approved: 'true' },
+			} as unknown as Request);
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				send,
-			} as any);
-
-			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
-				const params: { [key: string]: any } = {
-					responseType: 'approval',
-				};
-				return params[parameterName];
-			});
+			} as unknown as Response);
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(parameterName: string, fallbackValue?: any) => {
+					const params: Record<string, unknown> = { responseType: 'approval' };
+					return params[parameterName] ?? fallbackValue;
+				},
+			);
 
 			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
 
-			expect(send).toHaveBeenCalledWith('');
 			expect(result).toEqual({ noWebhookResponse: true });
+			expect(send).toHaveBeenCalledWith('');
 		});
+
+		it.each([
+			'SkypeSpaces/1.0',
+			'Microsoft Teams/1.0',
+			'SkypeUriPreview Preview/1.0',
+			'Preview Service/1.0',
+		])(
+			'should return noWebhookResponse if user-agent contains %s (Microsoft Preview Service)',
+			async (userAgent) => {
+				const send = jest.fn();
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					headers: { 'user-agent': userAgent },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockWebhookFunctions.getResponseObject.mockReturnValue({
+					send,
+				} as unknown as Response);
+				mockWebhookFunctions.getNodeParameter.mockImplementation(
+					(parameterName: string, fallbackValue?: any) => {
+						const params: Record<string, unknown> = { responseType: 'approval' };
+						return params[parameterName] ?? fallbackValue;
+					},
+				);
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(result).toEqual({ noWebhookResponse: true });
+				expect(send).toHaveBeenCalledWith('');
+			},
+		);
+
+		it.each([
+			['freeText' as const, ''],
+			['freeText' as const, 'SkypeUriPreview Preview/1.0'],
+			['customForm' as const, ''],
+			['customForm' as const, 'SkypeUriPreview Preview/1.0'],
+		])(
+			'should not block Microsoft Preview Service when responseType is %s (user-agent: %s)',
+			async (responseType, userAgent) => {
+				const mockRender = jest.fn();
+				const mockSetHeader = jest.fn();
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+					headers: { 'user-agent': userAgent },
+					query: {},
+				} as unknown as Request);
+				mockWebhookFunctions.getResponseObject.mockReturnValue({
+					render: mockRender,
+					setHeader: mockSetHeader,
+				} as unknown as Response);
+				const formFieldParams: Record<string, unknown> =
+					responseType === 'customForm'
+						? {
+								defineForm: 'fields',
+								'formFields.values': [{ label: 'Field 1', fieldType: 'text', requiredField: true }],
+							}
+						: {};
+				mockWebhookFunctions.getNodeParameter.mockImplementation(
+					(parameterName: string, fallbackValue?: any) => {
+						const params: Record<string, unknown> = {
+							responseType,
+							message: 'Test message',
+							options: {},
+							...formFieldParams,
+						};
+						return params[parameterName] ?? fallbackValue;
+					},
+				);
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(result).toEqual({ noWebhookResponse: true });
+				expect(mockRender).toHaveBeenCalled();
+			},
+		);
 	});
 });
 

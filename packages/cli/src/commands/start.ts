@@ -8,7 +8,7 @@ import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
-import { jsonParse, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
@@ -194,6 +194,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const scopedLogger = this.logger.scoped('scaling');
 			scopedLogger.debug('Starting main instance in scaling mode');
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
+
+			if (process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true') {
+				this.needsTaskRunner = false;
+			}
 		}
 
 		await super.init();
@@ -222,9 +226,11 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.initLicense();
 
-		if (isMultiMainEnabled && !this.license.isMultiMainLicensed()) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		if (isMultiMainEnabled) {
+			await this.ensureMultiMainLicensed();
 		}
+
+		await this.initCommunityPackages();
 
 		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
 		// Only run on main instance - workers should not modify auth roles/scopes as they may have
@@ -233,6 +239,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// serializes concurrent callers to prevent duplicate-key crashes.
 		if (this.instanceSettings.instanceType === 'main') {
 			await Container.get(AuthRolesService).init();
+			this.logger.debug('Auth roles service init complete');
+
+			await this.initInstanceSettingsLoader();
+			this.logger.debug('Instance settings loader init complete');
 		}
 
 		Container.get(WaitTracker).init();
@@ -277,6 +287,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
+	private async initInstanceSettingsLoader(): Promise<void> {
+		const { InstanceSettingsLoaderService } = await import(
+			'@/instance-settings-loader/instance-settings-loader.service'
+		);
+		await Container.get(InstanceSettingsLoaderService).init();
+	}
+
 	async initOrchestration() {
 		Container.get(Publisher);
 
@@ -306,6 +323,30 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		} else {
 			this.instanceSettings.markAsLeader();
 		}
+	}
+
+	/**
+	 * Ensures the multi-main license entitlement is present. Followers retry with
+	 * exponential backoff because the leader may not have written the cert to the
+	 * database yet when the follower starts up.
+	 */
+	private async ensureMultiMainLicensed() {
+		if (this.license.isMultiMainLicensed()) return;
+
+		if (!this.instanceSettings.isLeader) {
+			const maxRetries = 5;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				const delayMs = 2 ** attempt * 1000; // 2s, 4s, 8s, 16s, 32s (~62s total)
+				this.logger.warn(
+					`Instance not licensed for multi-main — retrying license check in ${delayMs / 1000}s (attempt ${attempt}/${maxRetries})`,
+				);
+				await sleep(delayMs);
+				await this.license.reload();
+				if (this.license.isMultiMainLicensed()) return;
+			}
+		}
+
+		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 	}
 
 	async run() {

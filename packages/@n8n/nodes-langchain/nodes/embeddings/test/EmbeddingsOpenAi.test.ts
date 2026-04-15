@@ -12,10 +12,14 @@ jest.mock('@langchain/openai');
 
 class MockProxyAgent {}
 
-jest.mock('@n8n/ai-utilities', () => ({
-	logWrapper: jest.fn().mockImplementation(() => jest.fn()),
-	getProxyAgent: jest.fn().mockImplementation(() => new MockProxyAgent()),
-}));
+jest.mock('@n8n/ai-utilities', () => {
+	const actual = jest.requireActual('@n8n/ai-utilities');
+	return {
+		...actual,
+		logWrapper: jest.fn().mockImplementation(() => jest.fn()),
+		getProxyAgent: jest.fn().mockImplementation(() => new MockProxyAgent()),
+	};
+});
 
 const MockedOpenAIEmbeddings = jest.mocked(OpenAIEmbeddings);
 const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);

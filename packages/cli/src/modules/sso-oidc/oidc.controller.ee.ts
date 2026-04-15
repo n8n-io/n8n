@@ -9,11 +9,13 @@ import { Request, Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { OidcInstanceSettingsLoader } from '@/instance-settings-loader/loaders/oidc.instance-settings-loader';
 import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from './constants';
 import { OidcService } from './oidc.service.ee';
+import { renderOidcTestFailure, renderOidcTestSuccess } from './views/oidc-test-result';
 
 @RestController('/sso/oidc')
 export class OidcController {
@@ -23,6 +25,7 @@ export class OidcController {
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly oidcSettingsLoader: OidcInstanceSettingsLoader,
 	) {}
 
 	@Get('/config')
@@ -44,9 +47,37 @@ export class OidcController {
 		_res: Response,
 		@Body payload: OidcConfigDto,
 	) {
+		if (this.oidcSettingsLoader.isConfiguredByEnv()) {
+			throw new BadRequestError(
+				'OIDC configuration is managed via environment variables and cannot be modified through the UI',
+			);
+		}
 		await this.oidcService.updateConfig(payload);
 		const config = this.oidcService.getRedactedConfig();
 		return config;
+	}
+
+	@Post('/config/test')
+	@Licensed('feat:oidc')
+	@GlobalScope('oidc:manage')
+	async testConnection(_req: AuthenticatedRequest, res: Response) {
+		const authorization = await this.oidcService.generateTestLoginUrl();
+		const { samesite, secure } = this.globalConfig.auth.cookie;
+
+		res.cookie(OIDC_STATE_COOKIE_NAME, authorization.state, {
+			maxAge: 15 * Time.minutes.toMilliseconds,
+			httpOnly: true,
+			sameSite: samesite,
+			secure,
+		});
+		res.cookie(OIDC_NONCE_COOKIE_NAME, authorization.nonce, {
+			maxAge: 15 * Time.minutes.toMilliseconds,
+			httpOnly: true,
+			sameSite: samesite,
+			secure,
+		});
+
+		return { url: authorization.url.toString() };
 	}
 
 	@Get('/login', { skipAuth: true })
@@ -70,7 +101,7 @@ export class OidcController {
 		res.redirect(authorization.url.toString());
 	}
 
-	@Get('/callback', { skipAuth: true })
+	@Get('/callback', { skipAuth: true, usesTemplates: true })
 	@Licensed('feat:oidc')
 	async callbackHandler(req: AuthlessRequest, res: Response) {
 		const fullUrl = `${this.urlService.getInstanceBaseUrl()}${req.originalUrl}`;
@@ -89,12 +120,24 @@ export class OidcController {
 			throw new BadRequestError('Invalid nonce');
 		}
 
-		const user = await this.oidcService.loginUser(callbackUrl, state, nonce);
+		const stateInfo = this.oidcService.verifyState(state);
 
 		res.clearCookie(OIDC_STATE_COOKIE_NAME);
 		res.clearCookie(OIDC_NONCE_COOKIE_NAME);
+
+		if (stateInfo.testMode) {
+			try {
+				const result = await this.oidcService.processTestCallback(callbackUrl, state, nonce);
+				return res.send(renderOidcTestSuccess(result));
+			} catch (error) {
+				return res.send(renderOidcTestFailure(error));
+			}
+		}
+
+		const user = await this.oidcService.loginUser(callbackUrl, state, nonce);
+
 		this.authService.issueCookie(res, user, true, req.browserId);
 
-		res.redirect('/');
+		return res.redirect('/');
 	}
 }

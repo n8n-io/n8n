@@ -9,6 +9,7 @@ yarn.lock
 google-generated-credentials.json
 _START_PACKAGE
 .env
+.env.local
 .vscode/*
 !.claude
 !.vscode/extensions.json
@@ -16,6 +17,7 @@ _START_PACKAGE
 .idea
 nodelinter.config.json
 **/package-lock.json
+!.github/scripts/package-lock.json
 packages/**/.turbo
 .turbo
 *.tsbuildinfo
@@ -40,6 +42,7 @@ compiled
 docker-build-manifest.json
 packages/cli/src/modules/my-feature
 .secrets
+act-event.json
 packages/testing/**/.cursor/rules/
 .venv
 .ruff_cache
@@ -47,9 +50,16 @@ __pycache__
 packages/cli/THIRD_PARTY_LICENSES.md
 .coverage
 .nyc_output
+coverage-gaps.json
 packages/cli/src/commands/export/outputs
 *.bak
 .data
 .data/
 .claude/settings.local.json
+.claude/plans/
+.cursor/plans/
+.superset
+.conductor
+.n8n
 lefthook-local.yml
+.playwright-mcp

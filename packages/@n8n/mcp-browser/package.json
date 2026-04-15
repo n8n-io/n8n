@@ -1,0 +1,48 @@
+{
+  "name": "@n8n/mcp-browser",
+  "version": "0.3.0",
+  "description": "Browser automation MCP tools built on Playwright, WebDriver BiDi, and safaridriver",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "mcp-browser": "dist/server.js"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "jest",
+    "test:unit": "jest",
+    "test:dev": "jest --watch"
+  },
+  "dependencies": {
+    "@joplin/turndown-plugin-gfm": "1.0.64",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "@mozilla/readability": "^0.6.0",
+    "jsdom": "^23.0.1",
+    "nanoid": "catalog:",
+    "playwright-core": "catalog:",
+    "selenium-webdriver": "4.39.0",
+    "turndown": "^7.2.0",
+    "ws": "8.17.1",
+    "picocolors": "catalog:",
+    "yargs-parser": "21.1.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/turndown": "^5.0.6",
+    "@types/ws": "^8.18.1",
+    "@types/yargs-parser": "21.0.0"
+  }
+}

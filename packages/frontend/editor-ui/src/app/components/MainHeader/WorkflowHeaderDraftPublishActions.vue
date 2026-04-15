@@ -29,7 +29,7 @@ import { useRouter } from 'vue-router';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import {
 	getLastPublishedVersion,
-	generateVersionName,
+	generateVersionLabelFromId,
 } from '@/features/workflows/workflowHistory/utils';
 import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
@@ -52,7 +52,6 @@ const props = defineProps<{
 	id: IWorkflowDb['id'];
 	tags: readonly string[];
 	name: IWorkflowDb['name'];
-	meta: IWorkflowDb['meta'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
 	isNewWorkflow: boolean;
@@ -105,7 +104,7 @@ type WorkflowPublishState =
 const workflowPublishState = computed((): WorkflowPublishState => {
 	const hasBeenPublished = !!activeVersion.value;
 	const hasChanges =
-		workflowsStore.workflow.versionId !== activeVersion.value?.versionId ||
+		workflowDocumentStore.value?.versionId !== activeVersion.value?.versionId ||
 		uiStore.hasUnsavedWorkflowChanges;
 
 	// Not published states
@@ -309,7 +308,7 @@ const activeVersionName = computed(() => {
 	if (!activeVersion.value) {
 		return '';
 	}
-	return activeVersion.value.name ?? generateVersionName(activeVersion.value.versionId);
+	return activeVersion.value.name ?? generateVersionLabelFromId(activeVersion.value.versionId);
 });
 
 const latestPublishDate = computed(() => {
@@ -338,7 +337,7 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 			id: VERSION_ACTIONS.NAME_VERSION,
 			label: i18n.baseText('generic.nameVersion'),
 			shortcut: { metaKey: true, keys: ['S'] },
-			disabled: !hasUpdatePermission.value || !workflowsStore.workflow.versionId,
+			disabled: !hasUpdatePermission.value || !workflowDocumentStore.value?.versionId,
 		});
 	}
 
@@ -362,14 +361,14 @@ const onNameVersion = async () => {
 		}
 	}
 
-	const versionId = workflowsStore.workflow.versionId;
-	const versionData = workflowsStore.versionData;
+	const currentVersionId = workflowDocumentStore.value?.versionId ?? '';
+	const currentVersionData = workflowDocumentStore.value?.versionData;
 
 	const nameVersionEventBus = createEventBus<WorkflowVersionFormModalEventBusEvents>();
 	const modalData = ref({
-		versionId,
-		versionName: versionData?.name ?? undefined,
-		description: versionData?.description ?? undefined,
+		versionId: currentVersionId,
+		versionName: currentVersionData?.name ?? undefined,
+		description: currentVersionData?.description ?? undefined,
 		modalTitle: i18n.baseText('workflowHistory.nameVersionModal.title'),
 		submitButtonLabel: i18n.baseText('workflowHistory.nameVersionModal.confirmButton'),
 		submitting: false,
@@ -382,13 +381,13 @@ const onNameVersion = async () => {
 			modalData.value.submitting = true;
 
 			try {
-				await workflowHistoryStore.updateWorkflowHistoryVersion(props.id, versionId, {
+				await workflowHistoryStore.updateWorkflowHistoryVersion(props.id, currentVersionId, {
 					name: submitData.name,
 					description: submitData.description,
 				});
 
-				workflowsStore.setWorkflowVersionData({
-					versionId,
+				workflowDocumentStore.value?.setVersionData({
+					versionId: currentVersionId,
 					name: submitData.name,
 					description: submitData.description,
 				});
@@ -470,14 +469,14 @@ useKeybindings({
 		disabled: () =>
 			!isNamedVersionsEnabled.value ||
 			!hasUpdatePermission.value ||
-			!workflowsStore.workflow.versionId,
+			!workflowDocumentStore.value?.versionId,
 		run: async () => {
 			await onNameVersion();
 		},
 	},
 	'ctrl+u': {
 		disabled: () =>
-			!activeVersion.value || !hasPublishPermission.value || collaborationReadOnly.value,
+			!activeVersion.value || !hasUnpublishPermission.value || collaborationReadOnly.value,
 		run: onUnpublish,
 	},
 });
@@ -578,7 +577,6 @@ defineExpose({
 			:name="name"
 			:tags="tags"
 			:current-folder="currentFolder"
-			:meta="meta"
 		/>
 	</div>
 </template>

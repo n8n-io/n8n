@@ -6,14 +6,16 @@ import { deepCopy } from 'n8n-workflow';
 import { assert } from '@n8n/utils/assert';
 import { replaceCode } from '@/features/ai/assistant/assistant.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { codeNodeEditorEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import type { IUpdateInformation } from '@/Interface';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import AiUpdatedCodeMessage from '@/app/components/AiUpdatedCodeMessage.vue';
 
 export interface UseCodeDiffOptions {
@@ -24,7 +26,6 @@ export interface UseCodeDiffOptions {
 
 export function useCodeDiff(options: UseCodeDiffOptions) {
 	const rootStore = useRootStore();
-	const workflowsStore = useWorkflowsStore();
 	const ndvStore = useNDVStore();
 	const locale = useI18n();
 
@@ -35,11 +36,7 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 		};
 	}>({});
 
-	function updateParameters(
-		workflowState: WorkflowState,
-		nodeName: string,
-		parameters: INodeParameters,
-	) {
+	function updateParameters(workflowId: string, nodeName: string, parameters: INodeParameters) {
 		if (ndvStore.activeNodeName === nodeName) {
 			Object.keys(parameters).forEach((key) => {
 				const update: IUpdateInformation = {
@@ -51,7 +48,8 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 				ndvEventBus.emit('updateParameterValue', update);
 			});
 		} else {
-			workflowState.setNodeParameters(
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setNodeParameters(
 				{
 					name: nodeName,
 					value: parameters,
@@ -84,7 +82,7 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 		}
 	}
 
-	async function applyCodeDiff(workflowState: WorkflowState, index: number) {
+	async function applyCodeDiff(workflowId: string, index: number) {
 		const codeDiffMessage = options.chatMessages.value[index];
 		if (!codeDiffMessage || codeDiffMessage.type !== 'code-diff') {
 			throw new Error('No code diff to apply');
@@ -100,13 +98,13 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 			codeDiff.replacing = true;
 			const suggestionId = codeDiff.suggestionId;
 
-			const workflowObject = workflowsStore.workflowObject;
-			const activeNode = workflowObject.getNode(nodeName);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			const activeNode = workflowDocumentStore.getNodeByName(nodeName);
 			assert(activeNode);
 
 			const cached = suggestions.value[suggestionId];
 			if (cached) {
-				updateParameters(workflowState, activeNode.name, cached.suggested);
+				updateParameters(workflowId, activeNode.name, cached.suggested);
 			} else {
 				const { parameters: suggested } = await replaceCode(rootStore.restApiContext, {
 					suggestionId: codeDiff.suggestionId,
@@ -117,7 +115,7 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 					previous: getRelevantParameters(activeNode.parameters, Object.keys(suggested)),
 					suggested,
 				};
-				updateParameters(workflowState, activeNode.name, suggested);
+				updateParameters(workflowId, activeNode.name, suggested);
 			}
 
 			codeDiff.replaced = true;
@@ -130,7 +128,7 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 		codeDiff.replacing = false;
 	}
 
-	async function undoCodeDiff(workflowState: WorkflowState, index: number) {
+	async function undoCodeDiff(workflowId: string, index: number) {
 		const codeDiffMessage = options.chatMessages.value[index];
 		if (!codeDiffMessage || codeDiffMessage.type !== 'code-diff') {
 			throw new Error('No code diff to apply');
@@ -148,12 +146,12 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 			const suggestion = suggestions.value[suggestionId];
 			assert(suggestion);
 
-			const workflowObject = workflowsStore.workflowObject;
-			const activeNode = workflowObject.getNode(nodeName);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			const activeNode = workflowDocumentStore.getNodeByName(nodeName);
 			assert(activeNode);
 
 			const suggested = suggestion.previous;
-			updateParameters(workflowState, activeNode.name, suggested);
+			updateParameters(workflowId, activeNode.name, suggested);
 
 			codeDiff.replaced = false;
 			codeNodeEditorEventBus.emit('codeDiffApplied');

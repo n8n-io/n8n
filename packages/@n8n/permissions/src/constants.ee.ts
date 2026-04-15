@@ -41,14 +41,15 @@ export const RESOURCES = {
 		'deactivate',
 		'publish',
 		'unpublish',
+		'updateRedactionSetting',
 		...DEFAULT_OPERATIONS,
 	] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
-	insights: ['list'] as const,
+	insights: ['list', 'read'] as const,
 	oidc: ['manage'] as const,
 	provisioning: ['manage'] as const,
 	dataTable: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
-	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
+	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage'] as const,
 	mcp: ['manage', 'oauth'] as const,
@@ -58,6 +59,8 @@ export const RESOURCES = {
 	breakingChanges: ['list'] as const,
 	apiKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
+	instanceAi: ['message', 'manage', 'gateway'] as const,
+	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
@@ -72,9 +75,11 @@ export const API_KEY_RESOURCES = {
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
+	communityPackage: ['install', 'uninstall', 'update', 'list'] as const,
 	dataTable: ['create', 'read', 'update', 'delete', 'list'] as const,
 	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert'] as const,
 	folder: ['list'] as const,
+	insights: ['read'] as const,
 } as const;
 
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
@@ -89,4 +94,24 @@ export const PERSONAL_SPACE_PUBLISHING_SETTING = {
 export const PERSONAL_SPACE_SHARING_SETTING = {
 	key: 'security.personalSpaceSharing',
 	scopes: ['workflow:share', 'credential:share'],
+};
+
+export const EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING = {
+	key: 'externalSecrets.systemRolesEnabled',
+	roleScopeMap: {
+		[PROJECT_ADMIN_ROLE_SLUG]: [
+			'externalSecretsProvider:create',
+			'externalSecretsProvider:read',
+			'externalSecretsProvider:update',
+			'externalSecretsProvider:delete',
+			'externalSecretsProvider:list',
+			'externalSecretsProvider:sync',
+			'externalSecret:list',
+		],
+		[PROJECT_EDITOR_ROLE_SLUG]: [
+			'externalSecretsProvider:read',
+			'externalSecretsProvider:list',
+			'externalSecret:list',
+		],
+	} as Record<string, string[]>,
 };

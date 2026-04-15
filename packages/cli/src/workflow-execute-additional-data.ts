@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
@@ -47,6 +47,7 @@ import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
@@ -310,6 +311,10 @@ async function startExecution(
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		// Propagate the root execution mode so nested subworkflows retain the original
+		// mode (e.g. 'manual') even though their own WorkflowExecute runs as 'integrated'
+		additionalDataIntegrated.rootExecutionMode =
+			additionalData.rootExecutionMode ?? options.executionMode;
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}
@@ -481,6 +486,8 @@ export async function getBase({
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,
+		workflowId,
+		projectId,
 		setExecutionStatus,
 		variables,
 		workflowSettings,
@@ -535,6 +542,11 @@ export async function getBase({
 			eventService.emit(eventName, payload),
 		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
 	};
+
+	const ssrfConfig = Container.get(SsrfProtectionConfig);
+	if (ssrfConfig.enabled) {
+		additionalData.ssrfBridge = Container.get(SsrfProtectionService);
+	}
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {
 		// @ts-expect-error Adding an index signature `[key: string]: unknown`

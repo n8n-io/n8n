@@ -1,0 +1,84 @@
+name: 'Release: Publish: Post-release'
+
+on:
+  workflow_call:
+    inputs:
+      track:
+        description: 'Release track acquired from determine-version-info. (e.g. stable, beta)'
+        required: true
+        type: string
+      previous_version:
+        description: 'Previous release version acquired from determine-version-info. (e.g. 2.9.2, 1.123.22)'
+        required: true
+        type: string
+      version:
+        description: 'Release version acquired from determine-version-info. (e.g. 2.9.3, 1.123.23)'
+        required: true
+        type: string
+      bump:
+        description: 'Release bump size acquired from determine-version-info. (e.g. minor, patch)'
+        required: true
+        type: string
+      new_stable_version:
+        description: 'New stable version acquired from determine-version-info. (e.g. 2.9.3, null (on patch releases))'
+        required: true
+        type: string
+      release_type:
+        description: 'Release type acquired from determine-version-info. (stable or rc)'
+        required: true
+        type: string
+
+jobs:
+  push-new-release-to-channel:
+    name: Push new release to channel
+    if: inputs.release_type != 'rc'
+    uses: ./.github/workflows/release-push-to-channel.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
+      release-channel: ${{ inputs.track }}
+
+  promote-previous-beta-to-stable:
+    name: Promote previous beta to stable
+    if: |
+      inputs.release_type != 'rc' &&
+      inputs.bump == 'minor'
+    uses: ./.github/workflows/release-push-to-channel.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.new_stable_version }}
+      release-channel: stable
+
+  promote-previous-minor-github-release-to-latest:
+    name: Promote previous minor Github Release to latest
+    if: |
+      inputs.release_type != 'rc' &&
+      inputs.bump == 'minor'
+    uses: ./.github/workflows/release-promote-github-release.yml
+    secrets: inherit
+    with:
+      version-tag: 'n8n@${{ inputs.new_stable_version }}'
+
+  ensure-release-candidate-branches:
+    name: 'Ensure release candidate branches'
+    if: |
+      inputs.release_type != 'rc'
+    uses: ./.github/workflows/util-ensure-release-candidate-branches.yml
+    secrets: inherit
+
+  populate-cloud-with-releases:
+    name: 'Populate cloud database with releases'
+    uses: ./.github/workflows/release-populate-cloud-with-releases.yml
+    with:
+      previous-version: ${{ inputs.previous_version }}
+      version: ${{ inputs.version }}
+      experimental: ${{ inputs.release_type == 'rc' }}
+    secrets: inherit
+
+  send-version-release-notification:
+    name: 'Send version release notifications'
+    uses: ./.github/workflows/release-version-release-notification.yml
+    with:
+      previous-version: ${{ inputs.previous_version }}
+      version: ${{ inputs.version }}
+    secrets: inherit
