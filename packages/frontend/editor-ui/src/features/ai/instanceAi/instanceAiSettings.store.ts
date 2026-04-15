@@ -386,7 +386,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	async function refreshModuleSettings(): Promise<void> {
-		const promises: Promise<unknown>[] = [settingsStore.getModuleSettings()];
+		const promises: Array<Promise<unknown>> = [settingsStore.getModuleSettings()];
 		if (!preferences.value) {
 			promises.push(
 				fetchPreferences(rootStore.restApiContext).then((p) => {
