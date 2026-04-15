@@ -253,6 +253,10 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
+	protected shouldEmitResumedEvent(_req: WaitingWebhookRequest): boolean {
+		return true;
+	}
+
 	private emitExecutionResumedEvent(execution: IExecutionResponse, executionId: string) {
 		const resumeSource: 'webhook' | 'form' = this.includeForms ? 'form' : 'webhook';
 		this.eventService.emit('execution-resumed', {
@@ -336,7 +340,9 @@ export class WaitingWebhooks implements IWebhookManager {
 
 			const runExecutionData = execution.data;
 
-			this.emitExecutionResumedEvent(execution, executionId);
+			if (this.shouldEmitResumedEvent(req)) {
+				this.emitExecutionResumedEvent(execution, executionId);
+			}
 
 			return await new Promise((resolve, reject) => {
 				void WebhookHelpers.executeWebhook(
