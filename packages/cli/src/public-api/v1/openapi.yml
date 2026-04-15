@@ -50,6 +50,8 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.yml'
   /credentials/{id}:
     $ref: './handlers/credentials/spec/paths/credentials.id.yml'
+  /credentials/{id}/test:
+    $ref: './handlers/credentials/spec/paths/credentials.id.test.yml'
   /credentials/schema/{credentialTypeName}:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
   /credentials/{id}/transfer:

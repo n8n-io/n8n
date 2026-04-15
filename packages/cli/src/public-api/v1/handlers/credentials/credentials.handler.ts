@@ -5,10 +5,12 @@ import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type express from 'express';
+import type { ICredentialsDecrypted } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
@@ -107,6 +109,34 @@ export = {
 			}
 
 			return res.json(sanitizeCredentials(credential as CredentialsEntity));
+		},
+	],
+	testCredential: [
+		publicApiScope('credential:read'),
+		projectScope('credential:read', 'credential'),
+		async (
+			req: CredentialRequest.Test,
+			res: express.Response<{ status: 'OK' | 'Error'; message: string } | { message: string }>,
+		): Promise<
+			express.Response<{ status: 'OK' | 'Error'; message: string } | { message: string }>
+		> => {
+			const { id: credentialId } = req.params;
+			const storedCredential = await getCredential(credentialId);
+			if (!storedCredential) {
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			const credentialsService = Container.get(CredentialsService);
+			const decryptedData = credentialsService.decrypt(storedCredential as CredentialsEntity, true);
+			const mergedCredentials: ICredentialsDecrypted = {
+				id: storedCredential.id,
+				name: storedCredential.name,
+				type: storedCredential.type,
+				data: decryptedData,
+			};
+
+			const credentialTestResult = await credentialsService.test(req.user.id, mergedCredentials);
+			return res.json(credentialTestResult);
 		},
 	],
 	createCredential: [

@@ -4,6 +4,7 @@ import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	type ICredentialDataDecryptedObject,
@@ -11,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
 	affixRoleToSaveCredential,
@@ -406,6 +408,44 @@ describe('GET /credentials/:id', () => {
 
 	test('should return 404 if credential does not exist', async () => {
 		const response = await authOwnerAgent.get('/credentials/123');
+
+		expect(response.statusCode).toBe(404);
+	});
+});
+
+describe('POST /credentials/:id/test', () => {
+	const mockCredentialsTester = mock<CredentialsTester>();
+	Container.set(CredentialsTester, mockCredentialsTester);
+
+	afterEach(() => {
+		mockCredentialsTester.testCredentials.mockClear();
+	});
+
+	test('should test credential with stored data when body is empty', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+
+		const credential = dbCredential();
+		const savedCredential = await saveCredential(credential, { user: owner });
+
+		const response = await authOwnerAgent.post(`/credentials/${savedCredential.id}/test`);
+
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials).toHaveBeenCalledWith(
+			owner.id,
+			savedCredential.type,
+			expect.objectContaining({
+				id: savedCredential.id,
+				type: savedCredential.type,
+				data: credential.data,
+			}),
+		);
+	});
+
+	test('should return 404 if credential does not exist', async () => {
+		const response = await authOwnerAgent.post('/credentials/123/test');
 
 		expect(response.statusCode).toBe(404);
 	});

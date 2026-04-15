@@ -500,6 +500,29 @@ describe('Public API endpoints with API key scopes', () => {
 					expect(response.statusCode).toBe(403);
 				});
 			});
+			describe('POST /credentials/:id/test', () => {
+				test('should test credential when API key has "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:read'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.post(`/credentials/${savedCredential.id}/test`);
+
+					expect(response.statusCode).toBe(200);
+				});
+
+				test('should fail to test credential when API key doesn\'t have "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['tag:create'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.post(`/credentials/${savedCredential.id}/test`);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
 			describe('DELETE /credentials/:id', () => {
 				test('should delete credential when API key has "credential:delete" scope', async () => {
 					const owner = await createOwnerWithApiKey({ scopes: ['credential:delete'] });
