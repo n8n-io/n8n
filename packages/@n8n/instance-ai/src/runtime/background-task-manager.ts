@@ -14,6 +14,8 @@ export interface ManagedBackgroundTask {
 	startedAt: number;
 	abortController: AbortController;
 	corrections: string[];
+	/** Callback resolved when a new correction is queued. Re-created by the consumer after each notification. */
+	onCorrectionQueued?: () => void;
 	messageGroupId?: string;
 	outcome?: Record<string, unknown>;
 	plannedTaskId?: string;
@@ -34,6 +36,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 	run: (
 		signal: AbortSignal,
 		drainCorrections: () => string[],
+		waitForCorrection: () => Promise<void>,
 	) => Promise<string | BackgroundTaskResult>;
 	onLimitReached?: (errorMessage: string) => void;
 	onCompleted?: (task: ManagedBackgroundTask) => void | Promise<void>;
@@ -71,6 +74,11 @@ export class BackgroundTaskManager {
 		if (!task || task.threadId !== threadId) return 'task-not-found';
 		if (task.status !== 'running') return 'task-completed';
 		task.corrections.push(correction);
+		if (task.onCorrectionQueued) {
+			const notify = task.onCorrectionQueued;
+			task.onCorrectionQueued = undefined;
+			notify();
+		}
 		return 'queued';
 	}
 
@@ -146,8 +154,21 @@ export class BackgroundTaskManager {
 			return pending;
 		};
 
+		const waitForCorrection = async (): Promise<void> =>
+			await new Promise<void>((resolve) => {
+				if (task.corrections.length > 0) {
+					resolve();
+					return;
+				}
+				task.onCorrectionQueued = resolve;
+			});
+
 		try {
-			const raw = await options.run(task.abortController.signal, drainCorrections);
+			const raw = await options.run(
+				task.abortController.signal,
+				drainCorrections,
+				waitForCorrection,
+			);
 			task.status = 'completed';
 			task.result = typeof raw === 'string' ? raw : raw.text;
 			task.outcome = typeof raw === 'string' ? undefined : raw.outcome;

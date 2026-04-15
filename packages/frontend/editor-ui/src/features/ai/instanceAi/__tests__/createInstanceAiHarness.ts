@@ -165,10 +165,17 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	const isStreaming = ref(false);
 	const resourceRegistry = ref(new Map<string, ResourceEntry>());
 
+	const threadMetadata = new Map<string, Record<string, unknown>>();
+
 	const store = reactive({
 		messages,
 		isStreaming,
 		resourceRegistry,
+		currentThreadId: 'thread-1',
+		getThreadMetadata: (threadId: string) => threadMetadata.get(threadId),
+		updateThreadMetadata: async (threadId: string, metadata: Record<string, unknown>) => {
+			threadMetadata.set(threadId, { ...threadMetadata.get(threadId), ...metadata });
+		},
 	});
 
 	// --- Mock route ---
@@ -199,6 +206,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		workflowExecutions: executionTracking.workflowExecutions,
 		activeWorkflowId: preview.activeWorkflowId,
 		getBufferedEvents: executionTracking.getBufferedEvents,
+		clearEventLog: executionTracking.clearEventLog,
 		relay: (event) => relayedEvents.push(event),
 	});
 
@@ -284,8 +292,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 						...msg.agentTree!.toolCalls,
 						makeToolCall({
 							toolCallId: tcId,
-							toolName: 'run-workflow',
-							args: { workflowId },
+							toolName: 'executions',
+							args: { action: 'run', workflowId },
 							result: { executionId },
 						}),
 					],
@@ -302,8 +310,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: tcId,
-								toolName: 'run-workflow',
-								args: { workflowId },
+								toolName: 'executions',
+								args: { action: 'run', workflowId },
 								result: { executionId },
 							}),
 						],
@@ -330,8 +338,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 						}),
 						makeToolCall({
 							toolCallId: `tc-run-${++toolCallCounter}`,
-							toolName: 'run-workflow',
-							args: { workflowId },
+							toolName: 'executions',
+							args: { action: 'run', workflowId },
 							result: { executionId, status },
 						}),
 					],

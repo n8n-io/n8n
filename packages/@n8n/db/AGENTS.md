@@ -2,6 +2,13 @@
 
 Extra information specific to the `@n8n/db` package.
 
+## Creating Migrations
+
+Migration files are named `{TIMESTAMP}-{DescriptiveName}.ts`. The timestamp
+must be the **exact** Unix millisecond timestamp at the time of creation — do
+not round or fabricate a value. Use `Date.now()` in a Node REPL or
+`date +%s%3N` in a shell (GNU `date`) to generate it.
+
 ## Migration DSL
 
 ### UUID Primary Keys

@@ -8,7 +8,7 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Project, User } from '@n8n/db';
+import type { Project, User, UserRepository } from '@n8n/db';
 import type { OwnershipService } from '@/services/ownership.service';
 
 const BASE_URL = 'http://gateway.test';
@@ -33,6 +33,7 @@ function makeService({
 	baseUrl = BASE_URL as string | null,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
+	userRepository = mock<UserRepository>({ findOneBy: jest.fn().mockResolvedValue(null) }),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
@@ -51,6 +52,7 @@ function makeService({
 		licenseState,
 		instanceSettings,
 		ownershipService,
+		userRepository,
 	);
 }
 
@@ -192,6 +194,60 @@ describe('AiGatewayService', () => {
 			);
 		});
 
+		it('includes userEmail and userName in token body when user exists', async () => {
+			const userRepository = mock<UserRepository>({
+				findOneBy: jest
+					.fn()
+					.mockResolvedValue(
+						mock<User>({ email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' }),
+					),
+			});
+			mockConfigThenToken(fetchMock);
+			const service = makeService({ userRepository });
+
+			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
+
+			expect(fetchMock).toHaveBeenNthCalledWith(
+				2,
+				`${BASE_URL}/v1/gateway/credentials`,
+				expect.objectContaining({
+					body: JSON.stringify({
+						licenseCert: LICENSE_CERT,
+						userEmail: 'alice@example.com',
+						userName: 'Alice Smith',
+					}),
+				}),
+			);
+		});
+
+		it('omits userName from token body when user has no first or last name', async () => {
+			const userRepository = mock<UserRepository>({
+				findOneBy: jest
+					.fn()
+					.mockResolvedValue(
+						mock<User>({ email: 'alice@example.com', firstName: '', lastName: '' }),
+					),
+			});
+			mockConfigThenToken(fetchMock);
+			const service = makeService({ userRepository });
+
+			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
+
+			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+			expect(body.userEmail).toBe('alice@example.com');
+			expect(body.userName).toBeUndefined();
+		});
+
+		it('omits userEmail and userName from token body when user is not found', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService(); // userRepository returns null by default
+
+			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
+
+			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+			expect(body).toEqual({ licenseCert: LICENSE_CERT });
+		});
+
 		it('caches config and token — second call makes no additional fetches', async () => {
 			mockConfigThenToken(fetchMock);
 			const service = makeService();
@@ -318,13 +374,13 @@ describe('AiGatewayService', () => {
 		});
 	});
 
-	describe('getCreditsRemaining()', () => {
+	describe('getWallet()', () => {
 		it('throws UserError when baseUrl is not configured', async () => {
 			const service = makeService({ baseUrl: null });
-			await expect(service.getCreditsRemaining(USER_ID)).rejects.toThrow(UserError);
+			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
 
-		it('returns creditsQuota and creditsRemaining from gateway', async () => {
+		it('returns budget and balance from gateway wallet', async () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
@@ -332,13 +388,13 @@ describe('AiGatewayService', () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ creditsQuota: 10, creditsRemaining: 7 }),
+					json: jest.fn().mockResolvedValue({ budget: 10, balance: 7 }),
 				});
 			const service = makeService();
 
-			const result = await service.getCreditsRemaining(USER_ID);
+			const result = await service.getWallet(USER_ID);
 
-			expect(result).toEqual({ creditsQuota: 10, creditsRemaining: 7 });
+			expect(result).toEqual({ budget: 10, balance: 7 });
 		});
 
 		it('sends JWT Bearer token in Authorization header to credits endpoint', async () => {
@@ -349,11 +405,11 @@ describe('AiGatewayService', () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ creditsQuota: 10, creditsRemaining: 7 }),
+					json: jest.fn().mockResolvedValue({ budget: 10, balance: 7 }),
 				});
 			const service = makeService();
 
-			await service.getCreditsRemaining(USER_ID);
+			await service.getWallet(USER_ID);
 
 			expect(fetchMock).toHaveBeenNthCalledWith(
 				1,
@@ -363,13 +419,13 @@ describe('AiGatewayService', () => {
 					body: JSON.stringify({ licenseCert: LICENSE_CERT }),
 				}),
 			);
-			expect(fetchMock).toHaveBeenNthCalledWith(2, `${BASE_URL}/v1/gateway/credits`, {
+			expect(fetchMock).toHaveBeenNthCalledWith(2, `${BASE_URL}/v1/gateway/wallet`, {
 				method: 'GET',
 				headers: { Authorization: 'Bearer mock-jwt' },
 			});
 		});
 
-		it('throws UserError when credits gateway returns non-ok status', async () => {
+		it('throws UserError when wallet gateway returns non-ok status', async () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
@@ -377,7 +433,7 @@ describe('AiGatewayService', () => {
 				})
 				.mockResolvedValueOnce({ ok: false, status: 429 });
 			const service = makeService();
-			await expect(service.getCreditsRemaining(USER_ID)).rejects.toThrow(UserError);
+			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
 
 		it('throws UserError when gateway returns invalid response shape', async () => {
@@ -388,18 +444,16 @@ describe('AiGatewayService', () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ creditsQuota: 'not-a-number' }),
+					json: jest.fn().mockResolvedValue({ budget: 'not-a-number' }),
 				});
 			const service = makeService();
-			await expect(service.getCreditsRemaining(USER_ID)).rejects.toThrow(UserError);
+			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
 	});
 
 	describe('getUsage()', () => {
 		const MOCK_USAGE_RESPONSE = {
-			entries: [
-				{ provider: 'google', model: 'gemini-pro', timestamp: 1700000000, creditsDeducted: 2 },
-			],
+			entries: [{ provider: 'google', model: 'gemini-pro', timestamp: 1700000000, cost: 2 }],
 			total: 1,
 		};
 

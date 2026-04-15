@@ -76,6 +76,10 @@ const isInstanceRoleProvisioningEnabled = computed(
 	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
 );
 
+const isExpressionMappingEnabled = computed(
+	() => userRoleProvisioningStore.provisioningConfig?.scopesUseExpressionMapping || false,
+);
+
 const isSSOEnabled = computed(() => !!ssoStore.isSamlLoginEnabled || !!ssoStore.isOidcLoginEnabled);
 
 onMounted(async () => {
@@ -462,7 +466,15 @@ const onSearch = (value: string) => {
 				</template>
 			</I18nT>
 		</N8nNotice>
-		<div v-if="isInstanceRoleProvisioningEnabled" :class="$style.container">
+		<div v-if="isExpressionMappingEnabled" :class="$style.container">
+			<N8nAlert
+				type="info"
+				:title="
+					i18n.baseText('settings.provisioningInstanceRolesHandledByExpressionMapping.description')
+				"
+			/>
+		</div>
+		<div v-else-if="isInstanceRoleProvisioningEnabled" :class="$style.container">
 			<N8nAlert
 				type="info"
 				:title="i18n.baseText('settings.provisioningInstanceRolesHandledBySsoProvider.description')"
@@ -507,7 +519,7 @@ const onSearch = (value: string) => {
 			<SettingsUsersTable
 				v-model:table-options="usersTableState"
 				data-test-id="settings-users-table"
-				:can-edit-role="!isInstanceRoleProvisioningEnabled"
+				:can-edit-role="!isInstanceRoleProvisioningEnabled && !isExpressionMappingEnabled"
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"
 				:updating-role-user-id="updatingRoleUserId"

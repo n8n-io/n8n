@@ -3,25 +3,9 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
-	InstanceAiThreadContextResponse,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
-
-export async function fetchMemory(
-	context: IRestApiContext,
-	threadId: string,
-): Promise<{ content: string; template: string }> {
-	return await makeRestApiRequest(context, 'GET', `/instance-ai/memory/${threadId}`);
-}
-
-export async function updateMemory(
-	context: IRestApiContext,
-	threadId: string,
-	content: string,
-): Promise<void> {
-	await makeRestApiRequest(context, 'PUT', `/instance-ai/memory/${threadId}`, { content });
-}
 
 export async function fetchThreads(
 	context: IRestApiContext,
@@ -40,6 +24,16 @@ export async function renameThread(
 ): Promise<{ thread: InstanceAiThreadInfo }> {
 	return await makeRestApiRequest(context, 'PATCH', `/instance-ai/threads/${threadId}`, {
 		title,
+	});
+}
+
+export async function updateThreadMetadata(
+	context: IRestApiContext,
+	threadId: string,
+	metadata: Record<string, unknown>,
+): Promise<{ thread: InstanceAiThreadInfo }> {
+	return await makeRestApiRequest(context, 'PATCH', `/instance-ai/threads/${threadId}`, {
+		metadata,
 	});
 }
 
@@ -65,11 +59,4 @@ export async function fetchThreadStatus(
 	threadId: string,
 ): Promise<InstanceAiThreadStatusResponse> {
 	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/status`);
-}
-
-export async function fetchThreadContext(
-	context: IRestApiContext,
-	threadId: string,
-): Promise<InstanceAiThreadContextResponse> {
-	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/context`);
 }

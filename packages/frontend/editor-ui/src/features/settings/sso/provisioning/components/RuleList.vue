@@ -3,16 +3,25 @@ import { computed } from 'vue';
 import Draggable from 'vuedraggable';
 import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 import { useRolesStore } from '@/app/stores/roles.store';
-import type { RoleMappingRuleResponse } from '@n8n/rest-api-client/api/roleMappingRule';
+import type {
+	RoleMappingRuleResponse,
+	RoleMappingRuleType,
+} from '@n8n/rest-api-client/api/roleMappingRule';
 import RuleRow from './RuleRow.vue';
 
 const props = withDefaults(
 	defineProps<{
 		rules: RoleMappingRuleResponse[];
 		fallbackRole?: string;
+		type?: RoleMappingRuleType;
+		projects?: Array<{ id: string; name: string }>;
+		disabled?: boolean;
 	}>(),
 	{
 		fallbackRole: 'global:member',
+		type: 'instance',
+		projects: () => [],
+		disabled: false,
 	},
 );
 
@@ -54,6 +63,7 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 			item-key="id"
 			handle=".drag-handle"
 			:animation="150"
+			:disabled="props.disabled"
 			:drag-class="$style.dragging"
 			:ghost-class="$style.ghost"
 			:chosen-class="$style.chosen"
@@ -63,6 +73,9 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 				<RuleRow
 					:rule="element"
 					:priority="index + 1"
+					:type="props.type"
+					:projects="props.projects"
+					:disabled="props.disabled"
 					@update="(id, patch) => emit('update', id, patch)"
 					@delete="(id) => emit('delete', id)"
 					@duplicate="(id) => emit('duplicate', id)"
@@ -74,12 +87,19 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 			<div :class="$style.defaultCellIcon">
 				<N8nIcon icon="lock" size="small" color="text-light" />
 			</div>
-			<div :class="$style.defaultCellText">Default condition - If no rules above match</div>
-			<div :class="$style.defaultCellRole">
+			<div :class="$style.defaultCellText">
+				{{
+					props.type === 'project'
+						? 'Default condition - If no rules match, no project access given'
+						: 'Default condition - If no rules above match'
+				}}
+			</div>
+			<div v-if="props.type !== 'project'" :class="$style.defaultCellRole">
 				<span :class="$style.label">assign</span>
 				<N8nSelect
 					:model-value="props.fallbackRole"
 					size="small"
+					:disabled="props.disabled"
 					data-test-id="fallback-role-select"
 					:class="$style.fallbackSelect"
 					@update:model-value="emit('update:fallbackRole', String($event))"
@@ -166,7 +186,7 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 }
 
 .fallbackSelect {
-	width: 112px;
+	width: 130px;
 }
 
 .ghost {

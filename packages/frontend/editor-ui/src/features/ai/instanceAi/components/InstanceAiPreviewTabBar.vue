@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nIconButton } from '@n8n/design-system';
 import { computed, nextTick, watch } from 'vue';
 import type { ArtifactTab } from '../useCanvasPreview';
 
@@ -48,7 +48,6 @@ const externalLinkHref = computed(() => {
 				:class="[$style.tab, tab.id === activeTabId ? $style.activeTab : '']"
 				@click="emit('update:activeTabId', tab.id)"
 			>
-				<N8nIcon :icon="tab.icon" size="medium" :class="$style.tabIcon" />
 				<span :class="$style.tabLabel">{{ tab.name }}</span>
 			</div>
 		</div>
@@ -62,7 +61,13 @@ const externalLinkHref = computed(() => {
 				:href="externalLinkHref"
 				target="_blank"
 			/>
-			<N8nIconButton icon="x" variant="ghost" size="medium" @click="emit('close')" />
+			<N8nIconButton
+				icon="x"
+				variant="ghost"
+				size="medium"
+				data-test-id="instance-ai-preview-close"
+				@click="emit('close')"
+			/>
 		</div>
 	</div>
 </template>
@@ -96,14 +101,14 @@ const externalLinkHref = computed(() => {
 .tab {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	height: 100%;
 	padding: 0 var(--spacing--sm);
-	padding-bottom: calc(var(--spacing--2xs) + 2px);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	cursor: pointer;
 	white-space: nowrap;
 	color: var(--color--text);
+	border-bottom: 2px solid transparent;
 
 	&:hover {
 		color: var(--color--primary);
@@ -112,12 +117,7 @@ const externalLinkHref = computed(() => {
 
 .activeTab {
 	color: var(--color--primary);
-	padding-bottom: var(--spacing--2xs);
-	border-bottom: var(--color--primary) 2px solid;
-}
-
-.tabIcon {
-	flex-shrink: 0;
+	border-bottom-color: var(--color--primary);
 }
 
 .tabLabel {

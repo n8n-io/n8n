@@ -75,16 +75,11 @@ describe('RedisInstanceStorage', () => {
 			);
 		});
 
-		it('should log warning on error', async () => {
+		it('should propagate error on failure', async () => {
 			client.eval.mockRejectedValueOnce(new Error('connection lost'));
 			const registration = createRegistration();
 
-			await storage.register(registration);
-
-			expect(logger.scoped(['instance-registry', 'redis']).warn).toHaveBeenCalledWith(
-				'Failed to register instance',
-				expect.objectContaining({ instanceKey: registration.instanceKey }),
-			);
+			await expect(storage.register(registration)).rejects.toThrow('connection lost');
 		});
 	});
 
