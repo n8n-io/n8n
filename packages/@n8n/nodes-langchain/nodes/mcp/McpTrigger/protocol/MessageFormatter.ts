@@ -23,13 +23,13 @@ export class MessageFormatter {
 	}
 
 	static formatError(error: Error): McpToolResult {
-		const errorDetails = [`${error.name}: ${error.message}`];
-		if (error.stack) {
-			errorDetails.push(error.stack);
-		}
+		// Only include the error name and message in the client-facing JSON-RPC
+		// response. Stack traces are internal implementation details and should
+		// stay in server-side logs (the call site in McpServer.ts already logs
+		// the full error there for debugging).
 		return {
 			isError: true,
-			content: [{ type: 'text', text: errorDetails.join('\n') }],
+			content: [{ type: 'text', text: `${error.name}: ${error.message}` }],
 		};
 	}
 }
