@@ -55,7 +55,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		() => settingsStore.moduleSettings?.['instance-ai']?.enabled !== true,
 	);
 	const isLocalGatewayDisabledByAdmin = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled === true,
+		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled !== false,
 	);
 	const isLocalGatewayDisabled = computed(
 		() => isLocalGatewayDisabledByAdmin.value || preferences.value?.localGatewayDisabled === true,
@@ -79,7 +79,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		const prev = ms['instance-ai'];
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
-			localGatewayDisabled: prev?.localGatewayDisabled ?? false,
+			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
 			proxyEnabled: prev?.proxyEnabled ?? false,
 			optinModalDismissed: adminRes.optinModalDismissed,
 			cloudManaged: prev?.cloudManaged ?? false,
@@ -364,6 +364,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	async function fetchSetupCommand(): Promise<void> {
+		if (!preferences.value || isLocalGatewayDisabled.value) return;
 		try {
 			const result = await createGatewayLink(rootStore.restApiContext);
 			setupCommand.value = result.command;

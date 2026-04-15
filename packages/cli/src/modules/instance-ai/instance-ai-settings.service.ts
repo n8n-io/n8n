@@ -234,8 +234,7 @@ export class InstanceAiSettingsService {
 			credentialType,
 			credentialName,
 			modelName: prefs.modelName || this.extractModelName(this.config.model),
-			localGatewayDisabled:
-				this.config.localGatewayDisabled || (prefs.localGatewayDisabled ?? false),
+			localGatewayDisabled: prefs.localGatewayDisabled ?? false,
 		};
 	}
 
@@ -392,9 +391,9 @@ export class InstanceAiSettingsService {
 	}
 
 	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
-	isLocalGatewayDisabledForUser(userId: string): boolean {
+	async isLocalGatewayDisabledForUser(userId: string): Promise<boolean> {
 		if (this.config.localGatewayDisabled) return true;
-		const prefs = this.userPreferences.get(userId);
+		const prefs = await this.loadUserPreferences(userId);
 		return prefs?.localGatewayDisabled ?? false;
 	}
 

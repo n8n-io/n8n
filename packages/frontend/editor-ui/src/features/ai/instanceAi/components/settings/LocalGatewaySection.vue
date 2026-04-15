@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { N8nHeading, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
@@ -16,9 +16,13 @@ const isLocalGatewayDisabled = computed(() => {
 	return store.preferences?.localGatewayDisabled ?? false;
 });
 
-function handleUserToggle(value: boolean | string | number) {
-	store.setPreferenceField('localGatewayDisabled', !value);
-	void store.save();
+async function handleUserToggle(value: boolean | string | number) {
+	const enabling = Boolean(value);
+	store.setPreferenceField('localGatewayDisabled', !enabling);
+	await store.save();
+	if (enabling && !store.setupCommand) {
+		void store.fetchSetupCommand();
+	}
 }
 
 const copied = ref(false);
@@ -88,11 +92,22 @@ const displayCategories = computed(() => {
 	return result.sort((a, b) => Number(b.enabled) - Number(a.enabled));
 });
 
-onMounted(() => {
-	if (!store.isGatewayConnected) {
-		void store.fetchSetupCommand();
-	}
-});
+const shouldShowSetup = computed(
+	() =>
+		!store.isGatewayConnected &&
+		!store.isLocalGatewayDisabledByAdmin &&
+		!isLocalGatewayDisabled.value,
+);
+
+watch(
+	shouldShowSetup,
+	(show) => {
+		if (show && !store.setupCommand) {
+			void store.fetchSetupCommand();
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>

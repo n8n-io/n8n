@@ -574,7 +574,7 @@ export class InstanceAiController {
 	@Post('/gateway/create-link')
 	@GlobalScope('instanceAi:gateway')
 	async createGatewayLink(req: AuthenticatedRequest) {
-		this.assertGatewayEnabled(req.user.id);
+		await this.assertGatewayEnabled(req.user.id);
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
 		const baseUrl = this.instanceBaseUrl.replace(/\/$/, '');
 		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
@@ -584,7 +584,7 @@ export class InstanceAiController {
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
 	async gatewayEvents(req: Request, res: FlushableResponse) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
-		this.assertGatewayEnabled(userId);
+		await this.assertGatewayEnabled(userId);
 
 		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
@@ -627,10 +627,10 @@ export class InstanceAiController {
 	}
 
 	@Post('/gateway/init', { skipAuth: true })
-	gatewayInit(req: Request, _res: Response, @Body payload: InstanceAiGatewayCapabilitiesDto) {
+	async gatewayInit(req: Request, _res: Response, @Body payload: InstanceAiGatewayCapabilitiesDto) {
 		const key = this.getGatewayKeyHeader(req);
 		const userId = this.validateGatewayApiKey(key);
-		this.assertGatewayEnabled(userId);
+		await this.assertGatewayEnabled(userId);
 
 		this.instanceAiService.initGateway(userId, payload);
 
@@ -696,7 +696,7 @@ export class InstanceAiController {
 	@Get('/gateway/status')
 	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
-		this.assertGatewayEnabled(req.user.id);
+		await this.assertGatewayEnabled(req.user.id);
 		return this.instanceAiService.getGatewayStatus(req.user.id);
 	}
 
@@ -721,8 +721,8 @@ export class InstanceAiController {
 	}
 
 	/** Throw if the local gateway is disabled globally or for this user. */
-	private assertGatewayEnabled(userId: string): void {
-		if (this.settingsService.isLocalGatewayDisabledForUser(userId)) {
+	private async assertGatewayEnabled(userId: string): Promise<void> {
+		if (await this.settingsService.isLocalGatewayDisabledForUser(userId)) {
 			throw new ForbiddenError('Local gateway is disabled');
 		}
 	}

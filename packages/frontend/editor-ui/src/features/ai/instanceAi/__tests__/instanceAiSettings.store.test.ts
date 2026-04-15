@@ -96,6 +96,11 @@ describe('useInstanceAiSettingsStore', () => {
 	});
 
 	describe('isLocalGatewayDisabledByAdmin', () => {
+		it('defaults to true when module settings have not loaded yet', () => {
+			settingsStore.moduleSettings = {};
+			expect(store.isLocalGatewayDisabledByAdmin).toBe(true);
+		});
+
 		it('returns true when admin flag is set', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
