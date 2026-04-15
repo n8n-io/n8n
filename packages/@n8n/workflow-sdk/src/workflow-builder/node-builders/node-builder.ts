@@ -26,6 +26,7 @@ import {
 	isSplitInBatchesBuilder,
 	extractSplitInBatchesBuilder,
 } from '../type-guards';
+import { assertPlainObject } from '../validation-helpers';
 export { assertPlainObject } from '../validation-helpers';
 
 /**
