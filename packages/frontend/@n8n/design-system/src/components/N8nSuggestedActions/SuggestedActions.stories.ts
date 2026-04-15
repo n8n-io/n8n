@@ -13,6 +13,14 @@ export default {
 			description: 'Controls whether the popover is open',
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A list of suggested next actions with optional metadata and controls.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({

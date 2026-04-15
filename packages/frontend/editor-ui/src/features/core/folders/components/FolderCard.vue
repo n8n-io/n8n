@@ -9,6 +9,7 @@ import type { UserAction, FolderResource } from '@/Interface';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '../folders.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { type IUser } from 'n8n-workflow';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
@@ -41,6 +42,7 @@ const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const foldersStore = useFoldersStore();
+const favoritesStore = useFavoritesStore();
 
 const emit = defineEmits<{
 	action: [{ action: string; folderId: string }];
@@ -52,6 +54,23 @@ const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => i18n.baseText('generic.folder').toLowerCase());
+
+const allActions = computed<Array<UserAction<IUser>>>(() => {
+	const favoriteAction = {
+		label: favoritesStore.isFavorite(props.data.id, 'folder')
+			? i18n.baseText('favorites.remove')
+			: i18n.baseText('favorites.add'),
+		value: FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
+		disabled: false,
+	};
+	const renameIndex = props.actions.findIndex((a) => a.value === FOLDER_LIST_ITEM_ACTIONS.RENAME);
+	if (renameIndex !== -1) {
+		const result = [...props.actions];
+		result.splice(renameIndex, 0, favoriteAction);
+		return result;
+	}
+	return [...props.actions, favoriteAction];
+});
 
 const cardUrl = computed(() => {
 	return getFolderUrl(props.data.id);
@@ -103,6 +122,10 @@ const onAction = async (action: string) => {
 	if (action === FOLDER_LIST_ITEM_ACTIONS.OPEN) {
 		emit('folderOpened', { folder: props.data });
 		await router.push(cardUrl.value);
+		return;
+	}
+	if (action === FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE) {
+		await favoritesStore.toggleFavorite(props.data.id, 'folder');
 		return;
 	}
 	emit('action', { action, folderId: props.data.id });
@@ -237,8 +260,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 							</ProjectCardBadge>
 						</div>
 						<N8nActionToggle
-							v-if="actions.length"
-							:actions="actions"
+							:actions="allActions"
 							theme="dark"
 							data-test-id="folder-card-actions"
 							@action="onAction"

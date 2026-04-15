@@ -15,10 +15,11 @@ import type { Scope } from '@sentry/node';
 import * as a from 'assert';
 import { mock } from 'jest-mock-extended';
 import { Credentials } from 'n8n-core';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { randomString } from 'n8n-workflow';
-
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	type ICredentialDataDecryptedObject,
+	randomString,
+} from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CredentialsTester } from '@/services/credentials-tester.service';
@@ -969,8 +970,8 @@ describe('POST /credentials', () => {
 			//
 			// ASSERT
 			//
-			.expect(400, {
-				code: 400,
+			.expect(403, {
+				code: 403,
 				message: "You don't have the permissions to save the credential in this project.",
 			});
 	});
@@ -985,7 +986,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), projectId: teamProject.id });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1012,7 +1013,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload() });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1062,7 +1063,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), isGlobal: false });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1088,7 +1089,7 @@ describe('POST /credentials', () => {
 		delete payload.isGlobal;
 
 		const response = await testServer.authAgentFor(chatUser).post('/credentials').send(payload);
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);

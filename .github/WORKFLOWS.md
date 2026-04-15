@@ -72,6 +72,7 @@ Complete reference for n8n's `.github/` folder.
 │  │  (cron)  │    │  ├─ docker-build-push (nightly)  │───▶│   Images   │   │
 │  └──────────┘    │  ├─ test-benchmark-nightly       │───▶│  Metrics   │   │
 │                  │  ├─ test-workflows-nightly       │    └────────────┘   │
+│                  │  ├─ test-e2e-vm-expressions      │                     │
 │                  │  └─ test-e2e-coverage-weekly     │                     │
 │                  └──────────────────────────────────┘                     │
 │                                                                            │
@@ -200,7 +201,6 @@ These only run if specific files changed:
 
 | Command            | Workflow                     | Permissions         |
 |--------------------|------------------------------|---------------------|
-| `/build-unit-test` | `ci-manual-unit-tests.yml`   | admin/write/maintain|
 | `/test-workflows`  | `test-workflows-callable.yml`| admin/write/maintain|
 
 **Why:** Re-run tests without pushing commits. Useful for flaky test investigation.
@@ -259,10 +259,11 @@ release-publish.yml
 test-workflows-nightly.yml
     └──────────────────────────▶  test-workflows-callable.yml
 
-PR Comment Dispatchers (triggered by /command in PR comments):
-build-unit-test-pr-comment.yml
-    └──────────────────────────▶  ci-manual-unit-tests.yml
+test-e2e-vm-expressions-nightly.yml
+    └──────────────────────────▶  test-e2e-ci-reusable.yml
+                                      └──────────▶  test-e2e-reusable.yml
 
+PR Comment Dispatchers (triggered by /command in PR comments):
 test-workflows-pr-comment.yml
     └──────────────────────────▶  test-workflows-callable.yml
 ```
@@ -354,8 +355,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.x, 24.13.1, 25.x)
-│   └─ Coverage only on 24.13.1
+├─ unit-test (matrix: Node 22.x, 24.14.1, 25.x)
+│   └─ Coverage only on 24.14.1
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -374,6 +375,7 @@ Push to master/1.x
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-workflows-nightly.yml`      | Workflow tests           |
+| Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
@@ -394,7 +396,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.13.1'
+  node-version:        # default: '24.14.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```
@@ -422,7 +424,6 @@ Workflows with `workflow_call` trigger:
 | `test-e2e-ci-reusable.yml`         | `branch`                                      | E2E orchestrator      |
 | `test-e2e-docker-pull-reusable.yml`| `branch`, `n8n_version`                       | E2E with pulled image |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
-| `ci-check-eligibility-reusable.yml`| (internal)                                    | PR eligibility checks |
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled` | Docker build          |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
@@ -664,7 +665,7 @@ cosign verify-attestation --type openvex \
 
 ### Redundancy Review
 
-Comment triggers (`/build-unit-test`, `/test-workflows`) are workarounds.
+Comment trigger (`/test-workflows`) is a workaround.
 
 Long-term: Main CI should be reliable enough to not need these.
 

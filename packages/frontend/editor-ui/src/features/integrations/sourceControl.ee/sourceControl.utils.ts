@@ -5,8 +5,10 @@ import { type SourceControlledFile, SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-
 import type { BaseTextKey } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import groupBy from 'lodash/groupBy';
+import dateformat from 'dateformat';
 import type { useToast } from '@/app/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
+import type { SourceControlTreeRow } from './sourceControl.types';
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
@@ -171,6 +173,80 @@ const pullMessage = ({
 			adjustToNumber: verbCount,
 		}),
 	].join(' ');
+};
+
+export function buildWorkflowTreeRows<T extends SourceControlledFile>(
+	workflows: T[],
+): Array<SourceControlTreeRow<T>> {
+	const rows: Array<SourceControlTreeRow<T>> = [];
+	const seenFolders = new Set<string>();
+
+	for (const workflow of workflows) {
+		const path = workflow.folderPath ?? [];
+		let pathKey = '';
+
+		for (const [index, segment] of path.entries()) {
+			pathKey = pathKey ? `${pathKey}/${segment}` : segment;
+			if (seenFolders.has(pathKey)) {
+				continue;
+			}
+
+			rows.push({
+				id: `folder:${pathKey}`,
+				type: 'folder',
+				name: segment,
+				depth: index,
+			});
+			seenFolders.add(pathKey);
+		}
+
+		rows.push({
+			id: `file:${workflow.id}`,
+			type: 'file',
+			file: workflow,
+			depth: path.length,
+		});
+	}
+
+	return rows;
+}
+
+export const buildFolderFilterOptions = (workflows: SourceControlledFile[]) => {
+	const folderPathSet = new Set<string>();
+
+	for (const workflow of workflows) {
+		const pathSegments = workflow.folderPath ?? [];
+		let path = '';
+
+		for (const segment of pathSegments) {
+			path = path ? `${path}/${segment}` : segment;
+			folderPathSet.add(path);
+		}
+	}
+
+	return Array.from(folderPathSet)
+		.sort((a, b) => {
+			const depthDiff = a.split('/').length - b.split('/').length;
+			if (depthDiff !== 0) {
+				return depthDiff;
+			}
+			return a.localeCompare(b);
+		})
+		.map((path) => ({
+			label: path.replaceAll('/', ' / '),
+			value: path,
+		}));
+};
+
+export const formatSourceControlUpdatedAt = (updatedAt: string | undefined) => {
+	const currentYear = new Date().getFullYear().toString();
+
+	return i18n.baseText('settings.sourceControl.lastUpdated', {
+		interpolate: {
+			date: dateformat(updatedAt, `d mmm${updatedAt?.startsWith(currentYear) ? '' : ', yyyy'}`),
+			time: dateformat(updatedAt, 'HH:MM'),
+		},
+	});
 };
 
 export const notifyUserAboutPullWorkFolderOutcome = async (

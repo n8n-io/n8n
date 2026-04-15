@@ -155,6 +155,11 @@ export function createStructuredChunkAggregator(
 			return null;
 		}
 
+		// Skip keepalive heartbeat chunks used to prevent proxy timeouts
+		if ((chunk.type as string) === 'keepalive') {
+			return null;
+		}
+
 		const { type, content, metadata } = chunk;
 		const key = keyOf(metadata);
 

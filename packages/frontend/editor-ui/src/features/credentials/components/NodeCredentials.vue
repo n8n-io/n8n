@@ -38,6 +38,8 @@ import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { useAiGateway } from '@/app/composables/useAiGateway';
+import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
 
 import {
 	N8nBadge,
@@ -52,7 +54,6 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 type Props = {
 	node: INodeUi;
@@ -60,6 +61,14 @@ type Props = {
 	readonly?: boolean;
 	showAll?: boolean;
 	hideIssues?: boolean;
+	skipAutoSelect?: boolean;
+	/** When true, skip all global store writes (workflowsStore, nodeHelpers).
+	 *  Used by Instance AI to render credential selection without polluting the active workflow. */
+	standalone?: boolean;
+	/** Project ID to scope new credential creation to the correct project. */
+	projectId?: string;
+	/** Pre-fill the credential name when creating a new credential. */
+	suggestedCredentialName?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -67,6 +76,8 @@ const props = withDefaults(defineProps<Props>(), {
 	overrideCredType: '',
 	showAll: false,
 	hideIssues: false,
+	skipAutoSelect: false,
+	standalone: false,
 });
 
 const emit = defineEmits<{
@@ -85,19 +96,19 @@ const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
-const workflowState = injectWorkflowState();
-const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect
 const {
 	loading: quickConnectLoading,
-	isQuickConnectEnabled,
 	getQuickConnectOption,
 	connect,
 	cancelConnect,
 } = useQuickConnect();
 const { hasManagedOAuthCredentials } = useCredentialOAuth();
+
+const aiGateway = useAiGateway();
 
 const canCreateCredentials = computed(
 	() =>
@@ -199,11 +210,22 @@ watch(
 watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
+		if (props.skipAutoSelect) return;
 		if (types.length === 0 || !isEmpty(selected.value)) return;
 
 		const allOptions = types.map((type) => type.options).flat();
 
-		if (allOptions.length === 0) return;
+		if (allOptions.length === 0) {
+			// No credentials configured — auto-enable AI Gateway for supported types
+			if (aiGateway.isEnabled.value) {
+				for (const { type } of types) {
+					if (aiGateway.isCredentialTypeSupported(type.name)) {
+						onAiGatewaySelector(type.name, true);
+					}
+				}
+			}
+			return;
+		}
 
 		const mostRecentCredential = allOptions.reduce(
 			(mostRecent, current) =>
@@ -289,6 +311,23 @@ onMounted(() => {
 	});
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
+
+	void aiGateway.fetchConfig();
+
+	// Clear stale AI Gateway managed credentials if the feature is disabled
+	if (!aiGateway.isEnabled.value) {
+		const credentials = { ...(props.node.credentials ?? {}) };
+		let hasGatewayManaged = false;
+		for (const [credType, credDetails] of Object.entries(credentials)) {
+			if (credDetails.__aiGatewayManaged) {
+				delete credentials[credType];
+				hasGatewayManaged = true;
+			}
+		}
+		if (hasGatewayManaged) {
+			emit('credentialSelected', { name: props.node.name, properties: { credentials } });
+		}
+	}
 });
 
 onBeforeUnmount(() => {
@@ -347,12 +386,18 @@ function createNewCredential(
 		subscribedToCredentialType.value = credentialType;
 	}
 
-	uiStore.openNewCredential(credentialType, showAuthOptions, forceManualMode);
+	uiStore.openNewCredential(
+		credentialType,
+		showAuthOptions,
+		forceManualMode,
+		props.projectId,
+		props.suggestedCredentialName,
+	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
 		new_credential: true,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: props.standalone ? '' : workflowsStore.workflowId,
 	});
 }
 
@@ -381,7 +426,7 @@ function onCredentialSelected(
 		credential_type: credentialType,
 		node_type: props.node.type,
 		...(nodeHelpers.hasProxyAuth(props.node) ? { is_service_specific: true } : {}),
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: props.standalone ? '' : workflowsStore.workflowId,
 		credential_id: credentialId,
 	});
 
@@ -396,9 +441,10 @@ function onCredentialSelected(
 
 	// if credentials has been string or neither id matched nor name matched uniquely
 	if (
-		oldCredentials?.id === null ||
-		(oldCredentials?.id &&
-			!credentialsStore.getCredentialByIdAndType(oldCredentials.id, selectedCredentialsType))
+		!props.standalone &&
+		(oldCredentials?.id === null ||
+			(oldCredentials?.id &&
+				!credentialsStore.getCredentialByIdAndType(oldCredentials.id, selectedCredentialsType)))
 	) {
 		// update all nodes in the workflow with the same old/invalid credentials
 		workflowsStore.replaceInvalidWorkflowCredentials({
@@ -421,7 +467,7 @@ function onCredentialSelected(
 
 	// Auto-assign credential to other matching nodes
 	// Skip auto-assign for automatic/system actions (e.g., auto-selecting on mount)
-	if (isUserAction) {
+	if (isUserAction && !props.standalone) {
 		const updatedNodesCount = workflowsStore.assignCredentialToMatchingNodes({
 			credentials: newSelectedCredentials,
 			type: selectedCredentialsType,
@@ -441,13 +487,13 @@ function onCredentialSelected(
 	}
 
 	// If credential is selected from mixed credential dropdown, update node's auth filed based on selected credential
-	if (props.showAll && mainNodeAuthField.value) {
+	if (props.showAll && mainNodeAuthField.value && !props.standalone) {
 		const nodeCredentialDescription = nodeType.value?.credentials?.find(
 			(cred) => cred.name === selectedCredentialsType,
 		);
 		const authOption = getAuthTypeForNodeCredential(nodeType.value, nodeCredentialDescription);
 		if (authOption) {
-			updateNodeAuthType(workflowState, props.node, authOption.value);
+			updateNodeAuthType(workflowsStore.workflowId, props.node, authOption.value);
 			const parameterData = {
 				name: `parameters.${mainNodeAuthField.value.name}`,
 				value: authOption.value,
@@ -473,6 +519,46 @@ function onCredentialSelected(
 	emit('credentialSelected', updateInformation);
 }
 
+function isAiGatewayManagedCredentials(credentialType: string): boolean {
+	return aiGateway.isEnabled.value && selected.value[credentialType]?.__aiGatewayManaged === true;
+}
+
+function showAiGatewaySelector(credentialType: string): boolean {
+	if (!aiGateway.isEnabled.value) return false;
+	if (isAiGatewayManagedCredentials(credentialType)) return true;
+	if (!aiGateway.isCredentialTypeSupported(credentialType)) return false;
+	return true;
+}
+
+function onAiGatewaySelector(credentialType: string, enable: boolean): void {
+	const credentials = { ...(props.node.credentials ?? {}) };
+
+	if (enable) {
+		credentials[credentialType] = { id: null, name: '', __aiGatewayManaged: true };
+	} else {
+		// Toggle OFF: restore the most recent available credential for THIS node only.
+		// Avoid onCredentialSelected which calls replaceInvalidWorkflowCredentials and
+		// would affect other nodes that also have gateway-managed credentials (id: null, name: '').
+		const typeEntry = credentialTypesNodeDescriptionDisplayed.value.find(
+			({ type }) => type.name === credentialType,
+		);
+
+		if (typeEntry && typeEntry.options.length > 0) {
+			const mostRecent = typeEntry.options.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b));
+			const restoredCredential = credentialsStore.getCredentialById(mostRecent.id);
+			credentials[credentialType] = { id: restoredCredential.id, name: restoredCredential.name };
+		} else {
+			delete credentials[credentialType];
+		}
+	}
+
+	emit('credentialSelected', {
+		name: props.node.name,
+		properties: { credentials },
+	});
+	void aiGateway.saveAfterToggle();
+}
+
 function getIssues(credentialTypeName: string): string[] {
 	const node = props.node;
 
@@ -496,7 +582,7 @@ function editCredential(credentialType: string): void {
 		credential_type: credentialType,
 		source: 'node',
 		new_credential: false,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: props.standalone ? '' : workflowsStore.workflowId,
 	});
 	subscribedToCredentialType.value = credentialType;
 }
@@ -517,11 +603,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 			interpolate: { credentialType: credentialTypeName },
 		});
 	}
-	return i18n.baseText(
-		isQuickConnectEnabled.value
-			? 'nodeCredentials.credentialsLabelShort'
-			: 'nodeCredentials.credentialsLabel',
-	);
+	return i18n.baseText('nodeCredentials.credentialsLabelShort');
 }
 
 function setFilter(newFilter = '') {
@@ -544,7 +626,6 @@ function getServiceName(credentialTypeName: string): string {
 }
 
 const quickConnectCredentialType = computed(() => {
-	if (!isQuickConnectEnabled.value) return undefined;
 	return credentialTypesNodeDescriptions.value.find(
 		(t) => !!getQuickConnectOption(t.name, props.node.type) || hasManagedOAuthCredentials(t.name),
 	)?.name;
@@ -596,7 +677,17 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				color="text-dark"
 				data-test-id="credentials-label"
 			>
-				<div v-if="readonly">
+				<template v-if="$slots['label-postfix']" #options>
+					<slot name="label-postfix" />
+				</template>
+				<AiGatewaySelector
+					v-if="showAiGatewaySelector(type.name)"
+					:ai-gateway-enabled="isAiGatewayManagedCredentials(type.name)"
+					:readonly="readonly"
+					:credential-type="type.name"
+					@toggle="onAiGatewaySelector(type.name, $event)"
+				/>
+				<div v-if="readonly && !isAiGatewayManagedCredentials(type.name)">
 					<N8nInput
 						:model-value="getSelectedName(type.name)"
 						disabled
@@ -606,7 +697,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 				<div
 					v-else-if="
-						options.length === 0 && showQuickConnectEmptyState(type) && quickConnectCredentialType
+						!standalone &&
+						options.length === 0 &&
+						showQuickConnectEmptyState(type) &&
+						quickConnectCredentialType &&
+						!isAiGatewayManagedCredentials(type.name)
 					"
 					:class="[$style.quickConnectContainer]"
 					data-test-id="quick-connect-empty-state"
@@ -636,9 +731,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 
 				<div
-					v-else-if="isQuickConnectEnabled && showStandardEmptyState(type)"
+					v-else-if="showStandardEmptyState(type)"
 					:class="$style.standardEmptyContainer"
-					data-test-id="standard-empty-state"
+					data-test-id="node-credentials-empty-state"
 				>
 					<N8nSelect
 						:class="$style.emptySelect"
@@ -657,7 +752,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					</N8nButton>
 				</div>
 				<div
-					v-else
+					v-else-if="!isAiGatewayManagedCredentials(type.name)"
 					:class="getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input"
 					data-test-id="node-credentials-select"
 				>

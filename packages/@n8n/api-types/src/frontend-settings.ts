@@ -1,6 +1,10 @@
 import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
-import type { ChatHubLLMProvider, ChatProviderSettingsDto } from './chat-hub';
+import type {
+	ChatHubLLMProvider,
+	ChatHubSemanticSearchSettings,
+	ChatProviderSettingsDto,
+} from './chat-hub';
 import type { QuickConnectOption } from './quick-connect';
 import type { InsightsDateRange } from './schemas/insights.schema';
 
@@ -24,7 +28,7 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
-export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc';
+export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc' | 'token-exchange';
 
 export interface IUserManagementSettings {
 	quota: number;
@@ -50,7 +54,6 @@ export interface IEnterpriseSettings {
 	binaryDataS3: boolean;
 	workerView: boolean;
 	advancedPermissions: boolean;
-	apiKeyScopes: boolean;
 	workflowDiffs: boolean;
 	namedVersions: boolean;
 	provisioning: boolean;
@@ -61,6 +64,7 @@ export interface IEnterpriseSettings {
 	};
 	customRoles: boolean;
 	personalSpacePolicy: boolean;
+	dataRedaction: boolean;
 }
 
 export interface FrontendSettings {
@@ -127,6 +131,7 @@ export interface FrontendSettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
+		managedByEnv: boolean;
 		saml: {
 			loginLabel: string;
 			loginEnabled: boolean;
@@ -211,6 +216,10 @@ export interface FrontendSettings {
 		credits: number;
 		setup: boolean;
 	};
+	aiGateway?: {
+		enabled: boolean;
+		budget: number;
+	};
 	ai: {
 		allowSendingParameterValues: boolean;
 	};
@@ -229,6 +238,7 @@ export interface FrontendSettings {
 
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];
+	canvasOnly: boolean;
 	envFeatureFlags: N8nEnvFeatFlags;
 }
 
@@ -260,6 +270,18 @@ export type FrontendModuleSettings = {
 	'chat-hub'?: {
 		enabled: boolean;
 		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+		semanticSearch: ChatHubSemanticSearchSettings;
+		agentUploadMaxSizeMb: number;
+	};
+
+	/**
+	 * Client settings for instance AI module.
+	 */
+	'instance-ai'?: {
+		enabled: boolean;
+		localGatewayDisabled: boolean;
+		proxyEnabled: boolean;
+		optinModalDismissed: boolean;
 	};
 
 	/**
@@ -279,6 +301,8 @@ export type FrontendModuleSettings = {
 		forProjects: boolean;
 		/** Whether role-based access control for external secrets is enabled. */
 		roleBasedAccess: boolean;
+		/** Whether system roles (admin, editor) have external secrets scopes. */
+		systemRolesEnabled: boolean;
 	};
 };
 

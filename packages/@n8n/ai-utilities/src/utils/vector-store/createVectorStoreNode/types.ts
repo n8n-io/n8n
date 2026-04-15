@@ -2,6 +2,7 @@ import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import type {
+	ICredentialTestFunction,
 	IExecuteFunctions,
 	INodeCredentialDescription,
 	INodeProperties,
@@ -48,6 +49,9 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 				payload: IDataObject | string | undefined,
 			) => Promise<NodeParameterValueType>;
 		};
+		credentialTest?: {
+			[functionName: string]: ICredentialTestFunction;
+		};
 	};
 
 	sharedFields: INodeProperties[];
@@ -55,6 +59,7 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	loadFields?: INodeProperties[];
 	retrieveFields?: INodeProperties[];
 	updateFields?: INodeProperties[];
+	hidden?: true;
 
 	/**
 	 * Optional function called once before any documents are inserted.

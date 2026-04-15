@@ -52,7 +52,6 @@ vi.mock('@/features/shared/nodeCreator/composables/useViewStacks', () => ({
 
 vi.mock('@/features/credentials/quickConnect/composables/useQuickConnect', () => ({
 	useQuickConnect: vi.fn(() => ({
-		isQuickConnectEnabled: ref(false),
 		getQuickConnectOption: vi.fn(() => undefined),
 		getQuickConnectOptionByPackageName: vi.fn(() => undefined),
 		getQuickConnectOptionByCredentialTypes: vi.fn(() => undefined),
@@ -336,7 +335,6 @@ describe('CommunityNodeInfo', () => {
 					serviceName: 'Test service',
 				};
 				vi.mocked(useQuickConnect).mockReturnValue({
-					isQuickConnectEnabled: ref(true),
 					getQuickConnectOption: vi.fn(() => quickConnectOptionData),
 					getQuickConnectOptionByPackageName: vi.fn(() => quickConnectOptionData),
 					getQuickConnectOptionByCredentialTypes: vi.fn(() => quickConnectOptionData),

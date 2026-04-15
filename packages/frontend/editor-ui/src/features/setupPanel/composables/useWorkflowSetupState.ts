@@ -1,8 +1,13 @@
-import { computed, watch, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
+import {
+	type ICredentialDataDecryptedObject,
+	type INode,
+	isResourceLocatorValue,
+} from 'n8n-workflow';
+import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -12,17 +17,31 @@ import {
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import {
 	getNodeCredentialTypes,
 	groupCredentialsByType,
 	isCredentialCardComplete,
+	isNodeSetupComplete,
+	isHttpRequestNodeType,
 	buildTriggerSetupState,
+	getNodeParametersIssues,
+	type CompletionContext,
 } from '@/features/setupPanel/setupPanel.utils';
-import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
+import {
+	isPlaceholderValue,
+	findPlaceholderDetails,
+} from '@/features/ai/assistant/composables/useBuilderTodos';
+import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { groupSetupCards } from '@/features/setupPanel/composables/groupSetupCards';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -30,15 +49,184 @@ import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
  * with trigger nodes getting their own dedicated cards (test button only).
  * @param nodes Optional sub-set of nodes to check (defaults to full workflow)
  */
-export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
+export const useWorkflowSetupState = (
+	nodes?: Ref<INodeUi[]>,
+	options?: {
+		/** Additional parameter names per node that should be shown in setup cards
+		 * (e.g., parameters with placeholder values from the AI builder). */
+		additionalParametersByNode?: Ref<Map<string, string[]>>;
+	},
+) => {
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const environmentsStore = useEnvironmentsStore();
 	const nodeHelpers = useNodeHelpers();
-	const workflowState = injectWorkflowState();
+	const environmentsStore = useEnvironmentsStore();
+	const templatesStore = useTemplatesStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
-	const sourceNodes = computed(() => nodes?.value ?? workflowsStore.allNodes);
+	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore.value?.allNodes ?? []);
+
+	/**
+	 * Synchronous: detects resource locator parameters from the current workflow
+	 * nodes using node type definitions and current parameter values.
+	 * Only active for template-based workflows (templateId is set).
+	 */
+	const resourceLocatorsByNode = computed(() => {
+		if (!workflowDocumentStore?.value?.meta?.templateId) return new Map<string, string[]>();
+
+		const paramMap = new Map<string, string[]>();
+		for (const node of sourceNodes.value) {
+			const paramNames = new Set<string>();
+
+			// From node type definition
+			const nodeTypeInfo = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (nodeTypeInfo) {
+				for (const prop of nodeTypeInfo.properties) {
+					if (prop.type === 'resourceLocator') {
+						paramNames.add(prop.name);
+					}
+				}
+			}
+
+			// From current parameter values (catches dynamic/nested parameters not in the type definition)
+			const findResourceLocators = (obj: Record<string, unknown>) => {
+				for (const [key, value] of Object.entries(obj)) {
+					if (isResourceLocatorValue(value)) {
+						paramNames.add(key);
+					} else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+						findResourceLocators(value as Record<string, unknown>);
+					}
+				}
+			};
+			findResourceLocators(node.parameters);
+
+			if (paramNames.size > 0) {
+				paramMap.set(node.name, Array.from(paramNames));
+			}
+		}
+		return paramMap;
+	});
+
+	/**
+	 * Async supplement: additional parameter names from the upstream template
+	 * (required parameters that were missing in the template).
+	 */
+	const templateMissingParams = ref(new Map<string, string[]>());
+
+	/**
+	 * Combined map of node name → parameter names that should always be shown.
+	 * Merges synchronous resource locator detection, async template results,
+	 * and any additional parameters (e.g., placeholder params from the builder).
+	 */
+	const templateParametersByNode = computed(() => {
+		const merged = new Map<string, string[]>();
+
+		const mergeInto = (source: Map<string, string[]>) => {
+			for (const [nodeName, params] of source) {
+				const existing = merged.get(nodeName);
+				if (existing) {
+					const combined = new Set([...existing, ...params]);
+					merged.set(nodeName, Array.from(combined));
+				} else {
+					merged.set(nodeName, [...params]);
+				}
+			}
+		};
+
+		for (const [nodeName, params] of resourceLocatorsByNode.value) {
+			merged.set(nodeName, [...params]);
+		}
+
+		mergeInto(templateMissingParams.value);
+
+		if (options?.additionalParametersByNode?.value) {
+			mergeInto(options.additionalParametersByNode.value);
+		}
+
+		// Merge sticky issue param names so parameters persist after issues are resolved
+		for (const [nodeName, paramNames] of stickyIssueParamNames.value) {
+			const existing = merged.get(nodeName);
+			if (existing) {
+				const combined = new Set([...existing, ...paramNames]);
+				merged.set(nodeName, Array.from(combined));
+			} else {
+				merged.set(nodeName, Array.from(paramNames));
+			}
+		}
+
+		return merged;
+	});
+
+	const nodeHasTemplateParams = (nodeName: string) =>
+		(templateParametersByNode.value.get(nodeName)?.length ?? 0) > 0;
+
+	/**
+	 * Checks if a node has any unfilled resource locator template parameters.
+	 * Recursively searches the node's parameters for resource locators matching
+	 * the template parameter names and returns true if any have empty values.
+	 */
+	const hasUnfilledTemplateParams = (node: INodeUi): boolean => {
+		const templateParams = templateParametersByNode.value.get(node.name);
+		if (!templateParams || templateParams.length === 0) return false;
+
+		const paramNamesToCheck = new Set(templateParams);
+		const findUnfilled = (obj: Record<string, unknown>): boolean => {
+			for (const [key, value] of Object.entries(obj)) {
+				if (paramNamesToCheck.has(key)) {
+					if (isResourceLocatorValue(value)) {
+						if (!value.value || isPlaceholderValue(value.value)) return true;
+					} else if (
+						value === '' ||
+						value === null ||
+						value === undefined ||
+						isPlaceholderValue(value)
+					) {
+						return true;
+					} else if (typeof value === 'object' && value !== null) {
+						if (findPlaceholderDetails(value).length > 0) return true;
+					}
+				}
+				if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+					if (findUnfilled(value as Record<string, unknown>)) return true;
+				}
+			}
+			return false;
+		};
+		return findUnfilled(node.parameters);
+	};
+
+	async function loadTemplateMissingParameters() {
+		const templateId = workflowDocumentStore?.value?.meta?.templateId;
+		if (!templateId) return;
+
+		try {
+			const template =
+				templatesStore.getFullTemplateById(templateId) ??
+				(await templatesStore.fetchTemplateById(templateId));
+
+			if (!template?.workflow?.nodes) return;
+
+			const paramMap = new Map<string, string[]>();
+			for (const templateNode of template.workflow.nodes) {
+				// Required parameters that are missing in the template
+				const issues = getNodeParametersIssues(nodeTypesStore, templateNode as unknown as INode);
+				const paramNames = Object.keys(issues);
+				if (paramNames.length > 0) {
+					paramMap.set(templateNode.name, paramNames);
+				}
+			}
+			templateMissingParams.value = paramMap;
+		} catch {
+			// Template fetch failed — resource locators still detected synchronously
+		}
+	}
+
+	void loadTemplateMissingParameters();
 
 	const getCredentialDisplayName = (credentialType: string): string => {
 		const credentialTypeInfo = credentialsStore.getCredentialTypeByName(credentialType);
@@ -69,6 +257,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		const runData = workflowsStore.getWorkflowResultDataByNodeName(nodeName);
 		return runData !== null && runData.length > 0;
 	};
+
+	/**
+	 * Credential IDs that were auto-applied on initial load (not manually selected by the user).
+	 * Auto-applied credentials require node execution before being marked complete.
+	 */
+	const autoAppliedCredentialIds = ref(new Set<string>());
 
 	/**
 	 * Attempts to resolve an expression URL synchronously.
@@ -102,10 +296,28 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		}
 	};
 
+	// --- Sticky tracking sets (reactive) ---
+	// These ensure cards don't disappear once shown, even when issues resolve temporarily.
+	// Updated via watchers instead of inside computed getters to avoid side effects.
+	const stickyNodeIds = ref(new Set<string>());
+	const stickyParamNodeIds = ref(new Set<string>());
+	const stickyNodeCredentials = ref(new Set<string>());
+	const stickyCredTypesWithParams = ref(new Set<string>());
+
+	/**
+	 * Tracks parameter names that have appeared in parameterIssues per node (keyed by node name).
+	 * Once a parameter name is recorded, it persists even after the user fills it in
+	 * (which resolves the issue). Merged into `templateParametersByNode` so the existing
+	 * infrastructure (nodeHasTemplateParams, hasUnfilledTemplateParams, additionalParameterNames)
+	 * all work consistently.
+	 */
+	const stickyIssueParamNames = ref(new Map<string, Set<string>>());
+
 	/**
 	 * Get nodes that require setup:
 	 * - Nodes with credential requirements
 	 * - Trigger nodes (regardless of credentials)
+	 * - Nodes previously shown (sticky)
 	 * Sorted by execution order (grouped by trigger, DFS through connections).
 	 */
 	const nodesRequiringSetup = computed(() => {
@@ -114,16 +326,51 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			.map((node) => ({
 				node,
 				credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
+				parameterIssues: getNodeParametersIssues(nodeTypesStore, node),
 				isTrigger: isTriggerNode(node),
 			}))
-			.filter(({ credentialTypes, isTrigger }) => credentialTypes.length > 0 || isTrigger);
+			.filter(
+				({ credentialTypes, isTrigger, parameterIssues, node }) =>
+					stickyNodeIds.value.has(node.id) ||
+					credentialTypes.length > 0 ||
+					isTrigger ||
+					Object.keys(parameterIssues).length > 0 ||
+					nodeHasTemplateParams(node.name),
+			);
+
+		const allNodeTypes: Record<string, string> = {};
+		for (const node of sourceNodes.value) {
+			allNodeTypes[node.name] = node.type;
+		}
 
 		return sortNodesByExecutionOrder(
 			nodesForSetup,
-			workflowsStore.connectionsBySourceNode,
-			workflowsStore.connectionsByDestinationNode,
+			workflowDocumentStore.value?.connectionsBySourceNode ?? {},
+			workflowDocumentStore.value?.connectionsByDestinationNode ?? {},
+			allNodeTypes,
 		);
 	});
+
+	// Persist node IDs and parameter issue names once shown so cards don't disappear
+	watch(
+		nodesRequiringSetup,
+		(entries) => {
+			for (const { node, parameterIssues } of entries) {
+				stickyNodeIds.value.add(node.id);
+
+				const issueNames = Object.keys(parameterIssues);
+				if (issueNames.length > 0) {
+					const existing = stickyIssueParamNames.value.get(node.name);
+					if (existing) {
+						for (const name of issueNames) existing.add(name);
+					} else {
+						stickyIssueParamNames.value.set(node.name, new Set(issueNames));
+					}
+				}
+			}
+		},
+		{ immediate: true },
+	);
 
 	/**
 	 * The name of the first (leftmost) trigger in the workflow.
@@ -136,102 +383,325 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 	/**
 	 * All nodes that have credential requirements (includes both triggers and regular nodes).
-	 * Sorted by X position.
 	 */
 	const nodesWithCredentials = computed(() =>
 		nodesRequiringSetup.value.filter(({ credentialTypes }) => credentialTypes.length > 0),
 	);
 
+	const nodesWithMissingParameters = computed(() =>
+		nodesRequiringSetup.value.filter(
+			({ parameterIssues, node }) =>
+				stickyParamNodeIds.value.has(node.id) ||
+				Object.keys(parameterIssues).length > 0 ||
+				nodeHasTemplateParams(node.name),
+		),
+	);
+
+	// Persist parameter node IDs once shown
+	watch(
+		nodesWithMissingParameters,
+		(entries) => {
+			for (const { node } of entries) {
+				stickyParamNodeIds.value.add(node.id);
+			}
+		},
+		{ immediate: true },
+	);
+
+	/**
+	 * Shared classification: which credential types require per-node cards?
+	 * A credential type is per-node when ANY of its nodes have parameter issues or template params.
+	 * Also includes historically-seen types to prevent cards from re-grouping.
+	 */
+	const perNodeCredTypes = computed(() => {
+		const result = new Set(stickyCredTypesWithParams.value);
+		for (const { credentialTypes, parameterIssues, node } of nodesRequiringSetup.value) {
+			if (Object.keys(parameterIssues).length > 0 || nodeHasTemplateParams(node.name)) {
+				for (const credType of credentialTypes) {
+					result.add(credType);
+				}
+			}
+		}
+		return result;
+	});
+
+	// Persist per-node credential types once seen
+	watch(
+		perNodeCredTypes,
+		(types) => {
+			for (const credType of types) {
+				stickyCredTypesWithParams.value.add(credType);
+			}
+		},
+		{ immediate: true },
+	);
+
+	/**
+	 * Builds a CompletionContext. When credentialType is provided and testable,
+	 * includes the credential test check; otherwise omits it.
+	 */
+	const buildCompletionContext = (credentialType?: string): CompletionContext => ({
+		firstTriggerName: firstTriggerName.value,
+		hasTriggerExecuted: hasTriggerExecutedSuccessfully,
+		isTriggerNode: (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType),
+		isCredentialTestedOk:
+			credentialType && isCredentialTypeTestable(credentialType)
+				? credentialsStore.isCredentialTestedOk
+				: undefined,
+		hasUnfilledTemplateParams,
+	});
+
 	/**
 	 * Credential type states — one entry per unique credential type.
-	 * Ordered by leftmost node X position (inherited from nodesWithCredentials iteration order).
-	 * Cards with embedded triggers have isComplete recomputed to include trigger execution.
+	 * Only includes credential types where NONE of the nodes have parameter issues.
+	 * When nodes have both credentials and parameters, they're handled by nodeStates instead.
+	 * Uses shared `perNodeCredTypes` for the grouping decision.
 	 */
 	const credentialTypeStates = computed(() => {
+		const nodesWithoutParameters = nodesWithCredentials.value.filter(
+			({ credentialTypes }) =>
+				!credentialTypes.some((credType) => perNodeCredTypes.value.has(credType)),
+		);
+
 		const grouped = groupCredentialsByType(
-			nodesWithCredentials.value.map(({ node, credentialTypes }) => ({
+			nodesWithoutParameters.map(({ node, credentialTypes }) => ({
 				node,
 				credentialTypes,
 			})),
 			getCredentialDisplayName,
 			resolveExpressionUrl,
 		);
-		// Only the workflow's first trigger (leftmost) can be executed from setup cards.
-		// It gets an embedded execute button and affects card completion.
-		// Other triggers are treated as regular nodes (credentials only, no execute).
-		const isTriggerNodeType = (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType);
+
 		return grouped.map((state) => {
-			const embeddedTrigger = state.nodes.find(
-				(node) => isTriggerNode(node) && node.name === firstTriggerName.value,
-			);
-			// For completion check, only consider the embedded (first) trigger
-			const nodesForCompletion = embeddedTrigger
-				? state.nodes.filter((node) => !isTriggerNode(node) || node === embeddedTrigger)
-				: state.nodes.filter((node) => !isTriggerNode(node));
-			// Only require a passing test for credential types that actually have a test mechanism.
-			// Non-testable types (e.g. header auth) are complete when just set.
-			const testChecker = isCredentialTypeTestable(state.credentialType)
-				? credentialsStore.isCredentialTestedOk
-				: undefined;
+			const isAutoApplied =
+				!!state.selectedCredentialId &&
+				autoAppliedCredentialIds.value.has(state.selectedCredentialId);
+
 			return {
 				...state,
-				isComplete: isCredentialCardComplete(
-					{ ...state, nodes: nodesForCompletion },
-					hasTriggerExecutedSuccessfully,
-					isTriggerNodeType,
-					testChecker,
-				),
+				isComplete: isCredentialCardComplete(state, buildCompletionContext(state.credentialType)),
+
+				isAutoApplied,
 			};
 		});
 	});
 
 	/**
-	 * Trigger states — one entry per trigger node that is NOT covered by a credential card.
-	 * Triggers with credentials are embedded into the credential card instead.
+	 * Trigger states — one entry per trigger node that is NOT already covered
+	 * by a credential card or a node card.
+	 * Uses `perNodeCredTypes` to check node-card coverage without depending on `nodeStates`.
 	 */
 	const triggerStates = computed(() => {
-		// Only the first trigger can get a standalone trigger card.
-		// Check if it's already embedded in a credential card.
 		if (!firstTriggerName.value) return [];
 
-		const isFirstTriggerEmbedded = credentialTypeStates.value.some((credState) =>
+		const triggerEntry = nodesRequiringSetup.value.find(
+			({ isTrigger, node }) => isTrigger && node.name === firstTriggerName.value,
+		);
+		if (!triggerEntry) return [];
+
+		// Check if covered by a grouped credential card
+		const isInCredentialCards = credentialTypeStates.value.some((credState) =>
 			credState.nodes.some((node) => isTriggerNode(node) && node.name === firstTriggerName.value),
 		);
-		if (isFirstTriggerEmbedded) return [];
+		if (isInCredentialCards) return [];
 
-		return nodesRequiringSetup.value
-			.filter(({ isTrigger, node }) => isTrigger && node.name === firstTriggerName.value)
-			.map(({ node, credentialTypes }) =>
-				buildTriggerSetupState(
-					node,
-					credentialTypes,
-					credentialTypeStates.value,
-					hasTriggerExecutedSuccessfully(node.name),
-				),
-			);
+		// Check if covered by a per-node card (has creds in a per-node cred type, or has params)
+		const { credentialTypes, parameterIssues, node } = triggerEntry;
+		const hasParams = Object.keys(parameterIssues).length > 0 || nodeHasTemplateParams(node.name);
+		const hasPerNodeCreds =
+			credentialTypes.length > 0 && credentialTypes.some((ct) => perNodeCredTypes.value.has(ct));
+		if (hasPerNodeCreds || hasParams) return [];
+
+		// Skip triggers that don't wait for external input (e.g. Manual, Schedule).
+		// Only show a standalone trigger card when the trigger listens for webhooks,
+		// polls an external source, or has a triggerPanel (event-listening triggers).
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		if (!nodeType?.webhooks?.length && !nodeType?.polling && !nodeType?.triggerPanel) return [];
+
+		return [
+			buildTriggerSetupState(
+				node,
+				credentialTypes,
+				credentialTypeStates.value,
+				hasTriggerExecutedSuccessfully(node.name),
+			),
+		];
 	});
 
 	/**
+	 * Per-node setup states — handles both parameter-only nodes and credential+parameter nodes.
+	 *
+	 * Parameter-only entries: nodes with parameter issues but NO credentials.
+	 * Credential entries: nodes with credentials whose type is in `perNodeCredTypes`.
+	 * Only the first node per credential type shows the credential picker.
+
+	 */
+	const nodeStates = computed<NodeSetupState[]>(() => {
+		const result: NodeSetupState[] = [];
+
+		// --- Parameter-only nodes (no credentials) ---
+		for (const entry of nodesWithMissingParameters.value) {
+			if (entry.credentialTypes.length > 0) continue;
+			const { node, parameterIssues, isTrigger } = entry;
+
+			const state: NodeSetupState = {
+				node,
+				parameterIssues,
+				additionalParameterNames: templateParametersByNode.value.get(node.name),
+				isTrigger,
+				isComplete: false,
+			};
+			state.isComplete = isNodeSetupComplete(state, buildCompletionContext());
+			result.push(state);
+		}
+
+		// --- Credential+parameter nodes ---
+		// Build maps: all nodes per cred type + nodes with params per cred type
+		const credTypeToAllNodes = new Map<string, INodeUi[]>();
+		const credTypeToEntries = new Map<
+			string,
+			Array<{
+				node: INodeUi;
+				credentialTypes: string[];
+				parameterIssues: Record<string, string[]>;
+				isTrigger: boolean;
+			}>
+		>();
+
+		for (const entry of nodesRequiringSetup.value) {
+			const { node, credentialTypes, parameterIssues } = entry;
+			if (credentialTypes.length === 0) continue;
+
+			for (const credType of credentialTypes) {
+				if (!perNodeCredTypes.value.has(credType)) continue;
+
+				if (!credTypeToAllNodes.has(credType)) credTypeToAllNodes.set(credType, []);
+
+				if (!credTypeToAllNodes.get(credType)!.some((n) => n.id === node.id)) {
+					credTypeToAllNodes.get(credType)!.push(node);
+				}
+
+				const combinationKey = `${credType}:${node.id}`;
+				const hasParameters = Object.keys(parameterIssues).length > 0;
+				const hasTemplateParams = nodeHasTemplateParams(node.name);
+				const alreadySeen = stickyNodeCredentials.value.has(combinationKey);
+
+				if (hasParameters || hasTemplateParams || alreadySeen) {
+					if (!credTypeToEntries.has(credType)) credTypeToEntries.set(credType, []);
+					credTypeToEntries.get(credType)!.push(entry);
+				}
+			}
+		}
+
+		const seenCombinations = new Set<string>();
+
+		for (const [credType, entries] of credTypeToEntries) {
+			let isFirstNode = true;
+			const allNodesUsingCredential = credTypeToAllNodes.get(credType) ?? [];
+
+			for (const entry of entries) {
+				const { node, parameterIssues, isTrigger } = entry;
+				const combinationKey = `${credType}:${node.id}`;
+
+				if (seenCombinations.has(combinationKey)) continue;
+				seenCombinations.add(combinationKey);
+
+				const credValue = node.credentials?.[credType];
+				const selectedCredentialId =
+					typeof credValue === 'string' ? undefined : (credValue?.id ?? undefined);
+
+				const credentialIssues = node.issues?.credentials ?? {};
+				const issues = credentialIssues[credType];
+				const issueMessages = [issues ?? []].flat();
+
+				const isAutoApplied =
+					!!selectedCredentialId && autoAppliedCredentialIds.value.has(selectedCredentialId);
+
+				const state: NodeSetupState = {
+					node,
+					credentialType: credType,
+					credentialDisplayName: getCredentialDisplayName(credType),
+					selectedCredentialId,
+					issues: issueMessages,
+					parameterIssues,
+					additionalParameterNames: templateParametersByNode.value.get(node.name),
+					isTrigger,
+					showCredentialPicker: isFirstNode,
+					isComplete: false,
+					allNodesUsingCredential,
+					isAutoApplied,
+				};
+
+				state.isComplete = isNodeSetupComplete(state, buildCompletionContext(credType));
+
+				result.push(state);
+
+				isFirstNode = false;
+			}
+		}
+
+		return result;
+	});
+
+	// Persist node-credential combinations once shown
+	watch(
+		nodeStates,
+		(states) => {
+			for (const state of states) {
+				if (state.credentialType) {
+					stickyNodeCredentials.value.add(`${state.credentialType}:${state.node.id}`);
+				}
+			}
+		},
+		{ immediate: true },
+	);
+
+	/**
 	 * Ordered list of all setup cards, sorted by the position of each card's
-	 * primary node (first node / trigger node) in the execution order.
+	 * primary node in the execution order.
+	 * All card types are normalized to NodeSetupState.
 	 */
 	const setupCards = computed<SetupCardItem[]>(() => {
-		const credentials: SetupCardItem[] = credentialTypeStates.value.map((state) => ({
-			type: 'credential' as const,
-			state,
+		// Convert credential-type states to NodeSetupState (one card per credential type,
+		// primary node = first node in the group)
+		const credentialCards: NodeSetupState[] = credentialTypeStates.value.map((credState) => ({
+			node: credState.nodes[0],
+			credentialType: credState.credentialType,
+			credentialDisplayName: credState.credentialDisplayName,
+			selectedCredentialId: credState.selectedCredentialId,
+			issues: credState.issues,
+			parameterIssues: {},
+			isTrigger: isTriggerNode(credState.nodes[0]),
+			showCredentialPicker: true,
+			isComplete: credState.isComplete,
+			isAutoApplied: credState.isAutoApplied,
+			allNodesUsingCredential: credState.nodes,
 		}));
-		const triggers: SetupCardItem[] = triggerStates.value.map((state) => ({
-			type: 'trigger' as const,
-			state,
+
+		// Convert trigger states to NodeSetupState (trigger-only cards)
+		const triggerCards: NodeSetupState[] = triggerStates.value.map((trigState) => ({
+			node: trigState.node,
+			parameterIssues: {},
+			isTrigger: true,
+			isComplete: trigState.isComplete,
 		}));
+
+		const flatCards: SetupCardItem[] = [...credentialCards, ...triggerCards, ...nodeStates.value]
+			.filter((state) => state.node.type !== MANUAL_TRIGGER_NODE_TYPE)
+			.map((state) => ({ state }));
 
 		const executionOrder = nodesRequiringSetup.value.map(({ node }) => node.name);
-		const primaryNodeName = (card: SetupCardItem): string =>
-			card.type === 'trigger' ? card.state.node.name : (card.state.nodes[0]?.name ?? '');
 
-		return [...credentials, ...triggers].sort(
+		flatCards.sort(
 			(a, b) =>
-				executionOrder.indexOf(primaryNodeName(a)) - executionOrder.indexOf(primaryNodeName(b)),
+				executionOrder.indexOf(a.state!.node.name) - executionOrder.indexOf(b.state!.node.name),
+		);
+
+		return groupSetupCards(
+			flatCards,
+			sourceNodes.value,
+			workflowsStore.connectionsByDestinationNode,
+			executionOrder,
 		);
 	});
 
@@ -244,7 +714,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	});
 
 	const isAllComplete = computed(() => {
-		return setupCards.value.length > 0 && setupCards.value.every((card) => card.state.isComplete);
+		return setupCards.value.length > 0 && setupCards.value.every((card) => isCardComplete(card));
 	});
 
 	/**
@@ -258,8 +728,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		credentialName: string,
 		credentialType: string,
 	) {
-		// Non-testable credential types (e.g. header auth, generic credentials)
-		// are considered complete when just set — no API test needed.
 		if (!isCredentialTypeTestable(credentialType)) {
 			return;
 		}
@@ -307,17 +775,157 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	}
 
 	/**
-	 * Auto-test all pre-existing selected credentials on initial load.
+	 * Resolves the node names affected by a credential operation.
+	 * Checks credentialTypeStates first (grouped cards), then falls back to
+	 * nodeStates (per-node cards with parameter issues).
+	 * Snapshots credentialTypeStates to avoid reactivity issues during mutations.
+	 */
+	const getAffectedNodeNames = (credentialType: string, sourceNodeName?: string): string[] => {
+		const allCredStates = credentialTypeStates.value;
+		const credState = sourceNodeName
+			? allCredStates.find(
+					(s) =>
+						s.credentialType === credentialType && s.nodes.some((n) => n.name === sourceNodeName),
+				)
+			: allCredStates.find((s) => s.credentialType === credentialType);
+
+		if (credState) return credState.nodes.map((n) => n.name);
+
+		if (!sourceNodeName) return [];
+
+		const allNStates = nodeStates.value;
+		const sourceEntry = allNStates.find(
+			(s) => s.credentialType === credentialType && s.node.name === sourceNodeName,
+		);
+		if (sourceEntry?.allNodesUsingCredential) {
+			return sourceEntry.allNodesUsingCredential.map((n) => n.name);
+		}
+		return [sourceNodeName];
+	};
+
+	/**
+	 * Sets a credential for nodes.
+	 * When sourceNodeName is provided, it first tries to find the matching credential card
+	 * (needed when multiple HTTP Request nodes produce separate cards with the same credential type).
+	 * If the node isn't in credentialTypeStates (e.g. it's in nodeStates due to parameter issues),
+	 * falls back to updating that specific node directly.
+	 */
+	const setCredential = (
+		credentialType: string,
+		credentialId: string,
+		sourceNodeName?: string,
+		skipHttpRequestType = false,
+	): void => {
+		const credential = credentialsStore.getCredentialById(credentialId);
+		if (!credential) return;
+
+		const credentialDetails = { id: credentialId, name: credential.name };
+
+		void testCredentialInBackground(credentialId, credential.name, credentialType);
+
+		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
+			const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
+			if (!node) continue;
+			if (skipHttpRequestType && isHttpRequestNodeType(node.type)) continue;
+
+			// Clear auto-applied status for the previous credential on this node.
+			// During auto-apply the nodes are still unset so this is a no-op;
+			// during manual selection it removes the auto-applied flag.
+			const prevCred = node.credentials?.[credentialType];
+			const prevId = typeof prevCred === 'string' ? undefined : prevCred?.id;
+			if (prevId) autoAppliedCredentialIds.value.delete(prevId);
+			workflowDocumentStore?.value?.updateNodeProperties({
+				name: nodeName,
+				properties: {
+					credentials: {
+						...node.credentials,
+						[credentialType]: credentialDetails,
+					},
+				},
+			});
+		}
+
+		nodeHelpers.updateNodesCredentialsIssues();
+		useUIStore().markStateDirty();
+	};
+
+	/**
+	 * Unsets a credential from nodes.
+	 * When sourceNodeName is provided, it first tries to find the matching credential card.
+	 * If the node isn't in credentialTypeStates (e.g. it's in nodeStates due to parameter issues),
+	 * falls back to updating that specific node directly.
+	 */
+	const unsetCredential = (credentialType: string, sourceNodeName?: string): void => {
+		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
+			const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
+			if (!node) continue;
+
+			const updatedCredentials = { ...node.credentials };
+			delete updatedCredentials[credentialType];
+
+			workflowDocumentStore?.value?.updateNodeProperties({
+				name: nodeName,
+				properties: {
+					credentials: updatedCredentials,
+				},
+			});
+		}
+
+		nodeHelpers.updateNodesCredentialsIssues();
+		useUIStore().markStateDirty();
+	};
+
+	/**
+	 * Auto-select the most recently updated credential for each credential type
+	 * that doesn't already have one assigned.
+	 * Runs once on initial load to pre-fill credential pickers.
+	 */
+	const tryAutoApplyCredential = (credentialType: string, sourceNodeName?: string): void => {
+		const available = credentialsStore.getCredentialsByType(credentialType);
+		if (available.length === 0) return;
+		const mostRecent = available.reduce(
+			(best, current) => (best.updatedAt > current.updatedAt ? best : current),
+			available[0],
+		);
+		autoAppliedCredentialIds.value.add(mostRecent.id);
+		setCredential(credentialType, mostRecent.id, sourceNodeName, true);
+	};
+
+	const autoSelectCredentials = (): void => {
+		// Snapshot both arrays before iterating — setCredential mutates the store,
+		// which recomputes these computed values mid-loop.
+		const credStates = [...credentialTypeStates.value];
+		const nStates = [...nodeStates.value];
+
+		for (const credState of credStates) {
+			if (credState.selectedCredentialId) continue;
+			tryAutoApplyCredential(credState.credentialType);
+		}
+
+		for (const nodeState of nStates) {
+			if (!nodeState.credentialType || nodeState.selectedCredentialId) continue;
+			tryAutoApplyCredential(nodeState.credentialType, nodeState.node.name);
+		}
+	};
+
+	/**
+	 * On initial load: auto-select credentials then auto-test them.
 	 * Runs once when nodes become available so checkmarks reflect actual validity.
 	 * Deduplicates by credential ID so shared credentials are only tested once.
 	 */
-	let initialTestDone = false;
+	const isInitialCredentialTestingDone = ref(false);
+
+	let initialSetupDone = false;
 	watch(
 		nodesRequiringSetup,
 		(entries) => {
-			if (initialTestDone || entries.length === 0) return;
-			initialTestDone = true;
+			if (initialSetupDone || entries.length === 0) return;
+			initialSetupDone = true;
 
+			// First, auto-select credentials for cards that don't have one yet
+			autoSelectCredentials();
+
+			// Then, auto-test all selected credentials (including auto-selected ones)
 			const credentialsToTest = new Map<string, { name: string; type: string }>();
 			for (const { node, credentialTypes } of entries) {
 				for (const credType of credentialTypes) {
@@ -332,97 +940,21 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				}
 			}
 
+			const testPromises: Array<Promise<void>> = [];
 			for (const [id, { name, type }] of credentialsToTest) {
-				void testCredentialInBackground(id, name, type);
+				testPromises.push(testCredentialInBackground(id, name, type));
+			}
+
+			if (testPromises.length === 0) {
+				isInitialCredentialTestingDone.value = true;
+			} else {
+				void Promise.allSettled(testPromises).then(() => {
+					isInitialCredentialTestingDone.value = true;
+				});
 			}
 		},
 		{ immediate: true },
 	);
-
-	/**
-	 * Sets a credential for all nodes in a credential card.
-	 * When sourceNodeName is provided, it identifies the specific card (needed when
-	 * multiple HTTP Request nodes produce separate cards with the same credential type).
-	 * After assigning, auto-assigns to other HTTP Request cards that share the same
-	 * credential type and URL.
-	 */
-	const setCredential = (
-		credentialType: string,
-		credentialId: string,
-		sourceNodeName?: string,
-	): void => {
-		const credential = credentialsStore.getCredentialById(credentialId);
-		if (!credential) return;
-
-		// Capture the computed snapshot once before any mutations.
-		// assignCredentialToNode modifies the store, which recomputes credentialTypeStates.value
-		// with new object references — breaking the === identity check in the auto-assign loop.
-		const allCredStates = credentialTypeStates.value;
-
-		const credState = sourceNodeName
-			? allCredStates.find(
-					(s) =>
-						s.credentialType === credentialType && s.nodes.some((n) => n.name === sourceNodeName),
-				)
-			: allCredStates.find((s) => s.credentialType === credentialType);
-		if (!credState) return;
-
-		const credentialDetails = { id: credentialId, name: credential.name };
-
-		void testCredentialInBackground(credentialId, credential.name, credentialType);
-
-		const assignCredentialToNode = (nodeName: string) => {
-			const node = workflowsStore.getNodeByName(nodeName);
-			if (!node) return;
-			workflowState.updateNodeProperties({
-				name: nodeName,
-				properties: {
-					credentials: {
-						...node.credentials,
-						[credentialType]: credentialDetails,
-					},
-				},
-			});
-		};
-
-		for (const stateNode of credState.nodes) {
-			assignCredentialToNode(stateNode.name);
-		}
-
-		nodeHelpers.updateNodesCredentialsIssues();
-	};
-
-	/**
-	 * Unsets a credential from all nodes in a credential card.
-	 * When sourceNodeName is provided, it identifies the specific card (needed when
-	 * multiple HTTP Request nodes produce separate cards with the same credential type).
-	 */
-	const unsetCredential = (credentialType: string, sourceNodeName?: string): void => {
-		const credState = sourceNodeName
-			? credentialTypeStates.value.find(
-					(s) =>
-						s.credentialType === credentialType && s.nodes.some((n) => n.name === sourceNodeName),
-				)
-			: credentialTypeStates.value.find((s) => s.credentialType === credentialType);
-		if (!credState) return;
-
-		for (const stateNode of credState.nodes) {
-			const node = workflowsStore.getNodeByName(stateNode.name);
-			if (!node) continue;
-
-			const updatedCredentials = { ...node.credentials };
-			delete updatedCredentials[credentialType];
-
-			workflowState.updateNodeProperties({
-				name: stateNode.name,
-				properties: {
-					credentials: updatedCredentials,
-				},
-			});
-		}
-
-		nodeHelpers.updateNodesCredentialsIssues();
-	};
 
 	/**
 	 * When a credential is deleted, unset it from ALL nodes that reference it.
@@ -447,10 +979,15 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		setupCards,
 		credentialTypeStates,
 		triggerStates,
+		nodeStates,
 		firstTriggerName,
 		totalCredentialsMissing,
 		totalCardsRequiringSetup,
 		isAllComplete,
+		isInitialCredentialTestingDone,
+
+		nodesWithMissingParameters,
+		autoAppliedCredentialIds,
 		setCredential,
 		unsetCredential,
 	};

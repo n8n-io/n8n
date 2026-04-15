@@ -11,7 +11,7 @@ export interface DynamicCredentialItem {
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;
-	credentialStatus: 'missing' | 'configured';
+	credentialStatus: 'missing' | 'configured' | 'resolver_missing';
 	resolverId: string;
 	isConnecting: boolean;
 	error: string | null;

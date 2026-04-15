@@ -266,6 +266,20 @@ export const downloadDataTableCsvApi = async (
 		filename,
 	};
 };
+export const importCsvToDataTableApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	fileId: string,
+) => {
+	return await makeRestApiRequest<{ importedRowCount: number; systemColumnsIgnored: string[] }>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-tables/${dataTableId}/import-csv`,
+		{ fileId },
+	);
+};
+
 export const uploadCsvFileApi = async (
 	context: IRestApiContext,
 	file: File,

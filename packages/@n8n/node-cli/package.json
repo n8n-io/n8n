@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-cli",
-  "version": "0.22.0",
+  "version": "0.27.0",
   "description": "Official CLI for developing community nodes for n8n",
   "bin": {
     "n8n-node": "bin/n8n-node.mjs"
@@ -54,7 +54,7 @@
     "eslint-plugin-import-x": "^4.15.2",
     "eslint-plugin-n8n-nodes-base": "1.16.5",
     "fast-glob": "catalog:",
-    "handlebars": "4.7.8",
+    "handlebars": "4.7.9",
     "picocolors": "catalog:",
     "prettier": "3.6.2",
     "prompts": "^2.4.2",

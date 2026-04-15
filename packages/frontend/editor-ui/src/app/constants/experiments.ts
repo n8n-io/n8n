@@ -63,8 +63,6 @@ export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const TAMPER_PROOF_INVITE_LINKS = createExperiment('061_tamper_proof_invite_links');
-
 export const CREDENTIALS_APP_SELECTION_EXPERIMENT = createExperiment(
 	'065_credentials_app_selection',
 );
@@ -99,7 +97,12 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 	codePinData: 'code-pin-data',
 });
 
-export const QUICK_CONNECT_EXPERIMENT = createExperiment('073_quick_connect');
+export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
+export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
+
+export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
+
+export const FLOATING_CHAT_HUB_PANEL_EXPERIMENT = createExperiment('078_floating_chat_hub_panel');
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -113,7 +116,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	RESOURCE_CENTER_EXPERIMENT.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
-	TAMPER_PROOF_INVITE_LINKS.name,
 	CREDENTIALS_APP_SELECTION_EXPERIMENT.name,
 	SIDEBAR_EXPANDED_EXPERIMENT.name,
 	EMPTY_STATE_EXPERIMENT.name,
@@ -121,7 +123,10 @@ export const EXPERIMENTS_TO_TRACK = [
 	CODE_WORKFLOW_BUILDER_EXPERIMENT.name,
 	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
 	FOCUSED_NODES_EXPERIMENT.name,
-	QUICK_CONNECT_EXPERIMENT.name,
 	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
 	MERGE_ASK_BUILD_EXPERIMENT.name,
+	AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name,
+	AA_EXPERIMENT_CHECK.name,
+	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
+	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
 ];

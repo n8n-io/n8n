@@ -44,6 +44,14 @@ export default {
 			},
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A visual glyph component for representing actions, objects, and states.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({

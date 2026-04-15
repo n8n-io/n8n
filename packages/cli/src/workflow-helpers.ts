@@ -1,20 +1,54 @@
+import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type {
 	IDataObject,
 	INodeCredentialsDetails,
+	INodeTypes,
 	IRun,
 	ITaskData,
 	IWorkflowBase,
 	IWorkflowSettings,
 	RelatedExecution,
 } from 'n8n-workflow';
+import { resolveNodeWebhookId } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 import { OwnershipService } from './services/ownership.service';
+
+/**
+ * Validates that pinned data does not exceed size limits.
+ * (Backend counterpart of the frontend's `usePinnedData.isValidSize()`).
+ * Check 1: pinData alone must not exceed MAX_PINNED_DATA_SIZE (12 MB).
+ * Check 2: workflow (without pinData) + pinData must not exceed MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE (~16 MB - 2 KB).
+ */
+export function validatePinDataSize(workflow: IWorkflowBase): void {
+	if (!workflow.pinData) return;
+
+	const pinDataStr = JSON.stringify(workflow.pinData);
+	const pinDataSize = Buffer.byteLength(pinDataStr, 'utf8');
+
+	if (pinDataSize > MAX_PINNED_DATA_SIZE) {
+		throw new BadRequestError(
+			`Pinned data exceeds the maximum allowed size of ${MAX_PINNED_DATA_SIZE / (1024 * 1024)} MB`,
+		);
+	}
+
+	const { pinData: _, ...workflowWithoutPinData } = workflow;
+	const workflowSize =
+		Buffer.byteLength(JSON.stringify(workflowWithoutPinData), 'utf8') + pinDataSize;
+	const limit = MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE;
+	if (workflowSize > limit) {
+		const limitMB = Math.floor(limit / (1024 * 1024));
+		throw new BadRequestError(
+			`Workflow with pinned data exceeds the maximum allowed size of ${limitMB} MB`,
+		);
+	}
+}
 
 /**
  * Returns the data of the last executed node
@@ -69,6 +103,25 @@ export function addNodeIds(workflow: IWorkflowBase) {
 }
 
 /**
+ * Assign webhookId to any webhook node that is missing one.
+ * The UI does this on the frontend when adding nodes to the canvas,
+ * but workflows created via the API skip that step.
+ */
+export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeTypes) {
+	const { nodes } = workflow;
+	if (!nodes) return;
+
+	for (const node of nodes) {
+		try {
+			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			resolveNodeWebhookId(node, nodeType.description);
+		} catch {
+			// node type not found, skip
+		}
+	}
+}
+
+/**
  * Removes default values from workflow settings to avoid storing them in the database.
  * Returns a new settings object without mutating the original.
  *
@@ -112,7 +165,10 @@ export function removeDefaultValues(
 }
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
-export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflow: T): Promise<T> {
+export async function replaceInvalidCredentials<T extends IWorkflowBase>(
+	workflow: T,
+	projectId: string,
+): Promise<T> {
 	const { nodes } = workflow;
 	if (!nodes) return workflow;
 
@@ -130,6 +186,13 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflo
 		// extract credentials types
 		const allNodeCredentials = Object.entries(node.credentials);
 		for (const [nodeCredentialType, nodeCredentials] of allNodeCredentials) {
+			// Skip undefined/null credentials (e.g. from SDK's newCredential() which serializes to undefined)
+			if (nodeCredentials === null || nodeCredentials === undefined) {
+				continue;
+			}
+			// AI Gateway managed credentials have no real DB record — skip, handled at execution time
+			if (nodeCredentials.__aiGatewayManaged) continue;
+
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
 				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;
@@ -138,10 +201,11 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflo
 					credentialsByName[nodeCredentialType] = {};
 				}
 				if (credentialsByName[nodeCredentialType][name] === undefined) {
-					const credentials = await Container.get(CredentialsRepository).findBy({
+					const credentials = await Container.get(CredentialsRepository).findByNameAndTypeInProject(
 						name,
-						type: nodeCredentialType,
-					});
+						nodeCredentialType,
+						projectId,
+					);
 					// if credential name-type combination is unique, use it
 					if (credentials?.length === 1) {
 						credentialsByName[nodeCredentialType][name] = {
@@ -188,10 +252,11 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflo
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name
-				const credsByName = await Container.get(CredentialsRepository).findBy({
-					name: nodeCredentials.name,
-					type: nodeCredentialType,
-				});
+				const credsByName = await Container.get(CredentialsRepository).findByNameAndTypeInProject(
+					nodeCredentials.name,
+					nodeCredentialType,
+					projectId,
+				);
 				// if credential name-type combination is unique, take it
 				if (credsByName?.length === 1) {
 					// add found credential to cache

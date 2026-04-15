@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.4.0",
+  "version": "0.10.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -17,6 +17,30 @@
     },
     "./dist/generate-types/generate-node-defs-cli": {
       "default": "./dist/generate-types/generate-node-defs-cli.js"
+    },
+    "./prompts/sdk-reference": {
+      "types": "./dist/prompts/sdk-reference/index.d.ts",
+      "default": "./dist/prompts/sdk-reference/index.js"
+    },
+    "./prompts/node-guidance/parameter-guides": {
+      "types": "./dist/prompts/node-guidance/parameter-guides/index.d.ts",
+      "default": "./dist/prompts/node-guidance/parameter-guides/index.js"
+    },
+    "./prompts/node-guidance/node-tips": {
+      "types": "./dist/prompts/node-guidance/node-tips/index.d.ts",
+      "default": "./dist/prompts/node-guidance/node-tips/index.js"
+    },
+    "./prompts/node-guidance/node-recommendations": {
+      "types": "./dist/prompts/node-guidance/node-recommendations/index.d.ts",
+      "default": "./dist/prompts/node-guidance/node-recommendations/index.js"
+    },
+    "./prompts/best-practices": {
+      "types": "./dist/prompts/best-practices/index.d.ts",
+      "default": "./dist/prompts/best-practices/index.js"
+    },
+    "./prompts/node-selection": {
+      "types": "./dist/prompts/node-selection/index.d.ts",
+      "default": "./dist/prompts/node-selection/index.js"
     }
   },
   "scripts": {
@@ -43,6 +67,28 @@
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "prompts/sdk-reference": [
+        "./dist/prompts/sdk-reference/index.d.ts"
+      ],
+      "prompts/node-guidance/parameter-guides": [
+        "./dist/prompts/node-guidance/parameter-guides/index.d.ts"
+      ],
+      "prompts/node-guidance/node-tips": [
+        "./dist/prompts/node-guidance/node-tips/index.d.ts"
+      ],
+      "prompts/node-guidance/node-recommendations": [
+        "./dist/prompts/node-guidance/node-recommendations/index.d.ts"
+      ],
+      "prompts/best-practices": [
+        "./dist/prompts/best-practices/index.d.ts"
+      ],
+      "prompts/node-selection": [
+        "./dist/prompts/node-selection/index.d.ts"
+      ]
+    }
+  },
   "files": [
     "dist/**/*"
   ],
@@ -53,6 +99,7 @@
     "adm-zip": "^0.5.16"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^1.1.4",
     "acorn": "8.14.0",
     "n8n-workflow": "workspace:*",
     "uuid": "catalog:",

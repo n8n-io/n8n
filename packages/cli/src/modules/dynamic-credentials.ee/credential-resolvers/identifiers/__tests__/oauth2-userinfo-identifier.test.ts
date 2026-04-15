@@ -136,6 +136,32 @@ describe('OAuth2UserInfoIdentifier', () => {
 		});
 	});
 
+	describe('Network Errors', () => {
+		test('should throw IdentifierValidationError when metadata URL is unreachable', async () => {
+			mockedAxios.get.mockRejectedValue(new Error('connect ECONNREFUSED 127.0.0.1:443'));
+
+			const error = await identifier.validateOptions(validOptions).catch((e) => e);
+			expect(error).toBeInstanceOf(IdentifierValidationError);
+			expect(error.message).toContain('Could not reach metadata URL');
+		});
+
+		test('should throw IdentifierValidationError on DNS resolution failure', async () => {
+			mockedAxios.get.mockRejectedValue(new Error('getaddrinfo ENOTFOUND auth.example.com'));
+
+			const error = await identifier.validateOptions(validOptions).catch((e) => e);
+			expect(error).toBeInstanceOf(IdentifierValidationError);
+			expect(error.message).toContain('Could not reach metadata URL');
+		});
+
+		test('should throw IdentifierValidationError on request timeout', async () => {
+			mockedAxios.get.mockRejectedValue(new Error('timeout of 10000ms exceeded'));
+
+			const error = await identifier.validateOptions(validOptions).catch((e) => e);
+			expect(error).toBeInstanceOf(IdentifierValidationError);
+			expect(error.message).toContain('Could not reach metadata URL');
+		});
+	});
+
 	describe('Critical Errors', () => {
 		test('should throw IdentifierValidationError for invalid options', async () => {
 			const invalidOptions = { metadataUri: 'not-a-url' };

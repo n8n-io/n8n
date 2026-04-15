@@ -6,6 +6,7 @@ export const REGISTRY_CONSTANTS = {
 	REGISTRATION_TTL_SECONDS: 60, // 60 seconds
 	RECONCILIATION_INTERVAL_MS: 180_000, // 3 minutes
 	OPERATION_TIMEOUT_MS: 5_000, // 5 seconds
+	STATE_TTL_SECONDS: 300, // 5 minutes - leadership handoff state
 } as const;
 
 /**
@@ -15,5 +16,5 @@ export const REGISTRY_CONSTANTS = {
 export const REDIS_KEY_PATTERNS = {
 	instanceKey: (prefix: string, instanceKey: string) => `${prefix}:{instance:}${instanceKey}`,
 	membershipSet: (prefix: string) => `${prefix}:{instance:}members`,
-	stateKey: (prefix: string) => `${prefix}:{instance:}:state`,
+	stateKey: (prefix: string) => `${prefix}:{instance:}state`,
 } as const;

@@ -9,7 +9,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * - Add unique index on (workflowId, name)
  */
 export class ChangeWorkflowStatisticsFKToNoAction1767018516000 implements ReversibleMigration {
-	transaction = false as const; // Disable FK checks for table recreation
+	withFKsDisabled = true as const;
 
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		// Create new table with id primary key, non nullable workflowId, workflowName column, and no foreign key constraint

@@ -171,6 +171,28 @@ export class ChatHubAttachmentService {
 		return await this.binaryDataService.getAsBuffer(binaryData);
 	}
 
+	async storeTemporaryExecutionFile(
+		workflowId: string,
+		buffer: Buffer,
+		mimeType: string,
+		fileName: string,
+	): Promise<IBinaryData> {
+		const sanitizedFileName = sanitizeFilename(fileName);
+		const binaryData: IBinaryData = {
+			data: buffer.toString(BINARY_ENCODING),
+			mimeType,
+			fileName: sanitizedFileName,
+			fileSize: `${buffer.length}`,
+			fileExtension: sanitizedFileName?.split('.').pop(),
+		};
+
+		return await this.binaryDataService.store(
+			FileLocation.ofExecution(workflowId, 'temp'),
+			buffer,
+			binaryData,
+		);
+	}
+
 	private isAllowedMimeType(mimeType: string, allowedMimeTypes: string): boolean {
 		const patterns = allowedMimeTypes.split(',').map((p) => p.trim());
 		for (const pattern of patterns) {

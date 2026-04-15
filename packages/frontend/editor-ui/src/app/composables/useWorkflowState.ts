@@ -12,7 +12,6 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import {
@@ -50,7 +49,6 @@ export const workflowStateEventBus = createEventBus<WorkflowStateBusEvents>();
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
-	const workflowsListStore = useWorkflowsListStore();
 	const workflowStateStore = useWorkflowStateStore();
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
@@ -60,18 +58,7 @@ export function useWorkflowState() {
 	// Workflow editing state
 	////
 
-	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
-		if (data.setStateDirty) {
-			uiStore.markStateDirty('metadata');
-		}
-		ws.workflow.name = data.newName;
-		ws.workflowObject.name = data.newName;
-
-		if (ws.workflow.id && workflowsListStore.workflowsById[ws.workflow.id]) {
-			workflowsListStore.workflowsById[ws.workflow.id].name = data.newName;
-		}
-	}
-
+	/** @deprecated Use `workflowDocumentStore.removeAllConnections()` instead. */
 	function removeAllConnections(data: { setStateDirty: boolean }): void {
 		if (data?.setStateDirty) {
 			uiStore.markStateDirty();
@@ -81,6 +68,7 @@ export function useWorkflowState() {
 		ws.workflowObject.setConnections({});
 	}
 
+	/** @deprecated Use `workflowDocumentStore.removeAllNodes()` instead. */
 	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
 		if (data.setStateDirty) {
 			uiStore.markStateDirty();
@@ -112,6 +100,7 @@ export function useWorkflowState() {
 		ws.workflowExecutionStartedData = undefined;
 	}
 
+	/** @deprecated Use `workflowDocumentStore.resetAllNodesIssues()` instead. */
 	function resetAllNodesIssues(): boolean {
 		ws.workflow.nodes.forEach((node) => {
 			node.issues = undefined;
@@ -158,8 +147,6 @@ export function useWorkflowState() {
 			workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
 		}
 
-		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
-
 		return workflowData;
 	}
 
@@ -173,7 +160,10 @@ export function useWorkflowState() {
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
 		ws.executionWaitingForWebhook = false;
-		documentTitle.setDocumentTitle(ws.workflowName, 'IDLE');
+		const workflowDocumentStore = ws.workflow.id
+			? useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflow.id))
+			: undefined;
+		documentTitle.setDocumentTitle(workflowDocumentStore?.name ?? '', 'IDLE');
 		ws.workflowExecutionStartedData = undefined;
 
 		// TODO(ckolb): confirm this works across files?
@@ -205,8 +195,15 @@ export function useWorkflowState() {
 		setWorkflowExecutionData(null);
 		resetAllNodesIssues();
 
+		// Reset name via document store (triggers onNameChange → updates workflowObject.name)
+		if (ws.workflow.id) {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(ws.workflow.id),
+			);
+			workflowDocumentStore.setName('');
+		}
+
 		setWorkflowId('');
-		setWorkflowName({ newName: '', setStateDirty: false });
 		// Settings are managed by workflowDocumentStore; reset the runtime Workflow instance directly
 		ws.workflowObject.setSettings({ ...DEFAULT_SETTINGS });
 		// Note: Tags are now managed by workflowDocumentStore, which is disposed during reset
@@ -222,6 +219,7 @@ export function useWorkflowState() {
 	////
 
 	/**
+	 * @deprecated Use per-node mutation methods on `workflowDocumentStore` instead.
 	 * @returns `true` if the object was changed
 	 */
 	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
@@ -241,6 +239,7 @@ export function useWorkflowState() {
 		return false;
 	}
 
+	/** @deprecated Use `workflowDocumentStore.setNodeParameters()` instead. */
 	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
 		// Find the node that should be updated
 		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
@@ -270,6 +269,7 @@ export function useWorkflowState() {
 		}
 	}
 
+	/** @deprecated Use `workflowDocumentStore.setLastNodeParameters()` instead. */
 	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
 		const latestNode = findLast(
 			ws.workflow.nodes,
@@ -292,6 +292,7 @@ export function useWorkflowState() {
 		}
 	}
 
+	/** @deprecated Use `workflowDocumentStore.setNodeValue()` instead. */
 	function setNodeValue(updateInformation: IUpdateInformation): void {
 		// Find the node that should be updated
 		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
@@ -319,6 +320,7 @@ export function useWorkflowState() {
 		}
 	}
 
+	/** @deprecated Use `workflowDocumentStore.setNodePositionById()` instead. */
 	function setNodePositionById(id: string, position: INodeUi['position']): void {
 		const node = ws.workflow.nodes.find((n) => n.id === id);
 		if (!node) return;
@@ -328,6 +330,7 @@ export function useWorkflowState() {
 
 	/**
 	 * Update node by ID. Finds the node by ID and updates it with the provided data.
+	 * @deprecated Use `workflowDocumentStore.updateNodeById()` instead.
 	 * @returns `true` if the node was found and updated
 	 */
 	function updateNodeById(nodeId: string, nodeData: Partial<INodeUi>): boolean {
@@ -339,6 +342,7 @@ export function useWorkflowState() {
 	/**
 	 * Reset parametersLastUpdatedAt to current timestamp for a node.
 	 * Used to mark a node as "dirty" when its parameters change.
+	 * @deprecated Use `workflowDocumentStore.resetParametersLastUpdatedAt()` instead.
 	 */
 	function resetParametersLastUpdatedAt(nodeName: string): void {
 		if (!ws.nodeMetadata[nodeName]) {
@@ -347,6 +351,7 @@ export function useWorkflowState() {
 		ws.nodeMetadata[nodeName].parametersLastUpdatedAt = Date.now();
 	}
 
+	/** @deprecated Use `workflowDocumentStore.updateNodeProperties()` instead. */
 	function updateNodeProperties(
 		this: WorkflowState,
 		updateInformation: INodeUpdatePropertiesInformation,
@@ -372,6 +377,7 @@ export function useWorkflowState() {
 		workflowStateEventBus.emit('updateNodeProperties', [this, updateInformation]);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.setNodeIssue()` instead. */
 	function setNodeIssue(nodeIssueData: INodeIssueData): void {
 		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
 			return node.name === nodeIssueData.node;
@@ -412,7 +418,6 @@ export function useWorkflowState() {
 		setWorkflowExecutionData,
 		resetAllNodesIssues,
 		setWorkflowId,
-		setWorkflowName,
 		setWorkflowProperty,
 		setActiveExecutionId,
 		getNewWorkflowData,

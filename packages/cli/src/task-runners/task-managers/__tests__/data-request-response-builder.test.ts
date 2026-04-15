@@ -59,6 +59,7 @@ const metadata = {
 };
 
 const runExecutionData = mock<IRunExecutionData>({
+	resumeToken: 'test-resume-token-preserved',
 	executionData: {
 		contextData,
 		metadata,
@@ -128,8 +129,8 @@ describe('DataRequestResponseBuilder', () => {
 	it('clears nodeExecutionStack, waitingExecution and waitingExecutionSource from runExecutionData', () => {
 		const result = builder.buildFromTaskData(taskData);
 
-		expect(result.runExecutionData).toStrictEqual(
-			createRunExecutionData({
+		expect(result.runExecutionData).toStrictEqual({
+			...createRunExecutionData({
 				startData: runExecutionData.startData,
 				resultData: runExecutionData.resultData,
 				executionData: {
@@ -140,6 +141,7 @@ describe('DataRequestResponseBuilder', () => {
 					waitingExecutionSource: null,
 				},
 			}),
-		);
+			resumeToken: 'test-resume-token-preserved',
+		});
 	});
 });

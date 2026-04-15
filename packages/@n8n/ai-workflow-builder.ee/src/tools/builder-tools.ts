@@ -29,7 +29,6 @@ import { RENAME_NODE_TOOL } from './rename-node.tool';
 import { UPDATING_NODE_PARAMETER_TOOL } from './update-node-parameters.tool';
 import { VALIDATE_CONFIGURATION_TOOL } from './validate-configuration.tool';
 import { VALIDATE_STRUCTURE_TOOL } from './validate-structure.tool';
-
 /**
  * Return display information for tools
  * Without the actual LangChain implementation

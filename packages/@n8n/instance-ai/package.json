@@ -1,0 +1,61 @@
+{
+  "name": "@n8n/instance-ai",
+  "version": "1.2.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "test": "jest",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "eval:instance-ai": "tsx evaluations/cli/index.ts"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "dependencies": {
+    "@daytonaio/sdk": "0.149.0",
+    "@joplin/turndown-plugin-gfm": "^1.0.12",
+    "@mastra/core": "catalog:",
+    "@mastra/daytona": "catalog:",
+    "@mastra/mcp": "catalog:",
+    "@mastra/memory": "catalog:",
+    "langsmith": "catalog:",
+    "@mozilla/readability": "^0.6.0",
+    "@n8n/api-types": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "@n8n/workflow-sdk": "workspace:*",
+    "linkedom": "^0.18.9",
+    "luxon": "catalog:",
+    "csv-parse": "5.5.0",
+    "nanoid": "catalog:",
+    "p-limit": "^3.1.0",
+    "pdf-parse": "^1.1.1",
+    "turndown": "^7.2.0",
+    "zod": "catalog:",
+    "@ai-sdk/provider-v5": "npm:@ai-sdk/provider@2.0.0",
+    "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5",
+    "@n8n/agents": "workspace:*",
+    "flatted": "catalog:",
+    "n8n-workflow": "workspace:*"
+  },
+  "devDependencies": {
+    "@ai-sdk/anthropic": "2.0.61",
+    "@n8n/typescript-config": "workspace:*",
+    "@types/luxon": "3.2.0",
+    "@types/turndown": "^5.0.5",
+    "tsx": "catalog:"
+  }
+}

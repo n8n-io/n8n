@@ -27,7 +27,7 @@ const props = defineProps<{
 	workflow: IWorkflowDb | null;
 	workflowVersion: WorkflowVersion | null;
 	actions: Array<UserAction<IUser>>;
-	isVersionActive?: boolean;
+	isPublished?: boolean;
 	isListLoading?: boolean;
 	isFirstItemShown?: boolean;
 }>();
@@ -61,10 +61,10 @@ const versionNameDisplay = computed(() => {
 		return '';
 	}
 
-	const isCurrentVersion = props.workflowVersion.versionId === props.workflow?.versionId;
-	return isCurrentVersion
-		? i18n.baseText('workflowHistory.item.currentChanges')
-		: getVersionLabel(props.workflowVersion);
+	return getVersionLabel({
+		workflowHistory: props.workflowVersion,
+		currentVersionId: props.workflow?.versionId,
+	});
 });
 
 const MAX_DESCRIPTION_LENGTH = 200;
@@ -90,7 +90,7 @@ const actions = computed(() => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (props.isVersionActive) {
+	if (props.isPublished) {
 		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
 	} else {
 		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');

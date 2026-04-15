@@ -17,6 +17,7 @@ import {
 	deleteDataTableRowsApi,
 	fetchDataTableGlobalLimitInBytes,
 	downloadDataTableCsvApi,
+	importCsvToDataTableApi,
 	uploadCsvFileApi,
 } from '@/features/core/dataTable/dataTable.api';
 import type {
@@ -25,6 +26,7 @@ import type {
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { reorderItem } from '@/features/core/dataTable/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -126,6 +128,10 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return await uploadCsvFileApi(rootStore.restApiContext, file, hasHeaders);
 	};
 
+	const importCsvToDataTable = async (dataTableId: string, projectId: string, fileId: string) => {
+		return await importCsvToDataTableApi(rootStore.restApiContext, dataTableId, projectId, fileId);
+	};
+
 	const deleteDataTable = async (dataTableId: string, projectId: string) => {
 		const deleted = await deleteDataTableApi(rootStore.restApiContext, dataTableId, projectId);
 		if (deleted) {
@@ -169,6 +175,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			if (index !== -1) {
 				dataTables.value[index] = { ...dataTables.value[index], name };
 			}
+			useFavoritesStore().renameFavorite(dataTableId, 'dataTable', name);
 		}
 		return updated;
 	};
@@ -378,6 +385,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		maxSizeMB,
 		createDataTable,
 		uploadCsvFile,
+		importCsvToDataTable,
 		deleteDataTable,
 		updateDataTable,
 		fetchDataTableDetails,

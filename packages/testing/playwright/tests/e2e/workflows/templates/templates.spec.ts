@@ -244,7 +244,7 @@ test.describe(
 			test('can open template with images and hides workflow screenshots', async ({ n8n }) => {
 				await n8n.navigate.toTemplate(TEMPLATE_ID);
 				await expect(n8n.templates.getDescription()).toBeVisible();
-				await expect(n8n.templates.getDescription().locator('img')).toHaveCount(1);
+				await expect(n8n.templates.getDescriptionImages()).toHaveCount(1);
 			});
 
 			test('renders search elements correctly', async ({ n8n }) => {
