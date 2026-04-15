@@ -2,7 +2,7 @@
 import '@/zod-alias-support';
 
 import { mockInstance } from '@n8n/backend-test-utils';
-import { AuthRolesService, DbConnection } from '@n8n/db';
+import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
@@ -31,6 +31,9 @@ import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
+
+const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
+deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
 
 const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 loadNodesAndCredentials.init.mockResolvedValue(undefined);
@@ -118,6 +121,7 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(CommunityPackagesConfig, mockInstance(CommunityPackagesConfig));
 		Container.set(CommunityPackagesService, communityPackagesService);
 		Container.set(TaskRunnerModule, taskRunnerModule);
+		Container.set(DeploymentKeyRepository, deploymentKeyRepository);
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing
