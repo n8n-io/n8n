@@ -21,11 +21,11 @@ const isOpen = ref(false);
 
 const displayName = computed(() => {
 	const { toolName, args } = props.toolCall;
-	const label = getToolLabel(toolName);
-	if (toolName === 'web-search' && typeof args.query === 'string') {
+	const label = getToolLabel(toolName, args as Record<string, unknown>);
+	if (toolName === 'research' && args.action === 'web-search' && typeof args.query === 'string') {
 		return `${label}: "${args.query}"`;
 	}
-	if (toolName === 'fetch-url' && typeof args.url === 'string') {
+	if (toolName === 'research' && args.action === 'fetch-url' && typeof args.url === 'string') {
 		return `${label}: ${args.url}`;
 	}
 	return label;
@@ -90,7 +90,11 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 				<div :class="$style.sectionLabel">
 					{{ i18n.baseText('instanceAi.toolCall.output') }}
 				</div>
-				<ToolResultRenderer :result="props.toolCall.result" :tool-name="props.toolCall.toolName" />
+				<ToolResultRenderer
+					:result="props.toolCall.result"
+					:tool-name="props.toolCall.toolName"
+					:tool-args="props.toolCall.args"
+				/>
 			</div>
 			<div v-else-if="props.toolCall.isLoading" :class="$style.section">
 				<div :class="$style.sectionLabel">

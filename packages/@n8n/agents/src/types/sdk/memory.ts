@@ -114,6 +114,11 @@ export interface MemoryConfig {
 		structured: boolean;
 		schema?: z.ZodObject<z.ZodRawShape>;
 		scope: 'resource' | 'thread';
+		/**
+		 * Custom instruction text injected into the system prompt in place of the default.
+		 * When omitted the runtime uses {@link WORKING_MEMORY_DEFAULT_INSTRUCTION}.
+		 */
+		instruction?: string;
 	};
 	semanticRecall?: SemanticRecallConfig;
 	titleGeneration?: TitleGenerationConfig;

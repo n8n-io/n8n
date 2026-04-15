@@ -4,13 +4,13 @@ import { ref } from 'vue';
 import { useAiGateway } from './useAiGateway';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
-const mockGetGatewayCredits = vi.fn();
+const mockGetGatewayWallet = vi.fn();
 const mockGetGatewayConfig = vi
 	.fn()
 	.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
-	getGatewayCredits: (...args: unknown[]) => mockGetGatewayCredits(...args),
+	getGatewayWallet: (...args: unknown[]) => mockGetGatewayWallet(...args),
 	getGatewayConfig: (...args: unknown[]) => mockGetGatewayConfig(...args),
 }));
 
@@ -42,60 +42,60 @@ describe('useAiGateway', () => {
 		mockGetGatewayConfig.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
 	});
 
-	describe('fetchCredits()', () => {
+	describe('fetchWallet()', () => {
 		it('should not call API when AI Gateway is not enabled', async () => {
 			// isEnabled = false (default mock values)
-			const { fetchCredits, creditsRemaining } = useAiGateway();
+			const { fetchWallet, balance } = useAiGateway();
 
-			await fetchCredits();
+			await fetchWallet();
 
-			expect(mockGetGatewayCredits).not.toHaveBeenCalled();
-			expect(creditsRemaining.value).toBeUndefined();
+			expect(mockGetGatewayWallet).not.toHaveBeenCalled();
+			expect(balance.value).toBeUndefined();
 		});
 
-		it('should fetch and update creditsRemaining and creditsQuota when enabled', async () => {
+		it('should fetch and update balance and budget when enabled', async () => {
 			mockIsAiGatewayEnabled.value = true;
-			mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 7, creditsQuota: 10 });
+			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
 
-			const { fetchCredits, creditsRemaining, creditsQuota } = useAiGateway();
+			const { fetchWallet, balance, budget } = useAiGateway();
 
-			await fetchCredits();
+			await fetchWallet();
 
-			expect(mockGetGatewayCredits).toHaveBeenCalledOnce();
-			expect(creditsRemaining.value).toBe(7);
-			expect(creditsQuota.value).toBe(10);
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+			expect(balance.value).toBe(7);
+			expect(budget.value).toBe(10);
 		});
 
 		it('should keep previous values on API error', async () => {
 			mockIsAiGatewayEnabled.value = true;
 
 			// First successful call
-			mockGetGatewayCredits.mockResolvedValueOnce({ creditsRemaining: 5, creditsQuota: 10 });
-			const { fetchCredits, creditsRemaining, creditsQuota } = useAiGateway();
-			await fetchCredits();
-			expect(creditsRemaining.value).toBe(5);
+			mockGetGatewayWallet.mockResolvedValueOnce({ balance: 5, budget: 10 });
+			const { fetchWallet, balance, budget } = useAiGateway();
+			await fetchWallet();
+			expect(balance.value).toBe(5);
 
 			// Second call fails
-			mockGetGatewayCredits.mockRejectedValueOnce(new Error('Network error'));
-			await fetchCredits();
+			mockGetGatewayWallet.mockRejectedValueOnce(new Error('Network error'));
+			await fetchWallet();
 
 			// Values should remain from first successful call
-			expect(creditsRemaining.value).toBe(5);
-			expect(creditsQuota.value).toBe(10);
+			expect(balance.value).toBe(5);
+			expect(budget.value).toBe(10);
 		});
 
-		it('should share credits state across multiple composable instances', async () => {
+		it('should share balance state across multiple composable instances', async () => {
 			mockIsAiGatewayEnabled.value = true;
-			mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 3, creditsQuota: 5 });
+			mockGetGatewayWallet.mockResolvedValue({ balance: 3, budget: 5 });
 
 			const instance1 = useAiGateway();
 			const instance2 = useAiGateway();
 
-			await instance1.fetchCredits();
+			await instance1.fetchWallet();
 
 			// Both instances read from the same store
-			expect(instance1.creditsRemaining.value).toBe(3);
-			expect(instance2.creditsRemaining.value).toBe(3);
+			expect(instance1.balance.value).toBe(3);
+			expect(instance2.balance.value).toBe(3);
 		});
 	});
 

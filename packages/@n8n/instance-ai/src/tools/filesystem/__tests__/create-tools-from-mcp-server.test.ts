@@ -18,7 +18,7 @@ const CONFIRMATION_PAYLOAD = {
 	toolGroup: 'filesystemWrite',
 	resource: 'write_file',
 	description: 'Write to file: test.ts',
-	options: ['allowOnce', 'allowForSession', 'alwaysAllow', 'denyOnce', 'alwaysDeny'],
+	options: ['denyOnce', 'allowOnce', 'allowForSession'],
 };
 
 const PLAIN_CONFIRMATION_ERROR: McpToolCallResult = {
