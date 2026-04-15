@@ -10,7 +10,6 @@ import {
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
-import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { License } from '@/license';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
@@ -63,14 +62,13 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 export async function createWorkflow(
 	user: User,
 	body: WorkflowEntity & { projectId?: string },
-	source: WorkflowActionSource = 'api',
 ): Promise<WorkflowEntity> {
 	const { projectId, ...rest } = body;
 	const workflow = Object.assign(new WorkflowEntity(), rest);
 	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
 		projectId,
 		publicApi: true,
-		source,
+		source: 'api',
 	});
 }
 

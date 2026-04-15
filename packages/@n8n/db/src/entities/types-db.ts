@@ -438,8 +438,6 @@ export type AuthenticatedRequest<
 		'push-ref': string;
 	};
 	tokenGrant?: TokenGrant;
-	/** Set by the public API middleware to identify the caller */
-	apiSource?: 'api' | 'n8n-cli';
 };
 
 /**

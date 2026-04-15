@@ -28,8 +28,7 @@ export = {
 	createWorkflow: [
 		publicApiScope('workflow:create'),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
-			const source = req.apiSource ?? 'api';
-			const createdWorkflow = await createWorkflow(req.user, req.body, source);
+			const createdWorkflow = await createWorkflow(req.user, req.body);
 			return res.json(createdWorkflow);
 		},
 	],
@@ -271,7 +270,6 @@ export = {
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
-			const source = req.apiSource ?? 'api';
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
 
@@ -284,7 +282,7 @@ export = {
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
 						publishIfActive: true,
-						source,
+						source: 'api',
 					},
 				);
 
@@ -305,7 +303,6 @@ export = {
 		projectScope('workflow:publish', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
-			const source = req.apiSource ?? 'api';
 			const { versionId, name, description } = req.body;
 
 			try {
@@ -313,7 +310,7 @@ export = {
 					versionId,
 					name,
 					description,
-					source,
+					source: 'api',
 				});
 
 				return res.json(workflow);
@@ -333,12 +330,11 @@ export = {
 		projectScope('workflow:unpublish', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
-			const source = req.apiSource ?? 'api';
 
 			try {
 				const workflow = await Container.get(WorkflowService).deactivateWorkflow(req.user, id, {
 					publicApi: true,
-					source,
+					source: 'api',
 				});
 
 				return res.json(workflow);
