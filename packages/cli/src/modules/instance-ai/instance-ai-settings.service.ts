@@ -498,11 +498,12 @@ export class InstanceAiSettingsService {
 	];
 
 	private rejectManagedFields(
-		update: Record<string, unknown>,
+		update: object,
 		managedFields: readonly string[],
 		label: string,
 	): void {
-		const present = managedFields.filter((key) => key in update && update[key] !== undefined);
+		const record = update as Record<string, unknown>;
+		const present = managedFields.filter((key) => key in record && record[key] !== undefined);
 		if (present.length > 0) {
 			throw new UnprocessableRequestError(
 				`Cannot update ${label}-managed fields: ${present.join(', ')}`,
