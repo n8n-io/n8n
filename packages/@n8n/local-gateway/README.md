@@ -93,4 +93,4 @@ src/renderer/   — Settings UI (plain HTML/CSS/TS, sandboxed)
 src/shared/     — Types shared between main and renderer
 ```
 
-The actual gateway daemon is provided by the `@n8n/fs-proxy` package and is managed by `DaemonController`, which starts/stops it and surfaces status (`stopped → starting → waiting → connected → disconnected`) to the tray menu and settings window via IPC.
+The actual gateway daemon is provided by the `@n8n/computer-use` package and is managed by `DaemonController`, which starts/stops it and surfaces status (`stopped → starting → waiting → connected → disconnected`) to the tray menu and settings window via IPC.

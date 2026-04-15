@@ -705,7 +705,8 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'proxy test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
-				headers: { Authorization: 'Bearer proxy-token' },
+				// eslint-disable-next-line @typescript-eslint/require-await
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
 
@@ -723,7 +724,8 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'client test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
-				headers: { Authorization: 'Bearer proxy-token' },
+				// eslint-disable-next-line @typescript-eslint/require-await
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
 
@@ -749,7 +751,8 @@ describe('createInstanceAiTraceContext', () => {
 			.getCreatedRunTrees()
 			.find((run) => run.name === 'message_turn');
 		expect(rootRunTree).toBeDefined();
-		expect(rootRunTree?.client).toBeUndefined();
+		// Without proxyConfig, the direct client is used (never undefined)
+		expect(rootRunTree?.client).toBeDefined();
 	});
 
 	it('returns undefined when tracing is explicitly disabled even with proxy', async () => {
@@ -763,7 +766,8 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'disabled test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
-				headers: { Authorization: 'Bearer proxy-token' },
+				// eslint-disable-next-line @typescript-eslint/require-await
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
 

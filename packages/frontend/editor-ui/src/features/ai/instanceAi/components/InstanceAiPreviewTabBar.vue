@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { computed, watch, nextTick } from 'vue';
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nIconButton } from '@n8n/design-system';
+import { computed, nextTick, watch } from 'vue';
 import type { ArtifactTab } from '../useCanvasPreview';
 
 const props = defineProps<{
@@ -48,30 +48,7 @@ const externalLinkHref = computed(() => {
 				:class="[$style.tab, tab.id === activeTabId ? $style.activeTab : '']"
 				@click="emit('update:activeTabId', tab.id)"
 			>
-				<N8nIcon :icon="tab.icon" size="medium" :class="$style.tabIcon" />
 				<span :class="$style.tabLabel">{{ tab.name }}</span>
-				<N8nIcon
-					v-if="tab.executionStatus === 'running'"
-					data-test-id="execution-status-running"
-					icon="spinner"
-					:spin="true"
-					size="small"
-					:class="$style.statusRunning"
-				/>
-				<N8nIcon
-					v-else-if="tab.executionStatus === 'success'"
-					data-test-id="execution-status-success"
-					icon="check"
-					size="small"
-					:class="$style.statusSuccess"
-				/>
-				<N8nIcon
-					v-else-if="tab.executionStatus === 'error'"
-					data-test-id="execution-status-error"
-					icon="x"
-					size="small"
-					:class="$style.statusError"
-				/>
 			</div>
 		</div>
 		<div :class="$style.actions">
@@ -84,7 +61,13 @@ const externalLinkHref = computed(() => {
 				:href="externalLinkHref"
 				target="_blank"
 			/>
-			<N8nIconButton icon="x" variant="ghost" size="medium" @click="emit('close')" />
+			<N8nIconButton
+				icon="x"
+				variant="ghost"
+				size="medium"
+				data-test-id="instance-ai-preview-close"
+				@click="emit('close')"
+			/>
 		</div>
 	</div>
 </template>
@@ -93,18 +76,20 @@ const externalLinkHref = computed(() => {
 .header {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	padding: 0 var(--spacing--xs);
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	gap: var(--spacing--2xs);
+	height: 50px;
 }
 
 .tabStrip {
 	flex: 1;
 	min-width: 0;
 	display: flex;
-	align-items: center;
+	align-items: flex-end;
 	overflow-x: auto;
+	height: 100%;
 
 	&::-webkit-scrollbar {
 		display: none;
@@ -116,14 +101,14 @@ const externalLinkHref = computed(() => {
 .tab {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	height: 100%;
 	padding: 0 var(--spacing--sm);
-	padding-bottom: calc(var(--spacing--2xs) + 2px);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	cursor: pointer;
 	white-space: nowrap;
 	color: var(--color--text);
+	border-bottom: 2px solid transparent;
 
 	&:hover {
 		color: var(--color--primary);
@@ -132,32 +117,12 @@ const externalLinkHref = computed(() => {
 
 .activeTab {
 	color: var(--color--primary);
-	padding-bottom: var(--spacing--2xs);
-	border-bottom: var(--color--primary) 2px solid;
-}
-
-.tabIcon {
-	flex-shrink: 0;
+	border-bottom-color: var(--color--primary);
 }
 
 .tabLabel {
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-
-.statusRunning {
-	color: var(--color--primary);
-	flex-shrink: 0;
-}
-
-.statusSuccess {
-	color: var(--color--success);
-	flex-shrink: 0;
-}
-
-.statusError {
-	color: var(--color--danger);
-	flex-shrink: 0;
 }
 
 .actions {

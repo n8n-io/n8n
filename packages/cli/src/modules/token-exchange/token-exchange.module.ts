@@ -15,7 +15,11 @@ function isFeatureFlagEnabled(): boolean {
 export class TokenExchangeModule implements ModuleInterface {
 	async entities() {
 		const { TokenExchangeJti } = await import('./database/entities/token-exchange-jti.entity');
-		return [TokenExchangeJti] as never;
+		const { TrustedKeySourceEntity } = await import(
+			'./database/entities/trusted-key-source.entity'
+		);
+		const { TrustedKeyEntity } = await import('./database/entities/trusted-key.entity');
+		return [TokenExchangeJti, TrustedKeySourceEntity, TrustedKeyEntity] as never;
 	}
 
 	async init() {
@@ -26,10 +30,16 @@ export class TokenExchangeModule implements ModuleInterface {
 		const { TrustedKeyService } = await import('./services/trusted-key.service');
 		await Container.get(TrustedKeyService).initialize();
 
-		await import('./token-exchange.controller');
+		await import('./controllers/token-exchange.controller');
 		await import('./controllers/embed-auth.controller');
 
 		const { JtiCleanupService } = await import('./services/jti-cleanup.service');
 		Container.get(JtiCleanupService).init();
+
+		// Register the scoped JWT auth strategy into the public API auth chain.
+		// ScopedJwtStrategy runs after ApiKeyAuthStrategy (which abstains for token-exchange JWTs).
+		const { ScopedJwtStrategy } = await import('./services/scoped-jwt.strategy');
+		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry');
+		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	}
 }

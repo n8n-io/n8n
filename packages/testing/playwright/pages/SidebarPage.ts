@@ -7,20 +7,24 @@ export class SidebarPage {
 		this.page = page;
 	}
 
+	get container() {
+		return this.page.locator('#side-menu');
+	}
+
 	async clickHomeButton() {
-		await this.page.getByTestId('project-home-menu-item').click();
+		await this.container.getByTestId('project-home-menu-item').click();
 	}
 
 	async universalAdd() {
-		await this.page.getByTestId('universal-add').click();
+		await this.container.getByTestId('universal-add').click();
 	}
 
 	async clickHomeMenuItem() {
-		await this.page.getByTestId('project-home-menu-item').click();
+		await this.container.getByTestId('project-home-menu-item').click();
 	}
 
 	async clickPersonalMenuItem() {
-		await this.page.getByTestId('project-personal-menu-item').click();
+		await this.container.getByTestId('project-personal-menu-item').click();
 	}
 
 	async clickWorkflowsLink(): Promise<void> {
@@ -48,7 +52,7 @@ export class SidebarPage {
 	}
 
 	getProjectMenuItems(): Locator {
-		return this.page.getByTestId('project-menu-item');
+		return this.container.getByTestId('project-menu-item');
 	}
 
 	async clickProjectMenuItem(projectName: string) {
@@ -57,7 +61,7 @@ export class SidebarPage {
 	}
 
 	getSettings(): Locator {
-		return this.page.getByTestId('main-sidebar-settings');
+		return this.container.getByTestId('main-sidebar-settings');
 	}
 
 	getLogoutMenuItem(): Locator {
@@ -69,7 +73,7 @@ export class SidebarPage {
 	}
 
 	getHelp(): Locator {
-		return this.page.getByTestId('main-sidebar-help');
+		return this.container.getByTestId('main-sidebar-help');
 	}
 
 	async clickHelpMenuItem(): Promise<void> {
@@ -90,7 +94,7 @@ export class SidebarPage {
 	}
 
 	getAdminPanel(): Locator {
-		return this.page.getByTestId('main-sidebar-cloud-admin');
+		return this.container.getByTestId('main-sidebar-cloud-admin');
 	}
 
 	getTrialBanner(): Locator {
@@ -98,7 +102,7 @@ export class SidebarPage {
 	}
 
 	getTemplatesLink(): Locator {
-		return this.page.getByTestId('main-sidebar-templates').locator('a');
+		return this.container.getByTestId('main-sidebar-templates').locator('a');
 	}
 
 	getVersionUpdateItem(): Locator {
@@ -106,15 +110,15 @@ export class SidebarPage {
 	}
 
 	getSourceControlPushButton(): Locator {
-		return this.page.getByTestId('main-sidebar-source-control-push');
+		return this.container.getByTestId('main-sidebar-source-control-push');
 	}
 
 	getSourceControlPullButton(): Locator {
-		return this.page.getByTestId('main-sidebar-source-control-pull');
+		return this.container.getByTestId('main-sidebar-source-control-pull');
 	}
 
 	getSourceControlConnectedIndicator(): Locator {
-		return this.page.getByTestId('main-sidebar-source-control-connected');
+		return this.container.getByTestId('main-sidebar-source-control-connected');
 	}
 
 	async openSettings(): Promise<void> {
@@ -136,11 +140,11 @@ export class SidebarPage {
 		// First ensure the sidebar is visible before checking if it is expanded
 		await expect(this.getSettings()).toBeVisible();
 
-		const logo = this.page.getByTestId('n8n-logo');
+		const logo = this.container.getByTestId('n8n-logo');
 		const isExpanded = await logo.isVisible();
 
 		if (!isExpanded) {
-			const collapseButton = this.page.locator('#toggle-sidebar-button');
+			const collapseButton = this.container.locator('#toggle-sidebar-button');
 			await expect(collapseButton).toBeVisible();
 			await collapseButton.click();
 		}

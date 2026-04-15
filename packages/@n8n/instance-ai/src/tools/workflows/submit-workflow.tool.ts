@@ -8,6 +8,7 @@
 
 import { createTool } from '@mastra/core/tools';
 import type { Workspace } from '@mastra/core/workspace';
+import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { validateWorkflow, layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
@@ -36,6 +37,8 @@ export interface SubmitWorkflowAttempt {
 	mockedCredentialsByNode?: Record<string, string[]>;
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData?: Record<string, Array<Record<string, unknown>>>;
+	/** Whether any node parameters contain unresolved placeholder values. */
+	hasUnresolvedPlaceholders?: boolean;
 	errors?: string[];
 }
 
@@ -131,6 +134,19 @@ export {
 	type CredentialResolutionResult,
 } from './resolve-credentials';
 
+export const submitWorkflowInputSchema = z.object({
+	filePath: z
+		.string()
+		.optional()
+		.describe('Path to the TypeScript workflow file (default: ~/workspace/src/workflow.ts)'),
+	workflowId: z.string().optional().describe('Existing workflow ID to update (omit to create new)'),
+	projectId: z
+		.string()
+		.optional()
+		.describe('Project ID to create the workflow in. Defaults to personal project.'),
+	name: z.string().optional().describe('Workflow name (required for new workflows)'),
+});
+
 export function createSubmitWorkflowTool(
 	context: InstanceAiContext,
 	workspace: Workspace,
@@ -143,21 +159,7 @@ export function createSubmitWorkflowTool(
 			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, ' +
 			'and saves it to n8n as a draft. The workflow must be explicitly published via ' +
 			'publish-workflow before it will run on its triggers in production.',
-		inputSchema: z.object({
-			filePath: z
-				.string()
-				.optional()
-				.describe('Path to the TypeScript workflow file (default: ~/workspace/src/workflow.ts)'),
-			workflowId: z
-				.string()
-				.optional()
-				.describe('Existing workflow ID to update (omit to create new)'),
-			projectId: z
-				.string()
-				.optional()
-				.describe('Project ID to create the workflow in. Defaults to personal project.'),
-			name: z.string().optional().describe('Workflow name (required for new workflows)'),
-		}),
+		inputSchema: submitWorkflowInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			workflowId: z.string().optional(),
@@ -172,7 +174,12 @@ export function createSubmitWorkflowTool(
 			errors: z.array(z.string()).optional(),
 			warnings: z.array(z.string()).optional(),
 		}),
-		execute: async ({ filePath: rawFilePath, workflowId, projectId, name }) => {
+		execute: async ({
+			filePath: rawFilePath,
+			workflowId,
+			projectId,
+			name,
+		}: z.infer<typeof submitWorkflowInputSchema>) => {
 			// Resolve file path: relative paths resolve against workspace root, ~ is expanded
 			const root = await getWorkspaceRoot(workspace);
 			let filePath: string;
@@ -342,6 +349,10 @@ export function createSubmitWorkflowTool(
 				(n) => n.type?.endsWith?.('Trigger') || n.type?.endsWith?.('trigger'),
 			);
 			const triggerNodeTypes = triggers.map((t) => t.type).filter(Boolean);
+
+			// Scan node parameters for unresolved placeholder values
+			const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
+
 			await reportAttempt({
 				success: true,
 				workflowId: savedId,
@@ -355,6 +366,7 @@ export function createSubmitWorkflowTool(
 					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 						? mockResult.verificationPinData
 						: undefined,
+				hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 			});
 			return {
 				success: true,

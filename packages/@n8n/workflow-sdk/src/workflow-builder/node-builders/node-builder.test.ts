@@ -323,7 +323,7 @@ describe('Node Builder', () => {
 				version: 3.4,
 				config: { name: 'Set', position: [600, 200] },
 			});
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- IF nodes always have onTrue
+
 			const builder = ifNode.onTrue!(target);
 
 			const s = sticky('## Conditional Logic', [builder as never]);
@@ -341,7 +341,7 @@ describe('Node Builder', () => {
 				version: 3.4,
 				config: { name: 'Set', position: [700, 300] },
 			});
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Switch nodes always have onCase
+
 			const builder = sw.onCase!(0, target);
 
 			const s = sticky('## Routing', [builder as never]);

@@ -7,18 +7,20 @@ import {
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
-	InstanceAiUpdateMemoryRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	InstanceAiEvalExecutionRequest,
 } from '@n8n/api-types';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	RestController,
 	GlobalScope,
+	Middleware,
 	Get,
 	Post,
 	Put,
@@ -30,8 +32,9 @@ import {
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { EvalExecutionService } from './eval/execution.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -53,10 +56,41 @@ export class InstanceAiController {
 
 	private readonly instanceBaseUrl: string;
 
+	private static getTreeRichnessScore(tree: InstanceAiAgentNode): number {
+		let score = 0;
+		const stack = [tree];
+
+		while (stack.length > 0) {
+			const node = stack.pop()!;
+			score += 100;
+			score += node.toolCalls.length * 10;
+			score += node.timeline.length * 2;
+			score += (node.planItems?.length ?? 0) * 20;
+			score += node.toolCalls.filter((toolCall) => toolCall.confirmation).length * 50;
+			score += node.children.length * 25;
+			stack.push(...node.children);
+		}
+
+		return score;
+	}
+
+	private static selectBootstrapTree(
+		eventTree: InstanceAiAgentNode,
+		persistedTree?: InstanceAiAgentNode,
+	): InstanceAiAgentNode {
+		if (!persistedTree) return eventTree;
+
+		return InstanceAiController.getTreeRichnessScore(persistedTree) >
+			InstanceAiController.getTreeRichnessScore(eventTree)
+			? persistedTree
+			: eventTree;
+	}
+
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly evalExecutionService: EvalExecutionService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
@@ -64,6 +98,24 @@ export class InstanceAiController {
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 		this.instanceBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
+	}
+
+	private requireInstanceAiEnabled(): void {
+		if (!this.settingsService.isInstanceAiEnabled()) {
+			throw new ForbiddenError('Instance AI is disabled');
+		}
+	}
+	// Each BrotliCompress stream allocates ~8.6 MB of native memory for its
+	// dictionary, and the compression middleware retains streams via closures on
+	// the response object for the lifetime of the HTTP keep-alive connection.
+	// Downgrade to gzip (~few KB per stream) for all instance-ai endpoints.
+	@Middleware()
+	stripBrotli(req: Request, _res: Response, next: NextFunction) {
+		const ae = req.headers['accept-encoding'];
+		if (typeof ae === 'string' && ae.includes('br')) {
+			req.headers['accept-encoding'] = ae.replace(/\bbr\b,?\s*/g, '').replace(/,\s*$/, '');
+		}
+		next();
 	}
 
 	@Post('/chat/:threadId')
@@ -74,6 +126,11 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Body payload: InstanceAiSendMessageRequest,
 	) {
+		this.requireInstanceAiEnabled();
+		if (!payload.message && (!payload.attachments || payload.attachments.length === 0)) {
+			throw new BadRequestError('Either message or attachments must be provided');
+		}
+
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
@@ -103,6 +160,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Query query: InstanceAiEventsQuery,
 	) {
+		this.requireInstanceAiEnabled();
 		// Verify the requesting user owns this thread before streaming events.
 		// A thread that doesn't exist yet is allowed — the frontend opens the SSE
 		// connection for new conversations before the first message creates the thread.
@@ -120,9 +178,13 @@ export class InstanceAiController {
 		const pendingEvents: StoredEvent[] = [];
 		const userId = req.user.id;
 
-		// 1. Set SSE headers
+		// 1. Set SSE headers.
+		// Disable response compression — SSE streams small chunks where compression
+		// overhead exceeds the benefit, and each Brotli compressor retains ~8.6 MB
+		// of native memory for the lifetime of the connection.
+		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-		res.setHeader('Cache-Control', 'no-cache');
+		res.setHeader('Cache-Control', 'no-cache, no-transform');
 		res.setHeader('Connection', 'keep-alive');
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
@@ -181,13 +243,21 @@ export class InstanceAiController {
 
 		for (const [groupId, group] of liveGroups) {
 			const runEvents = this.eventBus.getEventsForRuns(threadId, group.runIds);
-			if (runEvents.length === 0) continue;
-
-			const agentTree = buildAgentTreeFromEvents(runEvents);
 			// Use the group's own latest runId — NOT the thread-global activeRunId,
 			// which belongs to the current orchestrator turn and would be wrong for
 			// background groups from older turns.
 			const groupRunId = group.runIds.at(-1);
+			const persistedSnapshot = await this.memoryService.getLatestRunSnapshot(threadId, {
+				messageGroupId: groupId,
+				runId: groupRunId,
+			});
+			if (runEvents.length === 0 && !persistedSnapshot) continue;
+
+			const eventTree = buildAgentTreeFromEvents(runEvents);
+			const agentTree = InstanceAiController.selectBootstrapTree(
+				eventTree,
+				persistedSnapshot?.tree,
+			);
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: groupRunId,
@@ -258,6 +328,7 @@ export class InstanceAiController {
 		@Param('requestId') requestId: string,
 		@Body body: InstanceAiConfirmRequestDto,
 	) {
+		this.requireInstanceAiEnabled();
 		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
 			approved: body.approved,
 			credentialId: body.credentialId,
@@ -281,6 +352,7 @@ export class InstanceAiController {
 	@Post('/chat/:threadId/cancel')
 	@GlobalScope('instanceAi:message')
 	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.cancelRun(threadId);
 		return { ok: true };
@@ -294,6 +366,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Param('taskId') taskId: string,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.cancelBackgroundTask(threadId, taskId);
 		return { ok: true };
@@ -308,6 +381,7 @@ export class InstanceAiController {
 		@Param('taskId') taskId: string,
 		@Body payload: InstanceAiCorrectTaskRequest,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.sendCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
@@ -318,6 +392,7 @@ export class InstanceAiController {
 	@Get('/credits')
 	@GlobalScope('instanceAi:message')
 	async getCredits(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
 		return await this.instanceAiService.getCredits(req.user);
 	}
 
@@ -336,7 +411,9 @@ export class InstanceAiController {
 		_res: Response,
 		@Body payload: InstanceAiAdminSettingsUpdateRequest,
 	) {
-		return await this.settingsService.updateAdminSettings(payload);
+		const result = await this.settingsService.updateAdminSettings(payload);
+		await this.moduleRegistry.refreshModuleSettings('instance-ai');
+		return result;
 	}
 
 	// ── User preferences (per-user, self-service) ──────────────────────────
@@ -373,29 +450,10 @@ export class InstanceAiController {
 		return await this.settingsService.listServiceCredentials(req.user);
 	}
 
-	@Get('/memory/:threadId')
-	@GlobalScope('instanceAi:message')
-	async getMemory(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		return await this.memoryService.getWorkingMemory(req.user.id, threadId);
-	}
-
-	@Put('/memory/:threadId')
-	@GlobalScope('instanceAi:message')
-	async updateMemory(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Body payload: InstanceAiUpdateMemoryRequest,
-	) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		await this.memoryService.updateWorkingMemory(req.user.id, threadId, payload.content);
-		return { ok: true };
-	}
-
 	@Get('/threads')
 	@GlobalScope('instanceAi:message')
 	async listThreads(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
 		return await this.memoryService.listThreads(req.user.id);
 	}
 
@@ -406,6 +464,7 @@ export class InstanceAiController {
 		_res: Response,
 		@Body payload: InstanceAiEnsureThreadRequest,
 	) {
+		this.requireInstanceAiEnabled();
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
 		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
@@ -418,6 +477,7 @@ export class InstanceAiController {
 		_res: Response,
 		@Param('threadId') threadId: string,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.clearThreadState(threadId);
 		await this.memoryService.deleteThread(threadId);
@@ -432,8 +492,12 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Body payload: InstanceAiRenameThreadRequestDto,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const thread = await this.memoryService.renameThread(threadId, payload.title);
+		const thread = await this.memoryService.updateThread(threadId, {
+			title: payload.title,
+			metadata: payload.metadata,
+		});
 		return { thread };
 	}
 
@@ -445,6 +509,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Query query: InstanceAiThreadMessagesQuery,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 
 		// ?raw=true returns the old format for the thread inspector
@@ -455,9 +520,21 @@ export class InstanceAiController {
 			});
 		}
 
+		// Exclude snapshots for active/suspended runs — they have no matching
+		// assistant message in Mastra memory yet and would misalign the
+		// positional snapshot-to-message matching in parseStoredMessages.
+		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
+		const activeRunId = this.instanceAiService.getActiveRunId(threadId);
+		const excludeRunIds: string[] = [];
+		if (activeRunId) excludeRunIds.push(activeRunId);
+		for (const t of threadStatus.backgroundTasks) {
+			if (t.status === 'running' && t.runId) excludeRunIds.push(t.runId);
+		}
+
 		const result = await this.memoryService.getRichMessages(req.user.id, threadId, {
 			limit: query.limit,
 			page: query.page,
+			excludeRunIds: excludeRunIds.length > 0 ? excludeRunIds : undefined,
 		});
 
 		// Include the next SSE event ID so the frontend can skip past events
@@ -473,20 +550,23 @@ export class InstanceAiController {
 		_res: Response,
 		@Param('threadId') threadId: string,
 	) {
+		this.requireInstanceAiEnabled();
 		// Allow new threads — the frontend polls status before the first message is sent
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		return this.instanceAiService.getThreadStatus(threadId);
 	}
 
-	@Get('/threads/:threadId/context')
+	// ── Evaluation endpoints ──────────────────────────────────────────────────
+
+	@Post('/eval/execute-with-llm-mock/:workflowId')
 	@GlobalScope('instanceAi:message')
-	async getThreadContext(
+	async executeWithLlmMock(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('threadId') threadId: string,
+		@Param('workflowId') workflowId: string,
+		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		return await this.memoryService.getThreadContext(req.user.id, threadId);
+		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
@@ -496,7 +576,7 @@ export class InstanceAiController {
 	async createGatewayLink(req: AuthenticatedRequest) {
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
 		const baseUrl = this.instanceBaseUrl.replace(/\/$/, '');
-		const command = `npx @n8n/fs-proxy ${baseUrl} ${token}`;
+		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
 		return { token, command };
 	}
 
@@ -504,8 +584,9 @@ export class InstanceAiController {
 	async gatewayEvents(req: Request, res: FlushableResponse) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
+		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-		res.setHeader('Cache-Control', 'no-cache');
+		res.setHeader('Cache-Control', 'no-cache, no-transform');
 		res.setHeader('Connection', 'keep-alive');
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();

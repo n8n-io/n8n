@@ -161,6 +161,7 @@ function patchNodeInPlace(node: InstanceAiAgentNode, state: AgentRunState): bool
 	node.result = agent.result;
 	node.error = agent.error;
 	node.tasks = agent.tasks;
+	node.planItems = agent.planItems;
 	node.kind = agent.kind;
 	node.title = agent.title;
 	node.subtitle = agent.subtitle;
@@ -213,7 +214,11 @@ function patchStreamingTextTimeline(
 	}
 	const updatedLast = timeline.at(-1);
 	if (updatedLast?.type !== 'text') return false;
-	node.timeline.push({ type: 'text', content: updatedLast.content });
+	node.timeline.push({
+		type: 'text',
+		content: updatedLast.content,
+		...(updatedLast.responseId ? { responseId: updatedLast.responseId } : {}),
+	});
 	return true;
 }
 
@@ -309,6 +314,7 @@ function populateRunStateFromNode(
 		textContent: node.textContent,
 		reasoning: node.reasoning,
 		tasks: node.tasks,
+		planItems: node.planItems,
 		result: node.result,
 		error: node.error,
 	};

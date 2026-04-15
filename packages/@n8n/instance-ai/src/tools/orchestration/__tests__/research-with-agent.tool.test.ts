@@ -14,7 +14,7 @@ jest.mock('../../../stream/map-chunk', () => ({
 	mapMastraChunkToEvent: jest.fn(),
 }));
 
-const { createResearchWithAgentTool } =
+const { createResearchWithAgentTool, researchWithAgentInputSchema } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../research-with-agent.tool') as typeof import('../research-with-agent.tool');
 
@@ -35,8 +35,7 @@ function createMockEventBus(): InstanceAiEventBus {
 
 function createMockContext(overrides?: Partial<OrchestrationContext>): OrchestrationContext {
 	const domainTools: ToolsInput = {
-		'web-search': { id: 'web-search' } as never,
-		'fetch-url': { id: 'fetch-url' } as never,
+		research: { id: 'research' } as never,
 		'list-workflows': { id: 'list-workflows' } as never,
 	};
 
@@ -66,18 +65,14 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 describe('research-with-agent tool', () => {
 	describe('schema validation', () => {
 		it('accepts a valid goal', () => {
-			const context = createMockContext();
-			const tool = createResearchWithAgentTool(context);
-			const result = tool.inputSchema!.safeParse({
+			const result = researchWithAgentInputSchema.safeParse({
 				goal: 'How does Shopify webhook authentication work?',
 			});
 			expect(result.success).toBe(true);
 		});
 
 		it('accepts goal with optional constraints', () => {
-			const context = createMockContext();
-			const tool = createResearchWithAgentTool(context);
-			const result = tool.inputSchema!.safeParse({
+			const result = researchWithAgentInputSchema.safeParse({
 				goal: 'Shopify API auth',
 				constraints: 'Focus on REST API, not GraphQL',
 			});
@@ -85,9 +80,7 @@ describe('research-with-agent tool', () => {
 		});
 
 		it('rejects missing goal', () => {
-			const context = createMockContext();
-			const tool = createResearchWithAgentTool(context);
-			const result = tool.inputSchema!.safeParse({});
+			const result = researchWithAgentInputSchema.safeParse({});
 			expect(result.success).toBe(false);
 		});
 	});
@@ -121,23 +114,23 @@ describe('research-with-agent tool', () => {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					payload: expect.objectContaining({
 						role: 'web-researcher',
-						tools: ['web-search', 'fetch-url'],
+						tools: ['research'],
 					}),
 				}),
 			);
 		});
 
-		it('returns error when web-search tool is not available', async () => {
+		it('returns error when research tool is not available', async () => {
 			const context = createMockContext({
 				domainTools: {
-					'fetch-url': { id: 'fetch-url' } as never,
+					'list-workflows': { id: 'list-workflows' } as never,
 				},
 			});
 			const tool = createResearchWithAgentTool(context);
 
 			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
 
-			expect(result.result).toBe('Error: web-search tool not available.');
+			expect(result.result).toBe('Error: research tool not available.');
 			expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
 		});
 

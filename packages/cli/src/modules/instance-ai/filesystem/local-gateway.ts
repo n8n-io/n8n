@@ -8,7 +8,7 @@ import type {
 	ToolCategory,
 } from '@n8n/api-types';
 
-const REQUEST_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 60_000; // 1 minute — tool calls like browser automation and shell execution can be long-running
 
 // ── Internal types ───────────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ export interface LocalGatewayEvent {
 }
 
 /**
- * Singleton MCP gateway for a connected local client (e.g. the fs-proxy daemon).
+ * Singleton MCP gateway for a connected local client (e.g. the computer-use daemon).
  *
  * The client advertises its capabilities as `McpTool[]` on connect; all tool
  * calls are dispatched generically via the SSE channel. Tools are not limited
