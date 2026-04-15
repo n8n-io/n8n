@@ -747,22 +747,24 @@ describe('Node Builder', () => {
 			expect(() => {
 				// @ts-expect-error intentional misuse
 				node('n8n-nodes-base.httpRequest', { url: 'https://example.com' });
-			}).toThrow(TypeError);
-			expect(() => {
-				// @ts-expect-error intentional misuse
-				node('n8n-nodes-base.httpRequest', { url: 'https://example.com' });
-			}).toThrow(/node\(\) requires a configuration object/);
+			}).toThrow(
+				expect.objectContaining({
+					name: 'TypeError',
+					message: expect.stringMatching(/node\(\) requires a configuration object/),
+				}),
+			);
 		});
 
 		it('trigger() should throw a clear TypeError when called with a string instead of a config object', () => {
 			expect(() => {
 				// @ts-expect-error intentional misuse
 				trigger('n8n-nodes-base.webhook', { httpMethod: 'GET', path: 'test' });
-			}).toThrow(TypeError);
-			expect(() => {
-				// @ts-expect-error intentional misuse
-				trigger('n8n-nodes-base.webhook', { httpMethod: 'GET', path: 'test' });
-			}).toThrow(/trigger\(\) requires a configuration object/);
+			}).toThrow(
+				expect.objectContaining({
+					name: 'TypeError',
+					message: expect.stringMatching(/trigger\(\) requires a configuration object/),
+				}),
+			);
 		});
 
 		it('node() error message should include the received type and a usage example', () => {
@@ -791,6 +793,20 @@ describe('Node Builder', () => {
 			expect(errorMessage).toContain('type');
 			expect(errorMessage).toContain('version');
 			expect(errorMessage).toContain('config');
+		});
+
+		it('node() should reject array input with a descriptive TypeError', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node([{ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } }]);
+			}).toThrow(/received an array/);
+		});
+
+		it('trigger() should reject array input with a descriptive TypeError', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				trigger([{ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } }]);
+			}).toThrow(/received an array/);
 		});
 
 		it('should not crash when config is undefined', () => {

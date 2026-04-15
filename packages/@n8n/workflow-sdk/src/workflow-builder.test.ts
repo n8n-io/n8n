@@ -26,6 +26,20 @@ describe('Workflow Builder', () => {
 			expect(json.settings?.timezone).toBe('America/New_York');
 			expect(json.settings?.executionOrder).toBe('v1');
 		});
+
+		it('should throw a clear TypeError when id is not a string', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow({ id: 'test-id' }, 'Test Workflow');
+			}).toThrow(/workflow\(\) requires a string id as first argument/);
+		});
+
+		it('should throw a clear TypeError when name is not a string', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow('test-id', { name: 'Test Workflow' });
+			}).toThrow(/workflow\(\) requires a string name as second argument/);
+		});
 	});
 
 	describe('.add()', () => {

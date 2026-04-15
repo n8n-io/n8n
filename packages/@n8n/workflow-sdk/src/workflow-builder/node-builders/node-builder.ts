@@ -28,6 +28,17 @@ import {
 } from '../type-guards';
 
 /**
+ * Assert that input is a plain (non-null, non-array) object.
+ * Throws a descriptive TypeError when called with a string, number, null, or array.
+ */
+export function assertPlainObject(input: unknown, fnName: string, hint: string): void {
+	if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+		const received = Array.isArray(input) ? 'an array' : typeof input;
+		throw new TypeError(`${fnName}() requires ${hint}, but received ${received}.`);
+	}
+}
+
+/**
  * Type guard to check if a value is an InputTarget
  */
 export function isInputTarget(value: unknown): value is InputTarget {
@@ -763,12 +774,11 @@ class SwitchCaseBuilderImpl<TOutput = unknown> implements SwitchCaseBuilder<TOut
 export function node<TNode extends NodeInput>(
 	input: TNode,
 ): NodeInstance<TNode['type'], `${TNode['version']}`, unknown> {
-	if (typeof input !== 'object' || input === null) {
-		throw new TypeError(
-			`node() requires a configuration object { type, version, config }, but received ${typeof input}. ` +
-				`Example: node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } })`,
-		);
-	}
+	assertPlainObject(
+		input,
+		'node',
+		"a configuration object { type, version, config }. Example: node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } })",
+	);
 	const versionStr = String(input.version) as `${TNode['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output
@@ -808,6 +818,7 @@ export interface IfElseFactoryConfig {
 export function ifElse<TOutput = unknown>(
 	input: IfElseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.if', string, TOutput> {
+	assertPlainObject(input, 'ifElse', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.if',
 		version: input.version,
@@ -843,6 +854,7 @@ export interface MergeFactoryConfig {
 export function merge<TOutput = unknown>(
 	input: MergeFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.merge', string, TOutput> {
+	assertPlainObject(input, 'merge', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.merge',
 		version: input.version,
@@ -878,6 +890,7 @@ export interface SwitchCaseFactoryConfig {
 export function switchCase<TOutput = unknown>(
 	input: SwitchCaseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.switch', string, TOutput> {
+	assertPlainObject(input, 'switchCase', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.switch',
 		version: input.version,
@@ -903,12 +916,11 @@ export function switchCase<TOutput = unknown>(
 export function trigger<TTrigger extends TriggerInput>(
 	input: TTrigger,
 ): TriggerInstance<TTrigger['type'], `${TTrigger['version']}`, unknown> {
-	if (typeof input !== 'object' || input === null) {
-		throw new TypeError(
-			`trigger() requires a configuration object { type, version, config }, but received ${typeof input}. ` +
-				`Example: trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } })`,
-		);
-	}
+	assertPlainObject(
+		input,
+		'trigger',
+		"a configuration object { type, version, config }. Example: trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } })",
+	);
 	const versionStr = String(input.version) as `${TTrigger['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output

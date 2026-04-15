@@ -1182,6 +1182,18 @@ function createWorkflow(
 	name: string,
 	options?: WorkflowSettings | WorkflowBuilderOptions,
 ): WorkflowBuilder {
+	if (typeof id !== 'string') {
+		throw new TypeError(
+			`workflow() requires a string id as first argument, but received ${typeof id}. ` +
+				`Example: workflow('my-workflow-id', 'My Workflow')`,
+		);
+	}
+	if (typeof name !== 'string') {
+		throw new TypeError(
+			`workflow() requires a string name as second argument, but received ${typeof name}. ` +
+				`Example: workflow('my-workflow-id', 'My Workflow')`,
+		);
+	}
 	if (isWorkflowBuilderOptions(options)) {
 		return new WorkflowBuilderImpl(
 			id,
