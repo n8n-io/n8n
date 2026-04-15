@@ -473,8 +473,9 @@ export type RelayEventMap = {
 		executionId: string;
 		workflowId: string;
 		/**
-		 * Only defined for 'interval' or 'specific time' wait modes.
-		 * Will be null for webhook/form wait modes.
+		 * Only defined for 'interval' or 'specific time' wait modes,
+		 * or optionally for 'form' wait mode, where a "max wait time", can be defined.
+		 * Will be null for webhook wait mode.
 		 */
 		waitTill: Date | null;
 	};
