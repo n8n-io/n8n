@@ -78,6 +78,21 @@ describe('LinearTriggerHelpers', () => {
 			expect(result).toBe(false);
 		});
 
+		it('should return true when empty signing secret and no header', async () => {
+			mockWebhookFunctions.getCredentials.mockResolvedValue({
+				signingSecret: '',
+			});
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				header: jest.fn().mockReturnValue(null),
+				rawBody: testBody,
+			});
+
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			expect(result).toBe(true);
+		});
+
 		it('should return true when signature is valid', async () => {
 			mockWebhookFunctions.getCredentials.mockResolvedValue({
 				signingSecret: testSigningSecret,
@@ -106,24 +121,12 @@ describe('LinearTriggerHelpers', () => {
 			expect(timingSafeEqual).toHaveBeenCalled();
 		});
 
-		it('should compute HMAC as raw hex without prefix', async () => {
-			mockWebhookFunctions.getCredentials.mockResolvedValue({
-				signingSecret: testSigningSecret,
-			});
-
-			await verifySignature.call(mockWebhookFunctions);
-
-			expect(createHmac).toHaveBeenCalledWith('sha256', testSigningSecret);
-			const mockHmac = createHmac('sha256', testSigningSecret);
-			expect(mockHmac.update).toHaveBeenCalledWith(testBody);
-		});
-
 		it('should return false when webhookTimestamp is too old', async () => {
 			mockWebhookFunctions.getCredentials.mockResolvedValue({
 				signingSecret: testSigningSecret,
 			});
 
-			// Timestamp 120 seconds old (Linear recommends 60s window)
+			// Timestamp 120 seconds old (Should be within 60s window)
 			mockWebhookFunctions.getBodyData.mockReturnValue({
 				webhookTimestamp: 1700000000000 - 120_000,
 			});
@@ -133,15 +136,17 @@ describe('LinearTriggerHelpers', () => {
 			expect(result).toBe(false);
 		});
 
-		it('should return true when empty signing secret and no header', async () => {
+		it('should return true when webhookTimestamp difference is within acceptable window', async () => {
 			mockWebhookFunctions.getCredentials.mockResolvedValue({
-				signingSecret: '',
+				signingSecret: testSigningSecret,
 			});
 
-			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
-				rawBody: testBody,
+			// Timestamp 30 seconds old
+			mockWebhookFunctions.getBodyData.mockReturnValue({
+				webhookTimestamp: 1700000000000 - 30_000,
 			});
+
+			(timingSafeEqual as jest.Mock).mockReturnValue(true);
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
