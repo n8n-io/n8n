@@ -766,29 +766,29 @@ describe('InstanceAiController', () => {
 			expect(instanceAiService.initGateway).toHaveBeenCalledWith('env-gateway', expect.anything());
 		});
 
-		it('should throw ForbiddenError with missing API key', () => {
+		it('should throw ForbiddenError with missing API key', async () => {
 			const gatewayReq = makeGatewayReq(undefined, { rootPath: '/tmp' });
 
-			expect(() =>
+			await expect(
 				controller.gatewayInit(gatewayReq, res, {
 					rootPath: '/tmp',
 					tools: [],
 					toolCategories: [],
 				}),
-			).toThrow(ForbiddenError);
+			).rejects.toThrow(ForbiddenError);
 		});
 
-		it('should throw ForbiddenError with invalid API key', () => {
+		it('should throw ForbiddenError with invalid API key', async () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(undefined);
 			const gatewayReq = makeGatewayReq('wrong-key', { rootPath: '/tmp' });
 
-			expect(() =>
+			await expect(
 				controller.gatewayInit(gatewayReq, res, {
 					rootPath: '/tmp',
 					tools: [],
 					toolCategories: [],
 				}),
-			).toThrow(ForbiddenError);
+			).rejects.toThrow(ForbiddenError);
 		});
 	});
 
