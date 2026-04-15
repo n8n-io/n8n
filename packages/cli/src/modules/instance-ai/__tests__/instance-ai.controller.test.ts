@@ -22,6 +22,7 @@ jest.mock('../eval/execution.service', () => ({
 }));
 
 import type {
+	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequestDto,
@@ -477,6 +478,51 @@ describe('InstanceAiController', () => {
 				scope: 'instanceAi:manage',
 				globalOnly: true,
 			});
+		});
+
+		it('should disconnect all gateways when enabled is set to false', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			instanceAiService.disconnectAllGateways.mockReturnValue(['user-a', 'user-b']);
+			const payload = { enabled: false } as InstanceAiAdminSettingsUpdateRequest;
+
+			await controller.updateAdminSettings(req, res, payload);
+
+			expect(instanceAiService.disconnectAllGateways).toHaveBeenCalled();
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'instanceAiGatewayStateChanged',
+					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+				}),
+				['user-a', 'user-b'],
+			);
+		});
+
+		it('should disconnect all gateways when localGatewayDisabled is set to true', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			instanceAiService.disconnectAllGateways.mockReturnValue(['user-c']);
+			const payload = { localGatewayDisabled: true } as InstanceAiAdminSettingsUpdateRequest;
+
+			await controller.updateAdminSettings(req, res, payload);
+
+			expect(instanceAiService.disconnectAllGateways).toHaveBeenCalled();
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'instanceAiGatewayStateChanged',
+				}),
+				['user-c'],
+			);
+		});
+
+		it('should not disconnect gateways when enabling features', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			const payload = {
+				enabled: true,
+				localGatewayDisabled: false,
+			} as InstanceAiAdminSettingsUpdateRequest;
+
+			await controller.updateAdminSettings(req, res, payload);
+
+			expect(instanceAiService.disconnectAllGateways).not.toHaveBeenCalled();
 		});
 	});
 

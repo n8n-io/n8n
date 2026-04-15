@@ -958,6 +958,13 @@ export class InstanceAiService {
 		this.gatewayRegistry.disconnectGateway(userId);
 	}
 
+	/** Disconnect all connected gateways and return the user IDs that were connected. */
+	disconnectAllGateways(): string[] {
+		const connectedUserIds = this.gatewayRegistry.getConnectedUserIds();
+		this.gatewayRegistry.disconnectAll();
+		return connectedUserIds;
+	}
+
 	isLocalGatewayDisabled(): boolean {
 		return this.settingsService.isLocalGatewayDisabled();
 	}

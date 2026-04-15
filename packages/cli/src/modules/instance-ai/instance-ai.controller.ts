@@ -413,6 +413,25 @@ export class InstanceAiController {
 	) {
 		const result = await this.settingsService.updateAdminSettings(payload);
 		await this.moduleRegistry.refreshModuleSettings('instance-ai');
+
+		if (payload.enabled === false || payload.localGatewayDisabled === true) {
+			const disconnectedUserIds = this.instanceAiService.disconnectAllGateways();
+			if (disconnectedUserIds.length > 0) {
+				this.push.sendToUsers(
+					{
+						type: 'instanceAiGatewayStateChanged',
+						data: {
+							connected: false,
+							directory: null,
+							hostIdentifier: null,
+							toolCategories: [],
+						},
+					},
+					disconnectedUserIds,
+				);
+			}
+		}
+
 		return result;
 	}
 
