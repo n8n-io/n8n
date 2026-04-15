@@ -285,11 +285,7 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.panel">
-		<N8nCard
-			v-for="config in integrationConfigs"
-			:key="config.type"
-			:class="$style.card"
-		>
+		<N8nCard v-for="config in integrationConfigs" :key="config.type" :class="$style.card">
 			<template #header>
 				<div :class="$style.cardHeader">
 					<div :class="$style.statusRow">
@@ -401,11 +397,9 @@ onMounted(async () => {
 					<!-- Slack App Manifest (Slack only) -->
 					<template v-if="config.type === 'slack'">
 						<N8nText :class="$style.manifestHint" size="small">
-							Copy the app manifest and paste it into your Slack app's settings to configure
-							events, scopes, and interactivity.
-							<a :class="$style.link" href="#" @click.prevent="showManifest = true"
-								>View JSON</a
-							>
+							Copy the app manifest and paste it into your Slack app's settings to configure events,
+							scopes, and interactivity.
+							<a :class="$style.link" href="#" @click.prevent="showManifest = true">View JSON</a>
 						</N8nText>
 						<N8nButton variant="outline" size="small" @click="copyManifest">
 							<N8nIcon :icon="copied ? 'check' : 'copy'" :size="14" />
