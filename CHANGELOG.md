@@ -1,3 +1,11 @@
+## [2.17.1](https://github.com/n8n-io/n8n/compare/n8n@2.17.0...n8n@2.17.1) (2026-04-15)
+
+
+### Features
+
+* **MiniMax Chat Model Node:** Add MiniMax Chat Model sub-node ([#28485](https://github.com/n8n-io/n8n/issues/28485)) ([884b7ab](https://github.com/n8n-io/n8n/commit/884b7ab3eca3d032e0abbbf8bd2c0aabae5e2ed9))
+
+
 # [2.17.0](https://github.com/n8n-io/n8n/compare/n8n@2.16.0...n8n@2.17.0) (2026-04-13)
 
 
