@@ -63,6 +63,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
+import type { WorkflowObjectAccessors } from '../types';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -117,7 +118,7 @@ export async function resolveParameter<T = IDataObject>(
 // TODO: move to separate file
 function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	workflowObject: Workflow,
+	workflowObject: WorkflowObjectAccessors,
 	connections: IConnections,
 	envVars: Record<string, string | boolean | number>,
 	ndvActiveNode: INodeUi | null,
@@ -332,7 +333,7 @@ export async function resolveRequiredParameters(
 
 function getConnectedNodes(
 	direction: 'upstream' | 'downstream',
-	workflow: Workflow,
+	workflow: WorkflowObjectAccessors,
 	nodeName: string,
 ): string[] {
 	let checkNodes: string[];

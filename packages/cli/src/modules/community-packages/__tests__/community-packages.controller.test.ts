@@ -46,7 +46,7 @@ describe('CommunityPackagesController', () => {
 				user: { id: 'user123' },
 				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 			});
-			communityNodeTypesService.findVetted.mockReturnValue(undefined);
+			communityNodeTypesService.findVetted.mockResolvedValue(undefined);
 			await expect(controller.installPackage(request)).rejects.toThrow(
 				'Package n8n-nodes-test is not vetted for installation',
 			);
@@ -70,7 +70,7 @@ describe('CommunityPackagesController', () => {
 				user: { id: 'user123' },
 				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 			});
-			communityNodeTypesService.findVetted.mockReturnValue(
+			communityNodeTypesService.findVetted.mockResolvedValue(
 				mock<CommunityNodeType>({
 					checksum: 'checksum',
 				}),
