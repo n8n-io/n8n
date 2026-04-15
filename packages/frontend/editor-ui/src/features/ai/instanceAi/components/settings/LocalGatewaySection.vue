@@ -92,12 +92,15 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.section">
-		<N8nHeading tag="h2" size="small">
-			{{ i18n.baseText('instanceAi.filesystem.label') }}
-		</N8nHeading>
-
 		<div :class="$style.switchRow">
-			<span :class="$style.switchLabel">{{ i18n.baseText('instanceAi.filesystem.label') }}</span>
+			<div>
+				<N8nHeading tag="h2" size="small">
+					{{ i18n.baseText('instanceAi.filesystem.label') }}
+				</N8nHeading>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('instanceAi.filesystem.description') }}
+				</N8nText>
+			</div>
 			<ElSwitch
 				:model-value="!isLocalGatewayDisabled"
 				:disabled="store.isLocalGatewayDisabled"
@@ -105,7 +108,14 @@ onMounted(() => {
 			/>
 		</div>
 
-		<template v-if="!isLocalGatewayDisabled">
+		<div v-if="store.isLocalGatewayDisabled" :class="$style.warningRow">
+			<N8nIcon icon="triangle-alert" size="small" />
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('settings.n8nAgent.computerUse.disabled.warning') }}
+			</N8nText>
+		</div>
+
+		<template v-if="!isLocalGatewayDisabled && !store.isLocalGatewayDisabled">
 			<!-- Gateway connected -->
 			<div v-if="store.isGatewayConnected" :class="$style.connectedBlock">
 				<div :class="$style.statusRow">
@@ -190,6 +200,14 @@ onMounted(() => {
 .switchLabel {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
+}
+
+.warningRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) 0;
+	color: var(--color--warning);
 }
 
 .connectedBlock {
