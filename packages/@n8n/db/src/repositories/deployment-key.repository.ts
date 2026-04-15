@@ -16,4 +16,31 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 	async findAllByType(type: string): Promise<DeploymentKey[]> {
 		return await this.find({ where: { type } });
 	}
+
+	/**
+	 * Inserts the entity if no active row with that type exists yet.
+	 * On a unique-index conflict (e.g. concurrent multi-main startup), the insert is
+	 * silently ignored and null is returned so the caller can read the winner's value.
+	 */
+	async insertOrIgnore(
+		entityData: Pick<DeploymentKey, 'type' | 'value' | 'status' | 'algorithm'>,
+	): Promise<Pick<DeploymentKey, 'value'> | null> {
+		const entity = this.create(entityData);
+		const result = await this.createQueryBuilder()
+			.insert()
+			.values(entity)
+			.orIgnore()
+			.returning('*')
+			.execute();
+		const row: unknown = result.raw[0];
+		if (
+			typeof row === 'object' &&
+			row !== null &&
+			'value' in row &&
+			typeof row.value === 'string'
+		) {
+			return { value: row.value };
+		}
+		return null;
+	}
 }

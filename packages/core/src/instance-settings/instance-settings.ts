@@ -59,7 +59,7 @@ export class InstanceSettings {
 	 */
 	instanceId: string;
 
-	readonly hmacSignatureSecret: string;
+	hmacSignatureSecret: string;
 
 	readonly instanceType: InstanceType;
 
@@ -77,10 +77,10 @@ export class InstanceSettings {
 	}
 
 	/**
-	 * Two-phase init: reads or creates the instance.id deployment-key row.
+	 * Two-phase init: reads or creates deployment-key rows for instance.id and signing.hmac.
 	 * Must be called after DB migrations complete, before license init.
 	 *
-	 * Precedence: N8N_INSTANCE_ID env → DB active row → derive-from-key (and persist)
+	 * Precedence for each key: env var → DB active row → derive-from-key (and persist)
 	 *
 	 * The repo parameter is typed inline rather than imported from @n8n/db to
 	 * avoid a circular package dependency: @n8n/db depends on n8n-core at
@@ -88,8 +88,25 @@ export class InstanceSettings {
 	 */
 	async initialize(repo: {
 		findActiveByType(type: string): Promise<{ value: string } | null>;
-		create(entity: { type: string; value: string; status: string; algorithm: null }): unknown;
-		save(entity: unknown): Promise<unknown>;
+		insertOrIgnore(entity: {
+			type: string;
+			value: string;
+			status: string;
+			algorithm: null;
+		}): Promise<{ value: string } | null>;
+	}): Promise<void> {
+		await this.initInstanceId(repo);
+		await this.initHmacSecret(repo);
+	}
+
+	private async initInstanceId(repo: {
+		findActiveByType(type: string): Promise<{ value: string } | null>;
+		insertOrIgnore(entity: {
+			type: string;
+			value: string;
+			status: string;
+			algorithm: null;
+		}): Promise<{ value: string } | null>;
 	}): Promise<void> {
 		if (process.env.N8N_INSTANCE_ID) {
 			this.instanceId = process.env.N8N_INSTANCE_ID;
@@ -102,14 +119,50 @@ export class InstanceSettings {
 			return;
 		}
 
-		await repo.save(
-			repo.create({
-				type: 'instance.id',
-				value: this.instanceId,
-				status: 'active',
-				algorithm: null,
-			}),
-		);
+		const inserted = await repo.insertOrIgnore({
+			type: 'instance.id',
+			value: this.instanceId,
+			status: 'active',
+			algorithm: null,
+		});
+
+		if (!inserted) {
+			const winner = await repo.findActiveByType('instance.id');
+			if (winner) this.instanceId = winner.value;
+		}
+	}
+
+	private async initHmacSecret(repo: {
+		findActiveByType(type: string): Promise<{ value: string } | null>;
+		insertOrIgnore(entity: {
+			type: string;
+			value: string;
+			status: string;
+			algorithm: null;
+		}): Promise<{ value: string } | null>;
+	}): Promise<void> {
+		if (process.env.N8N_HMAC_SIGNATURE_SECRET) {
+			this.hmacSignatureSecret = process.env.N8N_HMAC_SIGNATURE_SECRET;
+			return;
+		}
+
+		const existing = await repo.findActiveByType('signing.hmac');
+		if (existing) {
+			this.hmacSignatureSecret = existing.value;
+			return;
+		}
+
+		const inserted = await repo.insertOrIgnore({
+			type: 'signing.hmac',
+			value: this.hmacSignatureSecret,
+			status: 'active',
+			algorithm: null,
+		});
+
+		if (!inserted) {
+			const winner = await repo.findActiveByType('signing.hmac');
+			if (winner) this.hmacSignatureSecret = winner.value;
+		}
 	}
 
 	/**

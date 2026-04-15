@@ -63,4 +63,36 @@ export class BinaryDataConfig {
 
 		this.mode ??= executionsConfig.mode === 'queue' ? 'database' : 'filesystem';
 	}
+
+	async initialize(repo: {
+		findActiveByType(type: string): Promise<{ value: string } | null>;
+		insertOrIgnore(entity: {
+			type: string;
+			value: string;
+			status: string;
+			algorithm: null;
+		}): Promise<{ value: string } | null>;
+	}): Promise<void> {
+		if (process.env.N8N_BINARY_DATA_SIGNING_SECRET) {
+			return;
+		}
+
+		const existing = await repo.findActiveByType('signing.binary_data');
+		if (existing) {
+			this.signingSecret = existing.value;
+			return;
+		}
+
+		const inserted = await repo.insertOrIgnore({
+			type: 'signing.binary_data',
+			value: this.signingSecret,
+			status: 'active',
+			algorithm: null,
+		});
+
+		if (!inserted) {
+			const winner = await repo.findActiveByType('signing.binary_data');
+			if (winner) this.signingSecret = winner.value;
+		}
+	}
 }
