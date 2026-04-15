@@ -744,27 +744,21 @@ describe('Node Builder', () => {
 
 	describe('node() and trigger() invalid input handling', () => {
 		it('node() should throw a clear TypeError when called with a string instead of a config object', () => {
-			expect(() => {
+			const fn = () => {
 				// @ts-expect-error intentional misuse
 				node('n8n-nodes-base.httpRequest', { url: 'https://example.com' });
-			}).toThrow(
-				expect.objectContaining({
-					name: 'TypeError',
-					message: expect.stringMatching(/node\(\) requires a configuration object/),
-				}),
-			);
+			};
+			expect(fn).toThrow(TypeError);
+			expect(fn).toThrow(/node\(\) requires a configuration object/);
 		});
 
 		it('trigger() should throw a clear TypeError when called with a string instead of a config object', () => {
-			expect(() => {
+			const fn = () => {
 				// @ts-expect-error intentional misuse
 				trigger('n8n-nodes-base.webhook', { httpMethod: 'GET', path: 'test' });
-			}).toThrow(
-				expect.objectContaining({
-					name: 'TypeError',
-					message: expect.stringMatching(/trigger\(\) requires a configuration object/),
-				}),
-			);
+			};
+			expect(fn).toThrow(TypeError);
+			expect(fn).toThrow(/trigger\(\) requires a configuration object/);
 		});
 
 		it('node() error message should include the received type and a usage example', () => {

@@ -1186,7 +1186,7 @@ function createWorkflow(
 		const receivedId = Array.isArray(id) ? 'an array' : typeof id;
 		throw new TypeError(
 			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
-			`workflow() requires (id: string, name: string). ` +
+			'workflow() requires (id: string, name: string). ' +
 				`workflow() requires a string id as first argument, but received ${receivedId}. ` +
 				"Example: workflow('my-workflow-id', 'My Workflow Name')",
 		);
@@ -1195,7 +1195,7 @@ function createWorkflow(
 		const receivedName = Array.isArray(name) ? 'an array' : typeof name;
 		throw new TypeError(
 			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
-			`workflow() requires (id: string, name: string). ` +
+			'workflow() requires (id: string, name: string). ' +
 				`workflow() requires a string name as second argument, but received ${receivedName}. ` +
 				"Example: workflow('my-workflow-id', 'My Workflow Name')",
 		);
