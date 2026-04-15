@@ -58,6 +58,11 @@ function handleEnabledToggle(value: string | number | boolean) {
 	void store.save();
 }
 
+function handleComputerUseToggle(value: string | number | boolean) {
+	store.setField('localGatewayDisabled', !Boolean(value));
+	void store.save();
+}
+
 function handlePermissionChange(key: keyof InstanceAiPermissions, value: InstanceAiPermissionMode) {
 	store.setPermission(key, value);
 	void store.save();
@@ -97,6 +102,26 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 							:disabled="store.isSaving"
 							data-test-id="n8n-agent-enable-toggle"
 							@update:model-value="handleEnabledToggle"
+						/>
+					</div>
+				</div>
+
+				<div :class="$style.card">
+					<div :class="$style.settingsRow">
+						<div :class="$style.settingsRowLeft">
+							<span :class="$style.settingsRowLabel">
+								{{ i18n.baseText('settings.n8nAgent.computerUse.label') }}
+							</span>
+							<span :class="$style.settingsRowDescription">
+								{{ i18n.baseText('settings.n8nAgent.computerUse.description') }}
+							</span>
+						</div>
+						<ElSwitch
+							:class="$style.toggle"
+							:model-value="!(store.settings?.localGatewayDisabled ?? false)"
+							:disabled="store.isSaving"
+							data-test-id="n8n-agent-computer-use-toggle"
+							@update:model-value="handleComputerUseToggle"
 						/>
 					</div>
 				</div>
