@@ -54,10 +54,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isInstanceAiDisabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.enabled !== true,
 	);
+	const isLocalGatewayDisabledByAdmin = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled === true,
+	);
 	const isLocalGatewayDisabled = computed(
-		() =>
-			settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled === true ||
-			preferences.value?.localGatewayDisabled === true,
+		() => isLocalGatewayDisabledByAdmin.value || preferences.value?.localGatewayDisabled === true,
 	);
 	const isProxyEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.proxyEnabled === true,
@@ -428,6 +429,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		activeDirectory,
 		isInstanceAiDisabled,
 		isLocalGatewayDisabled,
+		isLocalGatewayDisabledByAdmin,
 		isProxyEnabled,
 		isCloudManaged,
 		pollGatewayStatus,

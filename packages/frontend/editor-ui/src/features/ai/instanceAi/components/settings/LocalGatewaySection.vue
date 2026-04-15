@@ -107,20 +107,20 @@ onMounted(() => {
 				</N8nText>
 			</div>
 			<ElSwitch
-				:model-value="!isLocalGatewayDisabled"
-				:disabled="store.isLocalGatewayDisabled"
+				:model-value="!store.isLocalGatewayDisabledByAdmin && !isLocalGatewayDisabled"
+				:disabled="store.isLocalGatewayDisabledByAdmin"
 				@update:model-value="handleUserToggle"
 			/>
 		</div>
 
-		<div v-if="store.isLocalGatewayDisabled" :class="$style.warningRow">
+		<div v-if="store.isLocalGatewayDisabledByAdmin" :class="$style.warningRow">
 			<N8nIcon icon="triangle-alert" size="small" />
 			<N8nText size="small" color="text-light">
 				{{ i18n.baseText('settings.n8nAgent.computerUse.disabled.warning') }}
 			</N8nText>
 		</div>
 
-		<template v-if="!isLocalGatewayDisabled && !store.isLocalGatewayDisabled">
+		<template v-if="!isLocalGatewayDisabled && !store.isLocalGatewayDisabledByAdmin">
 			<!-- Gateway connected -->
 			<div v-if="store.isGatewayConnected" :class="$style.connectedBlock">
 				<div :class="$style.statusRow">

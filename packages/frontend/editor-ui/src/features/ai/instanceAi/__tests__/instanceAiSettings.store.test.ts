@@ -95,6 +95,31 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	describe('isLocalGatewayDisabledByAdmin', () => {
+		it('returns true when admin flag is set', () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: true,
+				proxyEnabled: false,
+				optinModalDismissed: false,
+				cloudManaged: false,
+			});
+			expect(store.isLocalGatewayDisabledByAdmin).toBe(true);
+		});
+
+		it('returns false when admin flag is not set even if user preference is', () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				optinModalDismissed: false,
+				cloudManaged: false,
+			});
+			store.$patch({ preferences: { localGatewayDisabled: true } });
+			expect(store.isLocalGatewayDisabledByAdmin).toBe(false);
+		});
+	});
+
 	describe('isLocalGatewayDisabled', () => {
 		it('returns true when admin flag is set', () => {
 			setModuleSettings(settingsStore, {
