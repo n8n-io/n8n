@@ -114,7 +114,7 @@ describe('SettingsInstanceAiView', () => {
 		});
 	});
 
-	function queryStub(container: HTMLElement, name: string) {
+	function queryStub(container: Element, name: string) {
 		return container.querySelector(`[data-test-stub="${name}"]`);
 	}
 
