@@ -213,6 +213,58 @@ describe('InstanceSettings', () => {
 		});
 	});
 
+	describe('initialize', () => {
+		const mockRepo = {
+			findActiveByType: jest.fn(),
+			save: jest.fn(),
+		};
+
+		let settings: InstanceSettings;
+
+		beforeEach(() => {
+			mockFs.existsSync.mockReturnValue(false);
+			mockFs.mkdirSync.mockReturnValue('');
+			mockFs.writeFileSync.mockReturnValue();
+
+			settings = createInstanceSettings({ encryptionKey: 'test_key' });
+		});
+
+		it('should use N8N_INSTANCE_ID env var and skip DB entirely', async () => {
+			process.env.N8N_INSTANCE_ID = 'env-pinned-id';
+
+			await settings.initialize(mockRepo);
+
+			expect(settings.instanceId).toEqual('env-pinned-id');
+			expect(mockRepo.findActiveByType).not.toHaveBeenCalled();
+			expect(mockRepo.save).not.toHaveBeenCalled();
+		});
+
+		it('should use the value from the active DB row when one exists', async () => {
+			mockRepo.findActiveByType.mockResolvedValue({ value: 'db-stored-id' });
+
+			await settings.initialize(mockRepo);
+
+			expect(settings.instanceId).toEqual('db-stored-id');
+			expect(mockRepo.findActiveByType).toHaveBeenCalledWith('instance.id');
+			expect(mockRepo.save).not.toHaveBeenCalled();
+		});
+
+		it('should persist the derived instanceId when no active DB row exists', async () => {
+			mockRepo.findActiveByType.mockResolvedValue(null);
+			const derivedId = settings.instanceId;
+
+			await settings.initialize(mockRepo);
+
+			expect(mockRepo.save).toHaveBeenCalledWith({
+				type: 'instance.id',
+				value: derivedId,
+				status: 'active',
+				algorithm: null,
+			});
+			expect(settings.instanceId).toEqual(derivedId);
+		});
+	});
+
 	describe('isDocker', () => {
 		it('should return true if /.dockerenv exists', () => {
 			mockFs.existsSync.mockImplementation((path) => path === '/.dockerenv');
