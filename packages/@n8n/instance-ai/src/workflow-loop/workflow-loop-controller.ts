@@ -53,7 +53,8 @@ export function handleBuildOutcome(
 	attempts: AttemptRecord[],
 	outcome: WorkflowBuildOutcome,
 ): TransitionResult {
-	const attempt = makeAttempt(state, 'build', attempts);
+	const repairedWorkflow = state.phase === 'repairing';
+	const attempt = makeAttempt(state, repairedWorkflow ? 'rebuild' : 'build', attempts);
 
 	if (!outcome.submitted) {
 		attempt.result = outcome.needsUserInput ? 'blocked' : 'failure';
@@ -109,7 +110,10 @@ export function handleBuildOutcome(
 	// Manual/testable workflow — proceed to verification
 	return {
 		state: { ...updatedState, phase: 'verifying', status: 'active' },
-		action: { type: 'verify', workflowId: outcome.workflowId! },
+		action: {
+			type: repairedWorkflow ? 'repair_verify' : 'verify',
+			workflowId: outcome.workflowId!,
+		},
 		attempt,
 	};
 }

@@ -86,6 +86,21 @@ describe('handleBuildOutcome', () => {
 		expect(attempt.result).toBe('success');
 	});
 
+	it('transitions to repair_verify when repair build submits successfully', () => {
+		const state = makeState({ phase: 'repairing', workflowId: 'wf_old' });
+		const outcome = makeOutcome({ workflowId: 'wf_123' });
+
+		const { state: next, action, attempt } = handleBuildOutcome(state, [], outcome);
+
+		expect(next.phase).toBe('verifying');
+		expect(action.type).toBe('repair_verify');
+		if (action.type === 'repair_verify') {
+			expect(action.workflowId).toBe('wf_123');
+		}
+		expect(attempt.action).toBe('rebuild');
+		expect(attempt.result).toBe('success');
+	});
+
 	it('transitions to done for trigger-only workflows', () => {
 		const state = makeState();
 		const outcome = makeOutcome({

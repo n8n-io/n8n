@@ -23,6 +23,14 @@ const CHECKLIST_VERIFY =
 	'{ id: "test", description: "Test workflow after build", status: "in_progress" }, ' +
 	'{ id: "publish", description: "Publish when ready", status: "todo" }.';
 
+const CHECKLIST_REPAIR_VERIFY =
+	'\n\nThe workflow was rebuilt or patched after a failed test. Continue the loop automatically: ' +
+	'run the workflow again, debug if needed, and call `report-verification-verdict` again. ' +
+	'Update the build checklist via `update-tasks`: ' +
+	'{ id: "build", description: "Build workflow", status: "done" }, ' +
+	'{ id: "test", description: "Test workflow after build", status: "in_progress" }, ' +
+	'{ id: "publish", description: "Publish when ready", status: "todo" }.';
+
 const CHECKLIST_BLOCKED =
 	'\n\nUpdate the build checklist via `update-tasks`: ' +
 	'{ id: "build", description: "Build workflow", status: "done" }, ' +
@@ -57,6 +65,14 @@ export function formatWorkflowLoopGuidance(
 				'If it fails, use `debug-execution` to diagnose. ' +
 				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}" and your findings.` +
 				CHECKLIST_VERIFY
+			);
+		case 'repair_verify':
+			return (
+				`RE-VERIFY: The workflow ${action.workflowId} was repaired after a failed test. ` +
+				'Do not stop at diagnosis text. Run the workflow again immediately. ' +
+				'If it fails, use `debug-execution` to diagnose and then call ' +
+				` \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}".` +
+				CHECKLIST_REPAIR_VERIFY
 			);
 		case 'blocked':
 			return (

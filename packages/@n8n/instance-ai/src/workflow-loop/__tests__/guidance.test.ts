@@ -208,6 +208,20 @@ describe('formatWorkflowLoopGuidance', () => {
 		});
 	});
 
+	describe('action type "repair_verify"', () => {
+		it('should instruct the orchestrator to continue testing automatically', () => {
+			const action: WorkflowLoopAction = {
+				type: 'repair_verify',
+				workflowId: 'wf-repair-1',
+			};
+			const result = formatWorkflowLoopGuidance(action, { workItemId: 'wi-repair' });
+			expect(result).toContain('RE-VERIFY');
+			expect(result).toContain('Do not stop at diagnosis text');
+			expect(result).toContain('report-verification-verdict');
+			expect(result).toContain('wi-repair');
+		});
+	});
+
 	// ── patch ──────────────────────────────────────────────────────────────────
 
 	describe('action type "patch"', () => {

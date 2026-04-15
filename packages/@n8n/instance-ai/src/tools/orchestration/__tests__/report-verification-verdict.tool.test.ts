@@ -95,6 +95,23 @@ describe('report-verification-verdict tool', () => {
 		expect((result as { guidance: string }).guidance).toContain('run-workflow');
 	});
 
+	it('returns re-verify guidance when action is repair_verify', async () => {
+		const repairVerifyAction: WorkflowLoopAction = {
+			type: 'repair_verify',
+			workflowId: 'wf-123',
+		};
+		const reportVerificationVerdict = jest.fn().mockResolvedValue(repairVerifyAction);
+		const context = createMockContext({
+			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
+		});
+		const tool = createReportVerificationVerdictTool(context);
+
+		const result = (await tool.execute!(baseInput, {} as never)) as Record<string, unknown>;
+
+		expect((result as { guidance: string }).guidance).toContain('RE-VERIFY');
+		expect((result as { guidance: string }).guidance).toContain('Do not stop at diagnosis text');
+	});
+
 	it('returns patch guidance when needs_patch produces patch action', async () => {
 		const patchAction: WorkflowLoopAction = {
 			type: 'patch',

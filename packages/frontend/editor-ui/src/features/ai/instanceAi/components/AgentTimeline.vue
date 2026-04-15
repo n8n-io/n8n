@@ -142,21 +142,43 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
 }
 
-/** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
- *  Prefers pending (isLoading) over resolved — handles revision loops where
- *  multiple submit-plan calls exist. */
-const plannerConfirmation = computed<InstanceAiToolCallState | undefined>(() => {
+function findPlannerConfirmation(
+	agentNode: InstanceAiAgentNode,
+): InstanceAiToolCallState | undefined {
 	let latest: InstanceAiToolCallState | undefined;
-	for (const child of props.agentNode.children) {
-		if (child.role !== 'planner') continue;
-		for (const tc of child.toolCalls) {
-			if (tc.toolName === 'submit-plan' && tc.confirmation?.inputType === 'plan-review') {
-				if (tc.isLoading) return tc;
-				latest = tc;
+
+	for (const child of agentNode.children) {
+		if (child.role === 'planner') {
+			for (const tc of child.toolCalls) {
+				if (tc.toolName === 'submit-plan' && tc.confirmation?.inputType === 'plan-review') {
+					if (tc.isLoading) return tc;
+					latest = tc;
+				}
 			}
 		}
+
+		const nested = findPlannerConfirmation(child);
+		if (nested?.isLoading) return nested;
+		if (nested) latest = nested;
 	}
+
 	return latest;
+}
+
+/** Find the latest plan-review confirmation from a planner descendant's submit-plan tool call.
+ *  Prefers pending (isLoading) over resolved — handles revision loops where
+ *  multiple submit-plan calls exist. */
+const plannerConfirmation = computed<InstanceAiToolCallState | undefined>(() =>
+	findPlannerConfirmation(props.agentNode),
+);
+
+const inlinePlanReviewToolCall = computed<InstanceAiToolCallState | undefined>(() => {
+	for (const entry of timelineEntries.value) {
+		if (entry.type !== 'tool-call') continue;
+		const tc = toolCallsById.value[entry.toolCallId];
+		if (tc?.confirmation?.inputType === 'plan-review') return tc;
+	}
+	return undefined;
 });
 
 /** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
@@ -174,6 +196,21 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 
 <template>
 	<div :class="$style.timeline">
+		<PlanReviewPanel
+			v-if="
+				!props.visibleEntries && inlinePlanReviewToolCall && props.agentNode.children.length === 0
+			"
+			:planned-tasks="
+				inlinePlanReviewToolCall.confirmation?.planItems ??
+				(inlinePlanReviewToolCall.args?.tasks as PlannedTaskArg[] | undefined) ??
+				mapTaskItemsToPlannedTasks(inlinePlanReviewToolCall.confirmation?.tasks) ??
+				[]
+			"
+			:read-only="!inlinePlanReviewToolCall.isLoading"
+			@approve="handlePlanConfirm(inlinePlanReviewToolCall, true)"
+			@request-changes="(fb) => handlePlanConfirm(inlinePlanReviewToolCall, false, fb)"
+		/>
+
 		<template v-for="(entry, idx) in timelineEntries" :key="idx">
 			<!-- Text segment -->
 			<N8nText v-if="entry.type === 'text'" size="large" :compact="props.compact">
@@ -246,6 +283,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				<PlanReviewPanel
 					v-if="
 						childrenById[entry.agentId].role === 'planner' &&
+						plannerConfirmation?.agentId === childrenById[entry.agentId].agentId &&
 						(plannerConfirmation ||
 							props.agentNode.planItems?.length ||
 							props.agentNode.tasks?.tasks?.length)

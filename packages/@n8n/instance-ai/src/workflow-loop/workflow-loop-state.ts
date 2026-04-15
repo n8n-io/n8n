@@ -120,6 +120,7 @@ export type VerificationResult = z.infer<typeof verificationResultSchema>;
 
 export type WorkflowLoopAction =
 	| { type: 'verify'; workflowId: string }
+	| { type: 'repair_verify'; workflowId: string }
 	| { type: 'rebuild'; workflowId: string; failureDetails: string }
 	| {
 			type: 'patch';

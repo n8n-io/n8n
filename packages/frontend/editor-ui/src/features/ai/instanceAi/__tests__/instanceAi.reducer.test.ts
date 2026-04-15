@@ -828,5 +828,26 @@ describe('instanceAi.reducer', () => {
 			expect(node).toBeDefined();
 			expect(node!.textContent).toBe('deep');
 		});
+
+		test('findAgentNode finds deeply nested planner nodes', () => {
+			const state = stateWithRun('run-1', 'root');
+			handleEvent(state, {
+				type: 'agent-spawned',
+				runId: 'run-1',
+				agentId: 'builder-1',
+				payload: { parentId: 'root', role: 'workflow-builder', tools: ['submit-plan'] },
+			});
+			handleEvent(state, {
+				type: 'agent-spawned',
+				runId: 'run-1',
+				agentId: 'planner-1',
+				payload: { parentId: 'builder-1', role: 'planner', tools: ['submit-plan'] },
+			});
+
+			const msg = state.messages[0];
+			const node = findAgentNode(msg, 'planner-1');
+			expect(node).toBeDefined();
+			expect(node!.role).toBe('planner');
+		});
 	});
 });
