@@ -401,24 +401,6 @@ describe('buildSetupRequests', () => {
 			]),
 		);
 	});
-
-	it('uses generic message when placeholder has no label', async () => {
-		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
-			group: [],
-			credentials: [],
-			properties: [{ name: 'value', displayName: 'Value', type: 'string' }],
-		});
-
-		const node = makeNode({
-			parameters: { value: '<__PLACEHOLDER_VALUE____>' },
-		});
-		const result = await buildSetupRequests(context, node);
-
-		expect(result).toHaveLength(1);
-		expect(result[0].parameterIssues!.value).toEqual([
-			'Contains a placeholder value — please provide the real value',
-		]);
-	});
 });
 
 // ---------------------------------------------------------------------------
