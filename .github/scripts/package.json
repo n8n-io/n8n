@@ -10,7 +10,8 @@
     "debug": "4.4.3",
     "glob": "13.0.6",
     "semver": "7.7.4",
-    "tempfile": "6.0.1"
+    "tempfile": "6.0.1",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "conventional-changelog-angular": "8.3.0"
