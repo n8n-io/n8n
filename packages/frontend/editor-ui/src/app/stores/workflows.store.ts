@@ -1718,6 +1718,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNodeTypes,
 		getNodes,
 		convertTemplateNodeToNodeUi,
+		/**
+		 * @deprecated
+		 */
 		workflowObject,
 		createWorkflowObject,
 		cloneWorkflowObject,

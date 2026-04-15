@@ -36,6 +36,20 @@ jobs:
           # Or use OAuth token instead:
           # claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           timeout_minutes: '60'
+          settings: |
+            {
+              "extraKnownMarketplaces": {
+                "n8n": {
+                  "source": {
+                    "source": "directory",
+                    "path": "./.claude/plugins/n8n"
+                  }
+                }
+              },
+              "enabledPlugins": {
+                "n8n@n8n": true
+              }
+            }
           # mode: tag  # Default: responds to @claude mentions
           # Optional: Restrict network access to specific domains only
           # experimental_allowed_domains: |

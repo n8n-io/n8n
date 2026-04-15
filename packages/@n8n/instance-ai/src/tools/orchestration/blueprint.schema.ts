@@ -25,8 +25,8 @@ export const blueprintWorkflowItemSchema = z.object({
 
 export const blueprintDataTableItemSchema = z.object({
 	id: z.string().describe('Stable ID — preserved as task ID'),
-	name: z.string().describe('Table name'),
-	purpose: z.string().describe('1 sentence: what this table stores'),
+	name: z.string().describe('Table name or short task label'),
+	purpose: z.string().describe('What to do: create with schema, delete, modify, or seed data'),
 	columns: z
 		.array(
 			z.object({
@@ -34,7 +34,8 @@ export const blueprintDataTableItemSchema = z.object({
 				type: z.enum(['string', 'number', 'boolean', 'date']),
 			}),
 		)
-		.describe('Column definitions — name and type only'),
+		.optional()
+		.describe('Column definitions for table creation — omit for delete/modify operations'),
 	dependsOn: z.array(z.string()).default([]),
 });
 
