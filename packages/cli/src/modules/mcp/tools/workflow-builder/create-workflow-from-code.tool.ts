@@ -14,6 +14,7 @@ import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = {
 	code: z
@@ -81,6 +82,7 @@ const outputSchema = {
 export const createCreateWorkflowFromCodeTool = (
 	user: User,
 	workflowCreationService: WorkflowCreationService,
+	workflowFinderService: WorkflowFinderService,
 	urlService: UrlService,
 	telemetry: Telemetry,
 	nodeTypes: NodeTypes,
@@ -212,40 +214,46 @@ export const createCreateWorkflowFromCodeTool = (
 				structuredContent: output,
 			};
 		} catch (error) {
-			// If the workflow was already persisted to the DB (has an ID) but a post-save
-			// operation failed (e.g. external hooks, event emission), report success to
-			// prevent MCP clients from retrying and creating duplicate workflows.
-			if (newWorkflow?.id) {
-				const errorMessage = error instanceof Error ? error.message : String(error);
-				const baseUrl = urlService.getInstanceBaseUrl();
-				const workflowUrl = `${baseUrl}/workflow/${newWorkflow.id}`;
-
-				telemetryPayload.results = {
-					success: true,
-					data: {
-						workflowId: newWorkflow.id,
-						nodeCount: newWorkflow.nodes.length,
-						postSaveError: errorMessage,
-					},
-				};
-				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-				const output = {
-					workflowId: newWorkflow.id,
-					name: newWorkflow.name,
-					nodeCount: newWorkflow.nodes.length,
-					url: workflowUrl,
-					autoAssignedCredentials: [],
-					note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
-				};
-
-				return {
-					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-					structuredContent: output,
-				};
-			}
-
 			const errorMessage = error instanceof Error ? error.message : String(error);
+
+			// Check whether the workflow was actually persisted despite the error.
+			// TypeORM sets the entity id during save(), even inside a transaction that
+			// may later roll back, so newWorkflow.id alone is not a reliable signal.
+			// A DB lookup confirms the row truly exists before we report success.
+			if (newWorkflow?.id) {
+				const persisted = await workflowFinderService.findWorkflowForUser(newWorkflow.id, user, [
+					'workflow:read',
+				]);
+
+				if (persisted) {
+					const baseUrl = urlService.getInstanceBaseUrl();
+					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
+
+					telemetryPayload.results = {
+						success: true,
+						data: {
+							workflowId: persisted.id,
+							nodeCount: persisted.nodes.length,
+							postSaveError: errorMessage,
+						},
+					};
+					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+					const output = {
+						workflowId: persisted.id,
+						name: persisted.name,
+						nodeCount: persisted.nodes.length,
+						url: workflowUrl,
+						autoAssignedCredentials: [],
+						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
+					};
+
+					return {
+						content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+						structuredContent: output,
+					};
+				}
+			}
 
 			telemetryPayload.results = {
 				success: false,
