@@ -448,6 +448,8 @@ describe('SourceControlService', () => {
 		// Skip actual git operations
 		service.sanityCheck = async () => {};
 		statusService['resetWorkfolder'] = async () => undefined;
+		(statusService as any).gitService = gitService;
+		(gitService.getHistoricallyTrackedFiles as jest.Mock).mockResolvedValue(new Set<string>());
 
 		// Git mocking
 		gitFiles = {
