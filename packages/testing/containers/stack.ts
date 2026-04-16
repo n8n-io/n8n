@@ -90,7 +90,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const isQueueMode = mains > 1 || workers > 0;
 	const needsLoadBalancer = mains > 1;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
-	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
+	const uniqueProjectName =
+		projectName ??
+		process.env.N8N_CONTAINERS_PROJECT_NAME ??
+		`n8n-stack-${Math.random().toString(36).substring(7)}`;
 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
