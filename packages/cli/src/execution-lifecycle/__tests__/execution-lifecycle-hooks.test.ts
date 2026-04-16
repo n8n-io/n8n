@@ -2,6 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
+import type { WorkflowExecuteBeforeContext } from '@n8n/decorators';
+import { LifecycleMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import {
 	BinaryDataService,
@@ -1225,6 +1228,56 @@ describe('Execution Lifecycle Hooks', () => {
 					undefined,
 					parentExecution,
 				);
+			});
+
+			it('should expose parentExecution on the hooks instance', () => {
+				expect(lifecycleHooks.parentExecution).toEqual(parentExecution);
+			});
+
+			it('should invoke module-registered workflowExecuteBefore handlers with parentExecution in the context', async () => {
+				const handlerSpy = jest.fn();
+
+				class TestLifecycleHandler {
+					onWorkflowStart(ctx: WorkflowExecuteBeforeContext) {
+						handlerSpy(ctx);
+					}
+				}
+
+				const scopedMetadata = new LifecycleMetadata();
+				scopedMetadata.register({
+					handlerClass: TestLifecycleHandler as unknown as Parameters<
+						LifecycleMetadata['register']
+					>[0]['handlerClass'],
+					methodName: 'onWorkflowStart',
+					eventName: 'workflowExecuteBefore',
+				});
+
+				const previousMetadata = Container.get(LifecycleMetadata);
+				Container.set(LifecycleMetadata, scopedMetadata);
+				Container.set(TestLifecycleHandler, new TestLifecycleHandler());
+
+				try {
+					const hooks = getLifecycleHooksForSubExecutions(
+						'integrated',
+						executionId,
+						workflowData,
+						undefined,
+						parentExecution,
+					);
+
+					await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+					expect(handlerSpy).toHaveBeenCalledTimes(1);
+					expect(handlerSpy).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'workflowExecuteBefore',
+							executionId,
+							parentExecution,
+						}),
+					);
+				} finally {
+					Container.set(LifecycleMetadata, previousMetadata);
+				}
 			});
 
 			it('should duplicate binary data to parent execution', async () => {

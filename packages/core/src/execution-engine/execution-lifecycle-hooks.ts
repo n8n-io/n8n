@@ -7,6 +7,7 @@ import type {
 	ITaskData,
 	ITaskStartedData,
 	IWorkflowBase,
+	RelatedExecution,
 	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
@@ -105,6 +106,7 @@ export class ExecutionLifecycleHooks {
 		readonly executionId: string,
 		readonly workflowData: IWorkflowBase,
 		readonly retryOf?: string,
+		readonly parentExecution?: RelatedExecution,
 	) {}
 
 	addHandler<Hook extends keyof ExecutionLifecycleHookHandlers>(

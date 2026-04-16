@@ -106,6 +106,7 @@ class ModulesHooksRegistry {
 							workflowInstance,
 							executionData,
 							executionId: this.executionId,
+							parentExecution: this.parentExecution,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -684,7 +685,13 @@ export function getLifecycleHooksForSubExecutions(
 	projectId?: string,
 	projectName?: string,
 ): ExecutionLifecycleHooks {
-	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
+	const hooks = new ExecutionLifecycleHooks(
+		mode,
+		executionId,
+		workflowData,
+		undefined,
+		parentExecution,
+	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsNodeEvents(hooks);
@@ -693,6 +700,7 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }
 

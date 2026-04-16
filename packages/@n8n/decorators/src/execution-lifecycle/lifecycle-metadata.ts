@@ -6,6 +6,7 @@ import type {
 	ITaskData,
 	ITaskStartedData,
 	IWorkflowBase,
+	RelatedExecution,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -38,6 +39,12 @@ export type WorkflowExecuteBeforeContext = {
 	workflowInstance: Workflow;
 	executionData?: IRunExecutionData;
 	executionId: string;
+	/**
+	 * The parent execution that triggered this one, if any. Set for
+	 * sub-workflow executions invoked via the Execute Workflow node so
+	 * modules (e.g. tracing) can link the child execution to its parent.
+	 */
+	parentExecution?: RelatedExecution;
 };
 
 export type WorkflowExecuteAfterContext = {
