@@ -4,6 +4,7 @@ const tables = [
 	'credentials_entity',
 	'secrets_provider_connection',
 	'dynamic_credential_resolver',
+	'dynamic_credential_entry',
 	'dynamic_credential_user_entry',
 ] as const;
 
