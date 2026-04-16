@@ -161,6 +161,7 @@ import { CreateTokenExchangeJtiTable1775116241000 } from '../common/177511624100
 import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
 import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
 import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
+import { AddEncryptionKeyIdColumns1776344213000 } from '../common/1776344213000-AddEncryptionKeyIdColumns';
 import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
 import type { Migration } from '../migration-types';
 
@@ -329,4 +330,5 @@ export const postgresMigrations: Migration[] = [
 	CreateTrustedKeyTables1776000000000,
 	CreateFavoritesTable1776150756000,
 	CreateDeploymentKeyTable1777000000000,
+	AddEncryptionKeyIdColumns1776344213000,
 ];

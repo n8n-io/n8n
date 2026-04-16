@@ -1,5 +1,5 @@
 import { CredentialsEntity, User, WithTimestamps } from '@n8n/db';
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 import { DynamicCredentialResolver } from './credential-resolver';
 
@@ -43,4 +43,12 @@ export class DynamicCredentialUserEntry extends WithTimestamps {
 	@ManyToOne(() => DynamicCredentialResolver, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'resolverId' })
 	resolver: DynamicCredentialResolver;
+
+	/**
+	 * ID of the encryption key used to encrypt this entry's data.
+	 * NULL means the row was encrypted with the legacy key before key rotation was introduced.
+	 */
+	@Index()
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	encryptionKeyId: string | null = null;
 }

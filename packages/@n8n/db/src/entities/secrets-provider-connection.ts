@@ -52,4 +52,12 @@ export class SecretsProviderConnection extends WithTimestamps {
 	 */
 	@Column({ default: false })
 	isEnabled: boolean;
+
+	/**
+	 * ID of the encryption key used to encrypt this connection's settings.
+	 * NULL means the row was encrypted with the legacy key before key rotation was introduced.
+	 */
+	@Index()
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	encryptionKeyId: string | null = null;
 }

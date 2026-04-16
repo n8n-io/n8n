@@ -28,6 +28,7 @@ const mockCredentialsService = (
 				isResolvable: false,
 				resolverId: null,
 				resolvableAllowFallback: false,
+				encryptionKeyId: null,
 				id,
 				// Methods present on entities via WithTimestampsAndStringId mixin
 				generateId() {},

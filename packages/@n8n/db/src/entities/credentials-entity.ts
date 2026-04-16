@@ -61,6 +61,14 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	@Column({ type: 'varchar', nullable: true })
 	resolverId: string | null;
 
+	/**
+	 * ID of the encryption key used to encrypt this credential's data.
+	 * NULL means the row was encrypted with the legacy key before key rotation was introduced.
+	 */
+	@Index()
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	encryptionKeyId: string | null = null;
+
 	toJSON() {
 		const { shared, ...rest } = this;
 		return rest;
