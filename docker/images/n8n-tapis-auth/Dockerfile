@@ -1,8 +1,7 @@
-# Usa la imagen de Node 23 (ajusta a la versión específica si es necesario)
+# Created by: Sebastián Sterling
 FROM node:23-bullseye
 
-# 1. HERRAMIENTAS DE SISTEMA + HEADERS
-# Instalamos lo necesario para compilar módulos nativos de C++
+# 1. System tools and headers
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -11,41 +10,37 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Configurar pnpm
+# pnpm configuration
 RUN npm install -g pnpm
 
 WORKDIR /app
 
-# 1. Copia de configuraciones de raíz
+# 1. Configuration COPY from root
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.json ./
 COPY patches/ ./patches/
 
-# 2. COPIA DE PAQUETES (NECESARIO PARA EL WORKSPACE)
-# Copiamos la carpeta packages ANTES del install para que pnpm encuentre 
-# los paquetes internos como @n8n/eslint-config
+# 2. Packages COPY
 COPY packages/ ./packages/
 
-# 3. CONFIGURACIÓN DE PNPM (Hoisting)
+# 3. PNPM configuration (Hoisting)
 RUN echo "shamefully-hoist=true" > .npmrc && \
     echo "public-hoist-pattern[]='*'" >> .npmrc
 
-# 4. INSTALACIÓN
-# Ahora pnpm verá todos los paquetes en packages/ y no lanzará el error de "not found"
+# 4. Packages installation
 RUN CI=true pnpm install --ignore-scripts --no-frozen-lockfile
 
-# 5. PARCHES DE TIPOS Y COMPILACIÓN NATIVA
-# Fix PSL
+# 5. Types patch and Native compilation
 RUN mkdir -p node_modules/@types/psl && \
     printf 'declare module "psl";' > node_modules/@types/psl/index.d.ts
 
-# Compilación de SQLite (Node 23)
+# SQLite Compilation for Node 23
 RUN SQLITE3_PATH=$(find node_modules/.pnpm -name "sqlite3" -type d | head -n 1) && \
     cd $SQLITE3_PATH && npm install --build-from-source
 
-# 6. BUILD FINAL
+# 6. Final BUILD
 RUN pnpm build
 
-# Comando por defecto (ajusta según tu despliegue en TACC/Render)
+# Default command to start n8n
 CMD ["pnpm", "start"]
 
 # Run from root:
