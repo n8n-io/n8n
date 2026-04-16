@@ -9,10 +9,7 @@ export class JwtService {
 	private jwtSecret: string = '';
 	private readonly jwtSecretFromEnv: boolean;
 
-	constructor(
-		{ encryptionKey }: InstanceSettings,
-		private readonly globalConfig: GlobalConfig,
-	) {
+	constructor({ encryptionKey }: InstanceSettings, globalConfig: GlobalConfig) {
 		this.jwtSecretFromEnv = Boolean(globalConfig.userManagement.jwtSecret);
 		this.jwtSecret = globalConfig.userManagement.jwtSecret;
 		if (!this.jwtSecret) {
