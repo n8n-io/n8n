@@ -13,6 +13,29 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
 
+async function getEntityProperties(
+	this: ILoadOptionsFunctions,
+	endpoint: string,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+
+	if (!Array.isArray(properties)) {
+		return returnData;
+	}
+
+	for (const property of properties) {
+		if (typeof property?.label === 'string' && typeof property?.name === 'string') {
+			returnData.push({
+				name: property.label,
+				value: property.name,
+			});
+		}
+	}
+
+	return returnData;
+}
+
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HubSpot Trigger',
@@ -287,83 +310,22 @@ export class HubspotTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available contacts to display them to user so that they can
-			// select them easily
 			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const property of properties) {
-					const propertyName = property.label;
-					const propertyId = property.name;
-					returnData.push({
-						name: propertyName,
-						value: propertyId,
-					});
-				}
-				return returnData;
+				return await getEntityProperties.call(this, '/properties/v2/contacts/properties');
 			},
-			// Get all the available companies to display them to user so that they can
-			// select them easily
 			async getCompanyProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/companies/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const property of properties) {
-					const propertyName = property.label;
-					const propertyId = property.name;
-					returnData.push({
-						name: propertyName,
-						value: propertyId,
-					});
-				}
-				return returnData;
+				return await getEntityProperties.call(this, '/properties/v2/companies/properties');
 			},
-			// Get all the available deals to display them to user so that they can
-			// select them easily
 			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/deals/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const property of properties) {
-					const propertyName = property.label;
-					const propertyId = property.name;
-					returnData.push({
-						name: propertyName,
-						value: propertyId,
-					});
-				}
-				return returnData;
+				return await getEntityProperties.call(this, '/properties/v2/deals/properties');
 			},
 			async getTicketProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/tickets/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const property of properties) {
-					const propertyName = property.label;
-					const propertyId = property.name;
-					returnData.push({
-						name: propertyName,
-						value: propertyId,
-					});
-				}
-				return returnData;
+				return await getEntityProperties.call(this, '/properties/v2/tickets/properties');
 			},
 			async getConversationProperties(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/conversations/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const property of properties) {
-					const propertyName = property.label;
-					const propertyId = property.name;
-					returnData.push({
-						name: propertyName,
-						value: propertyId,
-					});
-				}
-				return returnData;
+				return await getEntityProperties.call(this, '/properties/v2/conversations/properties');
 			},
 		},
 	};
