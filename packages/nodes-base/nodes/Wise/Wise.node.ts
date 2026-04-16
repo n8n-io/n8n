@@ -324,24 +324,35 @@ export class Wise implements INodeType {
 
 							responseData = allActivities;
 						} else {
-							const limit = this.getNodeParameter('limit', i);
-							qs.size = Math.min(limit as number, 100);
+							const limit = this.getNodeParameter('limit', i) as number;
+							const matchingActivities: IDataObject[] = [];
+							let cursor: string | null = null;
 
-							const response = (await wiseApiRequest.call(
-								this,
-								'GET',
-								`v1/profiles/${profileId}/activities`,
-								{},
-								qs,
-							)) as { activities: IDataObject[]; cursor: string | null };
+							do {
+								qs.size = 100;
+								if (cursor) {
+									qs.cursor = cursor;
+								}
 
-							let activities = response.activities || [];
+								const response = (await wiseApiRequest.call(
+									this,
+									'GET',
+									`v1/profiles/${profileId}/activities`,
+									{},
+									qs,
+								)) as { activities: IDataObject[]; cursor: string | null };
 
-							if (filters.status) {
-								activities = activities.filter((a: IDataObject) => a.status === filters.status);
-							}
+								let activities = response.activities || [];
 
-							responseData = activities.slice(0, limit as number);
+								if (filters.status) {
+									activities = activities.filter((a: IDataObject) => a.status === filters.status);
+								}
+
+								matchingActivities.push(...activities);
+								cursor = response.cursor;
+							} while (cursor && matchingActivities.length < limit);
+
+							responseData = matchingActivities.slice(0, limit);
 						}
 					}
 				} else if (resource === 'exchangeRate') {
