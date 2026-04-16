@@ -32,12 +32,26 @@ export function useExecutionPushEvents() {
 			const { executionId, workflowId } = event.data;
 			executionToWorkflow.set(executionId, workflowId);
 			const next = new Map(workflowExecutions.value);
-			next.set(workflowId, {
-				executionId,
-				workflowId,
-				status: 'running',
-				eventLog: [event],
-			});
+			const existing = workflowExecutions.value.get(workflowId);
+
+			// When the same execution resumes (e.g. after a Wait node timer fires),
+			// the server sends a second executionStarted with the same executionId.
+			// Append to the existing eventLog so the relay cursor stays valid —
+			// creating a fresh log would desync with the relay's relayedCount.
+			if (existing?.executionId === executionId) {
+				next.set(workflowId, {
+					...existing,
+					status: 'running',
+					eventLog: [...existing.eventLog, event],
+				});
+			} else {
+				next.set(workflowId, {
+					executionId,
+					workflowId,
+					status: 'running',
+					eventLog: [event],
+				});
+			}
 			workflowExecutions.value = next;
 
 			return;
@@ -49,10 +63,13 @@ export function useExecutionPushEvents() {
 			if (!entry || entry.executionId !== executionId) return;
 
 			const next = new Map(workflowExecutions.value);
+			// Keep the eventLog intact so the relay watcher can forward any events
+			// that arrived since its last fire before sending the synthetic
+			// executionFinished.  The relay clears the log via clearEventLog()
+			// after it has processed all pending events.
 			next.set(workflowId, {
 				...entry,
 				status: status === 'success' ? 'success' : 'error',
-				eventLog: [],
 			});
 			workflowExecutions.value = next;
 
@@ -86,6 +103,14 @@ export function useExecutionPushEvents() {
 		return workflowExecutions.value.get(workflowId)?.eventLog ?? [];
 	}
 
+	function clearEventLog(workflowId: string) {
+		const entry = workflowExecutions.value.get(workflowId);
+		if (!entry || entry.eventLog.length === 0) return;
+		const next = new Map(workflowExecutions.value);
+		next.set(workflowId, { ...entry, eventLog: [] });
+		workflowExecutions.value = next;
+	}
+
 	function clearAll() {
 		workflowExecutions.value = new Map();
 		executionToWorkflow.clear();
@@ -99,6 +124,7 @@ export function useExecutionPushEvents() {
 		workflowExecutions,
 		getStatus,
 		getBufferedEvents,
+		clearEventLog,
 		clearAll,
 		cleanup,
 	};

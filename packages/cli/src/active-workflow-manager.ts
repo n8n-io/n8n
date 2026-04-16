@@ -49,6 +49,7 @@ import {
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
@@ -64,6 +65,7 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { getErrorDescription, getErrorNodeId } from '@/workflows/utils';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 interface QueuedActivation {
@@ -97,6 +99,7 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly eventService: EventService,
 		private readonly storageConfig: StorageConfig,
+		private readonly eventBus: MessageEventBus,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -526,6 +529,16 @@ export class ActiveWorkflowManager {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
 				});
+
+				void this.eventBus.sendAuditEvent({
+					eventName: 'n8n.audit.workflow.activated',
+					payload: {
+						workflowId: dbWorkflow.id,
+						workflowName: dbWorkflow.name,
+						activeVersionId: dbWorkflow.activeVersionId,
+						activationMode,
+					},
+				});
 			}
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -745,13 +758,17 @@ export class ActiveWorkflowManager {
 	handleDisplayWorkflowActivationError({
 		workflowId,
 		errorMessage,
+		errorDescription,
+		nodeId,
 	}: {
 		workflowId: string;
 		errorMessage: string;
+		errorDescription?: string;
+		nodeId?: string;
 	}) {
 		this.push.broadcast({
 			type: 'workflowFailedToActivate',
-			data: { workflowId, errorMessage },
+			data: { workflowId, errorMessage, errorDescription, nodeId },
 		});
 	}
 
@@ -778,6 +795,8 @@ export class ActiveWorkflowManager {
 		} catch (e) {
 			const error = ensureError(e);
 			const { message } = error;
+			const nodeId = getErrorNodeId(e);
+			const errorDescription = getErrorDescription(e);
 
 			if (error instanceof IsolateError) {
 				this.logger.warn(
@@ -791,16 +810,31 @@ export class ActiveWorkflowManager {
 				return;
 			}
 
+			const dbWorkflow = await this.workflowRepository.findById(workflowId);
+
 			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
+
+			if (dbWorkflow && (activationMode === 'init' || activationMode === 'leadershipChange')) {
+				void this.eventBus.sendAuditEvent({
+					eventName: 'n8n.audit.workflow.deactivated',
+					payload: {
+						workflowId,
+						workflowName: dbWorkflow.name,
+						deactivatedVersionId: dbWorkflow.activeVersionId ?? null,
+						activationMode,
+						reason: error.name,
+					},
+				});
+			}
 
 			this.push.broadcast({
 				type: 'workflowFailedToActivate',
-				data: { workflowId, errorMessage: message },
+				data: { workflowId, errorMessage: message, nodeId, errorDescription },
 			});
 
 			await this.publisher.publishCommand({
 				command: 'display-workflow-activation-error',
-				payload: { workflowId, errorMessage: message },
+				payload: { workflowId, errorMessage: message, nodeId, errorDescription },
 			}); // instruct followers to show activation error in UI
 		}
 	}

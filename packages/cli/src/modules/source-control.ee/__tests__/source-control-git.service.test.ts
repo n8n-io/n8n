@@ -4,8 +4,8 @@ import { simpleGit } from 'simple-git';
 import type { SimpleGit } from 'simple-git';
 
 import { SourceControlGitService } from '../source-control-git.service.ee';
-import type { SourceControlPreferences } from '../types/source-control-preferences';
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '../types/source-control-preferences';
 
 const MOCK_BRANCHES = {
 	all: ['origin/master', 'origin/feature/branch'],
@@ -74,6 +74,48 @@ describe('SourceControlGitService', () => {
 				 */
 				expect(checkoutSpy).toHaveBeenCalledWith('main');
 				expect(branchSpy).toHaveBeenCalledWith(['--set-upstream-to=origin/main', 'main']);
+			});
+		});
+
+		describe('when fetch fails during remote tracking setup', () => {
+			it('should log warning and not throw when tracking fetch failures are tolerated', async () => {
+				const mockLogger = mock<any>();
+				const gitService = new SourceControlGitService(mockLogger, mock(), mock());
+				const prefs = mock<SourceControlPreferences>({ branchName: 'main' });
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				gitService.git = git;
+				jest.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+
+				const fetchError = new Error('Authentication failed for HTTPS remote');
+				jest.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
+
+				await gitService.initRepository(prefs, user, {
+					tolerateTrackingFetchFailure: true,
+				});
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Failed to fetch during remote tracking setup',
+					{ error: fetchError },
+				);
+			});
+
+			it('should throw when tracking fetch failures are NOT tolerated', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const prefs = mock<SourceControlPreferences>({ branchName: 'main' });
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				gitService.git = git;
+				jest.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+
+				const fetchError = new Error('Authentication failed for HTTPS remote');
+				jest.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
+
+				await expect(
+					gitService.initRepository(prefs, user, {
+						tolerateTrackingFetchFailure: false,
+					}),
+				).rejects.toThrow(fetchError);
 			});
 		});
 

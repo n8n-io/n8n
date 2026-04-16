@@ -192,6 +192,13 @@ export {
 	type IsTriggerNodeFn,
 } from './pin-data-utils';
 
+// Display options matching
+export {
+	matchesDisplayOptions,
+	type DisplayOptions,
+	type DisplayOptionsContext,
+} from './validation/display-options';
+
 // Node type constants
 export {
 	NODE_TYPES,

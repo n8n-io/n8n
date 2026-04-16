@@ -18,14 +18,13 @@ export class RenameKeys implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Rename Keys',
 		name: 'renameKeys',
-		icon: 'fa:edit',
+		icon: 'node:rename-keys',
 		iconColor: 'crimson',
 		group: ['transform'],
 		version: 1,
 		description: 'Update item field names',
 		defaults: {
 			name: 'Rename Keys',
-			color: '#772244',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

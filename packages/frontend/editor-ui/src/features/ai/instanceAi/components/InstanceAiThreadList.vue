@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { VIEWS } from '@/app/constants';
 import { getRelativeDate } from '@/features/ai/chatHub/chat.utils';
 import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
@@ -56,10 +55,6 @@ const groupedThreads = computed(() => {
 	});
 });
 
-function handleBack() {
-	void router.push({ name: VIEWS.HOMEPAGE });
-}
-
 function handleNewThread() {
 	const threadId = store.newThread();
 	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
@@ -109,14 +104,6 @@ function handleThreadAction(action: string, threadId: string) {
 
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-thread-list">
-		<!-- Back button -->
-		<button :class="$style.backButton" @click="handleBack">
-			<N8nIcon icon="chevron-left" size="small" />
-			{{ i18n.baseText('instanceAi.sidebar.back') }}
-		</button>
-
-		<div :class="$style.separator" />
-
 		<!-- New chat button -->
 		<button
 			:class="$style.newChatButton"
@@ -202,31 +189,6 @@ function handleThreadAction(action: string, threadId: string) {
 	background: var(--color--background--light-2);
 }
 
-.backButton {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	background: none;
-	border: none;
-	cursor: pointer;
-	font-family: var(--font-family);
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	outline: none;
-
-	&:hover,
-	&:focus,
-	&:active {
-		color: var(--color--text) !important;
-	}
-}
-
-.separator {
-	border-bottom: var(--border);
-	margin: 0 var(--spacing--sm);
-}
-
 .newChatButton {
 	display: flex;
 	align-items: center;
@@ -260,7 +222,7 @@ function handleThreadAction(action: string, threadId: string) {
 .threadList {
 	flex: 1;
 	overflow-y: auto;
-	padding: var(--spacing--4xs);
+	padding: var(--spacing--2xs);
 }
 
 .group {
@@ -280,6 +242,7 @@ function handleThreadAction(action: string, threadId: string) {
 .threadItem {
 	display: flex;
 	align-items: center;
+	height: 32px;
 	border-radius: var(--radius);
 	transition: background-color 0.1s ease;
 
@@ -300,7 +263,8 @@ function handleThreadAction(action: string, threadId: string) {
 	gap: var(--spacing--3xs);
 	flex: 1;
 	min-width: 0;
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	height: 100%;
+	padding: 0 var(--spacing--xs);
 	color: var(--color--text) !important;
 	text-decoration: none !important;
 	outline: none;
@@ -320,7 +284,7 @@ function handleThreadAction(action: string, threadId: string) {
 }
 
 .threadLinkActive {
-	background-color: var(--color--background--light-1);
+	// Active background handled by .threadItem.active
 }
 
 .threadIcon {
