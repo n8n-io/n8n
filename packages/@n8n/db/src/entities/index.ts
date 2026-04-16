@@ -4,7 +4,12 @@ import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
+import {
+	CredentialDependency,
+	type CredentialDependencyType,
+} from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
+import { DeploymentKey } from './deployment-key';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
@@ -19,6 +24,7 @@ import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
+import { RoleMappingRule } from './role-mapping-rule';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
@@ -51,9 +57,13 @@ export {
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
+	CredentialDependency,
+	type CredentialDependencyType,
+	DeploymentKey,
 	Folder,
 	Project,
 	ProjectRelation,
+	RoleMappingRule,
 	Role,
 	Scope,
 	SharedCredentials,
@@ -92,9 +102,12 @@ export const entities = {
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
+	CredentialDependency,
+	DeploymentKey,
 	Folder,
 	Project,
 	ProjectRelation,
+	RoleMappingRule,
 	Scope,
 	SharedCredentials,
 	SharedWorkflow,

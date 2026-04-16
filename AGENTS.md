@@ -16,8 +16,16 @@ frontend, and extensible node-based workflow engine.
 - When starting to work on a new ticket – create a new branch from fresh
   master with the name specified in Linear ticket
 - When creating a new branch for a ticket in Linear - use the branch name
-  suggested by linear
+  suggested by Linear, **unless it is a security fix** (see Security Fix
+  Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
+
+## Claude Code Plugin
+
+n8n-specific skills, commands, and agents live in `.claude/plugins/n8n/` and
+are namespaced under `n8n:`. Use `n8n:` prefix when invoking them
+(e.g. `/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent).
+See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
 ## Essential Commands
 
@@ -126,6 +134,9 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - **NEVER use `any` type** - use proper types or `unknown`
 - **Avoid type casting with `as`** - use type guards or type predicates instead (except in test code where `as` is acceptable)
 - **Define shared interfaces in `@n8n/api-types`** package for FE/BE communication
+- **Lazy-load heavy modules** — if a module is only used in a specific code
+  path (not every request), use `await import()` at point of use instead of
+  top-level `import`. Applies especially to native modules and large parsers.
 
 ### Error Handling
 - Don't use `ApplicationError` class in CLI and nodes for throwing errors,
@@ -137,6 +148,8 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
+- For style changes and design-system updates, follow
+  `.agents/design-system-style-rules.md`
 
 When implementing CSS, refer to @packages/frontend/CLAUDE.md for guidelines on
 CSS variables and styling conventions.
@@ -144,6 +157,7 @@ CSS variables and styling conventions.
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests
 - **Mock all external dependencies** in unit tests
+- **Prefer reusing hoisted shared `mock<T>(...)` fixtures** when a typed mock is immutable and used across tests. This rule exists to avoid massive test slowdowns from repeatedly creating nested proxy mocks while preserving the type contract. Avoid replacing these with `as unknown as T` helpers for entities like `User`.
 - **Confirm test cases with user** before writing unit tests
 - **Typecheck is critical before committing** - always run `pnpm typecheck`
 - **When modifying pinia stores**, check for unused computed properties
@@ -166,6 +180,46 @@ When implementing features:
 4. Update frontend in `packages/editor-ui` with i18n support
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types
+
+## Design Principles
+
+### Security Must Not Degrade the Building Experience
+
+Security improvements, whether driven by enterprise requirements or internal
+standards, must NEVER add friction to the common-case building experience. When
+designing security-related features (defaults, behaviors, flows, error
+handling), apply these checks:
+
+- **No friction for the common case:** A community builder's workflow should
+  remain intuitive. Security should be invisible when it can be.
+- **Migration and upgrade paths:** Existing users must have a clear,
+  non-disruptive path forward when defaults or behaviors change.
+- **Security layers on top, not in competition:** Great UX and strong security
+  are not trade-offs. They're both required. If a design forces a choice
+  between them, the design needs more work.
+
+### Security Fix Hygiene
+
+**This is a public repository.** When working on security fixes, never expose
+the attack vector or vulnerability type in any public-facing artifact. Attackers
+monitor open-source repos for signals like branch names, commit messages, PR
+titles, test descriptions, and Linear URLs.
+
+**Rules for security fixes:**
+
+- **Branch names:** Do NOT use the Linear-suggested branch name if it reveals
+  the vulnerability. Rename to describe the fix neutrally
+  (e.g. `node-1234-improve-request-handling`, not
+  `node-1234-fix-ddos-vulnerability`).
+- **Commit messages:** Describe what the code now does, not the threat it
+  prevents (e.g. `fix: add payload size validation`, not
+  `fix: prevent denial of service`).
+- **Test descriptions:** Use neutral, functional language
+  (e.g. `'should sanitize query parameters'`, not
+  `'should prevent SQL injection'`).
+- **Code comments:** Do not describe the attack scenario in comments.
+- **Linear references:** Never include the URL slug
+  (e.g. `.../N8N-1234/fix-ssrf-vulnerability`).
 
 ## Github Guidelines
 - When creating a PR, use the conventions in

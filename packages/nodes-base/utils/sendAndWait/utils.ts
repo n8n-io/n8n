@@ -1,5 +1,5 @@
 import isbot from 'isbot';
-import { getWebhookSandboxCSP } from 'n8n-core';
+import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
 	FormFieldsParameter,
 	IDataObject,
@@ -334,6 +334,21 @@ const getFormResponseCustomizations = (context: IWebhookFunctions) => {
 	};
 };
 
+// Block requests from Microsoft Preview Service to prevent accidental
+// approval/disapproval when sending links in Teams
+const isMicrosoftPreviewService = (userAgent?: string) => {
+	// The request that the Preview Service makes when the message is sent in
+	// Teams does not have a user-agent header
+	if (!userAgent) {
+		return true;
+	}
+
+	userAgent = userAgent.toLowerCase();
+	// The request that the Preview Service makes when the link is pasted in
+	// Teams does have a user-agent header that can be used to identify it
+	return ['teams', 'skype', 'preview'].some((str) => userAgent.includes(str));
+};
+
 export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const method = this.getRequestObject().method;
 	const res = this.getResponseObject();
@@ -346,10 +361,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 	if (
 		responseType === 'approval' &&
-		(isbot(req.headers['user-agent']) ||
-			// Microsoft Teams link preview service (SkypeSpaces) automatically fetches
-			// URLs in chat messages for rich previews, which would trigger the approval
-			req.headers['user-agent']?.includes('SkypeSpaces'))
+		(isbot(req.headers['user-agent']) || isMicrosoftPreviewService(req.headers['user-agent']))
 	) {
 		res.send('');
 		return { noWebhookResponse: true };
@@ -379,7 +391,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
-			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+			if (!isFormHtmlSandboxingDisabled()) {
+				res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			}
 			res.render('form-trigger', data);
 
 			return {
@@ -431,7 +445,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
-			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+			if (!isFormHtmlSandboxingDisabled()) {
+				res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			}
 			res.render('form-trigger', data);
 
 			return {
@@ -487,7 +503,6 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
 
-	context.setSignatureValidationRequired();
 	const approvedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'true' });
 
 	if (responseType === 'freeText' || responseType === 'customForm') {

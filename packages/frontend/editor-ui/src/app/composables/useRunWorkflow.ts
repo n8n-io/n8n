@@ -38,6 +38,10 @@ import {
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -52,11 +56,14 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
+import { chatEventBus } from '@n8n/chat/event-buses';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
+import { useChat } from '@n8n/chat/composables';
+import type { WorkflowObjectAccessors } from '../types';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
@@ -75,7 +82,14 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
-	const nodeHelpers = useNodeHelpers({ workflowState });
+
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
+	const nodeHelpers = useNodeHelpers();
 	const workflowSaving = useWorkflowSaving({
 		router: useRunWorkflowOpts.router,
 		workflowState,
@@ -83,13 +97,14 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();
+	const chatStore = useChat();
 
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {
-			const nodeA = workflowsStore.getNodeByName(a)?.position ?? [0, 0];
-			const nodeB = workflowsStore.getNodeByName(b)?.position ?? [0, 0];
+			const nodeA = workflowDocumentStore.value?.getNodeByName(a)?.position ?? [0, 0];
+			const nodeB = workflowDocumentStore.value?.getNodeByName(b)?.position ?? [0, 0];
 
 			const nodeAYPosition = nodeA[1];
 			const nodeBYPosition = nodeB[1];
@@ -186,7 +201,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const { startNodeNames } = consolidatedData;
 			const destinationNodeType = options.destinationNode
-				? workflowsStore.getNodeByName(options.destinationNode.nodeName)?.type
+				? (workflowDocumentStore.value?.getNodeByName(options.destinationNode.nodeName)?.type ?? '')
 				: '';
 
 			let executedNode: string | undefined;
@@ -215,10 +230,11 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				};
 			}
 
-			// If the destination node is specified, check if it is a chat node or has a chat parent
+			// If the destination node is specified, check if it is a chat trigger node or has a chat parent
 			if (
 				options.destinationNode &&
 				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode.nodeName) ||
+					workflowsStore.checkIfToolNodeHasChatParent(options.destinationNode.nodeName) ||
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
 				options.source !== 'RunData.ManualChatMessage' &&
 				options.source !== 'RunData.ManualChatTrigger'
@@ -238,6 +254,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 						return;
 					}
 				}
+
+				startChat();
 			}
 
 			const triggers = workflowData.nodes.filter(
@@ -332,7 +350,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
-				const nodeId = workflowsStore.getNodeByName(options.destinationNode?.nodeName ?? '')?.id;
+				const nodeId = workflowDocumentStore.value?.getNodeByName(
+					options.destinationNode?.nodeName ?? '',
+				)?.id;
 				if (workflowObject.value.id && nodeId) {
 					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
 
@@ -389,6 +409,16 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
+
+			if (
+				!chatStore?.ws &&
+				chatTriggerNodeOptions?.responseMode === 'responseNodes' &&
+				options.source !== 'RunData.ManualChatMessage' &&
+				options.source !== 'RunData.ManualChatTrigger' &&
+				runWorkflowApiResponse.executionId
+			) {
+				chatEventBus.emit('setupWebsocket', runWorkflowApiResponse.executionId);
+			}
 			const pinData = workflowData.pinData ?? {};
 
 			const getTestUrl = (() => {
@@ -433,7 +463,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		directParentNodes: string[],
 		runData: IRunData | null,
 		pinData: IPinData | undefined,
-		workflow: Workflow,
+		workflow: WorkflowObjectAccessors,
 	): { runData: IRunData | undefined; startNodeNames: string[] } {
 		const startNodeNames = new Set<string>();
 		let newRunData: IRunData | undefined;
@@ -447,7 +477,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				const parentNodes = workflow.getParentNodes(directParentNode, NodeConnectionTypes.Main);
 
 				// Add also the enabled direct parent to be checked
-				if (workflow.nodes[directParentNode].disabled) continue;
+				if (workflow.getNode(directParentNode)?.disabled) continue;
 
 				parentNodes.push(directParentNode);
 

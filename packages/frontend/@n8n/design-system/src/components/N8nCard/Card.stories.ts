@@ -8,6 +8,14 @@ import N8nText from '../N8nText/Text.vue';
 export default {
 	title: 'Core/Card',
 	component: N8nCard,
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A surface container with consistent padding and styling for grouped content.',
+			},
+		},
+	},
 };
 
 export const Default: StoryFn = (args, { argTypes }) => ({

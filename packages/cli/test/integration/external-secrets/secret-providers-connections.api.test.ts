@@ -177,8 +177,8 @@ describe('Secret Providers Connections API', () => {
 			expect(response.body.data.projects).toHaveLength(2);
 			expect(response.body.data.projects).toEqual(
 				expect.arrayContaining([
-					{ id: teamProject1.id, name: 'Engineering' },
-					{ id: teamProject2.id, name: 'Marketing' },
+					{ id: teamProject1.id, name: 'Engineering', role: 'secretsProviderConnection:user' },
+					{ id: teamProject2.id, name: 'Marketing', role: 'secretsProviderConnection:user' },
 				]),
 			);
 
@@ -293,7 +293,9 @@ describe('Secret Providers Connections API', () => {
 				.send({ projectIds: [teamProject2.id] })
 				.expect(200);
 
-			expect(response.body.data.projects).toEqual([{ id: teamProject2.id, name: 'Marketing' }]);
+			expect(response.body.data.projects).toEqual([
+				{ id: teamProject2.id, name: 'Marketing', role: 'secretsProviderConnection:user' },
+			]);
 
 			const getResponse = await ownerAgent
 				.get('/secret-providers/connections/updateProjectsTest')

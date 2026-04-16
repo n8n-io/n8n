@@ -21,14 +21,11 @@ import type { AssistantHandler } from './assistant';
 import {
 	ASSISTANT_SDK_TIMEOUT_MS,
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
-	MAX_BUILDER_ITERATIONS,
 	MAX_DISCOVERY_ITERATIONS,
 } from './constants';
 import { ParentGraphState } from './parent-graph-state';
-import { BuilderSubgraph } from './subgraphs/builder.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
-import type { ResourceLocatorCallback } from './types/callbacks';
 import {
 	type CoordinationLogEntry,
 	type CoordinationMetadata,
@@ -38,14 +35,8 @@ import {
 	createResponderMetadata,
 } from './types/coordination';
 import type { StreamChunk } from './types/streaming';
-import {
-	getLastCompletedPhase,
-	getNextPhaseFromLog,
-	hasBuilderPhaseInLog,
-	hasErrorInLog,
-} from './utils/coordination-log';
+import { getLastCompletedPhase, getNextPhaseFromLog } from './utils/coordination-log';
 import { sanitizeLlmErrorMessage } from './utils/error-sanitizer';
-import { processOperations } from './utils/operations-processor';
 import {
 	determineStateAction,
 	handleClearErrorState,
@@ -82,7 +73,6 @@ function routeToNode(next: string): string {
 	const nodeMapping: Record<string, string> = {
 		responder: 'responder',
 		discovery: 'discovery_subgraph',
-		builder: 'builder_subgraph',
 		assistant: 'assistant_subgraph',
 	};
 	return nodeMapping[next] ?? 'responder';
@@ -93,15 +83,10 @@ export interface MultiAgentSubgraphConfig {
 	/** Per-stage LLM configuration */
 	stageLLMs: StageLLMs;
 	logger?: Logger;
-	instanceUrl?: string;
 	checkpointer?: MemorySaver;
 	/** Token threshold for auto-compaction. Defaults to DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS */
 	autoCompactThresholdTokens?: number;
 	featureFlags?: BuilderFeatureFlags;
-	/** Callback invoked when a successful generation completes (e.g., for credit deduction) */
-	onGenerationSuccess?: () => Promise<void>;
-	/** Callback for fetching resource locator options */
-	resourceLocatorCallback?: ResourceLocatorCallback;
 	/** Assistant handler for routing help/debug queries via the SDK */
 	assistantHandler?: AssistantHandler;
 }
@@ -225,12 +210,9 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		parsedNodeTypes,
 		stageLLMs,
 		logger,
-		instanceUrl,
 		checkpointer,
 		autoCompactThresholdTokens = DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 		featureFlags,
-		onGenerationSuccess,
-		resourceLocatorCallback,
 		assistantHandler,
 	} = config;
 
@@ -255,18 +237,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		plannerLLM: stageLLMs.planner,
 		logger,
 		featureFlags,
-	});
-
-	// Create Builder subgraph (still uses StateGraph pattern)
-	const builderSubgraph = new BuilderSubgraph();
-	const compiledBuilder = builderSubgraph.create({
-		parsedNodeTypes,
-		llm: stageLLMs.builder,
-		llmParameterUpdater: stageLLMs.parameterUpdater,
-		logger,
-		instanceUrl,
-		featureFlags,
-		resourceLocatorCallback,
 	});
 
 	// Build graph using method chaining for proper TypeScript inference
@@ -348,16 +318,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					{ enableIntrospection: featureFlags?.enableIntrospection },
 				);
 
-				if (
-					onGenerationSuccess &&
-					!hasErrorInLog(state.coordinationLog) &&
-					hasBuilderPhaseInLog(state.coordinationLog)
-				) {
-					void Promise.resolve(onGenerationSuccess()).catch((error) => {
-						logger?.warn('Failed to execute onGenerationSuccess callback', { error });
-					});
-				}
-
 				// Calculate response length for metadata
 				const responseContent =
 					typeof response.content === 'string'
@@ -385,16 +345,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					introspectionEvents, // Collected from responder's tool calls
 				};
 			})
-			// Add process_operations node for hybrid operations approach
-			.addNode('process_operations', (state) => {
-				// Process accumulated operations and clear the queue
-				const result = processOperations(state);
-
-				return {
-					...result,
-					workflowOperations: [], // Clear operations after processing
-				};
-			})
 			.addNode('route_next_phase', (state) => {
 				const next = getNextPhaseFromLog(state.coordinationLog);
 
@@ -412,6 +362,8 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					return { nextPhase: 'discovery', planDecision: null, planOutput: null };
 				}
 
+				// After discovery in plan mode, getNextPhaseFromLog returns 'builder'.
+				// With builder removed, redirect back to discovery to retry planning.
 				if (
 					next === 'builder' &&
 					featureFlags?.planMode === true &&
@@ -476,15 +428,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 						compiledDiscovery,
 						MAX_DISCOVERY_ITERATIONS,
 					),
-					logger,
-				),
-			)
-			// Add Builder Subgraph Node (still uses StateGraph pattern)
-			.addNode(
-				'builder_subgraph',
-				createSubgraphNodeHandler(
-					'builder',
-					createCompiledSubgraphExecutor(builderSubgraph, compiledBuilder, MAX_BUILDER_ITERATIONS),
 					logger,
 				),
 			)
@@ -561,9 +504,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					logger,
 				),
 			)
-			.addEdge('discovery_subgraph', 'process_operations')
-			.addEdge('builder_subgraph', 'process_operations')
-			.addEdge('process_operations', 'route_next_phase')
+			.addEdge('discovery_subgraph', 'route_next_phase')
 			.addEdge('assistant_subgraph', 'route_next_phase')
 			// Start flows to check_state (preprocessing)
 			.addEdge(START, 'check_state')
@@ -596,11 +537,11 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				return hasMessages ? 'check_state' : 'responder';
 			})
 			// Conditional Edge for Supervisor (initial routing via LLM)
-			// Builder/discovery routes go through create_workflow_name first (for name generation)
+			// Discovery routes go through create_workflow_name first (for name generation)
 			// Assistant/responder routes go directly (no workflow modification)
 			.addConditionalEdges('supervisor', (state) => {
 				const next = state.nextPhase;
-				if (next === 'builder' || next === 'discovery') {
+				if (next === 'discovery') {
 					return 'create_workflow_name';
 				}
 				return routeToNode(next);

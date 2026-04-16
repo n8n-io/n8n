@@ -4,6 +4,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useLogsStore } from '@/app/stores/logs.store';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
 
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
@@ -43,10 +46,14 @@ const createNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
 
 describe('useTriggerExecution', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
 
 	beforeEach(() => {
 		createTestingPinia();
 		nodeTypesStore = mockedStore(useNodeTypesStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
+		logsStore = mockedStore(useLogsStore);
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
 
 		mockExecutionState.isExecuting = false;
@@ -106,6 +113,66 @@ describe('useTriggerExecution', () => {
 			const { isInListeningState } = useTriggerExecution(node);
 
 			expect(isInListeningState.value).toBe(true);
+		});
+
+		it('should be true for chat trigger when logs panel is open and destination node matches', () => {
+			const chatNode = createNode({
+				name: 'When chat message received',
+				type: CHAT_TRIGGER_NODE_TYPE,
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(
+				mockNodeTypeDescription({
+					name: CHAT_TRIGGER_NODE_TYPE,
+					displayName: 'When chat message received',
+				}),
+			);
+			logsStore.isOpen = true;
+			workflowsStore.chatPartialExecutionDestinationNode = 'When chat message received';
+
+			const node = ref<INodeUi | null>(chatNode);
+			const { isInListeningState } = useTriggerExecution(node);
+
+			expect(isInListeningState.value).toBe(true);
+		});
+
+		it('should be false for chat trigger when logs panel is closed', () => {
+			const chatNode = createNode({
+				name: 'When chat message received',
+				type: CHAT_TRIGGER_NODE_TYPE,
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(
+				mockNodeTypeDescription({
+					name: CHAT_TRIGGER_NODE_TYPE,
+					displayName: 'When chat message received',
+				}),
+			);
+			logsStore.isOpen = false;
+			workflowsStore.chatPartialExecutionDestinationNode = 'When chat message received';
+
+			const node = ref<INodeUi | null>(chatNode);
+			const { isInListeningState } = useTriggerExecution(node);
+
+			expect(isInListeningState.value).toBe(false);
+		});
+
+		it('should be false for chat trigger when destination node does not match', () => {
+			const chatNode = createNode({
+				name: 'When chat message received',
+				type: CHAT_TRIGGER_NODE_TYPE,
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(
+				mockNodeTypeDescription({
+					name: CHAT_TRIGGER_NODE_TYPE,
+					displayName: 'When chat message received',
+				}),
+			);
+			logsStore.isOpen = true;
+			workflowsStore.chatPartialExecutionDestinationNode = 'Some Other Node';
+
+			const node = ref<INodeUi | null>(chatNode);
+			const { isInListeningState } = useTriggerExecution(node);
+
+			expect(isInListeningState.value).toBe(false);
 		});
 	});
 

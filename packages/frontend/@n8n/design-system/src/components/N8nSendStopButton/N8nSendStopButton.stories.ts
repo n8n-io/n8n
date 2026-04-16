@@ -21,6 +21,9 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: { component: 'A dual-state button that toggles between send and stop actions.' },
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

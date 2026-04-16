@@ -10,3 +10,5 @@ export type ExportableFolder = {
 export type ExportedFolders = {
 	folders: ExportableFolder[];
 };
+
+export type FolderPathNode = Pick<ExportableFolder, 'name' | 'parentFolderId'>;

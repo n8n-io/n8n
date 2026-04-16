@@ -139,7 +139,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test Page',
 				content: 'Extracted content',
 				truncated: false,
@@ -174,7 +174,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test Page',
 				content: 'Extracted content',
 				truncated: false,
@@ -228,7 +228,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test',
 				content: 'Content',
 				truncated: false,
@@ -260,7 +260,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test',
 				content: 'Content',
 				truncated: false,
@@ -338,7 +338,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test Page',
 				content: 'Extracted readable content',
 				truncated: false,
@@ -364,7 +364,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Long Page',
 				content: 'Truncated content',
 				truncated: true,
@@ -387,7 +387,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Page',
 				content: 'Content',
 				truncated: false,
@@ -460,7 +460,7 @@ describe('web_fetch tool', () => {
 				action: 'allow_once',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Redirected Page',
 				content: 'Redirected content',
 				truncated: false,
@@ -540,7 +540,7 @@ describe('web_fetch tool', () => {
 				action: 'allow_domain',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test',
 				content: 'Content',
 				truncated: false,
@@ -572,7 +572,7 @@ describe('web_fetch tool', () => {
 					contentType: 'text/html',
 				});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Docs',
 				content: 'Documentation content',
 				truncated: false,
@@ -627,7 +627,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test',
 				content: 'Content',
 				truncated: false,
@@ -656,7 +656,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test',
 				content: 'Content',
 				truncated: false,
@@ -691,7 +691,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test',
 				content: 'Content',
 				truncated: false,
@@ -751,7 +751,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test',
 				content: 'Content',
 				truncated: false,
@@ -788,7 +788,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test',
 				content: 'Content',
 				truncated: false,
@@ -820,7 +820,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test',
 				content: 'Content',
 				truncated: false,
@@ -853,7 +853,7 @@ describe('web_fetch tool', () => {
 					contentType: 'text/html',
 				});
 
-			mockExtractReadableContent.mockReturnValue({
+			mockExtractReadableContent.mockResolvedValue({
 				title: 'Test',
 				content: 'Redirected content',
 				truncated: false,

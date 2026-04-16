@@ -59,17 +59,23 @@ export async function sendMessage(
 		);
 	}
 
-	// Call afterMessageSent handler if provided
-	if (options.afterMessageSent) {
-		await options.afterMessageSent(message, response);
-	}
-
 	return response;
+}
+
+const PROXY_TIMEOUT_ERROR_MESSAGE =
+	'A proxy timeout occurred while waiting for the response. The workflow may still be running — check the execution list for results.';
+
+function isProxyErrorHtml(line: string): boolean {
+	return line.includes('<!DOCTYPE') || line.includes('<html') || line.includes('</html>');
 }
 
 // Create a transform stream that parses newline-delimited JSON
 function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 	let buffer = '';
+	// Once an HTML error page is detected (e.g. Cloudflare 524), all subsequent
+	// non-JSON lines are suppressed and a single user-facing error is emitted.
+	let insideHtmlError = false;
+	let htmlErrorEmitted = false;
 	const decoder = new TextDecoder();
 
 	return new TransformStream({
@@ -84,8 +90,22 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 				if (line.trim()) {
 					try {
 						const parsed = JSON.parse(line) as StructuredChunk;
+						insideHtmlError = false;
 						controller.enqueue(parsed);
 					} catch (error) {
+						if (isProxyErrorHtml(line)) {
+							insideHtmlError = true;
+						}
+						if (insideHtmlError) {
+							if (!htmlErrorEmitted) {
+								htmlErrorEmitted = true;
+								controller.enqueue({
+									type: 'error',
+									content: PROXY_TIMEOUT_ERROR_MESSAGE,
+								} as StructuredChunk);
+							}
+							continue;
+						}
 						// Handle non-JSON lines as plain text
 						controller.enqueue({
 							type: 'item',
@@ -98,11 +118,20 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 
 		flush(controller) {
 			// Process any remaining buffer content
-			if (buffer.trim()) {
+			if (buffer.trim() && !insideHtmlError) {
 				try {
 					const parsed = JSON.parse(buffer) as StructuredChunk;
 					controller.enqueue(parsed);
 				} catch (error) {
+					if (isProxyErrorHtml(buffer)) {
+						if (!htmlErrorEmitted) {
+							controller.enqueue({
+								type: 'error',
+								content: PROXY_TIMEOUT_ERROR_MESSAGE,
+							} as StructuredChunk);
+						}
+						return;
+					}
 					controller.enqueue({
 						type: 'item',
 						content: buffer,

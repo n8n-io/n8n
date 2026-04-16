@@ -1,9 +1,16 @@
 import { Logger } from '@n8n/backend-common';
+import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
-import { DATA_TABLE_NODE_TYPES, ensureError, INode, IWorkflowBase } from 'n8n-workflow';
+import {
+	DATA_TABLE_NODE_TYPES,
+	ensureError,
+	INode,
+	IWorkflowBase,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
@@ -21,6 +28,8 @@ const WORKFLOW_INDEXED_PLACEHOLDER_KEY = '__INDEXED__';
  */
 @Service()
 export class WorkflowIndexService {
+	private readonly batchSize: number;
+
 	constructor(
 		private readonly dependencyRepository: WorkflowDependencyRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -28,8 +37,10 @@ export class WorkflowIndexService {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly tracing: Tracing,
-		private readonly batchSize = 100,
-	) {}
+		workflowsConfig: WorkflowsConfig,
+	) {
+		this.batchSize = workflowsConfig.indexingBatchSize;
+	}
 
 	init() {
 		this.eventService.on('server-started', async (): Promise<void> => {
@@ -135,7 +146,12 @@ export class WorkflowIndexService {
 			workflow.versionCounter,
 			/*publishedVersionId=*/ null,
 		);
-		return await this.updateIndexInternal(dependencyUpdates, workflow.nodes, workflow.name);
+		return await this.updateIndexInternal(
+			dependencyUpdates,
+			workflow.nodes,
+			workflow.name,
+			workflow.settings,
+		);
 	}
 
 	async updateIndexForPublished(
@@ -148,7 +164,12 @@ export class WorkflowIndexService {
 			workflow.versionCounter,
 			publishedVersionId,
 		);
-		return await this.updateIndexInternal(dependencyUpdates, publishedNodes, workflow.name);
+		return await this.updateIndexInternal(
+			dependencyUpdates,
+			publishedNodes,
+			workflow.name,
+			workflow.settings,
+		);
 	}
 
 	async removeDependenciesForWorkflow(workflowId: string) {
@@ -176,6 +197,7 @@ export class WorkflowIndexService {
 		dependencyUpdates: WorkflowDependencies,
 		nodes: INode[],
 		workflowName?: string,
+		settings?: IWorkflowSettings,
 	) {
 		const indexType = dependencyUpdates.publishedVersionId ? 'published' : 'draft';
 		const workflowId = dependencyUpdates.workflowId;
@@ -197,6 +219,8 @@ export class WorkflowIndexService {
 					this.addWorkflowCallDependencies(node, dependencyUpdates);
 					this.addWebhookPathDependencies(node, dependencyUpdates);
 				});
+
+				this.addErrorWorkflowDependency(settings, dependencyUpdates);
 
 				// If no dependencies were extracted, add a placeholder to mark the workflow as indexed
 				if (dependencyUpdates.dependencies.length === 0) {
@@ -306,6 +330,21 @@ export class WorkflowIndexService {
 				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
 			});
 		}
+	}
+
+	private addErrorWorkflowDependency(
+		settings: IWorkflowSettings | undefined,
+		dependencyUpdates: WorkflowDependencies,
+	): void {
+		const errorWorkflowId = settings?.errorWorkflow;
+		if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') {
+			return;
+		}
+		dependencyUpdates.add({
+			dependencyType: 'errorWorkflow',
+			dependencyKey: errorWorkflowId,
+			dependencyInfo: null,
+		});
 	}
 
 	private getCalledWorkflowIdFrom(node: INode): string | undefined {

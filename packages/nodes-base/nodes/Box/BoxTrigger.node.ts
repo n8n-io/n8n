@@ -7,7 +7,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { boxApiRequest, boxApiRequestAllItems } from './GenericFunctions';
+import { boxApiRequest, boxApiRequestAllItemsMarker } from './GenericFunctions';
 
 export class BoxTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -262,27 +262,41 @@ export class BoxTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const events = this.getNodeParameter('events') as string;
+				const events = this.getNodeParameter('events') as string[];
 				const targetId = this.getNodeParameter('targetId') as string;
 				const targetType = this.getNodeParameter('targetType') as string;
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
 				const endpoint = '/webhooks';
-				const webhooks = await boxApiRequestAllItems.call(this, 'entries', 'GET', endpoint, {});
+				// Box webhook list API uses marker-based pagination (not offset)
+				const webhooks = await boxApiRequestAllItemsMarker.call(
+					this,
+					'entries',
+					'GET',
+					endpoint,
+					{},
+				);
 
 				for (const webhook of webhooks) {
+					// Skip full fetch if target doesn't match — target is available in the mini object
 					if (
-						webhook.address === webhookUrl &&
-						webhook.target.id === targetId &&
-						webhook.target.type === targetType
+						(webhook.target as { id: string; type: string }).id !== targetId ||
+						(webhook.target as { id: string; type: string }).type !== targetType
 					) {
-						for (const event of events) {
-							if (!webhook.triggers.includes(event)) {
-								return false;
-							}
+						continue;
+					}
+
+					// Fetch full details to access address and triggers (not in mini object)
+					const fullWebhook = await boxApiRequest.call(this, 'GET', `/webhooks/${webhook.id}`);
+
+					if (fullWebhook.address === webhookUrl) {
+						const allEventsMatch = events.every((event) =>
+							(fullWebhook.triggers as string[]).includes(event),
+						);
+						if (!allEventsMatch) {
+							return false;
 						}
-						// Found matching webhook, store its ID
-						webhookData.webhookId = webhook.id as string;
+						webhookData.webhookId = fullWebhook.id as string;
 						return true;
 					}
 				}
@@ -291,7 +305,7 @@ export class BoxTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const events = this.getNodeParameter('events') as string;
+				const events = this.getNodeParameter('events') as string[];
 				const targetId = this.getNodeParameter('targetId') as string;
 				const targetType = this.getNodeParameter('targetType') as string;
 

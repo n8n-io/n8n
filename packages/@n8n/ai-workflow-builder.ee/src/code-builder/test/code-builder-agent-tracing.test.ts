@@ -76,7 +76,7 @@ function createMockBuilder() {
 }
 
 /**
- * Custom callback handler that captures chain end outputs.
+ * Custom callback handler that captures chain end outputs and chain start metadata.
  * We use a class-based handler to ensure proper integration with
  * LangChain's CallbackManager.
  */
@@ -84,6 +84,20 @@ class ChainEndTracker extends BaseCallbackHandler {
 	name = 'chain-end-tracker';
 
 	chainEndOutputs: Array<Record<string, unknown>> = [];
+	chainStartMetadata: Array<Record<string, unknown>> = [];
+
+	async handleChainStart(
+		_chain: unknown,
+		_inputs: unknown,
+		_runId: string,
+		_parentRunId?: string,
+		_tags?: string[],
+		metadata?: Record<string, unknown>,
+	): Promise<void> {
+		if (metadata) {
+			this.chainStartMetadata.push(metadata);
+		}
+	}
 
 	async handleChainEnd(outputs: Record<string, unknown>): Promise<void> {
 		this.chainEndOutputs.push(outputs);
@@ -203,6 +217,33 @@ describe('CodeBuilderAgent tracing', () => {
 				text: 'Here is your workflow:\n```typescript\nconst workflow = builder.addNode(...);\n```',
 			},
 		]);
+	});
+
+	it('should include ls_thread_id from runMetadata in handleChainStart metadata', async () => {
+		const tracker = new ChainEndTracker();
+
+		const agent = new CodeBuilderAgent({
+			llm: createMockLlm(),
+			nodeTypes: [],
+			callbacks: [tracker],
+			enableTextEditor: false,
+			runMetadata: { ls_thread_id: 'workflow-test-wf-user-test-user' },
+		});
+
+		const chunks = [];
+		for await (const chunk of agent.chat(
+			{ id: 'msg-4', message: 'Create a simple workflow' },
+			'user-1',
+		)) {
+			chunks.push(chunk);
+		}
+
+		// The parent chain start should include ls_thread_id from runMetadata
+		const parentStartMetadata = tracker.chainStartMetadata.find((m) => 'ls_thread_id' in m);
+		expect(parentStartMetadata).toBeDefined();
+		expect(parentStartMetadata).toMatchObject({
+			ls_thread_id: 'workflow-test-wf-user-test-user',
+		});
 	});
 
 	it('should set output to null when no workflow is produced', async () => {

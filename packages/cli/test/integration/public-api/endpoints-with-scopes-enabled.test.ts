@@ -36,6 +36,8 @@ import type { SaveCredentialFunction } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
 
 import * as utils from '../shared/utils';
+import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
+import { JwtService } from '@/services/jwt.service';
 
 let saveCredential: SaveCredentialFunction;
 
@@ -49,15 +51,10 @@ const credentialPayload = (): CredentialPayload => ({
 	},
 });
 
-describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
+describe('Public API endpoints with API key scopes', () => {
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
-		enabledFeatures: [
-			'feat:advancedPermissions',
-			'feat:apiKeyScopes',
-			'feat:variables',
-			'feat:projectRole:admin',
-		],
+		enabledFeatures: ['feat:advancedPermissions', 'feat:variables', 'feat:projectRole:admin'],
 		quotas: {
 			'quota:users': -1,
 			'quota:maxTeamProjects': -1,
@@ -73,6 +70,16 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 		await testDb.init();
 		apiKeyRepository = Container.get(ApiKeyRepository);
+
+		// Register ScopedJwtStrategy so Bearer-token auth works in the public API.
+		// Normally registered by TokenExchangeModule.init(), but that requires the
+		// N8N_ENV_FEAT_TOKEN_EXCHANGE env flag. We register it directly here to test
+		// the auth layer in isolation without triggering the full module boot.
+		const { ScopedJwtStrategy } = await import(
+			'@/modules/token-exchange/services/scoped-jwt.strategy'
+		);
+		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry');
+		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	});
 
 	beforeEach(async () => {
@@ -91,7 +98,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 		// globalConfig.tags.disabled = false;
 	});
 
-	describe('with "feat:apiKeyScopes" enabled', () => {
+	describe('API key scope enforcement', () => {
 		describe('users', () => {
 			describe('GET /user', () => {
 				test('should return the user when API key has "user:read" scope', async () => {
@@ -179,7 +186,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 				});
 			});
 
-			test('should fail when "feat:apiKeyScopes" is disabled and API key does not have "user:list" scope', async () => {
+			test('should fail when API key does not have "user:list" scope', async () => {
 				const member = await createMemberWithApiKey({ scopes: ['user:read'] });
 
 				await createUser();
@@ -357,7 +364,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Arrange
 					 */
 					testServer.license.enable('feat:advancedPermissions');
-					testServer.license.enable('feat:apiKeyScopes');
+
 					const owner = await createOwnerWithApiKey({ scopes: ['user:delete'] });
 					const member = await createMember();
 
@@ -378,7 +385,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Arrange
 					 */
 					testServer.license.enable('feat:advancedPermissions');
-					testServer.license.enable('feat:apiKeyScopes');
+
 					const owner = await createOwnerWithApiKey({ scopes: ['credential:create'] });
 					const member = await createMember();
 
@@ -1539,6 +1546,47 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 					expect(response.statusCode).toBe(403);
 				});
+
+				test('passes apiKeyScope check via API key but fails project-level permission check', async () => {
+					// Member's API key has "workflow:delete" in apiKeyScopes → passes publicApiScope
+					const member = await createMemberWithApiKey({ scopes: ['workflow:delete'] });
+					const authMemberAgent = testServer.publicApiAgentFor(member);
+
+					// Workflow owned by a different user, not shared with the member
+					const owner = await createOwnerWithApiKey();
+					const ownerWorkflow = await createWorkflow({}, owner);
+
+					// publicApiScope('workflow:delete') passes (apiKeyScopes contains 'workflow:delete')
+					// projectScope('workflow:delete', 'workflow') fails (member has no access to owner's workflow)
+					const response = await authMemberAgent.delete(`/workflows/${ownerWorkflow.id}`);
+
+					expect(response.statusCode).toBe(403);
+				});
+
+				test('passes apiKeyScope check via scoped JWT but fails project-level permission check', async () => {
+					// Scoped JWT sets apiKeyScopes to ALL_API_KEY_SCOPES → passes publicApiScope
+					const member = await createMember();
+					const owner = await createOwnerWithApiKey();
+					const ownerWorkflow = await createWorkflow({}, owner);
+
+					const jwtService = Container.get(JwtService);
+					const token = jwtService.sign({
+						iss: TOKEN_EXCHANGE_ISSUER,
+						sub: member.id,
+						iat: Math.floor(Date.now() / 1000),
+						exp: Math.floor(Date.now() / 1000) + 3600,
+						jti: 'test-jti',
+					});
+
+					// publicApiScope('workflow:delete') passes (ScopedJwtStrategy grants ALL_API_KEY_SCOPES)
+					// projectScope('workflow:delete', 'workflow') fails (member has no access to owner's workflow)
+					const response = await testServer
+						.publicApiAgentWithoutApiKey()
+						.set('Authorization', `Bearer ${token}`)
+						.delete(`/workflows/${ownerWorkflow.id}`);
+
+					expect(response.statusCode).toBe(403);
+				});
 			});
 
 			describe('PUT /workflows/:id', () => {
@@ -1805,6 +1853,85 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 					expect(response.statusCode).toBe(403);
 				});
+			});
+		});
+
+		describe('discover', () => {
+			test('should return only endpoints matching API key scopes', async () => {
+				const owner = await createOwnerWithApiKey({ scopes: ['tag:list', 'tag:create'] });
+				const agent = testServer.publicApiAgentFor(owner);
+
+				const response = await agent.get('/discover');
+				expect(response.statusCode).toBe(200);
+
+				const { resources, scopes } = response.body.data;
+				expect(scopes).toEqual(expect.arrayContaining(['tag:list', 'tag:create']));
+
+				// Should see tag endpoints
+				expect(resources.tags).toBeDefined();
+				expect(resources.tags.endpoints.some((e: any) => e.operationId === 'getTags')).toBe(true);
+				expect(resources.tags.endpoints.some((e: any) => e.operationId === 'createTag')).toBe(true);
+
+				// Should NOT see workflow-specific endpoints (no workflow scopes)
+				expect(
+					resources.workflow?.endpoints?.some((e: any) => e.operationId === 'createWorkflow') ??
+						false,
+				).toBe(false);
+			});
+
+			test('should return scoped endpoints plus null-scoped endpoints', async () => {
+				const owner = await createOwnerWithApiKey({
+					scopes: ['securityAudit:generate'],
+				});
+				const agent = testServer.publicApiAgentFor(owner);
+
+				const response = await agent.get('/discover');
+				expect(response.statusCode).toBe(200);
+
+				expect(response.body.data.scopes).toEqual(['securityAudit:generate']);
+
+				// Should see audit endpoint (matching scope)
+				expect(response.body.data.resources.audit).toBeDefined();
+
+				// Should still see null-scoped endpoints (like getCredentialType)
+				const allEndpoints = Object.values(response.body.data.resources).flatMap(
+					(r: any) => r.endpoints,
+				);
+				expect(allEndpoints.some((e: any) => e.operationId === 'getCredentialType')).toBe(true);
+
+				// Should NOT see tag endpoints (no tag scopes)
+				expect(allEndpoints.some((e: any) => e.operationId === 'createTag')).toBe(false);
+			});
+
+			test('should filter by operation with ?operation=list', async () => {
+				const owner = await createOwnerWithApiKey({ scopes: ['tag:list', 'tag:create'] });
+				const agent = testServer.publicApiAgentFor(owner);
+
+				const response = await agent.get('/discover?resource=tags&operation=list');
+				expect(response.statusCode).toBe(200);
+
+				const tags = response.body.data.resources.tags;
+				expect(tags).toBeDefined();
+				expect(tags.operations).toEqual(['list']);
+			});
+
+			test('should combine resource, operation, and include filters', async () => {
+				const owner = await createOwnerWithApiKey({
+					scopes: ['workflow:create', 'workflow:read'],
+				});
+				const agent = testServer.publicApiAgentFor(owner);
+
+				const response = await agent.get(
+					'/discover?resource=workflow&operation=create&include=schemas',
+				);
+				expect(response.statusCode).toBe(200);
+
+				const resourceKeys = Object.keys(response.body.data.resources);
+				expect(resourceKeys).toEqual(['workflow']);
+
+				const endpoints = response.body.data.resources.workflow.endpoints;
+				expect(endpoints.length).toBeGreaterThan(0);
+				expect(endpoints[0].requestSchema).toBeDefined();
 			});
 		});
 	});

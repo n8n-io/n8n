@@ -164,9 +164,11 @@ describe('WorkflowBuilderSessionRepository', () => {
 				userId: 'user456',
 				messages: expect.any(Array),
 				previousSummary: 'Summary',
+				activeVersionCardId: null,
+				resumeAfterRestoreMessageId: null,
 			});
 			expect(mockQueryBuilder.orUpdate).toHaveBeenCalledWith(
-				['messages', 'previousSummary'],
+				['messages', 'previousSummary', 'activeVersionCardId', 'resumeAfterRestoreMessageId'],
 				['workflowId', 'userId'],
 			);
 			expect(mockExecute).toHaveBeenCalled();

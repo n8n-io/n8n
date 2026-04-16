@@ -1,0 +1,26 @@
+post:
+  x-eov-operation-id: archiveWorkflow
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Archive a workflow
+  description: |
+    Soft-deletes a workflow by archiving it. Idempotent: archiving an
+    already archived workflow returns 200 with the current workflow.
+
+    Requires API key scope `workflow:delete`.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+  responses:
+    '200':
+      description: Archived workflow
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflow.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

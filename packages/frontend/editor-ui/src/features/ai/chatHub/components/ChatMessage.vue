@@ -133,6 +133,14 @@ const messageChunks = computed(() =>
 			return [{ type: 'text', content: i18n.baseText('chatHub.message.error.unknown') }];
 		}
 
+		// Footnote references ([^1]) and definitions ([^1]: ...) must stay in the same
+		// markdown-it instance to resolve correctly. Chunking splits them across instances,
+		// breaking the reference. Skip chunking when footnotes are present.
+		const hasFootnotes = /\[\^[^\]]+\]/.test(chunk.content);
+		if (hasFootnotes) {
+			return [{ type: 'text', content: chunk.content }];
+		}
+
 		return splitMarkdownIntoChunks(chunk.content).flatMap((content) =>
 			content.trim() === '' ? [] : [{ type: 'text', content }],
 		);
@@ -444,6 +452,13 @@ onBeforeMount(() => {
 }
 
 .markdownContent {
+	// ChatMarkdownChunk uses `inherit` for these properties so each consumer
+	// can control sizing. Set the values that were previously hardcoded in the
+	// chunk component to preserve ChatHub's appearance.
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xl);
+
 	> *:last-child > *:last-child {
 		margin-bottom: 0;
 	}

@@ -8,13 +8,15 @@ import WorkflowDiffNodeItem from '@/features/workflows/workflowDiff/WorkflowDiff
 import { useProvideViewportSync } from '@/features/workflows/workflowDiff/useViewportSync';
 import { useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
 import { useWorkflowDiffUI } from '@/features/workflows/workflowDiff/useWorkflowDiffUI';
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { removeWorkflowExecutionData } from '@/app/utils/workflowUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import { NodeDiffStatus } from 'n8n-workflow';
 import { computed, useCssModule, onMounted } from 'vue';
+import { telemetry } from '@/app/plugins/telemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { ElDropdown, ElDropdownMenu } from 'element-plus';
 import {
@@ -34,6 +36,7 @@ const props = withDefaults(
 		targetLabel?: string;
 		tidyUp?: boolean;
 		showBackButton?: boolean;
+		source?: 'version_history' | 'push_pull_modal' | 'unknown';
 	}>(),
 	{
 		sourceWorkflow: undefined,
@@ -41,6 +44,7 @@ const props = withDefaults(
 		sourceLabel: 'Before',
 		targetLabel: 'After',
 		showBackButton: false,
+		source: 'unknown',
 	},
 );
 const emit = defineEmits<{
@@ -51,6 +55,7 @@ const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync(
 
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
+const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 
@@ -100,6 +105,29 @@ onMounted(async () => {
 		toast.showError(error, i18n.baseText('workflowDiff.error.loadNodeTypes'));
 	}
 });
+
+const onChangesDropdownVisibleChange = (visible: boolean) => {
+	setActiveTab(visible);
+	if (visible) {
+		telemetry.track('user_opens_diff_changes_list', {
+			instance_id: rootStore.instanceId,
+			workflow_id: props.sourceWorkflow?.id ?? props.targetWorkflow?.id,
+			source: props.source,
+		});
+	}
+};
+
+const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) => {
+	setSelectedDetailId(change.node.id);
+	telemetry.track('user_clicks_node_in_diff_changes_list', {
+		instance_id: rootStore.instanceId,
+		workflow_id: props.sourceWorkflow?.id ?? props.targetWorkflow?.id,
+		node_id: change.node.id,
+		node_name: change.node.name,
+		node_status: change.status,
+		source: props.source,
+	});
+};
 </script>
 
 <template>
@@ -134,7 +162,7 @@ onMounted(async () => {
 						modifiers,
 					}"
 					:popper-class="$style.popper"
-					@visible-change="setActiveTab"
+					@visible-change="onChangesDropdownVisibleChange"
 				>
 					<N8nButton variant="subtle" style="--button--radius: 4px 0 0 4px">
 						<div v-if="changesCount" :class="$style.circleBadge">
@@ -166,7 +194,7 @@ onMounted(async () => {
 												:node-type="change.type"
 												:node-name="change.node.name"
 												:is-active="selectedDetailId === change.node.id"
-												@select="setSelectedDetailId(change.node.id)"
+												@select="onNodeChangeSelect(change)"
 											/>
 										</template>
 										<WorkflowDiffEmptyState
