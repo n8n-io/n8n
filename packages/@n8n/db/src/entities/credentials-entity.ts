@@ -70,7 +70,7 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	encryptionKeyId: string | null = null;
 
 	toJSON() {
-		const { shared, ...rest } = this;
+		const { shared, encryptionKeyId, ...rest } = this;
 		return rest;
 	}
 }
