@@ -15,6 +15,18 @@ class LogWriterConfig {
 	/** Base filename for event log files (extension and rotation suffix are added). */
 	@Env('N8N_EVENTBUS_LOGWRITER_LOGBASENAME')
 	logBaseName: string = 'n8nEventLog';
+
+	/**
+	 * Maximum number of messages kept in memory while parsing a single event log file
+	 * during startup recovery. If exceeded, parsing of that file is aborted to avoid
+	 * OOM on instances with legacy oversized logs containing unconfirmed messages.
+	 * The working set is the count of concurrently unconfirmed messages at a given
+	 * point during streaming (confirms prune it as they arrive), so healthy workloads
+	 * stay in the tens-to-hundreds range. The default leaves ~10-100x headroom and
+	 * caps parse-time heap at ~40MB.
+	 */
+	@Env('N8N_EVENTBUS_LOGWRITER_MAXMESSAGESPERPARSE')
+	maxMessagesPerParse: number = 10_000;
 }
 
 const recoveryModeSchema = z.enum(['simple', 'extensive']);

@@ -162,6 +162,7 @@ describe('GlobalConfig', () => {
 				keepLogCount: 3,
 				logBaseName: 'n8nEventLog',
 				maxFileSizeInKB: 10240,
+				maxMessagesPerParse: 10_000,
 			},
 		},
 		externalHooks: {
