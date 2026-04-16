@@ -277,7 +277,7 @@ describe('DynamicNodeParametersService', () => {
 		});
 
 		it('should allow a relative path in url', () => {
-			const routing = { request: { url: '/v1/models', method: 'GET' } };
+			const routing = { request: { url: '/v1/models', method: 'GET' as const } };
 			expect(sanitize(routing)).toEqual(routing);
 		});
 
