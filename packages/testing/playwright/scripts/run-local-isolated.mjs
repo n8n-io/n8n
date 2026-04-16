@@ -200,6 +200,8 @@ const playwrightEnv = {
 	// We've already started + verified n8n; tell playwright.config.ts not to
 	// race us by spawning its own.
 	PLAYWRIGHT_SKIP_WEBSERVER: 'true',
+	// Pass through proxy URL if available (set by run-local-instance-ai.mjs --proxy)
+	...(process.env.PROXY_SERVER_URL ? { PROXY_SERVER_URL: process.env.PROXY_SERVER_URL } : {}),
 };
 
 // Default scope: full e2e suite. Any CLI args (paths, --grep, --headed, etc.)

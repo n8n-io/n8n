@@ -25,3 +25,4 @@ export * from './performance-plans';
 export { type LogEntry, type MetricsHelper } from './services/observability';
 export { type GiteaHelper } from './services/gitea';
 export { KafkaHelper } from './services/kafka';
+export { ProxyServer } from './services/proxy';
