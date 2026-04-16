@@ -146,7 +146,9 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getPreviewNodeByName(nodeName: string): Locator {
-		return this.getPreviewIframe().locator(`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`);
+		return this.getPreviewIframe().locator(
+			`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`,
+		);
 	}
 
 	getPreviewExecuteNodeButton(nodeName: string): Locator {
