@@ -169,12 +169,6 @@ export class ProxyServer {
 			strictBodyMatching?: boolean;
 			partialBodyMatching?: boolean;
 			sequential?: boolean;
-			/**
-			 * Add a fixed delay (in milliseconds) before each cached response is
-			 * returned. Useful for simulating real API latency in replay so the
-			 * frontend's state transitions don't collapse into a single Vue tick.
-			 */
-			responseDelayMs?: number;
 		} = {},
 	): Promise<void> {
 		try {
@@ -217,18 +211,6 @@ export class ProxyServer {
 
 					if (options.sequential) {
 						expectation.times = { remainingTimes: 1 };
-					}
-
-					if (options.responseDelayMs && options.responseDelayMs > 0) {
-						const response = expectation.httpResponse as
-							| { delay?: { timeUnit: string; value: number } }
-							| undefined;
-						if (response) {
-							response.delay = {
-								timeUnit: 'MILLISECONDS',
-								value: options.responseDelayMs,
-							};
-						}
 					}
 
 					expectations.push(expectation);

@@ -44,13 +44,6 @@ export class InstanceAiTestController {
 		return { ok: true };
 	}
 
-	@Post('/test/drain-background-tasks', { skipAuth: true })
-	drainBackgroundTasks() {
-		this.assertTraceReplayEnabled();
-		const cancelled = this.instanceAiService.cancelAllBackgroundTasks();
-		return { ok: true, cancelled };
-	}
-
 	/**
 	 * Wipe all Instance AI state and user workflows between tests.
 	 *

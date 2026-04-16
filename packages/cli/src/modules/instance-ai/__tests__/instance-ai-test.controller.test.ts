@@ -118,23 +118,6 @@ describe('InstanceAiTestController', () => {
 		});
 	});
 
-	describe('drainBackgroundTasks', () => {
-		it('should cancel all background tasks and return count', () => {
-			instanceAiService.cancelAllBackgroundTasks.mockReturnValue(3);
-
-			const result = controller.drainBackgroundTasks();
-
-			expect(instanceAiService.cancelAllBackgroundTasks).toHaveBeenCalled();
-			expect(result).toEqual({ ok: true, cancelled: 3 });
-		});
-
-		it('should throw ForbiddenError when trace replay is not enabled', () => {
-			delete process.env.E2E_TESTS;
-
-			expect(() => controller.drainBackgroundTasks()).toThrow(ForbiddenError);
-		});
-	});
-
 	describe('reset', () => {
 		it('should clear per-thread state and delete threads + workflows', async () => {
 			threadRepo.find.mockResolvedValue([{ id: 't1' }, { id: 't2' }] as never);
