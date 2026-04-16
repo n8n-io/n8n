@@ -13,7 +13,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
 
-async function getEntityProperties(
+export async function getEntityProperties(
 	this: ILoadOptionsFunctions,
 	endpoint: string,
 ): Promise<INodePropertyOptions[]> {
