@@ -27,7 +27,6 @@ import {
 	extractSplitInBatchesBuilder,
 } from '../type-guards';
 import { assertPlainObject } from '../validation-helpers';
-export { assertPlainObject } from '../validation-helpers';
 
 /**
  * Type guard to check if a value is an InputTarget

@@ -60,7 +60,7 @@ runs:
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       run: |
-        node .github/scripts/retry.mjs --attempts 3 --delay 15 "${{ inputs.install-command }}"
+        ${{ inputs.install-command }}
       shell: bash
 
     - name: Disable safe-chain
