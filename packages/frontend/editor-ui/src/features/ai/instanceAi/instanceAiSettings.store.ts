@@ -364,7 +364,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	async function fetchSetupCommand(): Promise<void> {
-		if (!preferences.value || isLocalGatewayDisabled.value) return;
+		if (isLocalGatewayDisabled.value) return;
 		try {
 			const result = await createGatewayLink(rootStore.restApiContext);
 			setupCommand.value = result.command;
