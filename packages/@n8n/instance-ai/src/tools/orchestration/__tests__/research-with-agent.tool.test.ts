@@ -35,7 +35,8 @@ function createMockEventBus(): InstanceAiEventBus {
 
 function createMockContext(overrides?: Partial<OrchestrationContext>): OrchestrationContext {
 	const domainTools: ToolsInput = {
-		research: { id: 'research' } as never,
+		'web-search': { id: 'web-search' } as never,
+		'fetch-url': { id: 'fetch-url' } as never,
 		'list-workflows': { id: 'list-workflows' } as never,
 	};
 
@@ -114,23 +115,23 @@ describe('research-with-agent tool', () => {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					payload: expect.objectContaining({
 						role: 'web-researcher',
-						tools: ['research'],
+						tools: ['web-search', 'fetch-url'],
 					}),
 				}),
 			);
 		});
 
-		it('returns error when research tool is not available', async () => {
+		it('returns error when web-search tool is not available', async () => {
 			const context = createMockContext({
 				domainTools: {
-					'list-workflows': { id: 'list-workflows' } as never,
+					'fetch-url': { id: 'fetch-url' } as never,
 				},
 			});
 			const tool = createResearchWithAgentTool(context);
 
 			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as { result: string };
 
-			expect(result.result).toBe('Error: research tool not available.');
+			expect(result.result).toBe('Error: web-search tool not available.');
 			expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
 		});
 

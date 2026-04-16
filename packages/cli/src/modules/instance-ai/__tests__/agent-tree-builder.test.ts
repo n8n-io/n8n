@@ -117,7 +117,7 @@ describe('buildAgentTreeFromEvents', () => {
 				type: 'tool-call',
 				runId: 'run-1',
 				agentId: 'agent-001',
-				payload: { toolCallId: 'tc-1', toolName: 'task-control', args: {} },
+				payload: { toolCallId: 'tc-1', toolName: 'update-tasks', args: {} },
 			},
 			{
 				type: 'tool-error',

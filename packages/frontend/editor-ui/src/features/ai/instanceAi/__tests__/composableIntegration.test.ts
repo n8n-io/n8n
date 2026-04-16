@@ -795,8 +795,8 @@ describe('composable integration', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-dt',
-							toolName: 'data-tables',
-							args: { action: 'create' },
+							toolName: 'create-data-table',
+							args: {},
 							isLoading: false,
 							result: { table: { id: 'dt-1', name: 'Users Table' } },
 						},
@@ -836,8 +836,8 @@ describe('composable integration', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-del',
-							toolName: 'data-tables',
-							args: { action: 'delete', dataTableId: 'dt-1' },
+							toolName: 'delete-data-table',
+							args: { dataTableId: 'dt-1' },
 							isLoading: false,
 							result: { success: true },
 						},
