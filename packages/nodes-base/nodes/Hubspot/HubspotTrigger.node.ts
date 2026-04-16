@@ -224,6 +224,42 @@ export class HubspotTrigger implements INodeType {
 								default: '',
 								required: true,
 							},
+							{
+								displayName: 'Property Name or ID',
+								name: 'property',
+								type: 'options',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+								typeOptions: {
+									loadOptionsDependsOn: ['ticket.propertyChange'],
+									loadOptionsMethod: 'getTicketProperties',
+								},
+								displayOptions: {
+									show: {
+										name: ['ticket.propertyChange'],
+									},
+								},
+								default: '',
+								required: true,
+							},
+							{
+								displayName: 'Property Name or ID',
+								name: 'property',
+								type: 'options',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+								typeOptions: {
+									loadOptionsDependsOn: ['conversation.propertyChange'],
+									loadOptionsMethod: 'getConversationProperties',
+								},
+								displayOptions: {
+									show: {
+										name: ['conversation.propertyChange'],
+									},
+								},
+								default: '',
+								required: true,
+							},
 						],
 					},
 				],
@@ -288,6 +324,36 @@ export class HubspotTrigger implements INodeType {
 			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const endpoint = '/properties/v2/deals/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
+					returnData.push({
+						name: propertyName,
+						value: propertyId,
+					});
+				}
+				return returnData;
+			},
+			async getTicketProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/tickets/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
+					returnData.push({
+						name: propertyName,
+						value: propertyId,
+					});
+				}
+				return returnData;
+			},
+			async getConversationProperties(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/conversations/properties';
 				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 				for (const property of properties) {
 					const propertyName = property.label;
@@ -447,6 +513,9 @@ export class HubspotTrigger implements INodeType {
 			}
 			if (subscriptionType.includes('ticket')) {
 				bodyData[i].ticketId = bodyData[i].objectId;
+			}
+			if (subscriptionType.includes('conversation')) {
+				bodyData[i].conversationId = bodyData[i].objectId;
 			}
 			delete bodyData[i].objectId;
 		}
