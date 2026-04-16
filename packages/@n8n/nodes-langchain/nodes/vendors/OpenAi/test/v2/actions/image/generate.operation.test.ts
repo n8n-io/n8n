@@ -86,7 +86,7 @@ describe('Image Generate Operation', () => {
 		const makeRlcMock =
 			(modelValue: string, extraOptions = {}) =>
 			(paramName: string, _i: unknown, _default: unknown, opts?: { extractValue?: boolean }) => {
-				if (paramName === 'model' && opts?.extractValue) return modelValue;
+				if (paramName === 'modelId' && opts?.extractValue) return modelValue;
 				const params = { prompt: 'a cute cat', options: extraOptions };
 				return params[paramName as keyof typeof params];
 			};
@@ -137,7 +137,7 @@ describe('Image Generate Operation', () => {
 		const makeRlcMock =
 			(modelValue: string, options = {}) =>
 			(paramName: string, _i: unknown, _default: unknown, opts?: { extractValue?: boolean }) => {
-				if (paramName === 'model' && opts?.extractValue) return modelValue;
+				if (paramName === 'modelId' && opts?.extractValue) return modelValue;
 				const params = { prompt: 'a cute cat', options };
 				return params[paramName as keyof typeof params];
 			};
@@ -212,7 +212,7 @@ describe('Image Generate Operation', () => {
 		it('should rename dalleQuality to quality before sending', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(paramName: string, _i: unknown, _default: unknown, opts?: { extractValue?: boolean }) => {
-					if (paramName === 'model' && opts?.extractValue) return 'dall-e-3';
+					if (paramName === 'modelId' && opts?.extractValue) return 'dall-e-3';
 					const params = { prompt: 'a cute cat', options: { dalleQuality: 'hd' } };
 					return params[paramName as keyof typeof params];
 				},

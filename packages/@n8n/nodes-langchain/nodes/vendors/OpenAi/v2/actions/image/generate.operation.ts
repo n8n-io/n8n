@@ -7,7 +7,7 @@ import type {
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
-import { modelRLC } from '../descriptions';
+import { imageGenerateOptions, imageGenerateOptionsRLC, modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -38,7 +38,6 @@ const properties: INodeProperties[] = [
 	},
 	{
 		...modelRLC('imageGenerateModelSearch'),
-		name: 'model',
 		default: { mode: 'list', value: 'gpt-image-1-mini' },
 		displayOptions: {
 			show: {
@@ -58,205 +57,8 @@ const properties: INodeProperties[] = [
 			rows: 2,
 		},
 	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		placeholder: 'Add Option',
-		type: 'collection',
-		default: {},
-		options: [
-			{
-				displayName: 'Number of Images',
-				name: 'n',
-				default: 1,
-				description: 'Number of images to generate',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-					maxValue: 10,
-				},
-				displayOptions: {
-					show: {
-						'/model': ['dall-e-2'],
-					},
-				},
-			},
-			{
-				displayName: 'Quality',
-				name: 'dalleQuality',
-				type: 'options',
-				description:
-					'The quality of the image that will be generated, HD creates images with finer details and greater consistency across the image',
-				options: [
-					{
-						name: 'HD',
-						value: 'hd',
-					},
-					{
-						name: 'Standard',
-						value: 'standard',
-					},
-				],
-				displayOptions: {
-					show: {
-						'/model': ['dall-e-3'],
-					},
-				},
-				default: 'standard',
-			},
-			{
-				displayName: 'Quality',
-				name: 'quality',
-				type: 'options',
-				description:
-					'The quality of the image that will be generated, High creates images with finer details and greater consistency across the image',
-				options: [
-					{
-						name: 'High',
-						value: 'high',
-					},
-					{
-						name: 'Medium',
-						value: 'medium',
-					},
-					{
-						name: 'Low',
-						value: 'low',
-					},
-				],
-				displayOptions: {
-					show: {
-						'/model': [{ _cnd: { includes: 'gpt-image' } }],
-					},
-				},
-				default: 'medium',
-			},
-
-			{
-				displayName: 'Resolution',
-				name: 'size',
-				type: 'options',
-				options: [
-					{
-						name: '256x256',
-						value: '256x256',
-					},
-					{
-						name: '512x512',
-						value: '512x512',
-					},
-					{
-						name: '1024x1024',
-						value: '1024x1024',
-					},
-				],
-				displayOptions: {
-					show: {
-						'/model': ['dall-e-2'],
-					},
-				},
-				default: '1024x1024',
-			},
-			{
-				displayName: 'Resolution',
-				name: 'size',
-				type: 'options',
-				options: [
-					{
-						name: '1024x1024',
-						value: '1024x1024',
-					},
-					{
-						name: '1792x1024',
-						value: '1792x1024',
-					},
-					{
-						name: '1024x1792',
-						value: '1024x1792',
-					},
-				],
-				displayOptions: {
-					show: {
-						'/model': ['dall-e-3'],
-					},
-				},
-				default: '1024x1024',
-			},
-			{
-				displayName: 'Resolution',
-				name: 'size',
-				type: 'options',
-				options: [
-					{
-						name: '1024x1024',
-						value: '1024x1024',
-					},
-					{
-						name: '1024x1536',
-						value: '1024x1536',
-					},
-					{
-						name: '1536x1024',
-						value: '1536x1024',
-					},
-				],
-				displayOptions: {
-					show: {
-						'/model': [{ _cnd: { includes: 'gpt-image' } }],
-					},
-				},
-				default: '1024x1024',
-			},
-
-			{
-				displayName: 'Style',
-				name: 'style',
-				type: 'options',
-				options: [
-					{
-						name: 'Natural',
-						value: 'natural',
-						description: 'Produce more natural looking images',
-					},
-					{
-						name: 'Vivid',
-						value: 'vivid',
-						description: 'Lean towards generating hyper-real and dramatic images',
-					},
-				],
-				displayOptions: {
-					show: {
-						'/model': ['dall-e-3'],
-					},
-				},
-				default: 'vivid',
-			},
-			{
-				displayName: 'Respond with Image URL(s)',
-				name: 'returnImageUrls',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to return image URL(s) instead of binary file(s)',
-				displayOptions: {
-					hide: {
-						'/model': [{ _cnd: { includes: 'gpt-image' } }],
-					},
-				},
-			},
-			{
-				displayName: 'Put Output in Field',
-				name: 'binaryPropertyOutput',
-				type: 'string',
-				default: 'data',
-				hint: 'The name of the output field to put the binary file data in',
-				displayOptions: {
-					show: {
-						returnImageUrls: [false],
-					},
-				},
-			},
-		],
-	},
+	imageGenerateOptions,
+	imageGenerateOptionsRLC,
 ];
 
 const displayOptions = {
@@ -270,10 +72,14 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const nodeVersion = this.getNode().typeVersion;
-	const model =
-		nodeVersion >= 2.2
-			? (this.getNodeParameter('model', i, '', { extractValue: true }) as string)
-			: (this.getNodeParameter('model', i) as string);
+
+	let model = '';
+	if (nodeVersion >= 2.2) {
+		model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
+	} else {
+		model = this.getNodeParameter('model', i) as string;
+	}
+
 	const prompt = this.getNodeParameter('prompt', i) as string;
 	const options = this.getNodeParameter('options', i, {});
 	const supportsResponseFormat = !model.startsWith('gpt-image');
