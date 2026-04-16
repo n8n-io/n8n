@@ -49,6 +49,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Push } from '@/push';
+import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
@@ -78,6 +79,7 @@ describe('InstanceAiController', () => {
 	const eventBus = mock<InProcessEventBus>();
 	const moduleRegistry = mock<ModuleRegistry>();
 	const push = mock<Push>();
+	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
 		instanceAi: { gatewayApiKey: 'static-key' },
 		editorBaseUrl: 'http://localhost:5678',
@@ -92,6 +94,7 @@ describe('InstanceAiController', () => {
 		eventBus,
 		moduleRegistry,
 		push,
+		urlService,
 		globalConfig,
 	);
 
@@ -738,12 +741,13 @@ describe('InstanceAiController', () => {
 
 		it('should return token and command', async () => {
 			instanceAiService.generatePairingToken.mockReturnValue('pairing-token');
+			urlService.getInstanceBaseUrl.mockReturnValue('https://myinstance.n8n.cloud');
 
 			const result = await controller.createGatewayLink(req);
 
 			expect(result).toEqual({
 				token: 'pairing-token',
-				command: 'npx @n8n/computer-use http://localhost:5678 pairing-token',
+				command: 'npx @n8n/computer-use https://myinstance.n8n.cloud pairing-token',
 			});
 			expect(instanceAiService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
 		});

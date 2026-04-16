@@ -45,6 +45,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
+import { UrlService } from '@/services/url.service';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -53,8 +54,6 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 @RestController('/instance-ai')
 export class InstanceAiController {
 	private readonly gatewayApiKey: string;
-
-	private readonly instanceBaseUrl: string;
 
 	private static getTreeRichnessScore(tree: InstanceAiAgentNode): number {
 		let score = 0;
@@ -94,10 +93,10 @@ export class InstanceAiController {
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
+		private readonly urlService: UrlService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
-		this.instanceBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 	}
 
 	private requireInstanceAiEnabled(): void {
@@ -595,7 +594,7 @@ export class InstanceAiController {
 	async createGatewayLink(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
-		const baseUrl = this.instanceBaseUrl.replace(/\/$/, '');
+		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
 		return { token, command };
 	}
