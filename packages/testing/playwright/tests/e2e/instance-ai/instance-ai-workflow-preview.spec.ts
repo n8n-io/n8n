@@ -44,7 +44,7 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a workflow with a manual trigger, a Wait node set to 1 second, ' +
 					'and a Set node called "running state test". After it is built, ' +
-					'call the run-workflow tool to execute it.',
+					'run it.',
 			);
 
 			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });

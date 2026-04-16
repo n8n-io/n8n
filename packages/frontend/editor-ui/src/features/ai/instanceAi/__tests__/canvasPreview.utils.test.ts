@@ -293,8 +293,8 @@ describe('getLatestExecutionId', () => {
 			children: [builder],
 			toolCalls: [
 				makeToolCall({
-					toolName: 'run-workflow',
-					args: { workflowId: 'wf-stale-from-recording' },
+					toolName: 'executions',
+					args: { action: 'run', workflowId: 'wf-stale-from-recording' },
 					result: { executionId: 'exec-1', status: 'success' },
 				}),
 			],
