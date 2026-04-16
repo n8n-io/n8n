@@ -2,16 +2,6 @@ name: 'Test: Evals AI'
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - master
-    paths:
-      - 'packages/@n8n/ai-workflow-builder.ee/src/prompts/**'
-      - 'packages/@n8n/ai-workflow-builder.ee/**/*.prompt.ts'
-      - '.github/workflows/test-evals-ai.yml'
-      - '.github/workflows/test-evals-ai-reusable.yml'
-on:
-  workflow_dispatch:
     inputs:
       branch:
         description: 'GitHub branch to test.'

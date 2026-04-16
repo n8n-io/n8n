@@ -15,8 +15,6 @@ on:
       # - any main dependencies change
       - 'pnpm-lock.yaml'
 
-  # Allow manual trigger
-  workflow_dispatch:
 
 jobs:
   sync-public-api:

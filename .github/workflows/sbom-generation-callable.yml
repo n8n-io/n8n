@@ -15,6 +15,7 @@ on:
       SLACK_WEBHOOK_URL:
         required: true
 
+on:
   workflow_dispatch:
     inputs:
       n8n_version:

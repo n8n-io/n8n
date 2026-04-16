@@ -2,24 +2,13 @@ name: 'Build: Base Image'
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - master
-    paths:
-      - 'docker/images/n8n-base/Dockerfile'
-      - '.github/workflows/build-base-image.yml'
-  pull_request:
-    paths:
-      - 'docker/images/n8n-base/Dockerfile'
-      - '.github/workflows/build-base-image.yml'
-on:
-  workflow_dispatch:
     inputs:
       push:
         description: 'Push to registries'
         required: false
         default: false
         type: boolean
+
 
 jobs:
   build:
