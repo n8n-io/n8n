@@ -53,6 +53,7 @@ import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
+import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
@@ -843,8 +844,47 @@ describe('InstanceAiController', () => {
 	});
 
 	describe('gatewayEvents', () => {
+		const makeGatewayReq = (key: string) =>
+			({
+				headers: { 'x-gateway-key': key },
+				once: jest.fn(),
+			}) as unknown as Request;
+
+		const makeFlushableRes = () => {
+			const res = {
+				setHeader: jest.fn(),
+				flushHeaders: jest.fn(),
+				write: jest.fn(),
+				flush: jest.fn(),
+				once: jest.fn(),
+			};
+			return res as unknown as Parameters<typeof controller.gatewayEvents>[1];
+		};
+
 		it('should have no access scope (skipAuth)', () => {
 			expect(scopeOf('gatewayEvents')).toBeUndefined();
+		});
+
+		it('should reject with ForbiddenError when the gateway has not been initialized', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getLocalGateway.mockReturnValue(mock<LocalGateway>({ isConnected: false }));
+
+			await expect(
+				controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes()),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(instanceAiService.clearDisconnectTimer).not.toHaveBeenCalled();
+		});
+
+		it('should clear a pending disconnect timer when SSE reconnects while still connected', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			const gateway = mock<LocalGateway>({ isConnected: true });
+			gateway.onRequest.mockReturnValue(() => {});
+			instanceAiService.getLocalGateway.mockReturnValue(gateway);
+
+			await controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes());
+
+			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
 		});
 	});
 

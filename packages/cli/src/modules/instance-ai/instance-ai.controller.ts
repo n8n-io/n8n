@@ -604,6 +604,18 @@ export class InstanceAiController {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 		await this.assertGatewayEnabled(userId);
 
+		const gateway = this.instanceAiService.getLocalGateway(userId);
+
+		// If the grace-period timer already fired (e.g. after a long reconnect gap),
+		// the gateway state is torn down. Reject so the daemon falls into its auth-error
+		// reconnect branch, which re-uploads capabilities and re-establishes state.
+		if (!gateway.isConnected) {
+			throw new ForbiddenError('Local gateway not initialized');
+		}
+
+		// Daemon reconnected within the grace window — cancel the pending disconnect.
+		this.instanceAiService.clearDisconnectTimer(userId);
+
 		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 		res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -611,7 +623,6 @@ export class InstanceAiController {
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
 
-		const gateway = this.instanceAiService.getLocalGateway(userId);
 		const unsubscribe = gateway.onRequest((event) => {
 			res.write(`data: ${JSON.stringify(event)}\n\n`);
 			res.flush?.();

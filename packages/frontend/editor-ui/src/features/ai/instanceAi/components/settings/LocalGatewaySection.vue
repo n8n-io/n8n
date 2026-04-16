@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { N8nHeading, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
@@ -108,6 +108,32 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// Keep the connection status live on the settings page. Without these, landing
+// directly on /settings/n8n-agent leaves `isGatewayConnected` at its default
+// `false` because neither the poll nor the push listener is ever started here.
+const shouldMonitorConnection = computed(
+	() => !store.isLocalGatewayDisabledByAdmin && !isLocalGatewayDisabled.value,
+);
+
+watch(
+	shouldMonitorConnection,
+	(monitor) => {
+		if (monitor) {
+			store.startGatewayPushListener();
+			store.pollGatewayStatus();
+		} else {
+			store.stopGatewayPushListener();
+			store.stopGatewayPolling();
+		}
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	store.stopGatewayPushListener();
+	store.stopGatewayPolling();
+});
 </script>
 
 <template>

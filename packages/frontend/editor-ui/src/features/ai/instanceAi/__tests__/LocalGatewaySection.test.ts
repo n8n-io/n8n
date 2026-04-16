@@ -17,7 +17,12 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 
 vi.mock('../instanceAi.api', () => ({
 	createGatewayLink: vi.fn(),
-	getGatewayStatus: vi.fn(),
+	getGatewayStatus: vi.fn().mockResolvedValue({
+		connected: false,
+		directory: null,
+		hostIdentifier: null,
+		toolCategories: [],
+	}),
 }));
 
 const renderComponent = createComponentRenderer(LocalGatewaySection);
