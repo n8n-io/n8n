@@ -83,7 +83,7 @@ export class Mailgun implements INodeType {
 				default: {},
 				placeholder: 'Add Header',
 				description:
-					'Arbitrary email headers sent as h:Header-Name (e.g. h:X-Custom-Header)',
+					'Arbitrary email headers. Enter only the header name (e.g. X-Custom-Header); the h: prefix is added automatically.',
 				options: [
 					{
 						name: 'headers',
@@ -114,8 +114,7 @@ export class Mailgun implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'tag1, tag2',
-				description:
-					'Tags for segmentation and analytics (comma-separated). Sent as o:tag.',
+				description: 'Tags for segmentation and analytics (comma-separated). Sent as o:tag.',
 			},
 			{
 				displayName: 'Subject',
