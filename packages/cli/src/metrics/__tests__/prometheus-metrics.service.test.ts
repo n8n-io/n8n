@@ -883,11 +883,11 @@ describe('PrometheusMetricsService', () => {
 			expect(succeedReqCounter?.inc).toHaveBeenCalledWith({ result: 'success' }, 1);
 		});
 
-		it('should increment token exchange failure counter and normalize reason on token-exchange-failed', async () => {
+		it('should increment token exchange failure counter on token-exchange-failed', async () => {
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventServiceHandler('token-exchange-failed');
-			handler({ failureReason: 'Unknown key id' });
+			handler({ failureReason: 'unknown_key' });
 
 			// @ts-expect-error private field
 			const failReqCounter = prometheusMetricsService.counters.tokenExchangeRequestsTotal;
@@ -897,31 +897,25 @@ describe('PrometheusMetricsService', () => {
 			expect(failuresCounter?.inc).toHaveBeenCalledWith({ reason: 'unknown_key' }, 1);
 		});
 
-		it('should map unknown failure reason to "other"', async () => {
+		it('should pass through "other" failure reason', async () => {
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventServiceHandler('token-exchange-failed');
-			handler({ failureReason: 'Some completely new error XYZ' });
+			handler({ failureReason: 'other' });
 
 			// @ts-expect-error private field
 			const otherCounter = prometheusMetricsService.counters.tokenExchangeFailuresTotal;
 			expect(otherCounter?.inc).toHaveBeenCalledWith({ reason: 'other' }, 1);
 		});
 
-		it('should map role-related failure reasons to "role_not_allowed"', async () => {
+		it('should pass through "role_not_allowed" failure reason', async () => {
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventServiceHandler('token-exchange-failed');
 			// @ts-expect-error private field
 			const roleCounter = prometheusMetricsService.counters.tokenExchangeFailuresTotal;
 
-			handler({ failureReason: "Role 'global:admin' is not allowed for this token exchange key" });
-			expect(roleCounter?.inc).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
-
-			handler({ failureReason: "Unrecognized role 'custom:role' cannot be assigned to new user" });
-			expect(roleCounter?.inc).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
-
-			handler({ failureReason: 'Cannot provision global:owner role via token exchange' });
+			handler({ failureReason: 'role_not_allowed' });
 			expect(roleCounter?.inc).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
 		});
 
@@ -938,11 +932,11 @@ describe('PrometheusMetricsService', () => {
 			);
 		});
 
-		it('should increment embed login failure counter and normalize reason on embed-login-failed', async () => {
+		it('should increment embed login failure counter on embed-login-failed', async () => {
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventServiceHandler('embed-login-failed');
-			handler({ failureReason: 'Token verification failed' });
+			handler({ failureReason: 'invalid_signature' });
 
 			// @ts-expect-error private field
 			expect(prometheusMetricsService.counters.embedLoginRequestsTotal?.inc).toHaveBeenCalledWith(
