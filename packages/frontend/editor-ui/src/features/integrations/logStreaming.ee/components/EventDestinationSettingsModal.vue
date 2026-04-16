@@ -189,12 +189,15 @@ const isFormValid = computed(() => {
 	return issues === null;
 });
 
-const destinationNode = computed(
-	() => workflowDocumentStore.value.getNodeByName(destination.id ?? '') ?? null,
+const destinationNode = computed(() =>
+	workflowDocumentStore.value.getNodeByName(destination.id ?? ''),
 );
 
 watch(
-	() => destinationNode.value?.credentials,
+	() =>
+		Object.keys(destinationNode.value?.credentials ?? {}).length === 0
+			? null
+			: destinationNode.value?.credentials,
 	(newCredentials) => {
 		unchanged.value = false;
 		if (newCredentials) {
