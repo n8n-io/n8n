@@ -353,9 +353,7 @@ function isTextPart(part: unknown): part is TextPart {
 }
 
 function getToolCalls(response: GenerateContentResponse) {
-	return response.candidates
-		.flatMap((candidate) => candidate?.content?.parts ?? [])
-		.filter(isFunctionCallPart);
+	return response.candidates.flatMap((c) => c?.content?.parts ?? []).filter(isFunctionCallPart);
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {

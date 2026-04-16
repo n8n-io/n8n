@@ -1,7 +1,8 @@
-import * as helpers from '@utils/helpers';
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
+import * as helpers from '@utils/helpers';
 
 import * as audio from './actions/audio';
 import * as file from './actions/file';
