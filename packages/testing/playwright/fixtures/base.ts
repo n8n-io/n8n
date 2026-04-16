@@ -313,9 +313,12 @@ export const test = base.extend<
 				if (prop in cache) return cache[prop as keyof ServiceHelpers];
 
 				if (prop === 'proxy' && proxyUrl) {
-					// eslint-disable-next-line @typescript-eslint/no-require-imports
+					// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/naming-convention
 					const { ProxyServer } = require('n8n-containers/services/proxy') as {
-						ProxyServer: new (url: string) => ServiceHelpers['proxy'];
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						ProxyServer: new (
+							url: string,
+						) => ServiceHelpers['proxy'];
 					};
 					cache.proxy = new ProxyServer(proxyUrl);
 					return cache.proxy;
