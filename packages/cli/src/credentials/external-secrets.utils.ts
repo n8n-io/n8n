@@ -38,11 +38,11 @@ export function extractProviderKeysFromExpression(expression: string): string[] 
 	for (const expression of expressionBlocks) {
 		const expressionContent = expression[1]; // Content inside {{ }}
 
-		// Match all dot notation occurrences: $secrets.providerKey
-		const dotMatches = expressionContent.matchAll(
-			new RegExp(`\\$secrets\\.(${PROVIDER_KEY_PATTERN})(?=\\.)`, 'g'),
+		// Match dot notation ($secrets.vault.key) and hybrid notation ($secrets.vault['key'])
+		const dotAndHybridMatches = expressionContent.matchAll(
+			new RegExp(`\\$secrets\\.(${PROVIDER_KEY_PATTERN})(?=\\.|\\[)`, 'g'),
 		);
-		for (const match of dotMatches) {
+		for (const match of dotAndHybridMatches) {
 			providerKeys.add(match[1]);
 		}
 
