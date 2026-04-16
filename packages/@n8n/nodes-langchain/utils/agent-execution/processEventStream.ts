@@ -28,6 +28,14 @@ export async function processEventStream(
 
 	const toolCalls: ToolCallRequest[] = [];
 
+	// Buffer streamed text chunks per LLM turn. Some models emit text content
+	// in the same response that also contains tool_calls (e.g. a brief reasoning
+	// token before the tool invocation). We must not send those intermediate
+	// tokens to the client until on_chat_model_end confirms there are no
+	// tool_calls in this turn; if there are, we discard the buffer so the
+	// pre-tool text never reaches the client.
+	let textBuffer = '';
+
 	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
 		// Stream chat model tokens as they come in
@@ -46,9 +54,9 @@ export async function processEventStream(
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;
 					}
-					ctx.sendChunk('item', itemIndex, chunkText);
-
-					agentResult.output += chunkText;
+					// Buffer instead of sending immediately. We only know whether
+					// this turn has tool_calls once on_chat_model_end fires.
+					textBuffer += chunkText;
 				}
 				break;
 			case 'on_chat_model_end':
@@ -59,6 +67,11 @@ export async function processEventStream(
 
 					// Check if this LLM response contains tool calls
 					if (output?.tool_calls && output.tool_calls.length > 0) {
+						// This turn has tool_calls — discard any buffered text so
+						// intermediate reasoning/address tokens are not streamed to
+						// the client and do not appear in the final output.
+						textBuffer = '';
+
 						// Collect tool calls for request building
 						// Note: For Gemini, we pass additional_kwargs to ALL tool calls
 						// so the signature can be applied to each when rebuilding
@@ -75,6 +88,14 @@ export async function processEventStream(
 								// Pass additional_kwargs to ALL tool calls so signature is available
 								additionalKwargs: output.additional_kwargs as Record<string, unknown> | undefined,
 							});
+						}
+					} else {
+						// No tool_calls — this is a final text response. Flush the
+						// buffered chunks to the client now.
+						if (textBuffer) {
+							ctx.sendChunk('item', itemIndex, textBuffer);
+							agentResult.output += textBuffer;
+							textBuffer = '';
 						}
 					}
 				}
