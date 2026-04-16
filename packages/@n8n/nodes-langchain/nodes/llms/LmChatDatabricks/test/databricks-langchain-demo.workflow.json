@@ -1,0 +1,355 @@
+{
+	"name": "Databricks LangChain – Full Demo",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger-1",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.4,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "agent-1",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3.1,
+			"position": [220, 0]
+		},
+		{
+			"parameters": {
+				"model": "databricks-meta-llama-3-3-70b-instruct",
+				"options": {
+					"temperature": 0.7,
+					"maxTokens": 1024
+				}
+			},
+			"id": "chat-model-1",
+			"name": "Databricks Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatDatabricks",
+			"typeVersion": 1,
+			"position": [80, 220],
+			"credentials": {
+				"databricksApi": {
+					"id": "YOUR_CREDENTIAL_ID",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "memory-1",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [220, 220]
+		},
+		{
+			"parameters": {
+				"content": "## 1. Chat with Databricks LLM\nConnect the Databricks Chat Model to an AI Agent.\n\nSupports all Foundation Model endpoints:\n- databricks-meta-llama-3-3-70b-instruct\n- databricks-claude-sonnet-4-6\n- databricks-gpt-5-mini\n- and more",
+				"height": 180,
+				"width": 480,
+				"color": 4
+			},
+			"id": "note-chat",
+			"name": "Sticky – Chat Model",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-40, -200]
+		},
+		{
+			"parameters": {},
+			"id": "trigger-2",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [600, 0]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "v1",
+							"name": "indexName",
+							"value": "YOUR_CATALOG.YOUR_SCHEMA.your_vector_index",
+							"type": "string"
+						},
+						{
+							"id": "v2",
+							"name": "textColumn",
+							"value": "text",
+							"type": "string"
+						},
+						{
+							"id": "v3",
+							"name": "embeddingEndpoint",
+							"value": "databricks-gte-large-en",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "set-vars",
+			"name": "Set Variables",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [820, 0]
+		},
+		{
+			"parameters": {
+				"mode": "retrieve",
+				"indexName": "={{ $('Set Variables').item.json.indexName }}",
+				"textColumn": "={{ $('Set Variables').item.json.textColumn }}",
+				"metadataColumns": "",
+				"options": {
+					"scoreThreshold": 0.5
+				}
+			},
+			"id": "vector-store-retrieve",
+			"name": "Databricks Vector Store (Retrieve)",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreDatabricks",
+			"typeVersion": 1,
+			"position": [1040, 0],
+			"credentials": {
+				"databricksApi": {
+					"id": "YOUR_CREDENTIAL_ID",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"model": "databricks-gte-large-en"
+			},
+			"id": "embeddings-1",
+			"name": "Embeddings Databricks (for Vector Store)",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsDatabricks",
+			"typeVersion": 1,
+			"position": [1040, 220],
+			"credentials": {
+				"databricksApi": {
+					"id": "YOUR_CREDENTIAL_ID",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"content": "## 2. Vector Search with Embeddings\nUse Databricks embeddings to query a Vector Search index.\n\n1. Set your index name, text column, and embedding endpoint\n2. The Embeddings node generates vectors via Databricks Model Serving\n3. The Vector Store node queries Databricks Vector Search",
+				"height": 180,
+				"width": 600,
+				"color": 5
+			},
+			"id": "note-vector",
+			"name": "Sticky – Vector Store",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [560, -200]
+		},
+		{
+			"parameters": {
+				"enableMlflow": true,
+				"promptType": "define",
+				"text": "You are a helpful assistant. Answer the user's question."
+			},
+			"id": "dbx-agent-1",
+			"name": "Databricks AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.databricksAiAgent",
+			"typeVersion": 1,
+			"position": [1500, 0],
+			"credentials": {
+				"databricksApi": {
+					"id": "YOUR_CREDENTIAL_ID",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"model": "databricks-claude-sonnet-4-6",
+				"options": {
+					"temperature": 0.3
+				}
+			},
+			"id": "chat-model-2",
+			"name": "Databricks Chat Model (for Agent)",
+			"type": "@n8n/n8n-nodes-langchain.lmChatDatabricks",
+			"typeVersion": 1,
+			"position": [1380, 220],
+			"credentials": {
+				"databricksApi": {
+					"id": "YOUR_CREDENTIAL_ID",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "memory-2",
+			"name": "Simple Memory (Agent)",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [1500, 220]
+		},
+		{
+			"parameters": {
+				"content": "## 3. Databricks AI Agent with MLflow Tracing\nThe Databricks AI Agent wraps n8n's built-in agent\nwith MLflow experiment tracking.\n\nWhen 'Enable MLflow Tracking' is on, all execution traces\n(LLM calls, tool calls, agent reasoning) are logged to\n/Shared/n8n-workflows-{workflowId} in your Databricks workspace.",
+				"height": 200,
+				"width": 520,
+				"color": 7
+			},
+			"id": "note-agent",
+			"name": "Sticky – AI Agent",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [1260, -220]
+		},
+		{
+			"parameters": {},
+			"id": "trigger-3",
+			"name": "When chat message received (Agent)",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.4,
+			"position": [1280, 0]
+		},
+		{
+			"parameters": {
+				"content": "## Setup Instructions\n\n1. Create a **Databricks** credential with your workspace URL and personal access token\n2. Replace `YOUR_CREDENTIAL_ID` references with your credential\n3. Update the model endpoints and vector index names to match your workspace\n\n### Available Endpoints (examples)\n- **Chat Models**: databricks-meta-llama-3-3-70b-instruct, databricks-claude-sonnet-4-6\n- **Embeddings**: databricks-gte-large-en, databricks-bge-large-en\n- **Vector Search**: Create an index first via the Databricks UI or API",
+				"height": 280,
+				"width": 800,
+				"color": 2
+			},
+			"id": "note-setup",
+			"name": "Sticky – Setup",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-40, -480]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Databricks Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Set Variables",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Variables": {
+			"main": [
+				[
+					{
+						"node": "Databricks Vector Store (Retrieve)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings Databricks (for Vector Store)": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Databricks Vector Store (Retrieve)",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received (Agent)": {
+			"main": [
+				[
+					{
+						"node": "Databricks AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Databricks Chat Model (for Agent)": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Databricks AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory (Agent)": {
+			"ai_memory": [
+				[
+					{
+						"node": "Databricks AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1",
+		"binaryMode": "separate"
+	},
+	"meta": {
+		"templateCredsSetupCompleted": true
+	},
+	"tags": [
+		{
+			"name": "demo"
+		},
+		{
+			"name": "databricks"
+		},
+		{
+			"name": "langchain"
+		}
+	]
+}
