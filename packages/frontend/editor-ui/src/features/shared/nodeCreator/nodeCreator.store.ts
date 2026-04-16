@@ -249,11 +249,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 				type: 'node',
 				subcategory: '*',
 			},
-			getNodeIconSource(
-				nodeType.name,
-				null,
-				workflowDocumentStore.value.getExpressionHandler() ?? null,
-			),
+			getNodeIconSource(nodeType.name, null, workflowDocumentStore.value.getExpressionHandler()),
 			'Regular',
 			nodeActions ?? [],
 		);

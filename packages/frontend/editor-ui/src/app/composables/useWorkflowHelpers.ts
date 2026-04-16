@@ -106,7 +106,7 @@ export async function resolveParameter<T = IDataObject>(
 	return await resolveParameterImpl(
 		parameter,
 		convertToWorkflowAccessors(workflowDocumentStore),
-		workflowDocumentStore.connectionsBySourceNode ?? {},
+		workflowDocumentStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
@@ -518,7 +518,7 @@ export function useWorkflowHelpers() {
 	);
 
 	function getNodeTypesMaxCount() {
-		const nodes = workflowDocumentStore.value.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes;
 
 		const returnData: INodeTypesMaxCount = {};
 
@@ -544,7 +544,7 @@ export function useWorkflowHelpers() {
 	}
 
 	function getNodeTypeCount(nodeType: string) {
-		const nodes = workflowDocumentStore.value.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes;
 
 		let count = 0;
 

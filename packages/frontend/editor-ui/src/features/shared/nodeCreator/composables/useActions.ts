@@ -286,7 +286,7 @@ export const useActions = () => {
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 		if (!isCompatibleNode) return false;
 
-		const allNodes = workflowDocumentStore.value.allNodes ?? [];
+		const allNodes = workflowDocumentStore.value.allNodes;
 		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
 

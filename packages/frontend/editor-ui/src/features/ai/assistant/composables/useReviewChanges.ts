@@ -210,7 +210,7 @@ export function useReviewChanges() {
 	const nodeChanges = computed<NodeChangeEntry[]>(() => {
 		if (!cachedVersionLoaded.value || builderStore.streaming) return [];
 		const normalized = resolveNodeDefaults(cachedVersionNodes.value);
-		const currentNodes: INode[] = workflowDocumentStore.value.allNodes ?? [];
+		const currentNodes: INode[] = workflowDocumentStore.value.allNodes;
 		const diff = compareWorkflowsNodes(normalized, currentNodes);
 		const currentNodesById = new Map(currentNodes.map((n) => [n.id, n]));
 		return [...diff.values()]

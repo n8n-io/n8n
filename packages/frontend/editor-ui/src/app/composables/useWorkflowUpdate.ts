@@ -64,7 +64,7 @@ export function useWorkflowUpdate() {
 	 * triggering maxNodes validation errors for nodes like ChatTrigger.
 	 */
 	function categorizeNodes(workflowData: WorkflowDataUpdate) {
-		const allNodes = workflowDocumentStore.value.allNodes ?? [];
+		const allNodes = workflowDocumentStore.value.allNodes;
 		const existingNodesById = new Map(allNodes.map((n) => [n.id, n]));
 
 		// Add name+type index for fallback matching when IDs differ
@@ -242,10 +242,10 @@ export function useWorkflowUpdate() {
 	 * Update connections - remove old, add new
 	 */
 	async function updateConnections(newConnections: IConnections): Promise<void> {
-		const existingConnections = workflowDocumentStore.value.connectionsBySourceNode ?? {};
+		const existingConnections = workflowDocumentStore.value.connectionsBySourceNode;
 
 		// Convert to canvas format for comparison
-		const allNodes = workflowDocumentStore.value.allNodes ?? [];
+		const allNodes = workflowDocumentStore.value.allNodes;
 		const existingCanvasConnections = mapLegacyConnectionsToCanvasConnections(
 			existingConnections,
 			allNodes,

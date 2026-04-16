@@ -23,7 +23,7 @@ export function useNodeIconSource(
 		return getNodeIconSource(
 			typeValue ?? nodeValue?.type,
 			nodeValue ?? null,
-			workflowDocumentStore.value.getExpressionHandler() ?? null,
+			workflowDocumentStore.value.getExpressionHandler(),
 		);
 	});
 }

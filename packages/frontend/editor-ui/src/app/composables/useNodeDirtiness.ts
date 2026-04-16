@@ -130,11 +130,11 @@ export function useNodeDirtiness() {
 	);
 
 	function getIncomingConnections(nodeName: string): INodeConnections {
-		return workflowDocumentStore.value.incomingConnectionsByNodeName(nodeName) ?? {};
+		return workflowDocumentStore.value.incomingConnectionsByNodeName(nodeName);
 	}
 
 	function getOutgoingConnections(nodeName: string): INodeConnections {
-		return workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName) ?? {};
+		return workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName);
 	}
 
 	function getParentSubNodes(nodeName: string) {
@@ -225,7 +225,7 @@ export function useNodeDirtiness() {
 			}
 		}
 
-		for (const startNode of workflowDocumentStore.value.allNodes ?? []) {
+		for (const startNode of workflowDocumentStore.value.allNodes) {
 			const hasIncomingNode = Object.keys(getIncomingConnections(startNode.name)).length > 0;
 
 			if (hasIncomingNode) {

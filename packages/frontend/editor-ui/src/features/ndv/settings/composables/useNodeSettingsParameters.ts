@@ -130,7 +130,7 @@ export function useNodeSettingsParameters() {
 			value: nodeParameters,
 		};
 
-		const connections = workflowDocumentStore.value.connectionsBySourceNode ?? {};
+		const connections = workflowDocumentStore.value.connectionsBySourceNode;
 
 		const updatedConnections = updateDynamicConnections(node, connections, parameterData);
 

@@ -277,7 +277,7 @@ export function handleExecutionFinishedWithWaitTill(
 	const workflowSaving = useWorkflowSaving(options);
 
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-	const workflowSettings = workflowDocumentStore.settings ?? {};
+	const workflowSettings = workflowDocumentStore.settings;
 	const saveManualExecutions =
 		workflowSettings.saveManualExecutions ?? settingsStore.saveManualExecutions;
 
@@ -295,7 +295,7 @@ export function handleExecutionFinishedWithWaitTill(
 	}
 
 	// Workflow did start but had been put to wait
-	useDocumentTitle().setDocumentTitle(workflowDocumentStore.name as string, 'IDLE');
+	useDocumentTitle().setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 }
 
 /**
@@ -315,7 +315,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	const documentTitle = useDocumentTitle();
 	const workflowHelpers = useWorkflowHelpers();
 
-	documentTitle.setDocumentTitle(workflowDocumentStore.name as string, 'ERROR');
+	documentTitle.setDocumentTitle(workflowDocumentStore.name, 'ERROR');
 
 	if (
 		runExecutionData.resultData.error?.name === 'ExpressionError' &&
@@ -416,7 +416,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
-	const workflowName = workflowDocumentStore.name ?? '';
+	const workflowName = workflowDocumentStore.name;
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 

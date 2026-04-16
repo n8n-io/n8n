@@ -163,7 +163,7 @@ export function useWorkflowState() {
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(ws.workflow.id),
 		);
-		documentTitle.setDocumentTitle(workflowDocumentStore.name ?? '', 'IDLE');
+		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 		ws.workflowExecutionStartedData = undefined;
 
 		// TODO(ckolb): confirm this works across files?

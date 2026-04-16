@@ -310,10 +310,13 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					// Find for each start node the source data
 					let sourceData = get(runData, [name, 0, 'source', 0], null);
 					if (sourceData === null) {
-						const parentNodes =
-							workflowDocumentStore.value.getParentNodes(name, NodeConnectionTypes.Main, 1) ?? [];
+						const parentNodes = workflowDocumentStore.value.getParentNodes(
+							name,
+							NodeConnectionTypes.Main,
+							1,
+						);
 						const executeData = workflowHelpers.executeData(
-							workflowDocumentStore.value.connectionsBySourceNode ?? {},
+							workflowDocumentStore.value.connectionsBySourceNode,
 							parentNodes,
 							name,
 							NodeConnectionTypes.Main,
@@ -409,7 +412,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			workflowState.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
-			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name as string, 'EXECUTING');
+			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 
 			if (
@@ -455,7 +458,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		} catch (error) {
 			console.error(error);
 			workflowState.setWorkflowExecutionData(null);
-			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name as string, 'ERROR');
+			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
 		}
@@ -605,7 +608,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		// When no trigger is explicitly selected (e.g. chat trigger is the only trigger
 		// and the Run button doesn't offer it for selection), resolve it from the workflow.
 		if (!resolvedTriggerNode) {
-			const triggers = (workflowDocumentStore.value.allNodes ?? []).filter(
+			const triggers = workflowDocumentStore.value.allNodes.filter(
 				(node) => !node.disabled && node.type.toLowerCase().includes('trigger'),
 			);
 			if (triggers.length === 1) {

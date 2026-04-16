@@ -575,13 +575,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		return new Workflow({
 			id,
-			name: workflowDocumentStore.name ?? '',
+			name: workflowDocumentStore.name,
 			nodes: copyData ? deepCopy(nodes) : nodes,
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,
 			nodeTypes,
-			settings: workflowDocumentStore.settings ?? { ...DEFAULT_SETTINGS },
-			pinData: workflowDocumentStore.getPinDataSnapshot() ?? {},
+			settings: workflowDocumentStore.settings,
+			pinData: workflowDocumentStore.getPinDataSnapshot(),
 		});
 	}
 

@@ -707,7 +707,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		  }
 	)) {
 		const canvasStatus =
-			(workflowDocumentStore.value.allNodes ?? []).length === 0 ? 'empty' : 'existing_workflow';
+			workflowDocumentStore.value.allNodes.length === 0 ? 'empty' : 'existing_workflow';
 		telemetry.track('User opened assistant', {
 			source,
 			task,

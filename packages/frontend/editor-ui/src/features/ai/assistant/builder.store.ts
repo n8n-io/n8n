@@ -544,7 +544,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return;
 		}
 
-		const workflowName = workflowDocumentStore.value.name ?? '';
+		const workflowName = workflowDocumentStore.value.name;
 
 		const titleKey =
 			completionType === 'workflow-ready'
@@ -637,7 +637,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Update page title on completion. We show Done when the user is not on the page
 		// Browser notifications are only shown when the tab is hidden
 		if (document.hidden) {
-			documentTitle.setDocumentTitle(workflowDocumentStore.value.name ?? '', 'AI_DONE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value.name, 'AI_DONE');
 			if (!wasAborted && userMessageId) {
 				const completionType = hasWorkflowUpdateInCurrentBatch(userMessageId)
 					? 'workflow-ready'
@@ -645,7 +645,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				notifyOnCompletion(completionType);
 			}
 		} else {
-			documentTitle.setDocumentTitle(workflowDocumentStore.value.name ?? '', 'IDLE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value.name, 'IDLE');
 		}
 	}
 
@@ -722,7 +722,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Updates page title to show AI is building (skip for help questions)
 		if (!isHelpStreaming.value) {
-			documentTitle.setDocumentTitle(workflowDocumentStore.value.name ?? '', 'AI_BUILDING');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value.name, 'AI_BUILDING');
 		}
 	}
 
@@ -1006,7 +1006,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
-			nodesForSchema: Object.keys(workflowDocumentStore.value.nodesByName ?? {}),
+			nodesForSchema: Object.keys(workflowDocumentStore.value.nodesByName),
 			mode: modeForPayload,
 			isPlanModeEnabled: isPlanModeAvailable.value,
 			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,
@@ -1438,8 +1438,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function getWorkflowSnapshot() {
 		return JSON.stringify({
-			nodes: workflowDocumentStore.value.allNodes ?? [],
-			connections: workflowDocumentStore.value.connectionsBySourceNode ?? {},
+			nodes: workflowDocumentStore.value.allNodes,
+			connections: workflowDocumentStore.value.connectionsBySourceNode,
 		});
 	}
 
@@ -1520,7 +1520,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Only applies when the chat is fresh (no messages) so it doesn't interfere
 	// with an active conversation.
 	watch(
-		[() => workflowsStore.workflowId, () => (workflowDocumentStore.value.allNodes ?? []).length],
+		[() => workflowsStore.workflowId, () => workflowDocumentStore.value.allNodes.length],
 		([, nodesCount]) => {
 			if (chatMessages.value.length > 0) return;
 			if (!isPlanModeAvailable.value) return;
@@ -1658,7 +1658,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function clearDoneIndicatorTitle() {
 		if (documentTitle.getDocumentState() === 'AI_DONE') {
-			documentTitle.setDocumentTitle(workflowDocumentStore.value.name ?? '', 'IDLE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value.name, 'IDLE');
 		}
 	}
 

@@ -119,7 +119,7 @@ export function useCanvasMapping({
 		const icon = getNodeIconSource(
 			source,
 			node,
-			workflowDocumentStore.value.getExpressionHandler() ?? null,
+			workflowDocumentStore.value.getExpressionHandler(),
 		);
 
 		return {

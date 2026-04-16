@@ -199,8 +199,11 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 
 	const getHitlToolParameters = async (newNode: INode): Promise<IFormInput[]> => {
 		const result: IFormInput[] = [];
-		const connectedToolNodeNames =
-			workflowDocumentStore.value.getParentNodes(newNode.name, 'ALL_NON_MAIN', 1) ?? [];
+		const connectedToolNodeNames = workflowDocumentStore.value.getParentNodes(
+			newNode.name,
+			'ALL_NON_MAIN',
+			1,
+		);
 		const connectedTools = connectedToolNodeNames
 			.map((nodeName) => workflowDocumentStore.value.getNodeByName(nodeName) ?? null)
 			.filter((tool): tool is INode => !!tool);

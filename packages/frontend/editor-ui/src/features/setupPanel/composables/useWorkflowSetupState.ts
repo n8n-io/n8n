@@ -67,7 +67,7 @@ export const useWorkflowSetupState = (
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
-	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore.value.allNodes ?? []);
+	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore.value.allNodes);
 
 	/**
 	 * Synchronous: detects resource locator parameters from the current workflow
@@ -336,8 +336,8 @@ export const useWorkflowSetupState = (
 
 		return sortNodesByExecutionOrder(
 			nodesForSetup,
-			workflowDocumentStore.value.connectionsBySourceNode ?? {},
-			workflowDocumentStore.value.connectionsByDestinationNode ?? {},
+			workflowDocumentStore.value.connectionsBySourceNode,
+			workflowDocumentStore.value.connectionsByDestinationNode,
 			allNodeTypes,
 		);
 	});

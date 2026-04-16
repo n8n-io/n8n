@@ -155,8 +155,7 @@ export function useBuilderTodos() {
 		// Check if any parent node (via sub-node connections) is disabled.
 		// Sub-nodes output to their parent via non-main connection types (ai_languageModel, ai_tool, etc).
 		// Skip "main" connections — those are regular workflow links, not sub-node → parent links.
-		const outgoingConnections =
-			workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName) ?? {};
+		const outgoingConnections = workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName);
 		for (const connectionType of Object.keys(outgoingConnections)) {
 			if (connectionType === 'main') continue;
 			const connections = outgoingConnections[connectionType];
@@ -198,8 +197,7 @@ export function useBuilderTodos() {
 		// Check if any parent node (via sub-node connections) has pinned data.
 		// Sub-nodes output to their parent via non-main connection types (ai_languageModel, ai_tool, etc).
 		// Skip "main" connections — those are regular workflow links, not sub-node → parent links.
-		const outgoingConnections =
-			workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName) ?? {};
+		const outgoingConnections = workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName);
 		for (const connectionType of Object.keys(outgoingConnections)) {
 			if (connectionType === 'main') continue;
 			const connections = outgoingConnections[connectionType];
@@ -253,7 +251,7 @@ export function useBuilderTodos() {
 		const issues: WorkflowValidationIssue[] = [];
 		const seen = new Set<string>();
 
-		for (const node of workflowDocumentStore.value.allNodes ?? []) {
+		for (const node of workflowDocumentStore.value.allNodes) {
 			if (!node?.parameters) continue;
 
 			// Skip nodes with pinned data - their output is already defined
@@ -324,7 +322,7 @@ export function useBuilderTodos() {
 		if (wouldHaveBaseIssues) return true;
 
 		// Check placeholder issues that would show if not for pinned data
-		for (const node of workflowDocumentStore.value.allNodes ?? []) {
+		for (const node of workflowDocumentStore.value.allNodes) {
 			if (!node?.parameters) continue;
 			if (!nodeHasPinnedData(node.name)) continue;
 			if (nodeIsDisabled(node.name)) continue;

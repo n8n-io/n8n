@@ -189,7 +189,7 @@ const showExecuteMessage = computed(() => {
 
 	return (
 		!builderStore.streaming &&
-		(workflowDocumentStore.value.allNodes ?? []).length > 0 &&
+		workflowDocumentStore.value.allNodes.length > 0 &&
 		builderStore.hasMessages &&
 		!hasErrorAfterUpdate &&
 		!hasTaskAbortedAfterUpdate &&
@@ -208,7 +208,7 @@ const thinkingCompletionMessage = computed(() =>
 );
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
-	if (builderStore.hasMessages || (workflowDocumentStore.value.allNodes ?? []).length > 0) {
+	if (builderStore.hasMessages || workflowDocumentStore.value.allNodes.length > 0) {
 		return undefined;
 	}
 	return shuffle(WORKFLOW_SUGGESTIONS);
@@ -398,7 +398,7 @@ async function onUserMessage(content: string) {
 	accumulatedNodeIdsToTidyUp.value = [];
 
 	// If the workflow is empty, set the initial generation flag
-	const isInitialGeneration = (workflowDocumentStore.value.allNodes ?? []).length === 0;
+	const isInitialGeneration = workflowDocumentStore.value.allNodes.length === 0;
 
 	await builderStore.sendChatMessage({
 		text: content,
@@ -512,7 +512,7 @@ async function onWorkflowExecuted() {
 async function onExecuteWithMockData() {
 	builderStore.applyGeneratedPinData();
 
-	const triggerNode = (workflowDocumentStore.value.allNodes ?? []).find((node) =>
+	const triggerNode = workflowDocumentStore.value.allNodes.find((node) =>
 		nodeTypesStore.isTriggerNode(node.type),
 	);
 
@@ -609,7 +609,7 @@ watch(
 			return;
 		}
 
-		if (builderStore.initialGeneration && (workflowDocumentStore.value.allNodes ?? []).length > 0) {
+		if (builderStore.initialGeneration && workflowDocumentStore.value.allNodes.length > 0) {
 			builderStore.initialGeneration = false;
 		}
 

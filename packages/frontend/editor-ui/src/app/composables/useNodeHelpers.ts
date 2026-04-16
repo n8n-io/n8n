@@ -161,7 +161,7 @@ export function useNodeHelpers() {
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
-		const usedCredentials = workflowDocumentStore.usedCredentials ?? {};
+		const usedCredentials = workflowDocumentStore.usedCredentials;
 
 		return Object.values(credentials)
 			.map(({ id }) => id)
@@ -199,7 +199,7 @@ export function useNodeHelpers() {
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
-		const pinDataNodeNames = Object.keys(workflowDocumentStore.pinData ?? {});
+		const pinDataNodeNames = Object.keys(workflowDocumentStore.pinData);
 
 		let nodeIssues: INodeIssues | null = null;
 		ignoreIssues = ignoreIssues ?? [];
@@ -305,7 +305,7 @@ export function useNodeHelpers() {
 	}
 
 	function updateNodesInputIssues() {
-		const nodes = workflowDocumentStore.value.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes;
 
 		for (const node of nodes) {
 			updateNodeInputIssues(node);
@@ -313,7 +313,7 @@ export function useNodeHelpers() {
 	}
 
 	function updateNodesExecutionIssues() {
-		const nodes = workflowDocumentStore.value.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes;
 
 		for (const node of nodes) {
 			workflowDocumentStore.value.setNodeIssue({
@@ -325,7 +325,7 @@ export function useNodeHelpers() {
 	}
 
 	function updateNodesParameterIssues() {
-		const nodes = workflowDocumentStore.value.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes;
 
 		for (const node of nodes) {
 			updateNodeParameterIssues(node);
@@ -615,7 +615,7 @@ export function useNodeHelpers() {
 	}
 
 	function updateNodesCredentialsIssues() {
-		const nodes = workflowDocumentStore.value.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes;
 		let issues: INodeIssues | null;
 
 		for (const node of nodes) {

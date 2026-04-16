@@ -35,7 +35,7 @@ const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
-const workflowName = computed(() => workflowDocumentStore.value.name ?? '');
+const workflowName = computed(() => workflowDocumentStore.value.name);
 
 const {
 	height,

@@ -63,7 +63,7 @@ const workflowDocumentStore = computed(() =>
 const workflowListEntry = computed(() => workflowsListStore.workflowsById[data.id]);
 const workflowId = computed(() => data.id);
 const workflowName = computed(
-	() => workflowListEntry.value?.name ?? workflowDocumentStore.value.name ?? '',
+	() => workflowListEntry.value?.name ?? workflowDocumentStore.value.name,
 );
 const workflowHomeProject = computed(
 	() =>
@@ -72,10 +72,7 @@ const workflowHomeProject = computed(
 		workflowsStore.workflow.homeProject,
 );
 const workflowScopes = computed(
-	() =>
-		workflowListEntry.value?.scopes ??
-		workflowDocumentStore.value.scopes ??
-		workflowsStore.workflow.scopes,
+	() => workflowListEntry.value?.scopes ?? workflowDocumentStore.value.scopes,
 );
 const workflowSharedWithProjects = computed(
 	() => workflowListEntry.value?.sharedWithProjects ?? workflowsStore.workflow.sharedWithProjects,

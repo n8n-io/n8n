@@ -408,10 +408,12 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		const outputConnectionsByType =
-			workflowDocumentStore.value.outgoingConnectionsByNodeName(node.name) ?? {};
-		const incomingConnectionsByType =
-			workflowDocumentStore.value.incomingConnectionsByNodeName(node.name) ?? {};
+		const outputConnectionsByType = workflowDocumentStore.value.outgoingConnectionsByNodeName(
+			node.name,
+		);
+		const incomingConnectionsByType = workflowDocumentStore.value.incomingConnectionsByNodeName(
+			node.name,
+		);
 
 		for (const [type, incomingConnectionsByInputIndex] of Object.entries(
 			incomingConnectionsByType,
@@ -673,7 +675,7 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
-		const nodes = workflowDocumentStore.value.getNodesByIds(ids) ?? [];
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
 		nodeHelpers.disableNodes(nodes, { trackHistory, trackBulk: false });
 
 		if (trackHistory && trackBulk) {
@@ -697,7 +699,7 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
-		const nodes = workflowDocumentStore.value.getNodesByIds(ids) ?? [];
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
 
 		// Filter to only pinnable nodes
 		const pinnableNodesWithPinnedData = nodes
@@ -833,7 +835,7 @@ export function useCanvasOperations() {
 	}
 
 	function updatePositionForNodeWithMultipleInputs(node: INodeUi) {
-		const inputNodes = workflowDocumentStore.value.getParentNodesByDepth(node.name, 1) ?? [];
+		const inputNodes = workflowDocumentStore.value.getParentNodesByDepth(node.name, 1);
 
 		if (inputNodes.length > 1) {
 			inputNodes.slice(1).forEach((inputNode, index) => {
@@ -1238,16 +1240,12 @@ export function useCanvasOperations() {
 
 		let position: XYPosition | undefined = node.position;
 		if (position) {
-			return NodeViewUtils.getNewNodePosition(
-				workflowDocumentStore.value.allNodes ?? [],
-				position,
-				{
-					offset: pushOffsets,
-					size: nodeSize,
-					viewport: options.viewport,
-					normalize: false,
-				},
-			);
+			return NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, position, {
+				offset: pushOffsets,
+				size: nodeSize,
+				viewport: options.viewport,
+				normalize: false,
+			});
 		}
 
 		if (lastInteractedWithNode) {
@@ -1319,7 +1317,7 @@ export function useCanvasOperations() {
 						}
 
 						return NodeViewUtils.getNewNodePosition(
-							workflowDocumentStore.value.allNodes ?? [],
+							workflowDocumentStore.value.allNodes,
 							position,
 							{
 								offset: pushOffsets,
@@ -1495,7 +1493,7 @@ export function useCanvasOperations() {
 			}
 		}
 
-		return NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes ?? [], position, {
+		return NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, position, {
 			offset: pushOffsets,
 			size: nodeSize,
 			viewport: options.viewport,
@@ -1592,7 +1590,7 @@ export function useCanvasOperations() {
 		stickiesToMoveAndStretch: INodeUi[];
 		stickyAssociatedNodes: Map<string, INodeUi[]>;
 	} {
-		const allNodes = workflowDocumentStore.value.allNodes ?? [];
+		const allNodes = workflowDocumentStore.value.allNodes;
 		const insertX = insertPosition[0];
 		const insertY = insertPosition[1];
 		const yTolerance = DEFAULT_NODE_SIZE[1] * 2; // Nodes within ~2 node heights are considered "similar Y"
@@ -1673,8 +1671,10 @@ export function useCanvasOperations() {
 		// Step 2: Add all downstream connected nodes from initial candidates
 		const candidateNames = new Set(initialCandidates.map((node) => node.name));
 		for (const candidate of initialCandidates) {
-			const downstream =
-				workflowDocumentStore.value.getConnectedNodes('downstream', candidate.name) ?? [];
+			const downstream = workflowDocumentStore.value.getConnectedNodes(
+				'downstream',
+				candidate.name,
+			);
 			downstream
 				// Filter the downstream nodes to find candidates that need to be shifted right.
 				.filter((name) => {
@@ -1875,7 +1875,7 @@ export function useCanvasOperations() {
 		];
 
 		// Get all nodes except source and stickies
-		const nodesToCheck = (workflowDocumentStore.value.allNodes ?? []).filter(
+		const nodesToCheck = workflowDocumentStore.value.allNodes.filter(
 			(n) => n.name !== sourceNodeName && n.type !== STICKY_NODE_TYPE,
 		);
 
@@ -1988,7 +1988,7 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
-		const connections = cloneDeep(workflowDocumentStore.value.connectionsBySourceNode ?? {});
+		const connections = cloneDeep(workflowDocumentStore.value.connectionsBySourceNode);
 		for (const nodeName of Object.keys(connections)) {
 			const node = workflowDocumentStore.value.getNodeByName(nodeName);
 			if (!node) {
@@ -2098,8 +2098,8 @@ export function useCanvasOperations() {
 		}
 
 		const connections = mapLegacyConnectionsToCanvasConnections(
-			workflowDocumentStore.value.connectionsBySourceNode ?? {},
-			workflowDocumentStore.value.allNodes ?? [],
+			workflowDocumentStore.value.connectionsBySourceNode,
+			workflowDocumentStore.value.allNodes,
 		);
 
 		connections.forEach((connection) => {
@@ -2825,7 +2825,7 @@ export function useCanvasOperations() {
 			) {
 				nodeSaveData.credentials = filterAllowedCredentials(
 					nodeSaveData.credentials,
-					workflowDocumentStore.value.usedCredentials ?? {},
+					workflowDocumentStore.value.usedCredentials,
 				);
 			}
 
@@ -2861,8 +2861,9 @@ export function useCanvasOperations() {
 		const connections: Record<string, INodeConnections> = {};
 
 		for (const node of nodes) {
-			const outgoingConnections =
-				workflowDocumentStore.value.outgoingConnectionsByNodeName(node.name) ?? {};
+			const outgoingConnections = workflowDocumentStore.value.outgoingConnectionsByNodeName(
+				node.name,
+			);
 			if (!Object.keys(outgoingConnections).length) continue;
 
 			const filteredConnections = filterConnectionsByNodes(outgoingConnections, includeNodeNames);
@@ -2894,9 +2895,7 @@ export function useCanvasOperations() {
 	}
 
 	async function duplicateNodes(ids: string[], options: { viewport?: ViewportBoundaries } = {}) {
-		const workflowData = deepCopy(
-			getNodesToSave(workflowDocumentStore.value.getNodesByIds(ids) ?? []),
-		);
+		const workflowData = deepCopy(getNodesToSave(workflowDocumentStore.value.getNodesByIds(ids)));
 		const result = await importWorkflowData(workflowData, 'duplicate', {
 			viewport: options.viewport,
 			importTags: false,
@@ -2906,9 +2905,7 @@ export function useCanvasOperations() {
 	}
 
 	async function copyNodes(ids: string[]) {
-		const workflowData = deepCopy(
-			getNodesToSave(workflowDocumentStore.value.getNodesByIds(ids) ?? []),
-		);
+		const workflowData = deepCopy(getNodesToSave(workflowDocumentStore.value.getNodesByIds(ids)));
 
 		workflowData.meta = {
 			...workflowData.meta,
@@ -2976,7 +2973,7 @@ export function useCanvasOperations() {
 	}
 
 	function startChat(source?: 'node' | 'main') {
-		if (!(workflowDocumentStore.value.allNodes ?? []).some(isChatNode)) {
+		if (!workflowDocumentStore.value.allNodes.some(isChatNode)) {
 			return;
 		}
 

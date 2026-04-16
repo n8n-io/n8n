@@ -27,7 +27,7 @@ export function useBuilderSetupCards() {
 	// Detect current placeholders (reactive, recomputes when node params change)
 	const detectedPlaceholders = computed(() => {
 		const result = new Map<string, string[]>();
-		for (const node of workflowDocumentStore.value.allNodes ?? []) {
+		for (const node of workflowDocumentStore.value.allNodes) {
 			const placeholders = findPlaceholderDetails(node.parameters);
 			if (placeholders.length > 0) {
 				result.set(node.name, [...new Set(placeholders.map((p) => p.path[0]).filter(Boolean))]);

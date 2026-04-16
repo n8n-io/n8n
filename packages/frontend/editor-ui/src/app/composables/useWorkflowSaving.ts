@@ -86,7 +86,7 @@ export function useWorkflowSaving({
 		if (
 			!uiStore.stateIsDirty ||
 			workflowDocumentStore.isArchived ||
-			!getResourcePermissions(workflowDocumentStore.scopes ?? []).workflow.update
+			!getResourcePermissions(workflowDocumentStore.scopes).workflow.update
 		) {
 			next();
 			return;
