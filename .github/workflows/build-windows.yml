@@ -2,7 +2,6 @@ name: 'Build: Windows'
 
 on:
   workflow_dispatch:
-  workflow_dispatch:
     inputs:
       notify_on_failure:
         description: 'Send Slack notification on build failure'

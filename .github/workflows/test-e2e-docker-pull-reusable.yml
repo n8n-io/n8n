@@ -14,18 +14,6 @@ on:
         required: false
         default: 'n8nio/n8n:nightly'
         type: string
-  workflow_dispatch:
-    inputs:
-      shards:
-        description: 'Shards for parallel execution'
-        required: false
-        default: 1
-        type: number
-      image:
-        description: 'Image to use'
-        required: false
-        default: 'n8nio/n8n:nightly'
-        type: string
 
 jobs:
   build-and-test:

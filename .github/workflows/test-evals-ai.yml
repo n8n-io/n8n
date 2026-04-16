@@ -10,6 +10,7 @@ on:
       - 'packages/@n8n/ai-workflow-builder.ee/**/*.prompt.ts'
       - '.github/workflows/test-evals-ai.yml'
       - '.github/workflows/test-evals-ai-reusable.yml'
+on:
   workflow_dispatch:
     inputs:
       branch:

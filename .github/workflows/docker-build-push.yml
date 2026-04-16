@@ -10,10 +10,6 @@ env:
   NODE_VERSION: '24.13.1'
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
-
   workflow_call:
     inputs:
       n8n_version:

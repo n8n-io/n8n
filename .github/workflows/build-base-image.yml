@@ -12,6 +12,7 @@ on:
     paths:
       - 'docker/images/n8n-base/Dockerfile'
       - '.github/workflows/build-base-image.yml'
+on:
   workflow_dispatch:
     inputs:
       push:
