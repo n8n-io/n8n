@@ -51,6 +51,10 @@ export class ObjectStoreConfig {
 	@Env('N8N_EXTERNAL_STORAGE_S3_FORCE_PATH_STYLE')
 	forcePathStyle: boolean = true;
 
+	/** Timeout in milliseconds for the S3 connection check during startup. @default 10000 */
+	@Env('N8N_EXTERNAL_STORAGE_S3_CONNECTION_TIMEOUT')
+	connectionTimeoutMs: number = 10_000;
+
 	@Nested
 	bucket: ObjectStoreBucketConfig = {} as ObjectStoreBucketConfig;
 

@@ -55,6 +55,7 @@
     "@sentry/node": "catalog:sentry",
     "@sentry/node-native": "catalog:sentry",
     "@sentry/profiling-node": "catalog:sentry",
+    "@smithy/node-http-handler": "^4.0.4",
     "axios": "catalog:",
     "callsites": "catalog:",
     "chardet": "2.0.0",

@@ -16,6 +16,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { UnexpectedError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { PassThrough, Readable } from 'node:stream';
@@ -45,13 +46,24 @@ export class ObjectStoreService {
 		}
 
 		this.bucket = bucket.name;
+
+		const { host, protocol } = s3Config;
+		const endpoint = host ? `${protocol}://${host}` : 'AWS default';
+		this.logger.info(
+			`S3 binary storage configured: endpoint=${endpoint}, bucket=${this.bucket}, region=${bucket.region || 'none'}, forcePathStyle=${s3Config.forcePathStyle}`,
+		);
 		this.s3Client = new S3Client(this.getClientConfig());
 	}
 
 	/** This generates the config for the S3Client to make it work in all various auth configurations */
 	getClientConfig() {
 		const { host, bucket, protocol, credentials } = this.s3Config;
-		const clientConfig: S3ClientConfig = {};
+		const clientConfig: S3ClientConfig = {
+			requestHandler: new NodeHttpHandler({
+				connectionTimeout: this.s3Config.connectionTimeoutMs,
+				requestTimeout: this.s3Config.connectionTimeoutMs * 3,
+			}),
+		};
 		const endpoint = host ? `${protocol}://${host}` : undefined;
 		if (endpoint) {
 			clientConfig.endpoint = endpoint;
@@ -84,12 +96,23 @@ export class ObjectStoreService {
 	async checkConnection() {
 		if (this.isReady) return;
 
+		const { host, protocol } = this.s3Config;
+		const endpoint = host ? `${protocol}://${host}` : 'AWS default endpoint';
+
 		try {
-			this.logger.debug('Checking connection to S3 bucket', { bucket: this.bucket });
+			this.logger.debug('Checking connection to S3 bucket', {
+				bucket: this.bucket,
+				endpoint,
+			});
 			const command = new HeadBucketCommand({ Bucket: this.bucket });
-			await this.s3Client.send(command);
+			await this.s3Client.send(command, {
+				abortSignal: AbortSignal.timeout(this.s3Config.connectionTimeoutMs),
+			});
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			throw new UnexpectedError(
+				`Failed to connect to S3 at ${endpoint} (bucket: ${this.bucket}). Verify that N8N_EXTERNAL_STORAGE_S3_HOST includes the port, N8N_EXTERNAL_STORAGE_S3_PROTOCOL is correct, and the endpoint is reachable.`,
+				{ cause: e },
+			);
 		}
 	}
 
