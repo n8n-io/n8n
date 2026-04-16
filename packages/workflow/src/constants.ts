@@ -14,6 +14,9 @@ export const CODE_EXECUTION_MODES = ['runOnceForAllItems', 'runOnceForEachItem']
 // Arbitrary value to represent an empty credential value
 export const CREDENTIAL_EMPTY_VALUE = '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da';
 
+// Value used when redacting sensitive credential data for the client (never sent decrypted)
+export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
+
 export const FORM_TRIGGER_PATH_IDENTIFIER = 'n8n-form';
 
 export const UNKNOWN_ERROR_MESSAGE = 'There was an unknown issue while executing the node';
@@ -48,6 +51,7 @@ export const MYSQL_NODE_TYPE = 'n8n-nodes-base.mySql';
 export const MICROSOFT_AGENT365_TRIGGER_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.microsoftAgent365Trigger';
 export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
+export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
 
 export const STARTING_NODE_TYPES = [
@@ -63,6 +67,13 @@ export const SCRIPTING_NODE_TYPES = [
 	FUNCTION_ITEM_NODE_TYPE,
 	CODE_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
+];
+
+export const DATA_TABLE_NODE_TYPES = [
+	DATA_TABLE_NODE_TYPE,
+	DATA_TABLE_TOOL_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	EVALUATION_NODE_TYPE,
 ];
 
 export const ADD_FORM_NOTICE = 'addFormPage';
@@ -103,6 +114,31 @@ export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBu
 export const GUARDRAILS_NODE_TYPE = '@n8n/n8n-nodes-langchain.guardrails';
 export const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
 export const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClient';
+export const ANTHROPIC_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.anthropic';
+export const OLLAMA_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.ollama';
+export const GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.googleGemini';
+export const ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.alibabaCloud';
+export const MOONSHOT_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.moonshot';
+
+export const AI_VENDOR_NODE_TYPES = [
+	OPENAI_LANGCHAIN_NODE_TYPE,
+	ANTHROPIC_LANGCHAIN_NODE_TYPE,
+	OLLAMA_LANGCHAIN_NODE_TYPE,
+	GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE,
+	ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE,
+	MOONSHOT_LANGCHAIN_NODE_TYPE,
+];
+
+export const LANGCHAIN_LM_NODE_TYPE_PREFIX = '@n8n/n8n-nodes-langchain.lm';
+
+export const CHAT_HUB_VECTOR_STORE_PG_VECTOR_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector';
+export const CHAT_HUB_VECTOR_STORE_QDRANT_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStoreQdrant';
+export const CHAT_HUB_VECTOR_STORE_PINECONE_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePinecone';
+export const DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
 
 export const LANGCHAIN_CUSTOM_TOOLS = [
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,

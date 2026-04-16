@@ -21,6 +21,10 @@ const props = withDefaults(
 	},
 );
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 defineEmits<{
 	click: [];
 }>();
@@ -30,6 +34,9 @@ const { isGoogleOAuthType } = useCredentialOAuth();
 
 const buttonLabel = computed(() => {
 	if (props.label) return props.label;
+	if (!props.serviceName) {
+		return i18n.baseText('nodeCredentials.quickConnect.connect');
+	}
 	return i18n.baseText('nodeCredentials.quickConnect.connectTo', {
 		interpolate: { provider: props.serviceName },
 	});
@@ -37,16 +44,18 @@ const buttonLabel = computed(() => {
 </script>
 
 <template>
-	<N8nTooltip :disabled="!disabled || !disabledTooltip" placement="top">
+	<N8nTooltip :disabled="!disabled || !disabledTooltip" placement="right">
 		<template #content>{{ disabledTooltip }}</template>
-		<span>
+		<template #default>
 			<GoogleAuthButton
 				v-if="isGoogleOAuthType(credentialTypeName)"
+				v-bind="$attrs"
 				:disabled="disabled"
 				@click="$emit('click')"
 			/>
 			<N8nButton
 				v-else
+				v-bind="$attrs"
 				variant="subtle"
 				:size="size"
 				:class="$style.quickConnectButton"
@@ -56,7 +65,7 @@ const buttonLabel = computed(() => {
 				<CredentialIcon theme="light" :credential-type-name="credentialTypeName" :size="16" />
 				<span>{{ buttonLabel }}</span>
 			</N8nButton>
-		</span>
+		</template>
 	</N8nTooltip>
 </template>
 

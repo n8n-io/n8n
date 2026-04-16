@@ -10,6 +10,8 @@ import { setActivePinia } from 'pinia';
 import { beforeEach, describe, vi } from 'vitest';
 import { defineComponent, h, ref, toValue } from 'vue';
 import { useExpressionEditor } from './useExpressionEditor';
+import { Expression } from 'n8n-workflow';
+import * as completionUtils from '../plugins/codemirror/completions/utils';
 
 vi.mock('@/app/composables/useAutocompleteTelemetry', () => ({
 	useAutocompleteTelemetry: vi.fn(),
@@ -20,6 +22,14 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 		activeNode: { type: 'n8n-nodes-base.test' },
 	})),
 }));
+
+vi.mock(import('../plugins/codemirror/completions/utils'), async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...actual,
+		isCredentialsModalOpen: vi.fn(() => false),
+	};
+});
 
 describe('useExpressionEditor', () => {
 	const mockResolveExpression = () => {
@@ -353,6 +363,38 @@ describe('useExpressionEditor', () => {
 
 			await fireEvent(document, new MouseEvent('click'));
 			expect(expressionEditor.editor.value?.hasFocus).toBe(true);
+		});
+	});
+
+	describe('credential modal expression resolution', () => {
+		test('should use resolveWithoutWorkflow when credentials modal is open, even with active node', async () => {
+			const resolveWithoutWorkflowSpy = vi.spyOn(Expression, 'resolveWithoutWorkflow');
+			const resolveExpressionMock = mockResolveExpression();
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const secretsData = {
+				$secrets: { awsSecretsManager: { cred: '***' } },
+			};
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ $secrets.awsSecretsManager['cred'] }}",
+				extensions: [n8nLang()],
+				additionalData: secretsData,
+			});
+
+			await waitFor(() => {
+				const resolvable = toValue(segments.resolvable);
+				expect(resolvable).toHaveLength(1);
+				expect(resolvable[0].state).toBe('valid');
+			});
+
+			expect(resolveWithoutWorkflowSpy).toHaveBeenCalledWith(
+				"{{ $secrets.awsSecretsManager['cred'] }}",
+				secretsData,
+			);
+			expect(resolveExpressionMock).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -297,11 +297,11 @@ const onValueDrop = async (droppedExpression: string) => {
 	color: var(--icon--color);
 }
 .extraTopPadding {
-	top: calc(20px + var(--spacing--lg));
+	top: calc(20px + var(--spacing--sm));
 }
 
 .defaultTopPadding {
-	top: var(--spacing--lg);
+	top: var(--spacing--sm);
 }
 
 .status {

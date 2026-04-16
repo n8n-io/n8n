@@ -316,6 +316,18 @@ Service mappings:
 
 Fall back to HTTP Request only when the requested service has no native n8n node available.`;
 
+const WEB_FETCH_TOOL = `Use web_fetch when:
+- User pastes a URL to documentation, API reference, or external resource
+- You need external docs to understand which nodes are relevant for the workflow
+
+The tool will request user approval before fetching. After approval, it returns
+the page's readable text content. Use this content to inform your node discovery.
+
+Constraints (backend-enforced):
+- Only fetch URLs the user has explicitly provided.
+- Do NOT autonomously browse, search, or follow links from fetched content.
+- Maximum 3 fetches per conversation turn.`;
+
 const KEY_RULES = `Output format: nodesFound array with nodeName, version, reasoning, connectionChangingParameters per node.
 
 <reasoning_guidelines>
@@ -382,6 +394,7 @@ function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 			'- get_workflow_examples: Find real community workflows as reference for structuring integrations',
 		);
 	}
+	tools.push('- web_fetch: Fetch content from a URL the user provided (requires approval)');
 	tools.push('- submit_discovery_results: Submit final results');
 	return tools.join('\n');
 }
@@ -413,6 +426,7 @@ export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
 		.section('native_node_preference', NATIVE_NODE_PREFERENCE)
 		.section('explicit_service_mapping', EXPLICIT_SERVICE_MAPPING)
 		.section('connection_parameters', CONNECTION_PARAMETERS)
+		.section('web_fetch_tool', WEB_FETCH_TOOL)
 		.section('key_rules', KEY_RULES)
 		.build();
 }

@@ -408,6 +408,83 @@ describe('Form Node', () => {
 			);
 		});
 
+		it.each(['json', 'fields'])(
+			'should evaluate expressions only once in %s mode, preserving nested braces',
+			async (defineForm) => {
+				const formFields = [
+					{
+						fieldLabel: 'Custom HTML',
+						fieldType: 'html',
+						elementName: 'test',
+						html: '<h2>Hello {{ $json.world }} </h2>',
+					},
+				];
+
+				const mockResponseObject = {
+					render: jest.fn(),
+					setHeader: jest.fn(),
+				};
+				mockWebhookFunctions.getResponseObject.mockReturnValue(
+					mockResponseObject as unknown as Response,
+				);
+				mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
+				mockWebhookFunctions.getParentNodes.mockReturnValue([
+					{
+						type: 'n8n-nodes-base.formTrigger',
+						name: 'Form Trigger',
+						typeVersion: 2.1,
+						disabled: false,
+					},
+				]);
+				mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+					console.log('expression', expression);
+					if (expression.includes('formMode')) {
+						return 'test';
+					}
+					if (expression === '{{ $json.world }}') {
+						return "{{ 'World' }}";
+					}
+					if (expression === "{{ 'World' }}") {
+						fail('Should not be called');
+					}
+					return expression;
+				});
+				mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
+				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'operation') return 'page';
+					if (paramName === 'defineForm') return defineForm;
+					if (paramName === 'jsonOutput') return `=${JSON.stringify(formFields)}`;
+					if (paramName === 'formFields.values') return formFields;
+					if (paramName === 'options') {
+						return {
+							formTitle: 'Form Title',
+							formDescription: 'Form Description',
+							buttonLabel: 'Form Button',
+						};
+					}
+					return undefined;
+				});
+
+				mockWebhookFunctions.getChildNodes.mockReturnValue([]);
+
+				await form.webhook(mockWebhookFunctions);
+
+				expect(mockWebhookFunctions.evaluateExpression).not.toHaveBeenCalledWith("{{ 'World' }}");
+				expect(mockResponseObject.render).toHaveBeenCalledWith(
+					'form-trigger',
+					expect.objectContaining({
+						formFields: expect.arrayContaining([
+							expect.objectContaining({
+								html: "<h2>Hello {{ 'World' }} </h2>",
+							}),
+						]),
+					}),
+				);
+			},
+		);
+	});
+
+	describe('webhook method - completion and redirect', () => {
 		it('should handle completion operation and redirect', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
 			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName) => {

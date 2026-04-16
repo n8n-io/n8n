@@ -2,6 +2,10 @@ import { defineStore } from 'pinia';
 import { MCP_STORE } from './mcp.constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { WorkflowListItem } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -76,13 +80,14 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 		// Update local  version of the workflow
 		if (id === workflowsStore.workflowId) {
-			workflowsStore.setWorkflowVersionData({
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setVersionData({
 				versionId,
-				name: workflowsStore.versionData?.name ?? null,
-				description: workflowsStore.versionData?.description ?? null,
+				name: workflowDocumentStore.versionData?.name ?? null,
+				description: workflowDocumentStore.versionData?.description ?? null,
 			});
 			if (settings) {
-				workflowsStore.private.setWorkflowSettings(settings);
+				workflowDocumentStore.mergeSettings(settings);
 			}
 		}
 		if (workflowsListStore.workflowsById[id]) {

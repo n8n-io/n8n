@@ -124,7 +124,7 @@ const toggleNodeExclusiveAndScrollTop = (id: string) => {
 };
 
 const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
-	const rawPinData = workflowDocumentStore?.getNodePinData(connectedNode.name);
+	const rawPinData = workflowDocumentStore?.value?.getNodePinData(connectedNode.name);
 	const pinData = rawPinData ? executionDataToJson(rawPinData) : undefined;
 	const hasPinnedData = pinData ? pinData.length > 0 : false;
 	const isNodeExecuted = hasPinnedData || hasNodeExecuted(connectedNode.name);
@@ -321,7 +321,7 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 	const search = props.search;
 
 	for (const node of props.nodes) {
-		const fullNode = workflowsStore.getNodeByName(node.name);
+		const fullNode = workflowDocumentStore?.value?.getNodeByName(node.name) ?? null;
 		if (!fullNode) continue;
 
 		const nodeType = nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion);

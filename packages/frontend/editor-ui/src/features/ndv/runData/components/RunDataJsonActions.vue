@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import jp from 'jsonpath';
+import { JSONPath } from 'jsonpath-plus';
 import type { INodeUi } from '@/Interface';
 import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n8n-workflow';
 import { clearJsonKey, convertPath } from '@/app/utils/typesUtils';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
@@ -42,8 +42,8 @@ const props = withDefaults(
 const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 const isInPopOutWindow = computed(() => popOutWindow?.value !== undefined);
 
+const workflowId = useInjectWorkflowId();
 const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
 
 const clipboard = useClipboard();
 
@@ -91,7 +91,7 @@ function getJsonValue(): string {
 		const jsonPath = normalisedJsonPath.value.startsWith('$')
 			? normalisedJsonPath.value
 			: `$${normalisedJsonPath.value}`;
-		selectedValue = jp.query(props.jsonData, jsonPath)[0];
+		selectedValue = JSONPath({ path: jsonPath, json: props.jsonData })[0];
 	}
 
 	let value = '';
@@ -184,7 +184,7 @@ function handleCopyClick(commandData: { command: string }) {
 		run_index: props.runIndex,
 		view: 'json',
 		copy_type: copyType,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		pane: props.paneType,
 		in_execution_log: isReadOnlyRoute.value,
 	});

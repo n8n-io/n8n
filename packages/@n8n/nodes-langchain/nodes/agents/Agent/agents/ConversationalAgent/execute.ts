@@ -8,7 +8,7 @@ import { isChatInstance } from '@n8n/ai-utilities';
 import { getPromptInputByType, getConnectedTools } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
-import { getTracingConfig } from '@utils/tracing';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
@@ -38,7 +38,13 @@ export async function conversationalAgentExecute(
 		humanMessage?: string;
 		maxIterations?: number;
 		returnIntermediateSteps?: boolean;
+		tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
 	};
+	const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
+	if (Object.keys(additionalMetadata).length > 0) {
+		this.logger.debug('Tracing metadata', { additionalMetadata });
+	}
+	const tracingConfig = getTracingConfig(this, { additionalMetadata });
 
 	const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
 		// Passing "chat-conversational-react-description" as the agent type
@@ -93,7 +99,7 @@ export async function conversationalAgentExecute(
 			}
 
 			const response = await agentExecutor
-				.withConfig(getTracingConfig(this))
+				.withConfig(tracingConfig)
 				.invoke({ input, outputParser });
 
 			if (outputParser) {

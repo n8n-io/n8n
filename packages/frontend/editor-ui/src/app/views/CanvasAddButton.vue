@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { XYPosition } from '@/Interface';
-import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
@@ -14,7 +13,6 @@ const i18n = useI18n();
 
 const props = defineProps<Props>();
 
-const nodeCreatorStore = useNodeCreatorStore();
 const containerCssVars = computed(() => ({
 	'--trigger-placeholder--margin-left': `${props.position[0]}px`,
 	'--trigger-placeholder--margin-top': `${props.position[1]}px`,
@@ -28,12 +26,7 @@ const containerCssVars = computed(() => ({
 		:style="containerCssVars"
 		data-test-id="canvas-add-button"
 	>
-		<N8nTooltip
-			placement="top"
-			:visible="showTooltip"
-			:disabled="nodeCreatorStore.showScrim"
-			:show-after="700"
-		>
+		<N8nTooltip placement="top" :visible="showTooltip" :show-after="700">
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click="$emit('click')">
 				<N8nIcon icon="plus" size="large" />
 			</button>

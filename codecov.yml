@@ -8,7 +8,8 @@ bundle_analysis:
 
 comment:
   require_bundle_changes: bundle_increase
-  bundle_change_threshold: 100Kb
+  bundle_change_threshold: 50Kb
+  require_changes: 'coverage_drop OR uncovered_patch'
 
 coverage:
   status:
@@ -52,7 +53,9 @@ component_management:
         - packages/@n8n/backend-common/**
         - packages/@n8n/backend-test-utils/**
         - packages/@n8n/errors/**
+        - packages/@n8n/expression-runtime/**
         - packages/@n8n/db/**
+        - packages/@n8n/cli/**
         - packages/@n8n/di/**
         - packages/@n8n/imap/**
         - packages/@n8n/permissions/**
@@ -77,6 +80,13 @@ component_management:
         - type: project
           target: auto
           threshold: 0% # Enforce: Coverage must not decrease
+    - component_id: utils_packages
+      name: Utils
+      paths:
+        - packages/@n8n/eslint-config/**
+        - packages/@n8n/eslint-plugin-community-nodes/**
+        - packages/@n8n/node-cli/**
+        - packages/@n8n/utils/**
 
 ignore:
   - (?s:.*/[^\/]*\.spec\.ts.*)\Z
@@ -84,3 +94,4 @@ ignore:
   - (?s:.*/[^\/]*e2e[^\/]*\.ts.*)\Z
   - (?s:.*/test_[^\/]*\.py.*)\Z
   - (?s:.*/scripts/.*)\Z
+  - (?s:.*/__tests__/.*)\Z

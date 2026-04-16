@@ -22,6 +22,8 @@ import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental
 import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 
 import { N8nButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+const i18n = useI18n();
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
 const editorState = ref<EditorState>();
@@ -223,6 +225,7 @@ defineExpose({ focus, select });
 				v-if="!isDragging"
 				icon="external-link"
 				size="xsmall"
+				:aria-label="i18n.baseText('expressionEdit.editExpression')"
 				:class="$style['expression-editor-modal-opener']"
 				data-test-id="expander"
 				@click="emit('modal-opener-click')"

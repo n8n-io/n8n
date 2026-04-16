@@ -1,0 +1,39 @@
+name: 'Test: Benchmarks'
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: GitHub ref to test.
+        required: false
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or ref to benchmark (defaults to the workflow's branch).
+        required: false
+        type: string
+        default: ''
+
+env:
+  NODE_OPTIONS: --max-old-space-size=6144
+
+jobs:
+  bench:
+    name: Benchmarks
+    if: github.repository == 'n8n-io/n8n'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Run benchmarks
+        uses: CodSpeedHQ/action@281164b0f014a4e7badd2c02cecad9b595b70537 # v4.11.1
+        with:
+          mode: simulation
+          run: CODSPEED=true pnpm --filter=@n8n/performance bench

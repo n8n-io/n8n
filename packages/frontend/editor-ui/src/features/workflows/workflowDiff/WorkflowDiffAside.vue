@@ -37,9 +37,7 @@ const emit = defineEmits<{
 		outset
 		@resize="onResize"
 	>
-		<div
-			style="display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 12px 10px"
-		>
+		<div :class="$style.asideHeader">
 			<NodeIcon class="ml-xs" :node-type :size="16" />
 			<N8nHeading size="small" color="text-dark" bold :class="$style.nodeTitle">
 				{{ node.name }}
@@ -63,6 +61,14 @@ const emit = defineEmits<{
 	height: 100%;
 	border-left: 1px solid var(--color--foreground);
 	border-top: 1px solid var(--color--foreground);
+}
+
+.asideHeader {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--2xs);
 }
 
 .nodeTitle {

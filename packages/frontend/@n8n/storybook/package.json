@@ -17,6 +17,7 @@
     "@n8n/utils": "workspace:*",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
   },
   "devDependencies": {

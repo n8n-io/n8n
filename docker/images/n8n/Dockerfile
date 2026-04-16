@@ -1,5 +1,13 @@
-ARG NODE_VERSION=24.13.1
+ARG NODE_VERSION=24.14.1
 ARG N8N_VERSION=snapshot
+
+# Rebuild native addons for the container platform. The base image has no
+# package manager or build tools, so we compile in a throwaway builder stage.
+FROM node:${NODE_VERSION}-alpine AS builder
+COPY ./compiled /usr/local/lib/node_modules/n8n
+RUN apk add --no-cache python3 make g++ && \
+    cd /usr/local/lib/node_modules/n8n && \
+    npm rebuild sqlite3 isolated-vm
 
 FROM n8nio/base:${NODE_VERSION}
 
@@ -11,12 +19,10 @@ ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
-COPY ./compiled /usr/local/lib/node_modules/n8n
+COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
-RUN cd /usr/local/lib/node_modules/n8n && \
-    npm rebuild sqlite3 && \
-    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node && \
     rm -rf /root/.npm /tmp/*

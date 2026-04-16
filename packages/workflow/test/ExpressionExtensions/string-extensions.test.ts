@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { DateTime } from 'luxon';
 
-import { evaluate } from './helpers';
+import { evaluate, asDateTime } from './helpers';
 import { ExpressionExtensionError } from '../../src/errors';
 
 describe('Data Transformation Functions', () => {
@@ -276,13 +276,17 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.toDateTime should work on a variety of formats', () => {
-			expect(evaluate('={{ "Wed, 21 Oct 2015 07:28:00 GMT".toDateTime() }}')).toBeInstanceOf(
+			expect(
+				asDateTime(evaluate('={{ "Wed, 21 Oct 2015 07:28:00 GMT".toDateTime() }}')),
+			).toBeInstanceOf(DateTime);
+			expect(asDateTime(evaluate('={{ "2008-11-11".toDateTime() }}'))).toBeInstanceOf(DateTime);
+			expect(asDateTime(evaluate('={{ "1-Feb-2024".toDateTime() }}'))).toBeInstanceOf(DateTime);
+			expect(asDateTime(evaluate('={{ "1713976144063".toDateTime("ms") }}'))).toBeInstanceOf(
 				DateTime,
 			);
-			expect(evaluate('={{ "2008-11-11".toDateTime() }}')).toBeInstanceOf(DateTime);
-			expect(evaluate('={{ "1-Feb-2024".toDateTime() }}')).toBeInstanceOf(DateTime);
-			expect(evaluate('={{ "1713976144063".toDateTime("ms") }}')).toBeInstanceOf(DateTime);
-			expect(evaluate('={{ "31-01-2024".toDateTime("dd-MM-yyyy") }}')).toBeInstanceOf(DateTime);
+			expect(asDateTime(evaluate('={{ "31-01-2024".toDateTime("dd-MM-yyyy") }}'))).toBeInstanceOf(
+				DateTime,
+			);
 
 			vi.useFakeTimers({ now: new Date() });
 			expect(() => evaluate('={{ "hi".toDateTime() }}')).toThrow(

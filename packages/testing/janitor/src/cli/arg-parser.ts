@@ -12,7 +12,9 @@ export type Command =
 	| 'impact'
 	| 'method-impact'
 	| 'baseline'
-	| 'rules';
+	| 'rules'
+	| 'discover'
+	| 'orchestrate';
 
 export interface CliOptions {
 	command: Command;
@@ -44,6 +46,10 @@ export interface CliOptions {
 	// Inventory-specific options
 	summary: boolean;
 	category?: string;
+	// Orchestration-specific options
+	shards?: number;
+	shardIndex?: number;
+	impact: boolean;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -53,6 +59,8 @@ const SUBCOMMANDS: Record<string, Command> = {
 	'method-impact': 'method-impact',
 	baseline: 'baseline',
 	rules: 'rules',
+	discover: 'discover',
+	orchestrate: 'orchestrate',
 };
 
 interface FlagHandler {
@@ -111,6 +119,9 @@ const FLAG_HANDLERS: Record<string, FlagHandler> = {
 	'-s': (opts) => {
 		opts.summary = true;
 	},
+	'--impact': (opts) => {
+		opts.impact = true;
+	},
 };
 
 const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) => void> = {
@@ -150,6 +161,12 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	'--category=': (opts, value) => {
 		opts.category = value;
 	},
+	'--shards=': (opts, value) => {
+		opts.shards = Number.parseInt(value, 10);
+	},
+	'--shard-index=': (opts, value) => {
+		opts.shardIndex = Number.parseInt(value, 10);
+	},
 };
 
 function createDefaultOptions(): CliOptions {
@@ -177,6 +194,9 @@ function createDefaultOptions(): CliOptions {
 		ignoreBaseline: false,
 		summary: false,
 		category: undefined,
+		shards: undefined,
+		shardIndex: undefined,
+		impact: false,
 	};
 }
 

@@ -46,6 +46,8 @@ describe('permissions', () => {
 			breakingChanges: {},
 			apiKey: {},
 			credentialResolver: {},
+			instanceAi: {},
+			roleMappingRule: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -169,6 +171,8 @@ describe('permissions', () => {
 				manage: true,
 			},
 			credentialResolver: {},
+			instanceAi: {},
+			roleMappingRule: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

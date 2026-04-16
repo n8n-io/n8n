@@ -1,39 +1,21 @@
 import { AcceptInvitationRequestDto } from '../accept-invitation-request.dto';
 
 describe('AcceptInvitationRequestDto', () => {
-	const validUuid = '123e4567-e89b-12d3-a456-426614174000';
+	const validToken =
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnZpdGVySWQiOiIxMjNlNDU2Ny1lODliLTEyZDMtYTQ1Ni00MjY2MTQxNzQwMDAiLCJpbnZpdGVlSWQiOiIxMjNlNDU2Ny1lODliLTEyZDMtYTQ1Ni00MjY2MTQxNzQwMDAifQ.test';
+
+	const validRequest = {
+		token: validToken,
+		firstName: 'John',
+		lastName: 'Doe',
+		password: 'SecurePassword123',
+	};
 
 	describe('Valid requests', () => {
 		test.each([
 			{
-				name: 'legacy format with inviterId',
-				request: {
-					inviterId: validUuid,
-					inviteeId: validUuid,
-					firstName: 'John',
-					lastName: 'Doe',
-					password: 'SecurePassword123',
-				},
-			},
-			{
-				name: 'JWT token format',
-				request: {
-					token:
-						'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnZpdGVySWQiOiIxMjNlNDU2Ny1lODliLTEyZDMtYTQ1Ni00MjY2MTQxNzQwMDAiLCJpbnZpdGVlSWQiOiIxMjNlNDU2Ny1lODliLTEyZDMtYTQ1Ni00MjY2MTQxNzQwMDAifQ.test',
-					inviteeId: validUuid,
-					firstName: 'John',
-					lastName: 'Doe',
-					password: 'SecurePassword123',
-				},
-			},
-			{
-				name: 'missing inviterId (could be token-based)',
-				request: {
-					inviteeId: validUuid,
-					firstName: 'John',
-					lastName: 'Doe',
-					password: 'SecurePassword123',
-				},
+				name: 'token-based format with all required fields',
+				request: validRequest,
 			},
 		])('should validate $name', ({ request }) => {
 			const result = AcceptInvitationRequestDto.safeParse(request);
@@ -44,56 +26,42 @@ describe('AcceptInvitationRequestDto', () => {
 	describe('Invalid requests', () => {
 		test.each([
 			{
-				name: 'invalid inviterId',
+				name: 'missing token',
 				request: {
-					inviterId: 'not-a-valid-uuid',
-					inviteeId: validUuid,
 					firstName: 'John',
 					lastName: 'Doe',
 					password: 'SecurePassword123',
 				},
-				expectedErrorPath: ['inviterId'],
+				expectedErrorPath: ['token'],
 			},
 			{
-				name: 'invalid inviteeId',
+				name: 'empty token',
 				request: {
-					inviterId: validUuid,
-					inviteeId: 'not-a-valid-uuid',
-					firstName: 'John',
-					lastName: 'Doe',
-					password: 'SecurePassword123',
+					...validRequest,
+					token: '',
 				},
-				expectedErrorPath: ['inviteeId'],
+				expectedErrorPath: ['token'],
 			},
 			{
 				name: 'missing first name',
 				request: {
-					inviterId: validUuid,
-					inviteeId: validUuid,
+					...validRequest,
 					firstName: '',
-					lastName: 'Doe',
-					password: 'SecurePassword123',
 				},
 				expectedErrorPath: ['firstName'],
 			},
 			{
 				name: 'missing last name',
 				request: {
-					inviterId: validUuid,
-					inviteeId: validUuid,
-					firstName: 'John',
+					...validRequest,
 					lastName: '',
-					password: 'SecurePassword123',
 				},
 				expectedErrorPath: ['lastName'],
 			},
 			{
 				name: 'password too short',
 				request: {
-					inviterId: validUuid,
-					inviteeId: validUuid,
-					firstName: 'John',
-					lastName: 'Doe',
+					...validRequest,
 					password: 'short',
 				},
 				expectedErrorPath: ['password'],
@@ -101,10 +69,7 @@ describe('AcceptInvitationRequestDto', () => {
 			{
 				name: 'password without number',
 				request: {
-					inviterId: validUuid,
-					inviteeId: validUuid,
-					firstName: 'John',
-					lastName: 'Doe',
+					...validRequest,
 					password: 'NoNumberPassword',
 				},
 				expectedErrorPath: ['password'],

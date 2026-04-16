@@ -1,12 +1,16 @@
 import * as schemaPreviewApi from './schemaPreview.api';
 import { createResultError, createResultOk, type Result } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { reactive } from 'vue';
+import { computed, reactive } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { JSONSchema7 } from 'json-schema';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { generateJsonSchema } from '@/app/utils/json-schema';
 
 export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
@@ -19,6 +23,11 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 	const rootStore = useRootStore();
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	function getSchemaPreviewKey({
 		nodeType,
@@ -53,7 +62,7 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 			return;
 		}
 
-		const node = workflowsStore.getNodeByName(pushEvent.nodeName);
+		const node = workflowDocumentStore.value?.getNodeByName(pushEvent.nodeName) ?? null;
 
 		if (!node) return;
 

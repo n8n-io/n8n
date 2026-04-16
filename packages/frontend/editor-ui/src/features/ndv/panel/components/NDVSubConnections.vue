@@ -2,6 +2,7 @@
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed, ref, watch } from 'vue';
 import { NodeHelpers } from 'n8n-workflow';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -25,6 +26,7 @@ interface Props {
 
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
 const i18n = useI18n();
@@ -59,7 +61,9 @@ const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.rootNode.type, props.rootNode.typeVersion),
 );
 
-const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
+const nodeData = computed(
+	() => workflowDocumentStore?.value?.getNodeByName(props.rootNode.name) ?? null,
+);
 const ndvStore = useNDVStore();
 
 const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
@@ -85,8 +89,9 @@ const connectedNodes = computed<Record<string, NodeConfig[]>>(() => {
 
 			// Get input-index-specific connections using the per-type index
 			const nodeConnections =
-				workflowObject.value.connectionsByDestinationNode[props.rootNode.name]?.[connection.type] ??
-				[];
+				workflowDocumentStore?.value?.connectionsByDestinationNode[props.rootNode.name]?.[
+					connection.type
+				] ?? [];
 			const inputConnections = nodeConnections[typeIndex] ?? [];
 			const nodeNames = inputConnections.map((conn) => conn.node);
 			const nodes = getINodesFromNames(nodeNames);
@@ -159,7 +164,7 @@ function expandConnectionGroup(connectionContext: ConnectionContext, isExpanded:
 function getINodesFromNames(names: string[]): NodeConfig[] {
 	return names
 		.map((name) => {
-			const node = workflowsStore.getNodeByName(name);
+			const node = workflowDocumentStore?.value?.getNodeByName(name) ?? null;
 			if (node) {
 				const matchedNodeType = nodeTypesStore.getNodeType(node.type);
 				if (matchedNodeType) {

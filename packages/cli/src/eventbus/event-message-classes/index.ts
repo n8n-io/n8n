@@ -104,6 +104,18 @@ export const eventNamesAudit = [
 	'n8n.audit.personal-sharing-restricted.disabled',
 	'n8n.audit.2fa-enforcement.enabled',
 	'n8n.audit.2fa-enforcement.disabled',
+	'n8n.audit.execution.data.revealed',
+	'n8n.audit.execution.data.reveal_failure',
+	'n8n.audit.token-exchange.succeeded',
+	'n8n.audit.token-exchange.failed',
+	'n8n.audit.token-exchange.embed-login',
+	'n8n.audit.token-exchange.identity-linked',
+	'n8n.audit.token-exchange.user-provisioned',
+	'n8n.audit.token-exchange.role-updated',
+	'n8n.audit.role-mapping.roles-resolved',
+	'n8n.audit.role-mapping.rule.created',
+	'n8n.audit.role-mapping.rule.updated',
+	'n8n.audit.role-mapping.rule.deleted',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

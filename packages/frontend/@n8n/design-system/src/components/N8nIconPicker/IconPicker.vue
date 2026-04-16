@@ -188,6 +188,7 @@ async function loadEmojiMetadataMap() {
 					icon-only
 					:disabled="isReadOnly"
 					variant="subtle"
+					:aria-label="props.buttonTooltip ?? t('iconPicker.button.defaultToolTip')"
 					data-test-id="icon-picker-button"
 					@click="togglePopup"
 				/>
@@ -197,6 +198,7 @@ async function loadEmojiMetadataMap() {
 					:size="buttonSize"
 					icon-only
 					variant="subtle"
+					:aria-label="props.buttonTooltip ?? t('iconPicker.button.defaultToolTip')"
 					data-test-id="icon-picker-button"
 					:disabled="isReadOnly"
 					@click="togglePopup"
@@ -220,7 +222,7 @@ async function loadEmojiMetadataMap() {
 						<N8nIcon icon="search" :size="16" />
 					</template>
 				</N8nInput>
-				<N8nButton icon="refresh-cw" size="small" type="secondary" @click="selectRandom">{{
+				<N8nButton icon="refresh-cw" size="small" variant="subtle" @click="selectRandom">{{
 					t('iconPicker.random')
 				}}</N8nButton>
 			</div>

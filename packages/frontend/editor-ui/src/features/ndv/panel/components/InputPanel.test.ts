@@ -12,8 +12,20 @@ import {
 	type IRunData,
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
+import { computed, shallowRef } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
+});
 
 vi.mock('vue-router', () => {
 	return {
@@ -59,6 +71,10 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	const workflowState = useWorkflowState();
 
 	workflowStore.setWorkflow(workflow);
+
+	vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
+		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowStore.workflowId))),
+	);
 
 	if (pinData) {
 		workflowStore.workflow.pinData = Object.fromEntries(nodes.map((n) => [n.name, pinData]));
@@ -107,6 +123,9 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 			isMappingOnboarded: false,
 		},
 		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
+			},
 			stubs: {
 				InputPanelPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
 			},

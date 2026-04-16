@@ -122,6 +122,50 @@ describe('formNodeUtils', () => {
 		});
 	});
 
+	it('should sanitize formDescription', async () => {
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+
+		const testCases = [
+			{
+				description: '<script>alert("hello world")</script>',
+				expected: '',
+			},
+			{
+				description: '<i>hello</i>',
+				expected: '<i>hello</i>',
+			},
+			{
+				description: 'Plain text description',
+				expected: 'Plain text description',
+			},
+			{
+				description: '<style>body { display: none; }</style><b>visible</b>',
+				expected: '<b>visible</b>',
+			},
+		];
+
+		const formFields: FormFieldsParameter = [];
+		const triggerMock = mock<NodeTypeAndVersion>({ name: 'triggerName' } as any);
+
+		for (const { description, expected } of testCases) {
+			webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+				formTitle: 'Test Title',
+				formDescription: description,
+				buttonLabel: 'Submit',
+			});
+
+			const mockRender = jest.fn();
+			const res = mock<Response>({ render: mockRender } as any);
+
+			await renderFormNode(webhookFunctions, res, triggerMock, formFields, 'test');
+
+			expect(mockRender).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({ formDescription: expected }),
+			);
+		}
+	});
+
 	describe('getFormTriggerNode', () => {
 		const mockCurrentNode = { name: 'currentNode' };
 

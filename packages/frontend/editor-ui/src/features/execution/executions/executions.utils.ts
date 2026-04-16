@@ -13,10 +13,10 @@ import type {
 	ExecutionError,
 	INodeTypeBaseDescription,
 	INodeExecutionData,
-	Workflow,
 	IWorkflowDataProxyAdditionalKeys,
 } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import type {
 	ExecutionFilterType,
 	ExecutionPreviewNodeSchema,
@@ -53,6 +53,7 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		annotationTags: [],
 		metadata: [],
 		vote: 'all',
+		workflowVersionId: 'all',
 	};
 }
 
@@ -74,6 +75,10 @@ export const executionFilterToQueryFilter = (
 
 	if (filter.vote !== 'all') {
 		queryFilter.vote = filter.vote;
+	}
+
+	if (filter.workflowVersionId !== 'all') {
+		queryFilter.workflowVersionId = filter.workflowVersionId;
 	}
 
 	if (!isEmpty(filter.metadata)) {
@@ -180,31 +185,41 @@ export async function displayForm({
 	}
 }
 
-export const waitingNodeTooltip = (node: INodeUi | null | undefined, workflow?: Workflow) => {
+export const waitingNodeTooltip = (
+	node: INodeUi | null | undefined,
+	workflow?: WorkflowObjectAccessors,
+	metadata?: { resumeUrl?: string; resumeFormUrl?: string },
+) => {
 	if (!node) return '';
 	try {
-		const waitingNodeTooltip = useNodeTypesStore().getNodeType(node.type)?.waitingNodeTooltip;
-		if (waitingNodeTooltip) {
+		const waitingNodeTooltipFromNodeType = useNodeTypesStore().getNodeType(
+			node.type,
+		)?.waitingNodeTooltip;
+		if (waitingNodeTooltipFromNodeType) {
 			const activeExecutionId = useWorkflowsStore().activeExecutionId as string;
+			// Use signed URLs from metadata if available
+			// otherwise fall back to constructing URLs without token
 			const additionalData: IWorkflowDataProxyAdditionalKeys = {
 				$execution: {
 					id: activeExecutionId,
 					mode: 'test',
-					resumeUrl: `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
-					resumeFormUrl: `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
+					resumeUrl:
+						metadata?.resumeUrl ?? `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
+					resumeFormUrl:
+						metadata?.resumeFormUrl ?? `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
 				},
 			};
 			if (workflow) {
 				const tooltip = workflow.expression.getSimpleParameterValue(
 					node,
-					waitingNodeTooltip,
+					waitingNodeTooltipFromNodeType,
 					'internal',
 					additionalData,
 				);
 
 				return String(tooltip);
-			} else if (waitingNodeTooltip) {
-				return waitingNodeTooltip;
+			} else if (waitingNodeTooltipFromNodeType) {
+				return waitingNodeTooltipFromNodeType;
 			}
 		}
 	} catch (error) {

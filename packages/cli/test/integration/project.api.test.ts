@@ -38,8 +38,8 @@ import { createMember, createOwner, createUser } from './shared/db/users';
 import * as utils from './shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
-import { CacheService } from '@/services/cache/cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -63,7 +63,7 @@ beforeEach(async () => {
 });
 
 describe('GET /projects/', () => {
-	test('member should get all personal projects and team projects they are apart of', async () => {
+	test('member should only get their own personal project and team projects they are a part of', async () => {
 		const [testUser1, testUser2, testUser3] = await Promise.all([
 			createUser(),
 			createUser(),
@@ -85,19 +85,20 @@ describe('GET /projects/', () => {
 		const resp = await memberAgent.get('/projects/');
 		expect(resp.status).toBe(200);
 		const respProjects = resp.body.data as Project[];
-		expect(respProjects.length).toBe(4);
+		expect(respProjects.length).toBe(2);
 
-		expect(
-			[personalProject1, personalProject2, personalProject3].every((v, i) => {
-				const p = respProjects.find((p) => p.id === v.id);
-				if (!p) {
-					return false;
-				}
-				const u = [testUser1, testUser2, testUser3][i];
-				return p.name === u.createPersonalProjectName();
-			}),
-		).toBe(true);
+		// testUser1 should see their own personal project
+		const ownPersonalProject = respProjects.find((p) => p.id === personalProject1.id);
+		expect(ownPersonalProject).not.toBeUndefined();
+		expect(ownPersonalProject!.name).toBe(testUser1.createPersonalProjectName());
+
+		// testUser1 should NOT see other users' personal projects
+		expect(respProjects.find((p) => p.id === personalProject2.id)).toBeUndefined();
+		expect(respProjects.find((p) => p.id === personalProject3.id)).toBeUndefined();
+
+		// testUser1 should see team projects they belong to
 		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();
+		// testUser1 should NOT see team projects they don't belong to
 		expect(respProjects.find((p) => p.id === teamProject2.id)).toBeUndefined();
 	});
 
@@ -218,6 +219,57 @@ describe('Project members endpoints', () => {
 		);
 	});
 
+	describe('PATCH /projects/:projectId/users/:userId when project roles are managed by provisioning', () => {
+		let provisioningService: ProvisioningService;
+		let savedConfig: Record<string, unknown>;
+
+		beforeEach(async () => {
+			provisioningService = Container.get(ProvisioningService);
+			await provisioningService.getConfig();
+			// @ts-expect-error - provisioningConfig is private
+			savedConfig = { ...provisioningService.provisioningConfig };
+		});
+
+		afterEach(() => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig = { ...savedConfig };
+			delete process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+		});
+
+		test('should return 403 when SSO provider controls project roles', async () => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig.scopesProvisionProjectRoles = true;
+
+			const owner = await createOwner();
+			const member = await createUser();
+			const project = await createTeamProject('Team Project', owner);
+			await linkUserToProject(member, project, 'project:viewer');
+
+			const ownerAgent = testServer.authAgentFor(owner);
+			await ownerAgent
+				.patch(`/projects/${project.id}/users/${member.id}`)
+				.send({ role: 'project:editor' })
+				.expect(403);
+		});
+
+		test('should return 403 when expression-based role mapping is active', async () => {
+			process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = 'true';
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+
+			const owner = await createOwner();
+			const member = await createUser();
+			const project = await createTeamProject('Team Project', owner);
+			await linkUserToProject(member, project, 'project:viewer');
+
+			const ownerAgent = testServer.authAgentFor(owner);
+			await ownerAgent
+				.patch(`/projects/${project.id}/users/${member.id}`)
+				.send({ role: 'project:editor' })
+				.expect(403);
+		});
+	});
+
 	test('DELETE /projects/:projectId/users/:userId removes a member', async () => {
 		const owner = await createOwner();
 		const member = await createUser();
@@ -312,7 +364,7 @@ describe('GET /projects/my-projects', () => {
 			const p = respProjects.find((p) => p.id === project.id)!;
 
 			expect(p.role).toBe(expected.role);
-			expect(expected.scopes.every((s) => p.scopes?.includes(s as Scope))).toBe(true);
+			expect(expected.scopes.every((s) => p.scopes?.includes(s))).toBe(true);
 		}
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject2.id }));
@@ -439,7 +491,7 @@ describe('GET /projects/my-projects', () => {
 			const p = respProjects.find((p) => p.id === project.id)!;
 
 			expect(p.role).toBe(expected.role);
-			expect(expected.scopes.every((s) => p.scopes?.includes(s as Scope))).toBe(true);
+			expect(expected.scopes.every((s) => p.scopes?.includes(s))).toBe(true);
 		}
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject1.id }));
@@ -631,7 +683,7 @@ describe('PATCH /projects/:projectId', () => {
 				createTeamProject(undefined, testUser1),
 				createTeamProject(undefined, testUser2),
 			]);
-			const [credential1, credential2] = await Promise.all([
+			const [_credential1, credential2] = await Promise.all([
 				saveCredential(randomCredentialPayload(), {
 					role: 'credential:owner',
 					project: teamProject1,
@@ -652,22 +704,14 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser1);
 
-			const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
 			// Add two members to teamProject1
 			const addResp = await memberAgent.post(`/projects/${teamProject1.id}/users`).send({
 				relations: [
 					{ userId: testUser3.id, role: 'project:editor' },
 					{ userId: ownerUser.id, role: 'project:viewer' },
-				] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
+				],
 			});
 			expect(addResp.status).toBe(201);
-
-			// External secrets cache must be cleared for credentials owned by teamProject1
-			expect(deleteSpy).toBeCalledWith([`credential-can-use-secrets:${credential1.id}`]);
-			deleteSpy.mockClear();
 
 			const [tp1Relations, tp2Relations] = await Promise.all([
 				getProjectRelations({ projectId: teamProject1.id }),
@@ -720,10 +764,7 @@ describe('PATCH /projects/:projectId', () => {
 							// add a user to the project
 							{ userId: userToBeInvited.id, role: 'project:editor' },
 							// implicitly remove the project editor
-						] as Array<{
-							userId: string;
-							role: ProjectRole;
-						}>,
+						],
 					});
 				//.expect(403);
 
@@ -766,10 +807,7 @@ describe('PATCH /projects/:projectId', () => {
 					.authAgentFor(projectAdmin)
 					.post(`/projects/${teamProject.id}/users`)
 					.send({
-						relations: [{ userId: userToBeInvited.id, role }] as Array<{
-							userId: string;
-							role: ProjectRole;
-						}>,
+						relations: [{ userId: userToBeInvited.id, role }],
 					})
 					.expect(400);
 
@@ -857,10 +895,7 @@ describe('PATCH /projects/:projectId', () => {
 			const memberAgent = testServer.authAgentFor(testUser1);
 
 			const resp = await memberAgent.post(`/projects/${personalProject.id}/users`).send({
-				relations: [{ userId: testUser2.id, role: 'project:admin' }] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
+				relations: [{ userId: testUser2.id, role: 'project:admin' }],
 			});
 			expect(resp.status).toBe(403);
 

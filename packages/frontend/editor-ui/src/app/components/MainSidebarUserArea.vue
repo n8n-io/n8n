@@ -91,7 +91,13 @@ const onUserActionToggle = (action: string) => {
 						data-test-id="user-menu"
 						:class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }"
 					>
-						<N8nIconButton variant="ghost" iconOnly icon="ellipsis" square />
+						<N8nIconButton
+							variant="ghost"
+							iconOnly
+							icon="ellipsis"
+							square
+							:aria-label="i18n.baseText('mainSidebar.userMenu')"
+						/>
 					</div>
 				</div>
 			</template>

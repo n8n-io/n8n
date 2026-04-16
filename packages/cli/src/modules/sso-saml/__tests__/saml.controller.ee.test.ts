@@ -197,7 +197,7 @@ describe('SAML Login Flow', () => {
 
 			await controller.initSsoGet(req, res);
 
-			expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/');
+			expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/', undefined, undefined);
 		});
 
 		test('validates redirect URL that is passed in via referrer header', async () => {
@@ -216,7 +216,7 @@ describe('SAML Login Flow', () => {
 
 			await controller.initSsoGet(req, res);
 
-			expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/');
+			expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/', undefined, undefined);
 		});
 
 		const hostWithoutRedirect = 'http://localhost:5678/';

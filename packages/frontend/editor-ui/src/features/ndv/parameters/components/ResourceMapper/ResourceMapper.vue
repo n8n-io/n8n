@@ -340,6 +340,7 @@ const createRequestParams = async (methodName: string) => {
 		methodName,
 		credentials: props.node.credentials,
 		projectId: projectsStore.currentProjectId,
+		workflowId: workflowsStore.workflow.id,
 	};
 
 	return requestParams;
@@ -350,7 +351,6 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 		props.parameter.typeOptions?.resourceMapper ?? {};
 
 	let fetchedFields: ResourceMapperFields | null = null;
-
 	if (typeof resourceMapperMethod === 'string') {
 		const requestParams = (await createRequestParams(
 			resourceMapperMethod,

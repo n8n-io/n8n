@@ -45,7 +45,6 @@ function createMockAssistantHandler(
 	},
 ): AssistantHandler {
 	return {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		execute: jest
 			.fn()
 			.mockImplementation(
@@ -153,7 +152,7 @@ describe('TriageAgent', () => {
 		expect(runningMsg.toolCallId).toBe(completedMsg.toolCallId);
 
 		// LLM called twice: once for ask_assistant, once for the follow-up (empty text = exit)
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		expect(boundModel.invoke).toHaveBeenCalledTimes(2);
@@ -327,7 +326,7 @@ describe('TriageAgent', () => {
 			expect.objectContaining({ toolName: 'unknown_tool' }),
 		);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		expect(boundModel.invoke).toHaveBeenCalledTimes(2);
@@ -356,7 +355,7 @@ describe('TriageAgent', () => {
 			}),
 		);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
 		const invokeArgs = (boundModel.invoke as jest.Mock).mock.calls[0][0];
@@ -389,7 +388,7 @@ describe('TriageAgent', () => {
 			}),
 		);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
 		const invokeArgs = (boundModel.invoke as jest.Mock).mock.calls[0][0];
@@ -467,7 +466,7 @@ describe('TriageAgent', () => {
 		);
 		expect(redundantTextChunk).toBeUndefined();
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		expect(boundModel.invoke).toHaveBeenCalledTimes(2);
@@ -590,7 +589,7 @@ describe('TriageAgent', () => {
 		expect(result.buildExecuted).toBeFalsy();
 		expect(handler.execute).toHaveBeenCalledTimes(1);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		expect(boundModel.invoke).toHaveBeenCalledTimes(2);
@@ -828,7 +827,7 @@ describe('TriageAgent', () => {
 			}),
 		);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
 		const invokeArgs = (boundModel.invoke as jest.Mock).mock.calls[0][0];
@@ -880,7 +879,7 @@ describe('TriageAgent', () => {
 			}),
 		);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
 		const invokeArgs = (boundModel.invoke as jest.Mock).mock.calls[0][0];
@@ -908,7 +907,7 @@ describe('TriageAgent', () => {
 		});
 		await collectGenerator(agent.run({ payload: createMockPayload(), userId: 'user-1' }));
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const boundModel = (llm.bindTools as jest.Mock).mock.results[0].value;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
 		const invokeArgs = (boundModel.invoke as jest.Mock).mock.calls[0][0];

@@ -17,6 +17,10 @@
 	overflow: hidden;
 	backface-visibility: hidden;
 
+	&.wide {
+		width: calc(var.$msgbox-width * 1.25);
+	}
+
 	@include mixins.e(wrapper) {
 		position: fixed;
 		top: 0;
@@ -77,6 +81,12 @@
 		font-size: var.$messagebox-content-font-size;
 	}
 
+	&.with-confirmation-checkbox {
+		@include mixins.e(content) {
+			padding-bottom: 0;
+		}
+	}
+
 	@include mixins.e(container) {
 		position: relative;
 	}
@@ -132,6 +142,10 @@
 			margin: 0;
 			line-height: var(--line-height--lg);
 		}
+
+		& .el-message-box__message__structured p {
+			margin-bottom: var(--spacing--sm);
+		}
 	}
 
 	@include mixins.e(errormsg) {
@@ -177,6 +191,7 @@
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
+			cursor: pointer;
 		}
 
 		& .btn--confirm:hover,
@@ -236,6 +251,29 @@
 
 	@include mixins.e(btns-reverse) {
 		flex-direction: row-reverse;
+	}
+
+	// Destructive variant: matches Modal component look for delete confirmations
+	&.el-message-box--destructive {
+		width: 540px;
+
+		.el-message-box__title span {
+			font-size: var(--font-size--xl);
+			font-weight: var(--font-weight--bold);
+			line-height: var(--line-height--sm);
+		}
+
+		.el-message-box__btns .btn--confirm {
+			--button--color--background: light-dark(var(--color--red-500), var(--color--red-600));
+			--button--color--background-hover: light-dark(var(--color--red-600), var(--color--red-500));
+			--button--color--background-active: light-dark(var(--color--red-600), var(--color--red-400));
+			--button--border-color: light-dark(var(--color--red-500), var(--color--red-600));
+			--button--border-color--hover: light-dark(var(--color--red-600), var(--color--red-500));
+			--button--border-color--active: light-dark(var(--color--red-600), var(--color--red-400));
+			--button--shadow: none;
+			--button--shadow--hover: none;
+			--button--shadow--active: none;
+		}
 	}
 
 	// centerAlign 布局

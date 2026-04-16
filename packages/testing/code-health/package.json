@@ -1,0 +1,37 @@
+{
+	"name": "@n8n/code-health",
+	"private": true,
+	"version": "0.1.0",
+	"description": "Static analysis and code quality enforcement for the n8n monorepo",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"bin": {
+		"code-health": "dist/cli.js"
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsc --watch",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"format": "biome format --write .",
+		"format:check": "biome ci .",
+		"lint": "eslint . --quiet",
+		"lint:fix": "eslint . --fix",
+		"typecheck": "tsc --noEmit"
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"@n8n/rules-engine": "workspace:*",
+		"@n8n/vitest-config": "workspace:*",
+		"@vitest/coverage-v8": "catalog:",
+		"fast-glob": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"yaml": "catalog:"
+	}
+}

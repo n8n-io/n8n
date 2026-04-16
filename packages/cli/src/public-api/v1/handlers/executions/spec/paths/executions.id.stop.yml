@@ -4,7 +4,7 @@ post:
   tags:
     - Execution
   summary: Stop an execution
-  description: Stop a running execution from your instance.
+  description: Stop an execution by id.
   parameters:
     - $ref: '../schemas/parameters/executionId.yml'
   responses:

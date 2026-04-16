@@ -41,6 +41,8 @@ export const postgres: Service<PostgresResult> = {
 				'synchronous_commit=off',
 				'-c',
 				'full_page_writes=off',
+				'-c',
+				'max_connections=200',
 			])
 			.withReuse()
 			.start();

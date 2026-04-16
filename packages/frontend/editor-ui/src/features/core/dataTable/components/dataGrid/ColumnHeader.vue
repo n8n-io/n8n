@@ -237,6 +237,7 @@ onUnmounted(() => {
 			v-show="isFilterButtonVisible"
 			data-test-id="data-table-column-header-filter-button"
 			icon="funnel"
+			:aria-label="i18n.baseText('dataTable.filterColumn')"
 			:class="{ 'filter-highlighted': hasActiveFilter }"
 			@click="onShowFilter"
 		/>

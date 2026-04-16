@@ -7,9 +7,12 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper, N8nJsonLoader } from '@n8n/ai-utilities';
-
-import { getConnectionHintNoticeField, metadataFilterField } from '@utils/sharedFields';
+import {
+	logWrapper,
+	N8nJsonLoader,
+	getConnectionHintNoticeField,
+	metadataFilterField,
+} from '@n8n/ai-utilities';
 
 export class DocumentJsonInputLoader implements INodeType {
 	description: INodeTypeDescription = {

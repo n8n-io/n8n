@@ -16,7 +16,14 @@ import type {
 	StreamWriter,
 } from './types';
 import { STREAM_SEPARATOR } from '../constants';
-import type { AgentMessageChunk, StreamChunk, ToolProgressChunk } from '../types/streaming';
+import type {
+	AgentMessageChunk,
+	AgentSuggestionChunk,
+	CodeDiffChunk,
+	StreamChunk,
+	SummaryChunk,
+	ToolProgressChunk,
+} from '../types/streaming';
 
 const SUMMARY_MAX_LENGTH = 200;
 
@@ -56,7 +63,7 @@ export class AssistantHandler {
 
 		try {
 			const response = await this.callSdk(payload, userId);
-			return await this.consumeSdkStream(response, writer, abortSignal, toolCallId);
+			return await this.consumeSdkStream(response, writer, abortSignal, toolCallId, context);
 		} finally {
 			await writer({
 				type: 'tool',
@@ -155,6 +162,7 @@ export class AssistantHandler {
 		writer: StreamWriter,
 		signal?: AbortSignal,
 		toolCallId?: string,
+		context?: AssistantContext,
 	): Promise<AssistantResult> {
 		const body = response.body;
 		if (!body) {
@@ -201,7 +209,7 @@ export class AssistantHandler {
 						continue;
 					}
 
-					await this.processChunkMessages(chunk, state, writer, toolCallId);
+					await this.processChunkMessages(chunk, state, writer, toolCallId, context);
 				}
 			}
 		} finally {
@@ -212,7 +220,7 @@ export class AssistantHandler {
 		if (remaining) {
 			try {
 				const chunk = JSON.parse(remaining) as SdkStreamChunk;
-				await this.processChunkMessages(chunk, state, writer, toolCallId);
+				await this.processChunkMessages(chunk, state, writer, toolCallId, context);
 			} catch {
 				// If the remaining buffer is not JSON, it's likely a plain-text error from the SDK.
 				// Throw so callers can handle it as a proper error instead of an empty response.
@@ -248,17 +256,22 @@ export class AssistantHandler {
 		},
 		writer: StreamWriter,
 		toolCallId?: string,
+		context?: AssistantContext,
 	): Promise<void> {
 		if (chunk.sessionId && !state.sdkSessionId) {
 			state.sdkSessionId = chunk.sessionId;
 		}
 
 		for (const msg of chunk.messages) {
-			const mapped = this.mapSdkMessage(msg, toolCallId);
+			const mapped = this.mapSdkMessage(msg, toolCallId, state.sdkSessionId, context);
 			if (!mapped) continue;
 
 			if (mapped.type === 'message' && 'text' in mapped && mapped.text) {
 				state.collectedTexts.push(mapped.text);
+			} else if (mapped.type === 'summary' && 'content' in mapped) {
+				state.collectedTexts.push(`${mapped.title}\n${mapped.content}`);
+			} else if (mapped.type === 'agent-suggestion' && 'text' in mapped) {
+				state.collectedTexts.push(`${mapped.title}\n${mapped.text}`);
 			}
 
 			if (this.isSdkCodeDiff(msg)) {
@@ -276,43 +289,58 @@ export class AssistantHandler {
 		}
 	}
 
-	/**
-	 * Map an SDK message to a builder StreamChunk type.
-	 * Phase 0 graceful degradation: only emits types the builder frontend already renders.
-	 */
-	private mapSdkMessage(msg: SdkMessageResponse, toolCallId?: string): StreamChunk | null {
+	private mapSdkMessage(
+		msg: SdkMessageResponse,
+		toolCallId?: string,
+		sdkSessionId?: string,
+		context?: AssistantContext,
+	): StreamChunk | null {
 		if (this.isSdkText(msg)) {
 			if (!msg.text) return null;
-			return {
+			const chunk: AgentMessageChunk = {
 				role: 'assistant',
 				type: 'message',
 				text: msg.text,
-			} satisfies AgentMessageChunk;
+			};
+			if (msg.codeSnippet) {
+				chunk.codeSnippet = msg.codeSnippet;
+			}
+			return chunk;
 		}
 
 		if (this.isSdkCodeDiff(msg)) {
-			const text = `${msg.description}\n\n\`\`\`diff\n${msg.codeDiff}\n\`\`\``;
 			return {
 				role: 'assistant',
-				type: 'message',
-				text,
-			} satisfies AgentMessageChunk;
+				type: 'code-diff',
+				suggestionId: msg.suggestionId ?? '',
+				sdkSessionId: sdkSessionId ?? '',
+				codeDiff: msg.codeDiff,
+				description: msg.description,
+				nodeName: context?.errorContext?.nodeName,
+				quickReplies: msg.quickReplies,
+			} satisfies CodeDiffChunk;
 		}
 
 		if (this.isSdkSummary(msg)) {
 			return {
 				role: 'assistant',
-				type: 'message',
-				text: `**${msg.title}**\n\n${msg.content}`,
-			} satisfies AgentMessageChunk;
+				type: 'summary',
+				title: msg.title,
+				content: msg.content,
+			} satisfies SummaryChunk;
 		}
 
 		if (this.isSdkAgentSuggestion(msg)) {
-			return {
+			const chunk: AgentSuggestionChunk = {
 				role: 'assistant',
-				type: 'message',
-				text: `**${msg.title}**\n\n${msg.text}`,
-			} satisfies AgentMessageChunk;
+				type: 'agent-suggestion',
+				title: msg.title,
+				text: msg.text,
+			};
+			if (msg.suggestionId) {
+				chunk.suggestionId = msg.suggestionId;
+			}
+			return chunk;
 		}
 
 		if (this.isSdkIntermediateStep(msg)) {

@@ -78,7 +78,17 @@ export function getChangedFiles(options: GitChangedFilesOptions): string[] {
 
 	try {
 		if (targetBranch) {
-			const output = execFileSync('git', ['diff', '--name-only', `${targetBranch}...HEAD`], {
+			// Fetch the base branch at depth=1 so FETCH_HEAD is available for the diff.
+			// Using FETCH_HEAD with two-dot diff avoids the need for a merge base, which
+			// fails with shallow clones (fatal: no merge base). This matches the approach
+			// used by the ci-filter action across the rest of the repo.
+			const remoteName = targetBranch.startsWith('origin/') ? targetBranch.slice(7) : targetBranch;
+			execFileSync('git', ['fetch', '--depth=1', 'origin', remoteName], {
+				cwd: gitRoot,
+				encoding: 'utf-8',
+				stdio: 'pipe',
+			});
+			const output = execFileSync('git', ['diff', '--name-only', 'FETCH_HEAD', 'HEAD'], {
 				cwd: gitRoot,
 				encoding: 'utf-8',
 			});

@@ -1,10 +1,11 @@
 import {
-	passwordSchema,
+	createPasswordSchema,
 	PasswordUpdateRequestDto,
 	UserSelfSettingsUpdateRequestDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { User, PublicUser } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Body, createUserKeyedRateLimiter, Patch, Post, RestController } from '@n8n/decorators';
@@ -36,6 +37,7 @@ export class MeController {
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -53,6 +55,12 @@ export class MeController {
 			firstName: currentFirstName,
 			lastName: currentLastName,
 		} = req.user;
+
+		if (this.isUserManagedByEnv(req.user)) {
+			throw new BadRequestError(
+				'This account is managed via environment variables and cannot be updated here',
+			);
+		}
 
 		const { currentPassword, ...payloadWithoutPassword } = payload;
 		const { email, firstName, lastName } = payload;
@@ -162,6 +170,15 @@ export class MeController {
 		}
 	}
 
+	private isUserManagedByEnv(user: User): boolean {
+		const { instanceSettingsLoader } = this.globalConfig;
+		return (
+			instanceSettingsLoader.ownerManagedByEnv &&
+			!!user.email &&
+			user.email.toLowerCase() === instanceSettingsLoader.ownerEmail.toLowerCase()
+		);
+	}
+
 	/**
 	 * Update the logged-in user's password.
 	 */
@@ -175,6 +192,12 @@ export class MeController {
 	) {
 		const { user } = req;
 		const { currentPassword, newPassword, mfaCode } = payload;
+
+		if (this.isUserManagedByEnv(user)) {
+			throw new BadRequestError(
+				'This account is managed via environment variables and cannot be updated here',
+			);
+		}
 
 		// If SAML is enabled, we don't allow the user to change their password
 		if (isSamlLicensedAndEnabled()) {
@@ -195,7 +218,9 @@ export class MeController {
 			throw new BadRequestError('Provided current password is incorrect.');
 		}
 
-		const passwordValidation = passwordSchema.safeParse(newPassword);
+		const passwordValidation = createPasswordSchema(
+			this.globalConfig.userManagement.password.minLength,
+		).safeParse(newPassword);
 		if (!passwordValidation.success) {
 			throw new BadRequestError(
 				passwordValidation.error.errors.map(({ message }) => message).join(' '),

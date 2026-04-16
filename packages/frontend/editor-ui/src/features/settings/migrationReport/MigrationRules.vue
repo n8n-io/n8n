@@ -17,6 +17,7 @@ import orderBy from 'lodash/orderBy';
 import SeverityTag from './components/SeverityTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
 import { useI18n } from '@n8n/i18n';
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -25,9 +26,13 @@ const i18n = useI18n();
 const currentTab = ref('workflow-issues');
 const shouldShowRefreshButton = ref(false);
 
+const versionQuery = MIGRATION_REPORT_TARGET_VERSION
+	? { version: MIGRATION_REPORT_TARGET_VERSION }
+	: undefined;
+
 const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = false) => {
 	if (refresh) {
-		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext);
+		const response = await breakingChangesApi.refreshReport(rootStore.restApiContext, versionQuery);
 		// set tab based on available issues
 		if (
 			response.report.workflowResults.length === 0 &&
@@ -39,7 +44,7 @@ const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = fa
 
 		return response;
 	}
-	const response = await breakingChangesApi.getReport(rootStore.restApiContext);
+	const response = await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
 	shouldShowRefreshButton.value = response.shouldCache;
 
 	return response;

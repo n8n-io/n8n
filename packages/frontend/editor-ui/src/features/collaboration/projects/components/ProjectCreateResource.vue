@@ -4,6 +4,7 @@ import type { IUser } from 'n8n-workflow';
 import { useTemplateRef } from 'vue';
 
 import { N8nActionToggle, N8nIconButton } from '@n8n/design-system';
+
 defineProps<{
 	actions: Array<UserAction<IUser>>;
 	disabled?: boolean;
@@ -47,8 +48,6 @@ defineExpose({
 	display: inline-flex;
 
 	:global(> .button) {
-		border-right: 1px solid var(--button--color--text, var(--button--color--text--primary));
-
 		&:not(:first-child) {
 			border-radius: 0;
 		}

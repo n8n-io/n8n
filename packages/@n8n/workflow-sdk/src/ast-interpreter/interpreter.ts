@@ -35,10 +35,13 @@ export type SDKFunctions = Record<string, (...args: any[]) => unknown>;
  * Walks the AST and evaluates SDK patterns.
  */
 class SDKInterpreter {
+	private static readonly MAX_EVAL_DEPTH = 500;
+
 	private sdkFunctions: Map<string, (...args: unknown[]) => unknown>;
 	private variables: Map<string, unknown>;
 	private renamedVariables: Map<string, string> = new Map();
 	private sourceCode: string;
+	private evalDepth = 0;
 
 	constructor(sdkFunctions: SDKFunctions, sourceCode: string) {
 		this.sdkFunctions = new Map(Object.entries(sdkFunctions));
@@ -136,6 +139,23 @@ class SDKInterpreter {
 	private evaluate(node: ESTree.Expression | ESTree.SpreadElement | null): unknown {
 		if (node === null) return undefined;
 
+		if (this.evalDepth >= SDKInterpreter.MAX_EVAL_DEPTH) {
+			throw new InterpreterError(
+				'Expression nesting too deep (possible cycle in method chain)',
+				node.loc ?? undefined,
+				this.sourceCode,
+			);
+		}
+
+		this.evalDepth++;
+		try {
+			return this.evaluateNode(node);
+		} finally {
+			this.evalDepth--;
+		}
+	}
+
+	private evaluateNode(node: ESTree.Expression | ESTree.SpreadElement): unknown {
 		validateNodeType(node, this.sourceCode);
 
 		switch (node.type) {

@@ -58,6 +58,9 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 			collector(input.ifNode);
 			collectFromTarget(input.trueBranch, collector);
 			collectFromTarget(input.falseBranch, collector);
+			if (input.errorBranch) {
+				collectFromTarget(input.errorBranch, collector);
+			}
 		} else {
 			const composite = input;
 			collector(composite.ifNode);
@@ -86,6 +89,14 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 			// Connect IF to false branch (output 1)
 			processBranchForBuilder(builder.falseBranch, 1, ifMainConns, targetNodeIds);
 
+			// Connect IF to error branch under 'error' connection type at index 0
+			let ifErrorConns: Map<number, ConnectionTarget[]> | undefined;
+			const errorTargetNodeIds = new Map<number, string[]>();
+			if (builder.errorBranch) {
+				ifErrorConns = new Map<number, ConnectionTarget[]>();
+				processBranchForBuilder(builder.errorBranch, 0, ifErrorConns, errorTargetNodeIds);
+			}
+
 			// Add the IF node with connections to branches
 			// If the node already exists (e.g., added by merge handler via addBranchToGraph),
 			// merge the connections rather than overwriting
@@ -108,10 +119,31 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 					existingMainConns.set(outputIndex, existingTargets);
 				}
 				existingIfNode.connections.set('main', existingMainConns);
+				// Merge error connections
+				if (ifErrorConns && ifErrorConns.size > 0) {
+					const existingErrorConns =
+						existingIfNode.connections.get('error') ?? new Map<number, ConnectionTarget[]>();
+					for (const [outputIndex, targets] of ifErrorConns) {
+						const existingTargets: ConnectionTarget[] = existingErrorConns.get(outputIndex) ?? [];
+						for (const target of targets) {
+							const alreadyExists = existingTargets.some(
+								(t) => t.node === target.node && t.index === target.index,
+							);
+							if (!alreadyExists) {
+								existingTargets.push(target);
+							}
+						}
+						existingErrorConns.set(outputIndex, existingTargets);
+					}
+					existingIfNode.connections.set('error', existingErrorConns);
+				}
 			} else {
 				// Node doesn't exist, add it fresh
 				const ifConns = new Map<string, Map<number, ConnectionTarget[]>>();
 				ifConns.set('main', ifMainConns);
+				if (ifErrorConns && ifErrorConns.size > 0) {
+					ifConns.set('error', ifErrorConns);
+				}
 				ctx.nodes.set(builder.ifNode.name, {
 					instance: builder.ifNode,
 					connections: ifConns,
@@ -122,10 +154,16 @@ export const ifElseHandler: CompositeHandlerPlugin<IfElseInput> = {
 			// so that merge handlers can detect existing IF→Merge connections and skip duplicates
 			addBranchTargetNodes(builder.trueBranch, ctx);
 			addBranchTargetNodes(builder.falseBranch, ctx);
+			if (builder.errorBranch) {
+				addBranchTargetNodes(builder.errorBranch, ctx);
+			}
 
 			// Fix stale connection targets after dedup renames
 			if (ctx.nameMapping) {
 				fixupBranchConnectionTargets(ifMainConns, targetNodeIds, ctx.nameMapping);
+				if (ifErrorConns) {
+					fixupBranchConnectionTargets(ifErrorConns, errorTargetNodeIds, ctx.nameMapping);
+				}
 			}
 
 			return builder.ifNode.name;
