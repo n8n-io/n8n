@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
@@ -7,8 +7,13 @@ import { InstanceSettings } from 'n8n-core';
 @Service()
 export class JwtService {
 	private jwtSecret: string = '';
+	private readonly jwtSecretFromEnv: boolean;
 
-	constructor({ encryptionKey }: InstanceSettings, globalConfig: GlobalConfig) {
+	constructor(
+		{ encryptionKey }: InstanceSettings,
+		private readonly globalConfig: GlobalConfig,
+	) {
+		this.jwtSecretFromEnv = Boolean(globalConfig.userManagement.jwtSecret);
 		this.jwtSecret = globalConfig.userManagement.jwtSecret;
 		if (!this.jwtSecret) {
 			// If we don't have a JWT secret set, generate one based on encryption key.
@@ -19,7 +24,7 @@ export class JwtService {
 				baseKey += encryptionKey[i];
 			}
 			this.jwtSecret = createHash('sha256').update(baseKey).digest('hex');
-			Container.get(GlobalConfig).userManagement.jwtSecret = this.jwtSecret;
+			globalConfig.userManagement.jwtSecret = this.jwtSecret;
 		}
 	}
 
@@ -37,7 +42,7 @@ export class JwtService {
 			algorithm: null;
 		}): Promise<void>;
 	}): Promise<void> {
-		if (process.env.N8N_USER_MANAGEMENT_JWT_SECRET) {
+		if (this.jwtSecretFromEnv) {
 			return;
 		}
 		const existing = await repo.findActiveByType('signing.jwt');

@@ -87,20 +87,14 @@ describe('JwtService', () => {
 				}): Promise<void>;
 			}>();
 
-		afterEach(() => {
-			delete process.env.N8N_USER_MANAGEMENT_JWT_SECRET;
-		});
-
-		it('should use N8N_USER_MANAGEMENT_JWT_SECRET env var and skip DB entirely', async () => {
-			process.env.N8N_USER_MANAGEMENT_JWT_SECRET = 'env-pinned-secret';
+		it('should use jwtSecret from config and skip DB entirely when set', async () => {
+			globalConfig.userManagement.jwtSecret = 'env-pinned-secret';
 			const repo = makeRepo();
 			const jwtService = new JwtService(instanceSettings, globalConfig);
 
 			await jwtService.initialize(repo);
 
-			expect(getJwtSecret(jwtService)).toEqual(
-				'e9e2975005eddefbd31b2c04a0b0f2d9c37d9d718cf3676cddf76d65dec555cb',
-			);
+			expect(getJwtSecret(jwtService)).toEqual('env-pinned-secret');
 			expect(repo.findActiveByType).not.toHaveBeenCalled();
 			expect(repo.insertOrIgnore).not.toHaveBeenCalled();
 		});
