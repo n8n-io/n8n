@@ -272,6 +272,14 @@ export const bucketFields: INodeProperties[] = [
 				description: 'A delimiter is a character you use to group keys',
 			},
 			{
+				displayName: 'Include Common Prefixes',
+				name: 'includeCommonPrefixes',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to return common prefixes (grouped keys) instead of object contents. Only works when a Delimiter is set.',
+			},
+			{
 				displayName: 'Encoding Type',
 				name: 'encodingType',
 				type: 'options',

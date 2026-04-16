@@ -352,3 +352,171 @@ describe('AWS S3 V2 Node - File Download', () => {
 		});
 	});
 });
+
+describe('AWS S3 V2 Node - Bucket Search', () => {
+	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
+	const awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+	const awsApiRequestRESTAllItemsSpy = jest.spyOn(GenericFunctions, 'awsApiRequestRESTAllItems');
+	let node: AwsS3V2;
+
+	const mockContents = [
+		{ Key: 'file1.txt', Size: '100' },
+		{ Key: 'file2.txt', Size: '200' },
+	];
+	const mockCommonPrefixes = [{ Prefix: 'folder1/' }, { Prefix: 'folder2/' }];
+	const mockSearchResponse = {
+		ListBucketResult: {
+			Contents: mockContents,
+			CommonPrefixes: mockCommonPrefixes,
+		},
+	};
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		node = new AwsS3V2({
+			displayName: 'AWS S3',
+			name: 'awsS3',
+			icon: 'file:s3.svg',
+			group: ['output'],
+			description: 'Sends data to AWS S3',
+		});
+
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			accessKeyId: 'test-key',
+			secretAccessKey: 'test-secret',
+			region: 'eu-central-1',
+		});
+
+		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 2 } as INode);
+		executeFunctionsMock.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctionsMock.continueOnFail.mockReturnValue(false);
+
+		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((data) =>
+			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
+		);
+		executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
+			(data) => data as any,
+		);
+	});
+
+	function setupSearchParams(overrides: {
+		returnAll?: boolean;
+		delimiter?: string;
+		includeCommonPrefixes?: boolean;
+		limit?: number;
+	}) {
+		const {
+			returnAll = false,
+			delimiter = '',
+			includeCommonPrefixes = false,
+			limit = 100,
+		} = overrides;
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName, _i, defaultVal?) => {
+			switch (paramName) {
+				case 'resource':
+					return 'bucket';
+				case 'operation':
+					return 'search';
+				case 'bucketName':
+					return 'test-bucket';
+				case 'returnAll':
+					return returnAll;
+				case 'limit':
+					return limit;
+				case 'additionalFields':
+					return { delimiter, includeCommonPrefixes };
+				default:
+					return defaultVal ?? undefined;
+			}
+		});
+	}
+
+	it('should return Contents when no delimiter is set', async () => {
+		setupSearchParams({});
+		awsApiRequestRESTSpy
+			.mockResolvedValueOnce(mockLocationResponse)
+			.mockResolvedValueOnce(mockSearchResponse);
+
+		const result = await node.execute.call(executeFunctionsMock);
+
+		expect(result[0]).toHaveLength(mockContents.length);
+		expect(result[0][0].json).toEqual(mockContents[0]);
+	});
+
+	it('should return Contents when delimiter is set but includeCommonPrefixes is false', async () => {
+		setupSearchParams({ delimiter: '/', includeCommonPrefixes: false });
+		awsApiRequestRESTSpy
+			.mockResolvedValueOnce(mockLocationResponse)
+			.mockResolvedValueOnce(mockSearchResponse);
+
+		const result = await node.execute.call(executeFunctionsMock);
+
+		expect(result[0]).toHaveLength(mockContents.length);
+		expect(result[0][0].json).toEqual(mockContents[0]);
+	});
+
+	it('should return CommonPrefixes when delimiter is set and includeCommonPrefixes is true', async () => {
+		setupSearchParams({ delimiter: '/', includeCommonPrefixes: true });
+		awsApiRequestRESTSpy
+			.mockResolvedValueOnce(mockLocationResponse)
+			.mockResolvedValueOnce(mockSearchResponse);
+
+		const result = await node.execute.call(executeFunctionsMock);
+
+		expect(result[0]).toHaveLength(mockCommonPrefixes.length);
+		expect(result[0][0].json).toEqual(mockCommonPrefixes[0]);
+	});
+
+	it('should call awsApiRequestRESTAllItems with CommonPrefixes path when returnAll and includeCommonPrefixes are true', async () => {
+		setupSearchParams({ returnAll: true, delimiter: '/', includeCommonPrefixes: true });
+		awsApiRequestRESTSpy.mockResolvedValueOnce(mockLocationResponse);
+		awsApiRequestRESTAllItemsSpy.mockResolvedValueOnce(mockCommonPrefixes);
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(awsApiRequestRESTAllItemsSpy).toHaveBeenCalledWith(
+			'ListBucketResult.CommonPrefixes',
+			expect.any(String),
+			'GET',
+			expect.any(String),
+			'',
+			expect.any(Object),
+			{},
+			{},
+			expect.any(String),
+		);
+	});
+
+	it('should call awsApiRequestRESTAllItems with Contents path when returnAll is true and includeCommonPrefixes is false', async () => {
+		setupSearchParams({ returnAll: true, delimiter: '/', includeCommonPrefixes: false });
+		awsApiRequestRESTSpy.mockResolvedValueOnce(mockLocationResponse);
+		awsApiRequestRESTAllItemsSpy.mockResolvedValueOnce(mockContents);
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(awsApiRequestRESTAllItemsSpy).toHaveBeenCalledWith(
+			'ListBucketResult.Contents',
+			expect.any(String),
+			'GET',
+			expect.any(String),
+			'',
+			expect.any(Object),
+			{},
+			{},
+			expect.any(String),
+		);
+	});
+
+	it('should normalize a single-object Contents response to an array', async () => {
+		setupSearchParams({});
+		const singleItem = { Key: 'only-file.txt', Size: '50' };
+		awsApiRequestRESTSpy.mockResolvedValueOnce(mockLocationResponse).mockResolvedValueOnce({
+			ListBucketResult: { Contents: singleItem },
+		});
+
+		const result = await node.execute.call(executeFunctionsMock);
+
+		expect(result[0]).toHaveLength(1);
+		expect(result[0][0].json).toEqual(singleItem);
+	});
+});

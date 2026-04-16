@@ -244,10 +244,18 @@ export class AwsS3V2 implements INodeType {
 
 						const region = responseData.LocationConstraint._ as string;
 
+						const includeCommonPrefixes = additionalFields.includeCommonPrefixes as
+							| boolean
+							| undefined;
+						const listPropertyName =
+							additionalFields.delimiter && includeCommonPrefixes
+								? 'ListBucketResult.CommonPrefixes'
+								: 'ListBucketResult.Contents';
+
 						if (returnAll) {
 							responseData = await awsApiRequestRESTAllItems.call(
 								this,
-								'ListBucketResult.Contents',
+								listPropertyName,
 								servicePath,
 								'GET',
 								basePath,
@@ -259,7 +267,7 @@ export class AwsS3V2 implements INodeType {
 							);
 						} else {
 							qs['max-keys'] = this.getNodeParameter('limit', 0);
-							responseData = await awsApiRequestREST.call(
+							const rawResponse = await awsApiRequestREST.call(
 								this,
 								servicePath,
 								'GET',
@@ -270,7 +278,11 @@ export class AwsS3V2 implements INodeType {
 								{},
 								region,
 							);
-							responseData = responseData.ListBucketResult.Contents;
+							const extracted =
+								additionalFields.delimiter && includeCommonPrefixes
+									? rawResponse.ListBucketResult?.CommonPrefixes
+									: rawResponse.ListBucketResult?.Contents;
+							responseData = Array.isArray(extracted) ? extracted : extracted ? [extracted] : [];
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
