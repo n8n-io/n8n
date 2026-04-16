@@ -1,3 +1,16 @@
+## [2.17.2](https://github.com/n8n-io/n8n/compare/n8n@2.17.1...n8n@2.17.2) (2026-04-16)
+
+
+### Bug Fixes
+
+* **editor:** Center sub-node icons and refresh triggers panel icons ([#28521](https://github.com/n8n-io/n8n/issues/28521)) ([2d50843](https://github.com/n8n-io/n8n/commit/2d50843216fbbb2a9e86a4464b0747181262ca3d))
+
+
+### Features
+
+* AI Gateway credentials endpoint instance url ([#28527](https://github.com/n8n-io/n8n/issues/28527)) ([2ec4332](https://github.com/n8n-io/n8n/commit/2ec433263b18547df184fa8aa9481bbdf17492e1))
+
+
 ## [2.17.1](https://github.com/n8n-io/n8n/compare/n8n@2.17.0...n8n@2.17.1) (2026-04-15)
 
 
