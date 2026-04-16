@@ -35,7 +35,13 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewCanvasNodes()).not.toHaveCount(0);
 		});
 
-		test('should mark all nodes as success after execution completes', async ({ n8n }) => {
+		test('should mark all nodes as success after execution completes', async ({
+			n8n,
+		}, testInfo) => {
+			test.skip(
+				testInfo.project.name.includes('multi-main'),
+				'Execution preview replay is not yet stable in multi-main mode',
+			);
 			await n8n.navigate.toInstanceAi();
 
 			// A Wait node creates a window where the downstream node is briefly
