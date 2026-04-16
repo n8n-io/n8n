@@ -53,3 +53,4 @@ try {
 } catch {
 	// Silently ignore network errors
 }
+}
