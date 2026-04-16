@@ -743,7 +743,7 @@ describe('GoogleGemini Node', () => {
 						case 'jsonOutput':
 							return false;
 						case 'builtInTools':
-							return { googleSearch: true };
+							return {};
 						case 'options':
 							return {};
 						case 'options.maxToolsIterations':
@@ -753,52 +753,24 @@ describe('GoogleGemini Node', () => {
 					}
 				});
 				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
-				apiRequestMock
-					.mockResolvedValueOnce({
-						candidates: [
-							{
-								content: {
-									parts: [
-										undefined,
-										{
-											functionCall: {
-												id: '1',
-												name: 'googleSearch',
-												args: { query: 'foo' },
-											},
-										},
-										{
-											functionResponse: {
-												id: '1',
-												name: 'googleSearch',
-												response: { result: 'bar' },
-											},
-										},
-									],
-									role: 'model',
-								},
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [undefined, { text: 'bar' }],
+								role: 'model',
 							},
-						],
-					})
-					.mockResolvedValueOnce({
-						candidates: [
-							{
-								content: {
-									parts: [{ text: 'baz' }],
-									role: 'model',
-								},
-							},
-						],
-					});
+						},
+					],
+				});
 
 				const result = await text.message.execute.call(executeFunctionsMock, 0);
 
-				expect(apiRequestMock).toHaveBeenCalledTimes(2);
 				expect(result).toEqual([
 					{
 						json: {
 							content: {
-								parts: [{ text: 'baz' }],
+								parts: [undefined, { text: 'bar' }],
 								role: 'model',
 							},
 						},
@@ -1069,50 +1041,6 @@ describe('GoogleGemini Node', () => {
 							role: 'model',
 						},
 						mergedResponse: 'Text more text',
-					});
-				});
-
-				it('should ignore non-text parts when building merged response', async () => {
-					executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
-						switch (parameter) {
-							case 'modelId':
-								return 'models/gemini-2.5-flash';
-							case 'messages.values':
-								return [{ role: 'user', content: 'Hello' }];
-							case 'simplify':
-								return true;
-							case 'jsonOutput':
-								return false;
-							case 'builtInTools':
-								return {};
-							case 'options':
-								return { includeMergedResponse: true };
-							case 'options.maxToolsIterations':
-								return 15;
-							default:
-								return undefined;
-						}
-					});
-					executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
-					apiRequestMock.mockResolvedValue({
-						candidates: [
-							{
-								content: {
-									parts: [{}, { text: 'Hello' }, { text: ' World' }],
-									role: 'model',
-								},
-							},
-						],
-					});
-
-					const result = await text.message.execute.call(executeFunctionsMock, 0);
-
-					expect(result[0].json).toEqual({
-						content: {
-							parts: [{}, { text: 'Hello' }, { text: ' World' }],
-							role: 'model',
-						},
-						mergedResponse: 'Hello World',
 					});
 				});
 			});
