@@ -28,12 +28,16 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 	return {
 		...actual,
 		useWorkflowDocumentStore: vi.fn(() => ({
+			name: '',
+			settings: {},
+			pinData: {},
 			usedCredentials: mockDocumentStoreUsedCredentials,
 			allNodes: [],
 			getNodeByName: vi.fn(),
 			setNodeIssue: vi.fn(),
 			updateNodeProperties: vi.fn(),
 			getExpressionHandler: vi.fn(() => ({})),
+			getPinDataSnapshot: vi.fn().mockReturnValue({}),
 		})),
 	};
 });
@@ -73,12 +77,15 @@ describe('useNodeHelpers()', () => {
 			};
 
 			vi.mocked(useWorkflowDocumentStore).mockReturnValueOnce({
+				name: '',
+				settings: {},
 				usedCredentials: mockDocumentStoreUsedCredentials,
 				allNodes: [],
 				getNodeByName: vi.fn().mockReturnValue(node),
 				setNodeIssue: vi.fn(),
 				updateNodeProperties: vi.fn(),
 				getExpressionHandler: vi.fn(() => ({})),
+				getPinDataSnapshot: vi.fn().mockReturnValue({}),
 			} as unknown as ReturnType<typeof useWorkflowDocumentStore>);
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);

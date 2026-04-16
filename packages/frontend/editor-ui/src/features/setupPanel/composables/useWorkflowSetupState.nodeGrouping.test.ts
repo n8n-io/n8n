@@ -36,6 +36,9 @@ const mockWorkflowDocumentStore = {
 	getNodeByName: vi.fn() as ReturnType<typeof vi.fn>,
 	getNodes: vi.fn() as ReturnType<typeof vi.fn>,
 	updateNodeProperties: mockUpdateNodeProperties,
+	name: '',
+	settings: {},
+	getPinDataSnapshot: vi.fn().mockReturnValue({}),
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {

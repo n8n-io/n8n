@@ -15,7 +15,11 @@ import {
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
-	useWorkflowDocumentStore: vi.fn(),
+	useWorkflowDocumentStore: vi.fn().mockReturnValue({
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
+	}),
 }));
 
 // Mock i18n to return translation keys instead of translated strings
@@ -94,6 +98,9 @@ const workflowDocumentStoreMock = {
 	getParentNodes: vi.fn().mockReturnValue([]),
 	getParentNodesByDepth: vi.fn().mockReturnValue([]),
 	getNodeByName: vi.fn().mockReturnValue(undefined),
+	name: '',
+	settings: {},
+	getPinDataSnapshot: vi.fn().mockReturnValue({}),
 };
 
 const renderComponent = createComponentRenderer(ParameterInputList, {

@@ -31,6 +31,8 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 		pinData: {} as Record<string, unknown>,
 		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+		settings: {},
+		getPinDataSnapshot: vi.fn().mockReturnValue({}),
 	},
 }));
 

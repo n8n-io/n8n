@@ -34,6 +34,9 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 		getParentNodes: vi.fn().mockReturnValue([]),
 		pinNodeData: vi.fn(),
 		resetAllNodesIssues: vi.fn(),
+		getPinDataSnapshot: vi.fn().mockReturnValue({}),
+		pinData: {},
+		settings: {},
 	},
 }));
 
