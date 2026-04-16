@@ -50,14 +50,14 @@
 	background: transparent;
 	border-radius: var(--radius);
 
-	&:hover,
-	&:active {
+	&:not(:disabled):hover,
+	&:not(:disabled):active {
 		svg {
 			filter: brightness(0.9);
 		}
 	}
 
-	&:active svg {
+	&:not(:disabled):active svg {
 		filter: brightness(0.9);
 	}
 
