@@ -14,6 +14,7 @@
     "build:n8n": "node scripts/build-n8n.mjs",
     "build:deploy": "node scripts/build-n8n.mjs",
     "build:docker": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs",
+    "build:docker:editor": "node scripts/build-docker-editor.mjs",
     "build:docker:coverage": "BUILD_WITH_COVERAGE=true node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs",
     "build:docker:scan": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && node scripts/scan-n8n-image.mjs",
     "build:docker:clean": "TURBO_FORCE=true node scripts/build-n8n.mjs && DOCKER_BUILD_NO_CACHE=true DOCKER_BUILD_BASE_IMAGE=true node scripts/dockerize-n8n.mjs",

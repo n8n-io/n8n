@@ -299,7 +299,35 @@ export const test = base.extend<
 	},
 
 	services: async ({ n8nContainer }, use) => {
-		await use(n8nContainer.services);
+		if (n8nContainer) {
+			await use(n8nContainer.services);
+			return;
+		}
+
+		// Local mode: provide services from environment when available
+		const proxyUrl = process.env.PROXY_SERVER_URL;
+		const cache: Partial<ServiceHelpers> = {};
+
+		const localServices = new Proxy({} as ServiceHelpers, {
+			get: (_target, prop: string) => {
+				if (prop in cache) return cache[prop as keyof ServiceHelpers];
+
+				if (prop === 'proxy' && proxyUrl) {
+					// eslint-disable-next-line @typescript-eslint/no-require-imports
+					const { ProxyServer } = require('n8n-containers/services/proxy') as {
+						ProxyServer: new (url: string) => ServiceHelpers['proxy'];
+					};
+					cache.proxy = new ProxyServer(proxyUrl);
+					return cache.proxy;
+				}
+
+				throw new Error(
+					`Service "${prop}" is not available in local mode. ` +
+						'Use --proxy flag or run in container mode.',
+				);
+			},
+		});
+		await use(localServices);
 	},
 });
 
