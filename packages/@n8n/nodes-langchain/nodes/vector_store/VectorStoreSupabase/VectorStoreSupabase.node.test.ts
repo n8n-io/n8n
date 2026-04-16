@@ -264,6 +264,25 @@ describe('VectorStoreSupabase.node', () => {
 			);
 		});
 
+		it('should accept valid schema names with dollar signs', async () => {
+			const mockVectorStore = { similaritySearch: jest.fn() };
+			MockSupabaseVectorStore.fromExistingIndex = jest.fn().mockResolvedValue(mockVectorStore);
+
+			const context = createContext({
+				useCustomSchema: true,
+				schema: 'my$schema',
+			});
+
+			const node = new SupabaseNode.VectorStoreSupabase();
+			await (node as any).getVectorStoreClient(context, undefined, {}, 0);
+
+			expect(mockCreateClient).toHaveBeenCalledWith(
+				baseCredentials.host,
+				baseCredentials.serviceRole,
+				{ db: { schema: 'my$schema' } },
+			);
+		});
+
 		it('should not validate schema when useCustomSchema is false', async () => {
 			const mockVectorStore = { similaritySearch: jest.fn() };
 			MockSupabaseVectorStore.fromExistingIndex = jest.fn().mockResolvedValue(mockVectorStore);

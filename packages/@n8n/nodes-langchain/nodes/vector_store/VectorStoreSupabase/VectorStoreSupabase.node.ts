@@ -12,7 +12,7 @@ import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
 
-const VALID_SCHEMA_NAME = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+const VALID_SCHEMA_NAME = /^[A-Za-z_][A-Za-z0-9_$]*$/;
 
 const queryNameField: INodeProperties = {
 	displayName: 'Query Name',
@@ -58,7 +58,7 @@ function createSupabaseClientForSchema(
 	if (!VALID_SCHEMA_NAME.test(schema)) {
 		throw new NodeOperationError(
 			context.getNode(),
-			`Invalid schema name: "${schema}". Schema names must start with a letter or underscore, followed by letters, digits, or underscores.`,
+			`Invalid schema name: "${schema}". Schema names must start with a letter or underscore, followed by letters, digits, underscores, or dollar signs.`,
 			{ itemIndex },
 		);
 	}
