@@ -46,6 +46,18 @@ export class ProjectSettingsPage extends BasePage {
 		return this.page.getByPlaceholder('Add users...');
 	}
 
+	getMembersSelect() {
+		return this.page.getByTestId('project-members-select');
+	}
+
+	async clickMembersSelect() {
+		await this.getMembersSelect().click();
+	}
+
+	getMembersDropdown() {
+		return this.page.locator('.el-select-dropdown:visible');
+	}
+
 	getRoleDropdownFor(email: string) {
 		return this.getMembersTable()
 			.locator('tr')

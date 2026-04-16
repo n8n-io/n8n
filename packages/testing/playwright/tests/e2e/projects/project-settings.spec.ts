@@ -222,5 +222,84 @@ test.describe(
 			// Verify table still shows the owner
 			await n8n.projectSettings.expectTableHasMemberCount(1);
 		});
+
+		test('should open add member dropdown on first click @auth:owner', async ({ n8n }) => {
+			// Create a new project
+			const projectName = `Dropdown Test ${nanoid(8)}`;
+			const { projectId } = await n8n.projectComposer.createProject(projectName);
+
+			// Navigate to project settings
+			await n8n.navigate.toProjectSettings(projectId);
+			await expect(n8n.projectSettings.getTitle()).toHaveText(projectName);
+
+			// Verify members select is visible
+			const membersSelect = n8n.projectSettings.getMembersSelect();
+			await expect(membersSelect).toBeVisible();
+
+			// Verify dropdown is NOT open before clicking
+			const dropdown = n8n.projectSettings.getMembersDropdown();
+			await expect(dropdown).not.toBeVisible();
+
+			// Click the dropdown ONCE
+			await membersSelect.click();
+
+			// Verify dropdown menu opens immediately on first click
+			// Using a short timeout to catch the bug if it requires multiple clicks
+			await expect(dropdown).toBeVisible({ timeout: 1000 });
+
+			// Verify the dropdown has loaded and shows options
+			const dropdownOptions = dropdown.locator('.el-select-dropdown__item');
+			await expect(dropdownOptions.first()).toBeVisible({ timeout: 2000 });
+		});
+
+		test('should not require multiple clicks to open add member dropdown @auth:owner', async ({
+			n8n,
+		}) => {
+			// Regression test for N8N-9886: Add project members dropdown needs three clicks to open
+			const projectName = `Multi-Click Test ${nanoid(8)}`;
+			const { projectId } = await n8n.projectComposer.createProject(projectName);
+
+			// Navigate to project settings
+			await n8n.navigate.toProjectSettings(projectId);
+			await expect(n8n.projectSettings.getTitle()).toHaveText(projectName);
+
+			const membersSelect = n8n.projectSettings.getMembersSelect();
+			await expect(membersSelect).toBeVisible();
+
+			const dropdown = n8n.projectSettings.getMembersDropdown();
+
+			// Try clicking once
+			await membersSelect.click();
+
+			// Check if dropdown opened (should succeed if bug is fixed)
+			const isVisibleAfterFirstClick = await dropdown
+				.isVisible()
+				.catch(() => false)
+				.then((result) => result);
+
+			// If not visible after first click, this demonstrates the bug
+			if (!isVisibleAfterFirstClick) {
+				// Click second time
+				await membersSelect.click();
+				const isVisibleAfterSecondClick = await dropdown
+					.isVisible()
+					.catch(() => false)
+					.then((result) => result);
+
+				// If not visible after second click either, try third time
+				if (!isVisibleAfterSecondClick) {
+					await membersSelect.click();
+				}
+
+				// This assertion will fail if the bug exists (requiring multiple clicks)
+				// Expected behavior: dropdown should open on first click
+				throw new Error(
+					'Dropdown did not open on first click - required multiple clicks (Bug N8N-9886)',
+				);
+			}
+
+			// Verify dropdown is actually visible and functional
+			await expect(dropdown).toBeVisible();
+		});
 	},
 );
