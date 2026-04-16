@@ -302,6 +302,8 @@ export {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiFilesystemResponseDto,
 	applyBranchReadOnlyOverrides,
 } from './schemas/instance-ai.schema';
 
@@ -332,9 +334,7 @@ export type {
 	InstanceAiErrorEvent,
 	InstanceAiFilesystemRequestEvent,
 	InstanceAiFilesystemResponse,
-	InstanceAiFilesystemResponseDto,
 	InstanceAiGatewayCapabilities,
-	InstanceAiGatewayCapabilitiesDto,
 	McpTool,
 	McpToolAnnotations,
 	McpToolCallRequest,
