@@ -623,40 +623,6 @@ export class PrometheusMetricsService {
 	}
 
 	/**
-	 * Map a free-text failure reason from token exchange events to a stable,
-	 * Prometheus-safe label value. Unknown strings fall through to `'other'`
-	 * to cap label cardinality without breaking dashboards when new errors appear.
-	 */
-	private normalizeFailureReason(reason: string): string {
-		const map: Record<string, string> = {
-			'Token verification failed': 'invalid_signature',
-			'Unknown key id': 'unknown_key',
-			'Token has already been used': 'token_replay',
-			'Token lifetime exceeds maximum allowed': 'token_too_long',
-			'Subject token too close to expiry to issue a new token': 'token_near_expiry',
-			'Invalid token format': 'invalid_format',
-			'Token header missing kid': 'missing_kid',
-			'Token payload missing iss': 'missing_iss',
-			'Unexpected token format': 'invalid_format',
-			invalid_claims: 'invalid_claims',
-			internal_error: 'internal_error',
-			'Email claim is required for user provisioning': 'invalid_claims',
-		};
-
-		if (reason in map) return map[reason];
-
-		if (
-			reason.includes('not allowed') ||
-			reason.includes('Unrecognized role') ||
-			reason.includes('Cannot provision')
-		) {
-			return 'role_not_allowed';
-		}
-
-		return 'other';
-	}
-
-	/**
 	 * Set up counters for token exchange and embed login flows.
 	 *
 	 * These metrics are always registered when the `/metrics` endpoint is active
@@ -726,10 +692,7 @@ export class PrometheusMetricsService {
 
 		this.eventService.on('token-exchange-failed', ({ failureReason }) => {
 			this.counters.tokenExchangeRequestsTotal?.inc({ result: 'failure' }, 1);
-			this.counters.tokenExchangeFailuresTotal?.inc(
-				{ reason: this.normalizeFailureReason(failureReason) },
-				1,
-			);
+			this.counters.tokenExchangeFailuresTotal?.inc({ reason: failureReason }, 1);
 		});
 
 		this.eventService.on('embed-login', () => {
@@ -738,10 +701,7 @@ export class PrometheusMetricsService {
 
 		this.eventService.on('embed-login-failed', ({ failureReason }) => {
 			this.counters.embedLoginRequestsTotal?.inc({ result: 'failure' }, 1);
-			this.counters.embedLoginFailuresTotal?.inc(
-				{ reason: this.normalizeFailureReason(failureReason) },
-				1,
-			);
+			this.counters.embedLoginFailuresTotal?.inc({ reason: failureReason }, 1);
 		});
 
 		this.eventService.on('token-exchange-user-provisioned', () => {
