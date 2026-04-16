@@ -6,12 +6,14 @@ import {
 	type INodeType,
 	type IWorkflowExecuteAdditionalData,
 	type ResourceMapperFields,
+	type ILoadOptions,
 } from 'n8n-workflow';
 
 import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
 import { WorkflowLoaderService } from '../workflow-loader.service';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
@@ -256,6 +258,59 @@ describe('DynamicNodeParametersService', () => {
 					// workflowId intentionally omitted
 				}),
 			).rejects.toThrow(ForbiddenError);
+		});
+	});
+
+	describe('sanitizeLoadOptionsRouting', () => {
+		// Access the private method for focused unit testing of security validation
+		const sanitize = (routing: ILoadOptions['routing']) =>
+			(
+				service as unknown as {
+					sanitizeLoadOptionsRouting: (r: ILoadOptions['routing']) => ILoadOptions['routing'];
+				}
+			).sanitizeLoadOptionsRouting(routing);
+
+		it('should return routing unchanged when request is absent', () => {
+			expect(sanitize(undefined)).toBeUndefined();
+			expect(sanitize({})).toEqual({});
+			expect(sanitize({ operations: {} })).toEqual({ operations: {} });
+		});
+
+		it('should allow a relative path in url', () => {
+			const routing = { request: { url: '/v1/models', method: 'GET' } };
+			expect(sanitize(routing)).toEqual(routing);
+		});
+
+		it('should allow an expression url (starts with =)', () => {
+			const routing = { request: { url: '=/v1/{{ $parameter.version }}/models' } };
+			expect(sanitize(routing)).toEqual(routing);
+		});
+
+		it('should strip baseURL from routing.request', () => {
+			const routing = { request: { url: '/v1/models', baseURL: 'http://attacker.com' } };
+			const result = sanitize(routing);
+			expect(result?.request).not.toHaveProperty('baseURL');
+			expect((result?.request as Record<string, unknown>)?.url).toBe('/v1/models');
+		});
+
+		it('should throw for an http:// absolute url', () => {
+			expect(() => sanitize({ request: { url: 'http://127.0.0.1:5678/rest/settings' } })).toThrow(
+				BadRequestError,
+			);
+		});
+
+		it('should throw for an https:// absolute url', () => {
+			expect(() => sanitize({ request: { url: 'https://attacker.com/steal' } })).toThrow(
+				BadRequestError,
+			);
+		});
+
+		it('should throw for a protocol-relative url', () => {
+			expect(() => sanitize({ request: { url: '//attacker.com/steal' } })).toThrow(BadRequestError);
+		});
+
+		it('should throw for other scheme absolute urls', () => {
+			expect(() => sanitize({ request: { url: 'file:///etc/passwd' } })).toThrow(BadRequestError);
 		});
 	});
 });

@@ -23,6 +23,7 @@ import type {
 import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
@@ -181,7 +182,7 @@ export class DynamicNodeParametersService {
 							type: 'string',
 							name: '',
 							default: '',
-							routing: loadOptions.routing,
+							routing: this.sanitizeLoadOptionsRouting(loadOptions.routing),
 						} as INodeProperties,
 					],
 				},
@@ -221,6 +222,32 @@ export class DynamicNodeParametersService {
 		}
 
 		return optionsData[0].map((item) => item.json) as unknown as INodePropertyOptions[];
+	}
+
+	/**
+	 * Sanitizes user-supplied loadOptions routing to prevent SSRF attacks.
+	 *
+	 * Strips `baseURL` (must never be user-controllable; `requestDefaults.baseURL` takes precedence)
+	 * and rejects absolute URLs in `request.url` (plain strings only; `=`-prefixed expressions are
+	 * evaluated server-side from trusted node code and are therefore allowed).
+	 */
+	private sanitizeLoadOptionsRouting(routing: ILoadOptions['routing']): ILoadOptions['routing'] {
+		if (!routing?.request) return routing;
+
+		// Strip baseURL so it cannot override requestDefaults.baseURL
+		const { baseURL: _stripped, ...safeRequest } = routing.request as Record<string, unknown>;
+
+		// Reject absolute URLs supplied as plain strings
+		const url = safeRequest.url;
+		if (typeof url === 'string' && !url.startsWith('=')) {
+			if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(url) || url.startsWith('//')) {
+				throw new BadRequestError(
+					'loadOptions.routing.request.url must be a relative path, not an absolute URL',
+				);
+			}
+		}
+
+		return { ...routing, request: safeRequest as typeof routing.request };
 	}
 
 	async getResourceLocatorResults(
