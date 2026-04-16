@@ -1,9 +1,9 @@
 import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@supabase/supabase-js';
 import {
 	NodeOperationError,
 	type INodeProperties,
+	type IExecuteFunctions,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
@@ -42,15 +42,11 @@ const schemaField: INodeProperties = {
 };
 
 function createSupabaseClientForSchema(
-	context: ISupplyDataFunctions,
+	context: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 	credentials: { host: string; serviceRole: string },
-): SupabaseClient {
-	const useCustomSchema = context.getNodeParameter(
-		'useCustomSchema',
-		itemIndex,
-		false,
-	) as boolean;
+) {
+	const useCustomSchema = context.getNodeParameter('useCustomSchema', itemIndex, false) as boolean;
 	const schema = useCustomSchema
 		? (context.getNodeParameter('schema', itemIndex, 'public') as string)
 		: 'public';
@@ -64,7 +60,7 @@ function createSupabaseClientForSchema(
 	}
 
 	return createClient(credentials.host, credentials.serviceRole, {
-		db: { schema },
+		db: { schema: schema as 'public' },
 	});
 }
 
