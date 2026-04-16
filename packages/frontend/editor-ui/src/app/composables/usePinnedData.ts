@@ -56,9 +56,7 @@ export function usePinnedData(
 	const uiStore = useUIStore();
 	const workflowDocumentStore =
 		injectWorkflowDocumentStore() ??
-		(workflowsStore.workflowId
-			? shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)))
-			: null);
+		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)));
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
@@ -71,7 +69,7 @@ export function usePinnedData(
 
 	const data = computed<IDataObject[] | undefined>(() => {
 		const targetNode = unref(node);
-		if (!targetNode || !workflowDocumentStore?.value) return undefined;
+		if (!targetNode || !workflowDocumentStore.value) return undefined;
 		return pinDataToExecutionData(workflowDocumentStore.value.pinData)[targetNode.name];
 	});
 
@@ -99,7 +97,7 @@ export function usePinnedData(
 
 		if (!nodeType || (checkDataEmpty && dataToPin.length === 0)) return false;
 
-		const expression = workflowDocumentStore?.value?.getExpressionHandler();
+		const expression = workflowDocumentStore.value?.getExpressionHandler();
 		const outputs = expression
 			? NodeHelpers.getNodeOutputs({ expression }, targetNode, nodeType).map((output) =>
 					typeof output === 'string' ? { type: output } : output,
@@ -181,7 +179,7 @@ export function usePinnedData(
 		if (typeof data === 'object') data = JSON.stringify(data);
 
 		const { pinData: _pinData, ...workflowObjectWithoutPinData } = workflowsStore.workflow;
-		const currentPinData = (workflowDocumentStore?.value?.pinData ?? {}) as IPinData;
+		const currentPinData = (workflowDocumentStore.value?.pinData ?? {}) as IPinData;
 		const workflowJson = jsonStringify(workflowObjectWithoutPinData, { replaceCircularRefs: true });
 
 		const newPinData = { ...currentPinData, [targetNode.name]: data };
@@ -282,7 +280,7 @@ export function usePinnedData(
 			throw new Error('Data too large');
 		}
 
-		if (workflowDocumentStore?.value) {
+		if (workflowDocumentStore.value) {
 			const nodeName = targetNode.name;
 			// Update metadata timestamp for existing pinned data
 			if (
@@ -317,7 +315,7 @@ export function usePinnedData(
 		}
 
 		onUnsetData({ source });
-		if (workflowDocumentStore?.value) {
+		if (workflowDocumentStore.value) {
 			workflowDocumentStore.value.unpinNodeData(targetNode.name);
 			if (workflowsStore.nodeMetadata[targetNode.name]) {
 				workflowsStore.nodeMetadata[targetNode.name].pinnedDataLastRemovedAt = Date.now();

@@ -130,9 +130,7 @@ export function useBuilderTodos() {
 	const locale = useI18n();
 
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	/**
@@ -147,7 +145,7 @@ export function useBuilderTodos() {
 		}
 		visited.add(nodeName);
 
-		const node = workflowDocumentStore.value?.getNodeByName(nodeName);
+		const node = workflowDocumentStore.value.getNodeByName(nodeName);
 
 		// Check if node itself is disabled
 		if (node?.disabled === true) {
@@ -158,7 +156,7 @@ export function useBuilderTodos() {
 		// Sub-nodes output to their parent via non-main connection types (ai_languageModel, ai_tool, etc).
 		// Skip "main" connections — those are regular workflow links, not sub-node → parent links.
 		const outgoingConnections =
-			workflowDocumentStore.value?.outgoingConnectionsByNodeName(nodeName) ?? {};
+			workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName) ?? {};
 		for (const connectionType of Object.keys(outgoingConnections)) {
 			if (connectionType === 'main') continue;
 			const connections = outgoingConnections[connectionType];
@@ -190,7 +188,7 @@ export function useBuilderTodos() {
 		}
 		visited.add(nodeName);
 
-		const pinData = workflowDocumentStore.value?.pinData;
+		const pinData = workflowDocumentStore.value.pinData;
 
 		// Check if node has direct pinned data
 		if (pinData?.[nodeName]?.length) {
@@ -201,7 +199,7 @@ export function useBuilderTodos() {
 		// Sub-nodes output to their parent via non-main connection types (ai_languageModel, ai_tool, etc).
 		// Skip "main" connections — those are regular workflow links, not sub-node → parent links.
 		const outgoingConnections =
-			workflowDocumentStore.value?.outgoingConnectionsByNodeName(nodeName) ?? {};
+			workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName) ?? {};
 		for (const connectionType of Object.keys(outgoingConnections)) {
 			if (connectionType === 'main') continue;
 			const connections = outgoingConnections[connectionType];
@@ -228,8 +226,8 @@ export function useBuilderTodos() {
 		// Explicit dependencies to ensure reactivity when parent node state changes.
 		// Vue's computed may not track dependencies accessed in recursive helper functions,
 		// so we access pinData and nodes here to register them as dependencies.
-		const _pinData = workflowDocumentStore.value?.pinData;
-		const _nodes = workflowDocumentStore.value?.allNodes;
+		const _pinData = workflowDocumentStore.value.pinData;
+		const _nodes = workflowDocumentStore.value.allNodes;
 		void _pinData;
 		void _nodes;
 
@@ -249,13 +247,13 @@ export function useBuilderTodos() {
 	const placeholderIssues = computed(() => {
 		// Explicit dependency to ensure reactivity when parent node state changes.
 		// Vue's computed may not track pinData accessed in recursive helper functions.
-		const _pinData = workflowDocumentStore.value?.pinData;
+		const _pinData = workflowDocumentStore.value.pinData;
 		void _pinData;
 
 		const issues: WorkflowValidationIssue[] = [];
 		const seen = new Set<string>();
 
-		for (const node of workflowDocumentStore.value?.allNodes ?? []) {
+		for (const node of workflowDocumentStore.value.allNodes ?? []) {
 			if (!node?.parameters) continue;
 
 			// Skip nodes with pinned data - their output is already defined
@@ -312,7 +310,7 @@ export function useBuilderTodos() {
 		if (workflowTodos.value.length > 0) return false;
 
 		// Check if any pinned data exists
-		const pinData = workflowDocumentStore.value?.pinData;
+		const pinData = workflowDocumentStore.value.pinData;
 		if (!pinData || Object.keys(pinData).length === 0) return false;
 
 		// Check base workflow issues that would show if not for pinned data
@@ -326,7 +324,7 @@ export function useBuilderTodos() {
 		if (wouldHaveBaseIssues) return true;
 
 		// Check placeholder issues that would show if not for pinned data
-		for (const node of workflowDocumentStore.value?.allNodes ?? []) {
+		for (const node of workflowDocumentStore.value.allNodes ?? []) {
 			if (!node?.parameters) continue;
 			if (!nodeHasPinnedData(node.name)) continue;
 			if (nodeIsDisabled(node.name)) continue;
@@ -351,7 +349,7 @@ export function useBuilderTodos() {
 			placeholders_todo_count,
 			todos: workflowTodos.value.map((todo) => ({
 				type: todo.type,
-				node_type: workflowDocumentStore.value?.getNodeByName(todo.node)?.type,
+				node_type: workflowDocumentStore.value.getNodeByName(todo.node)?.type,
 				label: todo.value,
 			})),
 		};

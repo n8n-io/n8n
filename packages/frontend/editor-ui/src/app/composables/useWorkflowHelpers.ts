@@ -99,13 +99,9 @@ export async function resolveParameter<T = IDataObject>(
 	}
 
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined;
-
-	if (!workflowDocumentStore) {
-		return null;
-	}
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 
 	return await resolveParameterImpl(
 		parameter,
@@ -397,9 +393,9 @@ export function executeData(
 	parentRunIndex?: number,
 ): IExecuteData {
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined;
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 
 	return executeDataImpl(
 		connections,
@@ -407,7 +403,7 @@ export function executeData(
 		currentNode,
 		inputName,
 		runIndex,
-		workflowDocumentStore?.getPinDataSnapshot(),
+		workflowDocumentStore.getPinDataSnapshot(),
 		workflowsStore.getWorkflowRunData,
 		parentRunIndex,
 	);
@@ -518,13 +514,11 @@ export function useWorkflowHelpers() {
 	const i18n = useI18n();
 
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	function getNodeTypesMaxCount() {
-		const nodes = workflowDocumentStore.value?.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes ?? [];
 
 		const returnData: INodeTypesMaxCount = {};
 
@@ -550,7 +544,7 @@ export function useWorkflowHelpers() {
 	}
 
 	function getNodeTypeCount(nodeType: string) {
-		const nodes = workflowDocumentStore.value?.allNodes ?? [];
+		const nodes = workflowDocumentStore.value.allNodes ?? [];
 
 		let count = 0;
 

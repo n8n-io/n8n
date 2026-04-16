@@ -15,14 +15,12 @@ const { name } = useCanvasNode();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
 const credentialsStore = useCredentialsStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
-const node = computed(() => workflowDocumentStore.value?.getNodeByName(name.value));
+const node = computed(() => workflowDocumentStore.value.getNodeByName(name.value));
 const size = 'small';
 
 const hasResolvableCredential = computed(() => {

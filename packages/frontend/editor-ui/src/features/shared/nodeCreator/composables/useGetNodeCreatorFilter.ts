@@ -15,9 +15,7 @@ export function useGetNodeCreatorFilter() {
 	const workflowStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = computed(() =>
-		workflowStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowStore.workflowId)),
 	);
 
 	function getNodeCreatorFilter(
@@ -26,13 +24,13 @@ export function useGetNodeCreatorFilter() {
 		sourceNode: INodeUi,
 	) {
 		let filter: NodeCreatorFilter | undefined;
-		const workflowNode = workflowDocumentStore.value?.getNodeByName(nodeName);
+		const workflowNode = workflowDocumentStore.value.getNodeByName(nodeName);
 		if (!workflowNode) return { nodes: [] };
 
 		const nodeType =
 			nodeTypesStore.getNodeType(workflowNode?.type, workflowNode.typeVersion) ??
 			nodeTypesStore.communityNodeType(workflowNode?.type)?.nodeDescription;
-		const expression = workflowDocumentStore.value?.getExpressionHandler();
+		const expression = workflowDocumentStore.value.getExpressionHandler();
 
 		if (nodeType && expression) {
 			const inputs = NodeHelpers.getNodeInputs({ expression }, workflowNode, nodeType);

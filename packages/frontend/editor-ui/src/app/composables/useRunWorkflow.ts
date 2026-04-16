@@ -84,9 +84,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
 
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	const nodeHelpers = useNodeHelpers();
@@ -101,8 +99,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {
-			const nodeA = workflowDocumentStore.value?.getNodeByName(a)?.position ?? [0, 0];
-			const nodeB = workflowDocumentStore.value?.getNodeByName(b)?.position ?? [0, 0];
+			const nodeA = workflowDocumentStore.value.getNodeByName(a)?.position ?? [0, 0];
+			const nodeB = workflowDocumentStore.value.getNodeByName(b)?.position ?? [0, 0];
 
 			const nodeAYPosition = nodeA[1];
 			const nodeBYPosition = nodeB[1];
@@ -153,7 +151,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		source?: string;
 		sessionId?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		if (workflowsStore.activeExecutionId || !workflowDocumentStore.value) {
+		if (workflowsStore.activeExecutionId) {
 			return;
 		}
 
@@ -199,7 +197,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const { startNodeNames } = consolidatedData;
 			const destinationNodeType = options.destinationNode
-				? (workflowDocumentStore.value?.getNodeByName(options.destinationNode.nodeName)?.type ?? '')
+				? (workflowDocumentStore.value.getNodeByName(options.destinationNode.nodeName)?.type ?? '')
 				: '';
 
 			let executedNode: string | undefined;
@@ -313,9 +311,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					let sourceData = get(runData, [name, 0, 'source', 0], null);
 					if (sourceData === null) {
 						const parentNodes =
-							workflowDocumentStore.value?.getParentNodes(name, NodeConnectionTypes.Main, 1) ?? [];
+							workflowDocumentStore.value.getParentNodes(name, NodeConnectionTypes.Main, 1) ?? [];
 						const executeData = workflowHelpers.executeData(
-							workflowDocumentStore.value?.connectionsBySourceNode ?? {},
+							workflowDocumentStore.value.connectionsBySourceNode ?? {},
 							parentNodes,
 							name,
 							NodeConnectionTypes.Main,
@@ -351,7 +349,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
-				const nodeId = workflowDocumentStore.value?.getNodeByName(
+				const nodeId = workflowDocumentStore.value.getNodeByName(
 					options.destinationNode?.nodeName ?? '',
 				)?.id;
 				if (workflowDocumentStore.value.workflowId && nodeId) {
@@ -390,7 +388,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				createdAt: new Date(),
 				startedAt: new Date(),
 				stoppedAt: undefined,
-				workflowId: workflowDocumentStore.value?.workflowId,
+				workflowId: workflowDocumentStore.value.workflowId,
 				executedNode,
 				triggerNode: triggerToStartFrom?.name,
 				data: createRunExecutionData({
@@ -411,7 +409,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			workflowState.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
-			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value?.name as string, 'EXECUTING');
+			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name as string, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 
 			if (
@@ -457,7 +455,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		} catch (error) {
 			console.error(error);
 			workflowState.setWorkflowExecutionData(null);
-			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value?.name as string, 'ERROR');
+			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
 		}
@@ -588,7 +586,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	async function runEntireWorkflow(source: 'node' | 'main', triggerNode?: string) {
 		void workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 			const telemetryPayload = {
-				workflow_id: workflowDocumentStore.value?.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 				node_graph_string: JSON.stringify(
 					TelemetryHelpers.generateNodesGraph(
 						workflowData as IWorkflowBase,
@@ -607,7 +605,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		// When no trigger is explicitly selected (e.g. chat trigger is the only trigger
 		// and the Run button doesn't offer it for selection), resolve it from the workflow.
 		if (!resolvedTriggerNode) {
-			const triggers = (workflowDocumentStore.value?.allNodes ?? []).filter(
+			const triggers = (workflowDocumentStore.value.allNodes ?? []).filter(
 				(node) => !node.disabled && node.type.toLowerCase().includes('trigger'),
 			);
 			if (triggers.length === 1) {

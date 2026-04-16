@@ -13,9 +13,7 @@ export function useNodeIconSource(
 ): ComputedRef<NodeIconSource | undefined> {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	return computed(() => {
@@ -25,7 +23,7 @@ export function useNodeIconSource(
 		return getNodeIconSource(
 			typeValue ?? nodeValue?.type,
 			nodeValue ?? null,
-			workflowDocumentStore?.value?.getExpressionHandler() ?? null,
+			workflowDocumentStore.value.getExpressionHandler() ?? null,
 		);
 	});
 }

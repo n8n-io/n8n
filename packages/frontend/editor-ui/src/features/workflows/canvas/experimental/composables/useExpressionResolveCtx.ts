@@ -14,9 +14,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 	const workflowsStore = useWorkflowsStore();
 
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	return computed<ExpressionLocalResolveContext | undefined>(() => {
@@ -40,7 +38,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 				};
 			}
 
-			const inputs = workflowDocumentStore.value?.getParentNodesByDepth(nodeName, 1) ?? [];
+			const inputs = workflowDocumentStore.value.getParentNodesByDepth(nodeName, 1) ?? [];
 
 			if (inputs.length > 0) {
 				return {
@@ -61,7 +59,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 			nodeName,
 			additionalKeys: {},
 			inputNode: findInputNode(),
-			connections: workflowDocumentStore.value?.connectionsBySourceNode ?? {},
+			connections: workflowDocumentStore.value.connectionsBySourceNode ?? {},
 		};
 	});
 }

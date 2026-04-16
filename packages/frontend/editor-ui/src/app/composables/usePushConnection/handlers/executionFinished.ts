@@ -276,10 +276,8 @@ export function handleExecutionFinishedWithWaitTill(
 	const settingsStore = useSettingsStore();
 	const workflowSaving = useWorkflowSaving(options);
 
-	const workflowDocumentStore = workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId))
-		: undefined;
-	const workflowSettings = workflowDocumentStore?.settings ?? {};
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+	const workflowSettings = workflowDocumentStore.settings ?? {};
 	const saveManualExecutions =
 		workflowSettings.saveManualExecutions ?? settingsStore.saveManualExecutions;
 
@@ -297,7 +295,7 @@ export function handleExecutionFinishedWithWaitTill(
 	}
 
 	// Workflow did start but had been put to wait
-	useDocumentTitle().setDocumentTitle(workflowDocumentStore?.name as string, 'IDLE');
+	useDocumentTitle().setDocumentTitle(workflowDocumentStore.name as string, 'IDLE');
 }
 
 /**
@@ -347,10 +345,10 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				const node = workflowDocumentStore.getNodeByName(error.context.nodeCause as string);
 
 				if (node) {
-					const workflowDocumentStore = workflowsStore.workflowId
-						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-						: undefined;
-					eventData.is_pinned = !!workflowDocumentStore?.pinData?.[node.name];
+					const workflowDocumentStore = useWorkflowDocumentStore(
+						createWorkflowDocumentId(workflowsStore.workflowId),
+					);
+					eventData.is_pinned = !!workflowDocumentStore.pinData?.[node.name];
 					eventData.mode = node.parameters.mode;
 					eventData.node_type = node.type;
 					eventData.operation = node.parameters.operation;
@@ -415,16 +413,16 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const workflowDocumentStore = workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined;
-	const workflowName = workflowDocumentStore?.name ?? '';
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+	const workflowName = workflowDocumentStore.name ?? '';
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
-		const node = workflowDocumentStore?.getNodeByName(workflowExecution.executedNode) ?? null;
+		const node = workflowDocumentStore.getNodeByName(workflowExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		const nodeOutput =
 			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];
