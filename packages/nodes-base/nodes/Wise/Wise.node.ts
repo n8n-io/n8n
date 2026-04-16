@@ -15,6 +15,8 @@ import { v4 as uuid } from 'uuid';
 import {
 	accountFields,
 	accountOperations,
+	activityFields,
+	activityOperations,
 	exchangeRateFields,
 	exchangeRateOperations,
 	profileFields,
@@ -68,6 +70,10 @@ export class Wise implements INodeType {
 						value: 'account',
 					},
 					{
+						name: 'Activity',
+						value: 'activity',
+					},
+					{
 						name: 'Exchange Rate',
 						value: 'exchangeRate',
 					},
@@ -92,6 +98,8 @@ export class Wise implements INodeType {
 			},
 			...accountOperations,
 			...accountFields,
+			...activityOperations,
+			...activityFields,
 			...exchangeRateOperations,
 			...exchangeRateFields,
 			...profileOperations,
@@ -259,6 +267,81 @@ export class Wise implements INodeType {
 
 							responseData = items;
 							binaryOutput = true;
+						}
+					}
+				} else if (resource === 'activity') {
+					// *********************************************************************
+					//                             activity
+					// *********************************************************************
+
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//       activity: getAll
+						// ----------------------------------
+
+						// https://docs.wise.com/api-docs/api-reference/activity
+
+						const profileId = this.getNodeParameter('profileId', i);
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+						const qs: IDataObject = {};
+
+						if (filters.since) {
+							qs.since = moment
+								.tz(filters.since as string, timezone)
+								.utc()
+								.format();
+						}
+
+						if (returnAll) {
+							const allActivities: IDataObject[] = [];
+							let cursor: string | null = null;
+
+							do {
+								qs.size = 100;
+								if (cursor) {
+									qs.cursor = cursor;
+								}
+
+								const response = (await wiseApiRequest.call(
+									this,
+									'GET',
+									`v1/profiles/${profileId}/activities`,
+									{},
+									qs,
+								)) as { activities: IDataObject[]; cursor: string | null };
+
+								let activities = response.activities || [];
+
+								if (filters.status) {
+									activities = activities.filter((a: IDataObject) => a.status === filters.status);
+								}
+
+								allActivities.push(...activities);
+								cursor = response.cursor;
+							} while (cursor);
+
+							responseData = allActivities;
+						} else {
+							const limit = this.getNodeParameter('limit', i);
+							qs.size = Math.min(limit as number, 100);
+
+							const response = (await wiseApiRequest.call(
+								this,
+								'GET',
+								`v1/profiles/${profileId}/activities`,
+								{},
+								qs,
+							)) as { activities: IDataObject[]; cursor: string | null };
+
+							let activities = response.activities || [];
+
+							if (filters.status) {
+								activities = activities.filter((a: IDataObject) => a.status === filters.status);
+							}
+
+							responseData = activities.slice(0, limit as number);
 						}
 					}
 				} else if (resource === 'exchangeRate') {
