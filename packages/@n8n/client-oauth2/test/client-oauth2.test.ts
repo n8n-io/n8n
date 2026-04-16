@@ -81,6 +81,48 @@ describe('ClientOAuth2', () => {
 			);
 		});
 
+		it('should preserve proxy routing when ignoreSSLIssues is enabled', async () => {
+			mockTokenResponse({
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					access_token: config.accessToken,
+					refresh_token: config.refreshToken,
+				}),
+			});
+
+			const axiosSpy = jest.spyOn(axios, 'request');
+
+			await client.accessTokenRequest({
+				url: config.accessTokenUri,
+				method: 'POST',
+				headers: {
+					Authorization: authHeader,
+					Accept: 'application/json',
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: {
+					refresh_token: 'test',
+					grant_type: 'refresh_token',
+				},
+				ignoreSSLIssues: true,
+			});
+
+			expect(axiosSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					proxy: false,
+					httpsAgent: expect.anything(),
+				}),
+			);
+
+			expect(
+				axiosSpy.mock.calls.some(
+					([requestConfig]) =>
+						requestConfig?.httpsAgent?.constructor?.name === 'ProxyPreservingInsecureAgent',
+				),
+			).toBe(true);
+		});
+
 		test.each([
 			{
 				contentType: 'application/json',

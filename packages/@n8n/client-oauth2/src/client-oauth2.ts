@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { Agent } from 'https';
+import crypto from 'crypto';
+import type http from 'http';
+import https, { Agent } from 'https';
 import * as qs from 'querystring';
 
 import type { ClientOAuth2TokenData } from './client-oauth2-token';
@@ -48,7 +50,22 @@ export class ResponseError extends Error {
 	}
 }
 
-const sslIgnoringAgent = new Agent({ rejectUnauthorized: false });
+type AgentWithAddRequest = Agent & {
+	addRequest(req: http.ClientRequest, options: https.RequestOptions): void;
+};
+
+class ProxyPreservingInsecureAgent extends Agent {
+	addRequest(req: http.ClientRequest, options: https.RequestOptions) {
+		const globalHttpsAgent = https.globalAgent as AgentWithAddRequest;
+		return globalHttpsAgent.addRequest(req, {
+			...options,
+			rejectUnauthorized: false,
+			secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
+		});
+	}
+}
+
+const sslIgnoringAgent = new ProxyPreservingInsecureAgent();
 
 /**
  * Construct an object that can handle the multiple OAuth 2.0 flows.
