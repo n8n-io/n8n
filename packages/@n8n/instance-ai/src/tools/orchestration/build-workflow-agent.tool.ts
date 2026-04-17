@@ -148,6 +148,30 @@ function hashContent(content: string | null): string {
 		.digest('hex');
 }
 
+/**
+ * When the builder's stream errors mid-run, recover a successful-submit outcome
+ * from `submitAttempts` so the orchestrator doesn't redo a build that already
+ * produced a workflow. Returns undefined when nothing was successfully submitted
+ * yet — the caller should rethrow in that case.
+ */
+export function resultFromPostStreamError(input: {
+	error: unknown;
+	submitAttempts: Map<string, SubmitWorkflowAttempt>;
+	mainWorkflowPath: string;
+	workItemId: string;
+	taskId: string;
+}): BackgroundTaskResult | undefined {
+	const attempt = input.submitAttempts.get(input.mainWorkflowPath);
+	if (!attempt?.success) return undefined;
+
+	const errorText = input.error instanceof Error ? input.error.message : String(input.error);
+	const text = `Workflow ${attempt.workflowId} submitted successfully. A later step failed: ${errorText}`;
+	return {
+		text,
+		outcome: buildOutcome(input.workItemId, input.taskId, attempt, text),
+	};
+}
+
 export interface StartBuildWorkflowAgentInput {
 	task: string;
 	workflowId?: string;
@@ -383,38 +407,51 @@ export async function startBuildWorkflowAgentTask(
 						registerWithMastra(subAgentId, subAgent, context.storage);
 
 						const traceParent = getTraceParentRun();
-						const hitlResult = await withTraceParentContext(traceParent, async () => {
-							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-							const stream = await subAgent.stream(briefing, {
-								maxSteps: MAX_STEPS.BUILDER,
-								abortSignal: signal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-								...(llmStepTraceHooks?.executionOptions ?? {}),
+						let finalText: string;
+						try {
+							const hitlResult = await withTraceParentContext(traceParent, async () => {
+								const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
+								const stream = await subAgent.stream(briefing, {
+									maxSteps: MAX_STEPS.BUILDER,
+									abortSignal: signal,
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
+									},
+									...(llmStepTraceHooks?.executionOptions ?? {}),
+								});
+
+								return await consumeStreamWithHitl({
+									agent: subAgent,
+									stream: stream as {
+										runId?: string;
+										fullStream: AsyncIterable<unknown>;
+										text: Promise<string>;
+									},
+									runId: context.runId,
+									agentId: subAgentId,
+									eventBus: context.eventBus,
+									logger: context.logger,
+									threadId: context.threadId,
+									abortSignal: signal,
+									waitForConfirmation: context.waitForConfirmation,
+									drainCorrections,
+									waitForCorrection,
+									llmStepTraceHooks,
+								});
 							});
 
-							return await consumeStreamWithHitl({
-								agent: subAgent,
-								stream: stream as {
-									runId?: string;
-									fullStream: AsyncIterable<unknown>;
-									text: Promise<string>;
-								},
-								runId: context.runId,
-								agentId: subAgentId,
-								eventBus: context.eventBus,
-								logger: context.logger,
-								threadId: context.threadId,
-								abortSignal: signal,
-								waitForConfirmation: context.waitForConfirmation,
-								drainCorrections,
-								waitForCorrection,
-								llmStepTraceHooks,
+							finalText = await hitlResult.text;
+						} catch (error) {
+							const recovered = resultFromPostStreamError({
+								error,
+								submitAttempts,
+								mainWorkflowPath,
+								workItemId,
+								taskId,
 							});
-						});
-
-						const finalText = await hitlResult.text;
+							if (recovered) return recovered;
+							throw error;
+						}
 
 						const mainWorkflowAttempt = submitAttempts.get(mainWorkflowPath);
 						const currentMainWorkflow = await readFileViaSandbox(workspace, mainWorkflowPath);
