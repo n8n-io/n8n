@@ -4,12 +4,13 @@ import { mock } from 'jest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { Agent } from '../entities/agent.entity';
-import type { AgentPublishedVersion } from '../entities/agent-published-version.entity';
-import { ChatIntegrationService } from '../integrations/chat-integration.service';
-import { AgentPublishedVersionRepository } from '../repositories/agent-published-version.repository';
-import { AgentRepository } from '../repositories/agent.repository';
 import { AgentsService } from '../agents.service';
+import type { AgentPublishedVersion } from '../entities/agent-published-version.entity';
+import type { Agent } from '../entities/agent.entity';
+import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { AgentPublishedVersionRepository } from '../repositories/agent-published-version.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -79,7 +80,7 @@ describe('AgentsService', () => {
 	describe('updateConfig', () => {
 		const config = {
 			name: 'Test Agent',
-		} as unknown as import('../json-config/agent-json-config').AgentJsonConfig;
+		} as unknown as AgentJsonConfig;
 
 		beforeEach(() => {
 			jest.spyOn(service, 'validateConfig').mockResolvedValue({ valid: true, config });
@@ -130,7 +131,9 @@ describe('AgentsService', () => {
 
 		beforeEach(() => {
 			mockTrx = { save: jest.fn() };
-			mockTransaction = jest.fn(async (cb: (trx: typeof mockTrx) => Promise<void>) => cb(mockTrx));
+			mockTransaction = jest.fn(
+				async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
+			);
 			Object.defineProperty(agentRepository, 'manager', {
 				value: { transaction: mockTransaction },
 				configurable: true,
@@ -199,7 +202,9 @@ describe('AgentsService', () => {
 
 		beforeEach(() => {
 			mockTrx = { save: jest.fn() };
-			mockTransaction = jest.fn(async (cb: (trx: typeof mockTrx) => Promise<void>) => cb(mockTrx));
+			mockTransaction = jest.fn(
+				async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
+			);
 			Object.defineProperty(agentRepository, 'manager', {
 				value: { transaction: mockTransaction },
 				configurable: true,
