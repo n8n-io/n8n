@@ -12,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -776,7 +777,7 @@ export type RelayEventMap = {
 
 	'token-exchange-failed': {
 		subject?: string;
-		failureReason: string;
+		failureReason: TokenExchangeFailureReason;
 		grantType: string;
 		clientIp: string;
 	};
@@ -785,6 +786,11 @@ export type RelayEventMap = {
 		subject: string;
 		issuer: string;
 		kid: string;
+		clientIp: string;
+	};
+
+	'embed-login-failed': {
+		failureReason: TokenExchangeFailureReason;
 		clientIp: string;
 	};
 
