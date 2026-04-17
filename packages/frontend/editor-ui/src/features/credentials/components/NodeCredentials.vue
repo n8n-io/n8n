@@ -34,7 +34,6 @@ import {
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 } from '@/app/utils/nodeTypesUtils';
-import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
@@ -211,14 +210,20 @@ watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
 		if (props.skipAutoSelect) return;
-		if (types.length === 0 || !isEmpty(selected.value)) return;
+		if (types.length === 0) return;
 
-		const allOptions = types.map((type) => type.options).flat();
+		// Only auto-select for credential types that don't already have a selection.
+		// This ensures switching auth types on existing nodes auto-selects the most
+		// recent credential of the new type, even when other credential types are set.
+		const typesWithoutSelection = types.filter(({ type }) => !isCredentialExisting(type));
+		if (typesWithoutSelection.length === 0) return;
+
+		const allOptions = typesWithoutSelection.map(({ options }) => options).flat();
 
 		if (allOptions.length === 0) {
 			// No credentials configured — auto-enable AI Gateway for supported types
 			if (aiGateway.isEnabled.value) {
-				for (const { type } of types) {
+				for (const { type } of typesWithoutSelection) {
 					if (aiGateway.isCredentialTypeSupported(type.name)) {
 						onAiGatewaySelector(type.name, true);
 					}
@@ -731,7 +736,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 
 				<div
-					v-else-if="showStandardEmptyState(type)"
+					v-else-if="showStandardEmptyState(type) && options.length === 0"
 					:class="$style.standardEmptyContainer"
 					data-test-id="node-credentials-empty-state"
 				>
