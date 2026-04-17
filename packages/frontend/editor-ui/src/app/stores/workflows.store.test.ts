@@ -306,7 +306,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should return true for an existing workflow', () => {
-			useWorkflowState().setWorkflowId('123');
+			workflowsStore.setWorkflowId('123');
 			// Add the workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(
 				createTestWorkflow({
@@ -1877,7 +1877,11 @@ describe('useWorkflowsStore', () => {
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
 			workflowsStore.removeNode(n0);
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
-			useWorkflowState().setNodeValue({ name: 'n1', key: 'disabled', value: true });
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).setNodeValue({
+				name: 'n1',
+				key: 'disabled',
+				value: true,
+			});
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
 		});
 	});

@@ -197,7 +197,11 @@ describe(useNodeDirtiness, () => {
 		it('should not update dirtiness when the notes field is updated', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
-			workflowState.setNodeValue({ key: 'notes', name: 'b', value: 'test' });
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).setNodeValue({
+				key: 'notes',
+				name: 'b',
+				value: 'test',
+			});
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
 		});

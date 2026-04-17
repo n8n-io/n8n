@@ -15,9 +15,13 @@ import type {
 import type { INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 const NESTED_PARAM_TYPES = new Set([
 	'collection',
@@ -51,7 +55,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
-const workflowState = injectWorkflowState();
+const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 const ndvStore = useNDVStore();
 
 const nodeType = computed(() =>
@@ -170,7 +177,7 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 
 	revealParameterIssues(paramName);
 
-	workflowState.updateNodeProperties({
+	workflowDocumentStore.value.updateNodeProperties({
 		name: props.state.node.name,
 		properties: {
 			parameters: {

@@ -56,7 +56,6 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
-import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -504,7 +503,6 @@ export function useWorkflowHelpers() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
-	const workflowState = injectWorkflowState();
 	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
@@ -953,10 +951,9 @@ export function useWorkflowHelpers() {
 		}
 	}
 
-	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
-		const ws = overrideWorkflowState ?? workflowState;
+	async function initState(workflowData: IWorkflowDb) {
 		workflowsListStore.addWorkflow(workflowData);
-		ws.setWorkflowId(workflowData.id);
+		workflowsStore.setWorkflowId(workflowData.id);
 		const initializedWorkflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowData.id),
 		);

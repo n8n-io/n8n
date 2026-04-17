@@ -1,7 +1,6 @@
 import { useUIStore } from '@/app/stores/ui.store';
 import { AutoSaveState, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
-import type { WorkflowState } from './useWorkflowState';
 import router from '@/app/router';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -49,17 +48,6 @@ vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: () => ({
 		workflow: { update: true },
 	}),
-}));
-
-const mockWorkflowState = {
-	setWorkflowProperty: vi.fn(),
-	setActive: vi.fn(),
-	setWorkflowId: vi.fn(),
-	setNodeValue: vi.fn(),
-};
-
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: () => mockWorkflowState,
 }));
 
 const getDuplicateTestWorkflow = (): WorkflowDataUpdate => ({
@@ -170,10 +158,6 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);
 
-			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const resolveSpy = vi.fn();
 			const resolveMarker = Symbol();
 			resolveSpy.mockReturnValue(resolveMarker);
@@ -184,7 +168,6 @@ describe('useWorkflowSaving', () => {
 
 			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({
 				router: mockRouter as never,
-				workflowState: mockWorkflowState as WorkflowState,
 			});
 
 			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
@@ -586,13 +569,8 @@ describe('useWorkflowSaving', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 			workflowDocumentStore.setTags(tagIds);
 
-			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: testWorkflowState as WorkflowState,
 			});
 
 			await saveCurrentWorkflow({ id: workflowId }, true, false, false);
@@ -661,13 +639,8 @@ describe('useWorkflowSaving', () => {
 			uiStore.markStateDirty();
 			const initialDirtyCount = uiStore.dirtyStateSetCount;
 
-			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: mockWorkflowState as WorkflowState,
 			});
 
 			saveStore.setAutoSaveState(AutoSaveState.InProgress);
@@ -706,13 +679,8 @@ describe('useWorkflowSaving', () => {
 			// Mark state as dirty
 			uiStore.markStateDirty();
 
-			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: mockWorkflowState as WorkflowState,
 			});
 
 			// Save without making any changes during save
@@ -741,13 +709,8 @@ describe('useWorkflowSaving', () => {
 
 			const saveStore = useWorkflowSaveStore();
 
-			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: mockWorkflowState as WorkflowState,
 			});
 
 			// Simulate a save already in progress
@@ -805,13 +768,8 @@ describe('useWorkflowSaving', () => {
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
-			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: testWorkflowState as WorkflowState,
 			});
 
 			// Start autosave
@@ -864,13 +822,8 @@ describe('useWorkflowSaving', () => {
 
 			const saveStore = useWorkflowSaveStore();
 
-			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: testWorkflowState as WorkflowState,
 			});
 
 			// Simulate a save already in progress
@@ -926,13 +879,8 @@ describe('useWorkflowSaving', () => {
 
 			const saveStore = useWorkflowSaveStore();
 
-			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: testWorkflowState as WorkflowState,
 			});
 
 			// Before save starts
@@ -1004,13 +952,8 @@ describe('useWorkflowSaving', () => {
 
 			const saveStore = useWorkflowSaveStore();
 
-			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: testWorkflowState as WorkflowState,
 			});
 
 			// Start first autosave
@@ -1068,13 +1011,8 @@ describe('useWorkflowSaving', () => {
 
 			const saveStore = useWorkflowSaveStore();
 
-			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: testWorkflowState as WorkflowState,
 			});
 
 			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, false);
@@ -1104,13 +1042,8 @@ describe('useWorkflowSaving', () => {
 				const saveStore = useWorkflowSaveStore();
 				const initialRetryCount = saveStore.retryCount;
 
-				const testWorkflowState: Partial<WorkflowState> = {
-					setWorkflowProperty: vi.fn(),
-				};
-
 				const { saveCurrentWorkflow } = useWorkflowSaving({
 					router,
-					workflowState: testWorkflowState as WorkflowState,
 				});
 
 				const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);

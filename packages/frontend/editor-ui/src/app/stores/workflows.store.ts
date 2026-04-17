@@ -636,8 +636,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
+	function setWorkflowId(id?: string) {
+		workflow.value.id = id || '';
+		workflowObject.value.id = workflow.value.id;
+	}
+
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
+		workflowObject.value = new Workflow({
+			id: workflow.value.id,
+			name: workflow.value.name,
+			active: false,
+			nodes: [],
+			connections: {},
+			nodeTypes: getNodeTypes(),
+			settings: { ...DEFAULT_SETTINGS },
+		});
+		nodeMetadata.value = {};
 	}
 
 	function setWorkflowActiveVersion(version: WorkflowHistory | null) {
@@ -1720,6 +1735,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		cloneWorkflowObject,
 		getWorkflowFromUrl,
 		getActivationError,
+		setWorkflowId,
 		resetWorkflow,
 		addNodeExecutionStartedData,
 		setWorkflowActiveVersion,

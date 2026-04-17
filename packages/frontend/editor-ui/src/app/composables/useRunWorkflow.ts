@@ -90,7 +90,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const nodeHelpers = useNodeHelpers();
 	const workflowSaving = useWorkflowSaving({
 		router: useRunWorkflowOpts.router,
-		workflowState,
 	});
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
