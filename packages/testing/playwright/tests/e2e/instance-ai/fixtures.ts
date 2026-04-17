@@ -2,7 +2,6 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 
 import { test as base, expect as baseExpect } from '../../../fixtures/base';
-import { getBackendUrl } from '../../../utils/url-helper';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'mock-anthropic-api-key';
 const HAS_REAL_API_KEY = !!process.env.ANTHROPIC_API_KEY;
@@ -63,14 +62,14 @@ export const test = base.extend<InstanceAiFixtures>({
 	},
 
 	instanceAiProxySetup: [
-		async ({ services, backendUrl }, use, testInfo) => {
-			// In local mode without proxy, skip proxy setup — tests hit real API directly
-			const isLocalWithoutProxy = !!getBackendUrl() && !process.env.PROXY_SERVER_URL;
-			if (isLocalWithoutProxy) {
+		async ({ n8nContainer, backendUrl }, use, testInfo) => {
+			// Local-build mode (no Docker container) — skip all proxy setup.
+			// LLM calls go straight to Anthropic, no recording or replay.
+			if (!n8nContainer) {
 				await use(undefined);
 				return;
 			}
-
+			const services = n8nContainer.services;
 			const testSlug = slugify(testInfo.title);
 			const folder = `instance-ai/${testSlug}`;
 

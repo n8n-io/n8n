@@ -44,11 +44,40 @@ export class InstanceAiTestController {
 		return { ok: true };
 	}
 
-	@Post('/test/drain-background-tasks', { skipAuth: true })
-	drainBackgroundTasks() {
+	/**
+	 * Wipe all Instance AI state and user workflows between tests.
+	 *
+	 * Recording pollution vector: the orchestrator's system prompt tells the LLM
+	 * to "list existing workflows/credentials first", so workflows left over from
+	 * a prior test show up in `list-workflows` tool output and leak into the next
+	 * test's recorded responses (observed: a follow-up test's recording referencing
+	 * the previous test's workflow name).
+	 *
+	 * This endpoint cancels background tasks, clears per-thread in-memory state,
+	 * and deletes all thread + workflow rows.
+	 */
+	@Post('/test/reset', { skipAuth: true })
+	async reset() {
 		this.assertTraceReplayEnabled();
-		const cancelled = this.instanceAiService.cancelAllBackgroundTasks();
-		return { ok: true, cancelled };
+
+		this.instanceAiService.cancelAllBackgroundTasks();
+
+		const threads = await this.threadRepo.find({ select: ['id'] });
+		for (const { id } of threads) {
+			await this.instanceAiService.clearThreadState(id);
+		}
+		await this.threadRepo.clear();
+
+		const workflowIds = await this.workflowRepo.find({ select: ['id'] });
+		for (const { id } of workflowIds) {
+			await this.workflowRepo.delete(id);
+		}
+
+		return {
+			ok: true,
+			threadsDeleted: threads.length,
+			workflowsDeleted: workflowIds.length,
+		};
 	}
 
 	/**

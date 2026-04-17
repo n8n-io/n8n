@@ -118,20 +118,27 @@ describe('InstanceAiTestController', () => {
 		});
 	});
 
-	describe('drainBackgroundTasks', () => {
-		it('should cancel all background tasks and return count', () => {
-			instanceAiService.cancelAllBackgroundTasks.mockReturnValue(3);
+	describe('reset', () => {
+		it('should clear per-thread state and delete threads + workflows', async () => {
+			threadRepo.find.mockResolvedValue([{ id: 't1' }, { id: 't2' }] as never);
+			workflowRepo.find.mockResolvedValue([{ id: 'w1' }, { id: 'w2' }, { id: 'w3' }] as never);
 
-			const result = controller.drainBackgroundTasks();
+			const result = await controller.reset();
 
 			expect(instanceAiService.cancelAllBackgroundTasks).toHaveBeenCalled();
-			expect(result).toEqual({ ok: true, cancelled: 3 });
+			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith('t1');
+			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith('t2');
+			expect(threadRepo.clear).toHaveBeenCalled();
+			expect(workflowRepo.delete).toHaveBeenCalledWith('w1');
+			expect(workflowRepo.delete).toHaveBeenCalledWith('w2');
+			expect(workflowRepo.delete).toHaveBeenCalledWith('w3');
+			expect(result).toEqual({ ok: true, threadsDeleted: 2, workflowsDeleted: 3 });
 		});
 
-		it('should throw ForbiddenError when trace replay is not enabled', () => {
+		it('should throw ForbiddenError when trace replay is not enabled', async () => {
 			delete process.env.E2E_TESTS;
 
-			expect(() => controller.drainBackgroundTasks()).toThrow(ForbiddenError);
+			await expect(controller.reset()).rejects.toThrow(ForbiddenError);
 		});
 	});
 

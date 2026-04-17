@@ -1,5 +1,23 @@
 import type { TOKEN_EXCHANGE_GRANT_TYPE } from './token-exchange.schemas';
 
+export const TokenExchangeFailureReason = {
+	InvalidSignature: 'invalid_signature',
+	UnknownKey: 'unknown_key',
+	TokenReplay: 'token_replay',
+	TokenTooLong: 'token_too_long',
+	TokenNearExpiry: 'token_near_expiry',
+	InvalidFormat: 'invalid_format',
+	MissingKid: 'missing_kid',
+	MissingIss: 'missing_iss',
+	InvalidClaims: 'invalid_claims',
+	InternalError: 'internal_error',
+	RoleNotAllowed: 'role_not_allowed',
+	Other: 'other',
+} as const;
+
+export type TokenExchangeFailureReason =
+	(typeof TokenExchangeFailureReason)[keyof typeof TokenExchangeFailureReason];
+
 export interface IssuedTokenResult {
 	accessToken: string;
 	expiresIn: number;
