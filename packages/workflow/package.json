@@ -48,7 +48,8 @@
     "@types/md5": "^2.3.5",
     "@types/xml2js": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "dependencies": {
     "@n8n/errors": "workspace:*",
@@ -69,7 +70,9 @@
     "transliteration": "2.3.5",
     "uuid": "catalog:",
     "xml2js": "catalog:",
-    "zod": "catalog:",
     "jsonrepair": "catalog:"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
   }
 }

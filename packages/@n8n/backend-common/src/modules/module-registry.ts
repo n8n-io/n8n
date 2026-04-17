@@ -93,14 +93,37 @@ export class ModuleRegistry {
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
+			const primaryPath = `${modulesDir}/${moduleName}/${moduleName}.module`;
+			const eePath = `${modulesDir}/${moduleName}.ee/${moduleName}.module`;
+
+			const isModuleNotFound = (err: unknown): boolean =>
+				err instanceof Error &&
+				'code' in err &&
+				(err as NodeJS.ErrnoException).code === 'MODULE_NOT_FOUND';
+
+			let primaryError: unknown;
 			try {
-				await import(`${modulesDir}/${moduleName}/${moduleName}.module`);
-			} catch {
-				try {
-					await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module`);
-				} catch (error) {
-					throw new MissingModuleError(moduleName, error instanceof Error ? error.message : '');
-				}
+				await import(primaryPath);
+				continue;
+			} catch (error) {
+				primaryError = error;
+			}
+
+			if (!isModuleNotFound(primaryError)) {
+				throw new MissingModuleError(
+					moduleName,
+					primaryError instanceof Error ? (primaryError.stack ?? primaryError.message) : '',
+				);
+			}
+
+			try {
+				await import(eePath);
+			} catch (eeError) {
+				const reportable = isModuleNotFound(eeError) ? primaryError : eeError;
+				throw new MissingModuleError(
+					moduleName,
+					reportable instanceof Error ? (reportable.stack ?? reportable.message) : '',
+				);
 			}
 		}
 
