@@ -51,15 +51,12 @@ export async function startResearchAgentTask(
 	input: StartResearchAgentInput,
 ): Promise<StartedResearchAgentTask> {
 	const researchTools: ToolsInput = {};
-	const toolNames = ['web-search', 'fetch-url'];
-	for (const name of toolNames) {
-		if (name in context.domainTools) {
-			researchTools[name] = context.domainTools[name];
-		}
+	if ('research' in context.domainTools) {
+		researchTools.research = context.domainTools.research;
 	}
 
-	if (!researchTools['web-search']) {
-		return { result: 'Error: web-search tool not available.', taskId: '', agentId: '' };
+	if (Object.keys(researchTools).length === 0) {
+		return { result: 'Error: research tool not available.', taskId: '', agentId: '' };
 	}
 
 	if (!context.spawnBackgroundTask) {

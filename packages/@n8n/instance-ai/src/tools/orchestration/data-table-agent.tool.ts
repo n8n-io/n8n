@@ -32,20 +32,7 @@ import {
 } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
-const DATA_TABLE_TOOL_NAMES = [
-	'list-data-tables',
-	'create-data-table',
-	'delete-data-table',
-	'get-data-table-schema',
-	'add-data-table-column',
-	'delete-data-table-column',
-	'rename-data-table-column',
-	'query-data-table-rows',
-	'insert-data-table-rows',
-	'update-data-table-rows',
-	'delete-data-table-rows',
-	'parse-file',
-];
+const DATA_TABLE_TOOL_NAME = 'data-tables';
 
 export interface StartDataTableAgentInput {
 	task: string;
@@ -65,16 +52,17 @@ export async function startDataTableAgentTask(
 	context: OrchestrationContext,
 	input: StartDataTableAgentInput,
 ): Promise<StartedBackgroundAgentTask> {
-	// Collect data table tools from the domain tools
+	// Grab the consolidated data-tables tool (and parse-file if available) from domain tools
 	const dataTableTools: ToolsInput = {};
-	for (const name of DATA_TABLE_TOOL_NAMES) {
-		if (name in context.domainTools) {
-			dataTableTools[name] = context.domainTools[name];
-		}
+	if (DATA_TABLE_TOOL_NAME in context.domainTools) {
+		dataTableTools[DATA_TABLE_TOOL_NAME] = context.domainTools[DATA_TABLE_TOOL_NAME];
+	}
+	if ('parse-file' in context.domainTools) {
+		dataTableTools['parse-file'] = context.domainTools['parse-file'];
 	}
 
-	if (Object.keys(dataTableTools).length === 0) {
-		return { result: 'Error: no data table tools available.', taskId: '', agentId: '' };
+	if (!(DATA_TABLE_TOOL_NAME in dataTableTools)) {
+		return { result: 'Error: data-tables tool not available.', taskId: '', agentId: '' };
 	}
 
 	if (!context.spawnBackgroundTask) {

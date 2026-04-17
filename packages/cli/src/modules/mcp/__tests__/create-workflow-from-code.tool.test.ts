@@ -270,6 +270,26 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(response.error).toBe('Invalid syntax at line 5');
 		});
 
+		test('includes SDK reference hint only for parse errors', async () => {
+			const parseError = new Error('Failed to parse generated workflow code: unexpected token');
+			parseError.name = 'WorkflowCodeParseError';
+			mockParseAndValidate.mockRejectedValue(parseError);
+
+			const result = await callHandler({ code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toContain('sdk_ref');
+		});
+
+		test('does not include SDK reference hint for non-parse errors', async () => {
+			mockParseAndValidate.mockRejectedValue(new Error('Permission denied'));
+
+			const result = await callHandler({ code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toBeUndefined();
+		});
+
 		test('tracks telemetry on success', async () => {
 			await callHandler({ code: 'const wf = ...' });
 

@@ -5,7 +5,7 @@
  * Separated from the tool definition so the tool stays a thin suspend/resume
  * state machine, and this logic is testable independently.
  */
-import { hasPlaceholderDeep } from '@n8n/utils';
+import { findPlaceholderDetails } from '@n8n/utils';
 import type { IDataObject, NodeJSON, DisplayOptions } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -30,6 +30,76 @@ export function createCredentialCache(): CredentialCache {
 }
 
 // ── Node analysis ───────────────────────────────────────────────────────────
+
+/**
+ * Compute the set of credential types valid for a node given its current
+ * parameters. Mirrors the resolution in `buildSetupRequests`: consults the
+ * node service's dynamic resolver first, then falls back to the description's
+ * static credentials filtered by displayOptions, plus the dynamic types
+ * implied by `authentication: genericCredentialType | predefinedCredentialType`.
+ */
+async function getValidCredentialTypes(
+	context: InstanceAiContext,
+	node: NodeJSON,
+): Promise<Set<string>> {
+	const typeVersion = node.typeVersion ?? 1;
+	const parameters = (node.parameters as Record<string, unknown>) ?? {};
+	let nodeDesc: Awaited<ReturnType<typeof context.nodeService.getDescription>> | undefined;
+	try {
+		nodeDesc = await context.nodeService.getDescription(node.type, typeVersion);
+	} catch {
+		nodeDesc = undefined;
+	}
+
+	const types = new Set<string>();
+
+	if (context.nodeService.getNodeCredentialTypes) {
+		try {
+			const dynamic = await context.nodeService.getNodeCredentialTypes(
+				node.type,
+				typeVersion,
+				parameters,
+				node.credentials as Record<string, unknown> | undefined,
+			);
+			for (const t of dynamic) types.add(t);
+		} catch {
+			// Ignore — fall through to description-based detection.
+		}
+	}
+
+	if (nodeDesc?.credentials) {
+		for (const c of nodeDesc.credentials as Array<{ name?: string; displayOptions?: unknown }>) {
+			if (!c.name) continue;
+			if (!c.displayOptions) {
+				types.add(c.name);
+				continue;
+			}
+			if (
+				matchesDisplayOptions(
+					{ parameters, nodeVersion: typeVersion },
+					c.displayOptions as DisplayOptions,
+				)
+			) {
+				types.add(c.name);
+			}
+		}
+	}
+
+	const authentication = parameters.authentication;
+	if (
+		authentication === 'genericCredentialType' &&
+		typeof parameters.genericAuthType === 'string'
+	) {
+		types.add(parameters.genericAuthType);
+	} else if (
+		authentication === 'predefinedCredentialType' &&
+		typeof parameters.nodeCredentialType === 'string'
+	) {
+		types.add(parameters.nodeCredentialType);
+	}
+
+	return types;
+}
 
 /**
  * Build setup request(s) from a single WorkflowJSON node.
@@ -70,8 +140,14 @@ export async function buildSetupRequests(
 
 	// Also treat placeholder values as parameter issues so the setup wizard surfaces them
 	for (const [paramName, paramValue] of Object.entries(parameters)) {
-		if (!parameterIssues[paramName] && hasPlaceholderDeep(paramValue)) {
-			parameterIssues[paramName] = ['Contains a placeholder value - please provide the real value'];
+		const details = findPlaceholderDetails(paramValue);
+		if (details.length > 0) {
+			const message = `Placeholder "${details[0].label}" — please provide the real value`;
+			if (parameterIssues[paramName]) {
+				parameterIssues[paramName].push(message);
+			} else {
+				parameterIssues[paramName] = [message];
+			}
 		}
 	}
 
@@ -547,6 +623,22 @@ export async function applyNodeChanges(
 					error: `Failed to merge parameters: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				});
 			}
+		}
+
+		// Drop credential entries that are no longer valid for the node's current
+		// parameters (e.g. httpHeaderAuth left over when authentication was later
+		// switched to 'none'). Entries just applied via credsMap are preserved so
+		// a user can assign an auxiliary credential without it being cleaned up.
+		if (node.credentials && Object.keys(node.credentials).length > 0) {
+			const validTypes = await getValidCredentialTypes(context, node);
+			const appliedTypes = new Set(credsMap ? Object.keys(credsMap) : []);
+			const cleaned: NonNullable<typeof node.credentials> = {};
+			for (const [credType, value] of Object.entries(node.credentials)) {
+				if (validTypes.has(credType) || appliedTypes.has(credType)) {
+					cleaned[credType] = value;
+				}
+			}
+			node.credentials = Object.keys(cleaned).length > 0 ? cleaned : undefined;
 		}
 	}
 

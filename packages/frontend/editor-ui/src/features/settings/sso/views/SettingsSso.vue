@@ -77,9 +77,11 @@ onBeforeRouteLeave((_to, _from, next) => {
 
 async function onSaveAndLeave() {
 	showUnsavedChangesDialog.value = false;
-	await activeForm.value?.onSave();
-	pendingNext.value?.();
-	pendingNext.value = null;
+	const saved = await activeForm.value?.onSave();
+	if (saved) {
+		pendingNext.value?.();
+		pendingNext.value = null;
+	}
 }
 
 function onLeaveWithoutSaving() {

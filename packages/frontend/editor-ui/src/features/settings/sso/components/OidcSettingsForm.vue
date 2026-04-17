@@ -38,7 +38,9 @@ const {
 	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
-	shouldPromptUserToConfirmUserRoleProvisioningChange,
+	roleAssignmentTransition,
+	storedHasProjectRoles,
+	revertRoleAssignment,
 } = useUserRoleProvisioningForm(SupportedProtocols.OIDC);
 
 type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
@@ -113,16 +115,10 @@ const cannotSaveOidcSettings = computed(() => {
 	);
 });
 
-async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false) {
-	if (
-		!provisioningChangesConfirmed &&
-		shouldPromptUserToConfirmUserRoleProvisioningChange({
-			currentLoginEnabled: !!ssoStore.oidcConfig?.loginEnabled,
-			loginEnabledFormValue: ssoStore.isOidcLoginEnabled,
-		})
-	) {
+async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false): Promise<boolean> {
+	if (!provisioningChangesConfirmed && roleAssignmentTransition.value !== 'none') {
 		showUserRoleProvisioningDialog.value = true;
-		return;
+		return false;
 	}
 
 	const isLoginEnabledChanged = ssoStore.oidcConfig?.loginEnabled !== ssoStore.isOidcLoginEnabled;
@@ -144,7 +140,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 				),
 			},
 		);
-		if (confirmAction !== MODAL_CONFIRM) return;
+		if (confirmAction !== MODAL_CONFIRM) return false;
 	}
 
 	const acrArray = authenticationContextClassReference.value
@@ -180,12 +176,13 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			title: i18n.baseText('settings.sso.settings.save.success'),
 			type: 'success',
 		});
+		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
-		return;
+		return false;
 	} finally {
-		savingForm.value = false;
 		await getOidcConfig();
+		savingForm.value = false;
 	}
 }
 
@@ -314,10 +311,14 @@ onMounted(async () => {
 			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
-				:new-provisioning-setting="userRoleProvisioning"
+				:transition-type="roleAssignmentTransition"
+				:show-project-roles-csv="storedHasProjectRoles || roleAssignment === 'instance_and_project'"
 				auth-protocol="oidc"
 				@confirm-provisioning="onOidcSettingsSave(true)"
-				@cancel="showUserRoleProvisioningDialog = false"
+				@cancel="
+					revertRoleAssignment();
+					showUserRoleProvisioningDialog = false;
+				"
 			/>
 			<div :class="$style.group">
 				<label>Authentication Context Class Reference</label>
