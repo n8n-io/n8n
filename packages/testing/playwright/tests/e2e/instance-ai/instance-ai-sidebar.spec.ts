@@ -86,12 +86,6 @@ test.describe(
 			await n8n.instanceAi.sendMessage('Thread to delete');
 			await n8n.instanceAi.waitForResponseComplete();
 
-			// Create a second thread so we have somewhere to go after deletion
-			await n8n.instanceAi.sidebar.getNewThreadButton().click();
-			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
-			await n8n.instanceAi.sendMessage('Second thread');
-			await n8n.instanceAi.waitForResponseComplete();
-
 			// Verify target thread is visible in the sidebar
 			const targetThread = n8n.instanceAi.sidebar.getThreadByTitle('Thread to Delete');
 			await expect(targetThread).toBeVisible({ timeout: 10_000 });
