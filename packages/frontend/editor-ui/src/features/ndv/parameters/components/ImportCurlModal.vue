@@ -93,7 +93,8 @@ async function onImport() {
 	} catch {
 		// Handles WASM loading failures (e.g. wrong MIME type for tree-sitter.wasm)
 		toast.showToast({
-			title: i18n.baseText('importCurlParameter.showError.invalidCurlCommand.title'),
+			title: i18n.baseText('importCurlParameter.showError.failedToLoad.title'),
+			message: i18n.baseText('importCurlParameter.showError.failedToLoad.message'),
 			type: 'error',
 			duration: 0,
 		});
