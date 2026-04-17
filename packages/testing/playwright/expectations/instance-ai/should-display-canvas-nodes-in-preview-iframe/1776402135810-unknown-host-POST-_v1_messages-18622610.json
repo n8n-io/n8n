@@ -13,7 +13,7 @@
     "reasonPhrase": "OK",
     "headers": {
       "x-envoy-upstream-service-time": [
-        "2823"
+        "1347"
       ],
       "vary": [
         "Accept-Encoding"
@@ -22,10 +22,10 @@
         "max-age=31536000; includeSubDomains; preload"
       ],
       "server-timing": [
-        "x-originResponse;dur=2825"
+        "x-originResponse;dur=1349"
       ],
       "request-id": [
-        "req_011Ca8k9SG4Req8ckat7MzGB"
+        "req_011Ca8kqMA6PG314EDYHJTU5"
       ],
       "cf-cache-status": [
         "DYNAMIC"
@@ -37,7 +37,7 @@
         "cloudflare"
       ],
       "Date": [
-        "Fri, 17 Apr 2026 04:53:07 GMT"
+        "Fri, 17 Apr 2026 05:02:07 GMT"
       ],
       "Content-Type": [
         "application/json"
@@ -51,7 +51,7 @@
       "type": "JSON",
       "json": {
         "model": "claude-sonnet-4-6",
-        "id": "msg_0135dcbXFzg7qxwzwTs4hw5d",
+        "id": "msg_014FT8x68dptaiwcMoTesZCg",
         "type": "message",
         "role": "assistant",
         "content": [
@@ -76,10 +76,10 @@
           "inference_geo": "global"
         }
       },
-      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC02IiwiaWQiOiJtc2dfMDEzNWRjYlhGemc3cXh3endUczRodzVkIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiQ3JlYXRlIG1hbnVhbCB0cmlnZ2VyIHdvcmtmbG93IHdpdGggU2V0IG5vZGUifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MTM0LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTAsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fQ=="
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC02IiwiaWQiOiJtc2dfMDE0RlQ4eDY4ZHB0YWl3Y01vVGVzWkNnIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiQ3JlYXRlIG1hbnVhbCB0cmlnZ2VyIHdvcmtmbG93IHdpdGggU2V0IG5vZGUifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MTM0LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTAsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fQ=="
     }
   },
-  "id": "1776401589941-unknown-host-POST-_v1_messages-18622610.json",
+  "id": "1776402135810-unknown-host-POST-_v1_messages-18622610.json",
   "priority": 0,
   "timeToLive": {
     "unlimited": true

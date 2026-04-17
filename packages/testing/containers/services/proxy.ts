@@ -358,6 +358,7 @@ export class ProxyServer {
 
 			await fs.mkdir(targetDir, { recursive: true });
 			const seenRequests = new Set<string>();
+			const seenFilenames = new Set<string>();
 
 			for (const expectation of recordedExpectations) {
 				if (
@@ -431,7 +432,15 @@ export class ProxyServer {
 					.digest('hex')
 					.substring(0, 8);
 
-				const filename = `${Date.now()}-${hostName}-${method}-${expectation.httpRequest.path.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}.json`;
+				let filename = `${Date.now()}-${hostName}-${method}-${expectation.httpRequest.path.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}.json`;
+				// Avoid filename collisions when multiple requests share the same
+				// timestamp + hash (e.g. two orchestrator calls in the same ms).
+				let suffix = 1;
+				while (seenFilenames.has(filename)) {
+					filename = `${Date.now()}-${hostName}-${method}-${expectation.httpRequest.path.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}-${suffix}.json`;
+					suffix++;
+				}
+				seenFilenames.add(filename);
 				processedExpectation.id = filename;
 				const filePath = join(targetDir, filename);
 
