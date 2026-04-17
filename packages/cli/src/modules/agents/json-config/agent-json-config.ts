@@ -84,7 +84,7 @@ export const AgentJsonConfigSchema = z.object({
 		.string()
 		.min(1)
 		.regex(/^[a-z0-9-]+\/[a-z0-9._-]+$/i, 'Model must be "provider/model-name" format'),
-	credential: z.string().min(1),
+	credential: z.string().optional(),
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
 	tools: z.array(AgentJsonToolConfigSchema).optional(),

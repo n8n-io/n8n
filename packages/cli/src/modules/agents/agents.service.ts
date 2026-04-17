@@ -15,9 +15,11 @@ import {
 	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { v4 as uuid } from 'uuid';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
+
 import { ActiveExecutions } from '@/active-executions';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -46,6 +48,7 @@ import {
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentRepository } from './repositories/agent.repository';
+import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 
 export interface ExecuteAgentData {
 	response: string;
@@ -67,17 +70,31 @@ export class AgentsService {
 		{ agent: agents.Agent; agentId: string; userId?: string }
 	>(30 * Time.minutes.toMilliseconds);
 
-	/** Build a cache key that includes the user so different users get isolated runtimes. */
+	/** Cache key for draft/builder executions. */
 	private runtimeKey(agentId: string, userId?: string): string {
 		return userId ? `${agentId}:${userId}` : agentId;
 	}
 
-	/** Remove all cached runtimes for an agent (across all users). */
+	/** Remove all cached draft runtimes for an agent (all users). */
 	private clearRuntimes(agentId: string): void {
 		for (const key of this.runtimes.keys()) {
 			if (key === agentId || key.startsWith(`${agentId}:`)) {
 				this.runtimes.delete(key);
 			}
+		}
+	}
+
+	/**
+	 * Start a new draft if the agent is currently in sync with the published snapshot.
+	 * Any mutation that changes how the agent would run must call this so that
+	 * `hasUnpublishedChanges` (derived from versionId vs publishedFromVersionId) stays accurate.
+	 */
+	private markDraftDirty(agent: Agent): void {
+		if (
+			agent.versionId !== null &&
+			agent.versionId === agent.publishedVersion?.publishedFromVersionId
+		) {
+			agent.versionId = uuid();
 		}
 	}
 
@@ -96,6 +113,7 @@ export class AgentsService {
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 		private readonly n8nMemory: N8nMemory,
+		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 	) {}
 
 	async create(projectId: string, name: string): Promise<Agent> {
@@ -110,6 +128,7 @@ export class AgentsService {
 			name,
 			projectId,
 			schema: defaultConfig,
+			versionId: uuid(),
 		});
 
 		const saved = await this.agentRepository.save(agent);
@@ -140,6 +159,7 @@ export class AgentsService {
 		if (agent.schema) {
 			agent.schema = { ...agent.schema, name };
 		}
+		this.markDraftDirty(agent);
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent name', { agentId, projectId, name });
 		return saved;
@@ -165,6 +185,7 @@ export class AgentsService {
 		if (agent.schema) {
 			agent.schema = { ...agent.schema, description };
 		}
+		this.markDraftDirty(agent);
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent description', { agentId, projectId });
 		return saved;
@@ -180,6 +201,65 @@ export class AgentsService {
 			where: { projectId: In(projectIds) },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	async publishAgent(agentId: string, projectId: string, userId: string): Promise<Agent> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		await this.agentRepository.manager.transaction(async (trx) => {
+			// publishedFromVersionId is non-null — ensure the agent has a versionId before snapshotting.
+			if (!agent.versionId) {
+				agent.versionId = uuid();
+				await trx.save(agent);
+			}
+
+			agent.publishedVersion = await this.agentPublishedVersionRepository.savePublishedVersion(
+				{
+					agentId: agent.id,
+					schema: agent.schema,
+					publishedFromVersionId: agent.versionId,
+					model: agent.model,
+					provider: agent.provider,
+					credentialId: agent.credentialId,
+					publishedById: userId,
+				},
+				trx,
+			);
+		});
+
+		// Evict any cached draft runtime so integration executions pick up
+		// the new published snapshot on their next request.
+		this.clearRuntimes(agentId);
+
+		this.logger.debug('Published SDK agent', { agentId, projectId, userId });
+
+		return agent;
+	}
+
+	async unpublishAgent(agentId: string, projectId: string): Promise<Agent> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		await this.agentRepository.manager.transaction(async (trx) => {
+			await this.agentPublishedVersionRepository.deleteByAgentId(agentId, trx);
+			agent.publishedVersion = null;
+		});
+
+		this.clearRuntimes(agentId);
+
+		// Drop any live chat-integration connections so webhook endpoints stop
+		// accepting events immediately — before the 30-minute TTL would have expired.
+		// Lazy import avoids the circular DI dependency (ChatIntegrationService → AgentsService).
+		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
+		await Container.get(ChatIntegrationService).disconnect(agentId);
+
+		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
+		return agent;
 	}
 
 	async delete(agentId: string, projectId: string): Promise<boolean> {
@@ -369,13 +449,56 @@ export class AgentsService {
 			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		}
 
-		const agentInstance = runtime.agent;
+		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId);
+	}
 
+	/**
+	 * Execute a published agent for a chat integration (Slack, Discord, etc.).
+	 *
+	 * Mirrors the live-webhooks pattern: load the published snapshot and run that,
+	 * never the current draft. Throws NotFoundError if the agent is not published.
+	 */
+	async *executeForChatPublished(
+		agentId: string,
+		message: string,
+		threadId: string,
+		userId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): AsyncGenerator<StreamChunk> {
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+
+		const publishedSchema = agentEntity.publishedVersion?.schema;
+		if (!publishedSchema) {
+			throw new NotFoundError(`Agent ${agentId} is not published`);
+		}
+
+		// Always reconstruct from the published snapshot — no caching.
+		// Integration traffic must always run the published version, never a cached draft.
+		const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
+		const agentInstance = await this.reconstructFromConfig(
+			publishedAgentData,
+			credentialProvider,
+			userId,
+		);
+
+		yield* this.streamChatResponse(agentInstance, agentId, message, threadId, userId);
+	}
+
+	/**
+	 * Read from an agent's streaming response and yield each chunk.
+	 * Logs `tool-call-suspended` chunks so we can observe human-in-the-loop pauses.
+	 */
+	private async *streamChatResponse(
+		agentInstance: agents.Agent,
+		agentId: string,
+		message: string,
+		threadId: string,
+		userId: string,
+	): AsyncGenerator<StreamChunk> {
 		const resultStream = await agentInstance.stream(message, {
-			persistence: {
-				threadId,
-				resourceId: userId,
-			},
+			persistence: { threadId, resourceId: userId },
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -442,6 +565,12 @@ export class AgentsService {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
 			throw new OperationalError('Agent not found or not accessible.');
+		}
+
+		if (!agentEntity.publishedVersion) {
+			throw new OperationalError(
+				'Agent is not published. Publish the agent before using it in a workflow.',
+			);
 		}
 
 		const credentialProvider = new AgentsCredentialProvider(
@@ -565,7 +694,7 @@ export class AgentsService {
 		agentId: string,
 		projectId: string,
 		config: unknown,
-	): Promise<{ config: AgentJsonConfig; updatedAt: string }> {
+	): Promise<{ config: AgentJsonConfig; updatedAt: string; versionId: string | null }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
@@ -577,6 +706,7 @@ export class AgentsService {
 		entity.schema = result.config;
 		entity.name = result.config.name;
 		entity.description = result.config.description ?? null;
+		this.markDraftDirty(entity);
 
 		// Remove tool entries that are no longer referenced in the config
 		const referencedIds = new Set(
@@ -599,7 +729,11 @@ export class AgentsService {
 		const saved = await this.agentRepository.save(entity);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
-		return { config: result.config, updatedAt: saved.updatedAt.toISOString() };
+		return {
+			config: result.config,
+			updatedAt: saved.updatedAt.toISOString(),
+			versionId: saved.versionId,
+		};
 	}
 
 	/**
@@ -634,6 +768,7 @@ export class AgentsService {
 			}
 		}
 
+		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 
@@ -660,6 +795,7 @@ export class AgentsService {
 			);
 		}
 
+		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 

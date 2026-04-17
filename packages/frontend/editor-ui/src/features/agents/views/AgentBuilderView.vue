@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { getAgent, updateAgent, deleteAgent } from '../composables/useAgentApi';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM, MODAL_CANCEL, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { deepCopy } from 'n8n-workflow';
+import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
 import { AGENTS_LIST_VIEW } from '../constants';
 import { useAgentConfig } from '../composables/useAgentConfig';
-import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM } from '@/app/constants';
-import { deepCopy } from 'n8n-workflow';
 import { agentsEventBus } from '../agents.eventBus';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentHomeContent from '../components/AgentHomeContent.vue';
@@ -26,6 +27,7 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const message = useMessage();
+const { showError } = useToast();
 
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
@@ -41,16 +43,13 @@ const agentDescription = ref<string | null>(null);
 const agentIcon = ref<IconOrEmoji>({ type: 'icon', value: 'robot' });
 const agent = ref<AgentResource | null>(null);
 const updatedAt = ref<string>('');
-
 const initialPrompt = ref<string | undefined>(undefined);
 const chatEndpoint = ref<'build' | 'chat'>('build');
+const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle');
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
-
-const originalConfigJson = ref('');
-const isDirty = ref(false);
 
 /**
  * An agent is considered "built" once it has instructions configured.
@@ -64,8 +63,6 @@ watch(
 	(c) => {
 		if (c) {
 			localConfig.value = deepCopy(c);
-			originalConfigJson.value = JSON.stringify(c);
-			isDirty.value = false;
 		}
 	},
 	{ immediate: true },
@@ -90,8 +87,6 @@ async function updateName(name: string) {
 		// Keep config name in sync so it persists on next config save
 		if (localConfig.value) {
 			localConfig.value.name = updated.name;
-			// Update the dirty-state baseline so the rename alone doesn't mark config as dirty
-			originalConfigJson.value = JSON.stringify(localConfig.value);
 		}
 		agentsEventBus.emit('agentUpdated');
 	}
@@ -129,31 +124,57 @@ function onChatStreamingChange(streaming: boolean) {
 	isBuilding.value = chatEndpoint.value === 'build' && streaming;
 }
 
+async function saveConfig(): Promise<void> {
+	if (!localConfig.value) return;
+	const result = await updateConfig(projectId.value, agentId.value, localConfig.value);
+	// Keep agent.versionId in sync so hasUnpublishedChanges stays accurate
+	if (agent.value && result.versionId !== undefined) {
+		agent.value = { ...agent.value, versionId: result.versionId };
+	}
+}
+
+// Debounced autosave. We roll our own instead of useDebounceFn so we can cancel a
+// pending save and await an in-flight one — both are needed in the route-leave
+// guard, where a scheduled save that fires after publish would bump versionId and
+// immediately re-mark the agent as having unpublished changes.
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+let autosaveInFlight: Promise<void> | null = null;
+
+function scheduleAutosave() {
+	if (autosaveTimer !== null) clearTimeout(autosaveTimer);
+	autosaveTimer = setTimeout(() => {
+		autosaveTimer = null;
+		autosaveInFlight = (async () => {
+			saveStatus.value = 'saving';
+			try {
+				await saveConfig();
+				saveStatus.value = 'saved';
+				telemetry.track('User saved agent settings', { agent_id: agentId.value });
+			} catch {
+				saveStatus.value = 'idle';
+			} finally {
+				autosaveInFlight = null;
+			}
+		})();
+	}, getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE));
+}
+
+async function settleAutosave() {
+	if (autosaveTimer !== null) {
+		clearTimeout(autosaveTimer);
+		autosaveTimer = null;
+	}
+	if (autosaveInFlight) await autosaveInFlight;
+}
+
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	Object.assign(localConfig.value, updates);
-	isDirty.value = JSON.stringify(localConfig.value) !== originalConfigJson.value;
-}
-
-async function saveConfig() {
-	if (!localConfig.value) return;
-	await updateConfig(projectId.value, agentId.value, localConfig.value);
-	originalConfigJson.value = JSON.stringify(localConfig.value);
-	isDirty.value = false;
-	telemetry.track('User saved agent settings', { agent_id: agentId.value });
-}
-
-function cancelConfig() {
-	if (config.value) {
-		localConfig.value = deepCopy(config.value);
-		isDirty.value = false;
-		telemetry.track('User cancelled agent settings', { agent_id: agentId.value });
-	}
+	scheduleAutosave();
 }
 
 async function onConfigUpdated() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
-	isDirty.value = false;
 }
 
 const headerActions = [{ id: 'delete', label: 'Delete agent' }];
@@ -167,9 +188,61 @@ async function onHeaderAction(action: string) {
 		);
 		if (confirmed !== MODAL_CONFIRM) return;
 		await deleteAgent(rootStore.restApiContext, projectId.value, agentId.value);
+		agent.value = null; // prevent unpublished-changes guard from firing after delete
 		void router.push({ name: AGENTS_LIST_VIEW, params: { projectId: projectId.value } });
 	}
 }
+
+function onPublished(updated: AgentResource) {
+	agent.value = updated;
+}
+
+function onUnpublished(updated: AgentResource) {
+	agent.value = updated;
+}
+
+const hasUnpublishedChanges = computed(
+	() =>
+		!!agent.value?.publishedVersion &&
+		agent.value.versionId !== agent.value.publishedVersion.publishedFromVersionId,
+);
+
+onBeforeRouteLeave(async (_to, _from, next) => {
+	if (!hasUnpublishedChanges.value) {
+		next();
+		return;
+	}
+
+	const response = await message.confirm(
+		locale.baseText('agents.builder.unsavedPublish.modal.description'),
+		locale.baseText('agents.builder.unsavedPublish.modal.title'),
+		{
+			confirmButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.publish'),
+			cancelButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.leave'),
+			showClose: true,
+			type: 'warning',
+		},
+	);
+
+	if (response === MODAL_CONFIRM) {
+		try {
+			// Drain the autosave pipeline first: cancel any scheduled-but-not-fired save,
+			// and await any in-flight one. Without this, a save that fires after publish
+			// would bump versionId and mark the agent dirty immediately after publishing.
+			await settleAutosave();
+			if (!localConfig.value) return;
+			await saveConfig();
+			await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.unsavedPublish.error'));
+			return; // stay on page
+		}
+		next();
+	} else if (response === MODAL_CANCEL) {
+		next();
+	}
+	// MODAL_CLOSE (X / Escape) → don't call next(), stay on page
+});
 
 async function initialize() {
 	agent.value = null;
@@ -178,8 +251,7 @@ async function initialize() {
 	agentIcon.value = { type: 'icon', value: 'robot' };
 	initialPrompt.value = undefined;
 	localConfig.value = null;
-	originalConfigJson.value = '';
-	isDirty.value = false;
+	saveStatus.value = 'idle';
 
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
@@ -265,11 +337,12 @@ watch(agentId, initialize, { immediate: true });
 			:agent-id="agentId"
 			:agent-name="agentName"
 			:updated-at="updatedAt"
-			:is-dirty="isDirty"
+			:agent="agent"
+			:save-status="saveStatus"
 			:building="isBuilding"
 			@update:config="onConfigFieldUpdate"
-			@save="saveConfig"
-			@cancel="cancelConfig"
+			@published="onPublished"
+			@unpublished="onUnpublished"
 		/>
 	</div>
 </template>

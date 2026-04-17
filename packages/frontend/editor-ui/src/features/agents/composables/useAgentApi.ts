@@ -137,6 +137,30 @@ export const getModelCatalog = async (
 	);
 };
 
+export const publishAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/publish`,
+	);
+};
+
+export const unpublishAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/unpublish`,
+	);
+};
+
 export const listAgentCredentials = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -166,7 +190,7 @@ export const updateAgentConfig = async (
 	projectId: string,
 	agentId: string,
 	config: AgentJsonConfig,
-): Promise<{ config: AgentJsonConfig }> => {
+): Promise<{ config: AgentJsonConfig; versionId: string | null }> => {
 	return await makeRestApiRequest(
 		context,
 		'PUT',

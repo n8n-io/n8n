@@ -21,9 +21,10 @@ export function useAgentConfig() {
 		projectId: string,
 		agentId: string,
 		data: AgentJsonConfig,
-	): Promise<void> {
+	): Promise<{ versionId: string | null }> {
 		const result = await updateAgentConfig(rootStore.restApiContext, projectId, agentId, data);
 		config.value = result.config;
+		return { versionId: result.versionId };
 	}
 
 	return { config, loading, fetchConfig, updateConfig };

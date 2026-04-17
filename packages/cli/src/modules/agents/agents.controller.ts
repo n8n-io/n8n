@@ -13,6 +13,7 @@ import {
 } from './agents.dto';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsBuilderService } from './builder/agents-builder.service';
@@ -197,6 +198,24 @@ export class AgentsController {
 		return { success: true };
 	}
 
+	@Post('/:agentId/publish')
+	async publish(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.agentsService.publishAgent(agentId, req.params.projectId, req.user.id);
+	}
+
+	@Post('/:agentId/unpublish')
+	async unpublish(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.agentsService.unpublishAgent(agentId, req.params.projectId);
+	}
+
 	@Post('/:agentId/chat', { usesTemplates: true })
 	async chat(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -322,6 +341,10 @@ export class AgentsController {
 		const { type, credentialId } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		if (!agent.publishedVersion)
+			throw new ConflictError(
+				`Agent "${agentId}" must be published before connecting an integration`,
+			);
 
 		await this.chatIntegrationService.connect(
 			agentId,

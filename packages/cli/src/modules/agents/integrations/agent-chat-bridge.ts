@@ -19,6 +19,15 @@ interface AgentExecutor {
 		credentialProvider: CredentialProvider,
 	): AsyncGenerator<StreamChunk>;
 
+	executeForChatPublished(
+		agentId: string,
+		message: string,
+		threadId: string,
+		userId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): AsyncGenerator<StreamChunk>;
+
 	resumeForChat(
 		agentId: string,
 		runId: string,
@@ -165,7 +174,8 @@ export class AgentChatBridge {
 
 		// Use the n8n user ID (who connected the integration) for agent compilation
 		// and RBAC, and the platform user ID for memory/thread context.
-		const stream = this.agentService.executeForChat(
+		// Always run the published snapshot — integrations are production traffic.
+		const stream = this.agentService.executeForChatPublished(
 			this.agentId,
 			text,
 			thread.id,
