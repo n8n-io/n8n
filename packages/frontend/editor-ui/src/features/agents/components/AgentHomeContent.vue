@@ -9,14 +9,20 @@ import type { ExecutionThread } from '@/features/agents/composables/useAgentThre
 
 const locale = useI18n();
 
-const props = defineProps<{
-	agentName: string;
-	agentDescription: string | null;
-	agentIcon: IconOrEmoji;
-	projectId: string;
-	agentId: string;
-	sessions?: ExecutionThread[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		agentName: string;
+		agentDescription: string | null;
+		agentIcon: IconOrEmoji;
+		projectId: string;
+		agentId: string;
+		sessions?: ExecutionThread[];
+		showRecent?: boolean;
+	}>(),
+	{
+		showRecent: false,
+	},
+);
 
 const emit = defineEmits<{
 	'send-message': [message: string];
@@ -155,7 +161,7 @@ function submitMessage() {
 			/>
 		</div>
 
-		<div :class="$style.recent">
+		<div v-if="showRecent" :class="$style.recent">
 			<div :class="$style.recentHeader">
 				<N8nText size="small" color="text-light" bold
 					>{{ locale.baseText('agents.home.recent') }}

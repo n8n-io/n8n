@@ -101,10 +101,16 @@ describe('AgentHomeContent', () => {
 		expect(wrapper.find('h2').exists()).toBe(true);
 	});
 
-	it('renders the recent sessions empty state', async () => {
-		const wrapper = await renderComponent();
+	it('renders the recent sessions empty state when showRecent is true', async () => {
+		const wrapper = await renderComponent({ showRecent: true });
 		expect(wrapper.text()).toContain('Recent');
 		expect(wrapper.text()).toContain('No conversations yet');
+	});
+
+	it('hides recent sessions by default', async () => {
+		const wrapper = await renderComponent();
+		expect(wrapper.text()).not.toContain('Recent');
+		expect(wrapper.text()).not.toContain('No conversations yet');
 	});
 
 	it('renders the chat input', async () => {

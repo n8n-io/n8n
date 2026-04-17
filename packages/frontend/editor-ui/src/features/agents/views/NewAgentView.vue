@@ -140,21 +140,30 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 			</div>
 
 			<div :class="$style.suggestions">
-				<N8nText :class="$style.suggestionsLabel" size="small" color="text-light">
+				<N8nText :class="$style.suggestionsLabel" tag="h3" size="medium" bold>
 					{{ locale.baseText('agents.newAgent.suggestions') }}
 				</N8nText>
 
-				<div
-					v-for="suggestion in suggestions"
-					:key="suggestion.name"
-					:class="$style.suggestionCard"
-					data-testid="agent-suggestion-card"
-					@click="selectSuggestion(suggestion)"
-				>
-					<span :class="$style.suggestionIcon">{{ suggestion.icon }}</span>
-					<div :class="$style.suggestionContent">
-						<N8nText tag="span" bold size="small">{{ suggestion.name }}</N8nText>
-						<N8nText tag="span" size="small" color="text-light">
+				<div :class="$style.suggestionGrid">
+					<div
+						v-for="suggestion in suggestions"
+						:key="suggestion.name"
+						:class="$style.suggestionCard"
+						data-testid="agent-suggestion-card"
+						@click="selectSuggestion(suggestion)"
+					>
+						<div :class="$style.suggestionHeader">
+							<span :class="$style.suggestionIcon">{{ suggestion.icon }}</span>
+							<N8nText tag="span" bold size="small" :class="$style.suggestionName">
+								{{ suggestion.name }}
+							</N8nText>
+						</div>
+						<N8nText
+							tag="span"
+							size="small"
+							color="text-light"
+							:class="$style.suggestionDescription"
+						>
 							{{ suggestion.description }}
 						</N8nText>
 					</div>
@@ -170,7 +179,6 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	flex-direction: column;
 	height: 100%;
 	width: 100%;
-	background-color: var(--color--background);
 }
 
 .topBar {
@@ -198,7 +206,6 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
 	margin: 0 0 var(--spacing--lg);
-	text-align: center;
 }
 
 .inputWrapper {
@@ -208,19 +215,31 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 .suggestions {
 	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 }
 
 .suggestionsLabel {
-	display: block;
-	margin-bottom: var(--spacing--xs);
+	margin: 0 0 var(--spacing--sm);
+	text-align: center;
+	color: var(--color--text);
+}
+
+.suggestionGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
 .suggestionCard {
 	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--xs);
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	cursor: pointer;
 	transition: background-color 0.15s ease;
 }
@@ -229,21 +248,22 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	background-color: var(--color--foreground--tint-2);
 }
 
+.suggestionHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
 .suggestionIcon {
 	font-size: var(--font-size--md);
 	line-height: var(--line-height--xl);
-	flex-shrink: 0;
 }
 
-.suggestionContent {
-	display: flex;
-	gap: var(--spacing--4xs);
-	min-width: 0;
-}
-
-.suggestionContent span:last-child {
-	overflow: hidden;
-	text-overflow: ellipsis;
+.suggestionName {
 	white-space: nowrap;
+}
+
+.suggestionDescription {
+	min-width: 0;
 }
 </style>
