@@ -18,6 +18,7 @@ import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OptionsSortedAlphabeticallyRule } from './options-sorted-alphabetically.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
+import { RequireCommunityNodeKeywordRule } from './require-community-node-keyword.js';
 import { RequireContinueOnFailRule } from './require-continue-on-fail.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
@@ -42,6 +43,7 @@ export const rules = {
 	'cred-class-field-icon-missing': CredClassFieldIconMissingRule,
 	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
 	'missing-paired-item': MissingPairedItemRule,
+	'require-community-node-keyword': RequireCommunityNodeKeywordRule,
 	'require-continue-on-fail': RequireContinueOnFailRule,
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
 } satisfies Record<string, AnyRuleModule>;
