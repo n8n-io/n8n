@@ -1,11 +1,10 @@
 import type { ToolDescriptor } from '@n8n/agents';
-
-import type { ToolExecutor } from '../json-config/from-json-config';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type ivm from 'isolated-vm';
 
 import { AgentIsolatePool, type AgentIsolateSlot } from './agent-isolate-pool';
+import type { ToolExecutor } from '../json-config/from-json-config';
 
 /**
  * Sandboxed execution runtime for agent user code.
@@ -283,10 +282,12 @@ export class AgentSecureRuntime {
 	async describeToolSecurely(tsCode: string): Promise<ToolDescriptor> {
 		const jsCode = await this.compileTs(tsCode);
 
-		return await this.withIsolate(async (slot) => {
-			const context = slot.createContext();
-			try {
-				const wrapper = `
+		return await this.withIsolate(
+			// eslint-disable-next-line @typescript-eslint/require-await -- `withIsolate` expects a Promise-returning callback
+			async (slot) => {
+				const context = slot.createContext();
+				try {
+					const wrapper = `
 					var __me = {};
 					var __mod = { exports: __me };
 					(function(exports, require, module) {
@@ -302,12 +303,13 @@ export class AgentSecureRuntime {
 					module.exports = JSON.stringify(__exported.describe());
 				`;
 
-				const resultJson = this.runInContext<string>(context, slot, wrapper);
-				return this.parseSandboxJson<ToolDescriptor>(resultJson, 'describeToolSecurely');
-			} finally {
-				context.release();
-			}
-		});
+					const resultJson = this.runInContext<string>(context, slot, wrapper);
+					return this.parseSandboxJson<ToolDescriptor>(resultJson, 'describeToolSecurely');
+				} finally {
+					context.release();
+				}
+			},
+		);
 	}
 
 	/**

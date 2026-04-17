@@ -1,17 +1,29 @@
 import { Agent, Memory } from '@n8n/agents';
-import type { CredentialListItem, CredentialProvider, StreamChunk } from '@n8n/agents';
+import type { CredentialProvider, StreamChunk } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import { AgentsService } from '../agents.service';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService } from './agents-builder-tools.service';
-import { AgentsService } from '../agents.service';
 import { N8nMemory } from '../integrations/n8n-memory';
+import type { AgentJsonConfig } from '../json-config/agent-json-config';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
 	return `builder:${agentId}`;
+}
+
+/**
+ * Synthetic credential name used when the builder is driven by an env-var API
+ * key. Kept private so it never collides with user-defined credential names.
+ */
+const ENV_BUILDER_CREDENTIAL_NAME = '__builder_env_anthropic__';
+
+/** Read an Anthropic key from env, preferring the n8n-specific variable. */
+function readEnvAnthropicKey(): string | null {
+	const key = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
+	return key && key.length > 0 ? key : null;
 }
 
 @Service()
@@ -58,28 +70,29 @@ export class AgentsBuilderService {
 
 		await this.agentsBuilderToolsService.initialize();
 
-		const availableCredentials = await credentialProvider.list();
-		const LLM_CREDENTIAL_TYPES = ['anthropicApi', 'openAiApi'];
-		const builderCredential =
-			availableCredentials.find((c: CredentialListItem) => c.type === 'anthropicApi') ??
-			availableCredentials.find((c: CredentialListItem) => LLM_CREDENTIAL_TYPES.includes(c.type));
-
-		if (!builderCredential) {
+		// The builder is a built-in, system-level agent — it is driven by an
+		// env-var Anthropic key and never uses project credentials. This keeps
+		// the builder usable before any user credential has been configured.
+		const envAnthropicKey = readEnvAnthropicKey();
+		if (!envAnthropicKey) {
 			throw new Error(
-				'No LLM credentials available. Add an Anthropic or OpenAI credential in n8n to use the builder agent.',
+				'Builder agent is not configured. Set N8N_AI_ANTHROPIC_KEY (preferred) or ANTHROPIC_API_KEY to enable it.',
 			);
 		}
 
-		let builderModel: string;
-		switch (builderCredential.type) {
-			case 'openAiApi':
-				builderModel = 'openai/gpt-4o';
-				break;
-			case 'anthropicApi':
-			default:
-				builderModel = 'anthropic/claude-sonnet-4-5';
-				break;
-		}
+		const builderCredentialName = ENV_BUILDER_CREDENTIAL_NAME;
+		const builderModel = 'anthropic/claude-sonnet-4-5';
+		const builderProvider: CredentialProvider = {
+			async resolve(name) {
+				if (name === ENV_BUILDER_CREDENTIAL_NAME) {
+					return { apiKey: envAnthropicKey };
+				}
+				return await credentialProvider.resolve(name);
+			},
+			async list() {
+				return await credentialProvider.list();
+			},
+		};
 
 		const currentConfig = agent.schema as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
@@ -98,8 +111,8 @@ export class AgentsBuilderService {
 
 		const builder = new Agent('agent-builder')
 			.model(builderModel)
-			.credential(builderCredential.name)
-			.credentialProvider(credentialProvider)
+			.credential(builderCredentialName)
+			.credentialProvider(builderProvider)
 			.instructions(instructions)
 			.memory(builderMemory);
 

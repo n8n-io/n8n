@@ -66,7 +66,7 @@ export async function buildFromJson(
 		}
 	}
 
-	agent.credential(config.credential);
+	if (config.credential) agent.credential(config.credential);
 	agent.instructions(config.instructions);
 
 	if (options.credentialProvider) {

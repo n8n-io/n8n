@@ -9,14 +9,18 @@ import {
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
 
-const AgentsListView = async () => await import('@/features/agents/views/AgentsListView.vue');
-const AgentView = async () => await import('@/features/agents/views/AgentView.vue');
-const AgentBuilderView = async () => await import('@/features/agents/views/AgentBuilderView.vue');
-const AgentSessionsListView = async () =>
+const AgentsListView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentsListView.vue');
+const AgentView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentView.vue');
+const AgentBuilderView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentBuilderView.vue');
+const AgentSessionsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
-const AgentSessionTimelineView = async () =>
+const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
-const NewAgentView = async () => await import('@/features/agents/views/NewAgentView.vue');
+const NewAgentView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/NewAgentView.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',

@@ -20,6 +20,16 @@ interface AgentExecutor {
 		source?: string,
 	): AsyncGenerator<StreamChunk>;
 
+	executeForChatPublished(
+		agentId: string,
+		message: string,
+		threadId: string,
+		userId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+		source?: string,
+	): AsyncGenerator<StreamChunk>;
+
 	resumeForChat(
 		agentId: string,
 		runId: string,
@@ -49,7 +59,7 @@ interface ChatBot {
 interface ChatThread {
 	id: string;
 	subscribe: () => Promise<void>;
-	post: (content: string | AsyncIterable<string> | unknown) => Promise<unknown>;
+	post: (content: unknown) => Promise<unknown>;
 }
 
 interface ChatMessage {
@@ -170,7 +180,10 @@ export class AgentChatBridge {
 		const text = message.text?.trim();
 		if (!text) return;
 
-		const stream = this.agentService.executeForChat(
+		// Use the n8n user ID (who connected the integration) for agent compilation
+		// and RBAC, and the platform user ID for memory/thread context.
+		// Always run the published snapshot — integrations are production traffic.
+		const stream = this.agentService.executeForChatPublished(
 			this.agentId,
 			text,
 			thread.id,

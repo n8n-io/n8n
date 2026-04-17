@@ -213,6 +213,136 @@ describe('InstanceSettings', () => {
 		});
 	});
 
+	describe('initialize', () => {
+		const mockRepo = {
+			findActiveByType: jest.fn(),
+			insertOrIgnore: jest.fn(),
+		};
+
+		let settings: InstanceSettings;
+
+		beforeEach(() => {
+			mockFs.existsSync.mockReturnValue(false);
+			mockFs.mkdirSync.mockReturnValue('');
+			mockFs.writeFileSync.mockReturnValue();
+
+			settings = createInstanceSettings({ encryptionKey: 'test_key' });
+
+			// Default: no DB rows, inserts succeed
+			mockRepo.findActiveByType.mockResolvedValue(null);
+			mockRepo.insertOrIgnore.mockResolvedValue(undefined);
+		});
+
+		describe('instance.id', () => {
+			it('should use N8N_INSTANCE_ID env var and skip DB entirely', async () => {
+				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('env-pinned-id');
+				expect(mockRepo.findActiveByType).not.toHaveBeenCalledWith('instance.id');
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'instance.id' }),
+				);
+			});
+
+			it('should use the value from the active DB row when one exists', async () => {
+				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+					type === 'instance.id' ? { value: 'db-stored-id' } : null,
+				);
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('db-stored-id');
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'instance.id' }),
+				);
+			});
+
+			it('should persist the derived instanceId when no active DB row exists', async () => {
+				const derivedId = settings.instanceId;
+
+				await settings.initialize(mockRepo);
+
+				expect(mockRepo.insertOrIgnore).toHaveBeenCalledWith({
+					type: 'instance.id',
+					value: derivedId,
+					status: 'active',
+					algorithm: null,
+				});
+				expect(settings.instanceId).toEqual(derivedId);
+			});
+
+			it('should use the winner row when a concurrent insert is ignored', async () => {
+				mockRepo.insertOrIgnore.mockImplementation(async (entity: { type: string }) => {
+					// Simulate conflict only for instance.id
+					if (entity.type === 'instance.id') return undefined;
+				});
+				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+					type === 'instance.id' ? { value: 'winner-id' } : null,
+				);
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('winner-id');
+			});
+		});
+
+		describe('signing.hmac', () => {
+			it('should use N8N_HMAC_SIGNATURE_SECRET env var and skip DB entirely', async () => {
+				process.env.N8N_HMAC_SIGNATURE_SECRET = 'env-pinned-hmac';
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.hmacSignatureSecret).toEqual('env-pinned-hmac');
+				expect(mockRepo.findActiveByType).not.toHaveBeenCalledWith('signing.hmac');
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'signing.hmac' }),
+				);
+			});
+
+			it('should use the value from the active DB row when one exists', async () => {
+				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+					type === 'signing.hmac' ? { value: 'db-stored-hmac' } : null,
+				);
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.hmacSignatureSecret).toEqual('db-stored-hmac');
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'signing.hmac' }),
+				);
+			});
+
+			it('should persist the derived HMAC secret when no active DB row exists', async () => {
+				const derivedHmac = settings.hmacSignatureSecret;
+
+				await settings.initialize(mockRepo);
+
+				expect(mockRepo.insertOrIgnore).toHaveBeenCalledWith({
+					type: 'signing.hmac',
+					value: derivedHmac,
+					status: 'active',
+					algorithm: null,
+				});
+				expect(settings.hmacSignatureSecret).toEqual(derivedHmac);
+			});
+
+			it('should use the winner row when a concurrent insert is ignored', async () => {
+				mockRepo.insertOrIgnore.mockImplementation(async (entity: { type: string }) => {
+					if (entity.type === 'signing.hmac') return undefined;
+				});
+				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+					type === 'signing.hmac' ? { value: 'winner-hmac' } : null,
+				);
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.hmacSignatureSecret).toEqual('winner-hmac');
+			});
+		});
+	});
+
 	describe('isDocker', () => {
 		it('should return true if /.dockerenv exists', () => {
 			mockFs.existsSync.mockImplementation((path) => path === '/.dockerenv');

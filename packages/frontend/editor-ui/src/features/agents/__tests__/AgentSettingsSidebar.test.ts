@@ -1,3 +1,4 @@
+/* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and any-based mock reads */
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { CHATHUB_TO_CATALOG, CATALOG_TO_CHATHUB } from '../provider-mapping';
@@ -112,7 +113,8 @@ describe('AgentSettingsSidebar', () => {
 				agentId: 'test-agent',
 				agentName: 'Test Agent',
 				updatedAt: '2026-04-09T00:00:00Z',
-				isDirty: false,
+				agent: null,
+				saveStatus: 'idle',
 				...props,
 			},
 			global: {
@@ -122,12 +124,10 @@ describe('AgentSettingsSidebar', () => {
 					AgentMemoryPanel: { template: '<div data-testid="memory-panel-stub" />' },
 					AgentIntegrationsPanel: { template: '<div data-testid="integrations-panel-stub" />' },
 					AgentCodeEditor: { template: '<div data-testid="code-editor-stub" />' },
-					N8nButton: {
-						template:
-							'<button :disabled="disabled" @click="$emit(\'click\')"><slot/>{{ label }}</button>',
-						props: ['type', 'size', 'label', 'disabled'],
-						emits: ['click'],
-					},
+					// Stubbed so the test doesn't need Pinia — the real AgentPublishButton
+					// pulls in useRootStore via useAgentPublish.
+					AgentPublishButton: { template: '<div data-testid="publish-button-stub" />' },
+					N8nBadge: { template: '<span data-testid="badge-stub"><slot/></span>' },
 					N8nCallout: { template: '<div data-testid="callout-stub"><slot/></div>' },
 					N8nIcon: { template: '<span />', props: ['icon', 'size'] },
 					N8nInput: {
@@ -158,43 +158,25 @@ describe('AgentSettingsSidebar', () => {
 		expect(wrapper.text()).toContain('Code');
 	});
 
-	it('shows Save and Cancel buttons', async () => {
+	it('renders the publish button', async () => {
 		const wrapper = await renderComponent();
-		expect(wrapper.text()).toContain('Save');
-		expect(wrapper.text()).toContain('Cancel');
+		expect(wrapper.find('[data-testid="publish-button-stub"]').exists()).toBe(true);
 	});
 
-	it('disables Save/Cancel when not dirty', async () => {
-		const wrapper = await renderComponent({ isDirty: false });
-		const buttons = wrapper.findAll('button');
-		const cancelBtn = buttons.find((b) => b.text().includes('Cancel'));
-		expect(cancelBtn?.attributes('disabled')).toBeDefined();
+	it('shows "saving" indicator when saveStatus is saving', async () => {
+		const wrapper = await renderComponent({ saveStatus: 'saving' });
+		expect(wrapper.text()).toContain('agents.builder.saving');
 	});
 
-	it('shows unsaved changes banner when dirty', async () => {
-		const wrapper = await renderComponent({ isDirty: true });
-		expect(wrapper.text()).toContain('Unsaved changes');
+	it('shows "saved" indicator when saveStatus is saved', async () => {
+		const wrapper = await renderComponent({ saveStatus: 'saved' });
+		expect(wrapper.text()).toContain('agents.builder.saved');
 	});
 
-	it('hides unsaved changes banner when not dirty', async () => {
-		const wrapper = await renderComponent({ isDirty: false });
-		expect(wrapper.text()).not.toContain('Unsaved changes');
-	});
-
-	it('emits save when Save button is clicked', async () => {
-		const wrapper = await renderComponent({ isDirty: true });
-		const buttons = wrapper.findAll('button');
-		const saveBtn = buttons.find((b) => b.text().includes('Save'));
-		await saveBtn?.trigger('click');
-		expect(wrapper.emitted('save')).toBeTruthy();
-	});
-
-	it('emits cancel when Cancel button is clicked', async () => {
-		const wrapper = await renderComponent({ isDirty: true });
-		const buttons = wrapper.findAll('button');
-		const cancelBtn = buttons.find((b) => b.text().includes('Cancel'));
-		await cancelBtn?.trigger('click');
-		expect(wrapper.emitted('cancel')).toBeTruthy();
+	it('hides save indicator when saveStatus is idle', async () => {
+		const wrapper = await renderComponent({ saveStatus: 'idle' });
+		expect(wrapper.text()).not.toContain('agents.builder.saving');
+		expect(wrapper.text()).not.toContain('agents.builder.saved');
 	});
 
 	it('renders the model selector', async () => {

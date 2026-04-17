@@ -431,13 +431,13 @@ export const toolCategorySchema = z.object({
 });
 export type ToolCategory = z.infer<typeof toolCategorySchema>;
 
-export const instanceAiGatewayCapabilitiesSchema = z.object({
+export class InstanceAiGatewayCapabilitiesDto extends Z.class({
 	rootPath: z.string(),
 	tools: z.array(mcpToolSchema).default([]),
 	hostIdentifier: z.string().optional(),
 	toolCategories: z.array(toolCategorySchema).default([]),
-});
-export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
+}) {}
+export type InstanceAiGatewayCapabilities = InstanceType<typeof InstanceAiGatewayCapabilitiesDto>;
 
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
@@ -448,10 +448,10 @@ export const filesystemRequestPayloadSchema = z.object({
 	toolCall: mcpToolCallRequestSchema,
 });
 
-export const instanceAiFilesystemResponseSchema = z.object({
+export class InstanceAiFilesystemResponseDto extends Z.class({
 	result: mcpToolCallResultSchema.optional(),
 	error: z.string().optional(),
-});
+}) {}
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
@@ -544,7 +544,7 @@ export type InstanceAiThreadTitleUpdatedEvent = Extract<
 	{ type: 'thread-title-updated' }
 >;
 
-export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemResponseSchema>;
+export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesystemResponseDto>;
 
 // ---------------------------------------------------------------------------
 // API types
@@ -965,7 +965,7 @@ const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
 const PLANNER_RENDER_HINT_TOOLS = new Set(['plan']);
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
-	if (toolName === 'update-tasks') return 'tasks';
+	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
 	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
 	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';

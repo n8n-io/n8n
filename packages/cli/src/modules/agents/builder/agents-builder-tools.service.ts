@@ -1,13 +1,15 @@
-import type { Operation } from 'fast-json-patch';
 import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { Operation } from 'fast-json-patch';
 import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowBuilderToolsService } from '@/modules/mcp/tools/workflow-builder/workflow-builder-tools.service';
 
+import { AgentsService } from '../agents.service';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import {
 	AgentJsonConfigSchema,
@@ -15,8 +17,6 @@ import {
 	tryParseConfigJson,
 } from '../json-config/agent-json-config';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { AgentsService } from '../agents.service';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 interface InvokableTool<TInput> {
 	invoke(input: TInput): Promise<string>;
@@ -50,6 +50,7 @@ export class AgentsBuilderToolsService {
 		this.loadNodesAndCredentials.addPostProcessor(async () => await this.refreshNodeTypes());
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await -- registered as an async postProcessor hook
 	async refreshNodeTypes(): Promise<void> {
 		this.builderSearchTool = undefined;
 		this.builderSearchCache.clear();
@@ -253,6 +254,9 @@ export class AgentsBuilderToolsService {
 					take: 100,
 				});
 
+				// Keys are n8n node type IDs, which use the dotted "package.nodeName"
+				// format — the naming-convention rule doesn't apply to those.
+				/* eslint-disable @typescript-eslint/naming-convention */
 				const SUPPORTED_TRIGGERS: Record<string, string> = {
 					'n8n-nodes-base.manualTrigger': 'manual',
 					'n8n-nodes-base.executeWorkflowTrigger': 'executeWorkflow',
@@ -260,6 +264,7 @@ export class AgentsBuilderToolsService {
 					'n8n-nodes-base.scheduleTrigger': 'schedule',
 					'n8n-nodes-base.formTrigger': 'form',
 				};
+				/* eslint-enable @typescript-eslint/naming-convention */
 
 				const compatible = workflows
 					.map((w) => {

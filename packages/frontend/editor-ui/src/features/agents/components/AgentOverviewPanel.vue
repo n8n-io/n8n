@@ -138,16 +138,6 @@ function onCredentialChange(value: string) {
 	emit('update:config', { credential: value });
 }
 
-function onThinkingToggle(value: boolean) {
-	thinkingEnabled.value = value;
-	if (!value) {
-		const { thinking: _removed, ...rest } = props.config?.config ?? {};
-		emit('update:config', { config: rest });
-		return;
-	}
-	emitThinkingConfig();
-}
-
 function emitThinkingConfig() {
 	const cap = capabilities.value.thinking;
 	if (!cap) return;
@@ -156,6 +146,17 @@ function emitThinkingConfig() {
 			? { provider: 'anthropic' as const, budgetTokens: budgetTokens.value }
 			: { provider: 'openai' as const, reasoningEffort: reasoningEffort.value };
 	emit('update:config', { config: { ...props.config?.config, thinking } });
+}
+
+function onThinkingToggle(value: boolean) {
+	thinkingEnabled.value = value;
+	if (!value) {
+		const rest = { ...(props.config?.config ?? {}) };
+		delete rest.thinking;
+		emit('update:config', { config: rest });
+		return;
+	}
+	emitThinkingConfig();
 }
 
 function onBudgetTokensChange(value: number) {

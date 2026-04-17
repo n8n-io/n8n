@@ -1,7 +1,8 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import { Column, Entity, ManyToOne, JoinColumn, OneToOne, type Relation } from '@n8n/typeorm';
 
+import type { AgentPublishedVersion } from './agent-published-version.entity';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 
 @Entity({ name: 'agents' })
@@ -27,7 +28,7 @@ export class Agent extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', nullable: true })
 	model: string | null;
-	// TODO: add schema versioning
+
 	@JsonColumn({ nullable: true, default: null })
 	schema: AgentJsonConfig | null;
 
@@ -45,4 +46,11 @@ export class Agent extends WithTimestampsAndStringId {
 			descriptor: ToolDescriptor;
 		}
 	>;
+
+	/** UUID identifying the current draft; bumped on the first config save after each publish. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	versionId: string | null;
+
+	@OneToOne('AgentPublishedVersion', 'agent', { nullable: true })
+	publishedVersion?: Relation<AgentPublishedVersion> | null;
 }

@@ -20,6 +20,7 @@ const props = withDefaults(
 		visible: true,
 		mode: 'panel',
 		endpoint: 'chat',
+		initialMessage: undefined,
 	},
 );
 
@@ -104,7 +105,7 @@ function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
 
 		result.push({
 			id: msg.id ?? crypto.randomUUID(),
-			role: msg.role as 'user' | 'assistant',
+			role: msg.role,
 			content: text,
 			thinking: thinking || undefined,
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
@@ -144,46 +145,6 @@ async function onClearHistory() {
 	}
 }
 
-function onSubmit() {
-	void sendMessage();
-}
-
-async function sendMessage() {
-	const text = inputText.value.trim();
-	if (!text || isStreaming.value) return;
-
-	messages.value.push({
-		id: crypto.randomUUID(),
-		role: 'user',
-		content: text,
-		status: 'success',
-	});
-	inputText.value = '';
-	scrollToBottom();
-
-	await streamFromEndpoint(props.endpoint, text);
-}
-
-function sendMessageFromOutside(message: string) {
-	inputText.value = message;
-	void sendMessage();
-}
-
-function stopGenerating() {
-	abortController.value?.abort();
-}
-
-defineExpose({ sendMessageFromOutside });
-
-onMounted(() => {
-	if (props.endpoint === 'build') {
-		void loadBuilderHistory();
-	}
-	if (props.initialMessage) {
-		sendMessageFromOutside(props.initialMessage);
-	}
-});
-
 async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 	isStreaming.value = true;
 	let builderMutated = false;
@@ -196,6 +157,14 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 		status: 'streaming',
 	});
 	let msgAdded = false;
+
+	const ensureMsg = () => {
+		if (!msgAdded) {
+			messages.value.push(assistantMsg);
+			msgAdded = true;
+			scrollToBottom();
+		}
+	};
 
 	const controller = new AbortController();
 	abortController.value = controller;
@@ -240,20 +209,12 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 
 				let data: Record<string, unknown>;
 				try {
-					data = JSON.parse(raw);
+					data = JSON.parse(raw) as Record<string, unknown>;
 				} catch {
 					continue;
 				}
 
 				if (data.done) continue;
-
-				const ensureMsg = () => {
-					if (!msgAdded) {
-						messages.value.push(assistantMsg);
-						msgAdded = true;
-						scrollToBottom();
-					}
-				};
 
 				if (typeof data.text === 'string') {
 					ensureMsg();
@@ -330,6 +291,46 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 		}
 	}
 }
+
+async function sendMessage() {
+	const text = inputText.value.trim();
+	if (!text || isStreaming.value) return;
+
+	messages.value.push({
+		id: crypto.randomUUID(),
+		role: 'user',
+		content: text,
+		status: 'success',
+	});
+	inputText.value = '';
+	scrollToBottom();
+
+	await streamFromEndpoint(props.endpoint, text);
+}
+
+function sendMessageFromOutside(message: string) {
+	inputText.value = message;
+	void sendMessage();
+}
+
+function stopGenerating() {
+	abortController.value?.abort();
+}
+
+function onSubmit() {
+	void sendMessage();
+}
+
+defineExpose({ sendMessageFromOutside });
+
+onMounted(() => {
+	if (props.endpoint === 'build') {
+		void loadBuilderHistory();
+	}
+	if (props.initialMessage) {
+		sendMessageFromOutside(props.initialMessage);
+	}
+});
 </script>
 
 <template>
@@ -468,6 +469,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 
 .inlinePanel {
 	flex: 1;
+	min-height: 0;
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
@@ -501,6 +503,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 /* Messages area — matches ChatHub layout */
 .messages {
 	flex: 1;
+	min-height: 0;
 	overflow-y: auto;
 	padding: var(--spacing--lg) var(--spacing--xl);
 	display: flex;

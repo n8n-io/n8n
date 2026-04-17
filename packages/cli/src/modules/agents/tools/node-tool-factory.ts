@@ -1,6 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
-import type { JSONSchema7 } from 'json-schema';
 import { Tool } from '@n8n/agents';
+import type { JSONSchema7 } from 'json-schema';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';

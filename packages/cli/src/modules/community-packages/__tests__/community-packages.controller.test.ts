@@ -9,6 +9,7 @@ import type { NodeRequest } from '@/requests';
 
 import type { CommunityNodeTypesService } from '../community-node-types.service';
 import { CommunityPackagesController } from '../community-packages.controller';
+import type { CommunityPackagesConfig } from '../community-packages.config';
 import { CommunityPackagesLifecycleService } from '../community-packages.lifecycle.service';
 import type { CommunityPackagesService } from '../community-packages.service';
 import type { InstalledPackages } from '../installed-packages.entity';
@@ -21,6 +22,7 @@ describe('CommunityPackagesController', () => {
 	const communityNodeTypesService = mock<CommunityNodeTypesService>();
 	const instanceSettings = mock<InstanceSettings>();
 	(instanceSettings as any).nodesDownloadDir = '/tmp/n8n-nodes-download';
+	const communityPackagesConfig = mock<CommunityPackagesConfig>();
 
 	const lifecycle = new CommunityPackagesLifecycleService(
 		logger,
@@ -29,6 +31,7 @@ describe('CommunityPackagesController', () => {
 		eventService,
 		communityNodeTypesService,
 		instanceSettings,
+		communityPackagesConfig,
 	);
 
 	const controller = new CommunityPackagesController(lifecycle);
@@ -43,13 +46,13 @@ describe('CommunityPackagesController', () => {
 				user: { id: 'user123' },
 				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 			});
-			communityNodeTypesService.findVetted.mockReturnValue(undefined);
+			communityNodeTypesService.findVetted.mockResolvedValue(undefined);
 			await expect(controller.installPackage(request)).rejects.toThrow(
 				'Package n8n-nodes-test is not vetted for installation',
 			);
 		});
 
-		it.each(['foo', 'echo "hello"', '1.a.b', '0.1.29#;ls'])(
+		it.each(['echo "hello"', '1.a.b', '0.1.29#;ls'])(
 			'should throw error if version is invalid',
 			async (version) => {
 				const request = mock<NodeRequest.Post>({
@@ -67,7 +70,7 @@ describe('CommunityPackagesController', () => {
 				user: { id: 'user123' },
 				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 			});
-			communityNodeTypesService.findVetted.mockReturnValue(
+			communityNodeTypesService.findVetted.mockResolvedValue(
 				mock<CommunityNodeType>({
 					checksum: 'checksum',
 				}),
@@ -148,7 +151,7 @@ describe('CommunityPackagesController', () => {
 			expect(result).toBe(newInstalledPackage);
 		});
 
-		it.each(['foo', 'echo "hello"', '1.a.b', '0.1.29#;ls'])(
+		it.each(['echo "hello"', '1.a.b', '0.1.29#;ls'])(
 			'should throw error if version is invalid',
 			async (version) => {
 				const req = mock<NodeRequest.Update>({

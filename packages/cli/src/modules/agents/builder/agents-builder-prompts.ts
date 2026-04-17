@@ -200,6 +200,19 @@ export const IMPORTANT_SECTION = `\
 - Memory with storage "n8n" is the default -- always enable it unless told otherwise
 - Custom tools require calling \`build_custom_tool\` - it saves the tool code and updates agent config`;
 
+export const RESPONSE_STYLE_SECTION = `\
+## Response style
+
+Keep user-facing output minimal. The config and tools speak for themselves — the
+user can inspect them directly.
+
+- Do not narrate what you are about to do or explain your reasoning
+- Do not describe how the agent works, what tools it has, or how it is configured
+- Do not list the fields you set, the tools you added, or the instructions you wrote
+- Do not summarise the config after calling write_config / patch_config / build_custom_tool
+- If the build succeeds, reply with a single short sentence (e.g. "Done." or "Agent ready.")
+- Only expand when the user explicitly asks a question, or when you need to ask the user for information you cannot infer`;
+
 // ---------------------------------------------------------------------------
 // Dynamic sections — depend on runtime values
 // ---------------------------------------------------------------------------
@@ -254,5 +267,6 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		WRITE_CONFIG_SECTION,
 		PATCH_CONFIG_SECTION,
 		IMPORTANT_SECTION,
+		RESPONSE_STYLE_SECTION,
 	].join('\n\n');
 }

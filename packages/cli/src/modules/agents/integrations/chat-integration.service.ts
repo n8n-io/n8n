@@ -6,12 +6,11 @@ import { Container, Service } from '@n8n/di';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
-import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
-import { AgentRepository } from '../repositories/agent.repository';
-
 import { AgentChatBridge } from './agent-chat-bridge';
 import { ComponentMapper } from './component-mapper';
 import { loadChatSdk, loadMemoryState, loadSlackAdapter } from './esm-loader';
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import { AgentRepository } from '../repositories/agent.repository';
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces
@@ -108,6 +107,7 @@ export class ChatIntegrationService {
 		const componentMapper = new ComponentMapper();
 
 		// Lazy-import AgentsService to avoid circular DI dependency
+		// eslint-disable-next-line import-x/no-cycle
 		const { AgentsService } = await import('../agents.service');
 		const agentService = Container.get(AgentsService);
 
@@ -211,7 +211,9 @@ export class ChatIntegrationService {
 	 * Called on startup to restore connections.
 	 */
 	async reconnectAll(): Promise<void> {
-		const agents = await this.agentRepository.find();
+		// Only reconnect integrations for published agents — an unpublished agent must not
+		// receive events, so we don't even load it.
+		const agents = await this.agentRepository.findPublished();
 		for (const agent of agents) {
 			if (!agent.integrations || agent.integrations.length === 0) continue;
 			for (const integration of agent.integrations) {

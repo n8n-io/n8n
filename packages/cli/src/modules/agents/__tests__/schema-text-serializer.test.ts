@@ -1,3 +1,5 @@
+import type { JSONSchema7 } from 'json-schema';
+
 import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
 
 // ---------------------------------------------------------------------------
@@ -565,7 +567,7 @@ describe('full schema snapshot', () => {
 			'    | type = "keypress": { type: "keypress", key: string, modifiers?: array of <string> }',
 		].join('\n');
 
-		expect(jsonSchemaToCompactText(schema as any)).toBe(expected);
+		expect(jsonSchemaToCompactText(schema as unknown as JSONSchema7)).toBe(expected);
 	});
 });
 

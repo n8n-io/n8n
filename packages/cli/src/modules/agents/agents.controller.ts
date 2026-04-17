@@ -1,9 +1,13 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { AuthenticatedRequest } from '@n8n/db';
-
 import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import {
 	AgentChatMessageDto,
 	AgentIntegrationDto,
@@ -11,14 +15,9 @@ import {
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
 } from './agents.dto';
-
-import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import { AgentExecutionService } from './agent-execution.service';
-import { AgentsBuilderService } from './builder/agents-builder.service';
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentsService } from './agents.service';
+import { AgentsBuilderService } from './builder/agents-builder.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -84,7 +83,7 @@ export class AgentsController {
 	}
 
 	@Get('/')
-	async list(req: AuthenticatedRequest<{ projectId: string }, {}, {}, { all?: string }>) {
+	async list(req: AuthenticatedRequest<{ projectId: string }, unknown, unknown, { all?: string }>) {
 		// ?all=true returns all agents for this user (cross-project, for Instance AI switcher)
 		if (req.query.all === 'true') {
 			return await this.agentsService.findByUser(req.user.id);
@@ -247,6 +246,24 @@ export class AgentsController {
 		return { success: true };
 	}
 
+	@Post('/:agentId/publish')
+	async publish(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.agentsService.publishAgent(agentId, req.params.projectId, req.user.id);
+	}
+
+	@Post('/:agentId/unpublish')
+	async unpublish(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.agentsService.unpublishAgent(agentId, req.params.projectId);
+	}
+
 	@Post('/:agentId/chat', { usesTemplates: true })
 	async chat(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -373,6 +390,10 @@ export class AgentsController {
 		const { type, credentialId } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		if (!agent.publishedVersion)
+			throw new ConflictError(
+				`Agent "${agentId}" must be published before connecting an integration`,
+			);
 
 		await this.chatIntegrationService.connect(
 			agentId,

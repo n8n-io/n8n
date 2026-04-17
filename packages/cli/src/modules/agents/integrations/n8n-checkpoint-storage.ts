@@ -6,9 +6,9 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
+import { strict } from 'node:assert';
 
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
-import { strict } from 'node:assert';
 
 @Service()
 export class N8NCheckpointStorage {

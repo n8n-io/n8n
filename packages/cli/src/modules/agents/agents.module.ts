@@ -14,6 +14,11 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionService } = await import('./agent-execution.service');
 		Container.get(AgentExecutionService);
 
+		const { AgentPublishedVersionRepository } = await import(
+			'./repositories/agent-published-version.repository'
+		);
+		Container.get(AgentPublishedVersionRepository);
+
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
 		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime');
@@ -30,6 +35,7 @@ export class AgentsModule implements ModuleInterface {
 		});
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
 	async settings() {
 		return {
 			enabled: true,
@@ -43,6 +49,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity');
 		const { ExecutionThread } = await import('./entities/execution-thread.entity');
+		const { AgentPublishedVersion } = await import('./entities/agent-published-version.entity');
 
 		return [
 			Agent,
@@ -51,6 +58,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentThreadEntity,
 			AgentMessageEntity,
 			ExecutionThread,
+			AgentPublishedVersion,
 		];
 	}
 
