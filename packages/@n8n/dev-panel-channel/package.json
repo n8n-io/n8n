@@ -1,0 +1,33 @@
+{
+  "name": "@n8n/dev-panel-channel",
+  "version": "0.1.0",
+  "description": "Claude Code channel server that receives prompts from the n8n editor-ui dev panel and forwards them into a running Claude Code session. Dev-only.",
+  "private": true,
+  "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "bin": {
+    "n8n-dev-panel-channel": "dist/server.js"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.26.0"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "tsx": "catalog:"
+  }
+}
