@@ -3,8 +3,8 @@ import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import { AgentPublishedVersion } from '../entities/agent-published-version.entity';
+import type { AgentJsonConfig } from '../json-config/agent-json-config';
 
 @Service()
 export class AgentPublishedVersionRepository extends Repository<AgentPublishedVersion> {

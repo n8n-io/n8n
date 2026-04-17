@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/naming-convention -- mocks the Slack-style SDK (PascalCase components) and intentionally uses any-based factory wrappers */
 // Define mocks inline inside the factory to avoid jest.mock hoisting issues
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MockFn = jest.Mock<any, any[]>;
 const mockButton: MockFn = jest.fn((opts) => ({ type: 'button', ...opts }));
 const mockCard: MockFn = jest.fn((opts) => ({ type: 'card', ...opts }));
@@ -16,7 +16,7 @@ const mockField: MockFn = jest.fn((opts) => ({ type: 'field', ...opts }));
 
 jest.mock('../esm-loader', () => {
 	// These reference the hoisted variables above via closure
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	const wrap =
 		(fn: MockFn) =>
 		(...args: any[]) =>

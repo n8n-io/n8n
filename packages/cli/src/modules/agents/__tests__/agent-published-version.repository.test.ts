@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment -- mock-based tests intentionally reference unbound methods and cast mock returns */
 import { mock } from 'jest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';

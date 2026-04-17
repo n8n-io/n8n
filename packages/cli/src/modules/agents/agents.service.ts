@@ -5,7 +5,6 @@ import type {
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
-
 import * as agents from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
@@ -15,44 +14,44 @@ import {
 	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { v4 as uuid } from 'uuid';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { UrlService } from '@/services/url.service';
 import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { Agent } from './entities/agent.entity';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { N8nMemory } from './integrations/n8n-memory';
+import { AgentJsonConfigSchema } from './json-config/agent-json-config';
 import type {
 	AgentJsonConfig,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
 } from './json-config/agent-json-config';
-import { AgentJsonConfigSchema } from './json-config/agent-json-config';
-import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import { Agent } from './entities/agent.entity';
 import {
 	buildFromJson,
 	type MemoryFactory,
 	type ToolResolver,
 } from './json-config/from-json-config';
-import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { N8nMemory } from './integrations/n8n-memory';
-import { AgentRepository } from './repositories/agent.repository';
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
+import { AgentRepository } from './repositories/agent.repository';
+import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 
 export interface ExecuteAgentData {
 	response: string;
-	structuredOutput: unknown | null;
+	structuredOutput: unknown;
 	usage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
 	toolCalls: Array<{ toolName: string; input: unknown; result: unknown }>;
 	finishReason: string;
@@ -258,6 +257,7 @@ export class AgentsService {
 		// Drop any live chat-integration connections so webhook endpoints stop
 		// accepting events immediately — before the 30-minute TTL would have expired.
 		// Lazy import avoids the circular DI dependency (ChatIntegrationService → AgentsService).
+		// eslint-disable-next-line import-x/no-cycle
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 		await Container.get(ChatIntegrationService).disconnect(agentId);
 
@@ -596,7 +596,11 @@ export class AgentsService {
 		// Check for errors
 		if (result.error) {
 			const errorMessage =
-				result.error instanceof Error ? result.error.message : String(result.error);
+				result.error instanceof Error
+					? result.error.message
+					: typeof result.error === 'string'
+						? result.error
+						: JSON.stringify(result.error);
 			throw new OperationalError(`Agent execution failed: ${errorMessage}`);
 		}
 

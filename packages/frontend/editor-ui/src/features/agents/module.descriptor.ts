@@ -6,9 +6,12 @@ import {
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
 
-const AgentsListView = async () => await import('@/features/agents/views/AgentsListView.vue');
-const AgentBuilderView = async () => await import('@/features/agents/views/AgentBuilderView.vue');
-const NewAgentView = async () => await import('@/features/agents/views/NewAgentView.vue');
+const AgentsListView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentsListView.vue');
+const AgentBuilderView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentBuilderView.vue');
+const NewAgentView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/NewAgentView.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',

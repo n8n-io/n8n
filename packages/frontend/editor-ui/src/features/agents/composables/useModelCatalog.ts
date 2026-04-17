@@ -11,16 +11,14 @@ export function useModelCatalog() {
 
 	async function ensureLoaded(projectId: string) {
 		if (fetched) return;
-		if (!fetchPromise) {
-			fetchPromise = getModelCatalog(rootStore.restApiContext, projectId)
-				.then((result) => {
-					catalog.value = result;
-					fetched = true;
-				})
-				.catch(() => {
-					fetchPromise = null;
-				});
-		}
+		fetchPromise ??= getModelCatalog(rootStore.restApiContext, projectId)
+			.then((result) => {
+				catalog.value = result;
+				fetched = true;
+			})
+			.catch(() => {
+				fetchPromise = null;
+			});
 		await fetchPromise;
 	}
 

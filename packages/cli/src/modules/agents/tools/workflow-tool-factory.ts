@@ -1,13 +1,11 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents';
-
 import type {
 	ExecutionRepository,
 	UserRepository,
 	WorkflowRepository,
 	WorkflowEntity,
 } from '@n8n/db';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type {
 	IDataObject,
 	INode,
@@ -28,6 +26,8 @@ import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
 import type { AgentJsonToolConfig } from '../json-config/agent-json-config';
 
 // ---------------------------------------------------------------------------
@@ -138,6 +138,9 @@ export function normalizeTriggerInput(
 
 		case 'schedule': {
 			const now = new Date();
+			// Keys below match the schedule trigger's $json output shape, which uses
+			// human-readable labels — the naming-convention rule doesn't apply.
+			/* eslint-disable @typescript-eslint/naming-convention */
 			return {
 				[triggerNode.name]: [
 					{
@@ -155,6 +158,7 @@ export function normalizeTriggerInput(
 					},
 				],
 			};
+			/* eslint-enable @typescript-eslint/naming-convention */
 		}
 
 		default:
@@ -168,6 +172,55 @@ export function normalizeTriggerInput(
 // ---------------------------------------------------------------------------
 // 4. inferInputSchema
 // ---------------------------------------------------------------------------
+
+/** Map an n8n-field primitive type to the matching Zod type. */
+function fieldTypeToZod(type: string | undefined, label: string): z.ZodTypeAny {
+	switch (type) {
+		case 'number':
+			return z.number().describe(label);
+		case 'boolean':
+			return z.boolean().describe(label);
+		default:
+			return z.string().describe(label);
+	}
+}
+
+/** Derive a Zod schema from a trigger's declared `workflowInputs.values`. */
+function schemaFromWorkflowInputs(triggerNode: INode): z.ZodObject<z.ZodRawShape> | null {
+	const params = triggerNode.parameters ?? {};
+	const workflowInputs = params.workflowInputs as
+		| { values?: Array<{ name: string; type?: string }> }
+		| undefined;
+
+	if (!workflowInputs?.values?.length) return null;
+
+	const shape: z.ZodRawShape = {};
+	for (const field of workflowInputs.values) {
+		if (!field.name) continue;
+		shape[field.name] = fieldTypeToZod(field.type, field.name);
+	}
+	return Object.keys(shape).length > 0 ? z.object(shape) : null;
+}
+
+/** Derive a Zod schema from a trigger's `jsonExample` passthrough config. */
+function schemaFromJsonExample(triggerNode: INode): z.ZodObject<z.ZodRawShape> | null {
+	const jsonExample = triggerNode.parameters?.jsonExample as string | undefined;
+	if (!jsonExample) return null;
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(jsonExample);
+	} catch {
+		return null;
+	}
+	if (typeof parsed !== 'object' || parsed === null) return null;
+
+	const shape: z.ZodRawShape = {};
+	for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+		shape[key] = fieldTypeToZod(typeof value, key);
+	}
+	return Object.keys(shape).length > 0 ? z.object(shape) : null;
+}
 
 export function inferInputSchema(
 	triggerNode: INode,
@@ -188,64 +241,12 @@ export function inferInputSchema(
 				reason: z.string().optional().describe('Why the user should fill out this form'),
 			});
 
-		case 'executeWorkflow': {
-			// Read the trigger node's declared input fields from workflowInputs.values
-			const params = triggerNode.parameters ?? {};
-			const workflowInputs = params.workflowInputs as
-				| { values?: Array<{ name: string; type?: string }> }
-				| undefined;
-
-			if (workflowInputs?.values?.length) {
-				const shape: z.ZodRawShape = {};
-				for (const field of workflowInputs.values) {
-					if (!field.name) continue;
-					// Map n8n field types to Zod types
-					switch (field.type) {
-						case 'number':
-							shape[field.name] = z.number().describe(field.name);
-							break;
-						case 'boolean':
-							shape[field.name] = z.boolean().describe(field.name);
-							break;
-						default:
-							// string and any other type
-							shape[field.name] = z.string().describe(field.name);
-							break;
-					}
-				}
-				if (Object.keys(shape).length > 0) {
-					return z.object(shape);
-				}
-			}
-
-			// Check for JSON example mode
-			const jsonExample = params.jsonExample as string | undefined;
-			if (jsonExample) {
-				try {
-					const parsed: unknown = JSON.parse(jsonExample);
-					if (typeof parsed === 'object' && parsed !== null) {
-						const shape: z.ZodRawShape = {};
-						for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-							if (typeof value === 'number') {
-								shape[key] = z.number().describe(key);
-							} else if (typeof value === 'boolean') {
-								shape[key] = z.boolean().describe(key);
-							} else {
-								shape[key] = z.string().describe(key);
-							}
-						}
-						if (Object.keys(shape).length > 0) {
-							return z.object(shape);
-						}
-					}
-				} catch {
-					// Invalid JSON example, fall through
-				}
-			}
-
-			// Passthrough mode or no fields defined
-			return z.object({}).catchall(z.unknown());
-		}
+		case 'executeWorkflow':
+			return (
+				schemaFromWorkflowInputs(triggerNode) ??
+				schemaFromJsonExample(triggerNode) ??
+				z.object({}).catchall(z.unknown())
+			);
 
 		default:
 			return z.object({}).catchall(z.unknown());
@@ -352,6 +353,54 @@ export async function executeWorkflow(
 // 6. extractResult
 // ---------------------------------------------------------------------------
 
+/** Map an execution's raw status into the tool's simplified status value. */
+function normaliseExecutionStatus(status: string | undefined): string {
+	if (status === 'error' || status === 'crashed') return 'error';
+	if (status === 'running' || status === 'new') return 'running';
+	if (status === 'waiting') return 'waiting';
+	return 'success';
+}
+
+/** Extract the JSON items produced by the last run of a node. */
+function outputItemsFromNodeRuns(
+	nodeRuns: Array<{ data?: { main?: Array<Array<{ json: unknown } | null | undefined>> } }>,
+): unknown[] {
+	const lastRun = nodeRuns[nodeRuns.length - 1];
+	if (!lastRun?.data?.main) return [];
+	return lastRun.data.main
+		.flat()
+		.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
+		.map((item) => item.json);
+}
+
+/** Build the resultData map from an execution's runData, scoped by `allOutputs`. */
+function collectResultData(
+	runData: Record<string, Parameters<typeof outputItemsFromNodeRuns>[0]>,
+	allOutputs: boolean,
+): Record<string, unknown> {
+	const resultData: Record<string, unknown> = {};
+
+	if (allOutputs) {
+		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+			const outputItems = outputItemsFromNodeRuns(nodeRuns);
+			if (outputItems.length > 0) {
+				resultData[nodeName] = truncateNodeOutput(outputItems);
+			}
+		}
+		return resultData;
+	}
+
+	const nodeNames = Object.keys(runData);
+	const lastNodeName = nodeNames[nodeNames.length - 1];
+	if (lastNodeName) {
+		const outputItems = outputItemsFromNodeRuns(runData[lastNodeName]);
+		if (outputItems.length > 0) {
+			resultData[lastNodeName] = truncateNodeOutput(outputItems);
+		}
+	}
+	return resultData;
+}
+
 export async function extractResult(
 	executionRepository: ExecutionRepository,
 	executionId: string,
@@ -371,60 +420,19 @@ export async function extractResult(
 		return { executionId, status: 'unknown' };
 	}
 
-	const status =
-		execution.status === 'error' || execution.status === 'crashed'
-			? 'error'
-			: execution.status === 'running' || execution.status === 'new'
-				? 'running'
-				: execution.status === 'waiting'
-					? 'waiting'
-					: 'success';
-
-	const resultData: Record<string, unknown> = {};
 	const runData = execution.data?.resultData?.runData;
-
-	if (runData) {
-		if (allOutputs) {
-			// Return all node outputs keyed by node name
-			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
-				const lastRun = nodeRuns[nodeRuns.length - 1];
-				if (lastRun?.data?.main) {
-					const outputItems = lastRun.data.main
-						.flat()
-						.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
-						.map((item) => item.json);
-					if (outputItems.length > 0) {
-						resultData[nodeName] = truncateNodeOutput(outputItems);
-					}
-				}
-			}
-		} else {
-			// Find the last executed node's output
-			const nodeNames = Object.keys(runData);
-			const lastNodeName = nodeNames[nodeNames.length - 1];
-			if (lastNodeName) {
-				const nodeRuns = runData[lastNodeName];
-				const lastRun = nodeRuns[nodeRuns.length - 1];
-				if (lastRun?.data?.main) {
-					const outputItems = lastRun.data.main
-						.flat()
-						.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
-						.map((item) => item.json);
-					if (outputItems.length > 0) {
-						resultData[lastNodeName] = truncateNodeOutput(outputItems);
-					}
-				}
-			}
-		}
-	}
-
-	const errorMessage = execution.data?.resultData?.error?.message;
+	const resultData = runData
+		? collectResultData(
+				runData as Record<string, Parameters<typeof outputItemsFromNodeRuns>[0]>,
+				allOutputs,
+			)
+		: {};
 
 	return {
 		executionId,
-		status,
+		status: normaliseExecutionStatus(execution.status),
 		data: Object.keys(resultData).length > 0 ? truncateResultData(resultData) : undefined,
-		error: errorMessage,
+		error: execution.data?.resultData?.error?.message,
 	};
 }
 
@@ -432,7 +440,7 @@ export async function extractResult(
 // Truncation helpers (following Instance AI patterns)
 // ---------------------------------------------------------------------------
 
-function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
+function truncateNodeOutput(items: unknown[]): unknown {
 	const serialized = JSON.stringify(items);
 	if (serialized.length <= MAX_NODE_OUTPUT_BYTES) return items;
 
@@ -459,14 +467,16 @@ function truncateResultData(data: Record<string, unknown>): Record<string, unkno
 	if (serialized.length <= MAX_RESULT_CHARS) return data;
 
 	const truncated: Record<string, unknown> = {};
-	for (const [nodeName, items] of Object.entries(data)) {
-		if (!Array.isArray(items) || items.length === 0) {
-			truncated[nodeName] = items;
+	for (const [nodeName, rawItems] of Object.entries(data)) {
+		if (!Array.isArray(rawItems) || rawItems.length === 0) {
+			truncated[nodeName] = rawItems;
 			continue;
 		}
 
-		const itemStr = JSON.stringify(items[0]);
-		const preview = itemStr.length > 1_000 ? `${itemStr.slice(0, 1_000)}…` : items[0];
+		const items = rawItems as unknown[];
+		const firstItem = items[0];
+		const itemStr = JSON.stringify(firstItem);
+		const preview = itemStr.length > 1_000 ? `${itemStr.slice(0, 1_000)}…` : firstItem;
 
 		truncated[nodeName] = {
 			_itemCount: items.length,
@@ -558,6 +568,7 @@ async function buildWorkflowTool(
 						],
 					}) as never,
 			)
+			// eslint-disable-next-line @typescript-eslint/require-await -- Tool.handler() expects an async callback
 			.handler(async (input: Record<string, unknown>) => {
 				const reason = (input.reason as string) ?? `Please fill out the ${workflowName} form`;
 				return { status: 'form_link_sent', formUrl, message: reason };

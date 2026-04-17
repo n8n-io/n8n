@@ -6,12 +6,11 @@ import { Container, Service } from '@n8n/di';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
-import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
-import { AgentRepository } from '../repositories/agent.repository';
-
 import { AgentChatBridge } from './agent-chat-bridge';
 import { ComponentMapper } from './component-mapper';
 import { loadChatSdk, loadMemoryState, loadSlackAdapter } from './esm-loader';
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import { AgentRepository } from '../repositories/agent.repository';
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces
@@ -108,6 +107,7 @@ export class ChatIntegrationService {
 		const componentMapper = new ComponentMapper();
 
 		// Lazy-import AgentsService to avoid circular DI dependency
+		// eslint-disable-next-line import-x/no-cycle
 		const { AgentsService } = await import('../agents.service');
 		const agentService = Container.get(AgentsService);
 

@@ -419,7 +419,7 @@ function serializeArrayUnionBranch(
 function hasUnionItems(schema: JSONSchema7): boolean {
 	const { items } = schema;
 	if (!items || typeof items !== 'object' || Array.isArray(items)) return false;
-	return !!(items.anyOf?.length || items.oneOf?.length);
+	return !!(items.anyOf?.length ?? items.oneOf?.length);
 }
 
 /**

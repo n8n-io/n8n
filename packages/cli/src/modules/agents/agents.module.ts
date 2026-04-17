@@ -32,6 +32,7 @@ export class AgentsModule implements ModuleInterface {
 		});
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
 	async settings() {
 		return {
 			enabled: true,

@@ -46,6 +46,7 @@ const buttonConfig = computed(() => {
 				indicatorClass: 'changes',
 			};
 		case 'published-no-changes':
+		default:
 			return {
 				text: locale.baseText('agents.publish.button.published'),
 				enabled: false,

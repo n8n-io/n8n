@@ -1,9 +1,13 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { AuthenticatedRequest } from '@n8n/db';
-
 import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import {
 	AgentChatMessageDto,
 	AgentIntegrationDto,
@@ -11,14 +15,8 @@ import {
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
 } from './agents.dto';
-
-import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { AgentsBuilderService } from './builder/agents-builder.service';
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentsService } from './agents.service';
+import { AgentsBuilderService } from './builder/agents-builder.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -83,7 +81,7 @@ export class AgentsController {
 	}
 
 	@Get('/')
-	async list(req: AuthenticatedRequest<{ projectId: string }, {}, {}, { all?: string }>) {
+	async list(req: AuthenticatedRequest<{ projectId: string }, unknown, unknown, { all?: string }>) {
 		// ?all=true returns all agents for this user (cross-project, for Instance AI switcher)
 		if (req.query.all === 'true') {
 			return await this.agentsService.findByUser(req.user.id);

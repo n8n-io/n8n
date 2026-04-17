@@ -31,6 +31,19 @@ interface SuspendPayload {
 	components: SuspendComponent[];
 }
 
+type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
+
+/** Shared state threaded through per-component render helpers. */
+interface ComponentRenderContext {
+	component: SuspendComponent;
+	sdk: ChatSdk;
+	runId: string;
+	toolCallId: string;
+	children: unknown[];
+	buttons: unknown[];
+	makeButton: (label: string, rawValue: string, style?: string) => unknown;
+}
+
 /**
  * Converts agent SDK suspend payloads into Chat SDK Card elements.
  *
@@ -58,149 +71,163 @@ export class ComponentMapper {
 		toolCallId: string,
 		resumeSchema?: unknown,
 	): Promise<unknown> {
-		const {
-			Card,
-			Button,
-			Actions,
-			CardText,
-			Section,
-			Divider,
-			Image,
-			Select,
-			RadioSelect,
-			Fields,
-			Field,
-		} = await loadChatSdk();
+		const sdk = await loadChatSdk();
 
 		const children: unknown[] = [];
 		const buttons: unknown[] = [];
-		let buttonIndex = 0;
+		const buttonIndex = { value: 0 };
 
-		// Helper to create a resume button with the value wrapped as a full
-		// resume payload matching the tool's schema.
-		const makeButton = (label: string, rawValue: string, style?: string) => {
-			const resumePayload = this.wrapValueForSchema(rawValue, resumeSchema);
-			return Button({
-				id: `resume:${runId}:${toolCallId}:${buttonIndex++}`,
+		const makeButton = (label: string, rawValue: string, style?: string) =>
+			sdk.Button({
+				id: `resume:${runId}:${toolCallId}:${buttonIndex.value++}`,
 				label,
 				style: style === 'danger' ? 'danger' : 'primary',
-				value: JSON.stringify(resumePayload),
+				value: JSON.stringify(this.wrapValueForSchema(rawValue, resumeSchema)),
 			});
-		};
 
 		for (const component of payload.components) {
-			switch (component.type) {
-				case 'button':
-					buttons.push(
-						makeButton(component.label ?? 'Action', component.value ?? '', component.style),
-					);
-					break;
-
-				case 'section': {
-					if (component.text) {
-						children.push(Section([CardText(component.text)] as never));
-					}
-					// Section accessory buttons must be in a separate Actions block.
-					// Chat SDK's cardToBlockKit silently drops Button children
-					// inside Section — only Actions blocks render buttons.
-					if (component.button) {
-						children.push(
-							Actions([
-								makeButton(component.button.label, component.button.value, component.button.style),
-							] as never),
-						);
-					}
-					break;
-				}
-
-				case 'divider':
-					children.push(Divider());
-					break;
-
-				case 'image':
-					children.push(
-						Image({
-							url: component.url as string,
-							alt: (component.altText as string) ?? 'image',
-						}),
-					);
-					break;
-
-				case 'context':
-					// Context blocks contain an elements array with text/image items
-					if (component.elements && Array.isArray(component.elements)) {
-						for (const el of component.elements) {
-							if (el.type === 'text' && el.text) {
-								children.push(CardText(el.text));
-							} else if (el.type === 'image' && el.url) {
-								children.push(Image({ url: el.url, alt: el.altText ?? '' }));
-							}
-						}
-					} else if (component.text) {
-						// Fallback: plain text context
-						children.push(CardText(component.text));
-					}
-					break;
-
-				case 'select': {
-					const opts = (component.options ?? []).map((o) => ({
-						label: o.label,
-						value: o.value,
-						description: o.description,
-					}));
-					children.push(
-						Actions([
-							Select({
-								id: `ri-sel:${component.id ?? 'select'}:${runId}:${toolCallId}`,
-								label: component.label ?? 'Select',
-								placeholder: component.placeholder,
-								options: opts,
-							}),
-						] as never),
-					);
-					break;
-				}
-
-				case 'radio_select': {
-					const opts = (component.options ?? []).map((o) => ({
-						label: o.label,
-						value: o.value,
-						description: o.description,
-					}));
-					children.push(
-						Actions([
-							RadioSelect({
-								id: `ri-sel:${component.id ?? 'radio'}:${runId}:${toolCallId}`,
-								label: component.label ?? 'Select',
-								options: opts,
-							}),
-						] as never),
-					);
-					break;
-				}
-
-				case 'fields': {
-					const fieldElements = (component.fields ?? []).map((f) =>
-						Field({ label: f.label, value: f.value }),
-					);
-					children.push(Fields(fieldElements as never));
-					break;
-				}
-
-				// Unsupported types (text-input, select-input, modal) are silently dropped
-				default:
-					break;
-			}
+			this.appendComponent({ component, sdk, runId, toolCallId, children, buttons, makeButton });
 		}
 
 		if (buttons.length > 0) {
-			children.push(Actions(buttons as never));
+			children.push(sdk.Actions(buttons as never));
 		}
 
 		// Use message as title fallback if title isn't set
 		const title = payload.title ?? payload.message;
 
-		return Card({ title, children: children as never });
+		return sdk.Card({ title, children: children as never });
+	}
+
+	/** Dispatch a single component to its dedicated handler. */
+	private appendComponent(ctx: ComponentRenderContext): void {
+		const { component, children, buttons, makeButton } = ctx;
+		switch (component.type) {
+			case 'button':
+				buttons.push(
+					makeButton(component.label ?? 'Action', component.value ?? '', component.style),
+				);
+				return;
+			case 'section':
+				this.appendSection(ctx);
+				return;
+			case 'divider':
+				children.push(ctx.sdk.Divider());
+				return;
+			case 'image':
+				this.appendImage(ctx);
+				return;
+			case 'context':
+				this.appendContext(ctx);
+				return;
+			case 'select':
+				this.appendSelect(ctx);
+				return;
+			case 'radio_select':
+				this.appendRadioSelect(ctx);
+				return;
+			case 'fields':
+				this.appendFields(ctx);
+				return;
+			// Unsupported types (text-input, select-input, modal) are silently dropped
+			default:
+				return;
+		}
+	}
+
+	private appendSection({ component, sdk, children, makeButton }: ComponentRenderContext): void {
+		if (component.text) {
+			children.push(sdk.Section([sdk.CardText(component.text)] as never));
+		}
+		// Section accessory buttons must be in a separate Actions block.
+		// Chat SDK's cardToBlockKit silently drops Button children
+		// inside Section — only Actions blocks render buttons.
+		if (component.button) {
+			children.push(
+				sdk.Actions([
+					makeButton(component.button.label, component.button.value, component.button.style),
+				] as never),
+			);
+		}
+	}
+
+	private appendImage({ component, sdk, children }: ComponentRenderContext): void {
+		children.push(
+			sdk.Image({
+				url: component.url as string,
+				alt: (component.altText as string) ?? 'image',
+			}),
+		);
+	}
+
+	private appendContext({ component, sdk, children }: ComponentRenderContext): void {
+		// Context blocks contain an elements array with text/image items
+		if (component.elements && Array.isArray(component.elements)) {
+			for (const el of component.elements) {
+				if (el.type === 'text' && el.text) {
+					children.push(sdk.CardText(el.text));
+				} else if (el.type === 'image' && el.url) {
+					children.push(sdk.Image({ url: el.url, alt: el.altText ?? '' }));
+				}
+			}
+		} else if (component.text) {
+			// Fallback: plain text context
+			children.push(sdk.CardText(component.text));
+		}
+	}
+
+	private appendSelect({
+		component,
+		sdk,
+		runId,
+		toolCallId,
+		children,
+	}: ComponentRenderContext): void {
+		children.push(
+			sdk.Actions([
+				sdk.Select({
+					id: `ri-sel:${component.id ?? 'select'}:${runId}:${toolCallId}`,
+					label: component.label ?? 'Select',
+					placeholder: component.placeholder,
+					options: this.toSelectOptions(component),
+				}),
+			] as never),
+		);
+	}
+
+	private appendRadioSelect({
+		component,
+		sdk,
+		runId,
+		toolCallId,
+		children,
+	}: ComponentRenderContext): void {
+		children.push(
+			sdk.Actions([
+				sdk.RadioSelect({
+					id: `ri-sel:${component.id ?? 'radio'}:${runId}:${toolCallId}`,
+					label: component.label ?? 'Select',
+					options: this.toSelectOptions(component),
+				}),
+			] as never),
+		);
+	}
+
+	private appendFields({ component, sdk, children }: ComponentRenderContext): void {
+		const fieldElements = (component.fields ?? []).map((f) =>
+			sdk.Field({ label: f.label, value: f.value }),
+		);
+		children.push(sdk.Fields(fieldElements as never));
+	}
+
+	private toSelectOptions(
+		component: SuspendComponent,
+	): Array<{ label: string; value: string; description?: string }> {
+		return (component.options ?? []).map((o) => ({
+			label: o.label,
+			value: o.value,
+			description: o.description,
+		}));
 	}
 
 	/**
@@ -216,7 +243,7 @@ export class ComponentMapper {
 		if (!resumeSchema || typeof resumeSchema !== 'object') {
 			// No schema — try to parse as JSON, otherwise wrap generically
 			try {
-				const parsed = JSON.parse(rawValue);
+				const parsed = JSON.parse(rawValue) as unknown;
 				if (typeof parsed === 'object' && parsed !== null) return parsed;
 			} catch {
 				// not JSON
@@ -244,7 +271,7 @@ export class ComponentMapper {
 
 		// Unknown schema shape — try JSON parse, fall back to raw object
 		try {
-			const parsed = JSON.parse(rawValue);
+			const parsed = JSON.parse(rawValue) as unknown;
 			if (typeof parsed === 'object' && parsed !== null) return parsed;
 		} catch {
 			// not JSON
@@ -255,45 +282,56 @@ export class ComponentMapper {
 	/**
 	 * Convert a tool's `toMessage()` output to a Card or markdown string.
 	 */
-	async toCardOrMarkdown(message: unknown): Promise<string | unknown> {
+	async toCardOrMarkdown(message: unknown): Promise<unknown> {
 		if (typeof message === 'string') return message;
 
 		if (message && typeof message === 'object' && 'components' in message) {
-			const { Card, Section, CardText, Divider, Image } = await loadChatSdk();
+			const sdk = await loadChatSdk();
 			const { components } = message as { components: SuspendComponent[] };
 			const children: unknown[] = [];
 
 			for (const c of components) {
-				switch (c.type) {
-					case 'section':
-						if (c.text) children.push(Section([CardText(c.text)] as never));
-						break;
-					case 'divider':
-						children.push(Divider());
-						break;
-					case 'image':
-						if (c.url) children.push(Image({ url: c.url, alt: c.altText ?? '' }));
-						break;
-					case 'context':
-						if (c.elements) {
-							for (const el of c.elements) {
-								if (el.type === 'text' && el.text) children.push(CardText(el.text));
-								else if (el.type === 'image' && el.url)
-									children.push(Image({ url: el.url, alt: el.altText ?? '' }));
-							}
-						} else if (c.text) {
-							children.push(CardText(c.text));
-						}
-						break;
-					default:
-						if (c.text) children.push(CardText(c.text));
-						break;
-				}
+				this.appendMarkdownChild(c, sdk, children);
 			}
 
-			return Card({ children: children as never });
+			return sdk.Card({ children: children as never });
 		}
 
 		return String(message);
+	}
+
+	/** Render a single component into the flat markdown-style child list. */
+	private appendMarkdownChild(c: SuspendComponent, sdk: ChatSdk, children: unknown[]): void {
+		switch (c.type) {
+			case 'section':
+				if (c.text) children.push(sdk.Section([sdk.CardText(c.text)] as never));
+				return;
+			case 'divider':
+				children.push(sdk.Divider());
+				return;
+			case 'image':
+				if (c.url) children.push(sdk.Image({ url: c.url, alt: c.altText ?? '' }));
+				return;
+			case 'context':
+				this.appendMarkdownContext(c, sdk, children);
+				return;
+			default:
+				if (c.text) children.push(sdk.CardText(c.text));
+				return;
+		}
+	}
+
+	private appendMarkdownContext(c: SuspendComponent, sdk: ChatSdk, children: unknown[]): void {
+		if (c.elements) {
+			for (const el of c.elements) {
+				if (el.type === 'text' && el.text) {
+					children.push(sdk.CardText(el.text));
+				} else if (el.type === 'image' && el.url) {
+					children.push(sdk.Image({ url: el.url, alt: el.altText ?? '' }));
+				}
+			}
+		} else if (c.text) {
+			children.push(sdk.CardText(c.text));
+		}
 	}
 }

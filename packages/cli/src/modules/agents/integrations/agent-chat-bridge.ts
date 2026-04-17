@@ -54,7 +54,7 @@ interface ChatBot {
 interface ChatThread {
 	id: string;
 	subscribe: () => Promise<void>;
-	post: (content: string | AsyncIterable<string> | unknown) => Promise<unknown>;
+	post: (content: unknown) => Promise<unknown>;
 }
 
 interface ChatMessage {

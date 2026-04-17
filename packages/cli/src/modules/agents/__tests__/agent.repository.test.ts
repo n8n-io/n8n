@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import { mock } from 'jest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';

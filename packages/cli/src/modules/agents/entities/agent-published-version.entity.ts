@@ -9,8 +9,8 @@ import {
 	type Relation,
 } from '@n8n/typeorm';
 
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { Agent } from './agent.entity';
+import type { AgentJsonConfig } from '../json-config/agent-json-config';
 
 @Entity({ name: 'agent_published_version' })
 export class AgentPublishedVersion extends WithTimestamps {
