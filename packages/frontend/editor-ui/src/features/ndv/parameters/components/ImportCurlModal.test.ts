@@ -15,6 +15,11 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	}),
 }));
 
+const mockShowToast = vi.fn();
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showToast: mockShowToast }),
+}));
+
 const mockImportCurlCommand = vi.fn();
 let mockImportOptions: {
 	onImportSuccess: () => void;
@@ -156,7 +161,7 @@ describe('ImportCurlModal', () => {
 		});
 	});
 
-	it('should track failure telemetry when import throws (e.g. WASM load failure)', async () => {
+	it('should show error toast and track failure telemetry when import throws (e.g. WASM load failure)', async () => {
 		mockImportCurlCommand.mockImplementation(() => {
 			throw new Error('WASM failed to load');
 		});
@@ -180,6 +185,7 @@ describe('ImportCurlModal', () => {
 		const button = getByTestId('import-curl-modal-button');
 		await userEvent.click(button);
 
+		expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 		expect(mockTelemetryTrack).toHaveBeenCalledWith(
 			'User imported curl command',
 			expect.objectContaining({ success: false }),
