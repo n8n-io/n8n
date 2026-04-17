@@ -43,6 +43,7 @@ const agent = ref<AgentResource | null>(null);
 const updatedAt = ref<string>('');
 
 const initialPrompt = ref<string | undefined>(undefined);
+const chatEndpoint = ref<'build' | 'chat'>('build');
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
@@ -50,6 +51,13 @@ const localConfig = ref<AgentJsonConfig | null>(null);
 
 const originalConfigJson = ref('');
 const isDirty = ref(false);
+
+/**
+ * An agent is considered "built" once it has instructions configured.
+ * In that state the home screen + send flow routes to the chat endpoint
+ * instead of the builder.
+ */
+const isBuilt = computed(() => !!localConfig.value?.instructions?.trim());
 
 watch(
 	config,
@@ -100,78 +108,25 @@ async function updateDescription(description: string) {
 	}
 }
 
-let buildAbortController: AbortController | null = null;
-
-async function buildFromPrompt(msg: string) {
-	if (isBuilding.value) return;
-
-	// Capture IDs at call time so in-flight callbacks never act on a stale agent
-	const capturedProjectId = projectId.value;
-	const capturedAgentId = agentId.value;
-
-	buildAbortController?.abort();
-	const abortController = new AbortController();
-	buildAbortController = abortController;
-
-	isBuilding.value = true;
-	settingsVisible.value = true;
-	telemetry.track('User started agent build', { agent_id: capturedAgentId });
-
-	try {
-		const { baseUrl } = rootStore.restApiContext;
-		const browserId = localStorage.getItem('n8n-browserId') ?? '';
-		const url = `${baseUrl}/projects/${capturedProjectId}/agents/v2/${capturedAgentId}/build`;
-
-		const response = await fetch(url, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', 'browser-id': browserId },
-			credentials: 'include',
-			body: JSON.stringify({ message: msg }),
-			signal: abortController.signal,
-		});
-
-		if (!response.ok || !response.body) return;
-
-		const reader = response.body.getReader();
-		const decoder = new TextDecoder();
-		let buffer = '';
-
-		while (true) {
-			if (abortController.signal.aborted) break;
-			const { done, value } = await reader.read();
-			if (done) break;
-
-			buffer += decoder.decode(value, { stream: true });
-			const lines = buffer.split('\n');
-			buffer = lines.pop() ?? '';
-
-			for (const line of lines) {
-				if (!line.startsWith('data: ')) continue;
-				try {
-					const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
-					if (data.configUpdated !== undefined || data.toolUpdated !== undefined) {
-						if (abortController.signal.aborted) break;
-						await onConfigUpdated(capturedProjectId, capturedAgentId);
-					}
-				} catch {
-					// skip malformed JSON
-				}
-			}
-		}
-
-		// Final refresh after stream ends
-		if (!abortController.signal.aborted) {
-			await onConfigUpdated(capturedProjectId, capturedAgentId);
-		}
-	} catch (e) {
-		if (e instanceof DOMException && e.name === 'AbortError') return;
-		throw e;
-	} finally {
-		if (buildAbortController === abortController) {
-			buildAbortController = null;
-			isBuilding.value = false;
-		}
+function startChat(msg: string) {
+	// Decide at send-time whether this is a build session or a chat session
+	// with the already-built agent.
+	chatEndpoint.value = isBuilt.value ? 'chat' : 'build';
+	initialPrompt.value = msg;
+	chatActive.value = true;
+	if (chatEndpoint.value === 'build') {
+		settingsVisible.value = true;
 	}
+	telemetry.track(
+		chatEndpoint.value === 'build' ? 'User started agent build' : 'User started agent chat',
+		{ agent_id: agentId.value },
+	);
+}
+
+function onChatStreamingChange(streaming: boolean) {
+	// Only treat streams as "building" when routed to the builder endpoint —
+	// that's what the settings sidebar reacts to.
+	isBuilding.value = chatEndpoint.value === 'build' && streaming;
 }
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
@@ -196,12 +151,8 @@ function cancelConfig() {
 	}
 }
 
-async function onConfigUpdated(forProjectId?: string, forAgentId?: string) {
-	const pid = forProjectId ?? projectId.value;
-	const aid = forAgentId ?? agentId.value;
-	// Skip if the agent is no longer the one being viewed (stale callback)
-	if (pid !== projectId.value || aid !== agentId.value) return;
-	await Promise.all([fetchAgent(), fetchConfig(pid, aid)]);
+async function onConfigUpdated() {
+	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
 	isDirty.value = false;
 }
 
@@ -221,8 +172,6 @@ async function onHeaderAction(action: string) {
 }
 
 async function initialize() {
-	buildAbortController?.abort();
-	buildAbortController = null;
 	agent.value = null;
 	chatActive.value = false;
 	isBuilding.value = false;
@@ -238,7 +187,7 @@ async function initialize() {
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
 		void router.replace({ query: { ...route.query, prompt: undefined } });
-		void buildFromPrompt(prompt);
+		startChat(prompt);
 	}
 }
 
@@ -288,7 +237,8 @@ watch(agentId, initialize, { immediate: true });
 					:agent-icon="agentIcon"
 					:project-id="projectId"
 					:agent-id="agentId"
-					@send-message="buildFromPrompt"
+					:show-recent="isBuilt"
+					@send-message="startChat"
 					@update:name="updateName"
 					@update:description="updateDescription"
 					@update:icon="agentIcon = $event"
@@ -298,8 +248,10 @@ watch(agentId, initialize, { immediate: true });
 					:project-id="projectId"
 					:agent-id="agentId"
 					mode="inline"
+					:endpoint="chatEndpoint"
 					:initial-message="initialPrompt"
 					@config-updated="onConfigUpdated"
+					@update:streaming="onChatStreamingChange"
 				/>
 			</div>
 		</div>

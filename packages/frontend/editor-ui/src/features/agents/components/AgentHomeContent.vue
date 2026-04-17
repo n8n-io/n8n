@@ -7,13 +7,19 @@ import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 
 const locale = useI18n();
 
-const props = defineProps<{
-	agentName: string;
-	agentDescription: string | null;
-	agentIcon: IconOrEmoji;
-	projectId: string;
-	agentId: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		agentName: string;
+		agentDescription: string | null;
+		agentIcon: IconOrEmoji;
+		projectId: string;
+		agentId: string;
+		showRecent?: boolean;
+	}>(),
+	{
+		showRecent: false,
+	},
+);
 
 const emit = defineEmits<{
 	'send-message': [message: string];
@@ -140,7 +146,7 @@ function submitMessage() {
 			/>
 		</div>
 
-		<div :class="$style.recent">
+		<div v-if="showRecent" :class="$style.recent">
 			<div :class="$style.recentHeader">
 				<N8nText size="small" color="text-light" bold>{{
 					locale.baseText('agents.home.recent')
