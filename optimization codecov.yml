@@ -1,0 +1,85 @@
+codecov:
+  require_ci_to_pass: true
+  max_report_age: off
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 0.5%
+    patch:
+      default:
+        enabled: false
+
+github_checks:
+  annotations: false
+
+bundle_analysis:
+  status: warning
+  warning_threshold: 1%
+
+comment:
+  require_changes: coverage_drop OR uncovered_patch
+  require_bundle_changes: bundle_increase
+  bundle_change_threshold: 50Kb
+
+flags:
+  backend-unit:        { carryforward: true }
+  backend-integration: { carryforward: true }
+  nodes-unit:          { carryforward: true }
+  frontend:            { carryforward: true }
+  frontend-e2e:        { carryforward: true }
+
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+        branches:
+          - "!master"
+
+  individual_components:
+    - component_id: backend
+      name: Backend
+      paths:
+        - packages/@n8n/**/src/**
+        - packages/core/**
+        - packages/cli/**
+        - packages/workflow/**
+
+    - component_id: frontend
+      name: Frontend
+      paths:
+        - packages/frontend/**
+        - packages/@n8n/codemirror-lang/**
+
+    - component_id: nodes
+      name: Nodes
+      paths:
+        - packages/nodes-base/**
+        - packages/node-dev/**
+        - packages/@n8n/nodes-langchain/**
+        - packages/@n8n/json-schema-to-zod/**
+      statuses:
+        - type: project
+          target: auto
+          threshold: 0%   # coverage must not decrease
+
+    - component_id: utils
+      name: Utils
+      paths:
+        - packages/@n8n/utils/**
+        - packages/@n8n/node-cli/**
+        - packages/@n8n/eslint-*
+
+ignore:
+  # tests
+  - "**/*.spec.ts"
+  - "**/*.test.ts"
+  - "**/*e2e*.ts"
+  - "**/__tests__/**"
+  - "**/test_*.py"
+
+  # scripts / tooling
+  - "**/scripts/**"
