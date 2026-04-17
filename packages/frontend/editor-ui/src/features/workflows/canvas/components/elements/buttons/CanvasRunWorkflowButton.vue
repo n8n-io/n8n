@@ -9,12 +9,7 @@ import { computed } from 'vue';
 import { isChatNode } from '@/app/utils/aiUtils';
 import { I18nT } from 'vue-i18n';
 
-import {
-	N8nActionDropdown,
-	N8nButton,
-	N8nText,
-	type ActionDropdownItem,
-} from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nText, type ActionDropdownItem } from '@n8n/design-system';
 const emit = defineEmits<{
 	mouseenter: [event: MouseEvent];
 	mouseleave: [event: MouseEvent];
