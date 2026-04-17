@@ -187,26 +187,12 @@ export async function startBuildWorkflowAgentTask(
 		credMap = await buildCredentialMap(domainContext.credentialService);
 
 		const toolNames = [
-			'search-nodes',
-			'get-suggested-nodes',
-			'get-workflow-as-code',
-			'get-node-type-definition',
-			'explore-node-resources',
-			'list-workflows',
-			'list-credentials',
-			'test-credential',
+			'nodes',
+			'workflows',
+			'credentials',
+			'executions',
+			'data-tables',
 			'ask-user',
-			'run-workflow',
-			'get-execution',
-			'debug-execution',
-			'publish-workflow',
-			'unpublish-workflow',
-			'list-data-tables',
-			'create-data-table',
-			'get-data-table-schema',
-			'add-data-table-column',
-			'query-data-table-rows',
-			'insert-data-table-rows',
 		];
 
 		builderTools = {};
@@ -223,19 +209,11 @@ export async function startBuildWorkflowAgentTask(
 
 		const toolNames = [
 			'build-workflow',
-			'get-node-type-definition',
-			'get-workflow-as-code',
-			'list-workflows',
-			'search-nodes',
-			'get-suggested-nodes',
+			'nodes',
+			'workflows',
+			'data-tables',
 			'ask-user',
-			'list-data-tables',
-			'create-data-table',
-			'get-data-table-schema',
-			'add-data-table-column',
-			'query-data-table-rows',
-			'insert-data-table-rows',
-			...(context.researchMode ? ['web-search', 'fetch-url'] : []),
+			...(context.researchMode ? ['research'] : []),
 		];
 		for (const name of toolNames) {
 			if (name in context.domainTools) {

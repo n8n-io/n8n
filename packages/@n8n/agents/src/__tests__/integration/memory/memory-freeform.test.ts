@@ -32,26 +32,24 @@ describe('freeform working memory', () => {
 		expect(findLastTextContent(result.messages)?.toLowerCase()).toContain('berlin');
 	});
 
-	it('working memory tags are stripped from visible response', async () => {
+	it('working memory is updated when new information is provided', async () => {
 		const memory = new Memory().storage('memory').lastMessages(10).freeform(template);
 
-		const agent = new Agent('strip-test')
+		const agent = new Agent('wm-update-test')
 			.model(getModel('anthropic'))
 			.instructions('You are a helpful assistant. Be concise.')
 			.memory(memory);
 
-		const threadId = `strip-${Date.now()}`;
+		const threadId = `wm-update-${Date.now()}`;
 		const options = { persistence: { threadId, resourceId: 'test-user' } };
 
 		const result = await agent.generate('My name is Bob.', options);
 
-		const allText = result.messages
-			.flatMap((m) => ('content' in m ? m.content : []))
-			.filter((c) => c.type === 'text')
-			.map((c) => (c as { text: string }).text)
-			.join(' ');
-		expect(allText).not.toContain('<working_memory>');
-		expect(allText).not.toContain('</working_memory>');
+		const toolCalls = result.messages.flatMap((m) =>
+			'content' in m ? m.content.filter((c) => c.type === 'tool-call') : [],
+		) as Array<{ type: 'tool-call'; toolName: string }>;
+		const wmToolCall = toolCalls.find((c) => c.toolName === 'updateWorkingMemory');
+		expect(wmToolCall).toBeDefined();
 	});
 
 	it('working memory persists across threads with same resourceId', async () => {

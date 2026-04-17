@@ -6,11 +6,11 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import type { Workflow } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
+import type { WorkflowObjectAccessors } from '@/app/types';
 
 defineOptions({
 	inheritAttrs: false,
@@ -20,7 +20,7 @@ const props = withDefaults(
 	defineProps<{
 		id?: string;
 		workflow: IWorkflowDb;
-		workflowObject: Workflow;
+		workflowObject: WorkflowObjectAccessors;
 		fallbackNodes?: IWorkflowDb['nodes'];
 		showFallbackNodes?: boolean;
 		eventBus?: EventBus<CanvasEventBusEvents>;
