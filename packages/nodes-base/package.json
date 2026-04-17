@@ -891,6 +891,9 @@
     "n8n-core": "workspace:*",
     "vitest": "catalog:"
   },
+  "bundledDependencies": [
+    "xlsx"
+  ],
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
     "@kafkajs/confluent-schema-registry": "3.8.0",
