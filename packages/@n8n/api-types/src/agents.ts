@@ -5,7 +5,7 @@
  * `agent.versionId` vs `publishedVersion.publishedFromVersionId`.
  */
 export interface AgentPublishedVersionDto {
-	schema: unknown | null;
+	schema: unknown;
 	publishedFromVersionId: string;
 	model: string | null;
 	provider: string | null;
