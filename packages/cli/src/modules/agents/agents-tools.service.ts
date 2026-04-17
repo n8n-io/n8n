@@ -6,27 +6,32 @@ import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { EphemeralNodeExecutor } from '@/node-execution';
-import { WorkflowBuilderToolsService } from '@/modules/mcp/tools/workflow-builder/workflow-builder-tools.service';
-
-interface InvokableTool<TInput> {
-	invoke(input: TInput): Promise<string>;
-}
+import { NodeCatalogService } from '@/node-catalog';
 
 type NodeRequest =
 	| string
 	| {
 			nodeId: string;
-			version?: string;
+			version?: number;
 			resource?: string;
 			operation?: string;
 			mode?: string;
 	  };
 
+/**
+ * Nodes the agent runtime should never surface as executable node tools.
+ * Exported as a stable reference so the catalog service can cache its
+ * filtered search tool per filter identity.
+ */
+export const isExecutableNodeType = (nodeId: string): boolean =>
+	!isTriggerNodeType(nodeId) && !isToolType(nodeId);
+
 const searchNodesInputSchema = z.object({
 	queries: z.array(z.string()).min(1).describe('Search queries (e.g., ["gmail", "slack", "http"])'),
 });
+
+const nodeVersionSchema = z.number().describe('Node type version from search_nodes');
 
 const getNodeTypesInputSchema = z.object({
 	nodeIds: z
@@ -35,7 +40,7 @@ const getNodeTypesInputSchema = z.object({
 				z.string(),
 				z.object({
 					nodeId: z.string(),
-					version: z.string().optional(),
+					version: nodeVersionSchema.optional(),
 					resource: z.string().optional(),
 					operation: z.string().optional(),
 					mode: z.string().optional(),
@@ -50,7 +55,7 @@ const listCredentialsInputSchema = z.object({});
 
 const runNodeInputSchema = z.object({
 	nodeType: z.string().describe('Node type identifier from search_nodes'),
-	nodeTypeVersion: z.number().describe('Node type version from search_nodes'),
+	nodeTypeVersion: nodeVersionSchema,
 	nodeParameters: z
 		.record(z.unknown())
 		.optional()
@@ -67,36 +72,14 @@ const runNodeInputSchema = z.object({
 		.describe('Runtime input, available as $json inside nodeParameters expressions.'),
 });
 
-/** Nodes the runtime agent should never surface as executable node tools. */
-function isExcludedNodeType(nodeId: string): boolean {
-	return isTriggerNodeType(nodeId) || isToolType(nodeId);
-}
-
 @Service()
 export class AgentsToolsService {
-	/** Lazily initialized filtered search tool — invalidated on node-type refresh. */
-	private agentSearchTool: InvokableTool<{ queries: string[] }> | undefined;
-
-	/** Result cache for the filtered search tool, keyed by sorted query list. */
-	private readonly agentSearchCache = new Map<string, string>();
-
 	constructor(
-		private readonly workflowBuilderToolsService: WorkflowBuilderToolsService,
+		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
-		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-	) {
-		this.loadNodesAndCredentials.addPostProcessor(async () => await this.refreshNodeTypes());
-	}
+	) {}
 
-	async refreshNodeTypes(): Promise<void> {
-		this.agentSearchTool = undefined;
-		this.agentSearchCache.clear();
-	}
-
-	async initialize(): Promise<void> {
-		await this.workflowBuilderToolsService.initialize();
-	}
-
+	/** Tools usable from both the builder and the agent runtime. */
 	getSharedTools(credentialProvider: CredentialProvider): BuiltTool[] {
 		return [
 			this.buildSearchNodesTool(),
@@ -105,26 +88,9 @@ export class AgentsToolsService {
 		];
 	}
 
-	getTools(credentialProvider: CredentialProvider, projectId: string): BuiltTool[] {
+	/** Shared tools plus the runtime-only `run_node_tool` which binds to a project. */
+	getRuntimeTools(credentialProvider: CredentialProvider, projectId: string): BuiltTool[] {
 		return [...this.getSharedTools(credentialProvider), this.buildRunNodeTool(projectId)];
-	}
-
-	private async invokeAgentSearch(queries: string[]): Promise<string> {
-		const cacheKey = JSON.stringify([...queries].sort());
-		const cached = this.agentSearchCache.get(cacheKey);
-		if (cached) return cached;
-
-		if (!this.agentSearchTool) {
-			const { createCodeBuilderSearchTool } = await import('@n8n/ai-workflow-builder');
-			this.agentSearchTool = createCodeBuilderSearchTool(
-				this.workflowBuilderToolsService.getNodeTypeParser(),
-				{ nodeFilter: (nodeId) => !isExcludedNodeType(nodeId) },
-			);
-		}
-
-		const result = await this.agentSearchTool.invoke({ queries });
-		this.agentSearchCache.set(cacheKey, result);
-		return result;
 	}
 
 	private buildSearchNodesTool(): BuiltTool {
@@ -136,7 +102,9 @@ export class AgentsToolsService {
 			)
 			.input(searchNodesInputSchema)
 			.handler(async ({ queries }: { queries: string[] }) => {
-				const results = await this.invokeAgentSearch(queries);
+				const results = await this.nodeCatalogService.searchNodes(queries, {
+					nodeFilter: isExecutableNodeType,
+				});
 				return { results };
 			})
 			.build();
@@ -151,7 +119,9 @@ export class AgentsToolsService {
 			)
 			.input(getNodeTypesInputSchema)
 			.handler(async ({ nodeIds }: { nodeIds: NodeRequest[] }) => {
-				const results = await this.workflowBuilderToolsService.getNodeTypes(nodeIds);
+				const results = await this.nodeCatalogService.getNodeTypes(
+					nodeIds.map(normalizeNodeRequestForCatalog),
+				);
 				return { results };
 			})
 			.build();
@@ -184,6 +154,13 @@ export class AgentsToolsService {
 			)
 			.input(runNodeInputSchema)
 			.handler(async ({ nodeType, nodeTypeVersion, nodeParameters, credentials, inputData }) => {
+				if (!isExecutableNodeType(nodeType)) {
+					return {
+						status: 'error',
+						message: `Node type "${nodeType}" cannot be executed directly — triggers and tool-type nodes are not supported here.`,
+					};
+				}
+
 				if (nodeParameters) {
 					const { valid, errors } = validateNodeConfig(nodeType, nodeTypeVersion, {
 						parameters: nodeParameters,
@@ -207,4 +184,23 @@ export class AgentsToolsService {
 			})
 			.build();
 	}
+}
+
+/**
+ * The catalog's `getNodeTypes` signature expects `version` as a string (matching the
+ * code-builder tool's wire format). Our public schema uses `number` for consistency
+ * with `run_node_tool`; adapt at the boundary.
+ */
+function normalizeNodeRequestForCatalog(req: NodeRequest):
+	| string
+	| {
+			nodeId: string;
+			version?: string;
+			resource?: string;
+			operation?: string;
+			mode?: string;
+	  } {
+	if (typeof req === 'string') return req;
+	const { version, ...rest } = req;
+	return version === undefined ? rest : { ...rest, version: String(version) };
 }

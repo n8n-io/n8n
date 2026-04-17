@@ -16,35 +16,50 @@ type NodeRequest =
 			mode?: string;
 	  };
 
+export type NodeFilter = (nodeId: string) => boolean;
+
+export interface SearchNodesOptions {
+	/**
+	 * Optional predicate restricting which node IDs are included in search results.
+	 * Each unique filter reference gets its own tool instance and result cache;
+	 * callers should use module-level function references to avoid unbounded growth.
+	 */
+	nodeFilter?: NodeFilter;
+}
+
 interface InvokableTool<TInput> {
 	invoke(input: TInput): Promise<string>;
 }
 
+interface SearchState {
+	tool?: InvokableTool<{ queries: string[] }>;
+	cache: Map<string, string>;
+}
+
+const UNFILTERED: unique symbol = Symbol('unfiltered');
+
 /**
- * Shared service for MCP workflow builder tools.
- * Lazily initializes NodeTypeParser and resolves nodeDefinitionDirs
- * for the code-builder search/get/suggest tools.
+ * Shared node catalog for features that need to search, describe or suggest n8n nodes
+ * (MCP workflow-builder tools, the agents runtime, future callers).
  *
- * Caches tool instances and their results across successive builds.
- * All caches are invalidated when node types are refreshed.
+ * Lazily initializes a {@link NodeTypeParser} on first use and resolves the built-in
+ * node-definition directories used to load schemas. All caches invalidate automatically
+ * when LoadNodesAndCredentials signals that node types were reloaded.
  */
 @Service()
-export class WorkflowBuilderToolsService {
+export class NodeCatalogService {
 	private nodeTypeParser: NodeTypeParser | undefined;
 
 	private nodeDefinitionDirs: string[] = [];
 
 	private initPromise: Promise<void> | undefined;
 
-	// Cached tool instances — created once, reused across invocations
-	private searchTool: InvokableTool<{ queries: string[] }> | undefined;
+	/** Tool + cache per unique `nodeFilter` reference (plus one unfiltered slot). */
+	private readonly searchStates = new Map<NodeFilter | typeof UNFILTERED, SearchState>();
 
 	private getTool: InvokableTool<{ nodeIds: NodeRequest[] }> | undefined;
 
 	private suggestTool: InvokableTool<{ categories: string[] }> | undefined;
-
-	// Result caches — keyed by normalized input, cleared on node type refresh
-	private readonly searchCache = new Map<string, string>();
 
 	private readonly getCache = new Map<string, string>();
 
@@ -64,7 +79,7 @@ export class WorkflowBuilderToolsService {
 
 	getNodeTypeParser(): NodeTypeParser {
 		if (!this.nodeTypeParser) {
-			throw new Error('WorkflowBuilderToolsService not initialized. Call initialize() first.');
+			throw new Error('NodeCatalogService not initialized. Call initialize() first.');
 		}
 		return this.nodeTypeParser;
 	}
@@ -73,18 +88,33 @@ export class WorkflowBuilderToolsService {
 		return this.nodeDefinitionDirs;
 	}
 
-	/** Search for nodes by keyword, with result caching. */
-	async searchNodes(queries: string[]): Promise<string> {
+	/**
+	 * Search the node catalog for node IDs matching `queries`.
+	 * Results are cached per `(filter, queries)` pair and invalidated on node-type refresh.
+	 */
+	async searchNodes(queries: string[], options: SearchNodesOptions = {}): Promise<string> {
+		const { nodeFilter } = options;
+		const stateKey: NodeFilter | typeof UNFILTERED = nodeFilter ?? UNFILTERED;
+
+		let state = this.searchStates.get(stateKey);
+		if (!state) {
+			state = { cache: new Map() };
+			this.searchStates.set(stateKey, state);
+		}
+
 		const cacheKey = JSON.stringify([...queries].sort());
-		const cached = this.searchCache.get(cacheKey);
+		const cached = state.cache.get(cacheKey);
 		if (cached) return cached;
 
-		if (!this.searchTool) {
+		if (!state.tool) {
 			const { createCodeBuilderSearchTool } = await import('@n8n/ai-workflow-builder');
-			this.searchTool = createCodeBuilderSearchTool(this.getNodeTypeParser());
+			state.tool = nodeFilter
+				? createCodeBuilderSearchTool(this.getNodeTypeParser(), { nodeFilter })
+				: createCodeBuilderSearchTool(this.getNodeTypeParser());
 		}
-		const result = await this.searchTool.invoke({ queries });
-		this.searchCache.set(cacheKey, result);
+
+		const result = await state.tool.invoke({ queries });
+		state.cache.set(cacheKey, result);
 		return result;
 	}
 
@@ -132,7 +162,7 @@ export class WorkflowBuilderToolsService {
 
 		setSchemaBaseDirs(this.nodeDefinitionDirs);
 
-		this.logger.debug('WorkflowBuilderToolsService initialized', {
+		this.logger.debug('NodeCatalogService initialized', {
 			nodeTypeCount: nodeTypeDescriptions.length,
 			nodeDefinitionDirs: this.nodeDefinitionDirs.length,
 		});
@@ -145,17 +175,14 @@ export class WorkflowBuilderToolsService {
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 		this.nodeTypeParser = new NodeTypeParserClass(nodeTypeDescriptions);
 
-		// Invalidate cached tool instances (they hold references to the old parser)
-		this.searchTool = undefined;
+		this.searchStates.clear();
 		this.getTool = undefined;
 		this.suggestTool = undefined;
 
-		// Clear result caches
-		this.searchCache.clear();
 		this.getCache.clear();
 		this.suggestCache.clear();
 
-		this.logger.debug('WorkflowBuilderToolsService refreshed node types', {
+		this.logger.debug('NodeCatalogService refreshed node types', {
 			nodeTypeCount: nodeTypeDescriptions.length,
 		});
 	}

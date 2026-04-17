@@ -2,25 +2,26 @@ import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { WorkflowBuilderToolsService } from '../tools/workflow-builder/workflow-builder-tools.service';
-
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+
+import { NodeCatalogService } from '../node-catalog.service';
 
 const MockNodeTypeParser = jest.fn();
 const mockSetSchemaBaseDirs = jest.fn();
 const mockSearchInvoke = jest.fn().mockResolvedValue('search-result');
 const mockGetInvoke = jest.fn().mockResolvedValue('get-result');
 const mockSuggestInvoke = jest.fn().mockResolvedValue('suggest-result');
+const mockCreateSearchTool = jest.fn((..._args: unknown[]) => ({ invoke: mockSearchInvoke }));
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
 	NodeTypeParser: MockNodeTypeParser,
-	createCodeBuilderSearchTool: jest.fn(() => ({ invoke: mockSearchInvoke })),
+	createCodeBuilderSearchTool: (...args: unknown[]) => mockCreateSearchTool(...args),
 	createCodeBuilderGetTool: jest.fn(() => ({ invoke: mockGetInvoke })),
 	createGetSuggestedNodesTool: jest.fn(() => ({ invoke: mockSuggestInvoke })),
 }));
 
 jest.mock('@n8n/workflow-sdk', () => ({
-	setSchemaBaseDirs: (...args: unknown[]) => mockSetSchemaBaseDirs(...args),
+	setSchemaBaseDirs: (...args: unknown[]) => mockSetSchemaBaseDirs(...(args as [string[]])),
 }));
 
 jest.mock('fs', () => ({
@@ -30,8 +31,8 @@ jest.mock('fs', () => ({
 const mockLogger = (): Logger =>
 	mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) });
 
-describe('WorkflowBuilderToolsService', () => {
-	let service: WorkflowBuilderToolsService;
+describe('NodeCatalogService', () => {
+	let service: NodeCatalogService;
 	let loadNodesAndCredentials: jest.Mocked<LoadNodesAndCredentials>;
 	let postProcessorCallback: (() => Promise<void>) | undefined;
 
@@ -52,14 +53,12 @@ describe('WorkflowBuilderToolsService', () => {
 
 		MockNodeTypeParser.mockClear();
 
-		service = new WorkflowBuilderToolsService(loadNodesAndCredentials, mockLogger());
+		service = new NodeCatalogService(loadNodesAndCredentials, mockLogger());
 	});
 
 	describe('getNodeTypeParser', () => {
 		test('throws when called before initialize', () => {
-			expect(() => service.getNodeTypeParser()).toThrow(
-				'WorkflowBuilderToolsService not initialized',
-			);
+			expect(() => service.getNodeTypeParser()).toThrow('NodeCatalogService not initialized');
 		});
 
 		test('returns parser after initialization', async () => {
@@ -102,7 +101,6 @@ describe('WorkflowBuilderToolsService', () => {
 			await service.initialize();
 
 			const dirs = service.getNodeDefinitionDirs();
-			// Should have found dirs for n8n-nodes-base and @n8n/n8n-nodes-langchain
 			expect(dirs.length).toBeGreaterThan(0);
 			for (const dir of dirs) {
 				expect(dir).toContain('node-definitions');
@@ -115,7 +113,6 @@ describe('WorkflowBuilderToolsService', () => {
 			await service.initialize();
 			expect(MockNodeTypeParser).toHaveBeenCalledTimes(1);
 
-			// Simulate post-processor callback (refreshNodeTypes)
 			loadNodesAndCredentials.collectTypes.mockResolvedValue({
 				nodes: [
 					{ name: 'n8n-nodes-base.webhook' },
@@ -136,11 +133,9 @@ describe('WorkflowBuilderToolsService', () => {
 		});
 
 		test('no-ops when nodeTypeParser is undefined (not initialized)', async () => {
-			// Call postProcessor before init
 			expect(postProcessorCallback).toBeDefined();
 			await postProcessorCallback!();
 
-			// Should not create a parser since service was never initialized
 			expect(MockNodeTypeParser).not.toHaveBeenCalled();
 		});
 	});
@@ -178,6 +173,41 @@ describe('WorkflowBuilderToolsService', () => {
 			await service.searchNodes(['gmail']);
 			await service.searchNodes(['slack']);
 
+			expect(mockSearchInvoke).toHaveBeenCalledTimes(2);
+		});
+
+		test('creates a separate tool instance per nodeFilter reference', async () => {
+			await service.initialize();
+
+			const filterA = () => true;
+			const filterB = () => false;
+
+			await service.searchNodes(['gmail'], { nodeFilter: filterA });
+			await service.searchNodes(['gmail'], { nodeFilter: filterB });
+
+			expect(mockCreateSearchTool).toHaveBeenCalledTimes(2);
+			expect(mockCreateSearchTool).toHaveBeenNthCalledWith(
+				1,
+				expect.anything(),
+				expect.objectContaining({ nodeFilter: filterA }),
+			);
+			expect(mockCreateSearchTool).toHaveBeenNthCalledWith(
+				2,
+				expect.anything(),
+				expect.objectContaining({ nodeFilter: filterB }),
+			);
+		});
+
+		test('caches filtered results independently of unfiltered results', async () => {
+			await service.initialize();
+
+			const filter = () => true;
+			await service.searchNodes(['gmail']);
+			await service.searchNodes(['gmail'], { nodeFilter: filter });
+			await service.searchNodes(['gmail']);
+			await service.searchNodes(['gmail'], { nodeFilter: filter });
+
+			// Two distinct tool instances, each invoked once.
 			expect(mockSearchInvoke).toHaveBeenCalledTimes(2);
 		});
 	});
@@ -222,25 +252,24 @@ describe('WorkflowBuilderToolsService', () => {
 		test('clears all caches when node types are refreshed', async () => {
 			await service.initialize();
 
-			// Populate caches
 			await service.searchNodes(['gmail']);
-			await service.getNodeTypes(['n8n-nodes-base.set']);
-			await service.getSuggestedNodes(['chatbot']);
-
-			expect(mockSearchInvoke).toHaveBeenCalledTimes(1);
-			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
-			expect(mockSuggestInvoke).toHaveBeenCalledTimes(1);
-
-			// Trigger refresh
-			expect(postProcessorCallback).toBeDefined();
-			await postProcessorCallback!();
-
-			// Same calls should invoke tools again (cache was cleared)
-			await service.searchNodes(['gmail']);
+			await service.searchNodes(['gmail'], { nodeFilter: () => true });
 			await service.getNodeTypes(['n8n-nodes-base.set']);
 			await service.getSuggestedNodes(['chatbot']);
 
 			expect(mockSearchInvoke).toHaveBeenCalledTimes(2);
+			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
+			expect(mockSuggestInvoke).toHaveBeenCalledTimes(1);
+
+			expect(postProcessorCallback).toBeDefined();
+			await postProcessorCallback!();
+
+			await service.searchNodes(['gmail']);
+			await service.searchNodes(['gmail'], { nodeFilter: () => true });
+			await service.getNodeTypes(['n8n-nodes-base.set']);
+			await service.getSuggestedNodes(['chatbot']);
+
+			expect(mockSearchInvoke).toHaveBeenCalledTimes(4);
 			expect(mockGetInvoke).toHaveBeenCalledTimes(2);
 			expect(mockSuggestInvoke).toHaveBeenCalledTimes(2);
 		});

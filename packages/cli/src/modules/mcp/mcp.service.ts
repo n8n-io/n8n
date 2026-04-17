@@ -44,7 +44,7 @@ import { getMcpInstructions } from './tools/workflow-builder/mcp-instructions';
 import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool';
 import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
 import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
-import { WorkflowBuilderToolsService } from './tools/workflow-builder/workflow-builder-tools.service';
+import { NodeCatalogService } from '@/node-catalog';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -93,7 +93,7 @@ export class McpService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
-		private readonly workflowBuilderToolsService: WorkflowBuilderToolsService,
+		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly projectRepository: ProjectRepository,
@@ -287,25 +287,25 @@ export class McpService {
 	}
 
 	private async registerBuilderTools(server: InstanceType<typeof McpServer>, user: User) {
-		await this.workflowBuilderToolsService.initialize();
+		await this.nodeCatalogService.initialize();
 
 		const searchNodesTool = createSearchWorkflowNodesTool(
 			user,
-			this.workflowBuilderToolsService,
+			this.nodeCatalogService,
 			this.telemetry,
 		);
 		server.registerTool(searchNodesTool.name, searchNodesTool.config, searchNodesTool.handler);
 
 		const getNodeTypesTool = createGetWorkflowNodeTypesTool(
 			user,
-			this.workflowBuilderToolsService,
+			this.nodeCatalogService,
 			this.telemetry,
 		);
 		server.registerTool(getNodeTypesTool.name, getNodeTypesTool.config, getNodeTypesTool.handler);
 
 		const suggestedNodesTool = createGetSuggestedWorkflowNodesTool(
 			user,
-			this.workflowBuilderToolsService,
+			this.nodeCatalogService,
 			this.telemetry,
 		);
 		server.registerTool(

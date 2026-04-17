@@ -21,6 +21,11 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime');
 		Container.get(AgentSecureRuntime);
 
+		// Warm the node catalog so the agent runtime can attach search/execute tools
+		// synchronously on each agent reconstruction. The underlying init is idempotent.
+		const { NodeCatalogService } = await import('@/node-catalog');
+		await Container.get(NodeCatalogService).initialize();
+
 		// Register Chat integration service and reconnect active integrations
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 		const chatService = Container.get(ChatIntegrationService);
