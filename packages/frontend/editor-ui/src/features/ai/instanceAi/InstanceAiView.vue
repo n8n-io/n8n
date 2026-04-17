@@ -374,14 +374,15 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	userScrolledUp.value = false;
 	preview.markUserSentMessage();
 	const shouldUpdateRoute = !props.threadId;
+	const threadId = store.currentThreadId;
 	void store.sendMessage(message, attachments, rootStore.pushRef).then(() => {
 		// After the first message is sent, update the URL to include the thread ID
 		// so the thread is addressable and appears in the sidebar.
 		// Only update the route if the thread was persisted (syncThread succeeded).
-		if (shouldUpdateRoute && store.threads.some((t) => t.id === store.currentThreadId)) {
+		if (shouldUpdateRoute && store.threads.some((t) => t.id === threadId)) {
 			void router.replace({
 				name: INSTANCE_AI_THREAD_VIEW,
-				params: { threadId: store.currentThreadId },
+				params: { threadId },
 			});
 		}
 	});
@@ -421,7 +422,9 @@ function handleStop() {
 					:icon-only="!sidebarCollapsed"
 					@click="toggleSidebarCollapse"
 				>
-					<template v-if="sidebarCollapsed">Threads</template>
+					<template v-if="sidebarCollapsed">{{
+						$locale.baseText('instanceAi.sidebar.threads')
+					}}</template>
 				</N8nButton>
 				<N8nHeading tag="h2" size="small" :class="$style.headerTitle">
 					{{ currentThreadTitle }}
