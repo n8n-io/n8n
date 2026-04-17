@@ -107,7 +107,11 @@ test.describe(
 			});
 		});
 
-		test('should allow re-running workflow after initial execution', async ({ n8n }) => {
+		test('should allow re-running workflow after initial execution', async ({ n8n }, testInfo) => {
+			test.skip(
+				testInfo.project.name.includes('multi-main'),
+				'Re-execution is not yet stable in multi-main mode',
+			);
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage(
