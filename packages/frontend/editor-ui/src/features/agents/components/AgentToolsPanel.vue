@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nCard, N8nText, N8nButton } from '@n8n/design-system';
+import { N8nCard, N8nText, N8nButton, N8nSwitch2 } from '@n8n/design-system';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { CustomToolEntry } from '../agent.types';
 
@@ -11,6 +11,19 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const tools = computed<AgentJsonToolRef[]>(() => props.config?.tools ?? []);
+
+const nodeToolsEnabled = computed<boolean>(
+	() => props.config?.config?.nodeTools?.enabled !== false,
+);
+
+function setNodeToolsEnabled(enabled: boolean) {
+	emit('update:config', {
+		config: {
+			...(props.config?.config ?? {}),
+			nodeTools: { enabled },
+		},
+	});
+}
 
 function removeTool(ref: AgentJsonToolRef) {
 	const updated = tools.value.filter((t) => t !== ref);
@@ -70,6 +83,21 @@ function inputSchemaProperties(
 			<N8nText size="small" color="text-light">
 				Use the AI builder to add custom tools or workflow tools.
 			</N8nText>
+		</div>
+
+		<div :class="$style.toggleRow">
+			<div :class="$style.toggleText">
+				<N8nText bold>Built-in node tools</N8nText>
+				<N8nText size="small" color="text-light">
+					Let the agent search the n8n node catalog and execute nodes on demand.
+				</N8nText>
+			</div>
+			<N8nSwitch2
+				size="large"
+				data-testid="node-tools-toggle"
+				:model-value="nodeToolsEnabled"
+				@update:model-value="setNodeToolsEnabled"
+			/>
 		</div>
 
 		<div v-if="tools.length === 0" :class="$style.emptyState">
@@ -290,5 +318,21 @@ function inputSchemaProperties(
 	padding: 0 var(--spacing--4xs);
 	border-radius: var(--radius--sm);
 	font-family: monospace;
+}
+
+.toggleRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--xs) 0;
+	border-bottom: var(--border);
+	margin-bottom: var(--spacing--sm);
+}
+
+.toggleText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 </style>
