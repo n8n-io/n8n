@@ -80,13 +80,18 @@ function sendTelemetry(
 }
 
 async function onImport() {
-	const { useImportCurlCommand } = await import('@/app/composables/useImportCurlCommand');
-	const { importCurlCommand } = useImportCurlCommand({
-		onImportSuccess,
-		onImportFailure,
-		onAfterImport,
-	});
-	importCurlCommand(curlCommand);
+	try {
+		const { useImportCurlCommand } = await import('@/app/composables/useImportCurlCommand');
+		const { importCurlCommand } = useImportCurlCommand({
+			onImportSuccess,
+			onImportFailure,
+			onAfterImport,
+		});
+		importCurlCommand(curlCommand);
+	} catch {
+		// Handles WASM loading failures (e.g. wrong MIME type for tree-sitter.wasm)
+		onImportFailure({ invalidProtocol: false });
+	}
 }
 </script>
 
