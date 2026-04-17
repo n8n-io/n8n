@@ -165,7 +165,6 @@ import { CreateAgentMemoryTables1777000000000 } from '../common/1777000000000-Cr
 import { AddToolsColumnToAgents1778000000000 } from '../common/1778000000000-AddToolsColumnToAgents';
 import { DropAgentCodeColumn1779000000000 } from '../common/1779000000000-DropAgentCodeColumn';
 import { AddAgentPublishVersionSupport1780000000000 } from '../common/1780000000000-AddAgentPublishVersionSupport';
-import { PatchLocalDbForConsolidatedAgentPublishMigration1782000000001 } from '../common/1782000000001-PatchLocalDbForConsolidatedAgentPublishMigration';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -336,5 +335,4 @@ export const postgresMigrations: Migration[] = [
 	AddToolsColumnToAgents1778000000000,
 	DropAgentCodeColumn1779000000000,
 	AddAgentPublishVersionSupport1780000000000,
-	PatchLocalDbForConsolidatedAgentPublishMigration1782000000001,
 ];

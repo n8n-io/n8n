@@ -85,8 +85,6 @@ async function updateName(name: string) {
 		// Keep config name in sync so it persists on next config save
 		if (localConfig.value) {
 			localConfig.value.name = updated.name;
-			// Update the dirty-state baseline so the rename alone doesn't mark config as dirty
-			originalConfigJson.value = JSON.stringify(localConfig.value);
 		}
 		agentsEventBus.emit('agentUpdated');
 	}
@@ -291,7 +289,8 @@ watch(agentId, initialize, { immediate: true });
 			:agent-id="agentId"
 			:agent-name="agentName"
 			:updated-at="updatedAt"
-			:is-dirty="isDirty"
+			:agent="agent"
+			:save-status="saveStatus"
 			:building="isBuilding"
 			@update:config="onConfigFieldUpdate"
 			@published="onPublished"

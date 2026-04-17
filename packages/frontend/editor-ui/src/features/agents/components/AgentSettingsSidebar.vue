@@ -29,6 +29,7 @@ const props = defineProps<{
 	agentName: string;
 	updatedAt: string;
 	agent: AgentResource | null;
+	saveStatus: 'idle' | 'saving' | 'saved';
 	building?: boolean;
 }>();
 
