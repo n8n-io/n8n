@@ -5503,6 +5503,7 @@
 	"agents.settings.unsavedChanges": "Unsaved changes",
 	"agents.settings.triggers": "Triggers",
 	"agents.settings.triggers.placeholder": "Trigger configuration will be available soon.",
+	"agents.settings.integrations": "Integrations",
 	"agents.settings.tools": "Tools",
 	"agents.settings.advanced": "Advanced",
 	"agents.settings.code": "Code",

@@ -145,6 +145,11 @@ export class AgentsService {
 		}
 
 		agent.name = name;
+		// Keep the JSON config name in sync so a subsequent config save doesn't
+		// revert the entity name back to the stale config value.
+		if (agent.schema) {
+			agent.schema = { ...agent.schema, name };
+		}
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent name', { agentId, projectId, name });
 		return saved;
@@ -167,6 +172,9 @@ export class AgentsService {
 		}
 
 		agent.description = description;
+		if (agent.schema) {
+			agent.schema = { ...agent.schema, description };
+		}
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent description', { agentId, projectId });
 		return saved;

@@ -276,5 +276,23 @@ describe('ProjectsNavigation', () => {
 
 			expect(queryByTestId('new-agent-menu-item')).not.toBeInTheDocument();
 		});
+
+		it('should refresh agents list when agentUpdated event is emitted', async () => {
+			settingsStore.isModuleActive = vi.fn((module: string) => module === 'agents');
+
+			const { listAllAgents } = await import('@/features/agents/composables/useAgentApi');
+			const { agentsEventBus } = await import('@/features/agents/agents.eventBus');
+
+			renderComponent({ props: { collapsed: false } });
+			await flushPromises();
+
+			// Reset call count after initial mount fetch
+			vi.mocked(listAllAgents).mockClear();
+
+			agentsEventBus.emit('agentUpdated');
+			await flushPromises();
+
+			expect(listAllAgents).toHaveBeenCalledTimes(1);
+		});
 	});
 });
