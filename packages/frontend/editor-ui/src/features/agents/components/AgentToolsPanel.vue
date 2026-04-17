@@ -88,13 +88,15 @@ function inputSchemaProperties(
 		<div :class="$style.toggleRow">
 			<div :class="$style.toggleText">
 				<N8nText bold>Built-in node tools</N8nText>
-				<N8nText size="small" color="text-light">
+				<N8nText id="node-tools-description" size="small" color="text-light">
 					Let the agent search the n8n node catalog and execute nodes on demand.
 				</N8nText>
 			</div>
 			<N8nSwitch2
 				size="large"
 				data-testid="node-tools-toggle"
+				aria-label="Built-in node tools"
+				aria-describedby="node-tools-description"
 				:model-value="nodeToolsEnabled"
 				@update:model-value="setNodeToolsEnabled"
 			/>
