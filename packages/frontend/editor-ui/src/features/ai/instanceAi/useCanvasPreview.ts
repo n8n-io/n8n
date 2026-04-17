@@ -225,7 +225,13 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 	watch(
 		() => route.params.threadId,
-		() => {
+		(threadId, oldThreadId) => {
+			// Skip if this is the initial route setup (e.g. URL updated from
+			// /instance-ai to /instance-ai/:threadId after the first message)
+			if (!oldThreadId) return;
+			// Skip if the thread ID hasn't actually changed
+			if (threadId === oldThreadId) return;
+
 			wasCanvasOpenBeforeSwitch.value = isPreviewVisible.value;
 			pendingRestore.value = true;
 			activeTabId.value = null;
