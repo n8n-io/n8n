@@ -1,0 +1,66 @@
+name: 'CI: Pull Request Review'
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: ci-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  filter:
+    name: Check Changes
+    if: >-
+      github.event.review.state == 'approved' &&
+      github.repository == 'n8n-io/n8n'
+    runs-on: ubuntu-slim
+    outputs:
+      design_system: ${{ fromJSON(steps.ci-filter.outputs.results)['design-system'] == true }}
+      commit_sha: ${{ steps.commit-sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+      - name: Capture commit SHA
+        id: commit-sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Check for relevant changes
+        uses: ./.github/actions/ci-filter
+        id: ci-filter
+        with:
+          mode: filter
+          filters: |
+            design-system:
+              packages/frontend/@n8n/design-system/**
+              packages/frontend/@n8n/storybook/**
+              .github/workflows/test-visual-chromatic.yml
+
+  chromatic:
+    name: Chromatic
+    needs: filter
+    if: needs.filter.outputs.design_system == 'true'
+    uses: ./.github/workflows/test-visual-chromatic.yml
+    with:
+      ref: ${{ needs.filter.outputs.commit_sha }}
+    secrets: inherit
+
+  # Required by GitHub branch protection rules.
+  # PRs cannot be merged unless this job passes.
+  required-review-checks:
+    name: Required Review Checks
+    needs: [filter, chromatic]
+    if: always()
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/actions/ci-filter
+          sparse-checkout-cone-mode: false
+      - name: Validate required checks
+        uses: ./.github/actions/ci-filter
+        with:
+          mode: validate
+          job-results: ${{ toJSON(needs) }}

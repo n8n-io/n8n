@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { computed, inject, ref, onMounted, onUpdated, useCssModule } from 'vue';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import type { ComponentPublicInstance } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 const props = defineProps<{
@@ -9,7 +10,7 @@ const props = defineProps<{
 
 const store = useInstanceAiStore();
 const styles = useCssModule();
-const wrapperRef = ref<HTMLElement | null>(null);
+const wrapperRef = ref<ComponentPublicInstance | null>(null);
 
 const openWorkflowPreview = inject<((id: string) => void) | undefined>(
 	'openWorkflowPreview',
@@ -45,11 +46,17 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
  * Only replaces names that appear as standalone words (not inside code spans
  * or existing links) and are at least 3 characters long to avoid false positives.
  */
+/** Internal XML blocks that should never render in the chat (LLM may echo them). */
+const INTERNAL_BLOCK_PATTERN =
+	/<(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)[\s\S]*?<\/(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)>/g;
+
 const processedContent = computed(() => {
 	const registry = store.resourceRegistry;
-	if (registry.size === 0) return props.content;
 
-	let result = props.content;
+	// Strip internal protocol blocks the LLM may have echoed
+	let result = props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim();
+
+	if (registry.size === 0) return result;
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts
 	const entries = [...registry.values()]
@@ -60,15 +67,21 @@ const processedContent = computed(() => {
 		// Escape special regex characters in the resource name
 		const escaped = entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-		// Match the resource name as a standalone word, but NOT if it is:
+		// Match the resource name as a standalone token, but NOT if it is:
 		// - Inside backticks (inline code)
 		// - Already inside a markdown link [...](...) or the link URL part
 		// - Preceded by [ or followed by ]( (link text boundaries)
+		//
+		// Use \b when the name edge is a word character; use a whitespace/
+		// punctuation boundary otherwise (handles names like "Test (v2.0)").
+		const startBoundary = /\w/.test(entry.name[0]) ? '\\b' : '(?<=^|[\\s,;:!?])';
+		const endBoundary = /\w/.test(entry.name[entry.name.length - 1]) ? '\\b' : '(?=$|[\\s,;:!?.])';
+
 		const pattern = new RegExp(
 			// Negative lookbehind: not preceded by [ or ` or /
 			'(?<![\\[`\\/])' +
-				// The name itself, as a word boundary
-				`\\b(${escaped})\\b` +
+				// The name with appropriate boundaries
+				`${startBoundary}(${escaped})${endBoundary}` +
 				// Negative lookahead: not followed by ]( or ` or ://
 				'(?![\\]`]|\\(|://)',
 			'g',
@@ -111,6 +124,9 @@ function applyResourceChip(link: HTMLAnchorElement, type: string): void {
 	}
 }
 
+/** Track click handlers attached to links so they can be cleaned up. */
+const linkHandlers = new WeakMap<HTMLAnchorElement, (e: MouseEvent) => void>();
+
 /**
  * Post-process the rendered DOM to transform resource links into
  * styled resource chips with icons. Handles both:
@@ -120,7 +136,7 @@ function applyResourceChip(link: HTMLAnchorElement, type: string): void {
 function enhanceResourceLinks(): void {
 	if (!wrapperRef.value) return;
 
-	const allLinks = wrapperRef.value.querySelectorAll<HTMLAnchorElement>('a');
+	const allLinks = (wrapperRef.value.$el as HTMLElement).querySelectorAll<HTMLAnchorElement>('a');
 
 	for (const link of allLinks) {
 		// Already enhanced — skip
@@ -149,7 +165,7 @@ function enhanceResourceLinks(): void {
 			applyResourceChip(link, type);
 
 			// Regular click opens preview; Cmd/Ctrl+click falls through to default (new tab)
-			link.addEventListener('click', (e: MouseEvent) => {
+			const handler = (e: MouseEvent) => {
 				if (e.metaKey || e.ctrlKey) return; // Let browser handle new-tab
 
 				const canPreview =
@@ -164,7 +180,9 @@ function enhanceResourceLinks(): void {
 				} else if (type === 'data-table' && registryEntry?.projectId) {
 					openDataTablePreview?.(id, registryEntry.projectId);
 				}
-			});
+			};
+			link.addEventListener('click', handler);
+			linkHandlers.set(link, handler);
 
 			continue;
 		}
@@ -180,14 +198,29 @@ function enhanceResourceLinks(): void {
 	}
 }
 
+/** Remove click handlers from all enhanced links. */
+function cleanupLinkHandlers(): void {
+	if (!wrapperRef.value) return;
+	const allLinks = (wrapperRef.value.$el as HTMLElement).querySelectorAll<HTMLAnchorElement>('a');
+	for (const link of allLinks) {
+		const handler = linkHandlers.get(link);
+		if (handler) {
+			link.removeEventListener('click', handler);
+			linkHandlers.delete(link);
+		}
+	}
+}
+
 onMounted(enhanceResourceLinks);
-onUpdated(enhanceResourceLinks);
+onUpdated(() => {
+	cleanupLinkHandlers();
+	enhanceResourceLinks();
+});
+onBeforeUnmount(cleanupLinkHandlers);
 </script>
 
 <template>
-	<div ref="wrapperRef">
-		<ChatMarkdownChunk :source="source" />
-	</div>
+	<ChatMarkdownChunk ref="wrapperRef" :source="source" />
 </template>
 
 <style lang="scss" module>

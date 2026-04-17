@@ -30,8 +30,11 @@ export class OtelService {
 
 		this.configureDiagnosticsLogger();
 
-		const otlpTracesUrl = this.buildOtlpTracesUrl();
-		const otlpHeaders = this.parseOtlpHeaders();
+		const otlpTracesUrl = this.buildOtlpTracesUrl(
+			this.config.exporterEndpoint,
+			this.config.exporterTracingPath,
+		);
+		const otlpHeaders = this.parseOtlpHeaders(this.config.exporterHeaders);
 
 		this.sdk = new NodeSDK({
 			resource: resourceFromAttributes({
@@ -55,25 +58,9 @@ export class OtelService {
 		await this.sdk?.shutdown();
 	}
 
-	private configureDiagnosticsLogger() {
-		if (OtelService.isDiagnosticsLoggerConfigured) return;
-
-		const diagnosticsLogger: DiagLogger = {
-			error: (...args: unknown[]) => this.logger.error('OpenTelemetry diagnostics error', { args }),
-			warn: (...args: unknown[]) => this.logger.warn('OpenTelemetry diagnostics warning', { args }),
-			info: (...args: unknown[]) => this.logger.info('OpenTelemetry diagnostics info', { args }),
-			debug: (...args: unknown[]) => this.logger.debug('OpenTelemetry diagnostics debug', { args }),
-			verbose: (...args: unknown[]) =>
-				this.logger.debug('OpenTelemetry diagnostics verbose', { args }),
-		};
-		diag.setLogger(diagnosticsLogger, DiagLogLevel.WARN);
-		OtelService.isDiagnosticsLoggerConfigured = true;
-	}
-
-	private parseOtlpHeaders(): Record<string, string> {
-		const exporterHeaders = this.config.exporterHeaders;
+	parseOtlpHeaders(headersToSplit: string): Record<string, string> {
 		const headers: Record<string, string> = {};
-		for (const pair of exporterHeaders.split(',')) {
+		for (const pair of headersToSplit.split(',')) {
 			const trimmedPair = pair.trim();
 			if (!trimmedPair) continue;
 
@@ -98,11 +85,24 @@ export class OtelService {
 		return headers;
 	}
 
-	private buildOtlpTracesUrl(): string {
-		const exporterEndpoint = this.config.exporterEndpoint;
-		const exporterTracingPath = this.config.exporterTracingPath;
-		const exporterEndpointWithoutTrailingSlash = exporterEndpoint.replace(/\/+$/, '');
-		return `${exporterEndpointWithoutTrailingSlash}${exporterTracingPath}`;
+	private configureDiagnosticsLogger() {
+		if (OtelService.isDiagnosticsLoggerConfigured) return;
+
+		const diagnosticsLogger: DiagLogger = {
+			error: (...args: unknown[]) => this.logger.error('OpenTelemetry diagnostics error', { args }),
+			warn: (...args: unknown[]) => this.logger.warn('OpenTelemetry diagnostics warning', { args }),
+			info: (...args: unknown[]) => this.logger.info('OpenTelemetry diagnostics info', { args }),
+			debug: (...args: unknown[]) => this.logger.debug('OpenTelemetry diagnostics debug', { args }),
+			verbose: (...args: unknown[]) =>
+				this.logger.debug('OpenTelemetry diagnostics verbose', { args }),
+		};
+		diag.setLogger(diagnosticsLogger, DiagLogLevel.WARN);
+		OtelService.isDiagnosticsLoggerConfigured = true;
+	}
+
+	private buildOtlpTracesUrl(endpoint: string, path: string): string {
+		const exporterEndpointWithoutTrailingSlash = endpoint.replace(/\/+$/, '');
+		return `${exporterEndpointWithoutTrailingSlash}${path}`;
 	}
 
 	private async checkEndpointReachability(url: string): Promise<void> {

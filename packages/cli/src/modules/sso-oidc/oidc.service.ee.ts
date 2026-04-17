@@ -21,6 +21,7 @@ import { EnvHttpProxyAgent } from 'undici';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
@@ -285,7 +286,11 @@ export class OidcService {
 		});
 
 		if (openidUser) {
-			await this.applySsoProvisioning(openidUser.user, claims);
+			await this.applySsoProvisioning(
+				openidUser.user,
+				claims as Record<string, unknown>,
+				userInfo as Record<string, unknown>,
+			);
 
 			return openidUser.user;
 		}
@@ -307,7 +312,11 @@ export class OidcService {
 			});
 
 			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(foundUser, claims);
+			await this.applySsoProvisioning(
+				foundUser,
+				claims as Record<string, unknown>,
+				userInfo as Record<string, unknown>,
+			);
 
 			return foundUser;
 		}
@@ -336,7 +345,11 @@ export class OidcService {
 			return newUser;
 		});
 
-		await this.applySsoProvisioning(user, claims);
+		await this.applySsoProvisioning(
+			user,
+			claims as Record<string, unknown>,
+			userInfo as Record<string, unknown>,
+		);
 
 		return user;
 	}
@@ -436,7 +449,17 @@ export class OidcService {
 		};
 	}
 
-	private async applySsoProvisioning(user: User, claims: any) {
+	private async applySsoProvisioning(
+		user: User,
+		claims: Record<string, unknown>,
+		userInfo: Record<string, unknown>,
+	) {
+		if (await this.provisioningService.isExpressionMappingEnabled()) {
+			const context = buildOidcClaimsContext(claims, userInfo);
+			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			return;
+		}
+
 		const provisioningConfig = await this.provisioningService.getConfig();
 		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
