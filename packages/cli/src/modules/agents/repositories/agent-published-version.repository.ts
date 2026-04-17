@@ -1,19 +1,15 @@
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
+import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import { AgentPublishedVersion } from '../entities/agent-published-version.entity';
 
 @Service()
 export class AgentPublishedVersionRepository extends Repository<AgentPublishedVersion> {
 	constructor(dataSource: DataSource) {
 		super(AgentPublishedVersion, dataSource.manager);
-	}
-
-	async findByAgentId(agentId: string): Promise<AgentPublishedVersion | null> {
-		return await this.findOneBy({ agentId });
 	}
 
 	/**
@@ -37,14 +33,18 @@ export class AgentPublishedVersionRepository extends Repository<AgentPublishedVe
 		const repo = trx?.getRepository(AgentPublishedVersion) ?? this;
 		// TypeORM's _QueryDeepPartialEntity cannot represent Zod-inferred types like
 		// AgentJsonConfig. The cast is safe: @JsonColumn serialises the value at runtime.
+		// Set `updatedAt` explicitly — upsert's ON CONFLICT UPDATE path does not fire the
+		// @BeforeUpdate / @UpdateDateColumn hooks, so it would otherwise stay at the first
+		// publish timestamp on re-publish.
 		await repo.upsert(
-			{ ...data, publishedAt: new Date() } as QueryDeepPartialEntity<AgentPublishedVersion>,
+			{ ...data, updatedAt: new Date() } as QueryDeepPartialEntity<AgentPublishedVersion>,
 			['agentId'],
 		);
 		return await repo.findOneByOrFail({ agentId: data.agentId });
 	}
 
-	async deleteByAgentId(agentId: string): Promise<void> {
-		await this.delete({ agentId });
+	async deleteByAgentId(agentId: string, trx?: EntityManager): Promise<void> {
+		const repo = trx?.getRepository(AgentPublishedVersion) ?? this;
+		await repo.delete({ agentId });
 	}
 }

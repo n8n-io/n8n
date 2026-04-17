@@ -41,7 +41,6 @@ function makePublishedVersion(
 		model: null,
 		provider: null,
 		credentialId: null,
-		publishedAt: new Date(),
 		publishedById: null,
 		...overrides,
 	} as unknown as AgentPublishedVersion;
@@ -195,11 +194,11 @@ describe('AgentsService', () => {
 	});
 
 	describe('unpublishAgent', () => {
-		let mockTrx: { save: jest.Mock; delete: jest.Mock };
+		let mockTrx: { save: jest.Mock };
 		let mockTransaction: jest.Mock;
 
 		beforeEach(() => {
-			mockTrx = { save: jest.fn(), delete: jest.fn() };
+			mockTrx = { save: jest.fn() };
 			mockTransaction = jest.fn(async (cb: (trx: typeof mockTrx) => Promise<void>) => cb(mockTrx));
 			Object.defineProperty(agentRepository, 'manager', {
 				value: { transaction: mockTransaction },
@@ -227,7 +226,10 @@ describe('AgentsService', () => {
 
 			await service.unpublishAgent(agentId, projectId);
 
-			expect(mockTrx.delete).toHaveBeenCalledWith(expect.anything(), { agentId });
+			expect(agentPublishedVersionRepository.deleteByAgentId).toHaveBeenCalledWith(
+				agentId,
+				mockTrx,
+			);
 			expect(agent.publishedVersion).toBeNull();
 		});
 

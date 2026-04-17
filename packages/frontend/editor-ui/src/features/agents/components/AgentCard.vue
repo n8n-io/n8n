@@ -3,9 +3,9 @@ import { N8nCard, N8nText, N8nActionDropdown } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { publishAgent, unpublishAgent, deleteAgent } from '../composables/useAgentApi';
+import { deleteAgent } from '../composables/useAgentApi';
+import { useAgentPublish } from '../composables/useAgentPublish';
 import type { AgentResource } from '../types';
 
 const props = defineProps<{
@@ -23,7 +23,7 @@ const emit = defineEmits<{
 const locale = useI18n();
 const rootStore = useRootStore();
 const message = useMessage();
-const { showMessage } = useToast();
+const { publish, unpublish } = useAgentPublish();
 
 function getActions() {
 	const isPublished = props.agent.publishedVersion !== null;
@@ -37,23 +37,11 @@ function getActions() {
 
 async function onAction(action: string) {
 	if (action === 'publish') {
-		const updated = await publishAgent(rootStore.restApiContext, props.projectId, props.agent.id);
-		emit('published', updated);
-		showMessage({ title: locale.baseText('agents.list.toast.published'), type: 'success' });
+		const updated = await publish(props.projectId, props.agent.id);
+		if (updated) emit('published', updated);
 	} else if (action === 'unpublish') {
-		const confirmed = await message.confirm(
-			locale.baseText('agents.unpublish.modal.description'),
-			locale.baseText('agents.unpublish.modal.title'),
-			{
-				confirmButtonText: locale.baseText('agents.unpublish.modal.button.unpublish'),
-				cancelButtonText: locale.baseText('generic.cancel'),
-				type: 'warning',
-			},
-		);
-		if (confirmed !== MODAL_CONFIRM) return;
-		const updated = await unpublishAgent(rootStore.restApiContext, props.projectId, props.agent.id);
-		emit('unpublished', updated);
-		showMessage({ title: locale.baseText('agents.list.toast.unpublished'), type: 'success' });
+		const updated = await unpublish(props.projectId, props.agent.id);
+		if (updated) emit('unpublished', updated);
 	} else if (action === 'delete') {
 		const confirmed = await message.confirm(
 			locale.baseText('agents.builder.deleteConfirmMessage', {
@@ -180,6 +168,6 @@ function formatDate(dateStr: string): string {
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
 	border-radius: 50%;
-	background-color: var(--color--mint-600);
+	background-color: var(--color--success);
 }
 </style>

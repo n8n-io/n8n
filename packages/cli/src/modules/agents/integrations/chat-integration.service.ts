@@ -210,12 +210,10 @@ export class ChatIntegrationService {
 	 * Called on startup to restore connections.
 	 */
 	async reconnectAll(): Promise<void> {
-		const agents = await this.agentRepository.find({ relations: { publishedVersion: true } });
+		// Only reconnect integrations for published agents — an unpublished agent must not
+		// receive events, so we don't even load it.
+		const agents = await this.agentRepository.findPublished();
 		for (const agent of agents) {
-			// Only reconnect integrations for published agents. An unpublished agent
-			// must not receive events — reconnecting it would contradict the unpublish
-			// invariant ("prevent all production executions").
-			if (!agent.publishedVersion) continue;
 			if (!agent.integrations || agent.integrations.length === 0) continue;
 			for (const integration of agent.integrations) {
 				const userIds = await Container.get(ProjectRelationRepository).findUserIdsByProjectId(

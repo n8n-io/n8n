@@ -32,4 +32,10 @@ export class AgentRepository extends Repository<Agent> {
 			relations: { publishedVersion: true },
 		});
 	}
+
+	async findPublished(): Promise<Agent[]> {
+		return await this.createQueryBuilder('agent')
+			.innerJoinAndSelect('agent.publishedVersion', 'publishedVersion')
+			.getMany();
+	}
 }

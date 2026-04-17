@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
@@ -9,6 +8,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM, MODAL_CANCEL, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
@@ -27,6 +27,7 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const message = useMessage();
+const { showError } = useToast();
 
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
@@ -132,21 +133,44 @@ async function saveConfig(): Promise<void> {
 	}
 }
 
-const debouncedSave = useDebounceFn(async () => {
-	saveStatus.value = 'saving';
-	try {
-		await saveConfig();
-		saveStatus.value = 'saved';
-		telemetry.track('User saved agent settings', { agent_id: agentId.value });
-	} catch {
-		saveStatus.value = 'idle';
+// Debounced autosave. We roll our own instead of useDebounceFn so we can cancel a
+// pending save and await an in-flight one — both are needed in the route-leave
+// guard, where a scheduled save that fires after publish would bump versionId and
+// immediately re-mark the agent as having unpublished changes.
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+let autosaveInFlight: Promise<void> | null = null;
+
+function scheduleAutosave() {
+	if (autosaveTimer !== null) clearTimeout(autosaveTimer);
+	autosaveTimer = setTimeout(() => {
+		autosaveTimer = null;
+		autosaveInFlight = (async () => {
+			saveStatus.value = 'saving';
+			try {
+				await saveConfig();
+				saveStatus.value = 'saved';
+				telemetry.track('User saved agent settings', { agent_id: agentId.value });
+			} catch {
+				saveStatus.value = 'idle';
+			} finally {
+				autosaveInFlight = null;
+			}
+		})();
+	}, getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE));
+}
+
+async function settleAutosave() {
+	if (autosaveTimer !== null) {
+		clearTimeout(autosaveTimer);
+		autosaveTimer = null;
 	}
-}, getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE));
+	if (autosaveInFlight) await autosaveInFlight;
+}
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	Object.assign(localConfig.value, updates);
-	void debouncedSave();
+	scheduleAutosave();
 }
 
 async function onConfigUpdated() {
@@ -202,12 +226,16 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 
 	if (response === MODAL_CONFIRM) {
 		try {
-			// Flush any pending debounced edits so the snapshot captures the latest config.
+			// Drain the autosave pipeline first: cancel any scheduled-but-not-fired save,
+			// and await any in-flight one. Without this, a save that fires after publish
+			// would bump versionId and mark the agent dirty immediately after publishing.
+			await settleAutosave();
 			if (!localConfig.value) return;
 			await saveConfig();
 			await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
-		} catch {
-			return; // save or publish failed — stay on page
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.unsavedPublish.error'));
+			return; // stay on page
 		}
 		next();
 	} else if (response === MODAL_CANCEL) {

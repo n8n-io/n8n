@@ -15,15 +15,9 @@ export interface CustomToolEntry {
 	descriptor: ToolDescriptor;
 }
 
-export interface AgentPublishedVersion {
-	schema: unknown | null;
-	publishedFromVersionId: string;
-	model: string | null;
-	provider: string | null;
-	credentialId: string | null;
-	publishedAt: string;
-	publishedById: string | null;
-}
+import type { AgentPublishedVersionDto } from '@n8n/api-types';
+
+export type AgentPublishedVersion = AgentPublishedVersionDto;
 
 export type Agent = {
 	id: string;

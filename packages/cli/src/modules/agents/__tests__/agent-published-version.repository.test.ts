@@ -16,26 +16,6 @@ describe('AgentPublishedVersionRepository', () => {
 		repository = new AgentPublishedVersionRepository(mockDataSource as never);
 	});
 
-	describe('findByAgentId', () => {
-		it('returns the published version when found', async () => {
-			const publishedVersion = mock<AgentPublishedVersion>({ agentId: 'agent-1' });
-			jest.spyOn(repository, 'findOneBy').mockResolvedValue(publishedVersion);
-
-			const result = await repository.findByAgentId('agent-1');
-
-			expect(repository.findOneBy).toHaveBeenCalledWith({ agentId: 'agent-1' });
-			expect(result).toBe(publishedVersion);
-		});
-
-		it('returns null when no record exists', async () => {
-			jest.spyOn(repository, 'findOneBy').mockResolvedValue(null);
-
-			const result = await repository.findByAgentId('agent-1');
-
-			expect(result).toBeNull();
-		});
-	});
-
 	describe('savePublishedVersion', () => {
 		const payload = {
 			agentId: 'agent-1',
@@ -57,7 +37,7 @@ describe('AgentPublishedVersionRepository', () => {
 			const result = await repository.savePublishedVersion(payload);
 
 			expect(repository.upsert).toHaveBeenCalledWith(
-				expect.objectContaining({ ...payload, publishedAt: expect.any(Date) }),
+				expect.objectContaining({ ...payload, updatedAt: expect.any(Date) }),
 				['agentId'],
 			);
 			expect(repository.findOneByOrFail).toHaveBeenCalledWith({ agentId: payload.agentId });
@@ -79,7 +59,7 @@ describe('AgentPublishedVersionRepository', () => {
 			// Uses the trx-scoped repo, not `this`
 			expect(repository.upsert).not.toHaveBeenCalled();
 			expect(trxRepo.upsert).toHaveBeenCalledWith(
-				expect.objectContaining({ ...payload, publishedAt: expect.any(Date) }),
+				expect.objectContaining({ ...payload, updatedAt: expect.any(Date) }),
 				['agentId'],
 			);
 			expect(trxRepo.findOneByOrFail).toHaveBeenCalledWith({ agentId: payload.agentId });
@@ -94,6 +74,18 @@ describe('AgentPublishedVersionRepository', () => {
 			await repository.deleteByAgentId('agent-1');
 
 			expect(repository.delete).toHaveBeenCalledWith({ agentId: 'agent-1' });
+		});
+
+		it('uses the transaction-scoped repository when trx is provided', async () => {
+			const trxRepo = { delete: jest.fn().mockResolvedValue({ affected: 1, raw: {} }) };
+			const mockTrx = { getRepository: jest.fn().mockReturnValue(trxRepo) };
+
+			jest.spyOn(repository, 'delete');
+
+			await repository.deleteByAgentId('agent-1', mockTrx as never);
+
+			expect(repository.delete).not.toHaveBeenCalled();
+			expect(trxRepo.delete).toHaveBeenCalledWith({ agentId: 'agent-1' });
 		});
 	});
 });

@@ -40,9 +40,6 @@ export class AgentPublishedVersion extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	credentialId: string | null;
 
-	@Column({ type: 'datetime' })
-	publishedAt: Date;
-
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	publishedById: string | null;
 

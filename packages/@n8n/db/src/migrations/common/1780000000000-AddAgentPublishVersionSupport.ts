@@ -18,7 +18,6 @@ export class AddAgentPublishVersionSupport1780000000000 implements ReversibleMig
 				column('model').varchar(128),
 				column('provider').varchar(128),
 				column('credentialId').varchar(36),
-				column('publishedAt').timestamp().notNull,
 				column('publishedById').varchar(36),
 				column('createdAt').timestamp().notNull,
 				column('updatedAt').timestamp().notNull,

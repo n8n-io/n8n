@@ -40,7 +40,6 @@ import { AgentJsonConfigSchema } from './json-config/agent-json-config';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { Agent } from './entities/agent.entity';
-import { AgentPublishedVersion } from './entities/agent-published-version.entity';
 import {
 	buildFromJson,
 	type MemoryFactory,
@@ -82,6 +81,20 @@ export class AgentsService {
 			if (key === agentId || key.startsWith(`${agentId}:`)) {
 				this.runtimes.delete(key);
 			}
+		}
+	}
+
+	/**
+	 * Start a new draft if the agent is currently in sync with the published snapshot.
+	 * Any mutation that changes how the agent would run must call this so that
+	 * `hasUnpublishedChanges` (derived from versionId vs publishedFromVersionId) stays accurate.
+	 */
+	private markDraftDirty(agent: Agent): void {
+		if (
+			agent.versionId !== null &&
+			agent.versionId === agent.publishedVersion?.publishedFromVersionId
+		) {
+			agent.versionId = uuid();
 		}
 	}
 
@@ -146,6 +159,7 @@ export class AgentsService {
 		if (agent.schema) {
 			agent.schema = { ...agent.schema, name };
 		}
+		this.markDraftDirty(agent);
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent name', { agentId, projectId, name });
 		return saved;
@@ -171,6 +185,7 @@ export class AgentsService {
 		if (agent.schema) {
 			agent.schema = { ...agent.schema, description };
 		}
+		this.markDraftDirty(agent);
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent description', { agentId, projectId });
 		return saved;
@@ -231,7 +246,7 @@ export class AgentsService {
 		}
 
 		await this.agentRepository.manager.transaction(async (trx) => {
-			await trx.delete(AgentPublishedVersion, { agentId });
+			await this.agentPublishedVersionRepository.deleteByAgentId(agentId, trx);
 			agent.publishedVersion = null;
 		});
 
@@ -434,32 +449,7 @@ export class AgentsService {
 			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		}
 
-		const agentInstance = runtime.agent;
-
-		const resultStream = await agentInstance.stream(message, {
-			persistence: {
-				threadId,
-				resourceId: userId,
-			},
-		});
-
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				if (value.type === 'tool-call-suspended') {
-					this.logger.info('Chat: tool-call-suspended chunk received', {
-						agentId,
-						toolCallId: value.toolCallId,
-						toolName: value.toolName,
-					});
-				}
-				yield value;
-			}
-		} finally {
-			reader.releaseLock();
-		}
+		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId);
 	}
 
 	/**
@@ -493,6 +483,20 @@ export class AgentsService {
 			userId,
 		);
 
+		yield* this.streamChatResponse(agentInstance, agentId, message, threadId, userId);
+	}
+
+	/**
+	 * Read from an agent's streaming response and yield each chunk.
+	 * Logs `tool-call-suspended` chunks so we can observe human-in-the-loop pauses.
+	 */
+	private async *streamChatResponse(
+		agentInstance: agents.Agent,
+		agentId: string,
+		message: string,
+		threadId: string,
+		userId: string,
+	): AsyncGenerator<StreamChunk> {
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { threadId, resourceId: userId },
 		});
@@ -702,15 +706,7 @@ export class AgentsService {
 		entity.schema = result.config;
 		entity.name = result.config.name;
 		entity.description = result.config.description ?? null;
-		// Start a new draft only on the first save after a publish (versionId matches the
-		// snapshot's publishedFromVersionId). Between publishes all saves accumulate on
-		// the same versionId so the hasUnpublishedChanges check still works correctly.
-		if (
-			entity.versionId !== null &&
-			entity.versionId === entity.publishedVersion?.publishedFromVersionId
-		) {
-			entity.versionId = uuid();
-		}
+		this.markDraftDirty(entity);
 
 		// Remove tool entries that are no longer referenced in the config
 		const referencedIds = new Set(
@@ -772,6 +768,7 @@ export class AgentsService {
 			}
 		}
 
+		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 
@@ -798,6 +795,7 @@ export class AgentsService {
 			);
 		}
 
+		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 
