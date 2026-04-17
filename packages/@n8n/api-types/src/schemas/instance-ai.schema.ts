@@ -431,20 +431,13 @@ export const toolCategorySchema = z.object({
 });
 export type ToolCategory = z.infer<typeof toolCategorySchema>;
 
-export const instanceAiGatewayCapabilitiesSchema = z.object({
-	rootPath: z.string(),
-	tools: z.array(mcpToolSchema).default([]),
-	hostIdentifier: z.string().optional(),
-	toolCategories: z.array(toolCategorySchema).default([]),
-});
-export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
-
 export class InstanceAiGatewayCapabilitiesDto extends Z.class({
 	rootPath: z.string(),
 	tools: z.array(mcpToolSchema).default([]),
 	hostIdentifier: z.string().optional(),
 	toolCategories: z.array(toolCategorySchema).default([]),
 }) {}
+export type InstanceAiGatewayCapabilities = InstanceType<typeof InstanceAiGatewayCapabilitiesDto>;
 
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
@@ -453,11 +446,6 @@ export class InstanceAiGatewayCapabilitiesDto extends Z.class({
 export const filesystemRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	toolCall: mcpToolCallRequestSchema,
-});
-
-export const instanceAiFilesystemResponseSchema = z.object({
-	result: mcpToolCallResultSchema.optional(),
-	error: z.string().optional(),
 });
 
 export class InstanceAiFilesystemResponseDto extends Z.class({
@@ -556,7 +544,7 @@ export type InstanceAiThreadTitleUpdatedEvent = Extract<
 	{ type: 'thread-title-updated' }
 >;
 
-export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemResponseSchema>;
+export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesystemResponseDto>;
 
 // ---------------------------------------------------------------------------
 // API types

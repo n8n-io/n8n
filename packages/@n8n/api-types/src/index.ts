@@ -278,8 +278,6 @@ export {
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
-	instanceAiFilesystemResponseSchema,
-	instanceAiGatewayCapabilitiesSchema,
 	mcpToolSchema,
 	mcpToolCallRequestSchema,
 	mcpToolCallResultSchema,
