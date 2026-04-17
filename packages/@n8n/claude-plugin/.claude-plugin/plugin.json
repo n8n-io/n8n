@@ -1,0 +1,21 @@
+{
+	"name": "n8n",
+	"description": "Build, run, and debug n8n workflows from Claude. Includes skills for every workflow operation, specialist agents for building and debugging, a custom output style for execution results, and n8n's remote MCP server.",
+	"version": "0.1.0",
+	"author": {
+		"name": "n8n GmbH",
+		"email": "support@n8n.io"
+	},
+	"homepage": "https://n8n.io",
+	"repository": "https://github.com/n8n-io/n8n-claude-plugin",
+	"license": "MIT",
+	"keywords": ["n8n", "workflow", "automation", "integration", "mcp", "workflow-builder"],
+	"userConfig": {
+		"n8n_instance_url": {
+			"type": "string",
+			"title": "n8n instance URL",
+			"description": "Your n8n instance URL without trailing slash (e.g., https://acme.n8n.cloud). For self-hosted instances behind a path prefix, include the prefix here.",
+			"sensitive": false
+		}
+	}
+}

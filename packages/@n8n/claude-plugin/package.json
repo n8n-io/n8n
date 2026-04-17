@@ -1,0 +1,28 @@
+{
+  "name": "@n8n/claude-plugin",
+  "version": "0.1.0",
+  "description": "Claude plugin for building, running, and debugging n8n workflows. Ships skills, agents, and an output style on top of n8n's remote MCP server.",
+  "private": true,
+  "license": "MIT",
+  "author": {
+    "name": "n8n GmbH",
+    "email": "support@n8n.io"
+  },
+  "homepage": "https://n8n.io",
+  "keywords": [
+    "n8n",
+    "workflow",
+    "automation",
+    "claude",
+    "claude-plugin",
+    "mcp"
+  ],
+  "files": [
+    ".claude-plugin",
+    ".mcp.json",
+    "skills",
+    "agents",
+    "output-styles",
+    "README.md"
+  ]
+}

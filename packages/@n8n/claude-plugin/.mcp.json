@@ -1,0 +1,8 @@
+{
+	"mcpServers": {
+		"n8n": {
+			"type": "http",
+			"url": "${user_config.n8n_instance_url}/mcp-server/http"
+		}
+	}
+}

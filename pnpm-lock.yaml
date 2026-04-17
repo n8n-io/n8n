@@ -946,6 +946,8 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/@n8n/claude-plugin: {}
+
   packages/@n8n/cli:
     dependencies:
       '@oclif/core':
