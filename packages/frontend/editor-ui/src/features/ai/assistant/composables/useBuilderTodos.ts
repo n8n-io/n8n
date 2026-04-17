@@ -6,15 +6,21 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import type { WorkflowValidationIssue } from '@/Interface';
+import {
+	extractPlaceholderLabels,
+	findPlaceholderDetails,
+	formatPlaceholderPath,
+	isPlaceholderValue,
+	type PlaceholderDetail,
+} from '@n8n/utils';
 
-const PLACEHOLDER_PREFIX = '<__PLACEHOLDER';
-const PLACEHOLDER_SUFFIX = '__>';
-const PLACEHOLDER_REGEX = /<__PLACEHOLDER.*?__>/g;
-
-export interface PlaceholderDetail {
-	path: string[];
-	label: string;
-}
+export {
+	extractPlaceholderLabels,
+	findPlaceholderDetails,
+	formatPlaceholderPath,
+	isPlaceholderValue,
+	type PlaceholderDetail,
+};
 
 export interface TodoTrackingItem {
 	type: string;
@@ -26,99 +32,6 @@ export interface TodosTrackingPayload {
 	credentials_todo_count: number;
 	placeholders_todo_count: number;
 	todos: TodoTrackingItem[];
-}
-
-/**
- * Extracts the label from a single placeholder string.
- * Handles formats like:
- * - <__PLACEHOLDER_VALUE__label__>
- * - <__PLACEHOLDER__: label__>
- */
-function extractLabelFromPlaceholder(placeholder: string): string {
-	// Remove the prefix and suffix
-	let label = placeholder.slice(PLACEHOLDER_PREFIX.length, -PLACEHOLDER_SUFFIX.length);
-
-	// Handle _VALUE__ prefix if present
-	if (label.startsWith('_VALUE__')) {
-		label = label.slice('_VALUE__'.length);
-	}
-	// Handle __: prefix if present
-	else if (label.startsWith('__:')) {
-		label = label.slice('__:'.length);
-	}
-	// Handle __ prefix for other variations
-	else if (label.startsWith('__')) {
-		label = label.slice('__'.length);
-	}
-
-	return label.trim();
-}
-
-/**
- * Extracts all placeholder labels from a string value.
- * Handles both cases where the entire value is a placeholder and where
- * placeholders are embedded within code (e.g., Code node).
- * Returns an array of labels found.
- */
-export function extractPlaceholderLabels(value: unknown): string[] {
-	if (typeof value !== 'string') return [];
-
-	const labels: string[] = [];
-	const regex = new RegExp(PLACEHOLDER_REGEX.source, 'g');
-	let match;
-
-	while ((match = regex.exec(value)) !== null) {
-		const label = extractLabelFromPlaceholder(match[0]);
-		if (label.length > 0) {
-			labels.push(label);
-		}
-	}
-
-	return labels;
-}
-
-/**
- * Recursively searches through a value (object, array, or primitive) to find
- * all placeholder values and their paths.
- */
-export function findPlaceholderDetails(value: unknown, path: string[] = []): PlaceholderDetail[] {
-	// Check for placeholders in strings (handles both full placeholders and embedded ones)
-	if (typeof value === 'string') {
-		const labels = extractPlaceholderLabels(value);
-		return labels.map((label) => ({ path, label }));
-	}
-
-	if (Array.isArray(value)) {
-		return value.flatMap((item, index) => findPlaceholderDetails(item, [...path, `[${index}]`]));
-	}
-
-	if (value !== null && typeof value === 'object') {
-		return Object.entries(value).flatMap(([key, nested]) =>
-			findPlaceholderDetails(nested, [...path, key]),
-		);
-	}
-
-	return [];
-}
-
-/**
- * Formats a path array into a dot-notation string for display.
- * Array indices are preserved as [N] without leading dots.
- */
-export function formatPlaceholderPath(path: string[]): string {
-	if (path.length === 0) return 'parameters';
-
-	return path
-		.map((segment, index) => (segment.startsWith('[') || index === 0 ? segment : `.${segment}`))
-		.join('');
-}
-
-/**
- * Checks if a value is a placeholder value
- */
-export function isPlaceholderValue(value: unknown): boolean {
-	if (typeof value !== 'string') return false;
-	return !!value.match(PLACEHOLDER_REGEX);
 }
 
 /**

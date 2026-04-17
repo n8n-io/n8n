@@ -109,6 +109,7 @@ export const eventNamesAudit = [
 	'n8n.audit.token-exchange.succeeded',
 	'n8n.audit.token-exchange.failed',
 	'n8n.audit.token-exchange.embed-login',
+	'n8n.audit.token-exchange.embed-login-failed',
 	'n8n.audit.token-exchange.identity-linked',
 	'n8n.audit.token-exchange.user-provisioned',
 	'n8n.audit.token-exchange.role-updated',

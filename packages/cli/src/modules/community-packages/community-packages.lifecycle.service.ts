@@ -112,7 +112,7 @@ export class CommunityPackagesLifecycleService {
 		let checksum: string | undefined;
 
 		if (verify) {
-			checksum = this.communityNodeTypesService.findVetted(name)?.checksum;
+			checksum = (await this.communityNodeTypesService.findVetted(name))?.checksum;
 			if (!checksum) {
 				throw new BadRequestError(`Package ${name} is not vetted for installation`);
 			}
@@ -217,11 +217,30 @@ export class CommunityPackagesLifecycleService {
 	}
 
 	async update(
-		args: { name: string | undefined; version?: string; checksum?: string },
+		args: { name: string | undefined; version?: string; checksum?: string; verify?: boolean },
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
 	): Promise<InstalledPackages> {
-		const { name, version, checksum } = args;
+		const { name, version, verify } = args;
+
+		let checksum = args.checksum;
+
+		if (verify) {
+			const vettedPackage = await this.communityNodeTypesService.findVetted(name ?? '');
+			if (!vettedPackage) {
+				throw new BadRequestError(`Package ${name} is not vetted for installation`);
+			}
+			if (!version || version === vettedPackage.npmVersion) {
+				checksum = vettedPackage.checksum;
+			} else {
+				checksum = vettedPackage.nodeVersions?.find((v) => v.npmVersion === version)?.checksum;
+			}
+			if (!checksum) {
+				throw new BadRequestError(
+					`Version ${version} of ${name} is not verified by n8n. Latest verified version is ${vettedPackage.npmVersion}`,
+				);
+			}
+		}
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);

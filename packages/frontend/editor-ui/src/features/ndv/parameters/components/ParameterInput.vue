@@ -112,7 +112,10 @@ import {
 } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
+import {
+	isPlaceholderValue,
+	extractPlaceholderLabels,
+} from '@/features/ai/assistant/composables/useBuilderTodos';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -455,6 +458,10 @@ const displayValue = computed(() => {
 		returnValue = 'rgba(' + h.join() + ')';
 	}
 
+	if (typeof returnValue === 'string' && isPlaceholderValue(returnValue)) {
+		return '';
+	}
+
 	return returnValue as string;
 });
 
@@ -760,6 +767,14 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 }
 
 function getPlaceholder(): string {
+	const rawValue = isResourceLocatorValue(props.modelValue)
+		? props.modelValue.value
+		: props.modelValue;
+	if (typeof rawValue === 'string') {
+		const labels = extractPlaceholderLabels(rawValue);
+		if (labels.length > 0) return labels[0];
+	}
+
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).placeholder(props.parameter)
 		: i18n.nodeText(ndvStore.activeNode?.type).placeholder(props.parameter, props.path);
