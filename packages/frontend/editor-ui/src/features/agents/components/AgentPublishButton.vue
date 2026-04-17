@@ -32,7 +32,8 @@ type AgentPublishState = 'not-published' | 'published-no-changes' | 'published-w
 
 const publishState = computed((): AgentPublishState => {
 	if (!props.agent?.publishedVersion) return 'not-published';
-	if (props.agent.versionId !== props.agent.activeVersionId) return 'published-with-changes';
+	if (props.agent.versionId !== props.agent.publishedVersion.publishedFromVersionId)
+		return 'published-with-changes';
 	return 'published-no-changes';
 });
 

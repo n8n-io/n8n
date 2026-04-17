@@ -1,10 +1,12 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { Agent } from '../entities/agent.entity';
 import type { AgentPublishedVersion } from '../entities/agent-published-version.entity';
+import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import { AgentPublishedVersionRepository } from '../repositories/agent-published-version.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentsService } from '../agents.service';
@@ -22,12 +24,27 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		model: 'claude-3',
 		provider: 'anthropic',
 		credentialId: 'cred-1',
-		activeVersionId: null,
 		publishedVersion: null,
 		tools: {},
 		updatedAt: new Date(),
 		...overrides,
 	} as unknown as Agent;
+}
+
+function makePublishedVersion(
+	overrides: Partial<AgentPublishedVersion> = {},
+): AgentPublishedVersion {
+	return {
+		agentId,
+		publishedFromVersionId: versionId,
+		schema: null,
+		model: null,
+		provider: null,
+		credentialId: null,
+		publishedAt: new Date(),
+		publishedById: null,
+		...overrides,
+	} as unknown as AgentPublishedVersion;
 }
 
 describe('AgentsService', () => {
@@ -70,8 +87,8 @@ describe('AgentsService', () => {
 			agentRepository.save.mockImplementation(async (a) => a as Agent);
 		});
 
-		it('does not bump versionId when agent has never been published (activeVersionId is null)', async () => {
-			const agent = makeAgent({ versionId: 'v1', activeVersionId: null });
+		it('does not bump versionId when agent has never been published', async () => {
+			const agent = makeAgent({ versionId: 'v1', publishedVersion: null });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.updateConfig(agentId, projectId, {});
@@ -79,8 +96,11 @@ describe('AgentsService', () => {
 			expect(agentRepository.save.mock.calls[0][0].versionId).toBe('v1');
 		});
 
-		it('does not bump versionId when already in a draft (versionId differs from activeVersionId)', async () => {
-			const agent = makeAgent({ versionId: 'v2', activeVersionId: 'v1' });
+		it('does not bump versionId when already in a draft (versionId differs from publishedFromVersionId)', async () => {
+			const agent = makeAgent({
+				versionId: 'v2',
+				publishedVersion: makePublishedVersion({ publishedFromVersionId: 'v1' }),
+			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.updateConfig(agentId, projectId, {});
@@ -88,8 +108,11 @@ describe('AgentsService', () => {
 			expect(agentRepository.save.mock.calls[0][0].versionId).toBe('v2');
 		});
 
-		it('bumps versionId on the first save after publish (versionId equals activeVersionId)', async () => {
-			const agent = makeAgent({ versionId: 'v1', activeVersionId: 'v1' });
+		it('bumps versionId on the first save after publish (versionId equals publishedFromVersionId)', async () => {
+			const agent = makeAgent({
+				versionId: 'v1',
+				publishedVersion: makePublishedVersion({ publishedFromVersionId: 'v1' }),
+			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.updateConfig(agentId, projectId, {});
@@ -121,9 +144,9 @@ describe('AgentsService', () => {
 			await expect(service.publishAgent(agentId, projectId, userId)).rejects.toThrow(NotFoundError);
 		});
 
-		it('calls savePublishedVersion with the correct payload', async () => {
+		it('calls savePublishedVersion with the correct payload including publishedFromVersionId', async () => {
 			const agent = makeAgent({ versionId });
-			const publishedVersion = mock<AgentPublishedVersion>();
+			const publishedVersion = makePublishedVersion();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentPublishedVersionRepository.savePublishedVersion.mockResolvedValue(publishedVersion);
 
@@ -133,6 +156,7 @@ describe('AgentsService', () => {
 				{
 					agentId: agent.id,
 					schema: agent.schema,
+					publishedFromVersionId: versionId,
 					model: agent.model,
 					provider: agent.provider,
 					credentialId: agent.credentialId,
@@ -142,22 +166,24 @@ describe('AgentsService', () => {
 			);
 		});
 
-		it('stamps activeVersionId to the current versionId and saves within a transaction', async () => {
-			const agent = makeAgent({ versionId });
+		it('assigns a new versionId and persists it when the agent has none', async () => {
+			const agent = makeAgent({ versionId: null });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentPublishedVersionRepository.savePublishedVersion.mockResolvedValue(
-				mock<AgentPublishedVersion>(),
+				makePublishedVersion(),
 			);
 
 			await service.publishAgent(agentId, projectId, userId);
 
-			expect(agent.activeVersionId).toBe(versionId);
+			expect(agent.versionId).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+			);
 			expect(mockTrx.save).toHaveBeenCalledWith(agent);
 		});
 
 		it('returns the agent with publishedVersion set to the saved snapshot', async () => {
 			const agent = makeAgent();
-			const publishedVersion = mock<AgentPublishedVersion>();
+			const publishedVersion = makePublishedVersion();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentPublishedVersionRepository.savePublishedVersion.mockResolvedValue(publishedVersion);
 
@@ -179,6 +205,14 @@ describe('AgentsService', () => {
 				value: { transaction: mockTransaction },
 				configurable: true,
 			});
+			// unpublishAgent lazy-imports ChatIntegrationService and calls disconnect via the
+			// DI container — register a mock so Container.get doesn't try to construct the real
+			// service (which would fail resolving DataSource in unit tests).
+			Container.set(ChatIntegrationService, mock<ChatIntegrationService>());
+		});
+
+		afterEach(() => {
+			Container.reset();
 		});
 
 		it('throws NotFoundError when the agent does not exist', async () => {
@@ -187,25 +221,23 @@ describe('AgentsService', () => {
 			await expect(service.unpublishAgent(agentId, projectId)).rejects.toThrow(NotFoundError);
 		});
 
-		it('clears publishedVersion and activeVersionId and saves within a transaction', async () => {
-			const agent = makeAgent({ activeVersionId: versionId });
+		it('deletes the published version row and clears publishedVersion on the entity', async () => {
+			const agent = makeAgent({ publishedVersion: makePublishedVersion() });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.unpublishAgent(agentId, projectId);
 
+			expect(mockTrx.delete).toHaveBeenCalledWith(expect.anything(), { agentId });
 			expect(agent.publishedVersion).toBeNull();
-			expect(agent.activeVersionId).toBeNull();
-			expect(mockTrx.save).toHaveBeenCalledWith(agent);
 		});
 
-		it('returns the agent with publishedVersion and activeVersionId cleared', async () => {
-			const agent = makeAgent({ activeVersionId: versionId });
+		it('returns the agent with publishedVersion cleared', async () => {
+			const agent = makeAgent({ publishedVersion: makePublishedVersion() });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			const result = await service.unpublishAgent(agentId, projectId);
 
 			expect(result.publishedVersion).toBeNull();
-			expect(result.activeVersionId).toBeNull();
 			expect(result).toBe(agent);
 		});
 	});

@@ -40,7 +40,7 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findByProjectId', () => {
-		it('calls find ordered by updatedAt descending', async () => {
+		it('calls find ordered by updatedAt descending with the publishedVersion relation', async () => {
 			const agents = [mock<Agent>(), mock<Agent>()];
 			jest.spyOn(repository, 'find').mockResolvedValue(agents);
 
@@ -48,6 +48,7 @@ describe('AgentRepository', () => {
 
 			expect(repository.find).toHaveBeenCalledWith({
 				where: { projectId: 'project-1' },
+				relations: { publishedVersion: true },
 				order: { updatedAt: 'DESC' },
 			});
 			expect(result).toBe(agents);

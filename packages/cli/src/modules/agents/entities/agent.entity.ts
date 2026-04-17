@@ -51,14 +51,6 @@ export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	versionId: string | null;
 
-	/**
-	 * FK to AgentPublishedVersion.versionId — the currently active published snapshot.
-	 * Null when never published or after unpublish. Mirrors the WorkflowEntity pattern
-	 * where activeVersionId is a real pointer into the version history table.
-	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	activeVersionId: string | null;
-
 	@OneToOne('AgentPublishedVersion', 'agent', { nullable: true })
 	publishedVersion?: Relation<AgentPublishedVersion> | null;
 }

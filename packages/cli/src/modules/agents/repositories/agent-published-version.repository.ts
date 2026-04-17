@@ -2,6 +2,7 @@ import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentPublishedVersion } from '../entities/agent-published-version.entity';
 
@@ -25,6 +26,7 @@ export class AgentPublishedVersionRepository extends Repository<AgentPublishedVe
 		data: {
 			agentId: string;
 			schema: AgentJsonConfig | null;
+			publishedFromVersionId: string;
 			model: string | null;
 			provider: string | null;
 			credentialId: string | null;
@@ -33,8 +35,13 @@ export class AgentPublishedVersionRepository extends Repository<AgentPublishedVe
 		trx?: EntityManager,
 	): Promise<AgentPublishedVersion> {
 		const repo = trx?.getRepository(AgentPublishedVersion) ?? this;
-		const entity = repo.create({ ...data, publishedAt: new Date() });
-		return await repo.save(entity);
+		// TypeORM's _QueryDeepPartialEntity cannot represent Zod-inferred types like
+		// AgentJsonConfig. The cast is safe: @JsonColumn serialises the value at runtime.
+		await repo.upsert(
+			{ ...data, publishedAt: new Date() } as QueryDeepPartialEntity<AgentPublishedVersion>,
+			['agentId'],
+		);
+		return await repo.findOneByOrFail({ agentId: data.agentId });
 	}
 
 	async deleteByAgentId(agentId: string): Promise<void> {

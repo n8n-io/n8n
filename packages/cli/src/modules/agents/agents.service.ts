@@ -195,10 +195,17 @@ export class AgentsService {
 		}
 
 		await this.agentRepository.manager.transaction(async (trx) => {
+			// publishedFromVersionId is non-null — ensure the agent has a versionId before snapshotting.
+			if (!agent.versionId) {
+				agent.versionId = uuid();
+				await trx.save(agent);
+			}
+
 			agent.publishedVersion = await this.agentPublishedVersionRepository.savePublishedVersion(
 				{
 					agentId: agent.id,
 					schema: agent.schema,
+					publishedFromVersionId: agent.versionId,
 					model: agent.model,
 					provider: agent.provider,
 					credentialId: agent.credentialId,
@@ -206,10 +213,6 @@ export class AgentsService {
 				},
 				trx,
 			);
-
-			// Stamp the current versionId as published — frontend compares these to detect changes.
-			agent.activeVersionId = agent.versionId;
-			await trx.save(agent);
 		});
 
 		// Evict any cached draft runtime so integration executions pick up
@@ -230,8 +233,6 @@ export class AgentsService {
 		await this.agentRepository.manager.transaction(async (trx) => {
 			await trx.delete(AgentPublishedVersion, { agentId });
 			agent.publishedVersion = null;
-			agent.activeVersionId = null;
-			await trx.save(agent);
 		});
 
 		this.clearRuntimes(agentId);
@@ -479,7 +480,7 @@ export class AgentsService {
 		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
 
 		const publishedSchema = agentEntity.publishedVersion?.schema;
-		if (!agentEntity.activeVersionId || !publishedSchema) {
+		if (!publishedSchema) {
 			throw new NotFoundError(`Agent ${agentId} is not published`);
 		}
 
@@ -562,7 +563,7 @@ export class AgentsService {
 			throw new OperationalError('Agent not found or not accessible.');
 		}
 
-		if (!agentEntity.activeVersionId) {
+		if (!agentEntity.publishedVersion) {
 			throw new OperationalError(
 				'Agent is not published. Publish the agent before using it in a workflow.',
 			);
@@ -701,10 +702,13 @@ export class AgentsService {
 		entity.schema = result.config;
 		entity.name = result.config.name;
 		entity.description = result.config.description ?? null;
-		// Start a new draft only on the first save after a publish (versionId === activeVersionId).
-		// Between publishes all saves accumulate on the same versionId so
-		// hasUnpublishedChanges (versionId !== activeVersionId) still works correctly.
-		if (entity.versionId !== null && entity.versionId === entity.activeVersionId) {
+		// Start a new draft only on the first save after a publish (versionId matches the
+		// snapshot's publishedFromVersionId). Between publishes all saves accumulate on
+		// the same versionId so the hasUnpublishedChanges check still works correctly.
+		if (
+			entity.versionId !== null &&
+			entity.versionId === entity.publishedVersion?.publishedFromVersionId
+		) {
 			entity.versionId = uuid();
 		}
 

@@ -160,7 +160,9 @@ function onUnpublished(updated: AgentResource) {
 }
 
 const hasUnpublishedChanges = computed(
-	() => !!agent.value?.publishedVersion && agent.value.versionId !== agent.value.activeVersionId,
+	() =>
+		!!agent.value?.publishedVersion &&
+		agent.value.versionId !== agent.value.publishedVersion.publishedFromVersionId,
 );
 
 onBeforeRouteLeave(async (_to, _from, next) => {

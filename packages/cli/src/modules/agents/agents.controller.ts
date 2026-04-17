@@ -341,7 +341,7 @@ export class AgentsController {
 		const { type, credentialId } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		if (!agent.activeVersionId)
+		if (!agent.publishedVersion)
 			throw new ConflictError(
 				`Agent "${agentId}" must be published before connecting an integration`,
 			);

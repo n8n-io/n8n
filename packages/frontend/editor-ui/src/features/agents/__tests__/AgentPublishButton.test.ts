@@ -52,6 +52,7 @@ const STUBS = {
 
 const publishedVersion: AgentPublishedVersion = {
 	schema: null,
+	publishedFromVersionId: 'v1',
 	model: null,
 	provider: null,
 	credentialId: null,
@@ -73,7 +74,6 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		createdAt: '2026-01-01T00:00:00Z',
 		updatedAt: '2026-01-01T00:00:00Z',
 		versionId: 'v1',
-		activeVersionId: null,
 		tools: {},
 		publishedVersion: null,
 		...overrides,
@@ -106,7 +106,7 @@ describe('AgentPublishButton', () => {
 
 	// Button states
 	it('shows "Publish" and is enabled when agent is not published', async () => {
-		const agent = createAgent({ publishedVersion: null, activeVersionId: null });
+		const agent = createAgent({ publishedVersion: null });
 		const wrapper = await renderComponent({ agent });
 		const button = wrapper.find('[data-testid="publish-agent-button"]');
 		expect(button.text()).toContain('agents.publish.button.publish');
@@ -114,7 +114,7 @@ describe('AgentPublishButton', () => {
 	});
 
 	it('shows "Published" and is disabled when latest version is published', async () => {
-		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		const button = wrapper.find('[data-testid="publish-agent-button"]');
 		expect(button.text()).toContain('agents.publish.button.published');
@@ -122,7 +122,7 @@ describe('AgentPublishButton', () => {
 	});
 
 	it('shows "Publish" and is enabled when there are unpublished changes', async () => {
-		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v2', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		const button = wrapper.find('[data-testid="publish-agent-button"]');
 		expect(button.text()).toContain('agents.publish.button.publish');
@@ -132,10 +132,10 @@ describe('AgentPublishButton', () => {
 	// Publish button click
 	it('calls publishAgent and emits published when Publish is clicked', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
-		const updatedAgent = createAgent({ activeVersionId: 'v1', publishedVersion });
+		const updatedAgent = createAgent({ publishedVersion });
 		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
 
-		const agent = createAgent({ publishedVersion: null, activeVersionId: null });
+		const agent = createAgent({ publishedVersion: null });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
 		await flushPromises();
@@ -146,10 +146,13 @@ describe('AgentPublishButton', () => {
 
 	it('calls publishAgent and emits published when republishing with pending changes', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
-		const updatedAgent = createAgent({ versionId: 'v2', activeVersionId: 'v2', publishedVersion });
+		const updatedAgent = createAgent({
+			versionId: 'v2',
+			publishedVersion: { ...publishedVersion, publishedFromVersionId: 'v2' },
+		});
 		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
 
-		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v2', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
 		await flushPromises();
@@ -161,7 +164,7 @@ describe('AgentPublishButton', () => {
 	it('does nothing when the disabled Published button is clicked', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
 
-		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
 		await flushPromises();
@@ -172,10 +175,10 @@ describe('AgentPublishButton', () => {
 	// Dropdown — publish action
 	it('calls publishAgent via dropdown Publish action', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
-		const updatedAgent = createAgent({ activeVersionId: 'v1', publishedVersion });
+		const updatedAgent = createAgent({ publishedVersion });
 		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
 
-		const agent = createAgent({ publishedVersion: null, activeVersionId: null });
+		const agent = createAgent({ publishedVersion: null });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="publish"]').trigger('click');
 		await flushPromises();
@@ -188,10 +191,10 @@ describe('AgentPublishButton', () => {
 	it('calls unpublishAgent and emits unpublished on confirmed unpublish', async () => {
 		const { unpublishAgent } = await import('../composables/useAgentApi');
 		const { useMessage } = await import('@/app/composables/useMessage');
-		const unpublishedAgent = createAgent({ activeVersionId: null, publishedVersion: null });
+		const unpublishedAgent = createAgent({ publishedVersion: null });
 		vi.mocked(unpublishAgent).mockResolvedValue(unpublishedAgent);
 
-		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="unpublish"]').trigger('click');
 		await flushPromises();
@@ -206,7 +209,7 @@ describe('AgentPublishButton', () => {
 		const { useMessage } = await import('@/app/composables/useMessage');
 		vi.mocked(useMessage().confirm).mockResolvedValueOnce(MODAL_CANCEL);
 
-		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="unpublish"]').trigger('click');
 		await flushPromises();

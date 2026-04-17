@@ -158,8 +158,8 @@ import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-Cre
 import { CreateAgentMemoryTables1777000000000 } from '../common/1777000000000-CreateAgentMemoryTables';
 import { AddToolsColumnToAgents1778000000000 } from '../common/1778000000000-AddToolsColumnToAgents';
 import { DropAgentCodeColumn1779000000000 } from '../common/1779000000000-DropAgentCodeColumn';
-import { CreateAgentPublishedVersionTable1780000000000 } from '../common/1780000000000-CreateAgentPublishedVersionTable';
-import { AddPublishVersionTracking1781000000000 } from '../common/1781000000000-AddPublishVersionTracking';
+import { AddAgentPublishVersionSupport1780000000000 } from '../common/1780000000000-AddAgentPublishVersionSupport';
+import { PatchLocalDbForConsolidatedAgentPublishMigration1782000000001 } from '../common/1782000000001-PatchLocalDbForConsolidatedAgentPublishMigration';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -323,8 +323,8 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentMemoryTables1777000000000,
 	AddToolsColumnToAgents1778000000000,
 	DropAgentCodeColumn1779000000000,
-	CreateAgentPublishedVersionTable1780000000000,
-	AddPublishVersionTracking1781000000000,
+	AddAgentPublishVersionSupport1780000000000,
+	PatchLocalDbForConsolidatedAgentPublishMigration1782000000001,
 ];
 
 export { sqliteMigrations };

@@ -17,6 +17,7 @@ export interface CustomToolEntry {
 
 export interface AgentPublishedVersion {
 	schema: unknown | null;
+	publishedFromVersionId: string;
 	model: string | null;
 	provider: string | null;
 	credentialId: string | null;
@@ -36,7 +37,6 @@ export type Agent = {
 	createdAt: string;
 	updatedAt: string;
 	versionId: string | null;
-	activeVersionId: string | null;
 	tools: Record<string, CustomToolEntry>;
 	publishedVersion: AgentPublishedVersion | null;
 };

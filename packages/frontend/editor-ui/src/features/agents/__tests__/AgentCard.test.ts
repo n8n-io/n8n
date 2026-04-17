@@ -61,6 +61,7 @@ const STUBS = {
 
 const publishedVersion: AgentPublishedVersion = {
 	schema: null,
+	publishedFromVersionId: 'v1',
 	model: null,
 	provider: null,
 	credentialId: null,
@@ -82,7 +83,6 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		createdAt: '2026-01-01T00:00:00Z',
 		updatedAt: '2026-01-02T00:00:00Z',
 		versionId: 'v1',
-		activeVersionId: null,
 		tools: {},
 		publishedVersion: null,
 		...overrides,
@@ -129,40 +129,40 @@ describe('AgentCard', () => {
 
 	// Published badge
 	it('shows published badge when latest version is published', async () => {
-		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		expect(wrapper.find('[data-testid="agent-published-indicator"]').exists()).toBe(true);
 	});
 
 	it('hides published badge when agent has never been published', async () => {
-		const agent = createAgent({ activeVersionId: null, publishedVersion: null });
+		const agent = createAgent({ publishedVersion: null });
 		const wrapper = await renderComponent({ agent });
 		expect(wrapper.find('[data-testid="agent-published-indicator"]').exists()).toBe(false);
 	});
 
 	it('shows published badge when published with newer draft changes', async () => {
-		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v2', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		expect(wrapper.find('[data-testid="agent-published-indicator"]').exists()).toBe(true);
 	});
 
 	// Context menu actions
 	it('shows Publish action when agent is not published', async () => {
-		const agent = createAgent({ activeVersionId: null });
+		const agent = createAgent({ publishedVersion: null });
 		const wrapper = await renderComponent({ agent });
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(false);
 	});
 
 	it('shows Unpublish action when latest version is published', async () => {
-		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(false);
 	});
 
 	it('shows Unpublish action when published with newer draft changes', async () => {
-		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v2', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(false);
@@ -185,10 +185,10 @@ describe('AgentCard', () => {
 	// Publish action
 	it('calls publishAgent and emits published on publish', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
-		const updatedAgent = createAgent({ activeVersionId: 'v1', publishedVersion });
+		const updatedAgent = createAgent({ publishedVersion });
 		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
 
-		const agent = createAgent({ activeVersionId: null });
+		const agent = createAgent({ publishedVersion: null });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="publish"]').trigger('click');
 		await flushPromises();
@@ -201,10 +201,10 @@ describe('AgentCard', () => {
 	it('calls unpublishAgent and emits unpublished on confirmed unpublish', async () => {
 		const { unpublishAgent } = await import('../composables/useAgentApi');
 		const { useMessage } = await import('@/app/composables/useMessage');
-		const unpublishedAgent = createAgent({ activeVersionId: null, publishedVersion: null });
+		const unpublishedAgent = createAgent({ publishedVersion: null });
 		vi.mocked(unpublishAgent).mockResolvedValue(unpublishedAgent);
 
-		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="unpublish"]').trigger('click');
 		await flushPromises();
@@ -219,7 +219,7 @@ describe('AgentCard', () => {
 		const { useMessage } = await import('@/app/composables/useMessage');
 		vi.mocked(useMessage().confirm).mockResolvedValueOnce(MODAL_CANCEL);
 
-		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="unpublish"]').trigger('click');
 		await flushPromises();

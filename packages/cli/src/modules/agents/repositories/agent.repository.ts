@@ -12,6 +12,7 @@ export class AgentRepository extends Repository<Agent> {
 	async findByProjectId(projectId: string): Promise<Agent[]> {
 		return await this.find({
 			where: { projectId },
+			relations: { publishedVersion: true },
 			order: { updatedAt: 'DESC' },
 		});
 	}

@@ -24,6 +24,13 @@ export class AgentPublishedVersion extends WithTimestamps {
 	@JsonColumn({ nullable: true, default: null })
 	schema: AgentJsonConfig | null;
 
+	/**
+	 * The agent's draft versionId at the time this snapshot was published.
+	 * Compared against Agent.versionId to detect draft divergence from the published version.
+	 */
+	@Column({ type: 'varchar', length: 36 })
+	publishedFromVersionId: string;
+
 	@Column({ type: 'varchar', length: 128, nullable: true })
 	model: string | null;
 
