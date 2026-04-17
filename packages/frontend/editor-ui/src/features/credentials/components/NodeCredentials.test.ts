@@ -31,10 +31,10 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: ref(false),
 		isCredentialTypeSupported: vi.fn(() => false),
-		creditsRemaining: computed(() => undefined),
-		creditsQuota: computed(() => undefined),
+		balance: computed(() => undefined),
+		budget: computed(() => undefined),
 		fetchConfig: vi.fn().mockResolvedValue(undefined),
-		fetchCredits: vi.fn().mockResolvedValue(undefined),
+		fetchWallet: vi.fn().mockResolvedValue(undefined),
 		saveAfterToggle: vi.fn().mockResolvedValue(undefined),
 	})),
 }));
@@ -902,10 +902,10 @@ describe('NodeCredentials', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
-				creditsRemaining: computed(() => undefined),
-				creditsQuota: computed(() => undefined),
+				balance: computed(() => undefined),
+				budget: computed(() => undefined),
 				fetchConfig: vi.fn().mockResolvedValue(undefined),
-				fetchCredits: vi.fn().mockResolvedValue(undefined),
+				fetchWallet: vi.fn().mockResolvedValue(undefined),
 				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
 				fetchError: computed(() => null),
 			});
@@ -974,11 +974,11 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn(() => false),
-					creditsRemaining: computed(() => undefined),
-					creditsQuota: computed(() => undefined),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
 					fetchError: computed(() => null),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
-					fetchCredits: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
 					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
 				});
 
@@ -1001,11 +1001,11 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => false),
 					isCredentialTypeSupported: vi.fn(() => false),
-					creditsRemaining: computed(() => undefined),
-					creditsQuota: computed(() => undefined),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
 					fetchError: computed(() => null),
 					fetchConfig: vi.fn().mockResolvedValue(undefined),
-					fetchCredits: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
 					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
 				});
 				ndvStore.activeNode = googleAiNode;

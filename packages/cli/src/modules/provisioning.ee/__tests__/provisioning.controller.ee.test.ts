@@ -3,14 +3,20 @@ import { mock } from 'jest-mock-extended';
 
 import { ProvisioningController } from '../provisioning.controller.ee';
 import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import type { OidcInstanceSettingsLoader } from '@/instance-settings-loader/loaders/oidc.instance-settings-loader';
 import { type Response } from 'express';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { type ProvisioningConfigDto } from '@n8n/api-types';
 
 const provisioningService = mock<ProvisioningService>();
 const licenseState = mock<LicenseState>();
+const oidcSettingsLoader = mock<OidcInstanceSettingsLoader>();
 
-const controller = new ProvisioningController(provisioningService, licenseState);
+const controller = new ProvisioningController(
+	provisioningService,
+	licenseState,
+	oidcSettingsLoader,
+);
 
 describe('ProvisioningController', () => {
 	beforeEach(() => {

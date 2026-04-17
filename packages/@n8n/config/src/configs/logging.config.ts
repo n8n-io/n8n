@@ -40,6 +40,7 @@ export const LOG_SCOPES = [
 	'agents',
 	'instance-version-history',
 	'instance-settings-loader',
+	'instance-registry',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

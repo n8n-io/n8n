@@ -18,6 +18,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			name: INSTANCE_AI_VIEW,
 			path: '/instance-ai',
 			component: InstanceAiView,
+			props: true,
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],
@@ -27,6 +28,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			name: INSTANCE_AI_THREAD_VIEW,
 			path: '/instance-ai/:threadId',
 			component: InstanceAiView,
+			props: true,
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],
@@ -63,6 +65,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
+			preview: true,
 			get available() {
 				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } });
 			},

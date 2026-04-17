@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onMounted } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { N8nHeading, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
@@ -15,6 +15,15 @@ const isLocalGatewayDisabled = computed(() => {
 		return store.preferencesDraft.localGatewayDisabled;
 	return store.preferences?.localGatewayDisabled ?? false;
 });
+
+async function handleUserToggle(value: boolean | string | number) {
+	const enabling = Boolean(value);
+	store.setPreferenceField('localGatewayDisabled', !enabling);
+	await store.save();
+	if (enabling && !store.setupCommand) {
+		void store.fetchSetupCommand();
+	}
+}
 
 const copied = ref(false);
 const displayCommand = computed(() => store.setupCommand ?? 'npx @n8n/computer-use');
@@ -83,29 +92,76 @@ const displayCategories = computed(() => {
 	return result.sort((a, b) => Number(b.enabled) - Number(a.enabled));
 });
 
-onMounted(() => {
-	if (!store.isGatewayConnected) {
-		void store.fetchSetupCommand();
-	}
+const shouldShowSetup = computed(
+	() =>
+		!store.isGatewayConnected &&
+		!store.isLocalGatewayDisabledByAdmin &&
+		!isLocalGatewayDisabled.value,
+);
+
+watch(
+	shouldShowSetup,
+	(show) => {
+		if (show && !store.setupCommand) {
+			void store.fetchSetupCommand();
+		}
+	},
+	{ immediate: true },
+);
+
+// Keep the connection status live on the settings page. Without these, landing
+// directly on /settings/n8n-agent leaves `isGatewayConnected` at its default
+// `false` because neither the poll nor the push listener is ever started here.
+const shouldMonitorConnection = computed(
+	() => !store.isLocalGatewayDisabledByAdmin && !isLocalGatewayDisabled.value,
+);
+
+watch(
+	shouldMonitorConnection,
+	(monitor) => {
+		if (monitor) {
+			store.startGatewayPushListener();
+			store.pollGatewayStatus();
+		} else {
+			store.stopGatewayPushListener();
+			store.stopGatewayPolling();
+		}
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	store.stopGatewayPushListener();
+	store.stopGatewayPolling();
 });
 </script>
 
 <template>
 	<div :class="$style.section">
-		<N8nHeading tag="h2" size="small">
-			{{ i18n.baseText('instanceAi.filesystem.label') }}
-		</N8nHeading>
-
 		<div :class="$style.switchRow">
-			<span :class="$style.switchLabel">{{ i18n.baseText('instanceAi.filesystem.label') }}</span>
+			<div>
+				<N8nHeading tag="h2" size="small">
+					{{ i18n.baseText('instanceAi.filesystem.label') }}
+				</N8nHeading>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('instanceAi.filesystem.description') }}
+				</N8nText>
+			</div>
 			<ElSwitch
-				:model-value="!isLocalGatewayDisabled"
-				:disabled="store.isLocalGatewayDisabled"
-				@update:model-value="store.setPreferenceField('localGatewayDisabled', !$event)"
+				:model-value="!store.isLocalGatewayDisabledByAdmin && !isLocalGatewayDisabled"
+				:disabled="store.isLocalGatewayDisabledByAdmin"
+				@update:model-value="handleUserToggle"
 			/>
 		</div>
 
-		<template v-if="!isLocalGatewayDisabled">
+		<div v-if="store.isLocalGatewayDisabledByAdmin" :class="$style.warningRow">
+			<N8nIcon icon="triangle-alert" size="small" />
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('settings.n8nAgent.computerUse.disabled.warning') }}
+			</N8nText>
+		</div>
+
+		<template v-if="!isLocalGatewayDisabled && !store.isLocalGatewayDisabledByAdmin">
 			<!-- Gateway connected -->
 			<div v-if="store.isGatewayConnected" :class="$style.connectedBlock">
 				<div :class="$style.statusRow">
@@ -187,9 +243,12 @@ onMounted(() => {
 	padding: var(--spacing--4xs) 0;
 }
 
-.switchLabel {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+.warningRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) 0;
+	color: var(--color--warning);
 }
 
 .connectedBlock {

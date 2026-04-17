@@ -9,11 +9,12 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
 import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
 
+import { TokenExchangeAuthError } from '../token-exchange.errors';
 import type { ExternalTokenClaims } from '../token-exchange.schemas';
+import { TokenExchangeFailureReason } from '../token-exchange.types';
 
 /**
  * Password placeholder for JIT-provisioned users. This is not a valid bcrypt
@@ -92,7 +93,10 @@ export class IdentityResolutionService {
 
 		// Path 3: JIT provisioning
 		if (!email) {
-			throw new AuthError('Email claim is required for user provisioning');
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.InvalidClaims,
+				'Email claim is required for user provisioning',
+			);
 		}
 
 		return await this.provisionUser(claims, email, allowedRoles, tokenContext);
@@ -226,7 +230,10 @@ export class IdentityResolutionService {
 		}
 
 		if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-			throw new AuthError(`Role '${role}' is not allowed for this token exchange key`);
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.RoleNotAllowed,
+				`Role '${role}' is not allowed for this token exchange key`,
+			);
 		}
 
 		return role;
@@ -248,15 +255,24 @@ export class IdentityResolutionService {
 		const role = roleClaim;
 
 		if (role === 'global:owner') {
-			throw new AuthError('Cannot provision global:owner role via token exchange');
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.RoleNotAllowed,
+				'Cannot provision global:owner role via token exchange',
+			);
 		}
 
 		if (!isGlobalRole(role)) {
-			throw new AuthError(`Unrecognized role '${role}' cannot be assigned to new user`);
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.RoleNotAllowed,
+				`Unrecognized role '${role}' cannot be assigned to new user`,
+			);
 		}
 
 		if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-			throw new AuthError(`Role '${role}' is not allowed for this token exchange key`);
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.RoleNotAllowed,
+				`Role '${role}' is not allowed for this token exchange key`,
+			);
 		}
 
 		return role;

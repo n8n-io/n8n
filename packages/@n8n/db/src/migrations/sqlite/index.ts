@@ -155,7 +155,9 @@ import { CreateTokenExchangeJtiTable1775116241000 } from '../common/177511624100
 import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
 import { CreateAgentTables1776000000000 } from '../common/1776000000000-CreateAgentTables';
 import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
+import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
 import { CreateAgentMemoryTables1777000000000 } from '../common/1777000000000-CreateAgentMemoryTables';
+import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
 import { AddToolsColumnToAgents1778000000000 } from '../common/1778000000000-AddToolsColumnToAgents';
 import { DropAgentCodeColumn1779000000000 } from '../common/1779000000000-DropAgentCodeColumn';
 import { AddAgentPublishVersionSupport1780000000000 } from '../common/1780000000000-AddAgentPublishVersionSupport';
@@ -319,7 +321,9 @@ const sqliteMigrations: Migration[] = [
 	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
 	CreateAgentTables1776000000000,
 	CreateTrustedKeyTables1776000000000,
+	CreateFavoritesTable1776150756000,
 	CreateAgentMemoryTables1777000000000,
+	CreateDeploymentKeyTable1777000000000,
 	AddToolsColumnToAgents1778000000000,
 	DropAgentCodeColumn1779000000000,
 	AddAgentPublishVersionSupport1780000000000,

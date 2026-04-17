@@ -301,11 +301,11 @@ describe('instanceAi.reducer', () => {
 	describe('tool execution', () => {
 		test('tool-call adds entry with isLoading=true and correct renderHint', () => {
 			const state = stateWithRun('run-1', 'agent-root');
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'update-tasks'));
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'task-control'));
 
 			const tc = state.messages[0].agentTree!.toolCalls[0];
 			expect(tc.toolCallId).toBe('tc-1');
-			expect(tc.toolName).toBe('update-tasks');
+			expect(tc.toolName).toBe('task-control');
 			expect(tc.isLoading).toBe(true);
 			expect(tc.renderHint).toBe('tasks');
 		});
@@ -531,7 +531,7 @@ describe('instanceAi.reducer', () => {
 		test('tool-call with unsafe toolCallId is ignored', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', '__proto__', 'update-tasks'));
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', '__proto__', 'task-control'));
 
 			expect(state.messages[0].agentTree?.toolCalls).toHaveLength(0);
 			expectReducerMapsNotPolluted(state);
@@ -628,8 +628,8 @@ describe('instanceAi.reducer', () => {
 	});
 
 	describe('getRenderHint', () => {
-		test('returns tasks for "update-tasks"', () => {
-			expect(getRenderHint('update-tasks')).toBe('tasks');
+		test('returns tasks for "task-control"', () => {
+			expect(getRenderHint('task-control')).toBe('tasks');
 		});
 
 		test('returns delegate for "delegate"', () => {
