@@ -175,12 +175,56 @@ export class OauthService {
 		toUpdate: ICredentialDataDecryptedObject,
 		toDelete: string[] = [],
 	) {
+		if (toUpdate.oauthTokenData && typeof toUpdate.oauthTokenData === 'object') {
+			const identifier = OauthService.extractAccountIdentifier(
+				toUpdate.oauthTokenData as Record<string, unknown>,
+			);
+			if (identifier) {
+				toUpdate.accountIdentifier = identifier;
+			}
+		}
+
 		const credentials = new Credentials(credential, credential.type, credential.data);
 		credentials.updateData(toUpdate, toDelete);
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),
 			updatedAt: new Date(),
 		});
+	}
+
+	static extractAccountIdentifier(tokenData: Record<string, unknown>): string | undefined {
+		for (const key of ['email', 'login', 'username', 'user', 'account']) {
+			if (typeof tokenData[key] === 'string' && tokenData[key]) {
+				return tokenData[key];
+			}
+		}
+
+		if (typeof tokenData.id_token === 'string') {
+			const parts = tokenData.id_token.split('.');
+			if (parts.length === 3) {
+				try {
+					const payload: Record<string, unknown> = JSON.parse(
+						Buffer.from(parts[1], 'base64url').toString(),
+					);
+					if (typeof payload.email === 'string' && payload.email) {
+						return payload.email;
+					}
+					if (typeof payload.preferred_username === 'string' && payload.preferred_username) {
+						return payload.preferred_username;
+					}
+				} catch {}
+			}
+		}
+
+		const authedUser = tokenData.authed_user;
+		if (authedUser && typeof authedUser === 'object') {
+			const user = authedUser as Record<string, unknown>;
+			if (typeof user.id === 'string' && user.id) {
+				return user.id;
+			}
+		}
+
+		return undefined;
 	}
 
 	/** Get a credential without user check */

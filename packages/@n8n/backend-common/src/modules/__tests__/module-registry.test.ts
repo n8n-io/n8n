@@ -36,10 +36,12 @@ describe('eligibleModules', () => {
 			'ldap',
 			'quick-connect',
 			'workflow-builder',
+			'favorites',
 			'redaction',
 			'instance-registry',
 			'otel',
 			'token-exchange',
+			'instance-version-history',
 		]);
 	});
 
@@ -62,10 +64,12 @@ describe('eligibleModules', () => {
 			'ldap',
 			'quick-connect',
 			'workflow-builder',
+			'favorites',
 			'redaction',
 			'instance-registry',
 			'otel',
 			'token-exchange',
+			'instance-version-history',
 			'instance-ai',
 		]);
 	});

@@ -1,8 +1,7 @@
 /**
- * Builder Image Manager
- *
- * Builds and caches a pre-warmed Daytona Image with config files and node_modules
- * pre-installed. Uses Image.base().runCommands() declaratively.
+ * Prepares and caches a Daytona Image descriptor with config files and
+ * node_modules pre-installed. The Image is declarative — actual building
+ * happens when a sandbox is created from it.
  *
  * The node-types catalog is NOT baked into the image (too large for API body limit).
  * It's written to each sandbox after creation via the filesystem API.
@@ -12,6 +11,7 @@
 
 import { Image } from '@daytonaio/sdk';
 
+import type { Logger } from '../logger';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
 
 /** Base64-encode content for safe embedding in RUN commands (avoids newline/quote issues). */
@@ -22,9 +22,12 @@ function b64(s: string): string {
 export class SnapshotManager {
 	private cachedImage: Image | null = null;
 
-	constructor(private readonly baseImage?: string) {}
+	constructor(
+		private readonly baseImage: string | undefined,
+		private readonly logger: Logger,
+	) {}
 
-	/** Get or build the pre-warmed builder image. Synchronous after first call. */
+	/** Get or prepare the image descriptor. Synchronous after first call. */
 	ensureImage(): Image {
 		if (this.cachedImage) return this.cachedImage;
 
@@ -41,9 +44,10 @@ export class SnapshotManager {
 			)
 			.runCommands('cd /home/daytona/workspace && npm install --ignore-scripts');
 
-		console.log(
-			`[BuilderImageManager] image built (base: ${base}, dockerfile: ${this.cachedImage.dockerfile.length} chars)`,
-		);
+		this.logger.info('Builder image descriptor prepared', {
+			base,
+			dockerfileLength: this.cachedImage.dockerfile.length,
+		});
 
 		return this.cachedImage;
 	}

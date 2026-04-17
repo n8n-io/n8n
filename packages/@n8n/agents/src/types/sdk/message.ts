@@ -204,4 +204,4 @@ export type CustomAgentMessage = {
  */
 export type AgentMessage = Message | CustomAgentMessage;
 
-export type AgentDbMessage = { id: string } & AgentMessage;
+export type AgentDbMessage = { id: string; createdAt: Date } & AgentMessage;

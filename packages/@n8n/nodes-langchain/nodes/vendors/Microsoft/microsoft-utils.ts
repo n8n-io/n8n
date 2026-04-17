@@ -28,7 +28,6 @@ import {
 import { type Activity, ActivityTypes } from '@microsoft/agents-activity';
 import { v4 as uuid } from 'uuid';
 import { invokeAgent } from './langchain-utils';
-
 import {
 	McpToolServerConfigurationService,
 	defaultToolingConfigurationProvider,
@@ -37,7 +36,12 @@ import {
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StructuredToolkit } from 'n8n-core';
 import { connectMcpClient, getAllTools } from '../../mcp/shared/utils';
-import { createCallTool, mcpToolToDynamicTool } from '../../mcp/McpClientTool/utils';
+import {
+	buildMcpToolName,
+	createCallTool,
+	mcpToolToDynamicTool,
+} from '../../mcp/McpClientTool/utils';
+export { buildMcpToolName };
 
 export type MicrosoftAgent365Credentials = {
 	clientId: string;
@@ -127,17 +131,6 @@ export const microsoftMcpServers: INodePropertyOptions[] = [
 ];
 
 const MS_TENANT_ID_HEADER = 'x-ms-tenant-id';
-const MAX_MCP_TOOL_NAME_LENGTH = 64;
-
-export function buildMcpToolName(serverName: string, toolName: string): string {
-	const sanitizedServerName = serverName.replace(/[^a-zA-Z0-9]/g, '_');
-	const fullName = `${sanitizedServerName}_${toolName}`;
-	if (fullName.length <= MAX_MCP_TOOL_NAME_LENGTH) {
-		return fullName;
-	}
-	const maxPrefixLen = MAX_MCP_TOOL_NAME_LENGTH - toolName.length - 1;
-	return maxPrefixLen > 0 ? `${sanitizedServerName.slice(0, maxPrefixLen)}_${toolName}` : toolName;
-}
 
 function isMicrosoftObservabilityEnabled(): boolean {
 	return (
@@ -317,10 +310,15 @@ export const configureActivityCallback = (
 			await invokeAgentScope.withActiveSpanAsync(async () => {
 				invokeAgentScope.recordInputMessages([inputText || 'Unknown text']);
 
+				let addMemberMessage = false;
+				if (inputText.trimStart().startsWith('<addmember>')) {
+					addMemberMessage = true;
+				}
+
 				let mcpClient = undefined;
 				let microsoftMcpToolkits: StructuredToolkit[] | undefined = undefined;
 				let mcpLogs: McpToolCallLog[] | undefined = undefined;
-				if (mcpTokenRef.token) {
+				if (!addMemberMessage && mcpTokenRef.token) {
 					try {
 						const useMcpTools = nodeContext.getNodeParameter('useMcpTools', false) as boolean;
 
@@ -352,15 +350,20 @@ export const configureActivityCallback = (
 				}
 
 				try {
-					const response = await invokeAgent(
-						nodeContext,
-						inputText,
-						systemPrompt,
-						{
-							configurable: { thread_id: turnContext.activity.conversation!.id },
-						},
-						microsoftMcpToolkits,
-					);
+					let response = '';
+					if (addMemberMessage) {
+						response = nodeContext.getNodeParameter('options.welcomeMessage', '') as string;
+					} else {
+						response = await invokeAgent(
+							nodeContext,
+							inputText,
+							systemPrompt,
+							{
+								configurable: { thread_id: turnContext.activity.conversation!.id },
+							},
+							microsoftMcpToolkits,
+						);
+					}
 
 					invokeAgentScope.recordOutputMessages([`n8n Agent Response: ${response}`]);
 
@@ -452,15 +455,6 @@ export function configureAdapterProcessCallback(
 			};
 
 			turnContext.sendActivity = sendActivityWrapper;
-
-			const welcomeMessage = nodeContext.getNodeParameter(
-				'options.welcomeMessage',
-				"Hello! I'm here to help you!",
-			) as string;
-
-			agent.onConversationUpdate('membersAdded', async (context) => {
-				await context.sendActivity(welcomeMessage);
-			});
 
 			const onActivity = configureActivityCallback(
 				nodeContext,

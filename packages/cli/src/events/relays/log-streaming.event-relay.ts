@@ -106,7 +106,15 @@ export class LogStreamingEventRelay extends EventRelay {
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'token-exchange-succeeded': (event) => this.tokenExchangeSucceeded(event),
 			'token-exchange-failed': (event) => this.tokenExchangeFailed(event),
+			'token-exchange-identity-linked': (event) => this.tokenExchangeIdentityLinked(event),
+			'token-exchange-user-provisioned': (event) => this.tokenExchangeUserProvisioned(event),
+			'token-exchange-role-updated': (event) => this.tokenExchangeRoleUpdated(event),
 			'embed-login': (event) => this.embedLogin(event),
+			'embed-login-failed': (event) => this.embedLoginFailed(event),
+			'expression-mapping-roles-resolved': (event) => this.expressionMappingRolesResolved(event),
+			'role-mapping-rule-created': (event) => this.roleMappingRuleCreated(event),
+			'role-mapping-rule-updated': (event) => this.roleMappingRuleUpdated(event),
+			'role-mapping-rule-deleted': (event) => this.roleMappingRuleDeleted(event),
 		});
 	}
 
@@ -214,7 +222,13 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	private workflowPreExecute({ data, executionId, mode }: RelayEventMap['workflow-pre-execute']) {
+	private workflowPreExecute({
+		data,
+		executionId,
+		mode,
+		projectId,
+		projectName,
+	}: RelayEventMap['workflow-pre-execute']) {
 		const payload =
 			'executionData' in data
 				? {
@@ -224,6 +238,8 @@ export class LogStreamingEventRelay extends EventRelay {
 						isManual: data.executionMode === 'manual',
 						mode,
 						workflowName: data.workflowData.name,
+						projectId: data.projectId ?? projectId,
+						projectName: data.projectName ?? projectName,
 					}
 				: {
 						executionId,
@@ -232,6 +248,8 @@ export class LogStreamingEventRelay extends EventRelay {
 						isManual: false,
 						mode,
 						workflowName: (data as IWorkflowBase).name,
+						projectId,
+						projectName,
 					};
 
 		void this.eventBus.sendWorkflowEvent({
@@ -241,7 +259,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
-		const { runData, workflow, executionId, ...rest } = event;
+		const { runData, workflow, executionId, projectId, projectName, ...rest } = event;
 
 		const payload = {
 			...rest,
@@ -251,6 +269,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			mode: runData?.mode,
 			workflowId: workflow.id,
 			workflowName: workflow.name,
+			projectId,
+			projectName,
 		};
 
 		if (payload.success) {
@@ -992,10 +1012,102 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
+	private tokenExchangeIdentityLinked(event: RelayEventMap['token-exchange-identity-linked']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.identity-linked',
+			payload: event,
+		});
+	}
+
+	private tokenExchangeUserProvisioned(event: RelayEventMap['token-exchange-user-provisioned']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.user-provisioned',
+			payload: event,
+		});
+	}
+
+	private tokenExchangeRoleUpdated(event: RelayEventMap['token-exchange-role-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.role-updated',
+			payload: event,
+		});
+	}
+
 	private embedLogin(event: RelayEventMap['embed-login']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.token-exchange.embed-login',
 			payload: event,
+		});
+	}
+
+	private embedLoginFailed(event: RelayEventMap['embed-login-failed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.embed-login-failed',
+			payload: event,
+		});
+	}
+
+	// #endregion
+
+	// #region Role Mapping
+
+	private expressionMappingRolesResolved(
+		event: RelayEventMap['expression-mapping-roles-resolved'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.role-mapping.roles-resolved',
+			payload: {
+				userId: event.userId,
+				userEmail: event.userEmail,
+				msg: {
+					provider: event.provider,
+					instanceRole: event.instanceRole,
+					projectRoles: event.projectRoles,
+					removedProjectIds: event.removedProjectIds,
+				},
+			},
+		});
+	}
+
+	private roleMappingRuleCreated(event: RelayEventMap['role-mapping-rule-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.role-mapping.rule.created',
+			payload: {
+				...event.user,
+				msg: {
+					ruleId: event.ruleId,
+					ruleType: event.ruleType,
+					expression: event.expression,
+					role: event.role,
+				},
+			},
+		});
+	}
+
+	private roleMappingRuleUpdated(event: RelayEventMap['role-mapping-rule-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.role-mapping.rule.updated',
+			payload: {
+				...event.user,
+				msg: {
+					ruleId: event.ruleId,
+					ruleType: event.ruleType,
+					patchedFields: event.patchedFields,
+				},
+			},
+		});
+	}
+
+	private roleMappingRuleDeleted(event: RelayEventMap['role-mapping-rule-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.role-mapping.rule.deleted',
+			payload: {
+				...event.user,
+				msg: {
+					ruleId: event.ruleId,
+					ruleType: event.ruleType,
+				},
+			},
 		});
 	}
 

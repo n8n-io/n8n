@@ -13,6 +13,7 @@ import {
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 type InstallNodeProps = {
 	type: 'verified' | 'unverified';
@@ -53,6 +54,7 @@ export function useInstallNode() {
 	const toast = useToast();
 	const canvasOperations = useCanvasOperations();
 	const telemetry = useTelemetry();
+	const settingsStore = useSettingsStore();
 
 	const getNpmVersion = async (key: string) => {
 		const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(key);
@@ -81,7 +83,7 @@ export function useInstallNode() {
 
 		try {
 			loading.value = true;
-			if (props.type === 'verified') {
+			if (props.type === 'verified' && !settingsStore.isUnverifiedPackagesEnabled) {
 				await communityNodesStore.installPackage(
 					props.packageName,
 					true,

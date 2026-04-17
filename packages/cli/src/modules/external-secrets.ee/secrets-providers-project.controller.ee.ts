@@ -72,6 +72,7 @@ export class SecretProvidersProjectController {
 			req.user.id,
 			// When creating a connection for a project, the project owns the connection
 			'secretsProviderConnection:owner',
+			req.user.role?.slug,
 		);
 
 		const connection = this.connectionsService.toPublicConnection(savedConnection);
@@ -142,6 +143,7 @@ export class SecretProvidersProjectController {
 			providerKey,
 			updates,
 			req.user.id,
+			req.user.role?.slug,
 		);
 
 		const connection = this.connectionsService.toPublicConnection(updated);
@@ -191,6 +193,10 @@ export class SecretProvidersProjectController {
 			user: req.user,
 		});
 
-		return await this.connectionsService.testConnection(providerKey, req.user.id);
+		return await this.connectionsService.testConnection(
+			providerKey,
+			req.user.id,
+			req.user.role?.slug,
+		);
 	}
 }

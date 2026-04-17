@@ -53,13 +53,13 @@ export function recurrenceCheck(
 	const momentTz = moment.tz(timezone);
 	if (typeInterval === 'hours') {
 		const hour = momentTz.hour();
-		if (lastExecution === undefined || hour === (intervalSize + lastExecution) % 24) {
+		if (lastExecution === undefined || (hour - lastExecution + 24) % 24 >= intervalSize) {
 			recurrenceRules[index] = hour;
 			return true;
 		}
 	} else if (typeInterval === 'days') {
 		const dayOfYear = momentTz.dayOfYear();
-		if (lastExecution === undefined || dayOfYear === (intervalSize + lastExecution) % 365) {
+		if (lastExecution === undefined || (dayOfYear - lastExecution + 365) % 365 >= intervalSize) {
 			recurrenceRules[index] = dayOfYear;
 			return true;
 		}
@@ -67,7 +67,7 @@ export function recurrenceCheck(
 		const week = momentTz.week();
 		if (
 			lastExecution === undefined || // First time executing this rule
-			week === (intervalSize + lastExecution) % 52 || // not first time, but minimum interval has passed
+			(week - lastExecution + 52) % 52 >= intervalSize || // not first time, but minimum interval has passed
 			week === lastExecution // Trigger on multiple days in the same week
 		) {
 			recurrenceRules[index] = week;
@@ -75,7 +75,7 @@ export function recurrenceCheck(
 		}
 	} else if (typeInterval === 'months') {
 		const month = momentTz.month();
-		if (lastExecution === undefined || month === (intervalSize + lastExecution) % 12) {
+		if (lastExecution === undefined || (month - lastExecution + 12) % 12 >= intervalSize) {
 			recurrenceRules[index] = month;
 			return true;
 		}

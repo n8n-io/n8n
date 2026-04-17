@@ -11,7 +11,7 @@ All Instance AI configuration is done via environment variables.
 | `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-sonnet-4-6` | LLM model in `provider/model` format. Must be set for the module to enable. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
-| `N8N_INSTANCE_AI_MAX_CONTEXT_WINDOW_TOKENS` | number | `500000` | Hard cap on context window size (tokens). 0 = use model's full context window. |
+| `N8N_INSTANCE_AI_MAX_CONTEXT_WINDOW_TOKENS` | number | `500000` | Hard cap on the context window size (in tokens). The effective window is the lesser of this value and the model's native capability. `0` = use the model's full context window. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS` | number | `100` | Maximum LLM reasoning steps for sub-agents spawned via delegate tool |
 | `N8N_INSTANCE_AI_BROWSER_MCP` | boolean | `false` | Enable Chrome DevTools MCP for browser-assisted credential setup |
@@ -29,16 +29,10 @@ All Instance AI configuration is done via environment variables.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_FILESYSTEM_PATH` | string | `''` | Restrict local filesystem access to this directory. When empty, bare-metal installs can read any path the n8n process has access to. When set, `path.resolve()` + `fs.realpath()` containment prevents directory traversal and symlink escape. |
-| `N8N_INSTANCE_AI_GATEWAY_API_KEY` | string | `''` | Static API key for the filesystem gateway. Used by the `@n8n/fs-proxy` daemon to authenticate SSE and HTTP POST requests. When empty, the dynamic pairing token flow is used instead. |
+| `N8N_INSTANCE_AI_GATEWAY_API_KEY` | string | `''` | Static API key for the filesystem gateway. Used by the `@n8n/computer-use` daemon to authenticate SSE and HTTP POST requests. When empty, the dynamic pairing token flow is used instead. |
 
-**Auto-detection** (no boolean flag needed):
-1. `N8N_INSTANCE_AI_FILESYSTEM_PATH` explicitly set → local FS (restricted to that path)
-2. Container detected (Docker, Kubernetes, systemd-nspawn) → gateway only
-3. Bare metal (default) → local FS (unrestricted)
-
-**Provider priority**: Gateway > Local > None — when both are available, gateway
-wins so the daemon's targeted project directory is preferred.
+Filesystem access requires the `@n8n/computer-use` gateway daemon. The user
+runs `npx @n8n/computer-use https://<your-n8n-instance>` on their machine to connect.
 
 See `docs/filesystem-access.md` for the full architecture, gateway protocol spec,
 and security model.
@@ -129,7 +123,6 @@ No separate storage configuration is needed.
 
 The same storage backend is used for:
 - Message history
-- Working memory state
 - Observational memory (observations and reflections)
 - Plan storage (thread-scoped)
 - Event persistence (for SSE replay)
@@ -191,18 +184,10 @@ N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
 N8N_SANDBOX_SERVICE_URL=https://sandbox.example.com
 N8N_SANDBOX_SERVICE_API_KEY=sandbox-key
 
-# With filesystem access (bare metal — zero config, auto-detected)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
-# Nothing else needed! Local filesystem is auto-detected on bare metal.
-
-# With filesystem access (restricted to a specific directory)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
-N8N_INSTANCE_AI_FILESYSTEM_PATH=/home/user/my-project
-
-# With filesystem gateway (Docker/cloud — user runs daemon on their machine)
+# With filesystem gateway (user runs daemon on their machine)
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
-# User runs: npx @n8n/fs-proxy
+# User runs: npx @n8n/computer-use
 
 # With custom OpenAI-compatible endpoint (e.g. LM Studio, Ollama)
 N8N_INSTANCE_AI_MODEL=custom/llama-3.1-70b

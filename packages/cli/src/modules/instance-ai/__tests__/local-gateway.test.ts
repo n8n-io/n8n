@@ -123,7 +123,10 @@ describe('LocalGateway', () => {
 				isError: true,
 			});
 
-			await expect(callPromise).rejects.toThrow('File too large');
+			// isError results are passed through so the tool layer can inspect them
+			const result = await callPromise;
+			expect(result.isError).toBe(true);
+			expect((result.content[0] as { type: 'text'; text: string }).text).toBe('File too large');
 		});
 
 		it('should throw when gateway is not connected', async () => {
@@ -132,7 +135,7 @@ describe('LocalGateway', () => {
 			).rejects.toThrow('not connected');
 		});
 
-		it('should timeout after 30 seconds', async () => {
+		it('should timeout after 60 seconds', async () => {
 			jest.useFakeTimers();
 
 			gateway.init(EMPTY_CAPABILITIES);
@@ -142,7 +145,7 @@ describe('LocalGateway', () => {
 				arguments: { filePath: 'slow.ts' },
 			});
 
-			jest.advanceTimersByTime(30_001);
+			jest.advanceTimersByTime(60_001);
 
 			await expect(callPromise).rejects.toThrow('timed out');
 
@@ -173,6 +176,38 @@ describe('LocalGateway', () => {
 	describe('resolveRequest', () => {
 		it('should return false for unknown requestId', () => {
 			expect(gateway.resolveRequest('unknown_id', { content: [] })).toBe(false);
+		});
+	});
+
+	describe('resolveRequest with isError results', () => {
+		const CONFIRMATION_PAYLOAD = {
+			toolGroup: 'filesystemWrite',
+			resource: 'write_file',
+			description: 'Write to file: test.ts',
+			options: { allowOnce: 'token-allow-once', denyOnce: 'token-deny-once' },
+		};
+		const rawErrorText = `GATEWAY_CONFIRMATION_REQUIRED::${JSON.stringify(CONFIRMATION_PAYLOAD)}`;
+
+		it('should resolve with isError result so the tool layer can inspect it', async () => {
+			gateway.init(EMPTY_CAPABILITIES);
+
+			const requestEvents: LocalGatewayEvent[] = [];
+			gateway.onRequest((e) => requestEvents.push(e));
+
+			const callPromise = gateway.callTool({
+				name: 'write_file',
+				arguments: { filePath: 'test.ts' },
+			});
+
+			const errorResult = {
+				content: [{ type: 'text' as const, text: rawErrorText }],
+				isError: true as const,
+			};
+			gateway.resolveRequest(requestEvents[0].payload.requestId, errorResult);
+
+			const result = await callPromise;
+			expect(result.isError).toBe(true);
+			expect((result.content[0] as { type: 'text'; text: string }).text).toBe(rawErrorText);
 		});
 	});
 

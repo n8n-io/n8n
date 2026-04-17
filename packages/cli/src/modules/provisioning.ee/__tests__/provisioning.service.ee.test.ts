@@ -7,6 +7,7 @@ import {
 	type UserRepository,
 	type SettingsRepository,
 	type RoleRepository,
+	type RoleMappingRuleRepository,
 	type Role,
 	type Project,
 	type ProjectRepository,
@@ -21,6 +22,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
 import { type EventService } from '@/events/event.service';
 import { type UserService } from '@/services/user.service';
+import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
@@ -35,6 +37,8 @@ const logger = mock<Logger>();
 const publisher = mock<Publisher>();
 const roleRepository = mock<RoleRepository>();
 const instanceSettings = mock<InstanceSettings>();
+const roleMappingRuleRepository = mock<RoleMappingRuleRepository>();
+const roleResolverService = mock<RoleResolverService>();
 
 const provisioningService = new ProvisioningService(
 	eventService,
@@ -48,6 +52,8 @@ const provisioningService = new ProvisioningService(
 	logger,
 	publisher,
 	instanceSettings,
+	roleMappingRuleRepository,
+	roleResolverService,
 );
 
 describe('ProvisioningService', () => {
@@ -65,6 +71,7 @@ describe('ProvisioningService', () => {
 		scopesName: 'n8n_test_scope',
 		scopesInstanceRoleClaimName: 'n8n_test_instance_role',
 		scopesProjectsRolesClaimName: 'n8n_test_projects_roles',
+		scopesUseExpressionMapping: false,
 	};
 
 	describe('init', () => {
@@ -151,6 +158,7 @@ describe('ProvisioningService', () => {
 				scopesName: 'n8n_test_scope_overridden',
 				scopesInstanceRoleClaimName: 'n8n_test_instance_role_overridden',
 				scopesProjectsRolesClaimName: 'n8n_test_projects_roles_overridden',
+				scopesUseExpressionMapping: false,
 			};
 			settingsRepository.findByKey.mockResolvedValue({
 				key: PROVISIONING_PREFERENCES_DB_KEY,
@@ -543,6 +551,59 @@ describe('ProvisioningService', () => {
 		});
 	});
 
+	describe('applyExpressionMappedProjectRoles', () => {
+		it('should revoke all existing project access when projectRoleMap is empty', async () => {
+			const userId = 'user-id-123';
+			const existingProject = mock<Project>({ id: 'project-1' });
+			projectRepository.find.mockResolvedValueOnce([existingProject]);
+
+			await provisioningService['applyExpressionMappedProjectRoles'](userId, new Map());
+
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'project-1',
+				userId,
+			});
+			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
+				projectsAdded: 0,
+				projectsRemoved: 1,
+				userId,
+			});
+		});
+
+		it('should revoke existing access when all mapped projects are invalid', async () => {
+			const userId = 'user-id-123';
+			const existingProject = mock<Project>({ id: 'project-existing' });
+			// First find: currentlyAccessibleProjects
+			projectRepository.find.mockResolvedValueOnce([existingProject]);
+			// Second find: existingProjects lookup (none found — all invalid)
+			projectRepository.find.mockResolvedValueOnce([]);
+			roleRepository.find.mockResolvedValue([]);
+
+			await provisioningService['applyExpressionMappedProjectRoles'](
+				userId,
+				new Map([['nonExistentProject', 'project:viewer']]),
+			);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'project-existing',
+				userId,
+			});
+			expect(projectService.addUser).not.toHaveBeenCalled();
+		});
+
+		it('should do nothing when projectRoleMap is empty and user has no existing access', async () => {
+			const userId = 'user-id-123';
+			projectRepository.find.mockResolvedValueOnce([]);
+
+			await provisioningService['applyExpressionMappedProjectRoles'](userId, new Map());
+
+			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('handleReloadSsoProvisioningConfiguration', () => {
 		it('should reload the provisioning config', async () => {
 			const originStateLoadConfig = provisioningService.loadConfig;
@@ -614,6 +675,132 @@ describe('ProvisioningService', () => {
 			expect(isProvisioningEnabled).toBe(false);
 
 			provisioningService.getConfig = originStateGetConfig;
+		});
+	});
+
+	describe('provisionExpressionMappedRolesForUser', () => {
+		const user = mock<User>({
+			id: 'user-1',
+			email: 'test@example.com',
+			role: mock<Role>({ slug: 'global:member', roleType: 'global' }),
+		});
+
+		beforeEach(() => {
+			provisioningService['isExpressionMappingEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['buildRoleMappingConfig'] = jest.fn().mockResolvedValue({
+				instanceRoleRules: [],
+				projectRoleRules: [],
+				fallbackInstanceRole: 'global:member',
+			});
+			// Mock getPreviousProjectRoles — no existing project access
+			projectRepository.find.mockResolvedValue([]);
+		});
+
+		it('should emit expression-mapping-roles-resolved with metadata', async () => {
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:admin',
+					matchedRuleId: 'rule-1',
+					expression: '{{ $claims.role === "admin" }}',
+					isFallback: false,
+				},
+				projectRoles: new Map([
+					[
+						'proj-1',
+						{
+							projectId: 'proj-1',
+							role: 'project:editor',
+							matchedRuleId: 'rule-2',
+							expression: '{{ true }}',
+						},
+					],
+				]),
+			});
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
+			);
+
+			const context = { $claims: { role: 'admin' }, $provider: 'oidc' as const };
+
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(eventService.emit).toHaveBeenCalledWith('expression-mapping-roles-resolved', {
+				userId: 'user-1',
+				userEmail: 'test@example.com',
+				provider: 'oidc',
+				instanceRole: {
+					role: 'global:admin',
+					previousRole: 'global:member',
+					changed: true,
+					matchedRuleId: 'rule-1',
+					expression: '{{ $claims.role === "admin" }}',
+					isFallback: false,
+				},
+				projectRoles: [
+					{
+						projectId: 'proj-1',
+						role: 'project:editor',
+						previousRole: null,
+						changed: true,
+						matchedRuleId: 'rule-2',
+						expression: '{{ true }}',
+					},
+				],
+				removedProjectIds: [],
+			});
+		});
+
+		it('should not emit when expression mapping is disabled', async () => {
+			provisioningService['isExpressionMappingEnabled'] = jest.fn().mockResolvedValue(false);
+
+			const context = { $claims: {}, $provider: 'saml' as const };
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'expression-mapping-roles-resolved',
+				expect.anything(),
+			);
+		});
+
+		it('should detect removed projects and role changes', async () => {
+			const existingProject = mock<Project>({
+				id: 'old-proj-1',
+				projectRelations: [
+					mock<ProjectRelation>({
+						userId: 'user-1',
+						role: mock<Role>({ slug: 'project:viewer' }),
+					}),
+				],
+			});
+			// First call is getPreviousProjectRoles, second is from applyExpressionMappedProjectRoles
+			projectRepository.find
+				.mockResolvedValueOnce([existingProject])
+				.mockResolvedValueOnce([existingProject]);
+
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:member',
+					matchedRuleId: null,
+					expression: null,
+					isFallback: true,
+				},
+				projectRoles: new Map(),
+			});
+
+			const context = { $claims: {}, $provider: 'oidc' as const };
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'expression-mapping-roles-resolved',
+				expect.objectContaining({
+					removedProjectIds: ['old-proj-1'],
+					instanceRole: expect.objectContaining({
+						isFallback: true,
+						changed: false,
+						previousRole: 'global:member',
+					}),
+				}),
+			);
 		});
 	});
 });

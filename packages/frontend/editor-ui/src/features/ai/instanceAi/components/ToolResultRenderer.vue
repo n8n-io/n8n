@@ -10,20 +10,30 @@ import ToolResultText from './ToolResultText.vue';
 const props = defineProps<{
 	result: unknown;
 	toolName: string;
+	toolArgs?: Record<string, unknown>;
 }>();
 
 type ResultType = 'content' | 'code' | 'table' | 'json';
 
-const CODE_TOOLS = new Set(['get-workflow-as-code', 'get-node-type-definition']);
-const TABLE_TOOLS = new Set([
-	'query-data-table-rows',
-	'list-workflows',
-	'list-executions',
-	'list-credentials',
-	'search-nodes',
-	'list-nodes',
-	'list-data-tables',
-]);
+function isAction(family: string, action: string): boolean {
+	return props.toolName === family && props.toolArgs?.action === action;
+}
+
+function isCodeTool(): boolean {
+	return isAction('workflows', 'get-as-code') || isAction('nodes', 'type-definition');
+}
+
+function isTableTool(): boolean {
+	return (
+		isAction('data-tables', 'query') ||
+		isAction('workflows', 'list') ||
+		isAction('executions', 'list') ||
+		isAction('credentials', 'list') ||
+		isAction('nodes', 'search') ||
+		isAction('nodes', 'list') ||
+		isAction('data-tables', 'list')
+	);
+}
 
 function extractMcpContent(result: unknown): McpToolCallResult['content'] | null {
 	if (Array.isArray(result)) return result;
@@ -38,21 +48,21 @@ function extractMcpContent(result: unknown): McpToolCallResult['content'] | null
 	return null;
 }
 
-function detectType(result: unknown, toolName: string): ResultType {
+function detectType(result: unknown): ResultType {
 	if (extractMcpContent(result) !== null) return 'content';
-	if (CODE_TOOLS.has(toolName)) return 'code';
-	if (TABLE_TOOLS.has(toolName) && result && typeof result === 'object') return 'table';
+	if (isCodeTool()) return 'code';
+	if (isTableTool() && result && typeof result === 'object') return 'table';
 	return 'json';
 }
 
-function extractCode(result: unknown, toolName: string): string | null {
+function extractCode(result: unknown): string | null {
 	if (!result || typeof result !== 'object') return null;
 	const obj = result as Record<string, unknown>;
 
-	if (toolName === 'get-workflow-as-code' && typeof obj.code === 'string') {
+	if (isAction('workflows', 'get-as-code') && typeof obj.code === 'string') {
 		return obj.code;
 	}
-	if (toolName === 'get-node-type-definition' && Array.isArray(obj.definitions)) {
+	if (isAction('nodes', 'type-definition') && Array.isArray(obj.definitions)) {
 		const defs = obj.definitions as Array<Record<string, unknown>>;
 		return defs
 			.filter((d) => typeof d.content === 'string')
@@ -82,9 +92,9 @@ function extractTableRows(result: unknown): Array<Record<string, unknown>> | nul
 	return null;
 }
 
-const resultType = computed(() => detectType(props.result, props.toolName));
+const resultType = computed(() => detectType(props.result));
 const contentItems = computed(() => extractMcpContent(props.result));
-const codeContent = computed(() => extractCode(props.result, props.toolName));
+const codeContent = computed(() => extractCode(props.result));
 const tableRows = computed(() => extractTableRows(props.result));
 </script>
 

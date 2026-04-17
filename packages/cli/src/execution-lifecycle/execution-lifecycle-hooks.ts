@@ -76,6 +76,7 @@ class ModulesHooksRegistry {
 							workflow: this.workflowData,
 							nodeName,
 							taskData,
+							executionId: this.executionId,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -90,6 +91,7 @@ class ModulesHooksRegistry {
 							nodeName,
 							taskData,
 							executionData,
+							executionId: this.executionId,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -135,11 +137,22 @@ type HooksSetupParameters = {
 	parentExecution?: RelatedExecution;
 };
 
-function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: string) {
+function hookFunctionsWorkflowEvents(
+	hooks: ExecutionLifecycleHooks,
+	userId?: string,
+	projectId?: string,
+	projectName?: string,
+) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('workflowExecuteBefore', function () {
 		const { executionId, workflowData, mode } = this;
-		eventService.emit('workflow-pre-execute', { executionId, data: workflowData, mode });
+		eventService.emit('workflow-pre-execute', {
+			executionId,
+			data: workflowData,
+			mode,
+			projectId,
+			projectName,
+		});
 	});
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
 		if (runData.status === 'waiting') return;
@@ -154,7 +167,14 @@ function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: st
 			}
 		}
 
-		eventService.emit('workflow-post-execute', { executionId, runData, workflow, userId });
+		eventService.emit('workflow-post-execute', {
+			executionId,
+			runData,
+			workflow,
+			userId,
+			projectId,
+			projectName,
+		});
 	});
 }
 
@@ -661,10 +681,12 @@ export function getLifecycleHooksForSubExecutions(
 	workflowData: IWorkflowBase,
 	userId?: string,
 	parentExecution?: RelatedExecution,
+	projectId?: string,
+	projectName?: string,
 ): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
-	hookFunctionsWorkflowEvents(hooks, userId);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, { saveSettings, parentExecution });
@@ -713,7 +735,7 @@ export function getLifecycleHooksForScalingMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
-	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
+	const { pushRef, retryOf, executionMode, workflowData, userId, projectId, projectName } = data;
 	const hooks = new ExecutionLifecycleHooks(
 		executionMode,
 		executionId,
@@ -725,7 +747,7 @@ export function getLifecycleHooksForScalingMain(
 	const executionRepository = Container.get(ExecutionRepository);
 	const executionPersistence = Container.get(ExecutionPersistence);
 
-	hookFunctionsWorkflowEvents(hooks, userId);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsExternalHooks(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
@@ -788,7 +810,7 @@ export function getLifecycleHooksForRegularMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
-	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
+	const { pushRef, retryOf, executionMode, workflowData, userId, projectId, projectName } = data;
 	const hooks = new ExecutionLifecycleHooks(
 		executionMode,
 		executionId,
@@ -797,7 +819,7 @@ export function getLifecycleHooksForRegularMain(
 	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
-	hookFunctionsWorkflowEvents(hooks, userId);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);

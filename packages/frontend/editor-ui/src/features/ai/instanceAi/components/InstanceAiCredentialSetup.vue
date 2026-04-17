@@ -9,8 +9,11 @@ import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiStore } from '../instanceAi.store';
+import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const props = defineProps<{
 	requestId: string;
@@ -21,6 +24,8 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
@@ -133,6 +138,7 @@ function wrappedGoToPrev() {
 watch(
 	() => currentRequest.value && isStepComplete(currentRequest.value.credentialType),
 	(complete, prevComplete) => {
+		// Auto-advance only when not manually navigating
 		if (!complete || prevComplete || userNavigated.value) {
 			userNavigated.value = false;
 			return;
@@ -239,11 +245,38 @@ function onCredentialSelected(
 	}
 }
 
+function trackCredentialInput() {
+	const tc = store.findToolCallByRequestId(props.requestId);
+	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
+	const skipped: Array<{ label: string; options: string[] }> = [];
+	for (const req of props.credentialRequests) {
+		const selected = selections.value[req.credentialType];
+		if (selected) {
+			provided.push({ label: req.credentialType, options: [], option_chosen: selected });
+		} else {
+			skipped.push({ label: req.credentialType, options: [] });
+		}
+	}
+	telemetry.track('User finished providing input', {
+		thread_id: store.currentThreadId,
+		input_thread_id: inputThreadId,
+		instance_id: rootStore.instanceId,
+		type: 'credential-setup',
+		provided_inputs: provided,
+		skipped_inputs: skipped,
+		num_tasks: props.credentialRequests.length,
+	});
+}
+
 async function handleContinue() {
 	const credentials: Record<string, string> = {};
 	for (const [type, id] of Object.entries(selections.value)) {
 		if (id) credentials[type] = id;
 	}
+
+	trackCredentialInput();
+
 	isSubmitted.value = true;
 
 	const success = await store.confirmAction(props.requestId, true, undefined, credentials);
@@ -254,22 +287,26 @@ async function handleContinue() {
 	}
 }
 
-function handleLater() {
+async function handleLater() {
+	trackCredentialInput();
+
 	isSubmitted.value = true;
 	isDeferred.value = true;
-	store.resolveConfirmation(props.requestId, 'deferred');
-	void store.confirmAction(props.requestId, false);
+
+	const success = await store.confirmAction(props.requestId, false);
+	if (success) {
+		store.resolveConfirmation(props.requestId, 'deferred');
+	} else {
+		isSubmitted.value = false;
+		isDeferred.value = false;
+	}
 }
 </script>
 
 <template>
-	<div :class="$style.root">
+	<div>
 		<template v-if="!isSubmitted">
-			<div
-				v-if="currentRequest"
-				data-test-id="instance-ai-credential-card"
-				:class="[$style.card, { [$style.completed]: allSelected }]"
-			>
+			<div v-if="currentRequest" data-test-id="instance-ai-credential-card" :class="$style.card">
 				<!-- Header -->
 				<header :class="$style.header">
 					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
@@ -316,12 +353,12 @@ function handleLater() {
 				</div>
 
 				<!-- Footer -->
-				<footer :class="$style.footer">
+				<ConfirmationFooter layout="row-between">
 					<div :class="$style.footerNav">
 						<N8nButton
 							v-if="showArrows"
-							variant="outline"
-							size="xsmall"
+							variant="ghost"
+							size="medium"
 							icon-only
 							:disabled="isPrevDisabled"
 							data-test-id="instance-ai-credential-prev"
@@ -335,8 +372,8 @@ function handleLater() {
 						</N8nText>
 						<N8nButton
 							v-if="showArrows"
-							variant="outline"
-							size="xsmall"
+							variant="ghost"
+							size="medium"
 							icon-only
 							:disabled="isNextDisabled"
 							data-test-id="instance-ai-credential-next"
@@ -350,7 +387,7 @@ function handleLater() {
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="
 								i18n.baseText(
@@ -363,7 +400,7 @@ function handleLater() {
 						/>
 
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							:disabled="!anySelected"
@@ -371,7 +408,7 @@ function handleLater() {
 							@click="handleContinue"
 						/>
 					</div>
-				</footer>
+				</ConfirmationFooter>
 			</div>
 		</template>
 
@@ -395,23 +432,15 @@ function handleLater() {
 </template>
 
 <style lang="scss" module>
-.root {
-	// padding: var(--spacing--xs);
-}
-
 .card {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0;
-	// background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
-
-	&.completed {
-		border-color: var(--color--success);
-	}
+	background-color: var(--color--background--light-3);
 }
 
 .header {
@@ -446,14 +475,6 @@ function handleLater() {
 	:global(.node-credentials) {
 		margin-top: 0;
 	}
-}
-
-.footer {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .footerNav {

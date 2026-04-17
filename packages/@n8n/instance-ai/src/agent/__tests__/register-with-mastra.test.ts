@@ -1,4 +1,7 @@
-const mockMastra = jest.fn();
+export {};
+
+const mockMastraInstance = {};
+const mockMastra = jest.fn().mockReturnValue(mockMastraInstance);
 
 jest.mock('@mastra/core/mastra', () => ({
 	Mastra: mockMastra,
@@ -13,18 +16,17 @@ describe('registerWithMastra', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should pass agent and storage to Mastra constructor', () => {
-		const mockAgent = { id: 'my-agent' } as never;
+	it('should create storage-only Mastra without agents', () => {
+		const mockAgent = { id: 'my-agent', __registerMastra: jest.fn() } as never;
 		const mockStorage = { id: 'my-storage' } as never;
 
 		registerWithMastra('my-agent', mockAgent, mockStorage);
 
-		expect(mockMastra).toHaveBeenCalledWith(
-			expect.objectContaining({
-				agents: { 'my-agent': mockAgent },
-				storage: mockStorage,
-			}),
-		);
+		expect(mockMastra).toHaveBeenCalledWith(expect.objectContaining({ storage: mockStorage }));
+		// Must NOT pass agents to the constructor — avoids pinning per-request
+		// agent closures in Mastra's #agents dict.
+		const constructorArg = (mockMastra.mock.calls[0] as unknown[])[0] as Record<string, unknown>;
+		expect(constructorArg).not.toHaveProperty('agents');
 	});
 
 	it('should reuse cached Mastra for same storage key', () => {
@@ -36,6 +38,8 @@ describe('registerWithMastra', () => {
 		registerWithMastra('agent-2', mockAgent2, mockStorage);
 
 		expect(mockMastra).toHaveBeenCalledTimes(1);
-		expect((mockAgent2 as { __registerMastra: jest.Mock }).__registerMastra).toHaveBeenCalled();
+		expect((mockAgent2 as { __registerMastra: jest.Mock }).__registerMastra).toHaveBeenCalledWith(
+			mockMastraInstance,
+		);
 	});
 });

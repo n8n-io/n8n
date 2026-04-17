@@ -48,23 +48,34 @@ function getAnswers(): DisplayAnswer[] {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="instance-ai-answered-questions">
-		<div v-for="(item, idx) in getAnswers()" :key="idx" :class="$style.answerItem">
-			<N8nText :bold="true" :class="$style.question">
-				{{ item.question }}
-			</N8nText>
-			<N8nText v-if="item.skipped" :class="$style.skipped">Skipped</N8nText>
-			<N8nText v-else>{{ item.answer }}</N8nText>
+	<div :class="$style.wrapper">
+		<div :class="$style.userBubble" data-test-id="instance-ai-answered-questions">
+			<div v-for="(item, idx) in getAnswers()" :key="idx" :class="$style.answerItem">
+				<N8nText :bold="true" size="large" :class="$style.question">
+					{{ item.question }}
+				</N8nText>
+				<N8nText v-if="item.skipped" :class="$style.skipped" size="large">Skipped</N8nText>
+				<N8nText v-else size="large">{{ item.answer }}</N8nText>
+			</div>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.container {
-	background-color: var(--color--background);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--sm);
-	margin: var(--spacing--2xs) 0;
+.wrapper {
+	/* Break out of the 90%-wide .message container to align with user bubbles */
+	width: calc(100% / 0.9);
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: var(--spacing--xs);
+}
+
+.userBubble {
+	background: var(--color--background);
+	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
+	border-radius: var(--radius--xl);
+	white-space: pre-wrap;
+	word-break: break-word;
 }
 
 .answerItem {

@@ -6,6 +6,8 @@ import type {
 	EvaluateOptions,
 	RuntimeBridge,
 } from '../types';
+import { DEFAULT_BRIDGE_CONFIG } from '../types/bridge';
+import { IsolateError } from '@n8n/errors';
 import { IsolatePool, PoolDisposedError, PoolExhaustedError } from '../pool/isolate-pool';
 import { LruCache } from './lru-cache';
 
@@ -32,15 +34,21 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		this.codeCache = new LruCache<string, string>(config.maxCodeCacheSize, () => {
 			this.config.observability?.metrics.counter('expression.code_cache.eviction', 1);
 		});
+		const logger = config.logger ?? DEFAULT_BRIDGE_CONFIG.logger;
 		this.createBridge = async () => {
 			const bridge = config.createBridge();
 			await bridge.initialize();
 			return bridge;
 		};
-		this.pool = new IsolatePool(this.createBridge, config.poolSize ?? 1, (error) => {
-			console.error('[IsolatePool] Failed to replenish bridge:', error);
-			config.observability?.metrics.counter('expression.pool.replenish_failed', 1);
-		});
+		this.pool = new IsolatePool(
+			this.createBridge,
+			config.poolSize ?? 1,
+			(error) => {
+				logger.error('[IsolatePool] Failed to replenish bridge', { error });
+				config.observability?.metrics.counter('expression.pool.replenish_failed', 1);
+			},
+			logger,
+		);
 	}
 
 	async initialize(): Promise<void> {
@@ -67,7 +75,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		caller: object,
 		options?: EvaluateOptions,
 	): unknown {
-		if (this.disposed) throw new Error('Evaluator disposed');
+		if (this.disposed) throw new IsolateError('Evaluator disposed');
 
 		const bridge = this.getBridge(caller);
 
@@ -95,13 +103,13 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	private getBridge(caller: object): RuntimeBridge {
 		const bridge = this.bridgesByCaller.get(caller);
 		if (!bridge) {
-			throw new Error('No bridge acquired for this context. Call acquire() first.');
+			throw new IsolateError('No bridge acquired for this context. Call acquire() first.');
 		}
 
 		// If the isolate died mid-execution (e.g. OOM), all remaining expressions
 		// in this execution are expected to fail. Recovery is per-execution, not per-expression.
 		if (bridge.isDisposed()) {
-			throw new Error('Isolate for this caller is no longer available');
+			throw new IsolateError('Isolate for this caller is no longer available');
 		}
 
 		return bridge;
