@@ -150,19 +150,27 @@ function hashContent(content: string | null): string {
 
 /**
  * When the builder's stream errors mid-run, recover a successful-submit outcome
- * from `submitAttempts` so the orchestrator doesn't redo a build that already
- * produced a workflow. Returns undefined when nothing was successfully submitted
- * yet — the caller should rethrow in that case.
+ * from the submit-attempt history so the orchestrator doesn't redo a build that
+ * already produced a workflow. Scans in reverse so a later failed submit for
+ * the main path cannot mask an earlier success. Returns undefined when nothing
+ * was successfully submitted yet — the caller should rethrow in that case.
  */
 export function resultFromPostStreamError(input: {
 	error: unknown;
-	submitAttempts: Map<string, SubmitWorkflowAttempt>;
+	submitAttempts: SubmitWorkflowAttempt[];
 	mainWorkflowPath: string;
 	workItemId: string;
 	taskId: string;
 }): BackgroundTaskResult | undefined {
-	const attempt = input.submitAttempts.get(input.mainWorkflowPath);
-	if (!attempt?.success) return undefined;
+	let attempt: SubmitWorkflowAttempt | undefined;
+	for (let i = input.submitAttempts.length - 1; i >= 0; i--) {
+		const a = input.submitAttempts[i];
+		if (a.filePath === input.mainWorkflowPath && a.success) {
+			attempt = a;
+			break;
+		}
+	}
+	if (!attempt) return undefined;
 
 	const errorText = input.error instanceof Error ? input.error.message : String(input.error);
 	const text = `Workflow ${attempt.workflowId} submitted successfully. A later step failed: ${errorText}`;
@@ -325,6 +333,9 @@ export async function startBuildWorkflowAgentTask(
 			await withTraceContextActor(traceContext, async () => {
 				let builderWs: BuilderWorkspace | undefined;
 				const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
+				// Append-only history so a later failed submit for the main path
+				// cannot mask an earlier successful submit during post-error recovery.
+				const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
 				try {
 					if (useSandbox) {
 						builderWs = await factory.create(subAgentId, domainContext);
@@ -358,6 +369,7 @@ export async function startBuildWorkflowAgentTask(
 							credMap,
 							async (attempt) => {
 								submitAttempts.set(attempt.filePath, attempt);
+								submitAttemptHistory.push(attempt);
 								if (attempt.filePath !== mainWorkflowPath || !context.workflowTaskService) {
 									return;
 								}
@@ -444,7 +456,7 @@ export async function startBuildWorkflowAgentTask(
 						} catch (error) {
 							const recovered = resultFromPostStreamError({
 								error,
-								submitAttempts,
+								submitAttempts: submitAttemptHistory,
 								mainWorkflowPath,
 								workItemId,
 								taskId,

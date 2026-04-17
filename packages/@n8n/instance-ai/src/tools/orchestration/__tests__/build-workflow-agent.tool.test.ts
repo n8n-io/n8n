@@ -16,13 +16,14 @@ const MAIN_PATH = '/home/daytona/workspace/src/workflow.ts';
 
 describe('resultFromPostStreamError', () => {
 	it('preserves the submitted workflow when the stream errors after a successful submit', () => {
-		const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
-		submitAttempts.set(MAIN_PATH, {
-			filePath: MAIN_PATH,
-			sourceHash: 'abc',
-			success: true,
-			workflowId: 'WF_123',
-		});
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'abc',
+				success: true,
+				workflowId: 'WF_123',
+			},
+		];
 
 		const result = resultFromPostStreamError({
 			error: new Error('Unauthorized'),
@@ -43,11 +44,9 @@ describe('resultFromPostStreamError', () => {
 	});
 
 	it('returns undefined when no submit happened before the error', () => {
-		const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
-
 		const result = resultFromPostStreamError({
 			error: new Error('Unauthorized'),
-			submitAttempts,
+			submitAttempts: [],
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
 			taskId: 'task_test',
@@ -56,14 +55,15 @@ describe('resultFromPostStreamError', () => {
 		expect(result).toBeUndefined();
 	});
 
-	it('returns undefined when the submit attempt failed', () => {
-		const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
-		submitAttempts.set(MAIN_PATH, {
-			filePath: MAIN_PATH,
-			sourceHash: 'abc',
-			success: false,
-			errors: ['validation failed'],
-		});
+	it('returns undefined when the only submit attempt failed', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'abc',
+				success: false,
+				errors: ['validation failed'],
+			},
+		];
 
 		const result = resultFromPostStreamError({
 			error: new Error('Unauthorized'),
@@ -77,13 +77,14 @@ describe('resultFromPostStreamError', () => {
 	});
 
 	it('returns undefined when only sub-workflows were submitted (not the main path)', () => {
-		const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
-		submitAttempts.set('/home/daytona/workspace/src/subworkflow.ts', {
-			filePath: '/home/daytona/workspace/src/subworkflow.ts',
-			sourceHash: 'abc',
-			success: true,
-			workflowId: 'SUB_123',
-		});
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: '/home/daytona/workspace/src/subworkflow.ts',
+				sourceHash: 'abc',
+				success: true,
+				workflowId: 'SUB_123',
+			},
+		];
 
 		const result = resultFromPostStreamError({
 			error: new Error('Unauthorized'),
@@ -94,5 +95,36 @@ describe('resultFromPostStreamError', () => {
 		});
 
 		expect(result).toBeUndefined();
+	});
+
+	it('preserves an earlier successful main-path submit when a later submit failed', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_123',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['validation failed'],
+			},
+		];
+
+		const result = resultFromPostStreamError({
+			error: new Error('Unauthorized'),
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toBeDefined();
+		expect(result!.outcome).toMatchObject({
+			workflowId: 'WF_123',
+			submitted: true,
+		});
 	});
 });
