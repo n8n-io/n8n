@@ -75,7 +75,8 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 
-const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
+const createEmptyWorkflow = (): IWorkflowDb => ({
+	id: '',
 	name: '',
 	description: '',
 	active: false,
@@ -90,11 +91,6 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	pinData: {},
 	versionId: '',
 	usedCredentials: [],
-};
-
-const createEmptyWorkflow = (): IWorkflowDb => ({
-	id: '',
-	...defaults,
 });
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
@@ -1403,7 +1399,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		lastSuccessfulExecution,
 		getWebhookUrl,
 		canViewWorkflows,
-		defaults,
 		// This is exposed to ease the refactoring to the injected workflowState composable
 		// Please do not use outside this context
 		private: {
