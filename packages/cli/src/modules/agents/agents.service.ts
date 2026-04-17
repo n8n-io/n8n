@@ -117,11 +117,14 @@ export class AgentsService {
 	) {}
 
 	async create(projectId: string, name: string): Promise<Agent> {
+		// New agents start with no instructions so the home screen routes the
+		// first user message to the builder (/build) instead of to the chat
+		// endpoint. The builder fills in instructions and credentials.
 		const defaultConfig: AgentJsonConfig = {
 			name,
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: '',
-			instructions: 'You are a helpful assistant.',
+			instructions: '',
 		};
 
 		const agent = this.agentRepository.create({

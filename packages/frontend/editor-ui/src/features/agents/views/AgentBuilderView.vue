@@ -13,9 +13,10 @@ import { MODAL_CONFIRM, MODAL_CANCEL, DEBOUNCE_TIME, getDebounceTime } from '@/a
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
-import { AGENTS_LIST_VIEW } from '../constants';
+import { PROJECT_AGENTS } from '../constants';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { agentsEventBus } from '../agents.eventBus';
+import AgentBuilderProgress from '../components/AgentBuilderProgress.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentHomeContent from '../components/AgentHomeContent.vue';
 import AgentSettingsSidebar from '../components/AgentSettingsSidebar.vue';
@@ -35,7 +36,8 @@ const projectId = computed(
 const agentId = computed(() => route.params.agentId as string);
 
 // UI state
-const chatActive = ref(false);
+type Mode = 'home' | 'building' | 'chat';
+const mode = ref<Mode>('home');
 const settingsVisible = ref(true);
 const isBuilding = ref(false);
 const agentName = ref('');
@@ -44,7 +46,7 @@ const agentIcon = ref<IconOrEmoji>({ type: 'icon', value: 'robot' });
 const agent = ref<AgentResource | null>(null);
 const updatedAt = ref<string>('');
 const initialPrompt = ref<string | undefined>(undefined);
-const chatEndpoint = ref<'build' | 'chat'>('build');
+const buildPrompt = ref<string>('');
 const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle');
 
 // Config
@@ -104,24 +106,30 @@ async function updateDescription(description: string) {
 }
 
 function startChat(msg: string) {
-	// Decide at send-time whether this is a build session or a chat session
-	// with the already-built agent.
-	chatEndpoint.value = isBuilt.value ? 'chat' : 'build';
-	initialPrompt.value = msg;
-	chatActive.value = true;
-	if (chatEndpoint.value === 'build') {
-		settingsVisible.value = true;
+	if (isBuilt.value) {
+		// Agent already built — go straight into the chat experience.
+		initialPrompt.value = msg;
+		mode.value = 'chat';
+		telemetry.track('User started agent chat', { agent_id: agentId.value });
+		return;
 	}
-	telemetry.track(
-		chatEndpoint.value === 'build' ? 'User started agent build' : 'User started agent chat',
-		{ agent_id: agentId.value },
-	);
+	// Fresh agent — run the builder with a dedicated progress UI, then
+	// transition into chat mode once the build finishes.
+	buildPrompt.value = msg;
+	initialPrompt.value = undefined;
+	mode.value = 'building';
+	settingsVisible.value = true;
+	telemetry.track('User started agent build', { agent_id: agentId.value });
 }
 
-function onChatStreamingChange(streaming: boolean) {
-	// Only treat streams as "building" when routed to the builder endpoint —
-	// that's what the settings sidebar reacts to.
-	isBuilding.value = chatEndpoint.value === 'build' && streaming;
+function onBuildStreamingChange(streaming: boolean) {
+	isBuilding.value = streaming;
+}
+
+function onBuildDone() {
+	// Build stream finished. Let the fade-out animation play, then drop the
+	// user straight into the chat experience with the newly built agent.
+	mode.value = 'chat';
 }
 
 async function saveConfig(): Promise<void> {
@@ -187,9 +195,17 @@ async function onHeaderAction(action: string) {
 			{ confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
 		);
 		if (confirmed !== MODAL_CONFIRM) return;
-		await deleteAgent(rootStore.restApiContext, projectId.value, agentId.value);
-		agent.value = null; // prevent unpublished-changes guard from firing after delete
-		void router.push({ name: AGENTS_LIST_VIEW, params: { projectId: projectId.value } });
+		// Cancel any pending autosave so it doesn't fire against the now-deleted
+		// agent mid-navigation.
+		await settleAutosave();
+		const capturedProjectId = projectId.value;
+		await deleteAgent(rootStore.restApiContext, capturedProjectId, agentId.value);
+		// Clear local agent state so `hasUnpublishedChanges` is false and the
+		// route-leave guard lets the navigation through.
+		agent.value = null;
+		localConfig.value = null;
+		agentsEventBus.emit('agentUpdated');
+		await router.push({ name: PROJECT_AGENTS, params: { projectId: capturedProjectId } });
 	}
 }
 
@@ -246,10 +262,11 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 
 async function initialize() {
 	agent.value = null;
-	chatActive.value = false;
+	mode.value = 'home';
 	isBuilding.value = false;
 	agentIcon.value = { type: 'icon', value: 'robot' };
 	initialPrompt.value = undefined;
+	buildPrompt.value = '';
 	localConfig.value = null;
 	saveStatus.value = 'idle';
 
@@ -279,10 +296,10 @@ watch(agentId, initialize, { immediate: true });
 				</div>
 				<div :class="$style.mainHeaderRight">
 					<button
-						v-if="chatActive"
+						v-if="mode === 'chat'"
 						:class="$style.toggleBtn"
 						data-testid="new-chat"
-						@click="chatActive = false"
+						@click="mode = 'home'"
 					>
 						<N8nIcon icon="message-circle-plus" :size="16" />
 					</button>
@@ -302,29 +319,42 @@ watch(agentId, initialize, { immediate: true });
 				</div>
 			</div>
 			<div :class="$style.mainBody">
-				<AgentHomeContent
-					v-if="!chatActive"
-					:agent-name="agentName"
-					:agent-description="agentDescription"
-					:agent-icon="agentIcon"
-					:project-id="projectId"
-					:agent-id="agentId"
-					:show-recent="isBuilt"
-					@send-message="startChat"
-					@update:name="updateName"
-					@update:description="updateDescription"
-					@update:icon="agentIcon = $event"
-				/>
-				<AgentChatPanel
-					v-else
-					:project-id="projectId"
-					:agent-id="agentId"
-					mode="inline"
-					:endpoint="chatEndpoint"
-					:initial-message="initialPrompt"
-					@config-updated="onConfigUpdated"
-					@update:streaming="onChatStreamingChange"
-				/>
+				<Transition name="agent-builder-mode" mode="out-in">
+					<AgentHomeContent
+						v-if="mode === 'home'"
+						key="home"
+						:agent-name="agentName"
+						:agent-description="agentDescription"
+						:agent-icon="agentIcon"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:show-recent="isBuilt"
+						@send-message="startChat"
+						@update:name="updateName"
+						@update:description="updateDescription"
+						@update:icon="agentIcon = $event"
+					/>
+					<AgentBuilderProgress
+						v-else-if="mode === 'building'"
+						key="building"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:initial-message="buildPrompt"
+						@config-updated="onConfigUpdated"
+						@update:streaming="onBuildStreamingChange"
+						@done="onBuildDone"
+					/>
+					<AgentChatPanel
+						v-else
+						key="chat"
+						:project-id="projectId"
+						:agent-id="agentId"
+						mode="inline"
+						endpoint="chat"
+						:initial-message="initialPrompt"
+						@config-updated="onConfigUpdated"
+					/>
+				</Transition>
 			</div>
 		</div>
 
@@ -415,5 +445,16 @@ watch(agentId, initialize, { immediate: true });
 .toggleBtnActive {
 	color: var(--color--text);
 	background-color: var(--color--foreground--tint-1);
+}
+</style>
+
+<style>
+.agent-builder-mode-enter-active,
+.agent-builder-mode-leave-active {
+	transition: opacity 260ms ease;
+}
+.agent-builder-mode-enter-from,
+.agent-builder-mode-leave-to {
+	opacity: 0;
 }
 </style>
