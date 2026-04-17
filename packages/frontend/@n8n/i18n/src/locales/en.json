@@ -5102,6 +5102,7 @@
 	"instanceAi.toolResult.dataTruncated": "Data truncated for display.",
 	"instanceAi.thread.new": "New chat",
 	"instanceAi.sidebar.back": "Back",
+	"instanceAi.sidebar.threads": "Threads",
 	"instanceAi.message.reasoning": "Reasoning",
 	"instanceAi.sidebar.noThreads": "No conversations yet",
 	"instanceAi.sidebar.group.thisWeek": "This week",
