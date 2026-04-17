@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import { lookup } from 'mime-types';
 import type {
 	IExecuteFunctions,
@@ -2158,23 +2159,55 @@ export class Telegram implements INodeType {
 						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
 					}
 
-					const formData = {
-						...body,
-						[propertyName]: {
-							value: uploadData,
-							options: {
-								filename,
-								contentType: itemBinaryData.mimeType,
-							},
-						},
-					};
+					// Serialize reply_markup before building form data
+					if (body.reply_markup) {
+						body.reply_markup = JSON.stringify(body.reply_markup);
+					}
 
-					if (formData.reply_markup) {
-						formData.reply_markup = JSON.stringify(formData.reply_markup);
+					let formData: IDataObject | FormData;
+
+					// Use RFC 5987 encoding (filename*=UTF-8'') for filenames containing
+					// non-ASCII characters (e.g. Chinese punctuation). Raw UTF-8 bytes in
+					// Content-Disposition headers are technically non-standard and some
+					// servers (including Telegram's API) may strip or corrupt them.
+					if (filename && /[^\x00-\x7F]/.test(filename)) {
+						const fd = new FormData();
+
+						for (const [key, value] of Object.entries(body)) {
+							if (value !== undefined && value !== null) {
+								fd.append(key, String(value));
+							}
+						}
+
+						const boundary = fd.getBoundary();
+						// ASCII-safe fallback for servers that don't support filename*
+						const asciiFilename = filename.replace(/[^\x00-\x7F]/g, '_');
+						const encodedFilename = encodeURIComponent(filename);
+						const customHeader = [
+							`--${boundary}`,
+							`Content-Disposition: form-data; name="${propertyName}"; filename="${asciiFilename}"; filename*=UTF-8''${encodedFilename}`,
+							`Content-Type: ${itemBinaryData.mimeType}`,
+							'',
+							'',
+						].join('\r\n');
+
+						fd.append(propertyName, uploadData, { header: customHeader });
+						formData = fd;
+					} else {
+						formData = {
+							...body,
+							[propertyName]: {
+								value: uploadData,
+								options: {
+									filename,
+									contentType: itemBinaryData.mimeType,
+								},
+							},
+						};
 					}
 
 					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, {
-						formData,
+						formData: formData as IDataObject,
 					});
 				} else {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);

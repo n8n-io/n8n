@@ -284,6 +284,16 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 			});
 		});
 
+		it('should convert empty arrays to arrayValue, not integerValue', () => {
+			const result = jsonToDocument([] as any);
+			expect(result).toEqual({ arrayValue: { values: [] } });
+		});
+
+		it('should convert single-element numeric arrays to arrayValue', () => {
+			const result = jsonToDocument([42] as any);
+			expect(result).toEqual({ arrayValue: { values: [{ integerValue: 42 }] } });
+		});
+
 		it('should convert objects', () => {
 			const obj = {
 				name: 'John',
