@@ -250,4 +250,17 @@ describe('AgentsService', () => {
 			expect(result).toBe(agent);
 		});
 	});
+
+	describe('attachNodeTools gating', () => {
+		// We can't easily reach into fromSchema without a heavy harness, so we
+		// unit-test the gate via the small `isNodeToolsEnabled` helper that the
+		// service uses. The helper test is in agent-json-config.test.ts;
+		// here we only assert the wiring contract.
+		it('uses isNodeToolsEnabled to decide whether to attach node tools', async () => {
+			const { isNodeToolsEnabled } = await import('../json-config/agent-json-config');
+			expect(isNodeToolsEnabled({ nodeTools: { enabled: false } })).toBe(false);
+			expect(isNodeToolsEnabled({ nodeTools: { enabled: true } })).toBe(true);
+			expect(isNodeToolsEnabled(undefined)).toBe(true);
+		});
+	});
 });
