@@ -6293,6 +6293,7 @@ function buildImportNodes() {
 		// Setting position in mockNode will wrap it in a Proxy
 		// This causes deepCopy to remove position -> set position after instead
 		node.position = [40, 40];
+		node.credentials = undefined;
 		return node;
 	});
 }
