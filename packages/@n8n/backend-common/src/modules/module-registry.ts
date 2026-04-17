@@ -96,10 +96,10 @@ export class ModuleRegistry {
 			const primaryPath = `${modulesDir}/${moduleName}/${moduleName}.module`;
 			const eePath = `${modulesDir}/${moduleName}.ee/${moduleName}.module`;
 
-			const isModuleNotFound = (err: unknown): boolean =>
-				err instanceof Error &&
-				'code' in err &&
-				(err as NodeJS.ErrnoException).code === 'MODULE_NOT_FOUND';
+			const isModuleNotFound = (error: unknown): boolean =>
+				error instanceof Error &&
+				'code' in error &&
+				(error as NodeJS.ErrnoException).code === 'MODULE_NOT_FOUND';
 
 			let primaryError: unknown;
 			try {
