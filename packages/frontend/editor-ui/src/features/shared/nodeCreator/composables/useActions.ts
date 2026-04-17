@@ -54,6 +54,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useCanvasStore } from '@/app/stores/canvas.store';
+import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 
 export const useActions = () => {
 	const workflowsStore = useWorkflowsStore();
@@ -379,23 +380,19 @@ export const useActions = () => {
 		return { nodes, connections };
 	}
 
-	// Hook into addNode action to set the last node parameters, adjust default name and track the action selected
 	function setAddedNodeActionParameters(
 		action: IUpdateInformation,
 		telemetry?: Telemetry,
 		rootView = '',
 	) {
-		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
-		const storeWatcher = onWorkflowStoreAction(({ name, after, args }) => {
-			if (name !== 'addNode' || args[0].type !== action.key) return;
-			after(() => {
-				workflowDocumentStore.value.setLastNodeParameters(action);
-				if (telemetry) trackActionSelected(action, telemetry, rootView);
-				// Unsubscribe from the store watcher
-				storeWatcher();
-			});
+		const { off } = workflowDocumentStore.value.onNodesChange((event) => {
+			if (event.action !== CHANGE_ACTION.ADD) return;
+			if (!('node' in event.payload) || event.payload.node.type !== action.key) return;
+			workflowDocumentStore.value.setLastNodeParameters(action);
+			if (telemetry) trackActionSelected(action, telemetry, rootView);
+			off();
 		});
-		return storeWatcher;
+		return off;
 	}
 
 	function trackActionSelected(

@@ -464,8 +464,11 @@ describe(useNodeDirtiness, () => {
 
 		const workflow = createTestWorkflow({ nodes: Object.values(nodes), connections });
 
-		workflowsStore.setNodes(workflow.nodes);
-		workflowsStore.setConnections(workflow.connections);
+		workflowsStore.workflow.nodes = workflow.nodes;
+		workflowsStore.workflow.connections = workflow.connections;
+		for (const node of workflow.nodes) {
+			workflowsStore.nodeMetadata[node.name] = { pristine: true };
+		}
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflow.id),

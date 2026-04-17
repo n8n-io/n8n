@@ -131,7 +131,9 @@ export function useNodeExecution(
 	const isChatNode = computed(() => nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE);
 
 	const isChatChild = computed(() =>
-		nodeRef.value ? workflowsStore.checkIfNodeHasChatParent(nodeRef.value.name) : false,
+		nodeRef.value
+			? workflowDocumentStore.value.checkIfNodeHasChatParent(nodeRef.value.name)
+			: false,
 	);
 
 	const isFormTriggerNode = computed(() => nodeType.value?.name === FORM_TRIGGER_NODE_TYPE);

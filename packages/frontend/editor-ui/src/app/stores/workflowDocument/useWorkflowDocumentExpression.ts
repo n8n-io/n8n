@@ -1,21 +1,15 @@
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { WorkflowExpression } from 'n8n-workflow';
+import type { Ref } from 'vue';
+import type { Workflow, WorkflowExpression } from 'n8n-workflow';
 
 // --- Composable ---
 
-// TODO: This composable currently delegates to workflowsStore.workflowObject for reads.
-// The long-term goal is to remove workflowsStore entirely — workflowObject will become
-// private state owned by workflowDocumentStore. Once that happens, the direct import
-// (and the import-cycle warning it causes) will go away.
-export function useWorkflowDocumentExpression() {
-	const workflowsStore = useWorkflowsStore();
-
+export function useWorkflowDocumentExpression(workflowObject: Readonly<Ref<Workflow>>) {
 	// -----------------------------------------------------------------------
 	// Expression resolution
 	// -----------------------------------------------------------------------
 
 	function getExpressionHandler(): WorkflowExpression {
-		return workflowsStore.workflowObject.expression as WorkflowExpression;
+		return workflowObject.value.expression as WorkflowExpression;
 	}
 
 	return {

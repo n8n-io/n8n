@@ -9,7 +9,10 @@ import { useWorkflowDocumentDescription } from './workflowDocument/useWorkflowDo
 import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
 import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
-import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
+import {
+	useWorkflowDocumentSettings,
+	DEFAULT_SETTINGS,
+} from './workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
@@ -22,8 +25,12 @@ import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDo
 import { useWorkflowDocumentGraph } from './workflowDocument/useWorkflowDocumentGraph';
 import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDocumentExpression';
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
+import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IPinData } from 'n8n-workflow';
 
@@ -114,6 +121,17 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
 
+		const workflowsStore = useWorkflowsStore();
+		const nodeTypesStore = useNodeTypesStore();
+		const nodeHelpers = useNodeHelpers();
+
+		const { workflowObject, ...workflowDocumentWorkflowObject } = useWorkflowDocumentWorkflowObject(
+			{
+				workflowId,
+				getNodeTypes: () => workflowsStore.getNodeTypes(),
+			},
+		);
+
 		const workflowDocumentName = useWorkflowDocumentName();
 		const workflowDocumentActive = useWorkflowDocumentActive();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
@@ -130,31 +148,74 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentUsedCredentials = useWorkflowDocumentUsedCredentials();
 		const workflowDocumentVersionData = useWorkflowDocumentVersionData();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
-		const nodeTypesStore = useNodeTypesStore();
 		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
+			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
-			useWorkflowDocumentConnections({
-				getNodeById: (id) => workflowDocumentNodes.getNodeById(id),
-			});
-		const workflowDocumentGraph = useWorkflowDocumentGraph();
-		const workflowDocumentExpression = useWorkflowDocumentExpression();
+			useWorkflowDocumentConnections((id) => workflowDocumentNodes.getNodeById(id));
+		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
+		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
 		// store is where cross-concern side effects are wired. When adding new
 		// composables, check workflowsStore for hidden cross-cuts that need to
-		// surface here. Known future ones:
-		//   - removeNode → unpinNodeData (currently in workflowsStore.removeNode)
+		// surface here.
 
 		onNodesStateDirty(() => useUIStore().markStateDirty());
 		onConnectionsStateDirty(() => useUIStore().markStateDirty());
+
+		workflowDocumentNodes.onNodesChange(() => {
+			workflowDocumentWorkflowObject.syncWorkflowObjectNodes(workflowsStore.workflow.nodes);
+		});
+		workflowDocumentNodes.onNodesChange((event) => {
+			if (event.action === 'delete' && 'name' in event.payload) {
+				workflowDocumentPinData.unpinNodeData(event.payload.name);
+			}
+		});
+
+		workflowDocumentConnections.onConnectionsChange(() => {
+			workflowDocumentWorkflowObject.syncWorkflowObjectConnections(
+				workflowsStore.workflow.connections,
+			);
+		});
+
+		workflowDocumentName.onNameChange(() => {
+			workflowDocumentWorkflowObject.syncWorkflowObjectName(workflowDocumentName.name.value);
+		});
+
+		workflowDocumentSettings.onSettingsChange(() => {
+			workflowDocumentWorkflowObject.syncWorkflowObjectSettings(
+				workflowDocumentSettings.settings.value,
+			);
+		});
 
 		function removeAllNodes() {
 			workflowDocumentNodes.removeAllNodes();
 			workflowDocumentConnections.removeAllConnections();
 			workflowDocumentPinData.setPinData({});
+		}
+
+		function setWorkflow(value: IWorkflowDb) {
+			workflowsStore.workflow = {
+				...value,
+				...(!value.hasOwnProperty('active') ? { active: false } : {}),
+				...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
+				...(!value.hasOwnProperty('id') ? { id: '' } : {}),
+				...(!value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
+				...(!value.hasOwnProperty('settings') ? { settings: { ...DEFAULT_SETTINGS } } : {}),
+			};
+
+			workflowDocumentSettings.setSettings(workflowsStore.workflow.settings ?? {});
+			workflowDocumentWorkflowObject.initWorkflowObject({
+				id: workflowsStore.workflow.id,
+				name: workflowsStore.workflow.name,
+				nodes: workflowsStore.workflow.nodes,
+				connections: workflowsStore.workflow.connections,
+				settings: workflowsStore.workflow.settings ?? { ...DEFAULT_SETTINGS },
+				pinData: workflowsStore.workflow.pinData ?? {},
+			});
 		}
 
 		return {
@@ -181,6 +242,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
 			removeAllNodes,
+			setWorkflow,
 		};
 	})();
 }

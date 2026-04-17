@@ -139,7 +139,7 @@ describe('useWorkflowSaving', () => {
 				checksum: 'test-checksum',
 			});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
@@ -305,7 +305,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 
@@ -453,7 +453,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			setDocumentStoreActive(workflow.id);
 
@@ -476,7 +476,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 
@@ -499,7 +499,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { w2: workflow };
 			workflowsStore.isWorkflowSaved = { w2: true };
 			setDocumentStoreActive(workflow.id);
@@ -523,7 +523,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { w3: workflow };
 			workflowsStore.isWorkflowSaved = { w3: true };
 			setDocumentStoreActive(workflow.id);
@@ -560,7 +560,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflowResponse);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
@@ -629,7 +629,7 @@ describe('useWorkflowSaving', () => {
 				checksum: 'test-checksum',
 			});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
@@ -670,7 +670,7 @@ describe('useWorkflowSaving', () => {
 				checksum: 'test-checksum',
 			});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
@@ -703,7 +703,7 @@ describe('useWorkflowSaving', () => {
 				checksum: 'test-checksum',
 			});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
@@ -764,7 +764,7 @@ describe('useWorkflowSaving', () => {
 					versionId: 'v2',
 				});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
@@ -816,7 +816,7 @@ describe('useWorkflowSaving', () => {
 				versionId: 'v1',
 			});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
@@ -873,7 +873,7 @@ describe('useWorkflowSaving', () => {
 				async () => await blockedPromise,
 			);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
@@ -946,7 +946,7 @@ describe('useWorkflowSaving', () => {
 					};
 				});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
@@ -1005,7 +1005,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(new Error('Network error'));
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.workflow = workflow;
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
@@ -1035,7 +1035,7 @@ describe('useWorkflowSaving', () => {
 				const errorMessage = 'Network timeout';
 				vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(new Error(errorMessage));
 
-				workflowsStore.setWorkflow(workflow);
+				workflowsStore.workflow = workflow;
 				workflowsListStore.workflowsById = { [workflow.id]: workflow };
 				workflowsStore.workflowId = workflow.id;
 

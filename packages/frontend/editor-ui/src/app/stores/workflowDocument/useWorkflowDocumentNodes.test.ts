@@ -32,6 +32,7 @@ function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 function createDeps(overrides: Partial<WorkflowDocumentNodesDeps> = {}): WorkflowDocumentNodesDeps {
 	return {
 		getNodeType: vi.fn().mockReturnValue(null),
+		assignNodeId: vi.fn().mockReturnValue(''),
 		...overrides,
 	};
 }
@@ -420,14 +421,18 @@ describe('useWorkflowDocumentNodes', () => {
 	});
 
 	describe('events', () => {
-		it('setNodes does not fire onNodesChange (initialization path)', () => {
+		it('setNodes fires onNodesChange with set action', () => {
 			const hookSpy = vi.fn();
+			const node = createNode();
 
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.onNodesChange(hookSpy);
-			workflowDocumentNodes.setNodes([createNode()]);
+			workflowDocumentNodes.setNodes([node]);
 
-			expect(hookSpy).not.toHaveBeenCalled();
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'set',
+				payload: { nodes: [node] },
+			});
 		});
 
 		it('addNode fires onNodesChange with add action', () => {
@@ -553,17 +558,14 @@ describe('useWorkflowDocumentNodes', () => {
 			expect(dirtySpy).not.toHaveBeenCalled();
 		});
 
-		it('removeNodeById uses empty name when node not found', () => {
+		it('removeNodeById does not fire onNodesChange when node not found', () => {
 			const hookSpy = vi.fn();
 
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.onNodesChange(hookSpy);
 			workflowDocumentNodes.removeNodeById('nonexistent');
 
-			expect(hookSpy).toHaveBeenCalledWith({
-				action: 'delete',
-				payload: { name: '', id: 'nonexistent' },
-			});
+			expect(hookSpy).not.toHaveBeenCalled();
 		});
 	});
 });

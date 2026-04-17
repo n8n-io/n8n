@@ -15,18 +15,35 @@
  *  - Delegation-style tests (expect(store.method).toHaveBeenCalled()) would
  *    need to be rewritten every time internals change; round-trips do not.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useWorkflowDocumentExpression } from './useWorkflowDocumentExpression';
+import { useWorkflowDocumentWorkflowObject } from './useWorkflowDocumentWorkflowObject';
+import type { INodeTypes } from 'n8n-workflow';
+
+function createMockNodeTypes(): INodeTypes {
+	return {
+		getByName: vi.fn(),
+		getByNameAndVersion: vi.fn(),
+		getKnownTypes: vi.fn().mockReturnValue({}),
+	};
+}
 
 describe('useWorkflowDocumentExpression', () => {
+	let workflowObject: ReturnType<typeof useWorkflowDocumentWorkflowObject>['workflowObject'];
+
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		const wfObj = useWorkflowDocumentWorkflowObject({
+			workflowId: '',
+			getNodeTypes: () => createMockNodeTypes(),
+		});
+		workflowObject = wfObj.workflowObject;
 	});
 
 	describe('getExpressionHandler', () => {
 		it('returns the expression resolver instance', () => {
-			const expression = useWorkflowDocumentExpression();
+			const expression = useWorkflowDocumentExpression(workflowObject);
 
 			const handler = expression.getExpressionHandler();
 			expect(handler).toBeDefined();
@@ -36,7 +53,7 @@ describe('useWorkflowDocumentExpression', () => {
 		});
 
 		it('convertObjectValueToString converts object to string', () => {
-			const expression = useWorkflowDocumentExpression();
+			const expression = useWorkflowDocumentExpression(workflowObject);
 
 			const handler = expression.getExpressionHandler();
 			const result = handler.convertObjectValueToString({ key: 'value' });

@@ -197,7 +197,142 @@ exports[`InputPanel > should render 1`] = `
     >
       <!--v-if-->
       <!--v-if-->
-      <!--v-if-->
+      
+      <!--
+						Hide the run linking buttons for both input and ouput panels when in 'Mapping Mode' because the run indices wouldn't match.
+						Although this is not the most elegant solution, it's straightforward and simpler than introducing a new props and logic to handle this.
+				-->
+      <style>
+        button.linkRun { display: none }
+      </style>
+      <div
+        class="mappedNode"
+      >
+        <div
+          class="n8n-select container select"
+          data-test-id="ndv-input-select"
+        >
+          <!--v-if-->
+          <div
+            class="el-select el-select--small"
+            limitpopperwidth="false"
+            popperappendtobody="false"
+          >
+            
+            <div
+              class="select-trigger el-tooltip__trigger el-tooltip__trigger"
+            >
+              <!--v-if-->
+              <!--v-if-->
+              <div
+                class="el-input el-input--small el-input--prefix el-input--suffix"
+              >
+                <!-- input -->
+                
+                <!-- prepend slot -->
+                <!--v-if-->
+                <div
+                  class="el-input__wrapper"
+                  tabindex="-1"
+                >
+                  <!-- prefix slot -->
+                  <span
+                    class="el-input__prefix"
+                  >
+                    <span
+                      class="el-input__prefix-inner"
+                    >
+                      
+                      <div
+                        style="height: 100%; display: flex; justify-content: center; align-items: center;"
+                      >
+                        
+                        
+                        <div
+                          class="n8n-node-icon nodeIcon nodeIcon"
+                          shrink="false"
+                        >
+                          <div
+                            class="nodeIconWrapper"
+                            style="width: 14px; height: 14px; font-size: 14px; line-height: 14px;"
+                          >
+                            <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+                            <div
+                              class="nodeIconPlaceholder"
+                            >
+                              ?
+                            </div>
+                          </div>
+                        </div>
+                        
+                        
+                      </div>
+                      
+                      <!--v-if-->
+                    </span>
+                  </span>
+                  <input
+                    aria-activedescendant=""
+                    aria-autocomplete="none"
+                    aria-controls="el-id-528-1"
+                    aria-expanded="false"
+                    aria-haspopup="listbox"
+                    autocomplete="off"
+                    class="el-input__inner"
+                    id="el-id-528-2"
+                    placeholder="Parent nodes"
+                    readonly=""
+                    role="combobox"
+                    tabindex="0"
+                    type="text"
+                  />
+                  <!-- suffix slot -->
+                  <span
+                    class="el-input__suffix"
+                  >
+                    <span
+                      class="el-input__suffix-inner"
+                    >
+                      
+                      
+                      <i
+                        class="el-icon el-select__caret el-select__icon"
+                      >
+                        
+                        <svg
+                          viewBox="0 0 1024 1024"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                        
+                      </i>
+                      <!--v-if-->
+                      
+                      <!--v-if-->
+                      
+                      <!--v-if-->
+                      <!--v-if-->
+                      <!--v-if-->
+                      <!--v-if-->
+                    </span>
+                  </span>
+                </div>
+                <!-- append slot -->
+                <!--v-if-->
+                
+              </div>
+            </div>
+            <!--teleport start-->
+            <!--teleport end-->
+            
+          </div>
+        </div>
+      </div>
+      
       <!--v-if-->
       <!--v-if-->
       
@@ -224,85 +359,37 @@ exports[`InputPanel > should render 1`] = `
           >
             
             <svg
-              aria-hidden="true"
-              class="n8n-icon"
-              data-icon="arrow-right-to-line"
-              focusable="false"
-              height="20px"
-              role="img"
-              viewBox="0 0 24 24"
-              width="20px"
+              fill="none"
+              viewBox="0 0 16 14"
+              width="16px"
+              xmlns="http://www.w3.org/2000/svg"
             >
               <path
-                d="M17 12H3m8 6l6-6l-6-6m10-1v14"
-                fill="none"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
+                d="M11 2C10.4375 2 10 1.5625 10 1C10 0.46875 10.4375 0 11 0H13C14.6562 0 16 1.34375 16 3V11C16 12.6562 14.6562 14 13 14H11C10.4375 14 10 13.5625 10 13C10 12.4688 10.4375 12 11 12H13C13.5312 12 14 11.5625 14 11V3C14 2.46875 13.5312 2 13 2H11ZM10.6875 7.71875L6.6875 11.7188C6.3125 12.125 5.65625 12.125 5.28125 11.7188C4.875 11.3438 4.875 10.6875 5.28125 10.3125L7.5625 8H1C0.4375 8 0 7.5625 0 7C0 6.46875 0.4375 6 1 6H7.5625L5.28125 3.71875C4.875 3.34375 4.875 2.6875 5.28125 2.3125C5.65625 1.90625 6.3125 1.90625 6.6875 2.3125L10.6875 6.3125C11.0938 6.6875 11.0938 7.34375 10.6875 7.71875Z"
+                fill="currentColor"
               />
             </svg>
             
             <h1
               class="title"
             >
-              No input data
+              Parent node hasn’t run yet
             </h1>
             <p
               class="description"
             >
               
               <span>
+                Inputs that the parent node sends to this one will appear here. To map data in from previous nodes, use the 
                 
-                
-                
-                
-                <span
-                  class=""
-                  data-grace-area-trigger=""
-                  data-state="closed"
+                <a
+                  data-test-id="switch-to-mapping-mode-link"
+                  href="#"
                 >
-                  
-                  
-                  <button
-                    aria-live="polite"
-                    class="button button solid medium"
-                    data-test-id="execute-previous-node"
-                    square="false"
-                    title=""
-                    transparent-background="true"
-                    type="submit"
-                  >
-                    <transition-stub
-                      appear="false"
-                      css="true"
-                      name="n8n-button-fade"
-                      persisted="false"
-                    >
-                      <!--v-if-->
-                    </transition-stub>
-                    <div
-                      class="button-inner"
-                    >
-                      
-                      <!--v-if-->
-                      
-                      <span>
-                        Execute previous nodes
-                      </span>
-                    </div>
-                  </button>
-                  
-                  
-                </span>
-                <!--teleport start-->
-                <!--teleport end-->
+                  mapping
+                </a>
                 
-                
-                
-                <br />
-                
-                 to view input data
+                 view.
               </span>
               
             </p>

@@ -3,6 +3,10 @@ import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
@@ -344,7 +348,8 @@ onUnmounted(() => {
 	stopDeleteListener();
 	stopCreateListener();
 	if (previousWorkflow) {
-		workflowsStore.setWorkflow(previousWorkflow);
+		const prevDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(previousWorkflow.id));
+		prevDocStore.setWorkflow(previousWorkflow);
 	}
 });
 
@@ -372,7 +377,8 @@ onMounted(async () => {
 		const workflowData = await fetchWorkflowApi(rootStore.restApiContext, props.workflowId);
 		if (!isMounted) return;
 		previousWorkflow = { ...workflowsStore.workflow };
-		workflowsStore.setWorkflow(workflowData);
+		const targetDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowData.id));
+		targetDocStore.setWorkflow(workflowData);
 	} catch (error) {
 		console.warn('Failed to fetch workflow for Instance AI setup', error);
 	}

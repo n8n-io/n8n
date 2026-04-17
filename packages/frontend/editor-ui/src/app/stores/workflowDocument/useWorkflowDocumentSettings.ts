@@ -4,7 +4,6 @@ import { BINARY_MODE_SEPARATE, deepCopy } from 'n8n-workflow';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { CHANGE_ACTION } from './types';
 import type { ChangeAction, ChangeEvent } from './types';
-import { useWorkflowsStore } from '../workflows.store';
 
 export type SettingsPayload = {
 	settings: IWorkflowSettings;
@@ -19,7 +18,6 @@ export const DEFAULT_SETTINGS = {
 
 export function useWorkflowDocumentSettings() {
 	const settings = ref<IWorkflowSettings>({ ...DEFAULT_SETTINGS });
-	const workflowsStore = useWorkflowsStore();
 
 	const onSettingsChange = createEventHook<SettingsChangeEvent>();
 
@@ -33,7 +31,6 @@ export function useWorkflowDocumentSettings() {
 
 	function setSettings(newSettings: IWorkflowSettings) {
 		applySettings({ ...DEFAULT_SETTINGS, ...newSettings });
-		workflowsStore.workflowObject.setSettings(newSettings); // TODO: delegates to workflows store for now
 	}
 
 	function mergeSettings(partialSettings: Partial<IWorkflowSettings>) {

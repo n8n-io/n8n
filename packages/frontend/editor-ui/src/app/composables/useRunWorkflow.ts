@@ -232,8 +232,10 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			// If the destination node is specified, check if it is a chat trigger node or has a chat parent
 			if (
 				options.destinationNode &&
-				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode.nodeName) ||
-					workflowsStore.checkIfToolNodeHasChatParent(options.destinationNode.nodeName) ||
+				(workflowDocumentStore.value.checkIfNodeHasChatParent(options.destinationNode.nodeName) ||
+					workflowDocumentStore.value.checkIfToolNodeHasChatParent(
+						options.destinationNode.nodeName,
+					) ||
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
 				options.source !== 'RunData.ManualChatMessage' &&
 				options.source !== 'RunData.ManualChatTrigger'
@@ -332,7 +334,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				.filter((node) => {
 					if (
 						options.destinationNode &&
-						workflowsStore.checkIfNodeHasChatParent(options.destinationNode.nodeName)
+						workflowDocumentStore.value.checkIfNodeHasChatParent(options.destinationNode.nodeName)
 					) {
 						return node.name !== options.destinationNode.nodeName;
 					}

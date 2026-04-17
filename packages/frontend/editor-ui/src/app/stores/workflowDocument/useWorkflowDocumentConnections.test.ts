@@ -22,22 +22,16 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
-import {
-	useWorkflowDocumentConnections,
-	type WorkflowDocumentConnectionsDeps,
-} from './useWorkflowDocumentConnections';
+import { useWorkflowDocumentConnections } from './useWorkflowDocumentConnections';
 
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
 }
 
-function createDeps(
-	overrides: Partial<WorkflowDocumentConnectionsDeps> = {},
-): WorkflowDocumentConnectionsDeps {
-	return {
-		getNodeById: vi.fn().mockReturnValue(undefined),
-		...overrides,
-	};
+type GetNodeById = (id: string) => INodeUi | undefined;
+
+function createGetNodeById(): GetNodeById {
+	return vi.fn().mockReturnValue(undefined);
 }
 
 /**
@@ -60,16 +54,14 @@ function createConnectionData(
 
 describe('useWorkflowDocumentConnections', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let deps: WorkflowDocumentConnectionsDeps;
+	let getNodeById: GetNodeById;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
-		deps = createDeps();
+		getNodeById = createGetNodeById();
 
-		// Ensure connections are clean — workflowObject may retain state
-		// from a previous test if the Workflow class caches internally.
-		workflowsStore.setConnections({});
+		workflowsStore.workflow.connections = {};
 	});
 
 	describe('round-trip: setConnections → read', () => {
@@ -78,7 +70,7 @@ describe('useWorkflowDocumentConnections', () => {
 				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 			};
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.setConnections(connections);
 
 			expect(composable.connectionsBySourceNode.value).toEqual(connections);
@@ -89,7 +81,7 @@ describe('useWorkflowDocumentConnections', () => {
 				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 			};
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.setConnections(connections);
 
 			// connectionsByDestinationNode inverts: keyed by destination node
@@ -101,7 +93,7 @@ describe('useWorkflowDocumentConnections', () => {
 				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 			};
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.setConnections(connections);
 
 			const outgoing = composable.outgoingConnectionsByNodeName('A');
@@ -110,7 +102,7 @@ describe('useWorkflowDocumentConnections', () => {
 		});
 
 		it('outgoingConnectionsByNodeName returns empty object for unknown node', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 
 			expect(composable.outgoingConnectionsByNodeName('NonExistent')).toEqual({});
 		});
@@ -120,7 +112,7 @@ describe('useWorkflowDocumentConnections', () => {
 				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 			};
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.setConnections(connections);
 
 			const incoming = composable.incomingConnectionsByNodeName('B');
@@ -128,7 +120,7 @@ describe('useWorkflowDocumentConnections', () => {
 		});
 
 		it('incomingConnectionsByNodeName returns empty object for unknown node', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 
 			expect(composable.incomingConnectionsByNodeName('NonExistent')).toEqual({});
 		});
@@ -138,14 +130,14 @@ describe('useWorkflowDocumentConnections', () => {
 				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
 			};
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.setConnections(connections);
 
 			expect(composable.nodeHasOutputConnection('A')).toBe(true);
 		});
 
 		it('nodeHasOutputConnection returns false when node has no outgoing connections', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 
 			expect(composable.nodeHasOutputConnection('A')).toBe(false);
 		});
@@ -153,7 +145,7 @@ describe('useWorkflowDocumentConnections', () => {
 
 	describe('round-trip: addConnection → read', () => {
 		it('connection added via addConnection is readable via connectionsBySourceNode', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 
 			const connections = composable.connectionsBySourceNode.value;
@@ -164,7 +156,7 @@ describe('useWorkflowDocumentConnections', () => {
 		});
 
 		it('addConnection skips duplicate connections', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.addConnection(createConnectionData('A', 'B'));
@@ -174,7 +166,7 @@ describe('useWorkflowDocumentConnections', () => {
 		});
 
 		it('addConnection with multiple connections to same source creates correct structure', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.addConnection(createConnectionData('A', 'C'));
@@ -192,7 +184,7 @@ describe('useWorkflowDocumentConnections', () => {
 
 	describe('round-trip: removeConnection → read', () => {
 		it('removeConnection removes a connection from connectionsBySourceNode', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 
 			// Verify clean state
 			expect(composable.connectionsBySourceNode.value).toEqual({});
@@ -207,7 +199,7 @@ describe('useWorkflowDocumentConnections', () => {
 		});
 
 		it('removeConnection is a no-op when source node does not exist', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 
 			// Should not throw — workflowsStore.removeConnection silently returns
 			composable.removeConnection(createConnectionData('NonExistent', 'B'));
@@ -221,7 +213,7 @@ describe('useWorkflowDocumentConnections', () => {
 		it('removeAllNodeConnection removes all connections for a node', () => {
 			const nodeA = createNode({ name: 'A' });
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.addConnection(createConnectionData('C', 'A'));
 
@@ -238,7 +230,7 @@ describe('useWorkflowDocumentConnections', () => {
 		it('removeAllNodeConnection with preserveInputConnections keeps incoming', () => {
 			const nodeA = createNode({ name: 'A' });
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.addConnection(createConnectionData('C', 'A'));
 
@@ -255,7 +247,7 @@ describe('useWorkflowDocumentConnections', () => {
 		it('removeAllNodeConnection with preserveOutputConnections keeps outgoing', () => {
 			const nodeA = createNode({ name: 'A' });
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.addConnection(createConnectionData('C', 'A'));
 
@@ -273,11 +265,9 @@ describe('useWorkflowDocumentConnections', () => {
 	describe('round-trip: removeNodeConnectionsById → read', () => {
 		it('removeNodeConnectionsById removes connections by resolving node ID via deps', () => {
 			const nodeA = createNode({ name: 'A' });
-			const customDeps = createDeps({
-				getNodeById: vi.fn().mockReturnValue(nodeA),
-			});
+			const customGetNodeById = vi.fn().mockReturnValue(nodeA);
 
-			const composable = useWorkflowDocumentConnections(customDeps);
+			const composable = useWorkflowDocumentConnections(customGetNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 
 			composable.removeNodeConnectionsById(nodeA.id);
@@ -286,7 +276,7 @@ describe('useWorkflowDocumentConnections', () => {
 		});
 
 		it('removeNodeConnectionsById is a no-op when node ID not found', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 
 			// deps.getNodeById returns undefined by default
@@ -299,7 +289,7 @@ describe('useWorkflowDocumentConnections', () => {
 
 	describe('round-trip: removeAllConnections → read', () => {
 		it('removeAllConnections clears all connections', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.addConnection(createConnectionData('B', 'C'));
 
@@ -311,14 +301,14 @@ describe('useWorkflowDocumentConnections', () => {
 
 	describe('isNodeInOutgoingNodeConnections', () => {
 		it('returns true when search node is a direct successor', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 
 			expect(composable.isNodeInOutgoingNodeConnections('A', 'B')).toBe(true);
 		});
 
 		it('returns true when search node is a transitive successor', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.addConnection(createConnectionData('B', 'C'));
 
@@ -326,7 +316,7 @@ describe('useWorkflowDocumentConnections', () => {
 		});
 
 		it('returns false when search node is not connected', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 
 			// Only A → B exists, D is completely disconnected
 			composable.setConnections({
@@ -337,7 +327,7 @@ describe('useWorkflowDocumentConnections', () => {
 		});
 
 		it('respects depth limit', () => {
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.addConnection(createConnectionData('B', 'C'));
 
@@ -349,22 +339,26 @@ describe('useWorkflowDocumentConnections', () => {
 	});
 
 	describe('events', () => {
-		it('setConnections does not fire onConnectionsChange (initialization path)', () => {
+		it('setConnections fires onConnectionsChange with set action', () => {
 			const hookSpy = vi.fn();
-
-			const composable = useWorkflowDocumentConnections(deps);
-			composable.onConnectionsChange(hookSpy);
-			composable.setConnections({
+			const connections = {
 				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
-			});
+			};
 
-			expect(hookSpy).not.toHaveBeenCalled();
+			const composable = useWorkflowDocumentConnections(getNodeById);
+			composable.onConnectionsChange(hookSpy);
+			composable.setConnections(connections);
+
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'set',
+				payload: { connections },
+			});
 		});
 
 		it('setConnections does not fire onStateDirty (initialization path)', () => {
 			const dirtySpy = vi.fn();
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.onStateDirty(dirtySpy);
 			composable.setConnections({
 				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
@@ -377,7 +371,7 @@ describe('useWorkflowDocumentConnections', () => {
 			const hookSpy = vi.fn();
 			const connectionData = createConnectionData('A', 'B');
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.onConnectionsChange(hookSpy);
 			composable.addConnection(connectionData);
 
@@ -390,7 +384,7 @@ describe('useWorkflowDocumentConnections', () => {
 		it('addConnection fires onStateDirty', () => {
 			const dirtySpy = vi.fn();
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.onStateDirty(dirtySpy);
 			composable.addConnection(createConnectionData('A', 'B'));
 
@@ -401,7 +395,7 @@ describe('useWorkflowDocumentConnections', () => {
 			const hookSpy = vi.fn();
 			const connectionData = createConnectionData('A', 'B');
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(connectionData);
 			composable.onConnectionsChange(hookSpy);
 			composable.removeConnection(connectionData);
@@ -415,7 +409,7 @@ describe('useWorkflowDocumentConnections', () => {
 		it('removeConnection fires onStateDirty', () => {
 			const dirtySpy = vi.fn();
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.onStateDirty(dirtySpy);
 			composable.removeConnection(createConnectionData('A', 'B'));
@@ -427,7 +421,7 @@ describe('useWorkflowDocumentConnections', () => {
 			const hookSpy = vi.fn();
 			const nodeA = createNode({ name: 'A' });
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.onConnectionsChange(hookSpy);
 			composable.removeAllNodeConnection(nodeA);
@@ -442,7 +436,7 @@ describe('useWorkflowDocumentConnections', () => {
 			const dirtySpy = vi.fn();
 			const nodeA = createNode({ name: 'A' });
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.onStateDirty(dirtySpy);
 			composable.removeAllNodeConnection(nodeA);
@@ -453,11 +447,9 @@ describe('useWorkflowDocumentConnections', () => {
 		it('removeNodeConnectionsById fires onStateDirty when node is found', () => {
 			const dirtySpy = vi.fn();
 			const nodeA = createNode({ name: 'A' });
-			const customDeps = createDeps({
-				getNodeById: vi.fn().mockReturnValue(nodeA),
-			});
+			const customGetNodeById = vi.fn().mockReturnValue(nodeA);
 
-			const composable = useWorkflowDocumentConnections(customDeps);
+			const composable = useWorkflowDocumentConnections(customGetNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.onStateDirty(dirtySpy);
 			composable.removeNodeConnectionsById(nodeA.id);
@@ -469,7 +461,7 @@ describe('useWorkflowDocumentConnections', () => {
 			const hookSpy = vi.fn();
 			const dirtySpy = vi.fn();
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.onConnectionsChange(hookSpy);
 			composable.onStateDirty(dirtySpy);
@@ -479,21 +471,24 @@ describe('useWorkflowDocumentConnections', () => {
 			expect(dirtySpy).not.toHaveBeenCalled();
 		});
 
-		it('removeAllConnections does not fire onConnectionsChange (reset path)', () => {
+		it('removeAllConnections fires onConnectionsChange with delete action', () => {
 			const hookSpy = vi.fn();
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.onConnectionsChange(hookSpy);
 			composable.removeAllConnections();
 
-			expect(hookSpy).not.toHaveBeenCalled();
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'delete',
+				payload: {},
+			});
 		});
 
 		it('removeAllConnections does not fire onStateDirty (reset path)', () => {
 			const dirtySpy = vi.fn();
 
-			const composable = useWorkflowDocumentConnections(deps);
+			const composable = useWorkflowDocumentConnections(getNodeById);
 			composable.addConnection(createConnectionData('A', 'B'));
 			composable.onStateDirty(dirtySpy);
 			composable.removeAllConnections();

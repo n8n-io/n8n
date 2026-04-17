@@ -83,7 +83,7 @@ describe('FocusPanel', () => {
 			}),
 		]);
 		workflowsStore = useWorkflowsStore(pinia);
-		workflowsStore.setWorkflow(createTestWorkflow({ id: 'w0' }));
+		workflowsStore.workflow = createTestWorkflow({ id: 'w0' });
 
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w0'));
 		workflowDocumentStore.setNodes(testNodes);

@@ -70,7 +70,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	const workflowStore = useWorkflowsStore();
 	const workflowState = useWorkflowState();
 
-	workflowStore.setWorkflow(workflow);
+	workflowStore.workflow = workflow;
 
 	vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
 		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowStore.workflowId))),

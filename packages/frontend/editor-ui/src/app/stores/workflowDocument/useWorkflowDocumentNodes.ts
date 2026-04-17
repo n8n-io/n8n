@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import type {
+	INodeMetadata,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
@@ -15,6 +16,8 @@ import type {
 } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { isObject } from '@/app/utils/objectUtils';
+import { getCredentialOnlyNodeTypeName } from '@/app/utils/credentialOnlyNodes';
+import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import pick from 'lodash/pick';
 import isEqual from 'lodash/isEqual';
 import findLast from 'lodash/findLast';
@@ -25,13 +28,22 @@ import type { ChangeEvent } from './types';
 
 export type NodeAddedPayload = { node: INodeUi };
 export type NodeRemovedPayload = { name: string; id: string };
+export type NodeUpdatedPayload = { name: string };
+export type NodesSetPayload = { nodes: INodeUi[] };
+export type NodesResetPayload = Record<string, never>;
 
-export type NodesChangeEvent = ChangeEvent<NodeAddedPayload> | ChangeEvent<NodeRemovedPayload>;
+export type NodesChangeEvent =
+	| ChangeEvent<NodeAddedPayload>
+	| ChangeEvent<NodeRemovedPayload>
+	| ChangeEvent<NodeUpdatedPayload>
+	| ChangeEvent<NodesSetPayload>
+	| ChangeEvent<NodesResetPayload>;
 
 // --- Deps ---
 
 export interface WorkflowDocumentNodesDeps {
 	getNodeType: (typeName: string, version?: number) => INodeTypeDescription | null;
+	assignNodeId: (node: INodeUi) => string;
 }
 
 // --- Composable ---
@@ -66,7 +78,10 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		if (changed) {
 			Object.assign(node, nodeData);
 			workflowsStore.workflow.nodes[nodeIndex] = node;
-			workflowsStore.workflowObject.setNodes(workflowsStore.workflow.nodes);
+			void onNodesChange.trigger({
+				action: CHANGE_ACTION.UPDATE,
+				payload: { name: node.name },
+			});
 		}
 
 		return changed;
@@ -77,11 +92,41 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	// -----------------------------------------------------------------------
 
 	function applySetNodes(nodes: INodeUi[]) {
-		workflowsStore.setNodes(nodes);
+		for (const node of nodes) {
+			if (!node.id) {
+				deps.assignNodeId(node);
+			}
+
+			if (node.extendsCredential) {
+				node.type = getCredentialOnlyNodeTypeName(node.extendsCredential);
+			}
+
+			if (node.position) {
+				node.position = snapPositionToGrid(node.position);
+			}
+
+			if (!workflowsStore.nodeMetadata[node.name]) {
+				workflowsStore.nodeMetadata[node.name] = { pristine: true };
+			}
+		}
+
+		workflowsStore.workflow.nodes = nodes;
+		void onNodesChange.trigger({
+			action: CHANGE_ACTION.SET,
+			payload: { nodes },
+		});
 	}
 
 	function applyAddNode(node: INodeUi) {
-		workflowsStore.addNode(node);
+		if (!node.hasOwnProperty('name')) {
+			return;
+		}
+
+		workflowsStore.workflow.nodes.push(node);
+
+		if (!workflowsStore.nodeMetadata[node.name]) {
+			workflowsStore.nodeMetadata[node.name] = {} as INodeMetadata;
+		}
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.ADD,
 			payload: { node },
@@ -90,7 +135,17 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function applyRemoveNode(node: INodeUi) {
-		workflowsStore.removeNode(node);
+		const { [node.name]: _, ...remainingMetadata } = workflowsStore.nodeMetadata;
+		workflowsStore.nodeMetadata = remainingMetadata;
+
+		const idx = workflowsStore.workflow.nodes.findIndex((n) => n.name === node.name);
+		if (idx !== -1) {
+			workflowsStore.workflow.nodes = [
+				...workflowsStore.workflow.nodes.slice(0, idx),
+				...workflowsStore.workflow.nodes.slice(idx + 1),
+			];
+		}
+
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { name: node.name, id: node.id },
@@ -100,12 +155,8 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function applyRemoveNodeById(id: string) {
 		const node = workflowsStore.getNodeById(id);
-		workflowsStore.removeNodeById(id);
-		void onNodesChange.trigger({
-			action: CHANGE_ACTION.DELETE,
-			payload: { name: node?.name ?? '', id },
-		});
-		void onStateDirty.trigger();
+		if (!node) return;
+		applyRemoveNode(node);
 	}
 
 	// -----------------------------------------------------------------------
@@ -302,8 +353,11 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function removeAllNodes(): void {
 		workflowsStore.workflow.nodes.splice(0, workflowsStore.workflow.nodes.length);
-		workflowsStore.workflowObject.setNodes(workflowsStore.workflow.nodes);
 		workflowsStore.nodeMetadata = {};
+		void onNodesChange.trigger({
+			action: CHANGE_ACTION.DELETE,
+			payload: {} as NodesResetPayload,
+		});
 	}
 
 	function resetAllNodesIssues(): boolean {

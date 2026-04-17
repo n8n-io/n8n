@@ -48,7 +48,7 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 
 		workflowsStore = useWorkflowsStore(pinia);
 		workflowsStore.workflow.id = 'test-workflow';
-		workflowsStore.setNodes(mockNodes);
+		workflowsStore.workflow.nodes = mockNodes;
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
