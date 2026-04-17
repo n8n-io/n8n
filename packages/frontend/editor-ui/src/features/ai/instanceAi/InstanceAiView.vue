@@ -423,7 +423,7 @@ function handleStop() {
 					@click="toggleSidebarCollapse"
 				>
 					<template v-if="sidebarCollapsed">{{
-						$locale.baseText('instanceAi.sidebar.threads')
+						i18n.baseText('instanceAi.sidebar.threads')
 					}}</template>
 				</N8nButton>
 				<N8nHeading tag="h2" size="small" :class="$style.headerTitle">
