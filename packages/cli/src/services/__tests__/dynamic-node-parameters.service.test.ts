@@ -281,9 +281,10 @@ describe('DynamicNodeParametersService', () => {
 			expect(sanitize(routing)).toEqual(routing);
 		});
 
-		it('should allow an expression url (starts with =)', () => {
-			const routing = { request: { url: '=/v1/{{ $parameter.version }}/models' } };
-			expect(sanitize(routing)).toEqual(routing);
+		it('should throw for an expression url (starts with =)', () => {
+			expect(() => sanitize({ request: { url: '=/v1/{{ $parameter.version }}/models' } })).toThrow(
+				BadRequestError,
+			);
 		});
 
 		it('should strip baseURL from routing.request', () => {

@@ -228,8 +228,10 @@ export class DynamicNodeParametersService {
 	 * Sanitizes user-supplied loadOptions routing to prevent SSRF attacks.
 	 *
 	 * Strips `baseURL` (must never be user-controllable; `requestDefaults.baseURL` takes precedence)
-	 * and rejects absolute URLs in `request.url` (plain strings only; `=`-prefixed expressions are
-	 * evaluated server-side from trusted node code and are therefore allowed).
+	 * and rejects absolute URLs and expressions in `request.url`. Expressions are rejected because
+	 * this routing comes from an untrusted request body — unlike node-type definitions where
+	 * expressions are part of trusted node code, here they are fully user-controlled and could
+	 * evaluate to arbitrary absolute URLs inside RoutingNode.
 	 */
 	private sanitizeLoadOptionsRouting(routing: ILoadOptions['routing']): ILoadOptions['routing'] {
 		if (!routing?.request) return routing;
@@ -237,10 +239,14 @@ export class DynamicNodeParametersService {
 		// Strip baseURL so it cannot override requestDefaults.baseURL
 		const { baseURL: _stripped, ...safeRequest } = routing.request as Record<string, unknown>;
 
-		// Reject absolute URLs supplied as plain strings
+		// Reject absolute URLs and expressions — both are unsafe in user-supplied routing
 		const url = safeRequest.url;
-		if (typeof url === 'string' && !url.startsWith('=')) {
-			if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(url) || url.startsWith('//')) {
+		if (typeof url === 'string') {
+			if (
+				url.startsWith('=') ||
+				/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(url) ||
+				url.startsWith('//')
+			) {
 				throw new BadRequestError(
 					'loadOptions.routing.request.url must be a relative path, not an absolute URL',
 				);
