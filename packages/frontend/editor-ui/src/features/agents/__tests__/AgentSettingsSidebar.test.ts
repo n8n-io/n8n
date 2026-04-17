@@ -123,12 +123,10 @@ describe('AgentSettingsSidebar', () => {
 					AgentMemoryPanel: { template: '<div data-testid="memory-panel-stub" />' },
 					AgentIntegrationsPanel: { template: '<div data-testid="integrations-panel-stub" />' },
 					AgentCodeEditor: { template: '<div data-testid="code-editor-stub" />' },
-					N8nButton: {
-						template:
-							'<button :disabled="disabled" @click="$emit(\'click\')"><slot/>{{ label }}</button>',
-						props: ['type', 'size', 'label', 'disabled'],
-						emits: ['click'],
-					},
+					// Stubbed so the test doesn't need Pinia — the real AgentPublishButton
+					// pulls in useRootStore via useAgentPublish.
+					AgentPublishButton: { template: '<div data-testid="publish-button-stub" />' },
+					N8nBadge: { template: '<span data-testid="badge-stub"><slot/></span>' },
 					N8nCallout: { template: '<div data-testid="callout-stub"><slot/></div>' },
 					N8nIcon: { template: '<span />', props: ['icon', 'size'] },
 					N8nInput: {
