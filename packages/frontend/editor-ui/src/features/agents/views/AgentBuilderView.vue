@@ -44,6 +44,7 @@ const agent = ref<AgentResource | null>(null);
 const updatedAt = ref<string>('');
 const initialPrompt = ref<string | undefined>(undefined);
 const chatEndpoint = ref<'build' | 'chat'>('build');
+const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle');
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
@@ -122,6 +123,26 @@ function onChatStreamingChange(streaming: boolean) {
 	isBuilding.value = chatEndpoint.value === 'build' && streaming;
 }
 
+async function saveConfig(): Promise<void> {
+	if (!localConfig.value) return;
+	const result = await updateConfig(projectId.value, agentId.value, localConfig.value);
+	// Keep agent.versionId in sync so hasUnpublishedChanges stays accurate
+	if (agent.value && result.versionId !== undefined) {
+		agent.value = { ...agent.value, versionId: result.versionId };
+	}
+}
+
+const debouncedSave = useDebounceFn(async () => {
+	saveStatus.value = 'saving';
+	try {
+		await saveConfig();
+		saveStatus.value = 'saved';
+		telemetry.track('User saved agent settings', { agent_id: agentId.value });
+	} catch {
+		saveStatus.value = 'idle';
+	}
+}, getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE));
+
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	Object.assign(localConfig.value, updates);
@@ -130,7 +151,6 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 
 async function onConfigUpdated() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
-	isDirty.value = false;
 }
 
 const headerActions = [{ id: 'delete', label: 'Delete agent' }];
