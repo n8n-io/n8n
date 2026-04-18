@@ -176,6 +176,10 @@ describe('ScheduleTrigger', () => {
 		describe('deduplication key', () => {
 			const executionsConfig = Container.get(ExecutionsConfig);
 
+			beforeEach(() => {
+				executionsConfig.scheduledExecutionDeduplicationEnabled = false;
+			});
+
 			afterEach(() => {
 				executionsConfig.scheduledExecutionDeduplicationEnabled = false;
 			});
@@ -214,6 +218,26 @@ describe('ScheduleTrigger', () => {
 				expect(scheduledT.getUTCMinutes()).toBe(0);
 				expect(scheduledT.getUTCSeconds()).toBe(0);
 				expect(scheduledT.getUTCMilliseconds()).toBe(0);
+			});
+
+			it('should not emit a deduplication key when the workflow id is undefined', async () => {
+				executionsConfig.scheduledExecutionDeduplicationEnabled = true;
+
+				const { emit } = await testTriggerNode(ScheduleTrigger, {
+					timezone,
+					node: {
+						parameters: {
+							rule: { interval: [{ field: 'cronExpression', expression: '0 */2 * * *' }] },
+						},
+					},
+					workflowStaticData: {},
+					workflow: { active: true },
+				});
+
+				jest.advanceTimersByTime(2 * HOUR);
+
+				expect(emit).toHaveBeenCalledTimes(1);
+				expect(emit.mock.calls[0][3]).toBeUndefined();
 			});
 
 			it('should not emit a deduplication key when the feature flag is disabled', async () => {
