@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeMount, onMounted, ref, getCurrentInstance } from 'vue';
 import { v4 as uuid } from 'uuid';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useLogStreamingStore } from '../logStreaming.store';
@@ -15,7 +14,11 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip } from '@n8n/design-system';
@@ -24,7 +27,11 @@ const environment = process.env.NODE_ENV;
 const settingsStore = useSettingsStore();
 const logStreamingStore = useLogStreamingStore();
 const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = computed(() =>
+	workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined,
+);
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const documentTitle = useDocumentTitle();
@@ -97,7 +104,7 @@ function forceUpdateInstance() {
 }
 
 function onBusClosing() {
-	workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
+	workflowDocumentStore?.value?.removeAllNodes();
 	uiStore.markStateClean();
 }
 
@@ -148,9 +155,9 @@ async function addDestination() {
 async function onRemove(destinationId?: string) {
 	if (!destinationId) return;
 	await logStreamingStore.deleteDestination(destinationId);
-	const foundNode = workflowsStore.getNodeByName(destinationId);
+	const foundNode = workflowDocumentStore?.value?.getNodeByName(destinationId);
 	if (foundNode) {
-		workflowsStore.removeNode(foundNode);
+		workflowDocumentStore?.value?.removeNode(foundNode);
 	}
 }
 

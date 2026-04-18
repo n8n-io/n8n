@@ -10,6 +10,7 @@ import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { CanvasKey } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
@@ -44,7 +45,7 @@ import type {
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
 import {
 	computed,
 	nextTick,
@@ -719,6 +720,10 @@ async function onFitBounds(nodes: GraphNode[]) {
 }
 
 async function onFitView() {
+	if (document.hidden) {
+		fitViewWhileHidden = true;
+		return;
+	}
 	await fitView({ maxZoom: defaultZoom, padding: 0.2 });
 }
 
@@ -944,19 +949,57 @@ function onWindowBlur() {
 
 const initialized = ref(false);
 
+let pendingFitViewOnInit = false;
+let pendingConnections: IConnections | null = null;
+
+// When fitView runs while the browser tab is in the background, VueFlow's
+// container dimensions are 0 (offsetWidth/offsetHeight return 0 for hidden
+// tabs) and fall back to 500×500, producing a wrong viewport transform.
+// Track this so we can re-run fitView once the tab becomes visible.
+let fitViewWhileHidden = false;
+
+function onVisibilityChange() {
+	if (!document.hidden && fitViewWhileHidden) {
+		fitViewWhileHidden = false;
+		void onFitView();
+	}
+}
+
+function onRequestFitViewOnInit() {
+	if (initialized.value) {
+		void onFitView();
+		return;
+	}
+	pendingFitViewOnInit = true;
+}
+
+function onRequestSetConnectionsOnInit(connections: IConnections) {
+	// Always defer — this event is only emitted during importWorkflowExact which
+	// recreates all nodes. VueFlow will drop edges applied before node handles
+	// exist, so we must wait for onNodesInitialized.
+	initialized.value = false;
+	pendingConnections = connections;
+}
+
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
+	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
+	props.eventBus.on('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.on('nodes:select', onSelectNodes);
 	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(graphNodes.value));
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
+	document.addEventListener('visibilitychange', onVisibilityChange);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
+	props.eventBus.off('fitView:onNodesInit', onRequestFitViewOnInit);
+	props.eventBus.off('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.off('nodes:select', onSelectNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
+	document.removeEventListener('visibilitychange', onVisibilityChange);
 });
 
 onPaneReady(async () => {
@@ -970,6 +1013,17 @@ onPaneReady(async () => {
 
 onNodesInitialized(() => {
 	initialized.value = true;
+
+	if (pendingConnections) {
+		const connections = pendingConnections;
+		pendingConnections = null;
+		useWorkflowsStore().setConnections(connections);
+	}
+
+	if (pendingFitViewOnInit) {
+		pendingFitViewOnInit = false;
+		void onFitView();
+	}
 });
 
 watch(

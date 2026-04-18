@@ -192,7 +192,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 						name: 'welcomeMessage',
 						type: 'string',
 						placeholder: "e.g. Hello! I'm here to help you!",
-						default: '',
+						default: "Hello! I'm here to help you!",
 					},
 				],
 			},
@@ -235,6 +235,13 @@ export class MicrosoftAgent365Trigger implements INodeType {
 
 			await agent.adapter.process(req, res, callback);
 
+			if (
+				activityCapture.activity.type === 'event' ||
+				activityCapture.input.trimStart().startsWith('<addmember>')
+			) {
+				return { noWebhookResponse: true };
+			}
+
 			let returnData;
 
 			if (node.typeVersion === 1) {
@@ -248,6 +255,9 @@ export class MicrosoftAgent365Trigger implements INodeType {
 					input: activityCapture.input,
 					output: activityCapture.output,
 					...activity,
+					...(activityCapture.mcpToolLogs?.length
+						? { microsoftMcpToolLogs: activityCapture.mcpToolLogs }
+						: {}),
 				};
 			}
 

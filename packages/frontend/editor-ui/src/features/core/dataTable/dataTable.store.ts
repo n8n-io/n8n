@@ -26,6 +26,7 @@ import type {
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { reorderItem } from '@/features/core/dataTable/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -174,6 +175,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			if (index !== -1) {
 				dataTables.value[index] = { ...dataTables.value[index], name };
 			}
+			useFavoritesStore().renameFavorite(dataTableId, 'dataTable', name);
 		}
 		return updated;
 	};

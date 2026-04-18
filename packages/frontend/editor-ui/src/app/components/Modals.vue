@@ -37,6 +37,8 @@ import {
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
+	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+	AI_GATEWAY_TOP_UP_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -129,6 +131,10 @@ import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishMod
 import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/app/components/CredentialResolverEditModal.vue';
 import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
+import AiGatewayTopUpModal from '@/features/ai/gateway/components/AiGatewayTopUpModal.vue';
+import InstanceAiCredentialSetupModal, {
+	type InstanceAiCredentialSetupModalData,
+} from '@/features/ai/instanceAi/components/InstanceAiCredentialSetupModal.vue';
 </script>
 
 <template>
@@ -485,6 +491,20 @@ import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuild
 			<template #default="{ modalName, data }">
 				<CredentialResolverEditModal :modal-name="modalName" :data="data" />
 			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<InstanceAiCredentialSetupModal
+					data-test-id="instance-ai-credential-setup-modal"
+					:modal-name="modalName"
+					:data="data as InstanceAiCredentialSetupModalData"
+				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="AI_GATEWAY_TOP_UP_MODAL_KEY">
+			<AiGatewayTopUpModal />
 		</ModalRoot>
 
 		<!-- Dynamic modals from modules -->

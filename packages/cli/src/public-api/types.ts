@@ -2,7 +2,7 @@ import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type {
 	AddDataTableRowsDto,
-	CreateDataTableDto,
+	PublicApiCreateDataTableDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -33,13 +33,19 @@ export declare namespace ExecutionRequest {
 			cursor?: string;
 			offset?: number;
 			includeData?: boolean;
+			redactExecutionData?: boolean;
 			workflowId?: string;
 			lastId?: string;
 			projectId?: string;
 		}
 	>;
 
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
+	type Get = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{},
+		{ includeData?: boolean; redactExecutionData?: boolean }
+	>;
 	type Delete = Get;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
 	type Stop = AuthenticatedRequest<{ id: string }>;
@@ -98,7 +104,7 @@ export declare namespace WorkflowRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
+	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity & { projectId?: string }, {}>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
@@ -168,7 +174,7 @@ export declare namespace CredentialRequest {
 	type Create = AuthenticatedRequest<
 		{},
 		{},
-		{ type: string; name: string; data: ICredentialDataDecryptedObject },
+		{ type: string; name: string; data: ICredentialDataDecryptedObject; projectId?: string },
 		{}
 	>;
 
@@ -189,6 +195,19 @@ export declare namespace CredentialRequest {
 	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
+}
+
+export declare namespace InsightsRequest {
+	type GetSummary = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			startDate?: string;
+			endDate?: string;
+			projectId?: string;
+		}
+	>;
 }
 
 export type OperationID = 'getUsers' | 'getUser';
@@ -238,7 +257,7 @@ export declare namespace DataTableRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, CreateDataTableDto, {}>;
+	type Create = AuthenticatedRequest<{}, {}, PublicApiCreateDataTableDto, {}>;
 
 	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
@@ -276,6 +295,17 @@ export declare namespace DataTableRequest {
 			dryRun?: string | boolean;
 		}
 	>;
+}
+
+// ----------------------------------
+//           /community-packages
+// ----------------------------------
+
+export declare namespace CommunityPackageRequest {
+	type Install = AuthenticatedRequest<{}, {}, { name: string; version?: string }>;
+	type List = AuthenticatedRequest;
+	type Update = AuthenticatedRequest<{ name: string }, {}, { version?: string }>;
+	type Uninstall = AuthenticatedRequest<{ name: string }>;
 }
 
 // ----------------------------------

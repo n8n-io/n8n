@@ -7,7 +7,6 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 } from '@/app/constants';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -33,6 +32,7 @@ import {
 } from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 import {
 	N8nActionToggle,
@@ -58,11 +58,11 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 	ARCHIVE: 'archive',
 	UNARCHIVE: 'unarchive',
-	MOVE: 'move',
 	MOVE_TO_FOLDER: 'moveToFolder',
 	ENABLE_MCP_ACCESS: 'enableMCPAccess',
 	REMOVE_MCP_ACCESS: 'removeMCPAccess',
 	UNPUBLISH: 'unpublish',
+	TOGGLE_FAVORITE: 'toggleFavorite',
 };
 
 const props = withDefaults(
@@ -121,6 +121,7 @@ const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const mcpStore = useMCPStore();
+const favoritesStore = useFavoritesStore();
 const workflowActivate = useWorkflowActivate();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
@@ -193,6 +194,13 @@ const actions = computed(() => {
 			value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
 		});
 	}
+
+	items.push({
+		label: favoritesStore.isFavorite(props.data.id, 'workflow')
+			? locale.baseText('favorites.remove')
+			: locale.baseText('favorites.add'),
+		value: WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
+	});
 
 	if (
 		workflowPermissions.value.read &&
@@ -377,9 +385,6 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE:
 			await unarchiveWorkflow();
 			break;
-		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE:
-			moveResource();
-			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER:
 			emit('action:move-to-folder', {
 				id: props.data.id,
@@ -397,6 +402,9 @@ async function onAction(action: string) {
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
 			await unpublishWorkflow();
+			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
+			await favoritesStore.toggleFavorite(props.data.id, 'workflow');
 			break;
 	}
 }
@@ -555,18 +563,6 @@ const fetchHiddenBreadCrumbsItems = async () => {
 		cachedHiddenBreadcrumbsItems.value = await loadedItem;
 	}
 };
-
-function moveResource() {
-	uiStore.openModalWithData({
-		name: PROJECT_MOVE_RESOURCE_MODAL,
-		data: {
-			resource: props.data,
-			resourceType: ResourceType.Workflow,
-			resourceTypeLabel: resourceTypeLabel.value,
-			eventBus: props.workflowListEventBus,
-		},
-	});
-}
 
 const onBreadcrumbItemClick = async (item: PathItem) => {
 	if (item.href) {

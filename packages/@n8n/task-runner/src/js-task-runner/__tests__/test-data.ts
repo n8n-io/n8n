@@ -90,6 +90,7 @@ export const newDataRequestResponse = (
 		},
 		node: codeNode,
 		runExecutionData: createRunExecutionData({
+			resumeToken: 'test-resume-token',
 			resultData: {
 				runData: {
 					[manualTriggerNode.name]: [

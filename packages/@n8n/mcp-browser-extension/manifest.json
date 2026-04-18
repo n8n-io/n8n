@@ -1,0 +1,28 @@
+{
+	"manifest_version": 3,
+	"name": "n8n Browser Use",
+	"key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvRoWEdJjhgP9qs6R1jcemywrw+I91EJZtYur5C97hjjUc5nPao4jSv1qXFksdKuMddb9IEvzBElr5EYsXSaiVqdbRl8Gge0xYV1gGga653T2d9BuXL7NKv/wZxJ2i/coHSjhhIULQUBAVwu0JFMbHY5T8LfqrzBljuY7u1Xa7jmLmx0QrsoKLbGUoOBVZz4ztEGKEQHEelgg+ph2LrcYJczMBZ80PaHQAaWrvbCYF4vnZLd++Svy70ZCt7gr93L8BXHc8j1c3VojQTk+Uvqhm/4nZdYHlEmruQkd0pE+zTyegbcDlw0oc+6sLbsc0CqmJz8zH0OvSTfSVK7h6LNwbQIDAQAB",
+	"version": "0.0.1",
+	"description": "Let n8n AI set up credentials, fill out forms, and automate anything in your browser",
+	"permissions": ["debugger", "activeTab", "tabs", "storage", "webNavigation"],
+	"host_permissions": ["<all_urls>"],
+	"background": {
+		"service_worker": "background.mjs",
+		"type": "module"
+	},
+	"action": {
+		"default_title": "n8n Browser Use",
+		"default_icon": {
+			"16": "icons/icon-16.png",
+			"32": "icons/icon-32.png",
+			"48": "icons/icon-48.png",
+			"128": "icons/icon-128.png"
+		}
+	},
+	"icons": {
+		"16": "icons/icon-16.png",
+		"32": "icons/icon-32.png",
+		"48": "icons/icon-48.png",
+		"128": "icons/icon-128.png"
+	}
+}

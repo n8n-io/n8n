@@ -11,7 +11,7 @@ export class Xml implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'XML',
 		name: 'xml',
-		icon: 'fa:file-code',
+		icon: 'node:xml',
 		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
@@ -19,7 +19,6 @@ export class Xml implements INodeType {
 		description: 'Convert data from and to XML',
 		defaults: {
 			name: 'XML',
-			color: '#333377',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

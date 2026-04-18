@@ -64,7 +64,8 @@ beforeEach(() => {
 	mockNodeTypesState = getNodeTypesStateMock();
 	mockCompletionResult = {};
 	mockBuilderState.trackWorkflowBuilderJourney.mockClear();
-	mockIsPlaceholderValue.mockClear();
+	mockIsPlaceholderValue.mockReset();
+	mockExtractPlaceholderLabels.mockReset().mockReturnValue([]);
 	mockBuilderState.isAIBuilderEnabled = true;
 });
 
@@ -112,10 +113,12 @@ vi.mock('@/features/ai/assistant/builder.store', () => {
 });
 
 const mockIsPlaceholderValue = vi.fn();
+const mockExtractPlaceholderLabels = vi.fn().mockReturnValue([]);
 
 vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
 	return {
 		isPlaceholderValue: (value: unknown) => mockIsPlaceholderValue(value),
+		extractPlaceholderLabels: (value: unknown) => mockExtractPlaceholderLabels(value),
 	};
 });
 
@@ -907,7 +910,7 @@ describe('ParameterInput.vue', () => {
 	});
 
 	describe('multi-line string handling', () => {
-		test('should replace all newlines with pipes in single-line string display', async () => {
+		test('should render multi-line string value as textarea', async () => {
 			const multiLineValue = 'line1\nline2\nline3';
 			const { container } = renderComponent({
 				props: {
@@ -923,9 +926,9 @@ describe('ParameterInput.vue', () => {
 			});
 
 			await nextTick();
-			const input = container.querySelector('input') as HTMLInputElement;
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 			await waitFor(() => {
-				expect(input.value).toBe('line1|line2|line3');
+				expect(textarea.value).toBe(multiLineValue);
 			});
 		});
 
@@ -950,7 +953,28 @@ describe('ParameterInput.vue', () => {
 			expect(textarea.value).toBe(multiLineValue);
 		});
 
-		test('should handle consecutive newlines correctly', async () => {
+		test('should keep pipe characters as-is in single-line input', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'pattern',
+					parameter: createTestNodeProperties({
+						displayName: 'Pattern',
+						name: 'pattern',
+						type: 'string',
+					}),
+					modelValue: 'foo|bar',
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await waitFor(() => {
+				expect(input.value).toBe('foo|bar');
+			});
+		});
+
+		test('should render string with consecutive newlines as textarea', async () => {
 			const { container } = renderComponent({
 				props: {
 					path: 'test',
@@ -965,9 +989,9 @@ describe('ParameterInput.vue', () => {
 			});
 
 			await nextTick();
-			const input = container.querySelector('input') as HTMLInputElement;
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 			await waitFor(() => {
-				expect(input.value).toBe('a|||b');
+				expect(textarea.value).toBe('a\n\n\nb');
 			});
 		});
 	});

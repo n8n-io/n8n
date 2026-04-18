@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
@@ -31,6 +32,7 @@ describe('McpOAuthService', () => {
 
 		service = new McpOAuthService(
 			logger,
+			mockInstance(GlobalConfig),
 			oauthSessionService,
 			oauthClientRepository,
 			tokenService,
@@ -179,13 +181,9 @@ describe('McpOAuthService', () => {
 				const error = new Error('Database error');
 				oauthClientRepository.insert.mockRejectedValue(error);
 
-				const result = await service.clientsStore.registerClient!(clientInfo);
-
-				expect(logger.error).toHaveBeenCalledWith('Error registering OAuth client', {
-					error,
-					clientId: 'new-client-123',
-				});
-				expect(result).toEqual(clientInfo);
+				await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+					'Database error',
+				);
 			});
 		});
 	});
@@ -456,6 +454,52 @@ describe('McpOAuthService', () => {
 
 			expect(tokenService.verifyAccessToken).toHaveBeenCalledWith('access-token-123');
 			expect(result).toEqual(authInfo);
+		});
+	});
+
+	describe('deleteClient', () => {
+		it('should delete client when user has consent', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOneBy.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+			} as any);
+			oauthClientRepository.delete.mockResolvedValue({} as any);
+
+			await service.deleteClient('client-123', 'user-456');
+
+			expect(oauthClientRepository.delete).toHaveBeenCalledWith({ id: 'client-123' });
+		});
+
+		it('should throw when client does not exist', async () => {
+			oauthClientRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.deleteClient('nonexistent', 'user-456')).rejects.toThrow(
+				'OAuth client with ID nonexistent not found',
+			);
+
+			expect(oauthClientRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('should throw when user has no consent for the client', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(service.deleteClient('client-123', 'other-user')).rejects.toThrow(
+				'OAuth client with ID client-123 not found',
+			);
+
+			expect(oauthClientRepository.delete).not.toHaveBeenCalled();
 		});
 	});
 

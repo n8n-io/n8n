@@ -9,5 +9,6 @@ import { BackendModule } from '@n8n/decorators';
 export class ProvisioningModule implements ModuleInterface {
 	async init() {
 		await import('./provisioning.controller.ee');
+		await import('./role-mapping-rule.controller.ee');
 	}
 }

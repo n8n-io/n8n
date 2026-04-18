@@ -47,6 +47,23 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 import { EventService } from './events/event.service';
 
+/** Interval between keepalive writes on streaming responses to prevent proxy timeouts */
+const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
+
+/** JSON chunk written periodically to keep the streaming connection alive through reverse proxies */
+const STREAMING_KEEPALIVE_CHUNK = '{"type":"keepalive"}\n';
+
+/**
+ * Flush the response through the compression middleware.
+ * The `flush` method is added at runtime by the Express `compression` middleware
+ * and is not part of the standard Response type.
+ */
+function flushResponse(res: { flush?: () => void }) {
+	if (typeof res.flush === 'function') {
+		res.flush();
+	}
+}
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
@@ -147,6 +164,7 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 
 		const { id: workflowId, nodes } = data.workflowData;
+
 		try {
 			await this.credentialsPermissionChecker.check(workflowId, nodes);
 		} catch (error) {
@@ -166,6 +184,20 @@ export class WorkflowRunner {
 
 		if (responsePromise) {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
+		}
+
+		// Set up streaming heartbeat on the main process that holds the HTTP response.
+		// This must happen BEFORE the queue/local decision because in queue mode the
+		// execution runs on a worker process that has no access to the HTTP response.
+		let heartbeatInterval: NodeJS.Timeout | undefined;
+		if (data.streamingEnabled === true && data.httpResponse) {
+			const res = data.httpResponse;
+			heartbeatInterval = setInterval(() => {
+				if (!res.writableEnded) {
+					res.write(STREAMING_KEEPALIVE_CHUNK);
+					flushResponse(res);
+				}
+			}, STREAMING_HEARTBEAT_INTERVAL_MS);
 		}
 
 		// @TODO: Reduce to true branch once feature is stable
@@ -205,7 +237,18 @@ export class WorkflowRunner {
 					error,
 					executionId,
 					workflowId,
+					workflowName: data.workflowData.name,
+					...(data.projectId && { projectId: data.projectId }),
+					...(data.projectName && { projectName: data.projectName }),
 				});
+			});
+		}
+
+		// Clean up the streaming heartbeat when the execution finishes
+		if (heartbeatInterval) {
+			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
+			void postExecutePromise.finally(() => {
+				clearInterval(heartbeatInterval);
 			});
 		}
 
@@ -284,7 +327,7 @@ export class WorkflowRunner {
 			if (data.streamingEnabled) {
 				lifecycleHooks.addHandler('sendChunk', (chunk) => {
 					data.httpResponse?.write(JSON.stringify(chunk) + '\n');
-					data.httpResponse?.flush?.();
+					if (data.httpResponse) flushResponse(data.httpResponse);
 				});
 			}
 
@@ -390,6 +433,8 @@ export class WorkflowRunner {
 			pushRef: data.pushRef,
 			streamingEnabled: data.streamingEnabled,
 			restartExecutionId,
+			projectId: data.projectId,
+			projectName: data.projectName,
 			// MCP-specific fields for queue mode support
 			isMcpExecution: data.isMcpExecution,
 			mcpType: data.mcpType,
@@ -483,7 +528,10 @@ export class WorkflowRunner {
 
 				let runData: IRun;
 
-				if (!jobResult || this.needsFullExecutionData(data.executionMode, executionId)) {
+				if (
+					!jobResult ||
+					this.needsFullExecutionData(data.executionMode, executionId, data.forceFullExecutionData)
+				) {
 					const fullExecutionData = await this.executionRepository.findSingleExecution(
 						executionId,
 						{
@@ -555,7 +603,12 @@ export class WorkflowRunner {
 	 * In all other cases we can skip the DB fetch and use the lightweight
 	 * result summary sent by the worker via the job progress message.
 	 */
-	private needsFullExecutionData(executionMode: WorkflowExecuteMode, executionId: string): boolean {
+	private needsFullExecutionData(
+		executionMode: WorkflowExecuteMode,
+		executionId: string,
+		forceFullExecutionData?: boolean,
+	): boolean {
+		if (forceFullExecutionData) return true;
 		if (!process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING) return true;
 
 		return (

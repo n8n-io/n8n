@@ -23,6 +23,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
 	close: [];
+	versionsChange: [{ sourceVersionId: string; targetVersionId: string }];
 }>();
 
 const i18n = useI18n();
@@ -163,6 +164,7 @@ watch(
 watch(
 	[selectedSourceVersionId, selectedTargetVersionId],
 	([sourceVersionId, targetVersionId]) => {
+		emit('versionsChange', { sourceVersionId, targetVersionId });
 		void loadComparedVersions(sourceVersionId, targetVersionId);
 	},
 	{ immediate: true },

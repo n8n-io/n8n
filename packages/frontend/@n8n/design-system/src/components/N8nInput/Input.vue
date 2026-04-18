@@ -391,7 +391,7 @@ defineExpose({ focus, blur, select });
 	--input--font-size: var(--font-size--sm);
 	--input--padding: var(--spacing--xs);
 
-	--input--color--background: light-dark(var(--color--neutral-white), transparent);
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 	--input--shadow: 0 0 0 0 transparent;
 	--input--shadow--hover: 0 0 0 0 transparent;
 	--input--shadow--focus: 0 0 0 0 transparent;
@@ -448,7 +448,11 @@ defineExpose({ focus, blur, select });
 	min-width: 0;
 	gap: var(--input--padding);
 	padding: 0 var(--input--padding);
-	border-radius: var(--input--radius);
+	min-height: var(--input--height);
+	border-radius: var(--input--radius--top-left, var(--input--radius))
+		var(--input--radius--top-right, var(--input--radius))
+		var(--input--radius--bottom-right, var(--input--radius))
+		var(--input--radius--bottom-left, var(--input--radius));
 	background-color: var(--input--color--background);
 	box-shadow:
 		var(--input--shadow),
@@ -534,7 +538,7 @@ defineExpose({ focus, blur, select });
 	flex: 1;
 	min-width: 0;
 	resize: vertical;
-	padding: var(--spacing--xs);
+	padding: var(--input--padding);
 	line-height: var(--line-height--md);
 	border: none;
 	background: transparent;

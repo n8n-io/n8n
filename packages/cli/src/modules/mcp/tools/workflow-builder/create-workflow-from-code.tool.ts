@@ -1,16 +1,17 @@
 import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
-import { resolveNodeWebhookId } from 'n8n-workflow';
 import z from 'zod';
 
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
-import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
+import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 
 const inputSchema = {
@@ -63,6 +64,12 @@ const outputSchema = {
 		.optional()
 		.describe(
 			'Additional notes about the workflow creation, such as any nodes that were skipped during credential auto-assignment.',
+		),
+	hint: z
+		.string()
+		.optional()
+		.describe(
+			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -148,14 +155,9 @@ export const createCreateWorkflowFromCodeTool = (
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
 			});
 
-			for (const node of newWorkflow.nodes) {
-				try {
-					const desc = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-					resolveNodeWebhookId(node, desc.description);
-				} catch {
-					// Node type not found, skip
-				}
-			}
+			resolveNodeWebhookIds(newWorkflow, nodeTypes);
+
+			stripNullCredentialStubs(newWorkflow.nodes);
 
 			// Resolve the effective project ID — default to the user's personal project
 			let effectiveProjectId = projectId;
@@ -214,7 +216,8 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { error: errorMessage };
+			const hint = getSdkReferenceHint(error);
+			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

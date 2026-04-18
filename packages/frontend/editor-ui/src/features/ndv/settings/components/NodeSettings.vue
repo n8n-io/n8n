@@ -159,8 +159,8 @@ const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
 const { isPreviewMode } = useSettingsStore();
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
-const currentWorkflow = computed(
-	() => workflowsListStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
+const currentWorkflow = computed(() =>
+	workflowsListStore.getWorkflowById(workflowsStore.workflowId),
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
@@ -183,6 +183,8 @@ const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackag
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
+
+const isModelNode = computed(() => !!node.value && nodeTypesStore.isModelNode(node.value.type));
 
 const isExecutable = computed(() =>
 	nodeHelpers.isNodeExecutable(node.value, props.executable, props.foreignCredentials),
@@ -306,7 +308,8 @@ const featureRequestUrl = computed(() => {
 
 const hasOutputConnection = computed(() => {
 	if (!node.value) return false;
-	const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(node.value.name);
+	const outgoingConnections =
+		workflowDocumentStore?.value?.outgoingConnectionsByNodeName(node.value.name) ?? {};
 
 	// Check if there's at-least one output connection
 	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
@@ -457,7 +460,9 @@ const setHttpNodeParameters = (parameters: CurlToJSONResponse) => {
 			name: 'parameters',
 			value: parameters as unknown as INodeParameters,
 		});
-	} catch {}
+	} catch (error) {
+		console.error('Failed to apply cURL parameters to node:', error);
+	}
 };
 
 const onSwitchSelectedNode = (node: string) => {
@@ -482,7 +487,7 @@ const populateHiddenIssuesSet = () => {
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isToolNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
 );
 
 const iconSource = computed(() =>
@@ -627,7 +632,6 @@ function handleSelectAction(params: INodeParameters) {
 			embedded: props.isEmbeddedInCanvas,
 		}"
 		:data-has-output-connection="hasOutputConnection"
-		@keydown.stop
 	>
 		<ExperimentalEmbeddedNdvHeader
 			v-if="isEmbeddedInCanvas && node"
