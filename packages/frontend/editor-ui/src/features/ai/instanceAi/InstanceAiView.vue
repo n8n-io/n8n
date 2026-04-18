@@ -140,7 +140,7 @@ onMounted(() => {
 		.refreshModuleSettings()
 		.catch(() => {})
 		.then(() => {
-			if (!settingsStore.isLocalGatewayDisabled) {
+			if (!settingsStore.isLocalGatewayDisabled && !settingsStore.isInstanceAiDisabled) {
 				settingsStore.startDaemonProbing();
 				settingsStore.startGatewayPushListener();
 				settingsStore.pollGatewayStatus();
@@ -150,7 +150,7 @@ onMounted(() => {
 
 // React to local gateway being toggled in settings without requiring a page reload
 watch(
-	() => settingsStore.isLocalGatewayDisabled,
+	() => settingsStore.isLocalGatewayDisabled || settingsStore.isInstanceAiDisabled,
 	(disabled) => {
 		if (disabled) {
 			settingsStore.stopDaemonProbing();
