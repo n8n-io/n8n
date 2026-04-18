@@ -108,6 +108,12 @@ export class ScheduledTaskManager {
 			timezone,
 		);
 
+		try {
+			scheduledT = job.nextDate().toJSDate();
+		} catch {
+			scheduledT = null;
+		}
+
 		const cron: Cron = { job, summary, ctx };
 
 		if (!workflowCrons) {
