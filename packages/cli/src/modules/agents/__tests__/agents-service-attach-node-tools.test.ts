@@ -1,6 +1,6 @@
-import { mock } from 'jest-mock-extended';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
-import * as agents from '@n8n/agents';
+import type * as agents from '@n8n/agents';
+import { mock } from 'jest-mock-extended';
 
 import type { AgentsToolsService } from '../agents-tools.service';
 
