@@ -85,6 +85,9 @@ export class ExecutionEntity {
 	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
 	storedAt: ExecutionDataStorageLocation;
 
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	deduplicationKey: string | null;
+
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];
 
