@@ -8,6 +8,6 @@ const UNIQUE_VIOLATION_CODES = new Set([
 
 export function isUniqueViolationError(error: unknown): boolean {
 	if (!(error instanceof QueryFailedError)) return false;
-	const driverError = (error as unknown as { driverError?: { code?: string } }).driverError;
-	return typeof driverError?.code === 'string' && UNIQUE_VIOLATION_CODES.has(driverError.code);
+	const code = (error.driverError as { code?: unknown })?.code;
+	return typeof code === 'string' && UNIQUE_VIOLATION_CODES.has(code);
 }

@@ -185,6 +185,7 @@ describe('ExecutionPersistence', () => {
 				);
 				await expect(executionPersistence.create(payloadWithKey)).rejects.toMatchObject({
 					deduplicationKey: 'wf-1:node-1:1700000000000',
+					cause: uniqueViolation,
 				});
 			});
 
