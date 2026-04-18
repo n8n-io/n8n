@@ -443,9 +443,12 @@ export class ScheduleTrigger implements INodeType {
 			}
 		}
 
-		const dedupEnabled = Container.get(ExecutionsConfig).scheduledExecutionDeduplicationEnabled;
 		const workflowId = this.getWorkflow().id;
 		const nodeId = this.getNode().id;
+
+		const configDedupEnabled =
+			Container.get(ExecutionsConfig).scheduledExecutionDeduplicationEnabled;
+		const dedupEnabled = configDedupEnabled && Boolean(workflowId);
 
 		const executeTrigger = (
 			recurrence: IRecurrenceRule,
