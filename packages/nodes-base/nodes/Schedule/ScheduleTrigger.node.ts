@@ -1,3 +1,5 @@
+import { ExecutionsConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { sendAt } from 'cron';
 import moment from 'moment-timezone';
 import type {
@@ -441,7 +443,15 @@ export class ScheduleTrigger implements INodeType {
 			}
 		}
 
-		const executeTrigger = (recurrence: IRecurrenceRule, skipRecurrenceCheck = false) => {
+		const dedupEnabled = Container.get(ExecutionsConfig).scheduledExecutionDeduplicationEnabled;
+		const workflowId = this.getWorkflow().id;
+		const nodeId = this.getNode().id;
+
+		const executeTrigger = (
+			recurrence: IRecurrenceRule,
+			skipRecurrenceCheck = false,
+			scheduledT?: Date,
+		) => {
 			if (!skipRecurrenceCheck) {
 				const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
 				if (!shouldTrigger) return;
@@ -462,7 +472,17 @@ export class ScheduleTrigger implements INodeType {
 				Timezone: `${timezone} (UTC${momentTz.format('Z')})`,
 			};
 
-			this.emit([this.helpers.returnJsonArray([resultData])]);
+			const deduplicationKey =
+				dedupEnabled && scheduledT
+					? `${workflowId}:${nodeId}:${scheduledT.toISOString()}`
+					: undefined;
+
+			this.emit(
+				[this.helpers.returnJsonArray([resultData])],
+				undefined,
+				undefined,
+				deduplicationKey,
+			);
 		};
 
 		const rules = intervals.map((interval, i) => ({
@@ -478,7 +498,9 @@ export class ScheduleTrigger implements INodeType {
 						expression: cronExpression,
 						recurrence,
 					};
-					this.helpers.registerCron(cron, () => executeTrigger(recurrence));
+					this.helpers.registerCron(cron, (scheduledT) =>
+						executeTrigger(recurrence, false, scheduledT),
+					);
 				} catch (error) {
 					if (interval.field === 'cronExpression') {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
