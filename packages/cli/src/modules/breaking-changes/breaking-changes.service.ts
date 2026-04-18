@@ -99,6 +99,19 @@ export class BreakingChangeService {
 		return nodesGroupedByType;
 	}
 
+	private normalizeLatestEvent(latestEvent: unknown): Date | undefined {
+		if (latestEvent instanceof Date) {
+			return Number.isNaN(latestEvent.getTime()) ? undefined : latestEvent;
+		}
+
+		if (typeof latestEvent === 'string' || typeof latestEvent === 'number') {
+			const normalizedDate = new Date(latestEvent);
+			return Number.isNaN(normalizedDate.getTime()) ? undefined : normalizedDate;
+		}
+
+		return undefined;
+	}
+
 	private async aggregateRegularRuleResults(
 		workflowLevelRules: IBreakingChangeWorkflowRule[],
 		allAffectedWorkflowsByRule: Map<string, BreakingChangeAffectedWorkflow[]>,
@@ -220,14 +233,16 @@ export class BreakingChangeService {
 			for (const workflow of workflows) {
 				const nodesGroupedByType = this.groupNodesByType(workflow.nodes);
 				const statistics = statisticsByWorkflowId.get(workflow.id) ?? [];
+				const lastExecutedAt = statistics
+					.map((stat) => this.normalizeLatestEvent(stat.latestEvent))
+					.filter((latestEvent): latestEvent is Date => latestEvent !== undefined)
+					.sort((a, b) => b.getTime() - a.getTime())[0];
 
 				const workflowMetadata: WorkflowMetadata = {
 					name: workflow.name,
 					active: !!workflow.activeVersionId,
 					numberOfExecutions: statistics.reduce((acc, cur) => acc + (cur.count || 0), 0),
-					lastExecutedAt: statistics.sort(
-						(a, b) => b.latestEvent.getTime() - a.latestEvent.getTime(),
-					)[0]?.latestEvent,
+					lastExecutedAt,
 					lastUpdatedAt: workflow.updatedAt,
 				};
 				workflowMetadataMap.set(workflow.id, workflowMetadata);
