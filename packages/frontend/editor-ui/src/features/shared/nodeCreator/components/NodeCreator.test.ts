@@ -9,9 +9,9 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: { value: false },
 		fetchConfig: mockFetchConfig,
-		fetchCredits: vi.fn(),
-		creditsRemaining: { value: undefined },
-		creditsQuota: { value: undefined },
+		fetchWallet: vi.fn(),
+		balance: { value: undefined },
+		budget: { value: undefined },
 		fetchError: { value: undefined },
 		isCredentialTypeSupported: vi.fn(() => false),
 		saveAfterToggle: vi.fn(),

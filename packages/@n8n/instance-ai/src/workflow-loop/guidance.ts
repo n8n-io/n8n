@@ -10,14 +10,12 @@ export function formatWorkflowLoopGuidance(
 ): string {
 	switch (action.type) {
 		case 'done': {
-			if (action.mockedCredentialTypes?.length) {
-				const types = action.mockedCredentialTypes.join(', ');
+			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
 					'Workflow verified successfully with temporary mock data. ' +
-					`Call \`setup-credentials\` with types [${types}] and ` +
-					'credentialFlow stage "finalize" to let the user add real credentials. ' +
-					'After the user selects credentials, call `apply-workflow-credentials` ' +
-					`with the workItemId "${options.workItemId ?? 'unknown'}" and workflowId to apply them.`
+					`Call \`setup-workflow\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
+					'to let the user configure credentials, parameters, and triggers through the setup UI. ' +
+					'Do not call `setup-credentials` or `apply-workflow-credentials` — `setup-workflow` handles everything.'
 				);
 			}
 			return `Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;

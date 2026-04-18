@@ -11,20 +11,22 @@ import {
 	ProjectRepository,
 	ProjectRelation,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
-import { jsonParse } from 'n8n-workflow';
-import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
-import { Not, In } from '@n8n/typeorm';
 import { OnPubSubEvent } from '@n8n/decorators';
+import { Service } from '@n8n/di';
+import { Not, In } from '@n8n/typeorm';
+import { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+import { ZodError } from 'zod';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ZodError } from 'zod';
 import { ProjectService } from '@/services/project.service.ee';
-import { InstanceSettings } from 'n8n-core';
 import { UserService } from '@/services/user.service';
-import { RoleResolverService } from './role-resolver.service.ee';
+
+import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 import type { RoleMappingConfig, ResolvedRoles, RoleResolverContext } from './role-resolver-types';
+import { RoleResolverService } from './role-resolver.service.ee';
 
 export function isExpressionMappingFlagEnabled(): boolean {
 	return process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY === 'true';
@@ -411,6 +413,18 @@ export class ProvisioningService {
 		return provisioningConfig.scopesUseExpressionMapping;
 	}
 
+	async isInstanceRoleManaged(): Promise<boolean> {
+		return (
+			(await this.isInstanceRoleProvisioningEnabled()) || (await this.isExpressionMappingEnabled())
+		);
+	}
+
+	async isProjectRoleManaged(): Promise<boolean> {
+		return (
+			(await this.isProjectRolesProvisioningEnabled()) || (await this.isExpressionMappingEnabled())
+		);
+	}
+
 	private async buildRoleMappingConfig(): Promise<RoleMappingConfig> {
 		const dbRules = await this.roleMappingRuleRepository.find({
 			relations: ['role', 'projects'],
@@ -444,12 +458,29 @@ export class ProvisioningService {
 		return { instanceRoleRules, projectRoleRules, fallbackInstanceRole: 'global:member' };
 	}
 
-	private async applyExpressionMappedRoles(
-		user: User,
-		resolvedRoles: ResolvedRoles,
-	): Promise<void> {
-		await this.applyExpressionMappedInstanceRole(user, resolvedRoles.instanceRole);
-		await this.applyExpressionMappedProjectRoles(user.id, resolvedRoles.projectRoles);
+	private async applyExpressionMappedRoles(user: User, resolved: ResolvedRoles): Promise<void> {
+		const projectRolesMap = new Map<string, string>();
+		for (const [projectId, pr] of resolved.projectRoles) {
+			projectRolesMap.set(projectId, pr.role);
+		}
+
+		await this.applyExpressionMappedInstanceRole(user, resolved.instanceRole.role);
+		await this.applyExpressionMappedProjectRoles(user.id, projectRolesMap);
+	}
+
+	private async getPreviousProjectRoles(userId: string): Promise<Record<string, string>> {
+		const projects = await this.projectRepository.find({
+			where: { type: Not('personal'), projectRelations: { userId } },
+			relations: ['projectRelations', 'projectRelations.role'],
+		});
+		const result: Record<string, string> = {};
+		for (const project of projects) {
+			const relation = project.projectRelations.find((r) => r.userId === userId);
+			if (relation) {
+				result[project.id] = relation.role.slug;
+			}
+		}
+		return result;
 	}
 
 	private async applyExpressionMappedInstanceRole(
@@ -576,8 +607,34 @@ export class ProvisioningService {
 	): Promise<void> {
 		if (!(await this.isExpressionMappingEnabled())) return;
 
+		const previousInstanceRole = user.role.slug;
+		const previousProjectRoles = await this.getPreviousProjectRoles(user.id);
+
 		const config = await this.buildRoleMappingConfig();
-		const resolvedRoles = await this.roleResolverService.resolveRoles(config, context);
-		await this.applyExpressionMappedRoles(user, resolvedRoles);
+		const resolved = await this.roleResolverService.resolveRoles(config, context);
+
+		await this.applyExpressionMappedRoles(user, resolved);
+
+		const newInstanceRole = resolved.instanceRole;
+		const projectRoles = [...resolved.projectRoles.values()].map((pr) => {
+			const prev = previousProjectRoles[pr.projectId] ?? null;
+			return { ...pr, previousRole: prev, changed: prev !== pr.role };
+		});
+		const removedProjectIds = Object.keys(previousProjectRoles).filter(
+			(id) => !resolved.projectRoles.has(id),
+		);
+
+		this.eventService.emit('expression-mapping-roles-resolved', {
+			userId: user.id,
+			userEmail: user.email,
+			provider: context.$provider,
+			instanceRole: {
+				...newInstanceRole,
+				previousRole: previousInstanceRole,
+				changed: newInstanceRole.role !== previousInstanceRole,
+			},
+			projectRoles,
+			removedProjectIds,
+		});
 	}
 }

@@ -62,6 +62,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
+import type { WorkflowObjectAccessors } from '../types';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -116,7 +117,7 @@ export async function resolveParameter<T = IDataObject>(
 // TODO: move to separate file
 function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	workflowObject: Workflow,
+	workflowObject: WorkflowObjectAccessors,
 	connections: IConnections,
 	envVars: Record<string, string | boolean | number>,
 	ndvActiveNode: INodeUi | null,
@@ -327,34 +328,6 @@ export async function resolveRequiredParameters(
 	);
 
 	return Object.fromEntries(resolvedEntries);
-}
-
-function getConnectedNodes(
-	direction: 'upstream' | 'downstream',
-	workflow: Workflow,
-	nodeName: string,
-): string[] {
-	let checkNodes: string[];
-	if (direction === 'downstream') {
-		checkNodes = workflow.getChildNodes(nodeName);
-	} else if (direction === 'upstream') {
-		checkNodes = workflow.getParentNodes(nodeName);
-	} else {
-		throw new Error(`The direction "${direction}" is not supported!`);
-	}
-
-	// Find also all nodes which are connected to the child nodes via a non-main input
-	let connectedNodes: string[] = [];
-	checkNodes.forEach((checkNode) => {
-		connectedNodes = [
-			...connectedNodes,
-			checkNode,
-			...workflow.getParentNodes(checkNode, 'ALL_NON_MAIN'),
-		];
-	});
-
-	// Remove duplicates
-	return [...new Set(connectedNodes)];
 }
 
 function getNodeTypes(): INodeTypes {
@@ -982,7 +955,6 @@ export function useWorkflowHelpers() {
 	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
 		const ws = overrideWorkflowState ?? workflowState;
 		workflowsListStore.addWorkflow(workflowData);
-		workflowsStore.setDescription(workflowData.description);
 		ws.setWorkflowId(workflowData.id);
 		const initializedWorkflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowData.id),
@@ -1053,6 +1025,7 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.setParentFolder(workflowData.parentFolder ?? null);
 		initializedWorkflowDocumentStore.setScopes(workflowData.scopes ?? []);
 		initializedWorkflowDocumentStore.setSharedWithProjects(workflowData.sharedWithProjects ?? []);
+		initializedWorkflowDocumentStore.setDescription(workflowData.description);
 		tagsStore.upsertTags(tags);
 
 		return { workflowDocumentStore: initializedWorkflowDocumentStore };
@@ -1125,7 +1098,6 @@ export function useWorkflowHelpers() {
 	return {
 		resolveParameter,
 		resolveRequiredParameters,
-		getConnectedNodes,
 		getNodeTypes,
 		connectionInputData,
 		executeData,
