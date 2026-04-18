@@ -68,7 +68,7 @@ export class ExecutionPersistence {
 			});
 		} catch (error) {
 			if (executionEntity.deduplicationKey && isUniqueViolationError(error)) {
-				throw new DuplicateExecutionError(executionEntity.deduplicationKey);
+				throw new DuplicateExecutionError(executionEntity.deduplicationKey, error as Error);
 			}
 			throw error;
 		}
