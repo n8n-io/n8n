@@ -2,17 +2,30 @@ import { z } from 'zod';
 
 jest.mock('@n8n/instance-ai', () => ({
 	createMemory: jest.fn(),
-	WORKING_MEMORY_TEMPLATE: '',
 	workflowLoopStateSchema: z.string(),
 	attemptRecordSchema: z.object({}),
 	workflowBuildOutcomeSchema: z.string(),
+	buildAgentTreeFromEvents: jest.fn(() => ({
+		agentId: 'agent-root',
+		role: 'orchestrator',
+		status: 'active',
+		textContent: '',
+		reasoning: '',
+		toolCalls: [],
+		children: [],
+		timeline: [],
+	})),
+}));
+
+jest.mock('../eval/execution.service', () => ({
+	EvalExecutionService: jest.fn(),
 }));
 
 import type {
+	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequestDto,
-	InstanceAiUpdateMemoryRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiUserPreferencesUpdateRequest,
@@ -32,13 +45,15 @@ import type { Scope } from '@n8n/permissions';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Push } from '@/push';
+import type { UrlService } from '@/services/url.service';
 
+import type { EvalExecutionService } from '../eval/execution.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
+import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
@@ -65,6 +80,7 @@ describe('InstanceAiController', () => {
 	const eventBus = mock<InProcessEventBus>();
 	const moduleRegistry = mock<ModuleRegistry>();
 	const push = mock<Push>();
+	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
 		instanceAi: { gatewayApiKey: 'static-key' },
 		editorBaseUrl: 'http://localhost:5678',
@@ -75,9 +91,11 @@ describe('InstanceAiController', () => {
 		instanceAiService,
 		memoryService,
 		settingsService,
+		mock<EvalExecutionService>(),
 		eventBus,
 		moduleRegistry,
 		push,
+		urlService,
 		globalConfig,
 	);
 
@@ -86,6 +104,7 @@ describe('InstanceAiController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 	});
 
 	describe('chat', () => {
@@ -168,6 +187,85 @@ describe('InstanceAiController', () => {
 	describe('events', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('events')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+		});
+
+		it('should bootstrap run-sync from the richer persisted snapshot when live events are incomplete', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			eventBus.getEventsAfter.mockReturnValue([]);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: true,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
+			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+			eventBus.getEventsForRuns.mockReturnValue([
+				{
+					type: 'run-start',
+					runId: 'run-1',
+					agentId: 'agent-root',
+					payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+				},
+			] as never);
+			memoryService.getLatestRunSnapshot.mockResolvedValue({
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				runIds: ['run-1'],
+				tree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					children: [
+						{
+							agentId: 'agent-planner-1',
+							role: 'planner',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							toolCalls: [],
+							children: [],
+							timeline: [],
+							planItems: [
+								{
+									id: 'task-1',
+									title: 'Build workflow',
+									kind: 'build-workflow',
+									spec: 'Create the workflow',
+									deps: [],
+								},
+							],
+						},
+					],
+					timeline: [{ type: 'child', agentId: 'agent-planner-1' }],
+				},
+			});
+
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: jest.fn(),
+				flushHeaders: jest.fn(),
+				write: jest.fn(),
+				end: jest.fn(),
+				flush: jest.fn(),
+			});
+			eventBus.subscribe.mockReturnValue(jest.fn());
+
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: jest.fn(),
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			const runSyncFrame = (sseRes.write as jest.Mock).mock.calls
+				.map(([frame]) => String(frame))
+				.find((frame) => frame.startsWith('event: run-sync'));
+
+			expect(runSyncFrame).toContain('"agent-planner-1"');
+			expect(runSyncFrame).toContain('"planItems"');
 		});
 
 		it('should close SSE stream when thread ownership changes after pre-creation subscribe', async () => {
@@ -385,6 +483,51 @@ describe('InstanceAiController', () => {
 				globalOnly: true,
 			});
 		});
+
+		it('should disconnect all gateways when enabled is set to false', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			instanceAiService.disconnectAllGateways.mockReturnValue(['user-a', 'user-b']);
+			const payload = { enabled: false } as InstanceAiAdminSettingsUpdateRequest;
+
+			await controller.updateAdminSettings(req, res, payload);
+
+			expect(instanceAiService.disconnectAllGateways).toHaveBeenCalled();
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'instanceAiGatewayStateChanged',
+					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+				}),
+				['user-a', 'user-b'],
+			);
+		});
+
+		it('should disconnect all gateways when localGatewayDisabled is set to true', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			instanceAiService.disconnectAllGateways.mockReturnValue(['user-c']);
+			const payload = { localGatewayDisabled: true } as InstanceAiAdminSettingsUpdateRequest;
+
+			await controller.updateAdminSettings(req, res, payload);
+
+			expect(instanceAiService.disconnectAllGateways).toHaveBeenCalled();
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'instanceAiGatewayStateChanged',
+				}),
+				['user-c'],
+			);
+		});
+
+		it('should not disconnect gateways when enabling features', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			const payload = {
+				enabled: true,
+				localGatewayDisabled: false,
+			} as InstanceAiAdminSettingsUpdateRequest;
+
+			await controller.updateAdminSettings(req, res, payload);
+
+			expect(instanceAiService.disconnectAllGateways).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getUserPreferences', () => {
@@ -446,63 +589,6 @@ describe('InstanceAiController', () => {
 				scope: 'instanceAi:manage',
 				globalOnly: true,
 			});
-		});
-	});
-
-	describe('getMemory', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('getMemory')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
-		});
-
-		it('should throw ForbiddenError for other user thread', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
-
-			await expect(controller.getMemory(req, res, THREAD_ID)).rejects.toThrow(ForbiddenError);
-		});
-
-		it('should allow new threads', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-			memoryService.getWorkingMemory.mockResolvedValue({ content: '', template: '' });
-
-			await expect(controller.getMemory(req, res, THREAD_ID)).resolves.toBeDefined();
-		});
-	});
-
-	describe('updateMemory', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('updateMemory')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
-		});
-
-		it('should update working memory', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const payload = mock<InstanceAiUpdateMemoryRequest>({ content: 'new memory' });
-
-			const result = await controller.updateMemory(req, res, THREAD_ID, payload);
-
-			expect(result).toEqual({ ok: true });
-			expect(memoryService.updateWorkingMemory).toHaveBeenCalledWith(
-				USER_ID,
-				THREAD_ID,
-				'new memory',
-			);
-		});
-
-		it('should throw ForbiddenError for other user thread', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
-			const payload = mock<InstanceAiUpdateMemoryRequest>({ content: 'new memory' });
-
-			await expect(controller.updateMemory(req, res, THREAD_ID, payload)).rejects.toThrow(
-				ForbiddenError,
-			);
-		});
-
-		it('should allow new threads', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-			const payload = mock<InstanceAiUpdateMemoryRequest>({ content: 'new memory' });
-
-			const result = await controller.updateMemory(req, res, THREAD_ID, payload);
-
-			expect(result).toEqual({ ok: true });
 		});
 	});
 
@@ -577,13 +663,16 @@ describe('InstanceAiController', () => {
 		it('should rename thread', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			const threadObj = mock<InstanceAiThreadInfo>();
-			memoryService.renameThread.mockResolvedValue(threadObj);
+			memoryService.updateThread.mockResolvedValue(threadObj);
 			const payload = mock<InstanceAiRenameThreadRequestDto>({ title: 'New Title' });
 
 			const result = await controller.renameThread(req, res, THREAD_ID, payload);
 
 			expect(result).toEqual({ thread: threadObj });
-			expect(memoryService.renameThread).toHaveBeenCalledWith(THREAD_ID, 'New Title');
+			expect(memoryService.updateThread).toHaveBeenCalledWith(
+				THREAD_ID,
+				expect.objectContaining({ title: 'New Title' }),
+			);
 		});
 	});
 
@@ -643,33 +732,6 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('getThreadContext', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('getThreadContext')).toEqual({
-				scope: 'instanceAi:message',
-				globalOnly: true,
-			});
-		});
-
-		it('should throw ForbiddenError for other user thread', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
-
-			await expect(controller.getThreadContext(req, res, THREAD_ID)).rejects.toThrow(
-				ForbiddenError,
-			);
-		});
-
-		it('should allow new threads', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-			memoryService.getThreadContext.mockResolvedValue({
-				threadId: THREAD_ID,
-				workingMemory: null,
-			});
-
-			await expect(controller.getThreadContext(req, res, THREAD_ID)).resolves.toBeDefined();
-		});
-	});
-
 	describe('createGatewayLink', () => {
 		it('should require instanceAi:gateway scope', () => {
 			expect(scopeOf('createGatewayLink')).toEqual({
@@ -680,12 +742,13 @@ describe('InstanceAiController', () => {
 
 		it('should return token and command', async () => {
 			instanceAiService.generatePairingToken.mockReturnValue('pairing-token');
+			urlService.getInstanceBaseUrl.mockReturnValue('https://myinstance.n8n.cloud');
 
 			const result = await controller.createGatewayLink(req);
 
 			expect(result).toEqual({
 				token: 'pairing-token',
-				command: 'npx @n8n/fs-proxy http://localhost:5678 pairing-token',
+				command: 'npx @n8n/computer-use https://myinstance.n8n.cloud pairing-token',
 			});
 			expect(instanceAiService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
 		});
@@ -699,12 +762,13 @@ describe('InstanceAiController', () => {
 			expect(scopeOf('gatewayInit')).toBeUndefined();
 		});
 
-		it('should initialize gateway with valid key and body', () => {
+		it('should initialize gateway with valid key and body', async () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			instanceAiService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/home/user' });
+			const payload = { rootPath: '/home/user', tools: [], toolCategories: [] };
 
-			const result = controller.gatewayInit(gatewayReq);
+			const result = await controller.gatewayInit(gatewayReq, res, payload);
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.initGateway).toHaveBeenCalledWith(
@@ -725,50 +789,102 @@ describe('InstanceAiController', () => {
 			);
 		});
 
-		it('should return sessionKey when pairing token is consumed', () => {
+		it('should return sessionKey when pairing token is consumed', async () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			instanceAiService.consumePairingToken.mockReturnValue('new-session-key');
 			const gatewayReq = makeGatewayReq('pairing-token', { rootPath: '/tmp' });
 
-			const result = controller.gatewayInit(gatewayReq);
+			const result = await controller.gatewayInit(gatewayReq, res, {
+				rootPath: '/tmp',
+				tools: [],
+				toolCategories: [],
+			});
 
 			expect(result).toEqual({ ok: true, sessionKey: 'new-session-key' });
 		});
 
-		it('should accept static env var key', () => {
+		it('should accept static env var key', async () => {
 			instanceAiService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('static-key', { rootPath: '/tmp' });
 
-			const result = controller.gatewayInit(gatewayReq);
+			const result = await controller.gatewayInit(gatewayReq, res, {
+				rootPath: '/tmp',
+				tools: [],
+				toolCategories: [],
+			});
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.initGateway).toHaveBeenCalledWith('env-gateway', expect.anything());
 		});
 
-		it('should throw ForbiddenError with missing API key', () => {
+		it('should throw ForbiddenError with missing API key', async () => {
 			const gatewayReq = makeGatewayReq(undefined, { rootPath: '/tmp' });
 
-			expect(() => controller.gatewayInit(gatewayReq)).toThrow(ForbiddenError);
+			await expect(
+				controller.gatewayInit(gatewayReq, res, {
+					rootPath: '/tmp',
+					tools: [],
+					toolCategories: [],
+				}),
+			).rejects.toThrow(ForbiddenError);
 		});
 
-		it('should throw ForbiddenError with invalid API key', () => {
+		it('should throw ForbiddenError with invalid API key', async () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(undefined);
 			const gatewayReq = makeGatewayReq('wrong-key', { rootPath: '/tmp' });
 
-			expect(() => controller.gatewayInit(gatewayReq)).toThrow(ForbiddenError);
-		});
-
-		it('should throw BadRequestError when body fails schema validation', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			const gatewayReq = makeGatewayReq('session-key', { unexpected: 123 });
-
-			expect(() => controller.gatewayInit(gatewayReq)).toThrow(BadRequestError);
+			await expect(
+				controller.gatewayInit(gatewayReq, res, {
+					rootPath: '/tmp',
+					tools: [],
+					toolCategories: [],
+				}),
+			).rejects.toThrow(ForbiddenError);
 		});
 	});
 
 	describe('gatewayEvents', () => {
+		const makeGatewayReq = (key: string) =>
+			({
+				headers: { 'x-gateway-key': key },
+				once: jest.fn(),
+			}) as unknown as Request;
+
+		const makeFlushableRes = () => {
+			const res = {
+				setHeader: jest.fn(),
+				flushHeaders: jest.fn(),
+				write: jest.fn(),
+				flush: jest.fn(),
+				once: jest.fn(),
+			};
+			return res as unknown as Parameters<typeof controller.gatewayEvents>[1];
+		};
+
 		it('should have no access scope (skipAuth)', () => {
 			expect(scopeOf('gatewayEvents')).toBeUndefined();
+		});
+
+		it('should reject with ForbiddenError when the gateway has not been initialized', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getLocalGateway.mockReturnValue(mock<LocalGateway>({ isConnected: false }));
+
+			await expect(
+				controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes()),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(instanceAiService.clearDisconnectTimer).not.toHaveBeenCalled();
+		});
+
+		it('should clear a pending disconnect timer when SSE reconnects while still connected', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			const gateway = mock<LocalGateway>({ isConnected: true });
+			gateway.onRequest.mockReturnValue(() => {});
+			instanceAiService.getLocalGateway.mockReturnValue(gateway);
+
+			await controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes());
+
+			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
 		});
 	});
 
@@ -785,7 +901,9 @@ describe('InstanceAiController', () => {
 			instanceAiService.resolveGatewayRequest.mockReturnValue(true);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
-			const result = controller.gatewayResponse(gatewayReq, res, 'req-1');
+			const result = controller.gatewayResponse(gatewayReq, res, 'req-1', {
+				result: { content: [] },
+			});
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.resolveGatewayRequest).toHaveBeenCalledWith(
@@ -801,14 +919,9 @@ describe('InstanceAiController', () => {
 			instanceAiService.resolveGatewayRequest.mockReturnValue(false);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
-			expect(() => controller.gatewayResponse(gatewayReq, res, 'req-1')).toThrow(NotFoundError);
-		});
-
-		it('should throw BadRequestError when body fails schema validation', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			const gatewayReq = makeGatewayReq('session-key', { result: 'not-an-object' });
-
-			expect(() => controller.gatewayResponse(gatewayReq, res, 'req-1')).toThrow(BadRequestError);
+			expect(() =>
+				controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } }),
+			).toThrow(NotFoundError);
 		});
 	});
 
@@ -857,7 +970,7 @@ describe('InstanceAiController', () => {
 				body: { result: { content: [] } },
 			} as unknown as Request;
 
-			controller.gatewayResponse(gatewayReq, res, 'req-1');
+			controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } });
 
 			// validateGatewayApiKey receives 'key1' (the first element)
 			expect(instanceAiService.getUserIdForApiKey).toHaveBeenCalledWith('key1');

@@ -23,6 +23,12 @@ const CONTAINER_ONLY = new RegExp(
 	].join('|'),
 );
 
+// Escape hatch: allow `@capability:*` tests to run against a pre-started local
+// n8n. Fixtures that depend on container-provided services (proxy, mailpit,
+// etc.) must detect the no-container case and skip or fall back to direct
+// network calls. Used by `pnpm test:local:isolated` and similar workflows.
+const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
+
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'sqlite', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
@@ -108,7 +114,7 @@ export function getProjects(): Project[] {
 		projects.push({
 			name: 'e2e',
 			testDir: './tests/e2e',
-			grepInvert: CONTAINER_ONLY,
+			grepInvert: ALLOW_CONTAINER_ONLY ? undefined : CONTAINER_ONLY,
 			fullyParallel: true,
 			use: { baseURL: getFrontendUrl() },
 		});

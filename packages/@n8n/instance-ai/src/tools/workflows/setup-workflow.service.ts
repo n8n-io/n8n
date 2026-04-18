@@ -5,7 +5,9 @@
  * Separated from the tool definition so the tool stays a thin suspend/resume
  * state machine, and this logic is testable independently.
  */
-import type { IDataObject, NodeJSON } from '@n8n/workflow-sdk';
+import { findPlaceholderDetails } from '@n8n/utils';
+import type { IDataObject, NodeJSON, DisplayOptions } from '@n8n/workflow-sdk';
+import { matchesDisplayOptions } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
 import type { SetupRequest } from './setup-workflow.schema';
@@ -16,7 +18,7 @@ import type { InstanceAiContext } from '../../types';
 /** Cache for deduplicating credential fetches across nodes with the same types. */
 export interface CredentialCache {
 	/** Credential list promises, keyed by credential type. */
-	lists: Map<string, Promise<Array<{ id: string; name: string; updatedAt: string }>>>;
+	lists: Map<string, Promise<Array<{ id: string; name: string }>>>;
 	/** Testability check promises, keyed by credential type. */
 	testability: Map<string, Promise<boolean>>;
 	/** Credential test result promises, keyed by credential ID. */
@@ -66,6 +68,19 @@ export async function buildSetupRequests(
 			.catch(() => ({}));
 	}
 
+	// Also treat placeholder values as parameter issues so the setup wizard surfaces them
+	for (const [paramName, paramValue] of Object.entries(parameters)) {
+		const details = findPlaceholderDetails(paramValue);
+		if (details.length > 0) {
+			const message = `Placeholder "${details[0].label}" — please provide the real value`;
+			if (parameterIssues[paramName]) {
+				parameterIssues[paramName].push(message);
+			} else {
+				parameterIssues[paramName] = [message];
+			}
+		}
+	}
+
 	// Build editable parameter definitions for parameters that have issues
 	let editableParameters: SetupRequest['editableParameters'];
 	if (Object.keys(parameterIssues).length > 0 && nodeDesc?.properties) {
@@ -102,12 +117,47 @@ export async function buildSetupRequests(
 				node.credentials as Record<string, unknown> | undefined,
 			)
 			.catch(() => []);
-	} else {
+	}
+
+	// Fallback: if dynamic detection returned nothing, check the node description's
+	// static credentials list and already-assigned credentials on the node.
+	// This catches cases where getNodeCredentialTypes fails silently (e.g. node
+	// lookup miss) or isn't available.
+	if (credentialTypes.length === 0) {
 		const nodeCredTypes = node.credentials ? Object.keys(node.credentials) : [];
 		if (nodeCredTypes.length > 0) {
 			credentialTypes = nodeCredTypes;
-		} else if (nodeDesc?.credentials?.[0]?.name) {
-			credentialTypes = [nodeDesc.credentials[0].name];
+		} else if (nodeDesc?.credentials) {
+			// Only include credentials whose displayOptions match the current parameters.
+			// Mirrors the evaluation in instance-ai.adapter.service.ts getNodeCredentialTypes().
+			credentialTypes = nodeDesc.credentials
+				.filter((c: { name?: string; displayOptions?: unknown }) => {
+					if (!c.displayOptions) return true;
+					return matchesDisplayOptions(
+						{ parameters, nodeVersion: typeVersion },
+						c.displayOptions as DisplayOptions,
+					);
+				})
+				.map((c: { name?: string }) => c.name)
+				.filter((n): n is string => n !== undefined);
+		}
+	}
+
+	// Dynamic credential resolution for nodes that use genericCredentialType
+	// or predefinedCredentialType (e.g. HTTP Request). The credential type name
+	// is stored in the node parameters rather than the description's credentials array.
+	if (credentialTypes.length === 0) {
+		const authentication = parameters.authentication;
+		if (
+			authentication === 'genericCredentialType' &&
+			typeof parameters.genericAuthType === 'string'
+		) {
+			credentialTypes = [parameters.genericAuthType];
+		} else if (
+			authentication === 'predefinedCredentialType' &&
+			typeof parameters.nodeCredentialType === 'string'
+		) {
+			credentialTypes = [parameters.nodeCredentialType];
 		}
 	}
 
@@ -136,11 +186,7 @@ export async function buildSetupRequests(
 			if (!listPromise) {
 				listPromise = context.credentialService
 					.list({ type: credentialType })
-					.then((creds) =>
-						creds
-							.map((c) => ({ id: c.id, name: c.name, updatedAt: c.updatedAt }))
-							.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
-					);
+					.then((creds) => creds.map((c) => ({ id: c.id, name: c.name })));
 				cache?.lists.set(credentialType, listPromise);
 			}
 			const sortedCreds = await listPromise;

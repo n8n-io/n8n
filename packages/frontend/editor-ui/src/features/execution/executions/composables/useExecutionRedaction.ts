@@ -1,6 +1,7 @@
 import { computed, h } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useMessage } from '@/app/composables/useMessage';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
@@ -9,6 +10,7 @@ import RevealDataWarning from '../components/RevealDataWarning.vue';
 export function useExecutionRedaction() {
 	const workflowsStore = useWorkflowsStore();
 	const message = useMessage();
+	const telemetry = useTelemetry();
 	const { showError } = useToast();
 	const i18n = useI18n();
 
@@ -23,6 +25,11 @@ export function useExecutionRedaction() {
 	);
 
 	async function revealData() {
+		telemetry.track('User clicked reveal data', {
+			workflow_id: workflowsStore.workflowId,
+			execution_id: workflowsStore.getWorkflowExecution?.id,
+		});
+
 		const warningContent = h(RevealDataWarning, {
 			warning: i18n.baseText('ndv.redacted.revealModal.warning'),
 			logged: i18n.baseText('ndv.redacted.revealModal.logged'),

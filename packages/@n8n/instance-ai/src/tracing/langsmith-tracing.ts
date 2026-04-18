@@ -13,6 +13,8 @@ import type {
 	InstanceAiTraceRunInit,
 	ServiceProxyConfig,
 } from '../types';
+import type { IdRemapper, TraceIndex, TraceWriter } from './trace-replay';
+import { PURE_REPLAY_TOOLS } from './trace-replay';
 import { isRecord } from '../utils/stream-helpers';
 
 const DEFAULT_PROJECT_NAME = 'instance-ai';
@@ -35,21 +37,50 @@ const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 // can use the correct proxy client for its HTTP calls.
 const traceClients = new Map<string, Client>();
 
+/**
+ * Fetch wrapper for LangSmith clients:
+ * - Forces gzip encoding to avoid brotli decompressors (8.6 MB native memory each).
+ * - Treats 409 Conflict as success — LangSmith returns 409 "payloads already received"
+ *   when a patchRun retry arrives after the first attempt already landed. The data is
+ *   persisted; the SDK's internal catch(console.error) is just noise.
+ */
+const gzipFetch: typeof globalThis.fetch = async (input, init) => {
+	const headers = new Headers(init?.headers);
+	if (!headers.has('Accept-Encoding')) {
+		headers.set('Accept-Encoding', 'gzip, deflate');
+	}
+	const response = await globalThis.fetch(input, { ...init, headers });
+	if (response.status === 409) {
+		return new Response(null, { status: 200, statusText: 'OK (409 suppressed)' });
+	}
+	return response;
+};
+
 let cachedProxyClient: { client: Client; apiUrl: string } | null = null;
+let cachedDirectClient: Client | null = null;
+
+/** Get a LangSmith Client that uses gzip encoding (no brotli). */
+function getOrCreateDirectClient(): Client {
+	if (cachedDirectClient) return cachedDirectClient;
+	cachedDirectClient = new Client({
+		autoBatchTracing: false,
+		fetchImplementation: gzipFetch,
+	});
+	return cachedDirectClient;
+}
 
 function getOrCreateProxyClient(proxyConfig: ServiceProxyConfig): Client {
 	if (cachedProxyClient?.apiUrl === proxyConfig.apiUrl) return cachedProxyClient.client;
 
 	const proxyFetch: typeof globalThis.fetch = async (input, init) => {
+		const merged = new Headers(init?.headers);
 		const contextHeaders = proxyHeaderStore.getStore();
 		if (contextHeaders) {
-			const merged = new Headers(init?.headers);
 			for (const [key, value] of Object.entries(contextHeaders)) {
 				merged.set(key, value);
 			}
-			return await globalThis.fetch(input, { ...init, headers: merged });
 		}
-		return await globalThis.fetch(input, init);
+		return await gzipFetch(input, { ...init, headers: merged });
 	};
 
 	const client = new Client({
@@ -121,10 +152,6 @@ type TraceableMastraTool = ToolAction<
 interface NormalizedModelMetadata {
 	provider?: string;
 	modelName?: string;
-}
-
-function isInternalStateTool(toolId: string): boolean {
-	return toolId === 'updateWorkingMemory';
 }
 
 function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
@@ -398,6 +425,15 @@ function mergeRunTreeInputs(
 	};
 }
 
+/**
+ * Unconditionally remove the cached LangSmith Client for a trace.
+ * Call after run finalization (success or failure) so the Client and
+ * its RunTree hierarchy can be garbage-collected.
+ */
+export function releaseTraceClient(traceId: string): void {
+	traceClients.delete(traceId);
+}
+
 export function getTraceParentRun(): RunTree | undefined {
 	const overrideRun = traceParentOverrideStorage.getStore()?.current;
 	if (overrideRun) {
@@ -576,20 +612,6 @@ function buildSuspendMetadata(
 	};
 }
 
-function resolveActorParentRun(parentRun: RunTree): RunTree {
-	let current: RunTree | undefined = parentRun;
-
-	while (current) {
-		if (current.run_type !== 'llm' && current.run_type !== 'tool') {
-			return current;
-		}
-
-		current = current.parent_run;
-	}
-
-	return parentRun;
-}
-
 async function traceSuspendableToolExecute(
 	tool: TraceableMastraTool,
 	options: InstanceAiToolTraceOptions | undefined,
@@ -687,33 +709,12 @@ async function traceToolExecute(
 		return await tool.execute?.(input, context);
 	}
 
-	const actorParentRun = isInternalStateTool(tool.id)
-		? resolveActorParentRun(parentRun)
-		: parentRun;
-	const internalStateRun = isInternalStateTool(tool.id)
-		? await postChildRun(actorParentRun, {
-				name: 'internal_state',
-				runType: 'chain',
-				tags: ['internal', 'memory'],
-				metadata: {
-					internal_state: true,
-					tool_name: tool.id,
-				},
-				inputs: { tool_name: tool.id },
-			})
-		: undefined;
-	const toolParentRun = internalStateRun ?? parentRun;
-	const toolRun = await postChildRun(toolParentRun, {
+	const toolRun = await postChildRun(parentRun, {
 		name: `tool:${tool.id}`,
 		runType: 'tool',
-		tags: normalizeTags(
-			['tool'],
-			isInternalStateTool(tool.id) ? ['internal', 'memory'] : undefined,
-			options?.tags,
-		),
+		tags: normalizeTags(['tool'], options?.tags),
 		metadata: mergeMetadata(options?.metadata, {
 			tool_name: tool.id,
-			...(isInternalStateTool(tool.id) ? { memory_tool: true } : {}),
 			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
 			...normalizeModelMetadata(options?.metadata?.model_id),
 		}),
@@ -729,24 +730,12 @@ async function traceToolExecute(
 			outputs: result,
 			metadata: { final_status: 'completed' },
 		});
-		if (internalStateRun) {
-			await finishRunTree(internalStateRun, {
-				outputs: { tool_name: tool.id },
-				metadata: { final_status: 'completed', internal_state: true },
-			});
-		}
 		return result;
 	} catch (error) {
 		await finishRunTree(toolRun, {
 			error: normalizeErrorMessage(error),
 			metadata: { final_status: 'error' },
 		});
-		if (internalStateRun) {
-			await finishRunTree(internalStateRun, {
-				error: normalizeErrorMessage(error),
-				metadata: { final_status: 'error', internal_state: true },
-			});
-		}
 		throw error;
 	}
 }
@@ -756,10 +745,13 @@ function createTraceContext(
 	traceKind: InstanceAiTraceContext['traceKind'],
 	rootRun: InstanceAiTraceRun,
 	actorRun: InstanceAiTraceRun,
-	proxyHeaders?: Record<string, string>,
+	getProxyHeaders?: () => Promise<Record<string, string>>,
 ): InstanceAiTraceContext {
-	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> =>
-		proxyHeaders ? await proxyHeaderStore.run(proxyHeaders, fn) : await fn();
+	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> => {
+		if (!getProxyHeaders) return await fn();
+		const headers = await getProxyHeaders();
+		return await proxyHeaderStore.run(headers, fn);
+	};
 
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
@@ -798,7 +790,7 @@ function createTraceContext(
 		}
 	};
 
-	return {
+	const ctx: InstanceAiTraceContext = {
 		projectName,
 		traceKind,
 		rootRun,
@@ -810,8 +802,19 @@ function createTraceContext(
 		finishRun,
 		failRun,
 		toHeaders: (run) => hydrateRunTree(run).toHeaders(),
-		wrapTools: (tools, traceOptions) => wrapTools(tools, traceOptions),
+		wrapTools: (tools, traceOptions) => {
+			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {
+				return replayWrapTools(tools, ctx.traceIndex, ctx.idRemapper, traceOptions);
+			}
+			if (ctx.replayMode === 'record' && ctx.traceWriter) {
+				return recordWrapTools(tools, ctx.traceWriter, traceOptions);
+			}
+			return wrapTools(tools, traceOptions);
+		},
+		replayMode: 'off',
 	};
+
+	return ctx;
 }
 
 function createRunStateFromTree(tree: RunTree): InstanceAiTraceRun {
@@ -861,7 +864,7 @@ function hydrateRunTree(state: InstanceAiTraceRun): RunTree {
 		outputs: state.outputs,
 		error: state.error,
 		serialized: {},
-		...(client ? { client } : {}),
+		client: client ?? getOrCreateDirectClient(),
 	});
 }
 
@@ -938,6 +941,236 @@ function wrapTools(tools: ToolsInput, options?: InstanceAiToolTraceOptions): Too
 	return wrapped;
 }
 
+// ── Replay wrappers ─────────────────────────────────────────────────────────
+
+/**
+ * Tier 1: Real execution + ID remapping.
+ * Executes the tool for real with remapped input, then learns new ID mappings
+ * by comparing the recorded output against the actual output.
+ */
+function replayWrapTool(
+	tool: TraceableMastraTool,
+	traceIndex: TraceIndex,
+	idRemapper: IdRemapper,
+	agentRole: string,
+): TraceableMastraTool {
+	return createTool({
+		id: tool.id,
+		description: tool.description,
+		inputSchema: tool.inputSchema,
+		outputSchema: tool.outputSchema,
+		suspendSchema: tool.suspendSchema,
+		resumeSchema: tool.resumeSchema,
+		requestContextSchema: tool.requestContextSchema,
+		execute: async (input, context) => {
+			const event = traceIndex.next(agentRole, tool.id);
+			const remappedInput = idRemapper.remapInput(input);
+			const realOutput = await tool.execute!(remappedInput, context);
+			idRemapper.learn(event.output, realOutput as Record<string, unknown>);
+			return realOutput;
+		},
+		mastra: tool.mastra,
+		requireApproval: tool.requireApproval,
+		providerOptions: tool.providerOptions,
+		toModelOutput: tool.toModelOutput,
+		mcp: tool.mcp,
+		onInputStart: tool.onInputStart,
+		onInputDelta: tool.onInputDelta,
+		onInputAvailable: tool.onInputAvailable,
+		onOutput: tool.onOutput,
+	});
+}
+
+/**
+ * Tier 2: Pure replay — for tools that need external services (web, MCP).
+ * Returns the recorded output (with IDs remapped to current-run values).
+ */
+function pureReplayWrapTool(
+	tool: TraceableMastraTool,
+	traceIndex: TraceIndex,
+	idRemapper: IdRemapper,
+	agentRole: string,
+): TraceableMastraTool {
+	return createTool({
+		id: tool.id,
+		description: tool.description,
+		inputSchema: tool.inputSchema,
+		outputSchema: tool.outputSchema,
+		suspendSchema: tool.suspendSchema,
+		resumeSchema: tool.resumeSchema,
+		requestContextSchema: tool.requestContextSchema,
+		execute: async (_input, _context) => {
+			const event = traceIndex.next(agentRole, tool.id);
+			return await Promise.resolve(idRemapper.remapOutput(event.output));
+		},
+		mastra: tool.mastra,
+		requireApproval: tool.requireApproval,
+		providerOptions: tool.providerOptions,
+		toModelOutput: tool.toModelOutput,
+		mcp: tool.mcp,
+		onInputStart: tool.onInputStart,
+		onInputDelta: tool.onInputDelta,
+		onInputAvailable: tool.onInputAvailable,
+		onOutput: tool.onOutput,
+	});
+}
+
+function replayWrapTools(
+	tools: ToolsInput,
+	traceIndex: TraceIndex,
+	idRemapper: IdRemapper,
+	options?: InstanceAiToolTraceOptions,
+): ToolsInput {
+	const agentRole = options?.agentRole ?? 'orchestrator';
+	const wrapped: ToolsInput = {};
+	const entries: Array<[string, unknown]> = Object.entries(tools);
+
+	for (const [name, tool] of entries) {
+		if (!isTraceableMastraTool(tool)) {
+			wrapped[name] = tools[name];
+			continue;
+		}
+
+		if (PURE_REPLAY_TOOLS.has(tool.id)) {
+			wrapped[name] = pureReplayWrapTool(tool, traceIndex, idRemapper, agentRole);
+		} else {
+			wrapped[name] = replayWrapTool(tool, traceIndex, idRemapper, agentRole);
+		}
+	}
+
+	return wrapped;
+}
+
+// ── Recording wrappers ──────────────────────────────────────────────────────
+
+/**
+ * Wraps a tool to record its I/O to a TraceWriter while also applying
+ * the normal LangSmith tracing wrapper.
+ */
+function recordWrapTool(
+	tool: TraceableMastraTool,
+	traceWriter: TraceWriter,
+	agentRole: string,
+	traceOptions: InstanceAiToolTraceOptions | undefined,
+): TraceableMastraTool {
+	// First apply LangSmith tracing (preserves existing tracing behavior)
+	const traced = wrapToolExecute(tool, traceOptions);
+
+	return createTool({
+		id: traced.id,
+		description: traced.description,
+		inputSchema: traced.inputSchema,
+		outputSchema: traced.outputSchema,
+		suspendSchema: traced.suspendSchema,
+		resumeSchema: traced.resumeSchema,
+		requestContextSchema: traced.requestContextSchema,
+		execute: async (input, context) => {
+			const resumeData = context?.agent?.resumeData;
+			const inputRecord = (input ?? {}) as Record<string, unknown>;
+
+			const result = await traced.execute!(input, context);
+			const outputRecord = (result ?? {}) as Record<string, unknown>;
+
+			if (resumeData !== undefined && resumeData !== null) {
+				traceWriter.recordToolResume(
+					agentRole,
+					tool.id,
+					inputRecord,
+					outputRecord,
+					resumeData as Record<string, unknown>,
+				);
+			} else if (context?.agent?.suspend && outputRecord.denied === true) {
+				// Tool returned {denied: true} — it suspended
+				traceWriter.recordToolSuspend(
+					agentRole,
+					tool.id,
+					inputRecord,
+					outputRecord,
+					{}, // suspendPayload is internal to the tool
+				);
+			} else {
+				traceWriter.recordToolCall(agentRole, tool.id, inputRecord, outputRecord);
+			}
+
+			return result;
+		},
+		mastra: traced.mastra,
+		requireApproval: traced.requireApproval,
+		providerOptions: traced.providerOptions,
+		toModelOutput: traced.toModelOutput,
+		mcp: traced.mcp,
+		onInputStart: traced.onInputStart,
+		onInputDelta: traced.onInputDelta,
+		onInputAvailable: traced.onInputAvailable,
+		onOutput: traced.onOutput,
+	});
+}
+
+function recordWrapTools(
+	tools: ToolsInput,
+	traceWriter: TraceWriter,
+	options?: InstanceAiToolTraceOptions,
+): ToolsInput {
+	const agentRole = options?.agentRole ?? 'orchestrator';
+	const wrapped: ToolsInput = {};
+	const entries: Array<[string, unknown]> = Object.entries(tools);
+
+	for (const [name, tool] of entries) {
+		if (!isTraceableMastraTool(tool)) {
+			wrapped[name] = tools[name];
+			continue;
+		}
+		wrapped[name] = recordWrapTool(tool, traceWriter, agentRole, options);
+	}
+
+	return wrapped;
+}
+
+/**
+ * Creates a minimal InstanceAiTraceContext that only supports trace replay/record
+ * wrapping — no LangSmith integration. Used when E2E_TESTS is
+ * set but LangSmith isn't configured.
+ */
+export function createTraceReplayOnlyContext(): InstanceAiTraceContext {
+	const stubRun: InstanceAiTraceRun = {
+		id: 'stub',
+		name: 'stub',
+		runType: 'chain',
+		projectName: '',
+		startTime: Date.now(),
+		traceId: 'stub',
+		dottedOrder: '',
+		executionOrder: 0,
+		childExecutionOrder: 0,
+	};
+
+	const ctx: InstanceAiTraceContext = {
+		projectName: '',
+		traceKind: 'message_turn',
+		rootRun: stubRun,
+		actorRun: stubRun,
+		messageRun: stubRun,
+		orchestratorRun: stubRun,
+		startChildRun: async () => await Promise.resolve(stubRun),
+		withRunTree: async (_run, fn) => await fn(),
+		finishRun: async () => {},
+		failRun: async () => {},
+		toHeaders: () => ({}),
+		wrapTools: (tools, traceOptions) => {
+			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {
+				return replayWrapTools(tools, ctx.traceIndex, ctx.idRemapper, traceOptions);
+			}
+			if (ctx.replayMode === 'record' && ctx.traceWriter) {
+				return recordWrapTools(tools, ctx.traceWriter, traceOptions);
+			}
+			return tools;
+		},
+		replayMode: 'off',
+	};
+
+	return ctx;
+}
+
 async function createRun(options: {
 	projectName: string;
 	name: string;
@@ -954,7 +1187,7 @@ async function createRun(options: {
 		tags: normalizeTags(DEFAULT_TAGS, options.tags),
 		metadata: mergeMetadata(options.metadata),
 		inputs: sanitizeTracePayload(options.inputs),
-		...(options.client ? { client: options.client } : {}),
+		client: options.client ?? getOrCreateDirectClient(),
 	});
 	await runTree.postRun();
 
@@ -1061,12 +1294,13 @@ export async function createInstanceAiTraceContext(
 			'message_turn',
 			messageRun,
 			orchestratorRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createTraceRuns);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createTraceRuns);
 	}
 	return await createTraceRuns();
 }
@@ -1090,12 +1324,13 @@ export async function continueInstanceAiTraceContext(
 			'message_turn',
 			existingContext.rootRun,
 			orchestratorRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createContinuation);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createContinuation);
 	}
 	return await createContinuation();
 }
@@ -1141,12 +1376,13 @@ export async function createDetachedSubAgentTraceContext(
 			'detached_subagent',
 			rootRun,
 			rootRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createDetachedRuns);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createDetachedRuns);
 	}
 	return await createDetachedRuns();
 }
