@@ -944,7 +944,7 @@ export type CronContext = {
 export type Cron = { expression: CronExpression; recurrence?: CronRecurrenceRule };
 
 export interface SchedulingFunctions {
-	registerCron(cron: Cron, onTick: () => void): void;
+	registerCron(cron: Cron, onTick: (scheduledT: Date) => void): void;
 }
 
 export type NodeTypeAndVersion = {
@@ -1257,6 +1257,7 @@ export interface ITriggerFunctions
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
+		deduplicationKey?: string,
 	): void;
 	/**
 	 * Persist the current run as a failed execution and run the error workflow if configured.
@@ -2979,6 +2980,7 @@ export interface IWorkflowExecutionDataProcess {
 		arguments: Record<string, unknown>;
 		sourceNodeName?: string;
 	};
+	deduplicationKey?: string;
 }
 
 export interface ExecuteWorkflowOptions {
