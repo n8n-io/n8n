@@ -108,11 +108,21 @@ export class ScheduledTaskManager {
 			timezone,
 		);
 
-		try {
-			scheduledT = job.nextDate().toJSDate();
-		} catch {
-			scheduledT = null;
-		}
+		const computeNext = (): Date | null => {
+			try {
+				return job.nextDate().toJSDate();
+			} catch (error) {
+				this.logger.warn('Failed to compute next scheduled fire time for cron; skipping tick', {
+					workflowId,
+					nodeId,
+					expression,
+					error,
+				});
+				return null;
+			}
+		};
+
+		scheduledT = computeNext();
 
 		const cron: Cron = { job, summary, ctx };
 
