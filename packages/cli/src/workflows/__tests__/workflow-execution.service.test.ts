@@ -120,6 +120,35 @@ describe('WorkflowExecutionService', () => {
 
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 		});
+
+		test('should forward deduplicationKey to `WorkflowRunner.run()`', async () => {
+			const node = mock<INode>();
+			const workflow = mock<IWorkflowBase>({
+				active: true,
+				activeVersionId: 'some-version-id',
+				nodes: [node],
+			});
+
+			workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+			await workflowExecutionService.runWorkflow(
+				workflow,
+				node,
+				[[]],
+				mock(),
+				'trigger',
+				undefined,
+				'wf-1:node-1:1700000000000',
+			);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ deduplicationKey: 'wf-1:node-1:1700000000000' }),
+				true,
+				undefined,
+				undefined,
+				undefined,
+			);
+		});
 	});
 
 	describe('executeManually()', () => {

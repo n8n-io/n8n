@@ -61,6 +61,7 @@ export class WorkflowExecutionService {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		deduplicationKey?: string,
 	) {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -84,6 +85,7 @@ export class WorkflowExecutionService {
 			executionMode: mode,
 			executionData,
 			workflowData,
+			deduplicationKey,
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
