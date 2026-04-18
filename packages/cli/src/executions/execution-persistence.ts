@@ -12,6 +12,8 @@ import { BinaryDataService, StorageConfig } from 'n8n-core';
 
 import { FsStore } from './execution-data/fs-store';
 import type { ExecutionRef, WorkflowSnapshot } from './execution-data/types';
+import { isUniqueViolationError } from './is-unique-violation-error';
+import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 
@@ -43,26 +45,33 @@ export class ExecutionPersistence {
 		const data = stringify(rawData);
 		const workflowVersionId = workflowData.versionId ?? null;
 
-		return await this.executionRepository.manager.transaction(async (tx) => {
-			const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
-			const executionId = String(identifiers[0].id);
+		try {
+			return await this.executionRepository.manager.transaction(async (tx) => {
+				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
+				const executionId = String(identifiers[0].id);
 
-			if (storedAt === 'db') {
-				await tx.insert(ExecutionData, {
-					executionId,
-					workflowData: workflowSnapshot,
-					data,
-					workflowVersionId,
-				});
+				if (storedAt === 'db') {
+					await tx.insert(ExecutionData, {
+						executionId,
+						workflowData: workflowSnapshot,
+						data,
+						workflowVersionId,
+					});
+					return executionId;
+				}
+
+				await this.fsStore.write(
+					{ workflowId: id, executionId },
+					{ data, workflowData: workflowSnapshot, workflowVersionId },
+				);
 				return executionId;
+			});
+		} catch (error) {
+			if (executionEntity.deduplicationKey && isUniqueViolationError(error)) {
+				throw new DuplicateExecutionError(executionEntity.deduplicationKey);
 			}
-
-			await this.fsStore.write(
-				{ workflowId: id, executionId },
-				{ data, workflowData: workflowSnapshot, workflowVersionId },
-			);
-			return executionId;
-		});
+			throw error;
+		}
 	}
 
 	/**
