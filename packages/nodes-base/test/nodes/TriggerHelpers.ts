@@ -46,6 +46,7 @@ type TestTriggerNodeOptions = {
 	workflowStaticData?: IDataObject;
 	credential?: ICredentialDataDecryptedObject;
 	helpers?: Partial<ITriggerFunctions['helpers']>;
+	workflow?: { id?: string; name?: string; active?: boolean };
 };
 
 type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
@@ -104,6 +105,11 @@ export async function testTriggerNode(
 		},
 	});
 
+	const workflowMetadata = {
+		id: options.workflow?.id,
+		name: options.workflow?.name,
+		active: options.workflow?.active ?? false,
+	};
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers,
 		emit,
@@ -115,6 +121,7 @@ export async function testTriggerNode(
 		}),
 		getTimezone: () => timezone,
 		getNode: () => node,
+		getWorkflow: () => workflowMetadata,
 		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 			(options.credential ?? {}) as T,
 		getMode: () => options.mode ?? 'trigger',

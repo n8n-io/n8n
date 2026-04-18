@@ -1,3 +1,5 @@
+import { ExecutionsConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import * as n8nWorkflow from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
@@ -169,6 +171,85 @@ describe('ScheduleTrigger', () => {
 			await expect(manualTriggerFunction?.()).rejects.toBeInstanceOf(
 				n8nWorkflow.NodeOperationError,
 			);
+		});
+
+		describe('deduplication key', () => {
+			const executionsConfig = Container.get(ExecutionsConfig);
+
+			afterEach(() => {
+				executionsConfig.scheduledExecutionDeduplicationEnabled = false;
+			});
+
+			it('should emit a deduplication key when the feature flag is enabled', async () => {
+				executionsConfig.scheduledExecutionDeduplicationEnabled = true;
+
+				const workflowId = 'wf-123';
+				const nodeId = 'node-456';
+				const { emit } = await testTriggerNode(ScheduleTrigger, {
+					timezone,
+					node: {
+						id: nodeId,
+						parameters: {
+							rule: { interval: [{ field: 'cronExpression', expression: '0 */2 * * *' }] },
+						},
+					},
+					workflowStaticData: {},
+					workflow: { id: workflowId, active: true },
+				});
+
+				jest.advanceTimersByTime(2 * HOUR);
+
+				expect(emit).toHaveBeenCalledTimes(1);
+				const fourthArg = emit.mock.calls[0][3];
+				expect(typeof fourthArg).toBe('string');
+				// Deduplication key shape: `${workflowId}:${nodeId}:${scheduledT.toISOString()}`
+				expect(fourthArg).toMatch(
+					new RegExp(
+						`^${workflowId}:${nodeId}:\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$`,
+					),
+				);
+				// The ISO timestamp segment must match the cron-scheduled fire time exactly.
+				const iso = (fourthArg as string).slice(`${workflowId}:${nodeId}:`.length);
+				const scheduledT = new Date(iso);
+				expect(scheduledT.getUTCMinutes()).toBe(0);
+				expect(scheduledT.getUTCSeconds()).toBe(0);
+				expect(scheduledT.getUTCMilliseconds()).toBe(0);
+			});
+
+			it('should not emit a deduplication key when the feature flag is disabled', async () => {
+				executionsConfig.scheduledExecutionDeduplicationEnabled = false;
+
+				const { emit } = await testTriggerNode(ScheduleTrigger, {
+					timezone,
+					node: {
+						parameters: {
+							rule: { interval: [{ field: 'cronExpression', expression: '0 */2 * * *' }] },
+						},
+					},
+					workflowStaticData: {},
+				});
+
+				jest.advanceTimersByTime(2 * HOUR);
+
+				expect(emit).toHaveBeenCalledTimes(1);
+				expect(emit.mock.calls[0][3]).toBeUndefined();
+			});
+
+			it('should not emit a deduplication key for manual executions', async () => {
+				executionsConfig.scheduledExecutionDeduplicationEnabled = true;
+
+				const { emit, manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
+					mode: 'manual',
+					timezone,
+					node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
+					workflowStaticData: { recurrenceRules: [] },
+				});
+
+				await manualTriggerFunction?.();
+
+				expect(emit).toHaveBeenCalledTimes(1);
+				expect(emit.mock.calls[0][3]).toBeUndefined();
+			});
 		});
 	});
 });
