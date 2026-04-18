@@ -34,5 +34,21 @@ describe('getSchedulingFunctions', () => {
 
 			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(ctx, onTick);
 		});
+
+		it('should forward the scheduledT Date to the user-provided onTick', () => {
+			const userOnTick = jest.fn();
+			schedulingFunctions.registerCron({ expression: cronExpression }, userOnTick);
+
+			// Capture the onTick that getSchedulingFunctions passed down to
+			// scheduledTaskManager.registerCron, then invoke it with a Date to
+			// confirm the Date flows through unchanged.
+			const forwardedOnTick = (scheduledTaskManager.registerCron as jest.Mock).mock.calls.at(
+				-1,
+			)![1];
+			const scheduledT = new Date('2024-01-01T00:01:00.000Z');
+			forwardedOnTick(scheduledT);
+
+			expect(userOnTick).toHaveBeenCalledWith(scheduledT);
+		});
 	});
 });

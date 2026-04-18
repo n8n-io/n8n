@@ -10,7 +10,7 @@ export const getSchedulingFunctions = (
 ): SchedulingFunctions => {
 	const scheduledTaskManager = Container.get(ScheduledTaskManager);
 	return {
-		registerCron: ({ expression, recurrence }: Cron, onTick) => {
+		registerCron: ({ expression, recurrence }: Cron, onTick: (scheduledT: Date) => void) => {
 			const ctx: CronContext = {
 				expression,
 				recurrence,

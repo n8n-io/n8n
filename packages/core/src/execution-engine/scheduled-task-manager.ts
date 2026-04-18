@@ -47,7 +47,7 @@ export class ScheduledTaskManager {
 		}, activeInterval * Time.minutes.toMilliseconds);
 	}
 
-	registerCron(ctx: CronContext, onTick: () => void) {
+	registerCron(ctx: CronContext, onTick: (scheduledT: Date) => void) {
 		const { workflowId, timezone, nodeId, expression, recurrence } = ctx;
 
 		const summary = recurrence?.activated
@@ -72,10 +72,19 @@ export class ScheduledTaskManager {
 			return;
 		}
 
+		let scheduledT: Date | null = null;
 		const job = new CronJob(
 			expression,
 			() => {
+				const firedFor = scheduledT;
+				try {
+					scheduledT = job.nextDate().toJSDate();
+				} catch {
+					scheduledT = null;
+				}
+
 				if (!this.instanceSettings.isLeader) return;
+				if (firedFor === null) return;
 
 				this.logger.debug('Executing cron for workflow', {
 					workflowId,
@@ -84,12 +93,18 @@ export class ScheduledTaskManager {
 					instanceRole: this.instanceSettings.instanceRole,
 				});
 
-				onTick();
+				onTick(firedFor);
 			},
 			undefined,
 			true,
 			timezone,
 		);
+
+		try {
+			scheduledT = job.nextDate().toJSDate();
+		} catch {
+			scheduledT = null;
+		}
 
 		const cron: Cron = { job, summary, ctx };
 

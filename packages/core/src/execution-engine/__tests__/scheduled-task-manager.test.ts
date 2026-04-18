@@ -75,6 +75,34 @@ describe('ScheduledTaskManager', () => {
 		expect(onTick).toHaveBeenCalledTimes(10);
 	});
 
+	it('should invoke onTick with the cron-scheduled fire time, not Date.now()', () => {
+		// Freeze wall clock at an arbitrary instant that is NOT aligned to a minute boundary.
+		const unaligned = new Date('2024-01-01T00:00:30.500Z');
+		jest.setSystemTime(unaligned);
+
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'test-node-id',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+
+		jest.advanceTimersByTime(60 * 1000);
+
+		expect(onTick).toHaveBeenCalledTimes(1);
+		const firstArg = onTick.mock.calls[0][0];
+		expect(firstArg).toBeInstanceOf(Date);
+		// The scheduled fire time should fall on a whole-second boundary aligned to the
+		// cron expression (every minute at :00 seconds), NOT the unaligned wall-clock time.
+		expect((firstArg as Date).getUTCMilliseconds()).toBe(0);
+		expect((firstArg as Date).getUTCSeconds()).toBe(0);
+		// And it should differ from the unaligned system time.
+		expect((firstArg as Date).getTime()).not.toBe(unaligned.getTime());
+	});
+
 	it('should not invoke on follower instances', () => {
 		scheduledTaskManager = new ScheduledTaskManager(
 			mock<InstanceSettings>({ isLeader: false }),
