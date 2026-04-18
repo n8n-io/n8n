@@ -49,6 +49,7 @@ import {
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
@@ -364,20 +365,35 @@ export class ActiveWorkflowManager {
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
+				deduplicationKey?: string,
 			) => {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				const executePromise = this.workflowExecutionService.runWorkflow(
-					workflowData,
-					node,
-					data,
-					additionalData,
-					mode,
-					responsePromise,
-				);
+				const executePromise = this.workflowExecutionService
+					.runWorkflow(
+						workflowData,
+						node,
+						data,
+						additionalData,
+						mode,
+						responsePromise,
+						deduplicationKey,
+					)
+					.catch((error: unknown) => {
+						if (error instanceof DuplicateExecutionError) {
+							this.logger.warn('Scheduled execution skipped: duplicate deduplication key', {
+								workflowId: workflowData.id,
+								nodeId: node.id,
+								deduplicationKey: error.deduplicationKey,
+							});
+							return undefined;
+						}
+						throw error;
+					});
 
 				void executePromise.then((executionId) => {
+					if (executionId === undefined) return;
 					this.eventService.emit('workflow-executed', {
 						workflowId: workflowData.id,
 						workflowName: workflowData.name,
@@ -388,6 +404,10 @@ export class ActiveWorkflowManager {
 
 				if (donePromise) {
 					void executePromise.then((executionId) => {
+						if (executionId === undefined) {
+							donePromise.resolve(undefined);
+							return;
+						}
 						this.activeExecutions
 							.getPostExecutePromise(executionId)
 							.then(donePromise.resolve)
