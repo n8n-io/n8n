@@ -14,7 +14,8 @@ import { z } from 'zod';
 
 import { publishPlanUpdate } from './add-plan-item.tool';
 import type { BlueprintAccumulator } from './blueprint-accumulator';
-import type { OrchestrationContext, PlannedTask } from '../../types';
+import { toPlannedTaskArg } from '../../agent/handoff';
+import type { OrchestrationContext } from '../../types';
 
 export function createSubmitPlanTool(
 	accumulator: BlueprintAccumulator,
@@ -70,14 +71,10 @@ export function createSubmitPlanTool(
 			}
 
 			// Persist the plan (createPlan validates deps, cycles, duplicates)
-			await context.plannedTaskService.createPlan(
-				context.threadId,
-				tasks as unknown as PlannedTask[],
-				{
-					planRunId: context.runId,
-					messageGroupId: context.messageGroupId,
-				},
-			);
+			await context.plannedTaskService.createPlan(context.threadId, tasks, {
+				planRunId: context.runId,
+				messageGroupId: context.messageGroupId,
+			});
 
 			// Publish final tasks-update with full planItems
 			publishPlanUpdate(accumulator, context);
@@ -88,15 +85,7 @@ export function createSubmitPlanTool(
 				description: t.title,
 				status: 'todo' as const,
 			}));
-			const planItems = tasks.map((t) => ({
-				id: t.id,
-				title: t.title,
-				kind: t.kind,
-				spec: t.spec,
-				deps: t.deps,
-				...(t.tools ? { tools: t.tools } : {}),
-				...(t.workflowId ? { workflowId: t.workflowId } : {}),
-			}));
+			const planItems = tasks.map(toPlannedTaskArg);
 
 			// Suspend — Mastra HITL publishes confirmation-request, frontend renders PlanReviewPanel
 			await suspend?.({

@@ -1,3 +1,4 @@
+import type { SubAgentOutcome } from '../agent/handoff';
 import type { BackgroundTaskResult, InstanceAiTraceContext } from '../types';
 
 export type BackgroundTaskStatus = 'running' | 'completed' | 'failed' | 'cancelled';
@@ -17,7 +18,7 @@ export interface ManagedBackgroundTask {
 	/** Callback resolved when a new correction is queued. Re-created by the consumer after each notification. */
 	onCorrectionQueued?: () => void;
 	messageGroupId?: string;
-	outcome?: Record<string, unknown>;
+	outcome?: SubAgentOutcome;
 	plannedTaskId?: string;
 	workItemId?: string;
 	traceContext?: InstanceAiTraceContext;

@@ -1137,7 +1137,7 @@ export class InstanceAiService {
 			tasks: graph.tasks.map((task) => ({
 				id: task.id,
 				title: task.title,
-				kind: task.kind,
+				kind: task.handoff.kind,
 				status: task.status,
 				result: task.result,
 				error: task.error,
@@ -1149,7 +1149,7 @@ export class InstanceAiService {
 			payload.failedTask = {
 				id: failedTask.id,
 				title: failedTask.title,
-				kind: failedTask.kind,
+				kind: failedTask.handoff.kind,
 				error: failedTask.error,
 				result: failedTask.result,
 			};
@@ -1349,36 +1349,36 @@ export class InstanceAiService {
 	): Promise<void> {
 		// Plan approval authorizes the task-family's non-destructive tools,
 		// so the sub-agent can execute without a redundant second confirmation.
-		const taskContext = this.createPlannedTaskContext(task.kind, context);
+		const taskContext = this.createPlannedTaskContext(task.handoff.kind, context);
 
 		let started: { taskId: string; agentId: string; result: string } | null = null;
 
-		switch (task.kind) {
+		switch (task.handoff.kind) {
 			case 'build-workflow':
 				started = await startBuildWorkflowAgentTask(taskContext, {
-					task: task.spec,
-					workflowId: task.workflowId,
+					task: task.handoff.input.goal,
+					workflowId: task.handoff.input.workflowId,
 					plannedTaskId: task.id,
 				});
 				break;
 			case 'manage-data-tables':
 				started = await startDataTableAgentTask(taskContext, {
-					task: task.spec,
+					task: task.handoff.input.goal,
 					plannedTaskId: task.id,
 				});
 				break;
 			case 'research':
 				started = await startResearchAgentTask(taskContext, {
-					goal: task.title,
-					constraints: task.spec,
+					goal: task.handoff.input.goal,
+					constraints: task.handoff.input.constraints,
 					plannedTaskId: task.id,
 				});
 				break;
 			case 'delegate':
 				started = await startDetachedDelegateTask(taskContext, {
 					title: task.title,
-					spec: task.spec,
-					tools: task.tools ?? [],
+					spec: task.handoff.input.goal,
+					tools: task.handoff.input.toolNames,
 					plannedTaskId: task.id,
 				});
 				break;
@@ -1408,7 +1408,7 @@ export class InstanceAiService {
 	 * with the correct permissions, preventing cross-task leakage.
 	 */
 	private createPlannedTaskContext(
-		kind: PlannedTaskRecord['kind'],
+		kind: PlannedTaskRecord['handoff']['kind'],
 		context: OrchestrationContext,
 	): OrchestrationContext {
 		if (!context.domainContext) return context;

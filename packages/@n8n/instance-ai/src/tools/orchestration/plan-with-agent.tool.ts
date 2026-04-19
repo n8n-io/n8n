@@ -30,6 +30,7 @@ import {
 	traceSubAgentTools,
 	withTraceRun,
 } from './tracing-utils';
+import { renderHandoff, type PlannerHandoffInput } from '../../agent/handoff';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
@@ -58,11 +59,6 @@ const PLANNER_RESEARCH_TOOL_NAMES = ['web-search', 'fetch-url'];
 // ---------------------------------------------------------------------------
 // Message history retrieval
 // ---------------------------------------------------------------------------
-
-interface FormattedMessage {
-	role: string;
-	content: string;
-}
 
 /** Extract plain text from Mastra memory content (string, array of parts, or {format, parts}). */
 function extractTextFromMemoryContent(content: unknown): string {
@@ -103,8 +99,8 @@ function extractTextParts(parts: unknown[]): string {
 async function getRecentMessages(
 	context: OrchestrationContext,
 	count: number,
-): Promise<FormattedMessage[]> {
-	const messages: FormattedMessage[] = [];
+): Promise<PlannerHandoffInput['recentMessages']> {
+	const messages: PlannerHandoffInput['recentMessages'] = [];
 
 	// Retrieve previously-saved messages from memory
 	if (context.memory) {
@@ -116,9 +112,9 @@ async function getRecentMessages(
 
 			for (const m of result.messages) {
 				const role = m.role as string;
-				const content = extractTextFromMemoryContent(m.content);
-				if ((role === 'user' || role === 'assistant') && content.length > 0) {
-					messages.push({ role, content });
+				const text = extractTextFromMemoryContent(m.content);
+				if ((role === 'user' || role === 'assistant') && text.length > 0) {
+					messages.push({ role, text });
 				}
 			}
 		} catch {
@@ -128,32 +124,10 @@ async function getRecentMessages(
 
 	// Always append the current in-flight user message (not yet saved to memory)
 	if (context.currentUserMessage) {
-		messages.push({ role: 'user', content: context.currentUserMessage });
+		messages.push({ role: 'user', text: context.currentUserMessage });
 	}
 
 	return messages;
-}
-
-function formatMessagesForBriefing(messages: FormattedMessage[], guidance?: string): string {
-	const parts: string[] = [];
-
-	if (messages.length > 0) {
-		parts.push('## Recent conversation');
-		for (const m of messages) {
-			const label = m.role === 'user' ? 'User' : 'Assistant';
-			// Truncate very long messages
-			const content = m.content.length > 2000 ? m.content.slice(0, 2000) + '...' : m.content;
-			parts.push(`**${label}:** ${content}`);
-		}
-	}
-
-	if (guidance) {
-		parts.push(`\n## Orchestrator guidance\n${guidance}`);
-	}
-
-	parts.push('\nDesign the solution blueprint based on the conversation above.');
-
-	return parts.join('\n\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -229,12 +203,19 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 			// ── Retrieve conversation history ─────────────────────────────
 			const messages = await getRecentMessages(context, MESSAGE_HISTORY_COUNT);
-			const briefing = formatMessagesForBriefing(messages, input.guidance);
 
 			// ── IDs & events ──────────────────────────────────────────────
 			const subAgentId = `agent-planner-${nanoid(6)}`;
+			const briefing = await renderHandoff(
+				{
+					taskKey: `planner:${subAgentId}`,
+					kind: 'planner',
+					input: { recentMessages: messages, guidance: input.guidance },
+				},
+				context,
+			);
 			const subtitle =
-				input.guidance ?? messages.find((m) => m.role === 'user')?.content ?? 'Planning...';
+				input.guidance ?? messages.find((m) => m.role === 'user')?.text ?? 'Planning...';
 
 			context.eventBus.publish(context.threadId, {
 				type: 'agent-spawned',

@@ -31,14 +31,19 @@ describe('resultFromPostStreamError', () => {
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
 			taskId: 'task_test',
+			startTime: Date.now(),
 		});
 
 		expect(result).toBeDefined();
 		expect(result!.outcome).toMatchObject({
-			workItemId: 'wi_test',
-			taskId: 'task_test',
-			workflowId: 'WF_123',
-			submitted: true,
+			kind: 'build-workflow',
+			status: 'completed',
+			payload: {
+				workItemId: 'wi_test',
+				taskId: 'task_test',
+				workflowId: 'WF_123',
+				submitted: true,
+			},
 		});
 		expect(result!.text).toContain('Unauthorized');
 	});
@@ -50,6 +55,7 @@ describe('resultFromPostStreamError', () => {
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
 			taskId: 'task_test',
+			startTime: Date.now(),
 		});
 
 		expect(result).toBeUndefined();
@@ -71,6 +77,7 @@ describe('resultFromPostStreamError', () => {
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
 			taskId: 'task_test',
+			startTime: Date.now(),
 		});
 
 		expect(result).toBeUndefined();
@@ -92,6 +99,7 @@ describe('resultFromPostStreamError', () => {
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
 			taskId: 'task_test',
+			startTime: Date.now(),
 		});
 
 		expect(result).toBeUndefined();
@@ -119,12 +127,17 @@ describe('resultFromPostStreamError', () => {
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
 			taskId: 'task_test',
+			startTime: Date.now(),
 		});
 
 		expect(result).toBeDefined();
 		expect(result!.outcome).toMatchObject({
-			workflowId: 'WF_123',
-			submitted: true,
+			kind: 'build-workflow',
+			status: 'completed',
+			payload: {
+				workflowId: 'WF_123',
+				submitted: true,
+			},
 		});
 	});
 });

@@ -87,14 +87,32 @@ describe('BackgroundTaskManager', () => {
 				}),
 			);
 
-			resolve({ text: 'summary', outcome: { workflowId: 'wf-1' } });
+			const outcome = {
+				taskKey: 'task-1',
+				kind: 'build-workflow' as const,
+				status: 'completed' as const,
+				resultText: 'summary',
+				durationMs: 0,
+				toolCallCount: 0,
+				toolErrorCount: 0,
+				payload: {
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					submitted: true as const,
+					triggerType: 'manual_or_testable' as const,
+					needsUserInput: false,
+					workflowId: 'wf-1',
+					summary: 'summary',
+				},
+			};
+			resolve({ text: 'summary', outcome });
 			await flushPromises();
 
 			expect(onCompleted).toHaveBeenCalledWith(
 				expect.objectContaining({
 					status: 'completed',
 					result: 'summary',
-					outcome: { workflowId: 'wf-1' },
+					outcome,
 				}),
 			);
 		});

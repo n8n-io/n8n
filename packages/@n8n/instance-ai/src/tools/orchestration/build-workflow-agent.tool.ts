@@ -26,8 +26,13 @@ import {
 	withTraceContextActor,
 } from './tracing-utils';
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
+import {
+	renderHandoff,
+	type BuilderHandoffInput,
+	type SubAgentHandoff,
+	type SubAgentOutcome,
+} from '../../agent/handoff';
 import { registerWithMastra } from '../../agent/register-with-mastra';
-import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
@@ -56,14 +61,6 @@ const UNTESTABLE_TRIGGERS = new Set([
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
-
-/** Human-readable label derived from a node type string, e.g. "n8n-nodes-base.formTrigger" → "form" */
-function triggerLabel(nodeType: string): string {
-	const short = nodeType.split('.').pop() ?? nodeType;
-	return short.replace(/Trigger$/i, '').toLowerCase() || short.toLowerCase();
-}
-
-const UNTESTABLE_TRIGGER_LABELS = [...UNTESTABLE_TRIGGERS].map(triggerLabel).join(', ');
 
 function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerType {
 	if (!attempt?.triggerNodeTypes || attempt.triggerNodeTypes.length === 0) {
@@ -106,41 +103,31 @@ function buildOutcome(
 	};
 }
 
-const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
-
-You are running as a detached background task. Do not stop after a successful submit — verify the workflow works.
-
-### Completion criteria
-
-Your job is done when ONE of these is true:
-- the workflow is verified (ran successfully)
-- the workflow uses only event triggers (${UNTESTABLE_TRIGGER_LABELS}) and cannot be runtime-tested — stop after a successful submit. Do NOT publish it; the orchestrator will handle setup and publishing.
-- you are blocked after one repair attempt per unique failure
-
-### Submit discipline
-
-**Every file edit MUST be followed by submit-workflow before you do anything else.**
-The system tracks file hashes. If you edit the code and then call run-workflow or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/run.
-
-### Verification
-
-- If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
-- Otherwise call run-workflow to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
-- If verification fails, call debug-execution, fix the code, re-submit, and retry once
-- If the same failure signature repeats, stop and explain the block
-
-### Resource discovery
-
-Before writing code that uses external services, **resolve real resource IDs**:
-- Call explore-node-resources for any parameter with searchListMethod (calendars, spreadsheets, channels, models, etc.)
-- Do NOT use "primary", "default", or any assumed identifier — look up the actual value
-- Call get-suggested-nodes early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
-- Check @builderHint annotations in node type definitions for critical configuration guidance
-
-### Publishing
-
-Do NOT call \`publish-workflow\` for the main workflow. Publishing is the user's decision after testing. Your job ends at a successful submit. The only exception is sub-workflows in the compositional pattern — those must be published so the parent workflow can reference them.
-`;
+/**
+ * Wrap a `WorkflowBuildOutcome` in the `SubAgentOutcome` envelope that
+ * `BackgroundTaskResult` and `PlannedTaskRecord` expect. Builder observation
+ * fields (tool counts) are zero — the builder does not accumulate a
+ * WorkSummary today.
+ */
+function buildBuilderOutcome(
+	workItemId: string,
+	taskId: string,
+	attempt: SubmitWorkflowAttempt | undefined,
+	finalText: string,
+	startTime: number,
+): SubAgentOutcome {
+	const payload = buildOutcome(workItemId, taskId, attempt, finalText);
+	return {
+		taskKey: taskId,
+		kind: 'build-workflow',
+		status: payload.submitted ? 'completed' : 'failed',
+		resultText: finalText,
+		durationMs: Date.now() - startTime,
+		toolCallCount: 0,
+		toolErrorCount: 0,
+		payload,
+	};
+}
 
 function hashContent(content: string | null): string {
 	return createHash('sha256')
@@ -161,6 +148,7 @@ export function resultFromPostStreamError(input: {
 	mainWorkflowPath: string;
 	workItemId: string;
 	taskId: string;
+	startTime: number;
 }): BackgroundTaskResult | undefined {
 	let attempt: SubmitWorkflowAttempt | undefined;
 	for (let i = input.submitAttempts.length - 1; i >= 0; i--) {
@@ -176,7 +164,7 @@ export function resultFromPostStreamError(input: {
 	const text = `Workflow ${attempt.workflowId} submitted successfully. A later step failed: ${errorText}`;
 	return {
 		text,
-		outcome: buildOutcome(input.workItemId, input.taskId, attempt, text),
+		outcome: buildBuilderOutcome(input.workItemId, input.taskId, attempt, text, input.startTime),
 	};
 }
 
@@ -283,30 +271,19 @@ export async function startBuildWorkflowAgentTask(
 
 	const { workflowId } = input;
 
-	// Build additional context based on sandbox mode and existing workflow
-	let additionalContext = '';
-	if (useSandbox && workflowId) {
-		additionalContext = `[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]\n\n[WORK ITEM ID: ${workItemId}]`;
-	} else if (useSandbox) {
-		additionalContext = `[WORK ITEM ID: ${workItemId}]`;
-	} else if (workflowId) {
-		additionalContext = `[CONTEXT: Modifying existing workflow ${workflowId}. Use workflowId "${workflowId}" when calling build-workflow.]`;
-	}
-
-	const briefing = await buildSubAgentBriefing({
-		task: input.task,
+	const builderInput: BuilderHandoffInput = {
+		goal: input.task,
+		workflowId,
+		workItemId,
+		sandboxMode: useSandbox,
 		conversationContext: input.conversationContext,
-		additionalContext: additionalContext || undefined,
-		requirements: useSandbox ? DETACHED_BUILDER_REQUIREMENTS : undefined,
-		iteration: context.iterationLog
-			? {
-					log: context.iterationLog,
-					threadId: context.threadId,
-					taskKey: `build:${workflowId ?? 'new'}`,
-				}
-			: undefined,
-		runningTasks: context.getRunningTaskSummaries?.(),
-	});
+	};
+	const handoff: SubAgentHandoff = {
+		taskKey: `build:${workflowId ?? 'new'}`,
+		kind: 'build-workflow',
+		input: builderInput,
+	};
+	const briefing = await renderHandoff(handoff, context);
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'workflow-builder',
@@ -331,6 +308,7 @@ export async function startBuildWorkflowAgentTask(
 		workItemId,
 		run: async (signal, drainCorrections, waitForCorrection): Promise<BackgroundTaskResult> =>
 			await withTraceContextActor(traceContext, async () => {
+				const startTime = Date.now();
 				let builderWs: BuilderWorkspace | undefined;
 				const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
 				// Append-only history so a later failed submit for the main path
@@ -460,6 +438,7 @@ export async function startBuildWorkflowAgentTask(
 								mainWorkflowPath,
 								workItemId,
 								taskId,
+								startTime,
 							});
 							if (recovered) return recovered;
 							throw error;
@@ -473,7 +452,7 @@ export async function startBuildWorkflowAgentTask(
 							const text = 'Error: workflow builder finished without submitting /src/workflow.ts.';
 							return {
 								text,
-								outcome: buildOutcome(workItemId, taskId, undefined, text),
+								outcome: buildBuilderOutcome(workItemId, taskId, undefined, text, startTime),
 							};
 						}
 
@@ -483,7 +462,13 @@ export async function startBuildWorkflowAgentTask(
 							const text = `Error: workflow builder stopped after a failed submit-workflow for /src/workflow.ts. ${errorText}`;
 							return {
 								text,
-								outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, text),
+								outcome: buildBuilderOutcome(
+									workItemId,
+									taskId,
+									mainWorkflowAttempt,
+									text,
+									startTime,
+								),
 							};
 						}
 
@@ -505,7 +490,13 @@ export async function startBuildWorkflowAgentTask(
 								if (refreshedAttempt?.success) {
 									return {
 										text: finalText,
-										outcome: buildOutcome(workItemId, taskId, refreshedAttempt, finalText),
+										outcome: buildBuilderOutcome(
+											workItemId,
+											taskId,
+											refreshedAttempt,
+											finalText,
+											startTime,
+										),
 									};
 								}
 
@@ -517,14 +508,26 @@ export async function startBuildWorkflowAgentTask(
 								const text = `Error: auto-re-submit of edited /src/workflow.ts failed. ${resubmitErrors}`;
 								return {
 									text,
-									outcome: buildOutcome(workItemId, taskId, refreshedAttempt ?? undefined, text),
+									outcome: buildBuilderOutcome(
+										workItemId,
+										taskId,
+										refreshedAttempt ?? undefined,
+										text,
+										startTime,
+									),
 								};
 							}
 						}
 
 						return {
 							text: finalText,
-							outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, finalText),
+							outcome: buildBuilderOutcome(
+								workItemId,
+								taskId,
+								mainWorkflowAttempt,
+								finalText,
+								startTime,
+							),
 						};
 					}
 

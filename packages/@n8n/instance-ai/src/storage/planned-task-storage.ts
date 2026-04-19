@@ -1,34 +1,73 @@
 import type { Memory } from '@mastra/memory';
 import { z } from 'zod';
 
+import {
+	builderHandoffInputSchema,
+	dataTableHandoffInputSchema,
+	delegateHandoffInputSchema,
+	researchHandoffInputSchema,
+} from '../agent/handoff';
 import type { PlannedTaskGraph } from '../types';
 import { patchThread } from './thread-patch';
 
 const METADATA_KEY = 'instanceAiPlannedTasks';
 
-const plannedTaskKindSchema = z.enum([
-	'delegate',
-	'build-workflow',
-	'manage-data-tables',
-	'research',
+const plannedHandoffSchema = z.discriminatedUnion('kind', [
+	z.object({
+		taskKey: z.string(),
+		kind: z.literal('delegate'),
+		input: delegateHandoffInputSchema,
+	}),
+	z.object({
+		taskKey: z.string(),
+		kind: z.literal('build-workflow'),
+		input: builderHandoffInputSchema,
+	}),
+	z.object({
+		taskKey: z.string(),
+		kind: z.literal('manage-data-tables'),
+		input: dataTableHandoffInputSchema,
+	}),
+	z.object({
+		taskKey: z.string(),
+		kind: z.literal('research'),
+		input: researchHandoffInputSchema,
+	}),
 ]);
 
 const plannedTaskStatusSchema = z.enum(['planned', 'running', 'succeeded', 'failed', 'cancelled']);
 
+// The outcome envelope stored on PlannedTaskRecord. Loose on the payload because
+// today only the builder populates it with a typed WorkflowBuildOutcome — other
+// kinds may add typed payloads later without a schema migration.
+const subAgentOutcomeStorageSchema = z
+	.object({
+		taskKey: z.string(),
+		kind: z.string(),
+		status: z.enum(['completed', 'failed', 'cancelled']),
+		resultText: z.string(),
+		durationMs: z.number(),
+		toolCallCount: z.number(),
+		toolErrorCount: z.number(),
+		blockers: z.array(z.string()).optional(),
+		stoppingReason: z.string().optional(),
+		payload: z.unknown().optional(),
+		planSubmitted: z.boolean().optional(),
+	})
+	.passthrough();
+
 const plannedTaskRecordSchema = z.object({
 	id: z.string(),
 	title: z.string(),
-	kind: plannedTaskKindSchema,
-	spec: z.string(),
 	deps: z.array(z.string()),
 	tools: z.array(z.string()).optional(),
-	workflowId: z.string().optional(),
+	handoff: plannedHandoffSchema,
 	status: plannedTaskStatusSchema,
 	agentId: z.string().optional(),
 	backgroundTaskId: z.string().optional(),
 	result: z.string().optional(),
 	error: z.string().optional(),
-	outcome: z.record(z.unknown()).optional(),
+	outcome: subAgentOutcomeStorageSchema.optional(),
 	startedAt: z.number().optional(),
 	finishedAt: z.number().optional(),
 });
@@ -42,7 +81,10 @@ const plannedTaskGraphSchema = z.object({
 
 function parseGraph(raw: unknown): PlannedTaskGraph | null {
 	const result = plannedTaskGraphSchema.safeParse(raw);
-	return result.success ? result.data : null;
+	// The storage schema's outcome is validated loosely (passthrough with
+	// string kind) so writer-enforced typed outcomes round-trip without
+	// needing the storage layer to mirror the full `SubAgentOutcome` union.
+	return result.success ? (result.data as unknown as PlannedTaskGraph) : null;
 }
 
 export class PlannedTaskStorage {

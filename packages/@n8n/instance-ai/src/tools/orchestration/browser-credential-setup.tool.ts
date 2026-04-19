@@ -12,6 +12,7 @@ import {
 	traceSubAgentTools,
 	withTraceRun,
 } from './tracing-utils';
+import { renderHandoff } from '../../agent/handoff';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { MAX_STEPS } from '../../constants/max-steps';
 import {
@@ -377,48 +378,19 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 
 					registerWithMastra(subAgentId, subAgent, context.storage);
 
-					// Build the briefing
-					const docsLine = input.docsUrl
-						? `**Documentation:** ${input.docsUrl}`
-						: '**Documentation:** No URL available — use `research` (action: web-search) to find setup instructions.';
-
-					let fieldsSection = '';
-					if (input.requiredFields && input.requiredFields.length > 0) {
-						const fieldLines = input.requiredFields.map(
-							(f: {
-								name: string;
-								displayName: string;
-								type: string;
-								required: boolean;
-								description?: string;
-							}) =>
-								`- ${f.displayName} (${f.name})${f.required ? ' [REQUIRED]' : ''}${f.description ? ': ' + f.description : ''}`,
-						);
-						fieldsSection = `\n### Required Fields\n${fieldLines.join('\n')}`;
-					}
-
-					// For OAuth2 credentials, include the redirect URL so the agent can
-					// paste it directly into the "Authorized redirect URIs" field
-					const isOAuth = input.credentialType.toLowerCase().includes('oauth');
-					const oauthSection =
-						isOAuth && context.oauth2CallbackUrl
-							? `\n### OAuth Redirect URL\n${context.oauth2CallbackUrl}\n` +
-								'Paste this into the "Authorized redirect URIs" field. ' +
-								'Do NOT navigate to the n8n instance to find it — use this URL directly.'
-							: '';
-
-					const briefing = [
-						`## Credential Setup: ${input.credentialType}`,
-						'',
-						docsLine,
-						fieldsSection,
-						oauthSection,
-						'',
-						'### Completion Criteria',
-						'Done ONLY when all required values are visible on screen or downloaded, and you have called `pause-for-user` telling the user what to copy.',
-					]
-						.filter(Boolean)
-						.join('\n');
+					const briefing = await renderHandoff(
+						{
+							taskKey: `browser-cred:${subAgentId}`,
+							kind: 'browser-credential-setup',
+							input: {
+								credentialType: input.credentialType,
+								docsUrl: input.docsUrl,
+								requiredFields: input.requiredFields,
+								oauth2CallbackUrl: context.oauth2CallbackUrl,
+							},
+						},
+						context,
+					);
 
 					const traceParent = getTraceParentRun();
 					return await withTraceParentContext(traceParent, async () => {

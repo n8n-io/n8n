@@ -1,3 +1,4 @@
+import type { PlannedHandoff } from '../../agent/handoff';
 import type { PlannedTaskStorage } from '../../storage/planned-task-storage';
 import type { PlannedTask, PlannedTaskGraph, PlannedTaskRecord } from '../../types';
 import { PlannedTaskCoordinator } from '../planned-task-service';
@@ -11,13 +12,25 @@ function makeStorage(): jest.Mocked<PlannedTaskStorage> {
 	} as unknown as jest.Mocked<PlannedTaskStorage>;
 }
 
-function makeTask(overrides: Partial<PlannedTask> = {}): PlannedTask {
+function makeBuilderHandoff(id: string): PlannedHandoff {
 	return {
-		id: 'task-1',
-		title: 'Test task',
+		taskKey: id,
 		kind: 'build-workflow',
+		input: {
+			goal: 'Build a workflow',
+			workItemId: `wi_${id}`,
+			sandboxMode: true,
+		},
+	};
+}
+
+function makeTask(overrides: Partial<PlannedTask> = {}): PlannedTask {
+	const id = overrides.id ?? 'task-1';
+	return {
+		id,
+		title: 'Test task',
 		deps: [],
-		spec: 'Build a workflow',
+		handoff: makeBuilderHandoff(id),
 		...overrides,
 	};
 }
@@ -32,12 +45,12 @@ function makeGraph(overrides: Partial<PlannedTaskGraph> = {}): PlannedTaskGraph 
 }
 
 function makeTaskRecord(overrides: Partial<PlannedTaskRecord> = {}): PlannedTaskRecord {
+	const id = overrides.id ?? 'task-1';
 	return {
-		id: 'task-1',
+		id,
 		title: 'Test task',
-		kind: 'build-workflow',
 		deps: [],
-		spec: 'Build a workflow',
+		handoff: makeBuilderHandoff(id),
 		status: 'planned',
 		...overrides,
 	};
@@ -100,7 +113,22 @@ describe('PlannedTaskCoordinator', () => {
 		});
 
 		it('throws when delegate task has no tools', async () => {
-			const tasks = [makeTask({ id: 'a', kind: 'delegate', tools: [] })];
+			const tasks = [
+				makeTask({
+					id: 'a',
+					tools: [],
+					handoff: {
+						taskKey: 'a',
+						kind: 'delegate',
+						input: {
+							role: 'worker',
+							instructions: 'do stuff',
+							goal: 'do stuff',
+							toolNames: [],
+						},
+					},
+				}),
+			];
 
 			await expect(
 				coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' }),

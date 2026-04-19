@@ -16,6 +16,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
 
+import type { PlannedHandoff, PlannedHandoffKind, SubAgentOutcome } from './agent/handoff';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
@@ -543,17 +544,15 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export type PlannedTaskKind = 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
+export type PlannedTaskKind = PlannedHandoffKind;
 
 export interface PlannedTask {
 	id: string;
 	title: string;
-	kind: PlannedTaskKind;
-	spec: string;
 	deps: string[];
 	tools?: string[];
-	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
-	workflowId?: string;
+	/** Typed handoff this task dispatches when scheduled. `handoff.taskKey === id`. */
+	handoff: PlannedHandoff;
 }
 
 export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';
@@ -564,7 +563,7 @@ export interface PlannedTaskRecord extends PlannedTask {
 	backgroundTaskId?: string;
 	result?: string;
 	error?: string;
-	outcome?: Record<string, unknown>;
+	outcome?: SubAgentOutcome;
 	startedAt?: number;
 	finishedAt?: number;
 }
@@ -599,7 +598,7 @@ export interface PlannedTaskService {
 	markSucceeded(
 		threadId: string,
 		taskId: string,
-		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
+		update: { result?: string; outcome?: SubAgentOutcome; finishedAt?: number },
 	): Promise<PlannedTaskGraph | null>;
 	markFailed(
 		threadId: string,
@@ -745,11 +744,11 @@ export interface InstanceAiTraceContext {
 // ── Background task spawning ─────────────────────────────────────────────────
 
 /** Structured result from a background task. The `text` field is the human-readable
- *  summary; `outcome` carries an optional typed payload consumed by the workflow
- *  loop controller (additive — existing callers that return a plain string still work). */
+ *  summary; `outcome` carries an optional typed `SubAgentOutcome` envelope consumed
+ *  by the workflow loop controller and planned-task scheduler. */
 export interface BackgroundTaskResult {
 	text: string;
-	outcome?: Record<string, unknown>;
+	outcome?: SubAgentOutcome;
 }
 
 export interface SpawnBackgroundTaskOptions {

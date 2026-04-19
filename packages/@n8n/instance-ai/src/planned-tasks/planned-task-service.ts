@@ -1,3 +1,4 @@
+import type { SubAgentOutcome } from '../agent/handoff';
 import type { PlannedTaskStorage } from '../storage/planned-task-storage';
 import type {
 	PlannedTask,
@@ -23,7 +24,7 @@ function validateDependencies(tasks: PlannedTask[]): void {
 				throw new Error(`Task "${task.id}" depends on unknown task "${depId}"`);
 			}
 		}
-		if (task.kind === 'delegate' && (!task.tools || task.tools.length === 0)) {
+		if (task.handoff.kind === 'delegate' && (!task.tools || task.tools.length === 0)) {
 			throw new Error(`Delegate task "${task.id}" must include at least one tool`);
 		}
 	}
@@ -117,7 +118,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 	async markSucceeded(
 		threadId: string,
 		taskId: string,
-		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
+		update: { result?: string; outcome?: SubAgentOutcome; finishedAt?: number },
 	): Promise<PlannedTaskGraph | null> {
 		return await this.storage.update(threadId, (graph) =>
 			updateTaskRecord(graph, taskId, (task) => ({

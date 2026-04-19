@@ -16,6 +16,7 @@ import {
 	blueprintResearchItemSchema,
 	blueprintWorkflowItemSchema,
 } from './blueprint.schema';
+import { toPlannedTaskArg } from '../../agent/handoff';
 import type { OrchestrationContext } from '../../types';
 
 /** Publish the current accumulator state as a tasks-update event with full planItems. */
@@ -24,15 +25,7 @@ export function publishPlanUpdate(
 	context: OrchestrationContext,
 ): void {
 	const taskItems = accumulator.getTaskItemsForEvent();
-	const planItems = accumulator.getTaskList().map((t) => ({
-		id: t.id,
-		title: t.title,
-		kind: t.kind,
-		spec: t.spec,
-		deps: t.deps,
-		...(t.tools ? { tools: t.tools } : {}),
-		...(t.workflowId ? { workflowId: t.workflowId } : {}),
-	}));
+	const planItems = accumulator.getTaskList().map(toPlannedTaskArg);
 	context.eventBus.publish(context.threadId, {
 		type: 'tasks-update',
 		runId: context.runId,

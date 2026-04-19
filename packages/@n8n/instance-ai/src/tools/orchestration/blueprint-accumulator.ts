@@ -3,7 +3,7 @@
  *
  * Replaces the old all-at-once `blueprintToTasks()` conversion. The planner
  * calls `addItem()` once per blueprint item; each call converts the item to a
- * `PlannedTaskInput` and stores it. After the planner finishes,
+ * typed `PlannedTask` and stores it. After the planner finishes,
  * `reconcileDependencies()` fixes any late dep-inference gaps and
  * `getTaskList()` returns the full task array for `createPlan()`.
  */
@@ -14,20 +14,8 @@ import type {
 	BlueprintResearchItem,
 	BlueprintWorkflowItem,
 } from './blueprint.schema';
-
-// ---------------------------------------------------------------------------
-// PlannedTaskInput — the shape consumed by createPlan()
-// ---------------------------------------------------------------------------
-
-export interface PlannedTaskInput {
-	id: string;
-	title: string;
-	kind: string;
-	spec: string;
-	deps: string[];
-	tools?: string[];
-	workflowId?: string;
-}
+import type { PlannedHandoff } from '../../agent/handoff';
+import type { PlannedTask } from '../../types';
 
 // ---------------------------------------------------------------------------
 // Discriminated item union — input to addItem()
@@ -50,23 +38,21 @@ export function formatTableSchema(dt: BlueprintDataTableItem): string {
 	return `Table '${dt.name}': ${cols}`;
 }
 
-function dataTableItemToTask(dt: BlueprintDataTableItem): PlannedTaskInput {
-	if (dt.columns && dt.columns.length > 0) {
-		const columnList = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
-		return {
-			id: dt.id,
-			title: `Create '${dt.name}' data table`,
-			kind: 'manage-data-tables',
-			spec: `Create a data table named '${dt.name}'. Purpose: ${dt.purpose}\nColumns: ${columnList}`,
-			deps: dt.dependsOn,
-		};
-	}
+function makeHandoff(id: string, handoff: Omit<PlannedHandoff, 'taskKey'>): PlannedHandoff {
+	return { ...handoff, taskKey: id } as PlannedHandoff;
+}
+
+function dataTableItemToTask(dt: BlueprintDataTableItem): PlannedTask {
+	const goal =
+		dt.columns && dt.columns.length > 0
+			? `Create a data table named '${dt.name}'. Purpose: ${dt.purpose}\nColumns: ${dt.columns.map((c) => `${c.name} (${c.type})`).join(', ')}`
+			: dt.purpose;
+	const title = dt.columns && dt.columns.length > 0 ? `Create '${dt.name}' data table` : dt.name;
 	return {
 		id: dt.id,
-		title: dt.name,
-		kind: 'manage-data-tables',
-		spec: dt.purpose,
+		title,
 		deps: dt.dependsOn,
+		handoff: makeHandoff(dt.id, { kind: 'manage-data-tables', input: { goal } }),
 	};
 }
 
@@ -74,7 +60,7 @@ function workflowItemToTask(
 	wf: BlueprintWorkflowItem,
 	knownTables: BlueprintDataTableItem[],
 	assumptions: string[],
-): PlannedTaskInput {
+): PlannedTask {
 	const specParts = [wf.purpose];
 	if (wf.triggerDescription) specParts.push(`Trigger: ${wf.triggerDescription}`);
 	if (wf.integrations.length > 0) specParts.push(`Integrations: ${wf.integrations.join(', ')}`);
@@ -119,31 +105,47 @@ function workflowItemToTask(
 	return {
 		id: wf.id,
 		title: `Build '${wf.name}' workflow`,
-		kind: 'build-workflow',
-		spec: specParts.join('\n'),
 		deps: inferredDeps,
-		workflowId: wf.existingWorkflowId,
+		handoff: makeHandoff(wf.id, {
+			kind: 'build-workflow',
+			input: {
+				goal: specParts.join('\n'),
+				workflowId: wf.existingWorkflowId,
+				workItemId: `wi_${wf.id}`,
+				sandboxMode: true,
+			},
+		}),
 	};
 }
 
-function researchItemToTask(ri: BlueprintResearchItem): PlannedTaskInput {
+function researchItemToTask(ri: BlueprintResearchItem): PlannedTask {
 	return {
 		id: ri.id,
 		title: ri.question,
-		kind: 'research',
-		spec: ri.constraints ?? ri.question,
 		deps: ri.dependsOn,
+		handoff: makeHandoff(ri.id, {
+			kind: 'research',
+			input: { goal: ri.question, constraints: ri.constraints },
+		}),
 	};
 }
 
-function delegateItemToTask(di: BlueprintDelegateItem): PlannedTaskInput {
+function delegateItemToTask(di: BlueprintDelegateItem): PlannedTask {
 	return {
 		id: di.id,
 		title: di.title,
-		kind: 'delegate',
-		spec: di.description,
 		deps: di.dependsOn,
 		tools: di.requiredTools,
+		handoff: makeHandoff(di.id, {
+			kind: 'delegate',
+			input: {
+				role: di.title,
+				instructions:
+					'Complete the delegated task using the provided tools. Return concrete results only.',
+				goal: di.description,
+				toolNames: di.requiredTools,
+			},
+		}),
 	};
 }
 
@@ -160,7 +162,7 @@ export class BlueprintAccumulator {
 
 	private delegateItems: BlueprintDelegateItem[] = [];
 
-	private tasks: PlannedTaskInput[] = [];
+	private tasks: PlannedTask[] = [];
 
 	private summary = '';
 
@@ -169,8 +171,8 @@ export class BlueprintAccumulator {
 	private approved = false;
 
 	/** Route item by kind, upsert into arrays, convert to task, return the task. */
-	addItem(item: BlueprintItem): PlannedTaskInput {
-		let task: PlannedTaskInput;
+	addItem(item: BlueprintItem): PlannedTask {
+		let task: PlannedTask;
 
 		switch (item.kind) {
 			case 'data-table': {
@@ -210,7 +212,7 @@ export class BlueprintAccumulator {
 	}
 
 	/** Return the full task list for createPlan(). */
-	getTaskList(): PlannedTaskInput[] {
+	getTaskList(): PlannedTask[] {
 		return [...this.tasks];
 	}
 
@@ -253,7 +255,7 @@ export class BlueprintAccumulator {
 	}
 
 	/** Load pre-existing tasks into the accumulator (for revision flows). */
-	loadFromTasks(tasks: PlannedTaskInput[]): void {
+	loadFromTasks(tasks: PlannedTask[]): void {
 		for (const t of tasks) {
 			this.upsertTask(t);
 		}
@@ -303,7 +305,7 @@ export class BlueprintAccumulator {
 	}
 
 	/** Upsert into the tasks array by ID. */
-	private upsertTask(task: PlannedTaskInput): void {
+	private upsertTask(task: PlannedTask): void {
 		const idx = this.tasks.findIndex((t) => t.id === task.id);
 		if (idx >= 0) {
 			this.tasks[idx] = task;

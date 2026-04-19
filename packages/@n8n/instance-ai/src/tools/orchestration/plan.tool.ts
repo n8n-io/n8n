@@ -3,6 +3,7 @@ import { taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import type { PlannedHandoff } from '../../agent/handoff';
 import type { OrchestrationContext, PlannedTask } from '../../types';
 
 const plannedTaskSchema = z.object({
@@ -22,6 +23,59 @@ const plannedTaskSchema = z.object({
 		.optional()
 		.describe('Existing workflow ID to modify (build-workflow tasks only)'),
 });
+
+type PlanToolTask = z.infer<typeof plannedTaskSchema>;
+
+/** Translate a flat LLM-authored task entry into a typed `PlannedHandoff`. */
+function toPlannedHandoff(task: PlanToolTask): PlannedHandoff {
+	switch (task.kind) {
+		case 'delegate':
+			return {
+				taskKey: task.id,
+				kind: 'delegate',
+				input: {
+					role: task.title,
+					instructions:
+						'Complete the delegated task using the provided tools. Return concrete results only.',
+					goal: task.spec,
+					toolNames: task.tools ?? [],
+				},
+			};
+		case 'build-workflow':
+			return {
+				taskKey: task.id,
+				kind: 'build-workflow',
+				input: {
+					goal: task.spec,
+					workflowId: task.workflowId,
+					workItemId: `wi_${task.id}`,
+					sandboxMode: true,
+				},
+			};
+		case 'manage-data-tables':
+			return {
+				taskKey: task.id,
+				kind: 'manage-data-tables',
+				input: { goal: task.spec },
+			};
+		case 'research':
+			return {
+				taskKey: task.id,
+				kind: 'research',
+				input: { goal: task.title, constraints: task.spec },
+			};
+	}
+}
+
+function toPlannedTask(task: PlanToolTask): PlannedTask {
+	return {
+		id: task.id,
+		title: task.title,
+		deps: task.deps,
+		...(task.tools ? { tools: task.tools } : {}),
+		handoff: toPlannedHandoff(task),
+	};
+}
 
 const planInputSchema = z.object({
 	tasks: z.array(plannedTaskSchema).min(1).describe('Dependency-aware execution plan'),
@@ -71,7 +125,7 @@ export function createPlanTool(context: OrchestrationContext) {
 			if (resumeData === undefined || resumeData === null) {
 				await context.plannedTaskService.createPlan(
 					context.threadId,
-					input.tasks as PlannedTask[],
+					input.tasks.map(toPlannedTask),
 					{
 						planRunId: context.runId,
 						messageGroupId: context.messageGroupId,

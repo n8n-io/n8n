@@ -18,8 +18,8 @@ import {
 	traceSubAgentTools,
 	withTraceContextActor,
 } from './tracing-utils';
+import { renderHandoff } from '../../agent/handoff';
 import { registerWithMastra } from '../../agent/register-with-mastra';
-import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
@@ -82,12 +82,18 @@ export async function startResearchAgentTask(
 		},
 	});
 
-	const briefing = await buildSubAgentBriefing({
-		task: input.goal,
-		conversationContext: input.conversationContext,
-		additionalContext: input.constraints ? `Constraints: ${input.constraints}` : undefined,
-		runningTasks: context.getRunningTaskSummaries?.(),
-	});
+	const briefing = await renderHandoff(
+		{
+			taskKey: `research:${taskId}`,
+			kind: 'research',
+			input: {
+				goal: input.goal,
+				constraints: input.constraints,
+				conversationContext: input.conversationContext,
+			},
+		},
+		context,
+	);
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'web-researcher',

@@ -13,9 +13,13 @@ import {
 	withTraceContextActor,
 	withTraceRun,
 } from './tracing-utils';
+import {
+	observeOutcome,
+	renderHandoff,
+	type DelegateHandoffInput,
+	type SubAgentHandoff,
+} from '../../agent/handoff';
 import { registerWithMastra } from '../../agent/register-with-mastra';
-import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
-import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
@@ -59,24 +63,31 @@ function resolveDelegateTools(
 	return { validTools, errors };
 }
 
-async function buildDelegateBriefing(
-	context: OrchestrationContext,
-	role: string,
-	briefing: string,
-	artifacts?: unknown,
-	conversationContext?: string,
-): Promise<string> {
-	const structured = await buildSubAgentBriefing({
-		task: briefing,
-		conversationContext,
-		artifacts: artifacts as Record<string, unknown> | undefined,
-		iteration: context.iterationLog
-			? { log: context.iterationLog, threadId: context.threadId, taskKey: `delegate:${role}` }
-			: undefined,
-		runningTasks: context.getRunningTaskSummaries?.(),
-	});
+function buildDelegateHandoff(params: {
+	role: string;
+	instructions: string;
+	goal: string;
+	toolNames: string[];
+	artifacts?: unknown;
+	conversationContext?: string;
+}): SubAgentHandoff {
+	const input: DelegateHandoffInput = {
+		role: params.role,
+		instructions: params.instructions,
+		goal: params.goal,
+		toolNames: params.toolNames,
+		artifacts: params.artifacts as Record<string, unknown> | undefined,
+		conversationContext: params.conversationContext,
+	};
+	return { taskKey: `delegate:${params.role}`, kind: 'delegate', input };
+}
 
-	return `${structured}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
+async function renderDelegateBriefing(
+	context: OrchestrationContext,
+	handoff: SubAgentHandoff,
+): Promise<string> {
+	const briefing = await renderHandoff(handoff, context);
+	return `${briefing}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
 }
 
 export interface DetachedDelegateTaskInput {
@@ -145,13 +156,16 @@ export async function startDetachedDelegateTask(
 		},
 	});
 
-	const briefingMessage = await buildDelegateBriefing(
-		context,
+	const handoff = buildDelegateHandoff({
 		role,
-		input.spec,
-		input.artifacts,
-		input.conversationContext,
-	);
+		instructions:
+			'Complete the delegated task using the provided tools. Return concrete results only.',
+		goal: input.spec,
+		toolNames: input.tools,
+		artifacts: input.artifacts,
+		conversationContext: input.conversationContext,
+	});
+	const briefingMessage = await renderDelegateBriefing(context, handoff);
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role,
@@ -297,13 +311,15 @@ export function createDelegateTool(context: OrchestrationContext) {
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 
-				const briefingMessage = await buildDelegateBriefing(
-					context,
-					input.role,
-					input.briefing,
-					input.artifacts,
-					input.conversationContext,
-				);
+				const handoff = buildDelegateHandoff({
+					role: input.role,
+					instructions: input.instructions,
+					goal: input.briefing,
+					toolNames: input.tools,
+					artifacts: input.artifacts,
+					conversationContext: input.conversationContext,
+				});
+				const briefingMessage = await renderDelegateBriefing(context, handoff);
 
 				// 4. Stream sub-agent with HITL support
 				const consumeResult = await withTraceRun(context, traceRun, async () => {
@@ -339,11 +355,10 @@ export function createDelegateTool(context: OrchestrationContext) {
 				});
 
 				const resultText = await consumeResult.text;
-				const debriefing = buildDebriefing({
-					agentId: subAgentId,
-					role: input.role,
-					result: resultText,
+				const observation = observeOutcome({
+					taskKey: handoff.taskKey,
 					workSummary: consumeResult.workSummary,
+					resultText,
 					startTime,
 				});
 
@@ -352,9 +367,9 @@ export function createDelegateTool(context: OrchestrationContext) {
 						result: resultText,
 						agentId: subAgentId,
 						role: input.role,
-						toolCallCount: debriefing.toolCallCount,
-						toolErrorCount: debriefing.toolErrorCount,
-						durationMs: debriefing.durationMs,
+						toolCallCount: observation.toolCallCount,
+						toolErrorCount: observation.toolErrorCount,
+						durationMs: observation.durationMs,
 					},
 				});
 
@@ -371,10 +386,10 @@ export function createDelegateTool(context: OrchestrationContext) {
 
 				return {
 					result: resultText,
-					toolCallCount: debriefing.toolCallCount,
-					toolErrorCount: debriefing.toolErrorCount,
-					durationMs: debriefing.durationMs,
-					blockers: debriefing.blockers,
+					toolCallCount: observation.toolCallCount,
+					toolErrorCount: observation.toolErrorCount,
+					durationMs: observation.durationMs,
+					blockers: observation.blockers,
 				};
 			} catch (error) {
 				// 8. Publish agent-completed with error
