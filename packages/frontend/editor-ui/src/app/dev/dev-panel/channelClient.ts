@@ -1,14 +1,6 @@
-export type ChannelPromptBody = {
-	prompt: string;
-	file?: string;
-	line?: number;
-	col?: number;
-	testid?: string;
-	component?: string;
-	selector?: string;
-	classes?: string[];
-	outerHtmlSnippet?: string;
-};
+import type { ElementContext } from './collectElementContext';
+
+export type ChannelPromptBody = { prompt: string } & ElementContext;
 
 const CHANNEL_BASE_URL = 'http://127.0.0.1:8788';
 const SENDER_HEADER = { 'Content-Type': 'application/json', 'X-Sender': 'n8n-dev-panel' };

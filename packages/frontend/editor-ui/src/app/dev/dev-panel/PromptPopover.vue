@@ -1,19 +1,24 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
-const props = defineProps<{
-	anchor: Element;
-	sending: boolean;
-	channelAvailable: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		anchor: Element;
+		sending: boolean;
+		channelAvailable: boolean;
+		initialPrompt?: string;
+		isEditing?: boolean;
+	}>(),
+	{ initialPrompt: '', isEditing: false },
+);
 
 const emit = defineEmits<{
 	send: [prompt: string];
-	copy: [prompt: string];
+	add: [prompt: string];
 	cancel: [];
 }>();
 
-const prompt = ref('');
+const prompt = ref(props.initialPrompt);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
 const anchorRect = ref<DOMRect>(props.anchor.getBoundingClientRect());
@@ -55,7 +60,7 @@ function handleKeyDown(event: KeyboardEvent) {
 	}
 	if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
 		event.preventDefault();
-		handleSend();
+		handleAdd();
 	}
 }
 
@@ -65,14 +70,20 @@ function handleSend() {
 	emit('send', text);
 }
 
-function handleCopy() {
+function handleAdd() {
 	const text = prompt.value.trim();
 	if (!text) return;
-	emit('copy', text);
+	emit('add', text);
 }
 
 onMounted(() => {
-	void nextTick(() => textareaRef.value?.focus());
+	void nextTick(() => {
+		const textarea = textareaRef.value;
+		if (!textarea) return;
+		textarea.focus();
+		const end = textarea.value.length;
+		textarea.setSelectionRange(end, end);
+	});
 	window.addEventListener('resize', updateAnchorRect);
 	window.addEventListener('scroll', updateAnchorRect, true);
 });
@@ -95,7 +106,11 @@ watch(
 			ref="textareaRef"
 			v-model="prompt"
 			class="dev-panel-textarea"
-			placeholder="Describe the change. ⌘↵ to send, Esc to cancel."
+			:placeholder="
+				isEditing
+					? 'Edit the annotation. ⌘↵ to save, Esc to cancel.'
+					: 'Describe the change. ⌘↵ to add, Esc to cancel.'
+			"
 			:disabled="sending"
 			rows="4"
 		/>
@@ -104,22 +119,23 @@ watch(
 				Cancel
 			</button>
 			<button
+				v-if="!isEditing"
 				type="button"
 				class="dev-panel-button"
-				:disabled="!prompt.trim() || sending"
-				title="Copy prompt + element context to clipboard"
-				@click="handleCopy"
+				:disabled="!prompt.trim() || sending || !channelAvailable"
+				:title="channelAvailable ? 'Send immediately to Claude' : 'Claude channel not running'"
+				@click="handleSend"
 			>
-				Copy
+				{{ sending ? 'Sending…' : 'Send now' }}
 			</button>
 			<button
 				type="button"
 				class="dev-panel-button dev-panel-button--primary"
-				:disabled="!prompt.trim() || sending || !channelAvailable"
-				:title="channelAvailable ? 'Send to Claude' : 'Claude channel not running'"
-				@click="handleSend"
+				:disabled="!prompt.trim() || sending"
+				:title="isEditing ? 'Save changes (⌘↵)' : 'Add to annotations list (⌘↵)'"
+				@click="handleAdd"
 			>
-				{{ sending ? 'Sending…' : 'Send' }}
+				{{ isEditing ? 'Save' : 'Add' }}
 			</button>
 		</div>
 	</div>
