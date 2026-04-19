@@ -23,7 +23,7 @@ export function handleCycles(
 	// any inputs and thus cannot build a cycle.
 	//
 	// We're not interested in them so we filter them out.
-	const cycles = graph.getStronglyConnectedComponents().filter((cycle) => cycle.size >= 1);
+	const cycles = graph.getStronglyConnectedComponents().filter((cycle) => cycle.size > 1);
 	const newStartNodes: Set<INode> = new Set(startNodes);
 
 	// For each start node, check if the node is part of a cycle and if it is
