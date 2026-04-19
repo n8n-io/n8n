@@ -211,10 +211,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 
 		const bufferOut = Buffer.from(imagePart.inlineData.data, 'base64');
+		const mimeType = imagePart.inlineData.mimeType ?? 'image/png';
+		const ext = mimeType.split('/')[1] ?? 'png';
 		const binaryOut = await this.helpers.prepareBinaryData(
 			bufferOut,
-			'image.png',
-			imagePart.inlineData.mimeType,
+			`image.${ext}`,
+			mimeType,
 		);
 		return {
 			binary: {
