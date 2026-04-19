@@ -18,6 +18,7 @@ WORKDIR /app
 # 1. Configuration COPY from root
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.json ./
 COPY patches/ ./patches/
+COPY scripts/ ./scripts/
 
 # 2. Packages COPY
 COPY packages/ ./packages/
