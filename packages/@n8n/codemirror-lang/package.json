@@ -38,6 +38,9 @@
     "format": "biome format --write src test",
     "format:check": "biome ci src test"
   },
+  "dependencies": {
+    "esprima-next": "5.8.4"
+  },
   "peerDependencies": {
     "@codemirror/language": "catalog:",
     "@lezer/highlight": "catalog:",

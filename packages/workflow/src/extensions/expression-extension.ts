@@ -107,6 +107,12 @@ function parseWithEsprimaNext(source: string, options?: any): any {
 	return ast;
 }
 
+type EsprimaToken = {
+	range?: [number, number];
+	type: string;
+	value: string;
+};
+
 /**
  * A function to inject an extender function call into the AST of an expression.
  * This uses recast to do the transform.
@@ -437,6 +443,43 @@ export const extendTransform = (expression: string): { code: string } | undefine
 	}
 };
 
+const addStructuralClosingSpacing = (expression: string) => {
+	const ast = esprimaParse(expression, {
+		range: true,
+		tolerant: true,
+		tokens: true,
+	}) as { tokens?: EsprimaToken[] };
+	const tokens = ast.tokens ?? [];
+
+	let result = expression;
+	let offset = 0;
+
+	for (let index = 1; index < tokens.length; index++) {
+		const previousToken = tokens[index - 1];
+		const currentToken = tokens[index];
+
+		if (
+			previousToken.type === 'Punctuator' &&
+			previousToken.value === '}' &&
+			currentToken.type === 'Punctuator' &&
+			currentToken.value === '}' &&
+			previousToken.range &&
+			currentToken.range &&
+			previousToken.range[1] === currentToken.range[0]
+		) {
+			const insertIndex = currentToken.range[0] + offset;
+			result = `${result.slice(0, insertIndex)} ${result.slice(insertIndex)}`;
+			offset += 1;
+		}
+	}
+
+	return result;
+};
+
+const normalizeBareObjectLiteralOutput = (expression: string) => {
+	return addStructuralClosingSpacing(expression);
+};
+
 function isDate(input: unknown): boolean {
 	if (typeof input !== 'string' || !input.length) {
 		return false;
@@ -575,24 +618,33 @@ export function extendOptional(
 }
 
 const EXTENDED_SYNTAX_CACHE: Record<string, string> = {};
+const getExtendedSyntaxCacheKey = (bracketedExpression: string, forceExtend: boolean) =>
+	`${forceExtend ? '1' : '0'}:${bracketedExpression}`;
 
 export function extendSyntax(bracketedExpression: string, forceExtend = false): string {
-	const chunks = splitExpression(bracketedExpression);
+	const cacheKey = getExtendedSyntaxCacheKey(bracketedExpression, forceExtend);
 
-	const codeChunks = chunks
-		.filter((c) => c.type === 'code')
-		.map((c) => c.text.replace(/("|').*?("|')/, '').trim());
+	if (cacheKey in EXTENDED_SYNTAX_CACHE) {
+		return EXTENDED_SYNTAX_CACHE[cacheKey];
+	}
+
+	const chunks = splitExpression(bracketedExpression);
+	const rawCodeChunks = chunks.filter((c) => c.type === 'code').map((c) => c.text);
+
+	const codeChunks = rawCodeChunks.map((chunk) => chunk.replace(/("|').*?("|')/, '').trim());
+	const hasNestedClosingBrackets = rawCodeChunks.some((chunk) => chunk.includes('}}'));
+	const hasTightBareObjectLiteral = rawCodeChunks.some(
+		(chunk) => chunk.trim().startsWith('{') && chunk.endsWith('}'),
+	);
 
 	if (
 		(!codeChunks.some(hasExpressionExtension) || hasNativeMethod(bracketedExpression)) &&
+		!hasNestedClosingBrackets &&
+		!hasTightBareObjectLiteral &&
 		!forceExtend
 	) {
+		EXTENDED_SYNTAX_CACHE[cacheKey] = bracketedExpression;
 		return bracketedExpression;
-	}
-
-	// If we've seen this expression before grab it from the cache
-	if (bracketedExpression in EXTENDED_SYNTAX_CACHE) {
-		return EXTENDED_SYNTAX_CACHE[bracketedExpression];
 	}
 
 	const extendedChunks = chunks.map((chunk): ExpressionChunk => {
@@ -618,6 +670,18 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 				text = text.trim().slice(0, -1);
 			}
 
+			if (chunk.text.trim().startsWith('{')) {
+				text = normalizeBareObjectLiteralOutput(text);
+			}
+
+			if (
+				chunk.hasClosingBrackets &&
+				chunk.text.trim().startsWith('{') &&
+				chunk.text.endsWith('}')
+			) {
+				text += ' ';
+			}
+
 			return {
 				...chunk,
 				text,
@@ -628,6 +692,6 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 
 	const expression = joinExpression(extendedChunks);
 	// Cache the expression so we don't have to do this transform again
-	EXTENDED_SYNTAX_CACHE[bracketedExpression] = expression;
+	EXTENDED_SYNTAX_CACHE[cacheKey] = expression;
 	return expression;
 }
