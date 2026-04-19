@@ -3,11 +3,11 @@ import { QueryFailedError } from '@n8n/typeorm';
 import { isUniqueViolationError } from '@/executions/is-unique-violation-error';
 
 describe('isUniqueViolationError', () => {
-	const makeQueryFailedError = (code?: string) => {
+	const makeQueryFailedError = (code?: string, driverMessage = 'driver error') => {
 		const driverError =
 			code !== undefined
-				? Object.assign(new Error('driver error'), { code })
-				: new Error('driver error');
+				? Object.assign(new Error(driverMessage), { code })
+				: new Error(driverMessage);
 		return new QueryFailedError('Query', [], driverError);
 	};
 
@@ -19,6 +19,22 @@ describe('isUniqueViolationError', () => {
 	it('returns true for SQLite unique-violation code "SQLITE_CONSTRAINT_UNIQUE"', () => {
 		const error = makeQueryFailedError('SQLITE_CONSTRAINT_UNIQUE');
 		expect(isUniqueViolationError(error)).toBe(true);
+	});
+
+	it('returns true for SQLite base code "SQLITE_CONSTRAINT" when the message indicates a unique violation', () => {
+		const error = makeQueryFailedError(
+			'SQLITE_CONSTRAINT',
+			'SQLITE_CONSTRAINT: UNIQUE constraint failed: execution_entity.deduplicationKey',
+		);
+		expect(isUniqueViolationError(error)).toBe(true);
+	});
+
+	it('returns false for SQLite base code "SQLITE_CONSTRAINT" when the message indicates a non-unique violation', () => {
+		const error = makeQueryFailedError(
+			'SQLITE_CONSTRAINT',
+			'SQLITE_CONSTRAINT: FOREIGN KEY constraint failed',
+		);
+		expect(isUniqueViolationError(error)).toBe(false);
 	});
 
 	it('returns false for unrelated QueryFailedError code', () => {
