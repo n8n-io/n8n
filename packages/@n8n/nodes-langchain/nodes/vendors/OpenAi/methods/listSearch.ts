@@ -7,7 +7,7 @@ import type {
 import type { Assistant } from 'openai/resources/beta/assistants';
 import type { Model } from 'openai/resources/models';
 
-import { shouldIncludeModel } from '../helpers/modelFiltering';
+import { shouldIncludeModel, shouldIncludeVisionModel } from '../helpers/modelFiltering';
 import { apiRequest } from '../transport';
 
 export async function fileSearch(
@@ -93,9 +93,13 @@ export async function imageModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await getModelSearch(
-		(model) => model.id.includes('vision') || model.id.includes('gpt-4o'),
-	)(this, filter);
+	const credentials = await this.getCredentials<{ url: string }>('openAiApi');
+	const url = credentials.url && new URL(credentials.url);
+	const isCustomAPI = !!(url && !['api.openai.com', 'ai-assistant.n8n.io'].includes(url.hostname));
+	return await getModelSearch((model) => shouldIncludeVisionModel(model.id, isCustomAPI))(
+		this,
+		filter,
+	);
 }
 
 export async function assistantSearch(
