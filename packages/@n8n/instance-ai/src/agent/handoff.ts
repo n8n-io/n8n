@@ -1,25 +1,7 @@
 /**
- * Unified Sub-Agent Handoff Contract
- *
- * One typed contract for every sub-agent spawn. Inspired by the OpenAI Agents
- * SDK pattern of a typed handoff `inputType` + ambient `RunContext`, tailored
- * to Instance AI's manager-style orchestration over Mastra's
- * `Agent.stream(string)`.
- *
- * - `SubAgentHandoff`  — per-call typed payload (parent-authored, LLM-visible).
- * - `SubAgentOutcome`  — per-call typed return (host-observed common fields +
- *                         per-kind payload).
- * - `renderHandoff`    — envelope → XML string for Mastra. Pulls cross-cutting
- *                         runtime signals (running siblings, iteration
- *                         history) from `OrchestrationContext` so per-kind
- *                         inputs stay focused on what the parent actually
- *                         computed.
- * - `observeOutcome`   — host-side observation of a completed stream. Builds
- *                         the common outcome fields (tool counts, duration,
- *                         blockers) from the work summary.
- *
- * There is no separate "briefing" concept and no separate "debrief" concept.
- * One envelope in, one outcome out, one renderer.
+ * Unified sub-agent handoff contract: one typed envelope in (`SubAgentHandoff`),
+ * one typed outcome out (`SubAgentOutcome`), one renderer (`renderHandoff`),
+ * one observer (`observeOutcome`).
  */
 
 import { z } from 'zod';
@@ -27,8 +9,6 @@ import { z } from 'zod';
 import { formatPreviousAttempts, type IterationLog } from '../storage/iteration-log';
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 import type { WorkflowBuildOutcome } from '../workflow-loop';
-
-// ── Shared leaves ───────────────────────────────────────────────────────────
 
 const resourceIdentitySchema = z.object({
 	workflowId: z.string().optional(),
@@ -48,8 +28,6 @@ const recentMessageSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	text: z.string(),
 });
-
-// ── Per-kind input schemas ─────────────────────────────────────────────────
 
 export const delegateHandoffInputSchema = z.object({
 	role: z.string(),
@@ -98,8 +76,6 @@ export const browserCredHandoffInputSchema = z.object({
 });
 export type BrowserCredHandoffInput = z.infer<typeof browserCredHandoffInputSchema>;
 
-// ── Handoff envelope ───────────────────────────────────────────────────────
-
 export type SubAgentKind =
 	| 'delegate'
 	| 'build-workflow'
@@ -108,12 +84,7 @@ export type SubAgentKind =
 	| 'planner'
 	| 'browser-credential-setup';
 
-/**
- * A typed, per-call payload the parent hands to a sub-agent.
- * `taskKey` is the canonical identity for this handoff — the planned-task ID
- * when scheduled, or a generated ID for ad-hoc spawns. Used as the lookup key
- * for iteration history.
- */
+/** `taskKey` is the planned-task ID (or a generated ID for ad-hoc spawns) and keys iteration history. */
 export type SubAgentHandoff =
 	| { taskKey: string; kind: 'delegate'; input: DelegateHandoffInput }
 	| { taskKey: string; kind: 'build-workflow'; input: BuilderHandoffInput }
@@ -122,15 +93,10 @@ export type SubAgentHandoff =
 	| { taskKey: string; kind: 'planner'; input: PlannerHandoffInput }
 	| { taskKey: string; kind: 'browser-credential-setup'; input: BrowserCredHandoffInput };
 
-/** Kinds that can be scheduled as planned tasks (i.e. dispatched by the scheduler). */
+/** Kinds the planned-task scheduler can dispatch. */
 export type PlannedHandoffKind = 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
-
-/** Subset of `SubAgentHandoff` that the planned-task scheduler can dispatch. */
 export type PlannedHandoff = Extract<SubAgentHandoff, { kind: PlannedHandoffKind }>;
 
-// ── Outcome envelope ───────────────────────────────────────────────────────
-
-/** Common outcome fields observed by the host from a completed stream. */
 export interface SubAgentOutcomeBase {
 	taskKey: string;
 	status: 'completed' | 'failed' | 'cancelled';
@@ -150,26 +116,14 @@ export type SubAgentOutcome =
 	| (SubAgentOutcomeBase & { kind: 'planner'; planSubmitted: boolean })
 	| (SubAgentOutcomeBase & { kind: 'browser-credential-setup' });
 
-// ── Renderer context ───────────────────────────────────────────────────────
-
-/**
- * Runtime signals the renderer needs from `OrchestrationContext`. Kept minimal
- * so tests can render a handoff without a full context bundle.
- */
+/** Minimal runtime slice the renderer pulls from `OrchestrationContext`. */
 export interface HandoffRenderContext {
 	threadId: string;
 	iterationLog?: IterationLog;
 	getRunningTaskSummaries?: () => Array<{ taskId: string; role: string; goal?: string }>;
 }
 
-// ── Renderer ───────────────────────────────────────────────────────────────
-
-/**
- * Render a handoff into the XML briefing string the child consumes via
- * `Agent.stream()`. Pulls cross-cutting runtime signals (running siblings,
- * iteration history) from the context so per-kind inputs stay focused on
- * parent-authored data.
- */
+/** Render a handoff into the XML briefing string the child consumes via `Agent.stream()`. */
 export async function renderHandoff(
 	handoff: SubAgentHandoff,
 	ctx: HandoffRenderContext,
@@ -216,8 +170,6 @@ export async function renderHandoff(
 
 	return parts.join('\n\n');
 }
-
-// ── Per-kind renderer helpers ──────────────────────────────────────────────
 
 function taskBlockFor(h: SubAgentHandoff): string {
 	switch (h.kind) {
@@ -347,14 +299,7 @@ function renderBrowserCredTask(input: BrowserCredHandoffInput): string {
 		.join('\n');
 }
 
-// ── Wire-format projection ─────────────────────────────────────────────────
-
-/**
- * The UI-facing plan item shape used in `tasks-update` SSE events and
- * plan-review suspend payloads. Kept byte-identical to today's
- * `plannedTaskArgSchema` in `@n8n/api-types` so the frontend contract is
- * preserved when PlannedTask flips from `spec: string` to typed handoff.
- */
+/** UI-facing plan item shape; byte-identical to `plannedTaskArgSchema` in `@n8n/api-types`. */
 export interface PlannedTaskArg {
 	id: string;
 	title: string;
@@ -365,21 +310,17 @@ export interface PlannedTaskArg {
 	workflowId?: string;
 }
 
-/** Project a planned handoff into its human-readable briefing string. */
 export function toSpecString(handoff: PlannedHandoff): string {
 	switch (handoff.kind) {
 		case 'delegate':
-			return handoff.input.goal;
 		case 'build-workflow':
+		case 'manage-data-tables':
 			return handoff.input.goal;
 		case 'research':
 			return handoff.input.constraints ?? handoff.input.goal;
-		case 'manage-data-tables':
-			return handoff.input.goal;
 	}
 }
 
-/** Project a planned task into the wire-format `PlannedTaskArg`. */
 export function toPlannedTaskArg(task: {
 	id: string;
 	title: string;
@@ -400,8 +341,6 @@ export function toPlannedTaskArg(task: {
 	};
 }
 
-// ── Observer ───────────────────────────────────────────────────────────────
-
 export interface ObserveOutcomeInput {
 	taskKey: string;
 	workSummary: WorkSummary;
@@ -411,11 +350,7 @@ export interface ObserveOutcomeInput {
 	status?: 'completed' | 'failed' | 'cancelled';
 }
 
-/**
- * Build the common observation fields for a `SubAgentOutcome` from the
- * host-observed work summary. Callers add the kind-specific payload (e.g.
- * `WorkflowBuildOutcome` for builder) separately.
- */
+/** Build the base outcome fields from the work summary; callers add kind-specific payload. */
 export function observeOutcome(input: ObserveOutcomeInput): SubAgentOutcomeBase {
 	const status = input.status ?? (input.error ? 'failed' : 'completed');
 	const durationMs = Date.now() - input.startTime;
@@ -435,14 +370,8 @@ export function observeOutcome(input: ObserveOutcomeInput): SubAgentOutcomeBase 
 	};
 }
 
-// ── Internal briefing content ──────────────────────────────────────────────
-
-/**
- * Labels for triggers that cannot be test-fired programmatically. Kept in
- * sync with `UNTESTABLE_TRIGGERS` in `tools/orchestration/build-workflow-agent.tool.ts`.
- * Hardcoded here to avoid a circular import; the labels are briefing text and
- * change rarely.
- */
+// Kept in sync with `UNTESTABLE_TRIGGERS` in `build-workflow-agent.tool.ts`;
+// hardcoded to avoid a circular import.
 const UNTESTABLE_TRIGGER_LABELS = 'webhook, form, mcp, chat';
 
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
