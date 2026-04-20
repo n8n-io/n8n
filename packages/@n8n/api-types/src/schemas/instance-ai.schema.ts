@@ -1034,7 +1034,7 @@ export class InstanceAiEvalSubAgentRequest extends Z.class({
 	modelId: z.string().optional(),
 	/** Max agent steps. Defaults to 40. */
 	maxSteps: z.number().int().positive().max(200).optional(),
-	/** Per-run timeout in ms. Defaults to 120_000. Clamped to 600_000. */
+	/** Per-run timeout in ms. Defaults to 120_000. Max: 600_000. */
 	timeoutMs: z.number().int().positive().max(600_000).optional(),
 }) {}
 
