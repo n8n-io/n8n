@@ -44,8 +44,12 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 	/** Atomically deactivates any existing active key of the given type, then sets the target key as active. */
 	async promoteToActive(id: string, type: string): Promise<void> {
 		await this.manager.transaction(async (tx) => {
+			const target = await tx.findOne(DeploymentKey, { where: { id, type } });
+			if (!target) {
+				throw new Error(`Deployment key '${id}' of type '${type}' not found`);
+			}
 			await tx.update(DeploymentKey, { type, status: 'active' }, { status: 'inactive' });
-			await tx.update(DeploymentKey, id, { status: 'active' });
+			await tx.update(DeploymentKey, { id, type }, { status: 'active' });
 		});
 	}
 }
