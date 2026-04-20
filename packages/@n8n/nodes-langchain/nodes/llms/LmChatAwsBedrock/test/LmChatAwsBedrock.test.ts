@@ -8,6 +8,8 @@ import {
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
+import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
+
 import { LmChatAwsBedrock } from '../LmChatAwsBedrock.node';
 
 jest.mock('@aws-sdk/client-bedrock-runtime');
@@ -20,12 +22,16 @@ jest.mock('@n8n/ai-utilities', () => ({
 	N8nLlmTracing: jest.fn(),
 	getNodeProxyAgent: jest.fn(),
 }));
+jest.mock('@utils/aws/resolveAwsCredentials', () => ({
+	resolveAwsCredentials: jest.fn(),
+}));
 
 const MockedBedrockRuntimeClient = jest.mocked(BedrockRuntimeClient);
 const MockedChatBedrockConverse = jest.mocked(ChatBedrockConverse);
 const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetNodeProxyAgent = jest.mocked(getNodeProxyAgent);
+const mockedResolveAwsCredentials = jest.mocked(resolveAwsCredentials);
 
 describe('LmChatAwsBedrock', () => {
 	let node: LmChatAwsBedrock;
@@ -64,6 +70,15 @@ describe('LmChatAwsBedrock', () => {
 		mockedGetNodeProxyAgent.mockReturnValue(undefined);
 		MockedBedrockRuntimeClient.mockImplementation(() => ({}) as BedrockRuntimeClient);
 		MockedChatBedrockConverse.mockImplementation(() => ({}) as unknown as ChatBedrockConverse);
+		// Default resolveAwsCredentials mock mirrors the default IAM path for existing tests.
+		const defaults = overrides.credentials ?? defaultCredentials;
+		mockedResolveAwsCredentials.mockResolvedValue({
+			region: defaults.region as string,
+			credentials: {
+				accessKeyId: defaults.accessKeyId as string,
+				secretAccessKey: defaults.secretAccessKey as string,
+			},
+		});
 
 		return mockContext;
 	};
@@ -165,6 +180,52 @@ describe('LmChatAwsBedrock', () => {
 					maxTokens: 1000,
 				}),
 			);
+		});
+
+		describe('AssumeRole wiring', () => {
+			it('constructs BedrockRuntimeClient with the provider returned by resolveAwsCredentials', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'anthropic.claude-3-sonnet-20240229-v1:0';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+				const fakeProvider = jest.fn().mockResolvedValue({
+					accessKeyId: 'ASIA_STUB',
+					secretAccessKey: 'secret',
+					sessionToken: 'token',
+				});
+				mockedResolveAwsCredentials.mockResolvedValue({
+					region: 'us-east-1',
+					credentials: fakeProvider,
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(mockedResolveAwsCredentials).toHaveBeenCalledTimes(1);
+				const lastConfig = MockedBedrockRuntimeClient.mock.calls.at(-1)?.[0];
+				expect(lastConfig?.credentials).toBe(fakeProvider);
+				expect(lastConfig?.region).toBe('us-east-1');
+			});
+
+			it('wires the concrete Bedrock endpoint into getNodeProxyAgent', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'anthropic.claude-3-sonnet-20240229-v1:0';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+				mockedResolveAwsCredentials.mockResolvedValue({
+					region: 'eu-central-1',
+					credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(mockedGetNodeProxyAgent).toHaveBeenCalledWith(
+					'https://bedrock-runtime.eu-central-1.amazonaws.com',
+				);
+			});
 		});
 	});
 });
