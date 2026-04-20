@@ -1,0 +1,22 @@
+type: object
+properties:
+  files:
+    type: array
+    items:
+      $ref: './sourceControlledFile.yml'
+  commit:
+    type: object
+    nullable: true
+    properties:
+      hash:
+        type: string
+        description: The commit hash
+        example: abc123def456
+      message:
+        type: string
+        description: The commit message
+        example: Updated workflows
+      branch:
+        type: string
+        description: The branch that was pushed to
+        example: main

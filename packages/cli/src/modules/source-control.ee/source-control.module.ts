@@ -12,6 +12,8 @@ export class SourceControlModule implements ModuleInterface {
 		await import('./source-control.controller.ee');
 
 		const { SourceControlService } = await import('./source-control.service.ee');
-		await Container.get(SourceControlService).start();
+		const service = Container.get(SourceControlService);
+		await service.start();
+		await service.autoConfigureFromEnv();
 	}
 }

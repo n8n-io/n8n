@@ -1,0 +1,41 @@
+type: object
+properties:
+  file:
+    type: string
+    description: File path relative to the git folder
+    example: workflow-abc123.json
+  id:
+    type: string
+    description: Resource identifier
+    example: abc123
+  name:
+    type: string
+    description: Resource name
+    example: My Workflow
+  type:
+    type: string
+    enum: [workflow, credential, tags, variables, folders, project, file]
+    description: Type of resource
+    example: workflow
+  status:
+    type: string
+    enum: [created, deleted, modified, renamed, unknown]
+    description: Change status
+    example: modified
+  location:
+    type: string
+    enum: [local, remote, unknown]
+    description: Where the change originates
+    example: local
+  conflict:
+    type: boolean
+    description: Whether this file has a conflict
+    example: false
+  updatedAt:
+    type: string
+    description: ISO 8601 timestamp of last update
+    example: '2024-01-01T00:00:00.000Z'
+  pushed:
+    type: boolean
+    description: Whether this file has been pushed
+    example: true
