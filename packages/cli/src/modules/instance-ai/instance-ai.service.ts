@@ -958,6 +958,13 @@ export class InstanceAiService {
 		this.gatewayRegistry.disconnectGateway(userId);
 	}
 
+	/** Disconnect all connected gateways and return the user IDs that were connected. */
+	disconnectAllGateways(): string[] {
+		const connectedUserIds = this.gatewayRegistry.getConnectedUserIds();
+		this.gatewayRegistry.disconnectAll();
+		return connectedUserIds;
+	}
+
 	isLocalGatewayDisabled(): boolean {
 		return this.settingsService.isLocalGatewayDisabled();
 	}
@@ -1180,7 +1187,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
-		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
+		const localGatewayDisabled = await this.settingsService.isLocalGatewayDisabledForUser(user.id);
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
 
 		// When the proxy is enabled, create a single ProxyTokenManager and

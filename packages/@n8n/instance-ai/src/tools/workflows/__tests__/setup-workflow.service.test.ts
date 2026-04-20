@@ -356,6 +356,51 @@ describe('buildSetupRequests', () => {
 		// list should only be called once due to caching
 		expect(context.credentialService.list).toHaveBeenCalledTimes(1);
 	});
+
+	it('treats placeholder values as parameter issues', async () => {
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+			properties: [{ name: 'email', displayName: 'Email', type: 'string' }],
+		});
+
+		const node = makeNode({
+			parameters: { email: '<__PLACEHOLDER_VALUE__your_email__>' },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].parameterIssues).toBeDefined();
+		expect(result[0].parameterIssues!.email).toEqual(
+			expect.arrayContaining([expect.stringContaining('your_email')]),
+		);
+	});
+
+	it('adds placeholder issue even when param already has validation issues', async () => {
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+			properties: [{ name: 'email', displayName: 'Email', type: 'string', required: true }],
+		});
+		(context.nodeService as unknown as Record<string, unknown>).getParameterIssues = jest
+			.fn()
+			.mockResolvedValue({ email: ['Parameter "Email" is required'] });
+
+		const node = makeNode({
+			parameters: { email: '<__PLACEHOLDER_VALUE__your_email__>' },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result).toHaveLength(1);
+		const issues = result[0].parameterIssues!.email;
+		expect(issues).toHaveLength(2);
+		expect(issues).toEqual(
+			expect.arrayContaining([
+				'Parameter "Email" is required',
+				expect.stringContaining('your_email'),
+			]),
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------
