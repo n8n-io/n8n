@@ -119,7 +119,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	'azure-openai': {
 		build: (creds, model, fetch) => {
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
-			const { baseURL, resourceName, apiVersion: _apiVersion, apiKey } = creds;
+			const { baseURL, resourceName, apiVersion, apiKey } = creds;
 			let normalizedBaseURL = baseURL;
 			// SDK expects url like `https://resourceName.openai.azure.com/openai`
 			if (normalizedBaseURL) {
@@ -129,7 +129,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 					normalizedBaseURL = url.toString();
 				}
 			}
-			return createAzure({ resourceName, apiKey, baseURL: normalizedBaseURL, fetch })(model);
+			return createAzure({ resourceName, apiKey, baseURL: normalizedBaseURL, apiVersion, fetch })(
+				model,
+			);
 		},
 	},
 	'aws-bedrock': {
