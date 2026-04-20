@@ -27,6 +27,8 @@ import {
 	WORKFLOW_SDK_PATTERNS,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
+import { ASK_USER_FALLBACK, PLACEHOLDERS_RULE } from '../../agent/shared-prompts';
+
 // ── Shared output discipline (single source of truth) ──────────────────────
 
 const BUILDER_OUTPUT_DISCIPLINE = `## Output Discipline
@@ -49,23 +51,13 @@ GOOD (one-line, only on completion or block):
   - "Workflow updated: removed the stale pinData from the weather check node."
   - "Blocked: the Linear API credential is missing and the setup wizard is needed before I can continue."`;
 
-// ── Shared placeholder guidance (single source of truth) ────────────────────
-
-// prettier-ignore
-const PLACEHOLDER_RULE =
-	'**Do NOT use `placeholder()` for discoverable resources** (spreadsheet IDs, calendar IDs, channel IDs, folder IDs) — resolve real IDs via `nodes(action="explore-resources")` or create them via setup workflows. For **user-provided values** that cannot be discovered or created (email recipients, phone numbers, custom URLs, notification targets), use `placeholder(\'descriptive hint\')` so the setup wizard prompts the user after the build. Never hardcode fake values like `user@example.com`.';
-
-// prettier-ignore
-const PLACEHOLDER_ESCALATION =
-	'When the user says "send me", "email me", "notify me", or similar and you don\'t know their specific address, use `placeholder(\'Your email address\')` for the recipient field rather than hardcoding a fake address like `user@example.com`. The setup wizard will collect this from the user after the build.';
-
 // ── Shared SDK reference sections ────────────────────────────────────────────
 
 const SDK_CODE_RULES = `## SDK Code Rules
 
 - Do NOT specify node positions — they are auto-calculated by the layout engine.
 - For credentials, see the credential rules in your specific workflow process section below.
-- ${PLACEHOLDER_RULE}
+- For placeholders, see the ## Placeholders section.
 - Use \`expr('{{ $json.field }}')\` for n8n expressions. Variables MUST be inside \`{{ }}\`.
 - Do NOT use \`as const\` assertions — the workflow parser only supports JavaScript syntax, not TypeScript-only features. Just use plain string literals.
 - Use string values directly for discriminator fields like \`resource\` and \`operation\` (e.g., \`resource: 'message'\` not \`resource: 'message' as const\`).
@@ -521,9 +513,9 @@ ${BUILDER_OUTPUT_DISCIPLINE}
 When called with failure details for an existing workflow, start from the pre-loaded code — do not re-discover node types already present.
 
 ## Escalation
-- If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
-- Do NOT retry the same failing approach more than twice — ask the user instead.
-- ${PLACEHOLDER_ESCALATION}
+${ASK_USER_FALLBACK}
+
+${PLACEHOLDERS_RULE}
 
 ## Mandatory Process
 1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`nodes(action="suggested")\` first for curated recommendations. Then use \`nodes(action="search")\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`nodes(action="type-definition")\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Pay attention to @builderHint annotations** in search results and type definitions — they prevent common configuration mistakes.
@@ -703,9 +695,9 @@ Replace \`CHUNK_WORKFLOW_ID\` with the actual ID returned by \`submit-workflow\`
 - **Complex workflows** (5+ nodes, multiple integrations): Decompose into chunks.
   Build, test, and compose. Each chunk is reusable across workflows.
 
-## Setup Workflows (Create Missing Resources)
+${PLACEHOLDERS_RULE}
 
-${PLACEHOLDER_RULE}
+## Setup Workflows (Create Missing Resources)
 
 When \`nodes(action="explore-resources")\` returns no results for a required resource:
 
@@ -720,9 +712,7 @@ When \`nodes(action="explore-resources")\` returns no results for a required res
 When called with failure details for an existing workflow, start from the pre-loaded code — do not re-discover node types already present.
 
 ## Escalation
-- If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
-- Do NOT retry the same failing approach more than twice — ask the user instead.
-- ${PLACEHOLDER_ESCALATION}
+${ASK_USER_FALLBACK}
 
 ## Sandbox Isolation
 

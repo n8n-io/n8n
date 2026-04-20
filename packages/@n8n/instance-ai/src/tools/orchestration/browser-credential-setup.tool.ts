@@ -13,6 +13,7 @@ import {
 	withTraceRun,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { SUBAGENT_OUTPUT_CONTRACT } from '../../agent/shared-prompts';
 import { MAX_STEPS } from '../../constants/max-steps';
 import {
 	createLlmStepTraceHooks,
@@ -112,6 +113,8 @@ Use \`${t.evaluate}\` with this function to get a compact list of clickable elem
 
 	return `You are a browser automation agent helping a user set up an n8n credential.
 
+${SUBAGENT_OUTPUT_CONTRACT}
+
 ## Your Goal
 Help the user obtain ALL required credential values (listed in the briefing). Your job is NOT done until the user has the credential values — visible on screen, ready to copy, or downloaded as a file.
 
@@ -180,7 +183,6 @@ Use \`${t.snapshot}\` — but ONLY when you've identified what to ${clickInstruc
 
 ## Rules
 - ${browserDescription}
-- Do NOT narrate what you plan to do — just DO it. Take action, check the result.
 - Do NOT extract or repeat secret values in your messages. Tell the user WHERE to find them on screen.
 - Do NOT guess names or make choices for the user. When a name, label, or selection is needed (OAuth app name, project, description, scopes), use \`ask-user\` to get their preference.
 - Never guess or reuse element UIDs from a previous snapshot. Always take a fresh snapshot before clicking.
