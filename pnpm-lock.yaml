@@ -418,6 +418,9 @@ patchedDependencies:
   '@lezer/highlight':
     hash: 97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c
     path: patches/@lezer__highlight.patch
+  '@n8n/tournament@1.0.6':
+    hash: ec96c6fe178efd30ccd5ce586f50de61b1e95984233784c30992d78977dc71f0
+    path: patches/@n8n__tournament@1.0.6.patch
   '@types/express-serve-static-core@5.0.6':
     hash: d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb
     path: patches/@types__express-serve-static-core@5.0.6.patch
@@ -1439,7 +1442,7 @@ importers:
         version: link:../errors
       '@n8n/tournament':
         specifier: 1.0.6
-        version: 1.0.6
+        version: 1.0.6(patch_hash=ec96c6fe178efd30ccd5ce586f50de61b1e95984233784c30992d78977dc71f0)
       isolated-vm:
         specifier: ^6.0.2
         version: 6.0.2
@@ -4470,7 +4473,7 @@ importers:
         version: link:../@n8n/expression-runtime
       '@n8n/tournament':
         specifier: 1.0.6
-        version: 1.0.6
+        version: 1.0.6(patch_hash=ec96c6fe178efd30ccd5ce586f50de61b1e95984233784c30992d78977dc71f0)
       ast-types:
         specifier: 0.16.1
         version: 0.16.1
@@ -27703,7 +27706,7 @@ snapshots:
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
 
-  '@n8n/tournament@1.0.6':
+  '@n8n/tournament@1.0.6(patch_hash=ec96c6fe178efd30ccd5ce586f50de61b1e95984233784c30992d78977dc71f0)':
     dependencies:
       '@n8n_io/riot-tmpl': 4.0.1
       ast-types: 0.16.1
