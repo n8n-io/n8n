@@ -19,28 +19,23 @@ import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { Agent } from './entities/agent.entity';
-import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { AgentRepository } from './repositories/agent.repository';
-import type { WorkflowToolDescriptor } from './types';
-
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { EphemeralNodeExecutor } from '@/node-execution';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { UrlService } from '@/services/url.service';
 import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
-import { AgentJsonConfigSchema } from './json-config/agent-json-config';
+import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
 import type {
 	AgentJsonConfig,
 	AgentJsonMemoryConfig,
@@ -117,7 +112,7 @@ export class AgentsService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
-		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly agentsToolsService: AgentsToolsService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 	) {}
@@ -361,12 +356,16 @@ export class AgentsService {
 	 * Inject platform-level tools and storage into an agent instance.
 	 * Workflow and node tools are resolved earlier via `makeToolResolver()` inside
 	 * `fromSchema()`, so this method only handles host-side singletons.
+	 *
+	 * `nodeToolsEnabled` comes from the agent's `config.nodeTools.enabled` flag
+	 * (opt-in, defaults to false) — see {@link isNodeToolsEnabled}.
 	 */
 	private async injectRuntimeDependencies(
 		agent: agents.Agent,
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		nodeToolsEnabled: boolean,
 	): Promise<void> {
 		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
 		try {
@@ -379,7 +378,9 @@ export class AgentsService {
 			});
 		}
 
-		await this.attachNodeToolChain(agent, credentialProvider, agentId, projectId);
+		if (nodeToolsEnabled) {
+			this.attachNodeToolChain(agent, credentialProvider, projectId);
+		}
 
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {
@@ -388,65 +389,17 @@ export class AgentsService {
 	}
 
 	/**
-	 * Attaches tool chain to an agent instance, which enables it to discover and execute
-	 * n8n nodes as tools.
+	 * Attaches the built-in node tool chain (search_nodes, get_node_types,
+	 * list_credentials, run_node_tool) so the agent can discover and execute
+	 * n8n nodes on demand. Sourced from {@link AgentsToolsService}, which in
+	 * turn delegates to `NodeCatalogService`.
 	 */
-	private async attachNodeToolChain(
+	private attachNodeToolChain(
 		agent: agents.Agent,
 		credentialProvider: CredentialProvider,
-		agentId: string,
 		projectId: string,
-	) {
-		// Node-discovery tools: let the agent discover and run n8n nodes on demand.
-		try {
-			const { createSearchToolsTool, createGetNodeSchemaTool, createRunNodeTool } = await import(
-				'./integrations/node-execution-tools'
-			);
-
-			const { nodes } = await this.loadNodesAndCredentials.collectTypes();
-			agent.tool(createSearchToolsTool(nodes, credentialProvider));
-			agent.tool(createGetNodeSchemaTool(nodes));
-			agent.tool(createRunNodeTool(this.ephemeralNodeExecutor, projectId));
-		} catch (toolError) {
-			this.logger.warn('Failed to inject node-discovery tools', {
-				agentId,
-				error: toolError instanceof Error ? toolError.message : String(toolError),
-			});
-		}
-	}
-
-	/**
-	 * Reconstruct an agent from its persisted DB schema using Agent.fromSchema().
-	 * This is the execution-time path — no compile() call needed.
-	 * The runtime is cached for subsequent calls.
-	 */
-	private async reconstructFromSchema(
-		agentEntity: Agent,
-		credentialProvider: CredentialProvider,
-		userId?: string,
-	): Promise<agents.Agent> {
-		if (!agentEntity.schema) {
-			throw new UserError(
-				'Agent schema is not available. The agent may need to be re-saved to generate its schema.',
-			);
-		}
-
-		const source = agentEntity.code;
-		if (!source?.trim()) {
-			throw new UserError('Agent has no source code.');
-		}
-
-		const executor = this.secureRuntime.createExecutor(source);
-
-		const reconstructed = await agents.Agent.fromSchema(agentEntity.schema, agentEntity.name, {
-			handlerExecutor: executor,
-			credentialProvider,
-			resolveTool: this.makeToolResolver(agentEntity.projectId, userId),
-		});
-
-		await this.injectRuntimeDependencies(reconstructed, agentEntity.id);
-
-		return reconstructed;
+	): void {
+		agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
 	}
 
 	/**
@@ -971,7 +924,13 @@ export class AgentsService {
 			memoryFactory: this.getMemoryFactory(),
 		});
 
-		await this.injectRuntimeDependencies(reconstructed, agentEntity.id);
+		await this.injectRuntimeDependencies(
+			reconstructed,
+			agentEntity.id,
+			agentEntity.projectId,
+			credentialProvider,
+			isNodeToolsEnabled(config.config),
+		);
 
 		return reconstructed;
 	}
