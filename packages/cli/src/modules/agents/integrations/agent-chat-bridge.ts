@@ -3,8 +3,8 @@ import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
-import type { ComponentMapper } from './component-mapper';
 import { CallbackStore } from './callback-store';
+import type { ComponentMapper } from './component-mapper';
 
 /**
  * Subset of `AgentsService` consumed by the bridge.
