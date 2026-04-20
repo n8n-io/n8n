@@ -1604,8 +1604,9 @@ export class AgentRuntime {
 		const aiTools = toAiSdkTools(allUserTools);
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
+		const model = createModel(this.config.model);
 		return {
-			model: createModel(this.config.model),
+			model,
 			toolMap: buildToolMap(allUserTools),
 			aiTools: allTools,
 			providerOptions: this.buildCallProviderOptions(execOptions?.providerOptions),

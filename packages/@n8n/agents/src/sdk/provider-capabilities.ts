@@ -29,7 +29,8 @@ export const providerCapabilities: Record<
 	groq: {},
 	deepseek: {},
 	mistral: {},
-	openrouter: {},
 	cohere: {},
-	ollama: {},
+	vercel: {},
+	'azure-openai': {},
+	'aws-bedrock': {},
 };

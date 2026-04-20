@@ -6,6 +6,13 @@ packages:
   - packages/testing/**
 
 catalog:
+  '@ai-sdk/amazon-bedrock': ^4.0.95
+  '@ai-sdk/azure': ^3.0.54
+  '@ai-sdk/cohere': ^3.0.30
+  '@ai-sdk/deepseek': ^2.0.29
+  '@ai-sdk/gateway': ^3.0.104
+  '@ai-sdk/groq': ^3.0.35
+  '@ai-sdk/mistral': ^3.0.30
   '@azure/identity': 4.13.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
