@@ -109,6 +109,7 @@ onMounted(() => {
 
 <style lang="scss" module>
 .panel {
+	position: relative;
 	width: 400px;
 	min-width: 400px;
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
@@ -117,6 +118,7 @@ onMounted(() => {
 }
 
 .inlinePanel {
+	position: relative;
 	flex: 1;
 	min-height: 0;
 	display: flex;
@@ -125,11 +127,14 @@ onMounted(() => {
 }
 
 .topBar {
+	position: absolute;
+	top: 0;
+	right: 0;
+	z-index: 1;
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
 	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 .clearBtn {

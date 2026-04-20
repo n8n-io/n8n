@@ -40,9 +40,7 @@ type Mode = 'home' | 'building' | 'chat';
 type ChatMode = 'build' | 'test';
 const mode = ref<Mode>('home');
 const chatMode = ref<ChatMode>('test');
-const isTestStreaming = ref(false);
 const isBuildChatStreaming = ref(false);
-const isChatStreaming = computed(() => isTestStreaming.value || isBuildChatStreaming.value);
 const settingsVisible = ref(true);
 const isBuilding = ref(false);
 const agentName = ref('');
@@ -136,16 +134,11 @@ function onBuildStreamingChange(streaming: boolean) {
 	isBuilding.value = streaming;
 }
 
-function onTestStreamingChange(streaming: boolean) {
-	isTestStreaming.value = streaming;
-}
-
 function onBuildChatStreamingChange(streaming: boolean) {
 	isBuildChatStreaming.value = streaming;
 }
 
 function setChatMode(next: ChatMode) {
-	if (isChatStreaming.value) return;
 	const chatModeChanged = chatMode.value !== next;
 	const enteringChat = mode.value !== 'chat';
 	if (!chatModeChanged && !enteringChat) return;
@@ -342,18 +335,22 @@ watch(agentId, initialize, { immediate: true });
 					<button
 						type="button"
 						:class="[$style.chatModeBtn, chatMode === 'build' && $style.chatModeBtnActive]"
-						:disabled="isChatStreaming"
 						:aria-pressed="chatMode === 'build'"
 						data-testid="agent-chat-mode-build"
 						@click="setChatMode('build')"
 					>
-						<N8nIcon icon="wand-sparkles" :size="14" />
+						<N8nIcon
+							v-if="isBuilding || isBuildChatStreaming"
+							icon="loader-circle"
+							:size="14"
+							:spin="true"
+						/>
+						<N8nIcon v-else icon="wand-sparkles" :size="14" />
 						<span>{{ locale.baseText('agents.builder.chatMode.build') }}</span>
 					</button>
 					<button
 						type="button"
 						:class="[$style.chatModeBtn, chatMode === 'test' && $style.chatModeBtnActive]"
-						:disabled="isChatStreaming"
 						:aria-pressed="chatMode === 'test'"
 						data-testid="agent-chat-mode-test"
 						@click="setChatMode('test')"
@@ -421,7 +418,6 @@ watch(agentId, initialize, { immediate: true });
 							endpoint="chat"
 							:initial-message="initialPrompt"
 							@config-updated="onConfigUpdated"
-							@update:streaming="onTestStreamingChange"
 						/>
 						<AgentChatPanel
 							v-show="chatMode === 'build'"
@@ -448,9 +444,8 @@ watch(agentId, initialize, { immediate: true });
 			:updated-at="updatedAt"
 			:agent="agent"
 			:save-status="saveStatus"
-			:building="isBuilding"
+			:building="isBuilding || isBuildChatStreaming"
 			:code-only="mode === 'chat' && chatMode === 'build'"
-			:hide-code="mode === 'chat' && chatMode === 'test'"
 			@update:config="onConfigFieldUpdate"
 			@published="onPublished"
 			@unpublished="onUnpublished"

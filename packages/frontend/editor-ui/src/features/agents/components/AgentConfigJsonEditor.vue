@@ -3,15 +3,21 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { defaultKeymap, history } from '@codemirror/commands';
 import { json } from '@codemirror/lang-json';
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
 import type { AgentJsonConfig } from '../types';
 
-const props = defineProps<{
-	config: AgentJsonConfig | null;
-}>();
+const props = withDefaults(
+	defineProps<{
+		config: AgentJsonConfig | null;
+		readOnly?: boolean;
+	}>(),
+	{
+		readOnly: false,
+	},
+);
 
 const emit = defineEmits<{
 	'update:config': [config: AgentJsonConfig];
@@ -21,6 +27,11 @@ const jsonContainer = ref<HTMLDivElement>();
 let jsonView: EditorView | null = null;
 let isProgrammaticJsonUpdate = false;
 const jsonError = ref('');
+const editableCompartment = new Compartment();
+
+function editableExtensions(editable: boolean) {
+	return [EditorState.readOnly.of(!editable), EditorView.editable.of(editable)];
+}
 
 function configToJson(config: AgentJsonConfig | null): string {
 	return config ? JSON.stringify(config, null, 2) : '';
@@ -48,6 +59,7 @@ function createJsonEditor(doc: string) {
 				history(),
 				keymap.of(defaultKeymap),
 				codeEditorTheme({ isReadOnly: false, maxHeight: '100%', minHeight: '100%', rows: -1 }),
+				editableCompartment.of(editableExtensions(!props.readOnly)),
 				EditorView.updateListener.of((update) => {
 					if (!update.docChanged || isProgrammaticJsonUpdate) return;
 					const text = update.state.doc.toString();
@@ -58,6 +70,16 @@ function createJsonEditor(doc: string) {
 		parent: jsonContainer.value,
 	});
 }
+
+watch(
+	() => props.readOnly,
+	(readOnly) => {
+		if (!jsonView) return;
+		jsonView.dispatch({
+			effects: editableCompartment.reconfigure(editableExtensions(!readOnly)),
+		});
+	},
+);
 
 watch(
 	() => props.config,
@@ -88,7 +110,7 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.root">
 		<div v-if="jsonError" :class="$style.errorBanner">{{ jsonError }}</div>
-		<div ref="jsonContainer" :class="$style.editorArea" />
+		<div ref="jsonContainer" :class="[$style.editorArea, readOnly && $style.editorAreaReadOnly]" />
 	</div>
 </template>
 
@@ -120,5 +142,10 @@ onBeforeUnmount(() => {
 
 .editorArea :global(.cm-scroller) {
 	overflow: auto;
+}
+
+.editorAreaReadOnly {
+	opacity: 0.6;
+	pointer-events: none;
 }
 </style>

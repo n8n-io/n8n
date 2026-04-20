@@ -35,7 +35,6 @@ const props = defineProps<{
 	saveStatus: 'idle' | 'saving' | 'saved';
 	building?: boolean;
 	codeOnly?: boolean;
-	hideCode?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -341,7 +340,7 @@ function onResizeStart(event: MouseEvent) {
 				</div>
 			</template>
 
-			<template v-if="!hideCode">
+			<template v-if="codeOnly">
 				<!-- Config JSON (collapsible top-level section) -->
 				<div
 					:class="[$style.section, codeOnly && expandedSections.configJson && $style.sectionGrow]"
@@ -361,6 +360,7 @@ function onResizeStart(event: MouseEvent) {
 					<div v-if="expandedSections.configJson" :class="$style.codeSection">
 						<AgentConfigJsonEditor
 							:config="config"
+							:read-only="building"
 							@update:config="(newConfig) => emit('update:config', newConfig)"
 						/>
 					</div>
@@ -381,7 +381,7 @@ function onResizeStart(event: MouseEvent) {
 						</div>
 					</button>
 					<div v-if="expandedSections.customTools" :class="$style.codeSection">
-						<AgentCustomToolsList :agent-tools="agentTools" />
+						<AgentCustomToolsList :agent-tools="agentTools" :read-only="building" />
 					</div>
 				</div>
 			</template>
@@ -479,6 +479,10 @@ function onResizeStart(event: MouseEvent) {
 
 .section {
 	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.body > *:first-child {
+	border-top: none;
 }
 
 .sectionHeader {

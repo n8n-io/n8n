@@ -135,20 +135,6 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
 	});
 
-	it('disables both toggle buttons while a response is streaming', async () => {
-		const wrapper = await renderView();
-		(wrapper.vm as unknown as { mode: string }).mode = 'chat';
-		await nextTick();
-
-		(wrapper.vm as unknown as { isTestStreaming: boolean }).isTestStreaming = true;
-		await nextTick();
-
-		const buildBtn = wrapper.find('[data-testid="agent-chat-mode-build"]');
-		const testBtn = wrapper.find('[data-testid="agent-chat-mode-test"]');
-		expect((buildBtn.element as HTMLButtonElement).disabled).toBe(true);
-		expect((testBtn.element as HTMLButtonElement).disabled).toBe(true);
-	});
-
 	it('transitions from home to chat when a toggle segment is clicked', async () => {
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as { mode: string; chatMode: string };
