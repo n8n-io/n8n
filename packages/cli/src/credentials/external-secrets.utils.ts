@@ -32,26 +32,33 @@ export function getExternalSecretExpressionPaths(data: unknown): string[] {
  */
 export function extractProviderKeysFromExpression(expression: string): string[] {
 	const providerKeys = new Set<string>();
+	const providerKeyPattern = new RegExp(PROVIDER_KEY_PATTERN);
 
 	const expressionBlocks = expression.matchAll(/\{\{(.*?)\}\}/gs);
 
 	for (const expression of expressionBlocks) {
 		const expressionContent = expression[1]; // Content inside {{ }}
 
-		// Match all dot notation occurrences: $secrets.providerKey
+		// Match provider keys in dot notation, including mixed notation:
+		// - $secrets.providerKey.secret
+		// - $secrets.providerKey['secret']
+		// - $secrets.providerKey["secret"]
 		const dotMatches = expressionContent.matchAll(
-			new RegExp(`\\$secrets\\.(${PROVIDER_KEY_PATTERN})(?=\\.)`, 'g'),
+			new RegExp(`\\$secrets\\.(${PROVIDER_KEY_PATTERN})(?=\\.|\\[)`, 'g'),
 		);
 		for (const match of dotMatches) {
 			providerKeys.add(match[1]);
 		}
 
-		// Match all bracket notation occurrences: $secrets['providerKey'] or $secrets["providerKey"]
-		const bracketMatches = expressionContent.matchAll(
-			new RegExp(`\\$secrets\\[['"](${PROVIDER_KEY_PATTERN})['"]\\]`, 'g'),
-		);
+		// Match bracket notation occurrences where the provider key is bracket-accessed:
+		// - $secrets['providerKey']
+		// - $secrets["providerKey"]
+		const bracketMatches = expressionContent.matchAll(/\$secrets\[['"]([^'"]+)['"]\]/g);
 		for (const match of bracketMatches) {
-			providerKeys.add(match[1]);
+			const maybeProviderKey = match[1];
+			if (providerKeyPattern.test(maybeProviderKey)) {
+				providerKeys.add(maybeProviderKey);
+			}
 		}
 	}
 

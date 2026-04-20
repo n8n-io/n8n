@@ -370,6 +370,23 @@ describe('Credentials Validation', () => {
 					'The secret provider "vault" used in "apiKey" does not exist in this project',
 				);
 			});
+
+			it('should pass when project has access to provider referenced using mixed notation', async () => {
+				const data = {
+					apiKey: "={{ $secrets.vault['mykey'] }}",
+				};
+
+				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
+
+				await expect(
+					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
+				).resolves.toBeUndefined();
+
+				expect(accessCheckService.isProviderAvailableInProject).toHaveBeenCalledWith(
+					'vault',
+					projectId,
+				);
+			});
 		});
 
 		describe('nested credential data', () => {
