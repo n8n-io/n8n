@@ -241,6 +241,16 @@ export async function assumeRole(
 	secretAccessKey: string;
 	sessionToken: string;
 }> {
+	if (!credentials.roleArn || credentials.roleArn.trim() === '') {
+		throw new ApplicationError('Role ARN is required when assuming a role.');
+	}
+	if (!credentials.externalId || credentials.externalId.trim() === '') {
+		throw new ApplicationError('External ID is required when assuming a role.');
+	}
+	if (!credentials.roleSessionName || credentials.roleSessionName.trim() === '') {
+		throw new ApplicationError('Role Session Name is required when assuming a role.');
+	}
+
 	let stsCallCredentials: { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
 
 	const useSystemCredentialsForRole = credentials.useSystemCredentialsForRole ?? false;
