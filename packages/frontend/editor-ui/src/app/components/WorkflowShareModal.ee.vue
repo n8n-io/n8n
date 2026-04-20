@@ -204,7 +204,9 @@ const onSave = async () => {
 			workflowId,
 			sharedWithProjects: sharedWithProjects.value,
 		});
-		workflowDocumentStore.value?.setSharedWithProjects(sharedWithProjects.value);
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).setSharedWithProjects(
+			sharedWithProjects.value,
+		);
 
 		toast.showMessage({
 			title: i18n.baseText('workflows.shareModal.onSave.success.title'),
