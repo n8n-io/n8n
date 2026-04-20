@@ -17,6 +17,13 @@ import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext } from '../binaryChecks/types';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 
+/**
+ * Client-side model used by binary checks (they call Anthropic directly with
+ * ANTHROPIC_API_KEY). Independent of the server-side agent model, which the
+ * server resolves from its own settings when the CLI doesn't pass `--model`.
+ */
+const BINARY_CHECK_DEFAULT_MODEL = 'anthropic/claude-sonnet-4-20250514';
+
 export interface RunSubAgentDeps {
 	client: N8nClient;
 	/** Delete workflows after the run (default true). Disable with --keep-workflows. */
@@ -69,7 +76,7 @@ export async function runSubAgent(
 		const feedback = await evaluateCapturedWorkflows({
 			workflows: workflowResponses,
 			prompt: testCase.prompt,
-			modelId,
+			modelId: modelId ?? BINARY_CHECK_DEFAULT_MODEL,
 			agentTextResponse: response.text,
 		});
 
@@ -132,7 +139,7 @@ export async function runSubAgent(
 async function evaluateCapturedWorkflows(args: {
 	workflows: WorkflowResponse[];
 	prompt: string;
-	modelId?: string;
+	modelId: string;
 	agentTextResponse: string;
 }): Promise<Feedback[]> {
 	const feedback: Feedback[] = [];
@@ -153,7 +160,7 @@ async function evaluateCapturedWorkflows(args: {
 	const last = args.workflows[args.workflows.length - 1];
 	const ctx: BinaryCheckContext = {
 		prompt: args.prompt,
-		...(args.modelId !== undefined ? { modelId: args.modelId } : {}),
+		modelId: args.modelId,
 		...(args.agentTextResponse ? { agentTextResponse: args.agentTextResponse } : {}),
 	};
 	const binaryFeedback = await runBinaryChecks(last, ctx);
