@@ -1,6 +1,21 @@
 import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions, INode } from 'n8n-workflow';
 
+// Mock the SDK provider factory. Each call returns a function identity we can inspect.
+jest.mock('@aws-sdk/credential-providers', () => ({
+	fromTemporaryCredentials: jest.fn((args: unknown) => {
+		const provider = jest.fn().mockResolvedValue({
+			accessKeyId: 'ASIAPROVIDER',
+			secretAccessKey: 'SECRET',
+			sessionToken: 'TOKEN',
+		});
+		(provider as unknown as { __constructedWith: unknown }).__constructedWith = args;
+		return provider;
+	}),
+}));
+
+import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
+
 import { resolveAwsCredentials } from '../resolveAwsCredentials';
 
 function makeContext(opts: {
@@ -80,6 +95,44 @@ describe('resolveAwsCredentials — IAM path', () => {
 		expect(result.credentials).toEqual({
 			accessKeyId: 'AKIA2',
 			secretAccessKey: 'SECRET2',
+		});
+	});
+});
+
+describe('resolveAwsCredentials — AssumeRole path', () => {
+	beforeEach(() => {
+		(fromTemporaryCredentials as jest.Mock).mockClear();
+	});
+
+	it('returns a provider function built from fromTemporaryCredentials', async () => {
+		const context = makeContext({
+			authentication: 'assumeRole',
+			awsAssumeRoleCredential: {
+				region: 'us-east-1',
+				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'ext-id',
+				roleSessionName: 'n8n-session',
+				stsAccessKeyId: 'AKIASTS',
+				stsSecretAccessKey: 'stsSecret',
+				useSystemCredentialsForRole: false,
+			},
+		});
+		const result = await resolveAwsCredentials(context);
+		expect(result.region).toBe('us-east-1');
+		expect(typeof result.credentials).toBe('function');
+		expect(fromTemporaryCredentials).toHaveBeenCalledTimes(1);
+		const callArg = (fromTemporaryCredentials as jest.Mock).mock.calls[0][0] as {
+			params: { RoleArn: string; RoleSessionName: string; ExternalId: string };
+			masterCredentials: unknown;
+		};
+		expect(callArg.params).toEqual({
+			RoleArn: 'arn:aws:iam::123456789012:role/TestRole',
+			RoleSessionName: 'n8n-session',
+			ExternalId: 'ext-id',
+		});
+		expect(callArg.masterCredentials).toEqual({
+			accessKeyId: 'AKIASTS',
+			secretAccessKey: 'stsSecret',
 		});
 	});
 });
