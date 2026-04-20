@@ -52,7 +52,16 @@ const getNodeTypesInputSchema = z.object({
 		.describe('Node IDs from search_nodes (e.g., ["n8n-nodes-base.gmail"])'),
 });
 
-const listCredentialsInputSchema = z.object({});
+const listCredentialsInputSchema = z.object({
+	types: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Optional credential types to filter by (e.g., ["gmailOAuth2", "httpHeaderAuth"]). ' +
+				'When omitted, returns all credentials. Use the credential types declared in the ' +
+				'node schema from get_node_types to narrow the results.',
+		),
+});
 
 const runNodeInputSchema = z.object({
 	nodeType: z.string().describe('Node type identifier from search_nodes'),
@@ -150,12 +159,16 @@ export class AgentsToolsService {
 	): BuiltTool {
 		return new Tool('list_credentials')
 			.description(
-				`List the credentials available to the user. Returns an array of credential names and types. ${usageHint}`,
+				'List the credentials available to the user. Returns an array of credential names and types. ' +
+					'Accepts an optional `types` filter to return only credentials matching the given types. ' +
+					usageHint,
 			)
 			.input(listCredentialsInputSchema)
-			.handler(async () => {
+			.handler(async ({ types }) => {
 				const creds = await credentialProvider.list();
-				return { credentials: creds };
+				if (!types || types.length === 0) return { credentials: creds };
+				const allowed = new Set(types);
+				return { credentials: creds.filter((c) => allowed.has(c.type)) };
 			})
 			.build();
 	}

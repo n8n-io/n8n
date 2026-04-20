@@ -68,6 +68,61 @@ describe('AgentsToolsService', () => {
 		});
 	});
 
+	describe('list_credentials handler', () => {
+		function getListTool(service: AgentsToolsService, provider: CredentialProvider) {
+			return service.getSharedTools(provider, 'hint').find((t) => t.name === 'list_credentials')!;
+		}
+
+		it('returns all credentials when no types filter is provided', async () => {
+			const { service } = makeService();
+			const provider = makeCredentialProvider([
+				{ id: '1', name: 'Gmail', type: 'gmailOAuth2' },
+				{ id: '2', name: 'Header', type: 'httpHeaderAuth' },
+			]);
+
+			const result = await getListTool(service, provider).handler!({}, ctx);
+
+			expect(result).toEqual({
+				credentials: [
+					{ id: '1', name: 'Gmail', type: 'gmailOAuth2' },
+					{ id: '2', name: 'Header', type: 'httpHeaderAuth' },
+				],
+			});
+		});
+
+		it('filters by the provided credential types', async () => {
+			const { service } = makeService();
+			const provider = makeCredentialProvider([
+				{ id: '1', name: 'Gmail', type: 'gmailOAuth2' },
+				{ id: '2', name: 'Header', type: 'httpHeaderAuth' },
+				{ id: '3', name: 'Slack', type: 'slackApi' },
+			]);
+
+			const result = await getListTool(service, provider).handler!(
+				{ types: ['gmailOAuth2', 'slackApi'] },
+				ctx,
+			);
+
+			expect(result).toEqual({
+				credentials: [
+					{ id: '1', name: 'Gmail', type: 'gmailOAuth2' },
+					{ id: '3', name: 'Slack', type: 'slackApi' },
+				],
+			});
+		});
+
+		it('returns all credentials when types is an empty array', async () => {
+			const { service } = makeService();
+			const provider = makeCredentialProvider([{ id: '1', name: 'Gmail', type: 'gmailOAuth2' }]);
+
+			const result = await getListTool(service, provider).handler!({ types: [] }, ctx);
+
+			expect(result).toEqual({
+				credentials: [{ id: '1', name: 'Gmail', type: 'gmailOAuth2' }],
+			});
+		});
+	});
+
 	describe('search_nodes handler', () => {
 		function getSearchTool(service: AgentsToolsService) {
 			return service
