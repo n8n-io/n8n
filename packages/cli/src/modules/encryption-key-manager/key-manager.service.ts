@@ -44,18 +44,21 @@ export class KeyManagerService {
 
 	/** Inserts a new encryption key. If setAsActive, atomically deactivates the current key first. */
 	async addKey(value: string, algorithm: string, setAsActive = false): Promise<{ id: string }> {
-		const entity = this.deploymentKeyRepository.create({
-			type: 'data_encryption',
-			value,
-			algorithm,
-			status: setAsActive ? 'active' : 'inactive',
-		});
-
 		if (!setAsActive) {
+			const entity = this.deploymentKeyRepository.create({
+				type: 'data_encryption',
+				value,
+				algorithm,
+				status: 'inactive',
+			});
 			const saved = await this.deploymentKeyRepository.save(entity);
 			return { id: saved.id };
 		}
 
+		const entity = Object.assign(
+			this.deploymentKeyRepository.create({ type: 'data_encryption', value, algorithm }),
+			{ status: 'active' as const },
+		);
 		const saved = await this.deploymentKeyRepository.insertAsActive(entity);
 		return { id: saved.id };
 	}
