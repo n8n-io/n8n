@@ -335,7 +335,8 @@ export class WaitingWebhooks implements IWebhookManager {
 
 			const runExecutionData = execution.data;
 
-			const isWaitingForWebhook = !this.includeForms;
+			const isWaitingForWebhook =
+				!this.includeForms && !this.isSendAndWaitRequest(workflow.nodes, suffix);
 			if (isWaitingForWebhook) {
 				this.emitExecutionResumedEvent(execution, executionId);
 			}
