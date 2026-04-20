@@ -271,10 +271,20 @@ export class HubspotTrigger implements INodeType {
 								type: 'options',
 								description:
 									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-								typeOptions: {
-									loadOptionsDependsOn: ['conversation.propertyChange'],
-									loadOptionsMethod: 'getConversationProperties',
-								},
+								options: [
+									{
+										name: 'Assigned To',
+										value: 'assignedTo',
+									},
+									{
+										name: 'Is Archived',
+										value: 'isArchived',
+									},
+									{
+										name: 'Status',
+										value: 'status',
+									},
+								],
 								displayOptions: {
 									show: {
 										name: ['conversation.propertyChange'],
@@ -321,11 +331,6 @@ export class HubspotTrigger implements INodeType {
 			},
 			async getTicketProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return await getEntityProperties.call(this, '/properties/v2/tickets/properties');
-			},
-			async getConversationProperties(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
-				return await getEntityProperties.call(this, '/properties/v2/conversations/properties');
 			},
 		},
 	};
