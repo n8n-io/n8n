@@ -1,6 +1,7 @@
 import { nextTick, type ShallowRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute } from 'vue-router';
+import { VIEWS } from '@/app/constants';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
@@ -84,10 +85,10 @@ export function usePostMessageHandler({
 			await projectsStore.fetchAndSetProject(json.projectId);
 		}
 
-		// On the demo route, override the workflow ID to 'demo' so the iframe
+		// On the demo route, override the workflow ID to 'demo' so the page
 		// doesn't reference a real workflow — unless canExecute is enabled,
 		// in which case the real ID is needed for execution API calls.
-		if (window !== window.parent && route.query.canExecute !== 'true') {
+		if (route.name === VIEWS.DEMO && route.query.canExecute !== 'true') {
 			json.workflow.id = 'demo';
 		}
 

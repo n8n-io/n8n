@@ -191,14 +191,8 @@ describe('usePostMessageHandler', () => {
 			cleanup();
 		});
 
-		it('should override workflow id to "demo" in iframe context when canExecute is not set', async () => {
-			// Simulate iframe context
-			const originalParent = Object.getOwnPropertyDescriptor(window, 'parent');
-			Object.defineProperty(window, 'parent', {
-				value: { postMessage: vi.fn() },
-				writable: true,
-				configurable: true,
-			});
+		it('should override workflow id to "demo" on demo route when canExecute is not set', async () => {
+			mockRoute.name = 'WorkflowDemo';
 
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
@@ -219,21 +213,11 @@ describe('usePostMessageHandler', () => {
 			});
 
 			cleanup();
-			if (originalParent) {
-				Object.defineProperty(window, 'parent', originalParent);
-			}
 		});
 
-		it('should preserve real workflow id in iframe context when canExecute is true', async () => {
+		it('should preserve real workflow id on demo route when canExecute is true', async () => {
+			mockRoute.name = 'WorkflowDemo';
 			mockRoute.query = { canExecute: 'true' };
-
-			// Simulate iframe context
-			const originalParent = Object.getOwnPropertyDescriptor(window, 'parent');
-			Object.defineProperty(window, 'parent', {
-				value: { postMessage: vi.fn() },
-				writable: true,
-				configurable: true,
-			});
 
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
@@ -254,9 +238,6 @@ describe('usePostMessageHandler', () => {
 			});
 
 			cleanup();
-			if (originalParent) {
-				Object.defineProperty(window, 'parent', originalParent);
-			}
 		});
 
 		it('should emit tidyUp event when tidyUp is true', async () => {
