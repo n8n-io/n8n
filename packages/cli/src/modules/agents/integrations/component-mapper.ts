@@ -206,11 +206,7 @@ export class ComponentMapper {
 		if (component.button) {
 			children.push(
 				sdk.Actions([
-					await makeButton(
-						component.button.label,
-						component.button.value,
-						component.button.style,
-					),
+					await makeButton(component.button.label, component.button.value, component.button.style),
 				] as never),
 			);
 		}
