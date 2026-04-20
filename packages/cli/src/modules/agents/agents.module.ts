@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -39,8 +40,10 @@ export class AgentsModule implements ModuleInterface {
 
 	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
 	async settings() {
+		const config = Container.get(AgentsConfig);
 		return {
 			enabled: true,
+			modules: [...config.modules],
 		};
 	}
 

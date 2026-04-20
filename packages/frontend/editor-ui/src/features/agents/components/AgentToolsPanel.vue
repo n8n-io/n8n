@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { N8nCard, N8nText, N8nButton, N8nSwitch2 } from '@n8n/design-system';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { CustomToolEntry } from '../agent.types';
 
@@ -11,6 +12,8 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const tools = computed<AgentJsonToolRef[]>(() => props.config?.tools ?? []);
+
+const settingsStore = useSettingsStore();
 
 const nodeToolsEnabled = computed<boolean>(() => props.config?.config?.nodeTools?.enabled === true);
 
@@ -83,7 +86,7 @@ function inputSchemaProperties(
 			</N8nText>
 		</div>
 
-		<div :class="$style.toggleRow">
+		<div v-if="settingsStore.isAgentsNodeToolsFeatureEnabled" :class="$style.toggleRow">
 			<div :class="$style.toggleText">
 				<N8nText bold>Built-in node tools</N8nText>
 				<N8nText id="node-tools-description" size="small" color="text-light">

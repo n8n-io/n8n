@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 
 import AgentToolsPanel from '../components/AgentToolsPanel.vue';
@@ -7,6 +7,16 @@ import type { AgentJsonConfig } from '../types';
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
+
+const settingsState = { isAgentsNodeToolsFeatureEnabled: true };
+
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: () => settingsState,
+}));
+
+function setNodeToolsFlag(enabled: boolean) {
+	settingsState.isAgentsNodeToolsFeatureEnabled = enabled;
+}
 
 const STUBS = {
 	N8nCard: { template: '<div><slot name="header" /><slot /></div>' },
@@ -32,6 +42,10 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 }
 
 describe('AgentToolsPanel — built-in node tools toggle', () => {
+	beforeEach(() => {
+		setNodeToolsFlag(true);
+	});
+
 	it('shows the toggle as off when config has no nodeTools field', () => {
 		const wrapper = mount(AgentToolsPanel, {
 			props: { config: makeConfig(), agentTools: {} },
@@ -108,5 +122,27 @@ describe('AgentToolsPanel — built-in node tools toggle', () => {
 		expect(events![0][0]).toEqual({
 			config: { nodeTools: { enabled: false } },
 		});
+	});
+
+	it('hides the toggle when isAgentsNodeToolsFeatureEnabled is false', () => {
+		setNodeToolsFlag(false);
+
+		const wrapper = mount(AgentToolsPanel, {
+			props: { config: makeConfig(), agentTools: {} },
+			global: { stubs: STUBS },
+		});
+
+		expect(wrapper.find('[data-testid="node-tools-toggle"]').exists()).toBe(false);
+	});
+
+	it('shows the toggle when isAgentsNodeToolsFeatureEnabled is true', () => {
+		setNodeToolsFlag(true);
+
+		const wrapper = mount(AgentToolsPanel, {
+			props: { config: makeConfig(), agentTools: {} },
+			global: { stubs: STUBS },
+		});
+
+		expect(wrapper.find('[data-testid="node-tools-toggle"]').exists()).toBe(true);
 	});
 });
