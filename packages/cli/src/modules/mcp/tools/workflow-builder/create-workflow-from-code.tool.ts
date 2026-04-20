@@ -221,9 +221,15 @@ export const createCreateWorkflowFromCodeTool = (
 			// may later roll back, so newWorkflow.id alone is not a reliable signal.
 			// A DB lookup confirms the row truly exists before we report success.
 			if (newWorkflow?.id) {
-				const persisted = await workflowFinderService.findWorkflowForUser(newWorkflow.id, user, [
-					'workflow:read',
-				]);
+				let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
+					null;
+				try {
+					persisted = await workflowFinderService.findWorkflowForUser(newWorkflow.id, user, [
+						'workflow:read',
+					]);
+				} catch {
+					// Verification lookup failed — fall through and report the original error.
+				}
 
 				if (persisted) {
 					const baseUrl = urlService.getInstanceBaseUrl();
