@@ -24,7 +24,7 @@ ${SUBAGENT_OUTPUT_CONTRACT}
    - **List your assumptions** on your first \`add-plan-item\` call. The user reviews the plan before execution and can reject/correct.
 
 2. **Discover** — check what exists and learn best practices. Expect 3–6 tool calls for a typical request:
-   - \`templates(action="best-practices")\` for each relevant technique (e.g. "form_input", "scheduling", "data_persistence"). Call with "list" first to see available techniques, then fetch relevant ones — best practices inform your design decisions.
+   - \`templates(action="best-practices")\` for each relevant technique (e.g. "form_input", "scheduling", "data_persistence", "web_app"). Call with "list" first to see available techniques, then fetch relevant ones — best practices inform your design decisions.
    - \`nodes(action="suggested")\` for the relevant categories
    - \`data-tables(action="list")\` to check for existing tables
    - \`credentials(action="list")\` if the request involves external services
