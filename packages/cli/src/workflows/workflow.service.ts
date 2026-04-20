@@ -585,7 +585,7 @@ export class WorkflowService {
 					user,
 					workflowId,
 					workflow,
-					publicApi: tracking.source !== 'ui',
+					publicApi: tracking.source === 'api',
 					source: tracking.source,
 				});
 			}
@@ -655,7 +655,7 @@ export class WorkflowService {
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
-		const publicApi = source !== 'ui';
+		const publicApi = source === 'api';
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:publish',
@@ -794,7 +794,7 @@ export class WorkflowService {
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
-		const publicApi = source !== 'ui';
+		const publicApi = source === 'api';
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:unpublish',
 		]);
