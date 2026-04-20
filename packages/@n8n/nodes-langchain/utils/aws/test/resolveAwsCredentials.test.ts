@@ -14,7 +14,12 @@ jest.mock('@aws-sdk/credential-providers', () => ({
 	}),
 }));
 
+jest.mock('n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils', () => ({
+	getSystemCredentials: jest.fn(),
+}));
+
 import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
+import { getSystemCredentials } from 'n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils';
 
 import { resolveAwsCredentials } from '../resolveAwsCredentials';
 
@@ -134,5 +139,85 @@ describe('resolveAwsCredentials — AssumeRole path', () => {
 			accessKeyId: 'AKIASTS',
 			secretAccessKey: 'stsSecret',
 		});
+	});
+});
+
+describe('resolveAwsCredentials — AssumeRole validation', () => {
+	const baseAssumeRoleCreds = {
+		region: 'us-east-1',
+		roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+		externalId: 'ext-id',
+		roleSessionName: 'n8n-session',
+		stsAccessKeyId: 'AKIASTS',
+		stsSecretAccessKey: 'stsSecret',
+		useSystemCredentialsForRole: false,
+	};
+
+	it('throws when roleArn is missing', async () => {
+		const context = makeContext({
+			authentication: 'assumeRole',
+			awsAssumeRoleCredential: { ...baseAssumeRoleCreds, roleArn: '' },
+		});
+		await expect(resolveAwsCredentials(context)).rejects.toThrow(
+			'Role ARN is required when assuming a role.',
+		);
+	});
+
+	it('throws when externalId is missing', async () => {
+		const context = makeContext({
+			authentication: 'assumeRole',
+			awsAssumeRoleCredential: { ...baseAssumeRoleCreds, externalId: '' },
+		});
+		await expect(resolveAwsCredentials(context)).rejects.toThrow(
+			'External ID is required when assuming a role.',
+		);
+	});
+
+	it('throws when roleSessionName is missing', async () => {
+		const context = makeContext({
+			authentication: 'assumeRole',
+			awsAssumeRoleCredential: { ...baseAssumeRoleCreds, roleSessionName: '' },
+		});
+		await expect(resolveAwsCredentials(context)).rejects.toThrow(
+			'Role Session Name is required when assuming a role.',
+		);
+	});
+});
+
+describe('resolveAwsCredentials — useSystemCredentialsForRole', () => {
+	beforeEach(() => {
+		(getSystemCredentials as jest.Mock).mockReset();
+		(fromTemporaryCredentials as jest.Mock).mockClear();
+	});
+
+	it('passes a function (refreshable provider) as masterCredentials, not a snapshot', async () => {
+		(getSystemCredentials as jest.Mock).mockResolvedValue({
+			accessKeyId: 'AKIASYS',
+			secretAccessKey: 'sysSecret',
+			sessionToken: 'sysToken',
+			source: 'environment',
+		});
+		const context = makeContext({
+			authentication: 'assumeRole',
+			awsAssumeRoleCredential: {
+				region: 'us-east-1',
+				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'ext-id',
+				roleSessionName: 'n8n-session',
+				useSystemCredentialsForRole: true,
+			},
+		});
+		await resolveAwsCredentials(context);
+
+		const callArg = (fromTemporaryCredentials as jest.Mock).mock.calls[0][0] as {
+			masterCredentials: unknown;
+		};
+		expect(typeof callArg.masterCredentials).toBe('function');
+
+		// Simulate SDK invoking the provider twice; each call should re-read system credentials.
+		const masterProvider = callArg.masterCredentials as () => Promise<unknown>;
+		await masterProvider();
+		await masterProvider();
+		expect(getSystemCredentials).toHaveBeenCalledTimes(2);
 	});
 });
