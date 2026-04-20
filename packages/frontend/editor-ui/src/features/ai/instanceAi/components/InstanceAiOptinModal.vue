@@ -31,7 +31,7 @@ function selectChoice(value: 'enable' | 'disable') {
 }
 
 function dismiss() {
-	telemetry.track('Assitant AI opt-in modal dismissed', {
+	telemetry.track('AI Assistant opt-in modal dismissed', {
 		choice: choice?.value,
 	});
 	uiStore.closeModal(props.modalName);
@@ -46,7 +46,7 @@ async function onConfirm() {
 			instanceAiSettingsStore.setField('localGatewayDisabled', !computerUseEnabled.value);
 		}
 		await instanceAiSettingsStore.save();
-		telemetry.track('Assistant AI opt-in modal choice confirmed', {
+		telemetry.track('AI Assistant opt-in modal choice confirmed', {
 			choice: choice?.value,
 			enabled: isEnabled?.value,
 		});
@@ -78,7 +78,7 @@ onMounted(() => {
 		uiStore.closeModal(props.modalName);
 		return;
 	}
-	telemetry.track('Assistant AI opt-in modal shown');
+	telemetry.track('AI Assistant opt-in modal shown');
 });
 </script>
 
