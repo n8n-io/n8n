@@ -2,7 +2,7 @@ import pytest
 import json
 from unittest.mock import MagicMock, patch
 
-from src.task_executor import TaskExecutor
+from src.task_executor import TaskExecutor, StringIOWithFileno
 from src.pipe_reader import PipeReader
 from src.errors import TaskCancelledError, TaskKilledError, TaskSubprocessFailedError
 from src.constants import SIGTERM_EXIT_CODE, SIGKILL_EXIT_CODE, PIPE_MSG_PREFIX_LENGTH
@@ -196,3 +196,45 @@ class TestTaskExecutorLowLevelIO:
 
         with pytest.raises(OSError, match="Write failed"):
             TaskExecutor._write_bytes(999, b"test data")
+
+
+class TestStringIOWithFileno:
+    """Tests for StringIOWithFileno class to ensure fileno() method compatibility."""
+
+    def test_fileno_returns_stderr_file_descriptor(self):
+        """Verify that fileno() returns stderr's file descriptor (2)."""
+        string_io = StringIOWithFileno()
+
+        # Should return 2 (stderr's file descriptor)
+        assert string_io.fileno() == 2
+
+    def test_stringio_functionality_preserved(self):
+        """Verify that StringIO functionality is not affected."""
+        string_io = StringIOWithFileno()
+
+        # Write and read should work normally
+        string_io.write("test error message")
+        result = string_io.getvalue()
+
+        assert result == "test error message"
+
+    def test_compatible_with_libraries_expecting_fileno(self):
+        """Verify compatibility with code that calls fileno() on stderr."""
+        import sys
+        original_stderr = sys.stderr
+
+        try:
+            # Replace stderr with StringIOWithFileno
+            sys.stderr = StringIOWithFileno()
+
+            # Code that calls fileno() should not raise
+            try:
+                fd = sys.stderr.fileno()
+                assert fd == 2
+            except AttributeError:
+                pytest.fail("fileno() should not raise AttributeError")
+            except OSError:
+                pytest.fail("fileno() should not raise OSError")
+        finally:
+            # Restore original stderr
+            sys.stderr = original_stderr
