@@ -1,4 +1,4 @@
-import { Agent } from '@mastra/core/agent';
+import { createModel, generateTitleFromMessage } from '@n8n/agents';
 
 import type { ModelConfig } from '../types';
 
@@ -13,36 +13,20 @@ export function truncateToTitle(message: string): string {
 	return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated) + '\u2026';
 }
 
-const TITLE_SYSTEM_PROMPT = [
-	'Generate a concise title (max 60 chars) summarizing what the user wants.',
-	'Return ONLY the title text. No quotes, colons, or explanation.',
-	'Focus on the user intent, not what the assistant might reply.',
-	'Examples: "Build Gmail to Slack workflow", "Debug failed execution", "Show project files"',
-].join('\n');
-
 /**
  * Generate a polished thread title via a lightweight LLM call.
  * Returns the cleaned title string or null on failure.
+ *
+ * Wraps @n8n/agents' title generation so callers don't have to build a
+ * LanguageModel themselves. Fails soft — any error returns null.
  */
-export async function generateThreadTitle(
+export async function generateTitleForRun(
 	modelId: ModelConfig,
 	userMessage: string,
 ): Promise<string | null> {
 	try {
-		const agent = new Agent({
-			id: 'thread-title-generator',
-			name: 'Thread Title Generator',
-			instructions: {
-				role: 'system' as const,
-				content: TITLE_SYSTEM_PROMPT,
-			},
-			model: modelId,
-		});
-
-		const result = await agent.generate(userMessage, { maxSteps: 1 });
-		const title = result.text.trim().replace(/^["']|["']$/g, '');
-		if (!title) return null;
-		return title.length > MAX_TITLE_LENGTH ? truncateToTitle(title) : title;
+		const model = createModel(modelId);
+		return await generateTitleFromMessage(model, userMessage);
 	} catch {
 		return null;
 	}
