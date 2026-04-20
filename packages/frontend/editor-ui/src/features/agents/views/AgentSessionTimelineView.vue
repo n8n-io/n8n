@@ -347,7 +347,7 @@ function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'card
 					@click="continueChat"
 				>
 					<N8nIcon icon="message-square" :size="12" />
-					Continue chat
+					{{ i18n.baseText('agentSessions.timeline.continueChat') }}
 				</button>
 			</div>
 		</div>

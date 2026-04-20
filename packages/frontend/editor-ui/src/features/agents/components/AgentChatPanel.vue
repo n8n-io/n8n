@@ -178,11 +178,14 @@ async function loadChatHistory(threadId: string) {
 		if (dbMessages.length > 0) {
 			messages.value = convertDbMessages(dbMessages);
 		}
+		// Only signal on a successful fetch. A transient error must NOT be
+		// interpreted as "empty session" by the parent — that would kick the
+		// user back to home on a hiccup.
+		emit('continue-loaded', messages.value.length);
 	} catch {
-		// Silently ignore — just start with empty chat
+		// Keep the user in continue mode; they can retry by refreshing.
 	} finally {
 		chatHistoryLoaded.value = true;
-		emit('continue-loaded', messages.value.length);
 	}
 }
 

@@ -16,7 +16,7 @@ import {
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
 } from './agents.dto';
-import { AgentExecutionService } from './agent-execution.service';
+import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
@@ -278,6 +278,20 @@ export class AgentsController {
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
 		const send = initSseResponse(res);
+
+		// If the client supplied a sessionId and a thread already exists under that id,
+		// the thread must belong to this (project, agent). Otherwise a caller could
+		// append messages to another user's thread. A non-existent id is fine —
+		// executeForChat will create the thread on first persisted message.
+		if (sessionId) {
+			const existing = await this.agentExecutionService.findThreadById(sessionId);
+			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
+				send({ error: 'Session not found' });
+				res.end();
+				return;
+			}
+		}
+
 		const threadId = sessionId ?? randomUUID();
 
 		try {
@@ -308,6 +322,10 @@ export class AgentsController {
 		const { projectId, agentId, threadId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		if (!thread || !threadBelongsTo(thread, projectId, agentId)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
 		return await this.agentsService.getChatMessages(threadId);
 	}
 

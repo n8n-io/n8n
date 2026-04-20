@@ -120,6 +120,10 @@ async function updateDescription(description: string) {
 }
 
 function startChat(msg: string) {
+	// Starting a fresh chat must never inherit a stale continue-session from a
+	// previous URL — otherwise the new conversation would keep appending to the
+	// old thread.
+	if (continueSessionId.value) clearContinueSessionParam();
 	if (isBuilt.value) {
 		// Agent already built — go straight into the chat experience.
 		initialPrompt.value = msg;
@@ -316,9 +320,13 @@ watch(
 	{ immediate: true },
 );
 
-function exitContinueMode() {
+function clearContinueSessionParam() {
 	const { continueSessionId: _dropped, ...rest } = route.query;
 	void router.replace({ query: rest });
+}
+
+function exitContinueMode() {
+	clearContinueSessionParam();
 	mode.value = 'home';
 }
 
@@ -343,7 +351,7 @@ function onContinueLoaded(count: number) {
 						v-if="mode === 'chat'"
 						:class="$style.toggleBtn"
 						data-testid="new-chat"
-						@click="mode = 'home'"
+						@click="exitContinueMode"
 					>
 						<N8nIcon icon="message-circle-plus" :size="16" />
 					</button>

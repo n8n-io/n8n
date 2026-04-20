@@ -11,6 +11,7 @@ import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import type { MessageRecord } from './execution-recorder';
 import { N8nMemory } from './integrations/n8n-memory';
+import { ExecutionThread } from './entities/execution-thread.entity';
 import { ExecutionThreadRepository } from './repositories/execution-thread.repository';
 
 export interface RecordMessageParams {
@@ -297,13 +298,8 @@ export class AgentExecutionService {
 	 * Returns the thread aggregate + executions with metadata.
 	 */
 	async getThreadDetail(threadId: string, projectId: string, agentId?: string) {
-		const where: Record<string, string> = { id: threadId, projectId };
-		if (agentId) {
-			where.agentId = agentId;
-		}
-
-		const thread = await this.executionThreadRepository.findOneBy(where);
-		if (!thread) return null;
+		const thread = await this.executionThreadRepository.findOneBy({ id: threadId });
+		if (!thread || !threadBelongsTo(thread, projectId, agentId)) return null;
 
 		const executions = await this.executionRepository.find({
 			where: { threadId },
@@ -313,4 +309,28 @@ export class AgentExecutionService {
 
 		return { thread, executions };
 	}
+
+	/**
+	 * Fetch a thread by id without scoping. Callers accepting a client-supplied
+	 * threadId MUST verify ownership with {@link threadBelongsTo} before use to
+	 * prevent IDOR.
+	 */
+	async findThreadById(threadId: string): Promise<ExecutionThread | null> {
+		return await this.executionThreadRepository.findOneBy({ id: threadId });
+	}
+}
+
+/**
+ * True if `thread` belongs to the given project (and optionally agent).
+ * Returns false for threads from a different project/agent so the caller can
+ * reject the request instead of leaking/modifying unrelated thread data.
+ */
+export function threadBelongsTo(
+	thread: ExecutionThread,
+	projectId: string,
+	agentId?: string,
+): boolean {
+	if (thread.projectId !== projectId) return false;
+	if (agentId && thread.agentId !== agentId) return false;
+	return true;
 }

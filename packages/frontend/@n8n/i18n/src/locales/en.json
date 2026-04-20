@@ -1353,6 +1353,7 @@
 	"agentSessions.timeline.input": "Input",
 	"agentSessions.timeline.output": "Output",
 	"agentSessions.timeline.selectItem": "Select an item to view details",
+	"agentSessions.timeline.continueChat": "Continue chat",
 	"agentView.tab.editor": "Editor",
 	"agentView.tab.sessions": "Sessions",
 	"executionsList.loadMore": "Load more",
