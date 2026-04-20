@@ -16,4 +16,24 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 	async findAllByType(type: string): Promise<DeploymentKey[]> {
 		return await this.find({ where: { type } });
 	}
+
+	/** Atomically deactivates any existing active key of the same type, then saves the given entity as active. */
+	async insertAsActive(entity: DeploymentKey): Promise<DeploymentKey> {
+		return await this.manager.transaction(async (tx) => {
+			await tx.update(
+				DeploymentKey,
+				{ type: entity.type, status: 'active' },
+				{ status: 'inactive' },
+			);
+			return await tx.save(DeploymentKey, entity);
+		});
+	}
+
+	/** Atomically deactivates any existing active key of the given type, then sets the target key as active. */
+	async promoteToActive(id: string, type: string): Promise<void> {
+		await this.manager.transaction(async (tx) => {
+			await tx.update(DeploymentKey, { type, status: 'active' }, { status: 'inactive' });
+			await tx.update(DeploymentKey, id, { status: 'active' });
+		});
+	}
 }

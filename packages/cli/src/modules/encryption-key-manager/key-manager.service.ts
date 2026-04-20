@@ -42,39 +42,27 @@ export class KeyManagerService {
 		return { id: key.id, value: key.value, algorithm: key.algorithm! };
 	}
 
-	/**
-	 * Inserts a new encryption key row.
-	 * If setAsActive is true, transitions the current active key to 'inactive' first,
-	 * then inserts the new key as 'active'. Otherwise inserts as 'inactive'.
-	 */
+	/** Inserts a new encryption key. If setAsActive, atomically deactivates the current key first. */
 	async addKey(value: string, algorithm: string, setAsActive = false): Promise<{ id: string }> {
-		if (setAsActive) {
-			const current = await this.deploymentKeyRepository.findActiveByType('data_encryption');
-			if (current) {
-				await this.markInactive(current.id);
-			}
-		}
-
 		const entity = this.deploymentKeyRepository.create({
 			type: 'data_encryption',
 			value,
 			algorithm,
 			status: setAsActive ? 'active' : 'inactive',
 		});
-		const saved = await this.deploymentKeyRepository.save(entity);
+
+		if (!setAsActive) {
+			const saved = await this.deploymentKeyRepository.save(entity);
+			return { id: saved.id };
+		}
+
+		const saved = await this.deploymentKeyRepository.insertAsActive(entity);
 		return { id: saved.id };
 	}
 
-	/**
-	 * Sets the given key as active.
-	 * Transitions the current active key to 'inactive' first.
-	 */
+	/** Atomically deactivates the current active key and promotes the given key. */
 	async setActiveKey(id: string): Promise<void> {
-		const current = await this.deploymentKeyRepository.findActiveByType('data_encryption');
-		if (current && current.id !== id) {
-			await this.markInactive(current.id);
-		}
-		await this.deploymentKeyRepository.update(id, { status: 'active' });
+		await this.deploymentKeyRepository.promoteToActive(id, 'data_encryption');
 	}
 
 	/** Transitions key to 'inactive'. Usage count guard to be added in T13. */

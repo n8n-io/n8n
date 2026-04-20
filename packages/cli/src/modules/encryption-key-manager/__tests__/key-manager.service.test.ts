@@ -51,7 +51,7 @@ describe('KeyManagerService', () => {
 	});
 
 	describe('getKeyById()', () => {
-		it('returns KeyInfo when key exists with algorithm', async () => {
+		it('returns KeyInfo when key exists', async () => {
 			const key = makeKey();
 			repository.findOne.mockResolvedValue(key);
 
@@ -98,68 +98,33 @@ describe('KeyManagerService', () => {
 
 			const result = await Container.get(KeyManagerService).addKey('secret', 'aes-256-gcm');
 
-			expect(repository.findActiveByType).not.toHaveBeenCalled();
+			expect(repository.insertAsActive).not.toHaveBeenCalled();
 			expect(repository.create).toHaveBeenCalledWith(
 				expect.objectContaining({ status: 'inactive', type: 'data_encryption' }),
 			);
 			expect(result).toEqual({ id: 'new-key' });
 		});
 
-		it('inserts as active without demoting when setAsActive=true and no current active', async () => {
-			repository.findActiveByType.mockResolvedValue(null);
+		it('delegates to insertAsActive when setAsActive=true', async () => {
 			const saved = makeKey({ id: 'new-key', status: 'active' });
 			repository.create.mockReturnValue(saved);
-			repository.save.mockResolvedValue(saved);
+			repository.insertAsActive.mockResolvedValue(saved);
 
 			const result = await Container.get(KeyManagerService).addKey('secret', 'aes-256-gcm', true);
 
-			expect(repository.update).not.toHaveBeenCalled();
-			expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' }));
+			expect(repository.save).not.toHaveBeenCalled();
+			expect(repository.insertAsActive).toHaveBeenCalledWith(saved);
 			expect(result).toEqual({ id: 'new-key' });
-		});
-
-		it('marks existing active key inactive before inserting new active key', async () => {
-			const existing = makeKey({ id: 'old-key' });
-			repository.findActiveByType.mockResolvedValue(existing);
-			const saved = makeKey({ id: 'new-key', status: 'active' });
-			repository.create.mockReturnValue(saved);
-			repository.save.mockResolvedValue(saved);
-
-			await Container.get(KeyManagerService).addKey('new-secret', 'aes-256-gcm', true);
-
-			expect(repository.update).toHaveBeenCalledWith('old-key', { status: 'inactive' });
-			expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' }));
 		});
 	});
 
 	describe('setActiveKey()', () => {
-		it('marks existing active key inactive and promotes target', async () => {
-			const current = makeKey({ id: 'current' });
-			repository.findActiveByType.mockResolvedValue(current);
+		it('delegates to promoteToActive', async () => {
+			repository.promoteToActive.mockResolvedValue(undefined);
 
 			await Container.get(KeyManagerService).setActiveKey('target');
 
-			expect(repository.update).toHaveBeenCalledWith('current', { status: 'inactive' });
-			expect(repository.update).toHaveBeenCalledWith('target', { status: 'active' });
-		});
-
-		it('promotes target without demoting when no current active key', async () => {
-			repository.findActiveByType.mockResolvedValue(null);
-
-			await Container.get(KeyManagerService).setActiveKey('target');
-
-			expect(repository.update).toHaveBeenCalledTimes(1);
-			expect(repository.update).toHaveBeenCalledWith('target', { status: 'active' });
-		});
-
-		it('does not mark itself inactive when target is already the active key', async () => {
-			const current = makeKey({ id: 'target' });
-			repository.findActiveByType.mockResolvedValue(current);
-
-			await Container.get(KeyManagerService).setActiveKey('target');
-
-			expect(repository.update).toHaveBeenCalledTimes(1);
-			expect(repository.update).toHaveBeenCalledWith('target', { status: 'active' });
+			expect(repository.promoteToActive).toHaveBeenCalledWith('target', 'data_encryption');
 		});
 	});
 
