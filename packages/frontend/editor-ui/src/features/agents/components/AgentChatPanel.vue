@@ -56,7 +56,8 @@ async function onClearHistory() {
 }
 
 async function onSubmit() {
-	const text = inputText.value;
+	const text = inputText.value.trim();
+	if (!text || isStreaming.value) return;
 	inputText.value = '';
 	await sendMessage(text);
 }

@@ -87,12 +87,16 @@ watch(
 		if (!jsonView) return;
 		const newText = configToJson(newConfig);
 		const current = jsonView.state.doc.toString();
-		if (current !== newText && !jsonView.hasFocus) {
-			isProgrammaticJsonUpdate = true;
-			jsonView.dispatch({ changes: { from: 0, to: current.length, insert: newText } });
-			isProgrammaticJsonUpdate = false;
-			jsonError.value = '';
-		}
+		if (current === newText) return;
+		isProgrammaticJsonUpdate = true;
+		// Preserve the user's selection/cursor; CodeMirror clamps positions that
+		// would fall outside the new doc length.
+		jsonView.dispatch({
+			changes: { from: 0, to: current.length, insert: newText },
+			selection: jsonView.state.selection,
+		});
+		isProgrammaticJsonUpdate = false;
+		jsonError.value = '';
 	},
 	{ deep: true },
 );

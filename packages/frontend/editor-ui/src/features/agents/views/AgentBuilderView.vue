@@ -291,6 +291,7 @@ async function initialize() {
 	mode.value = 'home';
 	chatMode.value = 'test';
 	isBuilding.value = false;
+	isBuildChatStreaming.value = false;
 	agentIcon.value = { type: 'icon', value: 'robot' };
 	initialPrompt.value = undefined;
 	buildPrompt.value = '';

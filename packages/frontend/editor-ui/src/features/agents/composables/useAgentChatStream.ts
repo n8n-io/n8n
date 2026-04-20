@@ -194,7 +194,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (!msgAdded) {
 					messages.value.push(assistantMsg);
 				}
-				assistantMsg.content = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
+				const errorText = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
+				assistantMsg.content = assistantMsg.content
+					? `${assistantMsg.content}\n\n${errorText}`
+					: errorText;
 				assistantMsg.status = 'error';
 			}
 		} finally {

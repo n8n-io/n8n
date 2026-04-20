@@ -50,8 +50,19 @@ function createToolEditor(id: string, code: string) {
 }
 
 function onToolContainerMounted(id: string, el: HTMLDivElement | null) {
+	if (!el) {
+		// Container unmounted — destroy the cached editor so a later remount
+		// of the same id gets a fresh one attached to the new DOM node.
+		const view = toolViews.get(id);
+		if (view) {
+			view.destroy();
+			toolViews.delete(id);
+		}
+		delete toolContainers.value[id];
+		return;
+	}
 	toolContainers.value[id] = el;
-	if (el && expandedTools.value[id]) {
+	if (expandedTools.value[id]) {
 		const code = props.agentTools[id]?.code ?? '';
 		createToolEditor(id, code);
 	}

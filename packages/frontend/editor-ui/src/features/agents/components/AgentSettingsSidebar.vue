@@ -277,9 +277,6 @@ function onResizeStart(event: MouseEvent) {
 								locale.baseText('agents.settings.triggers')
 							}}</N8nText>
 						</div>
-						<span role="button" tabindex="0" :class="$style.addBtn" @click.stop @keydown.enter.stop>
-							<N8nIcon icon="plus" :size="16" />
-						</span>
 					</button>
 					<div v-if="expandedSections.triggers" :class="$style.sectionContent">
 						<AgentIntegrationsPanel
@@ -302,9 +299,6 @@ function onResizeStart(event: MouseEvent) {
 								locale.baseText('agents.settings.tools')
 							}}</N8nText>
 						</div>
-						<span role="button" tabindex="0" :class="$style.addBtn" @click.stop @keydown.enter.stop>
-							<N8nIcon icon="plus" :size="16" />
-						</span>
 					</button>
 					<div v-if="expandedSections.tools" :class="$style.sectionContent">
 						<AgentToolsPanel
@@ -327,9 +321,6 @@ function onResizeStart(event: MouseEvent) {
 								locale.baseText('agents.settings.advanced')
 							}}</N8nText>
 						</div>
-						<span role="button" tabindex="0" :class="$style.addBtn" @click.stop @keydown.enter.stop>
-							<N8nIcon icon="plus" :size="16" />
-						</span>
 					</button>
 					<div v-if="expandedSections.advanced" :class="$style.sectionContent">
 						<AgentMemoryPanel
@@ -505,24 +496,6 @@ function onResizeStart(event: MouseEvent) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-}
-
-.addBtn {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 28px;
-	height: 28px;
-	border: none;
-	background: none;
-	cursor: pointer;
-	color: var(--color--text--tint-1);
-	border-radius: var(--radius);
-}
-
-.addBtn:hover {
-	background-color: var(--color--foreground--tint-1);
-	color: var(--color--text);
 }
 
 .sectionContent {

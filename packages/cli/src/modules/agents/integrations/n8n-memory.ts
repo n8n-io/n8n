@@ -76,11 +76,13 @@ export class N8nMemory implements BuiltMemory {
 
 	async getMessages(
 		threadId: string,
-		opts?: { limit?: number; before?: Date },
+		opts?: { limit?: number; before?: Date; resourceId?: string },
 	): Promise<AgentDbMessage[]> {
-		const where: FindOptionsWhere<AgentMessageEntity> = opts?.before
-			? { threadId, createdAt: LessThan(opts.before) }
-			: { threadId };
+		const where: FindOptionsWhere<AgentMessageEntity> = {
+			threadId,
+			...(opts?.before && { createdAt: LessThan(opts.before) }),
+			...(opts?.resourceId && { resourceId: opts.resourceId }),
+		};
 
 		const entities = await this.messageRepository.find({
 			where,
@@ -123,8 +125,11 @@ export class N8nMemory implements BuiltMemory {
 		await this.messageRepository.delete(messageIds);
 	}
 
-	async deleteMessagesByThread(threadId: string): Promise<void> {
-		await this.messageRepository.delete({ threadId });
+	async deleteMessagesByThread(threadId: string, resourceId?: string): Promise<void> {
+		await this.messageRepository.delete({
+			threadId,
+			...(resourceId && { resourceId }),
+		});
 	}
 
 	// ── Working memory ───────────────────────────────────────────────────

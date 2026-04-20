@@ -270,7 +270,7 @@ export class AgentsController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		return await this.agentsService.getChatMessages(agentId);
+		return await this.agentsService.getChatMessages(agentId, req.user.id);
 	}
 
 	@Delete('/:agentId/chat/messages')
@@ -278,7 +278,7 @@ export class AgentsController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		await this.agentsService.clearChatMessages(agentId);
+		await this.agentsService.clearChatMessages(agentId, req.user.id);
 		return { ok: true };
 	}
 

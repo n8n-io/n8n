@@ -295,7 +295,7 @@ export class AgentsService {
 		// doesn't leave orphaned rows in agents_threads / agents_messages.
 		// Swallow errors — the agent is already gone; best-effort cleanup.
 		try {
-			await this.clearChatMessages(agentId);
+			await this.clearAllChatMessages(agentId);
 		} catch (error) {
 			this.logger.debug('Failed to clear test chat on agent delete', {
 				agentId,
@@ -506,15 +506,25 @@ export class AgentsService {
 	}
 
 	/**
-	 * Return persisted test-chat messages for an agent. Mirrors the builder's
-	 * history API so the frontend can restore the Test panel on reload.
+	 * Return persisted test-chat messages for an agent scoped to the current
+	 * user. The test-chat thread is shared across users (keyed on agentId) but
+	 * each message is tagged with the originating user's id as resourceId, so
+	 * we filter here to give every user their own private conversation view.
 	 */
-	async getChatMessages(agentId: string) {
-		return await this.n8nMemory.getMessages(chatThreadId(agentId));
+	async getChatMessages(agentId: string, userId: string) {
+		return await this.n8nMemory.getMessages(chatThreadId(agentId), { resourceId: userId });
 	}
 
-	/** Clear persisted test-chat messages for an agent. */
-	async clearChatMessages(agentId: string) {
+	/**
+	 * Clear the current user's test-chat messages for an agent. The thread row
+	 * stays so other users' histories on the same thread are preserved.
+	 */
+	async clearChatMessages(agentId: string, userId: string) {
+		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId), userId);
+	}
+
+	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
+	async clearAllChatMessages(agentId: string) {
 		const threadId = chatThreadId(agentId);
 		await this.n8nMemory.deleteMessagesByThread(threadId);
 		await this.n8nMemory.deleteThread(threadId);
