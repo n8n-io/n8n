@@ -128,7 +128,7 @@ export function useNodeHelpers() {
 			const isToolNode = !!node && nodeTypesStore.isToolNode(node.type);
 			const expression = workflowDocumentStore.value.getExpressionHandler();
 
-			if (workflowNode && expression) {
+			if (workflowNode) {
 				const inputs = NodeHelpers.getNodeInputs({ expression }, workflowNode, nodeType);
 				const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
@@ -287,7 +287,7 @@ export function useNodeHelpers() {
 	function updateNodeInputIssues(node: INodeUi): void {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
-		if (!nodeType || !workflowDocumentStore.value) {
+		if (!nodeType) {
 			return;
 		}
 
