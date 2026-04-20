@@ -282,6 +282,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	// ── Auto-connect daemon ──────────────────────────────────────────────
 
 	const DAEMON_BASE = 'http://127.0.0.1:7655';
+	// Auto-probing is disabled: the EventSource + POST to 127.0.0.1 triggers
+	// Chrome's Private Network Access prompt on page load, which is unexpected.
+	// When we reintroduce this via an explicit user action, call connectDaemon()
+	// directly from the click handler instead of re-enabling the probe.
+	const AUTO_CONNECT_DAEMON = false;
 	let daemonEventSource: EventSource | null = null;
 	let daemonConnectAttempted = false;
 
@@ -321,6 +326,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	function startDaemonProbing(): void {
+		if (!AUTO_CONNECT_DAEMON) return;
 		if (daemonEventSource || daemonConnectAttempted || isGatewayConnected.value) return;
 
 		daemonEventSource = new EventSource(`${DAEMON_BASE}/events`);
