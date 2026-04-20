@@ -449,6 +449,8 @@ watch(agentId, initialize, { immediate: true });
 			:agent="agent"
 			:save-status="saveStatus"
 			:building="isBuilding"
+			:code-only="mode === 'chat' && chatMode === 'build'"
+			:hide-code="mode === 'chat' && chatMode === 'test'"
 			@update:config="onConfigFieldUpdate"
 			@published="onPublished"
 			@unpublished="onUnpublished"

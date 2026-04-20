@@ -5529,6 +5529,8 @@
 	"agents.settings.tools": "Tools",
 	"agents.settings.advanced": "Advanced",
 	"agents.settings.code": "Code",
+	"agents.settings.configJson": "config.json",
+	"agents.settings.customTools": "Custom tools",
 	"agents.settings.model": "Model",
 	"agents.settings.model.selectModel": "Select model...",
 	"agents.settings.model.selectProvider": "Provider...",
