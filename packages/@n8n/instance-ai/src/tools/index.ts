@@ -18,7 +18,6 @@ import { createAskUserTool } from './shared/ask-user.tool';
 import { createTaskControlTool } from './task-control.tool';
 import { createTemplatesTool } from './templates.tool';
 import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-credentials.tool';
-import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
 import { createWorkflowsTool } from './workflows.tool';
 import { createWorkspaceTool } from './workspace.tool';
 
@@ -37,7 +36,6 @@ export function createAllTools(context: InstanceAiContext) {
 		nodes: createNodesTool(context),
 		templates: createTemplatesTool(),
 		'ask-user': createAskUserTool(),
-		'build-workflow': createBuildWorkflowTool(context),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 		...(context.currentUserAttachments?.some(isStructuredAttachment)
 			? { 'parse-file': createParseFileTool(context) }
