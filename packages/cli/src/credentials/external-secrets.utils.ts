@@ -8,6 +8,7 @@ import { getAllKeyPaths } from '@/utils';
  * Keep this in sync with the regex implemented in CreateSecretsProviderConnectionDto.
  */
 const PROVIDER_KEY_PATTERN = '[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*';
+const PROVIDER_KEY_REGEX = new RegExp(`^${PROVIDER_KEY_PATTERN}$`);
 
 /**
  * Checks if a string value contains an external secret expression.
@@ -32,7 +33,6 @@ export function getExternalSecretExpressionPaths(data: unknown): string[] {
  */
 export function extractProviderKeysFromExpression(expression: string): string[] {
 	const providerKeys = new Set<string>();
-	const providerKeyPattern = new RegExp(PROVIDER_KEY_PATTERN);
 
 	const expressionBlocks = expression.matchAll(/\{\{(.*?)\}\}/gs);
 
@@ -56,7 +56,7 @@ export function extractProviderKeysFromExpression(expression: string): string[] 
 		const bracketMatches = expressionContent.matchAll(/\$secrets\[['"]([^'"]+)['"]\]/g);
 		for (const match of bracketMatches) {
 			const maybeProviderKey = match[1];
-			if (providerKeyPattern.test(maybeProviderKey)) {
+			if (PROVIDER_KEY_REGEX.test(maybeProviderKey)) {
 				providerKeys.add(maybeProviderKey);
 			}
 		}
