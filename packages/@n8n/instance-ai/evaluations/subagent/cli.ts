@@ -28,7 +28,7 @@ interface CliArgs {
 	verbose: boolean;
 	timeoutMs: number;
 	maxSteps: number;
-	modelId: string;
+	modelId?: string;
 	subagent: string;
 	prompt?: string;
 	dataset?: string;
@@ -52,7 +52,7 @@ function parseArgs(argv: string[]): CliArgs {
 		verbose: false,
 		timeoutMs: 120_000,
 		maxSteps: 40,
-		modelId: process.env.N8N_INSTANCE_AI_EVAL_MODEL ?? 'anthropic/claude-sonnet-4-20250514',
+		modelId: process.env.N8N_INSTANCE_AI_EVAL_MODEL,
 		subagent: 'builder',
 		concurrency: 5,
 		baseUrl: process.env.N8N_EVAL_BASE_URL ?? 'http://localhost:5678',
@@ -309,7 +309,7 @@ async function runLocalMode(
 	}
 
 	console.log(
-		`Running ${String(testCases.length)} sub-agent test case(s) with model ${config.modelId} (concurrency: ${String(args.concurrency)})\n`,
+		`Running ${String(testCases.length)} sub-agent test case(s) with model ${config.modelId ?? '<server default>'} (concurrency: ${String(args.concurrency)})\n`,
 	);
 
 	const results: SubAgentResult[] = [];

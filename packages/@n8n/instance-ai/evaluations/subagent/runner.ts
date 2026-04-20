@@ -36,7 +36,7 @@ export async function runSubAgent(
 		const response = await deps.client.runSubAgentEval({
 			role,
 			prompt: testCase.prompt,
-			modelId,
+			...(modelId !== undefined ? { modelId } : {}),
 			...(testCase.maxSteps !== undefined ? { maxSteps: testCase.maxSteps } : {}),
 			...(config.timeoutMs !== undefined ? { timeoutMs: config.timeoutMs } : {}),
 		});
@@ -132,7 +132,7 @@ export async function runSubAgent(
 async function evaluateCapturedWorkflows(args: {
 	workflows: WorkflowResponse[];
 	prompt: string;
-	modelId: string;
+	modelId?: string;
 	agentTextResponse: string;
 }): Promise<Feedback[]> {
 	const feedback: Feedback[] = [];
@@ -153,7 +153,7 @@ async function evaluateCapturedWorkflows(args: {
 	const last = args.workflows[args.workflows.length - 1];
 	const ctx: BinaryCheckContext = {
 		prompt: args.prompt,
-		modelId: args.modelId,
+		...(args.modelId !== undefined ? { modelId: args.modelId } : {}),
 		...(args.agentTextResponse ? { agentTextResponse: args.agentTextResponse } : {}),
 	};
 	const binaryFeedback = await runBinaryChecks(last, ctx);

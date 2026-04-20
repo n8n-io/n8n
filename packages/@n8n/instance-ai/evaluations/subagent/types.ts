@@ -70,8 +70,8 @@ export interface SubAgentResult {
  * Configuration for the sub-agent runner.
  */
 export interface SubAgentRunnerConfig {
-	/** Anthropic model ID (e.g. 'claude-sonnet-4-20250514') */
-	modelId: string;
+	/** Optional model override. When unset, the server resolves the model from its own settings. */
+	modelId?: string;
 	/** Timeout per test case in milliseconds. Defaults to 120_000. */
 	timeoutMs?: number;
 	/** Max agent steps. Overridden by test case if set. Defaults to 20. */
