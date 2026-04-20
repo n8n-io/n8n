@@ -107,14 +107,14 @@ describe('InstanceAiView', () => {
 			},
 		] as typeof store.messages;
 
-		const { getByTestId } = renderView();
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
 	});
 
 	it('does not pass suggestions while an existing thread is hydrating', () => {
 		store.isHydratingThread = true;
 
-		const { getByTestId } = renderView();
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
 	});
 
