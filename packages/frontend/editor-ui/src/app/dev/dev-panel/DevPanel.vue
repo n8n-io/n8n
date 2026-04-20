@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue';
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 
 import PromptPopover from './PromptPopover.vue';
+import { loadAnnotations, resolveElementForContext, saveAnnotations } from './annotationStorage';
 import { sendPrompt } from './channelClient';
 import { collectElementContext } from './collectElementContext';
 import {
@@ -13,7 +14,7 @@ import {
 import { DEV_PANEL_ROOT_ATTR, useElementPicker } from './useElementPicker';
 import { useChannelHealth } from './useChannelHealth';
 
-type TrackedAnnotation = Annotation & { element: Element };
+type TrackedAnnotation = Annotation & { elements: Element[] };
 
 const MARKER_SIZE = 22;
 
@@ -22,10 +23,12 @@ const { isPicking, hoveredElement, selectedElement, start, stop, clearSelection 
 	useElementPicker();
 const sending = ref(false);
 const annotations = shallowRef<TrackedAnnotation[]>([]);
+const pendingMulti = shallowRef<Element[]>([]);
 const toast = ref<{ kind: 'info' | 'error'; message: string } | null>(null);
 const rectVersion = ref(0);
 const expanded = ref(false);
 const editingId = ref<string | null>(null);
+const currentPath = ref(window.location.pathname);
 
 const editingPrompt = computed(() => {
 	const id = editingId.value;
@@ -36,6 +39,9 @@ const editingPrompt = computed(() => {
 const channelAvailable = computed(() => status.value === 'connected');
 const annotationCount = computed(() => annotations.value.length);
 const hasAnnotations = computed(() => annotationCount.value > 0);
+const currentTargetsCount = computed(() =>
+	pendingMulti.value.length > 0 ? pendingMulti.value.length : 1,
+);
 
 const fabTooltip = computed(() => {
 	if (status.value === 'connected') return 'Open dev panel — channel connected';
@@ -61,23 +67,44 @@ type Marker = {
 	top: number;
 	left: number;
 	annotation: TrackedAnnotation;
+	isMulti: boolean;
 };
 
 const markers = computed<Marker[]>(() => {
 	void rectVersion.value;
 	const result: Marker[] = [];
 	annotations.value.forEach((annotation, idx) => {
-		if (!annotation.element.isConnected) return;
-		const rect = annotation.element.getBoundingClientRect();
-		if (rect.width === 0 && rect.height === 0) return;
-		result.push({
-			id: annotation.id,
-			index: idx + 1,
-			top: rect.top + rect.height / 2 - MARKER_SIZE / 2,
-			left: rect.left + rect.width / 2 - MARKER_SIZE / 2,
-			annotation,
+		const isMulti = annotation.contexts.length > 1;
+		annotation.contexts.forEach((context, ctxIdx) => {
+			const bbox = context.bbox;
+			if (!bbox) return;
+			if (bbox.width === 0 || bbox.height === 0) return;
+			const viewportTop = bbox.isFixed ? bbox.y : bbox.y - window.scrollY;
+			const viewportLeft = bbox.isFixed ? bbox.x : bbox.x - window.scrollX;
+			result.push({
+				id: `${annotation.id}-${ctxIdx}`,
+				index: idx + 1,
+				top: viewportTop + bbox.height / 2 - MARKER_SIZE / 2,
+				left: viewportLeft + bbox.width / 2 - MARKER_SIZE / 2,
+				annotation,
+				isMulti,
+			});
 		});
 	});
+	return result;
+});
+
+type PendingOutline = { top: number; left: number; width: number; height: number };
+
+const pendingOutlines = computed<PendingOutline[]>(() => {
+	void rectVersion.value;
+	const result: PendingOutline[] = [];
+	for (const el of pendingMulti.value) {
+		if (!el.isConnected) continue;
+		const rect = el.getBoundingClientRect();
+		if (rect.width === 0 || rect.height === 0) continue;
+		result.push({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+	}
 	return result;
 });
 
@@ -94,15 +121,120 @@ function scheduleBump() {
 	});
 }
 
+watch(selectedElement, (el) => {
+	if (!el) return;
+	if (!pendingMulti.value.includes(el)) {
+		pendingMulti.value = [];
+	}
+});
+
+function handleShiftKeyUp(event: KeyboardEvent) {
+	if (event.key !== 'Shift') return;
+	if (!isPicking.value) return;
+	if (pendingMulti.value.length === 0) return;
+	commitPendingMulti();
+}
+
+function updatePath() {
+	currentPath.value = window.location.pathname;
+}
+
+let restoreHistory: (() => void) | null = null;
+
+function patchHistory() {
+	const originalPush = history.pushState.bind(history);
+	const originalReplace = history.replaceState.bind(history);
+	history.pushState = function (...args) {
+		const result = originalPush(...args);
+		updatePath();
+		return result;
+	};
+	history.replaceState = function (...args) {
+		const result = originalReplace(...args);
+		updatePath();
+		return result;
+	};
+	restoreHistory = () => {
+		history.pushState = originalPush;
+		history.replaceState = originalReplace;
+	};
+}
+
+function loadForPath(path: string) {
+	const stored = loadAnnotations(path);
+	annotations.value = stored.map((a) => ({
+		...a,
+		elements: a.contexts
+			.map((c) => resolveElementForContext(c))
+			.filter((el): el is Element => el !== null),
+	}));
+	editingId.value = null;
+	bumpRects();
+}
+
+function reresolveIfNeeded() {
+	let changed = false;
+	const next = annotations.value.map((a) => {
+		const fullyConnected =
+			a.elements.length === a.contexts.length && a.elements.every((el) => el.isConnected);
+		if (fullyConnected) return a;
+		const resolved = a.contexts
+			.map((c) => resolveElementForContext(c))
+			.filter((el): el is Element => el !== null);
+		const unchanged =
+			resolved.length === a.elements.length && resolved.every((el, i) => el === a.elements[i]);
+		if (unchanged) return a;
+		changed = true;
+		return { ...a, elements: resolved };
+	});
+	if (changed) {
+		annotations.value = next;
+		bumpRects();
+	}
+}
+
+let resolveFrameId: number | null = null;
+function scheduleReresolve() {
+	if (resolveFrameId !== null) return;
+	resolveFrameId = requestAnimationFrame(() => {
+		resolveFrameId = null;
+		reresolveIfNeeded();
+	});
+}
+
+let domObserver: MutationObserver | null = null;
+
 onMounted(() => {
 	window.addEventListener('scroll', scheduleBump, true);
 	window.addEventListener('resize', scheduleBump);
+	window.addEventListener('keyup', handleShiftKeyUp, true);
+	window.addEventListener('popstate', updatePath);
+	patchHistory();
+	loadForPath(currentPath.value);
+	domObserver = new MutationObserver(scheduleReresolve);
+	domObserver.observe(document.body, { childList: true, subtree: true });
 });
 
 onUnmounted(() => {
 	window.removeEventListener('scroll', scheduleBump, true);
 	window.removeEventListener('resize', scheduleBump);
+	window.removeEventListener('keyup', handleShiftKeyUp, true);
+	window.removeEventListener('popstate', updatePath);
+	restoreHistory?.();
+	domObserver?.disconnect();
+	domObserver = null;
 	if (frameId !== null) cancelAnimationFrame(frameId);
+	if (resolveFrameId !== null) cancelAnimationFrame(resolveFrameId);
+});
+
+watch(currentPath, (newPath, oldPath) => {
+	if (newPath === oldPath) return;
+	loadForPath(newPath);
+});
+
+watch(annotations, (current) => {
+	const serializable = current.map(({ elements: _elements, ...rest }) => rest);
+	saveAnnotations(currentPath.value, serializable);
 });
 
 function showToast(kind: 'info' | 'error', message: string) {
@@ -117,17 +249,41 @@ function generateId() {
 	return `a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function startPicker() {
+	start({ onShiftPick: handleShiftPick });
+}
+
+function handleShiftPick(el: Element) {
+	const current = pendingMulti.value;
+	const idx = current.indexOf(el);
+	if (idx >= 0) {
+		pendingMulti.value = [...current.slice(0, idx), ...current.slice(idx + 1)];
+	} else {
+		pendingMulti.value = [...current, el];
+	}
+	bumpRects();
+}
+
+function commitPendingMulti() {
+	const pending = pendingMulti.value;
+	if (pending.length === 0) return;
+	stop();
+	selectedElement.value = pending[0];
+}
+
 function expandPanel() {
 	expanded.value = true;
 	toast.value = null;
 	clearSelection();
-	start();
+	pendingMulti.value = [];
+	startPicker();
 }
 
 function collapsePanel() {
 	expanded.value = false;
 	stop();
 	clearSelection();
+	pendingMulti.value = [];
 }
 
 function togglePicking() {
@@ -135,8 +291,15 @@ function togglePicking() {
 		stop();
 	} else {
 		clearSelection();
-		start();
+		pendingMulti.value = [];
+		startPicker();
 	}
+}
+
+function currentTargets(): Element[] {
+	if (pendingMulti.value.length > 0) return pendingMulti.value;
+	const anchor = selectedElement.value;
+	return anchor ? [anchor] : [];
 }
 
 async function handleSend(prompt: string) {
@@ -148,6 +311,7 @@ async function handleSend(prompt: string) {
 		await sendPrompt({ prompt, ...collectElementContext(anchor) });
 		showToast('info', 'Sent to Claude');
 		clearSelection();
+		pendingMulti.value = [];
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Failed to send';
 		showToast('error', message);
@@ -157,40 +321,46 @@ async function handleSend(prompt: string) {
 }
 
 function handleAdd(prompt: string) {
-	const anchor = selectedElement.value;
-	if (!anchor) return;
+	const targets = currentTargets();
+	if (targets.length === 0) return;
+
+	const contexts = targets.map((el) => collectElementContext(el));
 
 	const id = editingId.value;
 	if (id) {
 		annotations.value = annotations.value.map((a) =>
-			a.id === id ? { ...a, prompt, context: collectElementContext(anchor), element: anchor } : a,
+			a.id === id ? { ...a, prompt, contexts, elements: targets } : a,
 		);
 		editingId.value = null;
 		clearSelection();
+		pendingMulti.value = [];
 		bumpRects();
-		start();
+		startPicker();
 		return;
 	}
 
 	annotations.value = [
 		...annotations.value,
-		{ id: generateId(), prompt, context: collectElementContext(anchor), element: anchor },
+		{ id: generateId(), prompt, contexts, elements: targets },
 	];
 	clearSelection();
+	pendingMulti.value = [];
 	bumpRects();
-	start();
+	startPicker();
 }
 
 function handleCancel() {
 	editingId.value = null;
 	clearSelection();
-	if (expanded.value) start();
+	pendingMulti.value = [];
+	if (expanded.value) startPicker();
 }
 
 function startEditing(annotation: TrackedAnnotation) {
 	stop();
+	pendingMulti.value = [];
 	editingId.value = annotation.id;
-	selectedElement.value = annotation.element;
+	selectedElement.value = annotation.elements[0] ?? null;
 }
 
 function clearAnnotations() {
@@ -202,7 +372,7 @@ async function copyAllAnnotations() {
 	const text = formatAnnotationsForClipboard({
 		pagePath: currentPagePath(),
 		viewport: currentViewport(),
-		annotations: annotations.value.map(({ element: _element, ...rest }) => rest),
+		annotations: annotations.value.map(({ elements: _elements, ...rest }) => rest),
 	});
 	try {
 		await navigator.clipboard.writeText(text);
@@ -219,12 +389,25 @@ async function copyAllAnnotations() {
 	<div :[DEV_PANEL_ROOT_ATTR]="true" class="dev-panel-root">
 		<div v-if="isPicking" class="dev-panel-hover-overlay" :style="hoverOverlayStyle" />
 
+		<div
+			v-for="(outline, idx) in pendingOutlines"
+			:key="`pending-${idx}`"
+			class="dev-panel-pending-outline"
+			:style="{
+				top: `${outline.top}px`,
+				left: `${outline.left}px`,
+				width: `${outline.width}px`,
+				height: `${outline.height}px`,
+			}"
+		/>
+
 		<template v-if="expanded">
 			<button
 				v-for="marker in markers"
 				:key="marker.id"
 				type="button"
 				class="dev-panel-marker"
+				:class="{ 'dev-panel-marker--multi': marker.isMulti }"
 				:style="{ top: `${marker.top}px`, left: `${marker.left}px` }"
 				:title="`Edit: ${marker.annotation.prompt}`"
 				@click.stop="startEditing(marker.annotation)"
@@ -253,6 +436,7 @@ async function copyAllAnnotations() {
 			:channel-available="channelAvailable"
 			:initial-prompt="editingPrompt"
 			:is-editing="!!editingId"
+			:elements-count="currentTargetsCount"
 			@send="handleSend"
 			@add="handleAdd"
 			@cancel="handleCancel"
@@ -297,7 +481,11 @@ async function copyAllAnnotations() {
 					type="button"
 					class="dev-panel-toolbar-button"
 					:class="{ 'dev-panel-toolbar-button--active': isPicking }"
-					:title="isPicking ? 'Stop picking (Esc)' : 'Pick an element'"
+					:title="
+						isPicking
+							? 'Stop picking (Esc) — Shift+click to multi-select'
+							: 'Pick an element (Shift+click to multi-select)'
+					"
 					@click="togglePicking"
 				>
 					<svg
@@ -406,6 +594,15 @@ async function copyAllAnnotations() {
 	transition: all 40ms linear;
 }
 
+.dev-panel-pending-outline {
+	position: fixed;
+	pointer-events: none;
+	background: rgb(37 99 235 / 12%);
+	border: 2px dashed #2563eb;
+	border-radius: var(--radius--sm);
+	z-index: 2147483643;
+}
+
 .dev-panel-marker {
 	position: fixed;
 	z-index: 2147483644;
@@ -431,6 +628,10 @@ async function copyAllAnnotations() {
 
 .dev-panel-marker:hover {
 	transform: scale(1.1);
+}
+
+.dev-panel-marker--multi {
+	background: #10b981;
 }
 
 .dev-panel-marker-pen {

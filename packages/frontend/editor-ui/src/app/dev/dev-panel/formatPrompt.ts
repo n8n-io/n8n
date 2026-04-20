@@ -3,7 +3,7 @@ import type { ElementContext } from './collectElementContext';
 export type Annotation = {
 	id: string;
 	prompt: string;
-	context: ElementContext;
+	contexts: ElementContext[];
 };
 
 export type ClipboardPayload = {
@@ -27,18 +27,31 @@ function formatSource(context: ElementContext): string | undefined {
 	return context.col ? `${rel}:${context.line}:${context.col}` : `${rel}:${context.line}`;
 }
 
+function buildMultiSummary(contexts: ElementContext[]): string {
+	const summaries = contexts.map((c) => c.summary ?? 'element');
+	const head = summaries.slice(0, 5).join(', ');
+	const extra = summaries.length > 5 ? ` +${summaries.length - 5} more` : '';
+	return `${contexts.length} elements: ${head}${extra}`;
+}
+
 function formatAnnotation(annotation: Annotation, index: number): string[] {
-	const { context, prompt } = annotation;
-	const summary = context.summary ?? 'element';
+	const { contexts, prompt } = annotation;
+	const isMulti = contexts.length > 1;
+	const primary = contexts[0];
+	const summary = isMulti ? buildMultiSummary(contexts) : (primary?.summary ?? 'element');
 	const lines: string[] = [`### ${index + 1}. ${summary}`];
 
-	if (context.domPath) lines.push(`**Location:** ${context.domPath}`);
+	if (isMulti) {
+		lines.push('**Location:** multi-select');
+	} else if (primary?.domPath) {
+		lines.push(`**Location:** ${primary.domPath}`);
+	}
 
-	const source = formatSource(context);
+	const source = primary ? formatSource(primary) : undefined;
 	if (source) lines.push(`**Source:** ${source}`);
 
-	if (context.component) lines.push(`**Vue:** <${context.component}>`);
-	if (context.testid) lines.push(`**Test ID:** ${context.testid}`);
+	if (primary?.component) lines.push(`**Vue:** <${primary.component}>`);
+	if (primary?.testid) lines.push(`**Test ID:** ${primary.testid}`);
 
 	lines.push(`**Feedback:** ${prompt.trim()}`);
 	return lines;

@@ -11,11 +11,15 @@ function isInsideDevPanel(el: Element | null): boolean {
 	return false;
 }
 
+export type PickOptions = {
+	onShiftPick?: (el: Element) => void;
+};
+
 export function useElementPicker() {
 	const isPicking = ref(false);
 	const hoveredElement = shallowRef<Element | null>(null);
 	const selectedElement = shallowRef<Element | null>(null);
-	let onSelect: ((el: Element) => void) | null = null;
+	let shiftPickHandler: ((el: Element) => void) | null = null;
 
 	function handleMouseMove(event: MouseEvent) {
 		const target = document.elementFromPoint(event.clientX, event.clientY);
@@ -31,8 +35,13 @@ export function useElementPicker() {
 		if (!target || isInsideDevPanel(target)) return;
 		event.preventDefault();
 		event.stopPropagation();
+
+		if (event.shiftKey && shiftPickHandler) {
+			shiftPickHandler(target);
+			return;
+		}
+
 		selectedElement.value = target;
-		onSelect?.(target);
 		stop();
 	}
 
@@ -43,9 +52,9 @@ export function useElementPicker() {
 		}
 	}
 
-	function start(onPick?: (el: Element) => void) {
+	function start(options?: PickOptions) {
 		if (isPicking.value) return;
-		onSelect = onPick ?? null;
+		shiftPickHandler = options?.onShiftPick ?? null;
 		isPicking.value = true;
 		hoveredElement.value = null;
 		document.addEventListener('mousemove', handleMouseMove, true);
@@ -57,7 +66,7 @@ export function useElementPicker() {
 		if (!isPicking.value) return;
 		isPicking.value = false;
 		hoveredElement.value = null;
-		onSelect = null;
+		shiftPickHandler = null;
 		document.removeEventListener('mousemove', handleMouseMove, true);
 		document.removeEventListener('click', handleClick, true);
 		document.removeEventListener('keydown', handleKeyDown, true);

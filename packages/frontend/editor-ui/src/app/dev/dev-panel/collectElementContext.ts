@@ -13,6 +13,14 @@ function getReadableClasses(el: Element): string[] {
 	return Array.from(el.classList).map(normalizeClassName);
 }
 
+export type ElementBBox = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	isFixed: boolean;
+};
+
 export type ElementContext = {
 	file?: string;
 	line?: number;
@@ -24,6 +32,7 @@ export type ElementContext = {
 	outerHtmlSnippet?: string;
 	domPath?: string;
 	summary?: string;
+	bbox?: ElementBBox;
 };
 
 type VueAttachedElement = Element & {
@@ -73,13 +82,41 @@ function findComponentName(el: Element): string | undefined {
 	return undefined;
 }
 
-function buildSelector(el: Element): string {
-	if (el.id) return `#${el.id}`;
+function escapeAttributeValue(value: string): string {
+	return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function nthOfTypeSuffix(el: Element): string {
+	const parent = el.parentElement;
+	if (!parent) return '';
+	const sameTagSiblings = Array.from(parent.children).filter((c) => c.tagName === el.tagName);
+	if (sameTagSiblings.length <= 1) return '';
+	const index = sameTagSiblings.indexOf(el) + 1;
+	return `:nth-of-type(${index})`;
+}
+
+function buildSegment(el: Element): string {
+	if (el.id) return `#${CSS.escape(el.id)}`;
 	const testId = el.getAttribute('data-testid');
-	if (testId) return `[data-testid="${testId}"]`;
+	if (testId) return `[data-testid="${escapeAttributeValue(testId)}"]`;
 	const tag = el.tagName.toLowerCase();
-	const classes = getReadableClasses(el).slice(0, 3).join('.');
-	return classes ? `${tag}.${classes}` : tag;
+	const classes = Array.from(el.classList).slice(0, 3);
+	const classSelector = classes.map((c) => `.${CSS.escape(c)}`).join('');
+	return `${tag}${classSelector}${nthOfTypeSuffix(el)}`;
+}
+
+function buildSelector(el: Element): string {
+	const parts: string[] = [];
+	let current: Element | null = el;
+	let depth = 0;
+	while (current && depth < DOM_PATH_MAX_DEPTH) {
+		if (current.tagName === 'BODY' || current.tagName === 'HTML') break;
+		parts.unshift(buildSegment(current));
+		if (current.id) break;
+		current = current.parentElement;
+		depth += 1;
+	}
+	return parts.join(' > ');
 }
 
 function describeSegment(el: Element): string {
@@ -109,6 +146,28 @@ function extractText(el: Element): string | undefined {
 	const text = el.textContent?.replace(/\s+/g, ' ').trim();
 	if (!text) return undefined;
 	return text.length > SUMMARY_TEXT_MAX ? `${text.slice(0, SUMMARY_TEXT_MAX)}…` : text;
+}
+
+function hasFixedAncestor(el: Element): boolean {
+	let current: Element | null = el;
+	while (current) {
+		const position = window.getComputedStyle(current).position;
+		if (position === 'fixed' || position === 'sticky') return true;
+		current = current.parentElement;
+	}
+	return false;
+}
+
+function captureBBox(el: Element): ElementBBox {
+	const rect = el.getBoundingClientRect();
+	const isFixed = hasFixedAncestor(el);
+	return {
+		x: isFixed ? rect.left : rect.left + window.scrollX,
+		y: isFixed ? rect.top : rect.top + window.scrollY,
+		width: rect.width,
+		height: rect.height,
+		isFixed,
+	};
 }
 
 function buildSummary(el: Element, component?: string): string {
@@ -145,5 +204,6 @@ export function collectElementContext(el: Element): ElementContext {
 		outerHtmlSnippet: el.outerHTML.slice(0, OUTER_HTML_MAX),
 		domPath: buildDomPath(el),
 		summary: buildSummary(el, component),
+		bbox: captureBBox(el),
 	};
 }

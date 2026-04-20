@@ -8,8 +8,9 @@ const props = withDefaults(
 		channelAvailable: boolean;
 		initialPrompt?: string;
 		isEditing?: boolean;
+		elementsCount?: number;
 	}>(),
-	{ initialPrompt: '', isEditing: false },
+	{ initialPrompt: '', isEditing: false, elementsCount: 1 },
 );
 
 const emit = defineEmits<{
@@ -119,7 +120,7 @@ watch(
 				Cancel
 			</button>
 			<button
-				v-if="!isEditing"
+				v-if="!isEditing && elementsCount <= 1"
 				type="button"
 				class="dev-panel-button"
 				:disabled="!prompt.trim() || sending || !channelAvailable"
