@@ -6,7 +6,12 @@
 // for post-run verification.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiRichMessagesResponse, InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type {
+	InstanceAiRichMessagesResponse,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSubAgentRequest,
+	InstanceAiEvalSubAgentResponse,
+} from '@n8n/api-types';
 
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
@@ -142,6 +147,20 @@ export class N8nClient {
 		await this.fetch(`/rest/instance-ai/chat/${threadId}/cancel`, {
 			method: 'POST',
 		});
+	}
+
+	/**
+	 * Run an isolated sub-agent on the instance and return its result.
+	 * POST /rest/instance-ai/eval/run-sub-agent
+	 */
+	async runSubAgentEval(
+		request: InstanceAiEvalSubAgentRequest,
+	): Promise<InstanceAiEvalSubAgentResponse> {
+		const result = (await this.fetch('/rest/instance-ai/eval/run-sub-agent', {
+			method: 'POST',
+			body: request,
+		})) as { data: InstanceAiEvalSubAgentResponse };
+		return result.data;
 	}
 
 	/**
@@ -296,20 +315,20 @@ export class N8nClient {
 	}
 
 	/**
-	 * Archive a workflow (soft-delete). Required before hard-deleting.
-	 * POST /rest/workflows/:id/archive
+	 * Archive a workflow by ID (soft delete) — used by the eval CLI to clean up
+	 * workflows created during sub-agent runs.
+	 * DELETE /rest/workflows/:id
 	 */
 	async archiveWorkflow(id: string): Promise<void> {
-		await this.fetch(`/rest/workflows/${id}/archive`, { method: 'POST' });
+		await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
 	}
 
 	/**
-	 * Delete a workflow by ID. The workflow must be archived first.
+	 * Delete a workflow by ID.
 	 * DELETE /rest/workflows/:id
 	 */
 	async deleteWorkflow(id: string): Promise<void> {
 		await this.archiveWorkflow(id);
-		await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
 	}
 
 	/**
