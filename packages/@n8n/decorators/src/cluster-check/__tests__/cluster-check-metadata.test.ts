@@ -23,26 +23,6 @@ describe('ClusterCheckMetadata', () => {
 		expect(metadata.getClasses()).toContain(TestCheck);
 	});
 
-	it('should return all registered entries', () => {
-		class FirstCheck implements IClusterCheck {
-			checkDescription = { name: 'first.check' };
-			async run(_context: ClusterCheckContext): Promise<ClusterCheckResult> {
-				return {};
-			}
-		}
-		class SecondCheck implements IClusterCheck {
-			checkDescription = { name: 'second.check' };
-			async run(_context: ClusterCheckContext): Promise<ClusterCheckResult> {
-				return {};
-			}
-		}
-
-		metadata.register({ class: FirstCheck });
-		metadata.register({ class: SecondCheck });
-
-		expect(metadata.getEntries()).toHaveLength(2);
-	});
-
 	it('should return registered classes in registration order', () => {
 		class FirstCheck implements IClusterCheck {
 			checkDescription = { name: 'first.check' };

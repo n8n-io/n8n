@@ -70,25 +70,6 @@ export class ClusterCheckMetadata {
 	}
 
 	/**
-	 * Retrieves all registered entries as `[index, entry]` tuples.
-	 *
-	 * Primarily useful for debugging or low-level iteration. Prefer
-	 * {@link getClasses} for most use cases.
-	 *
-	 * @returns Array of `[index, entry]` tuples from the internal `Set`.
-	 *
-	 * @example
-	 * ```typescript
-	 * for (const [index, entry] of metadata.getEntries()) {
-	 *   console.log(`Check #${index}:`, entry.class.name);
-	 * }
-	 * ```
-	 */
-	getEntries() {
-		return [...this.clusterChecks.entries()];
-	}
-
-	/**
 	 * Retrieves all registered check class constructors in registration order.
 	 *
 	 * This is the primary method consumed by the Cluster Check Registry to
