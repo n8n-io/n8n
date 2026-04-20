@@ -7,6 +7,7 @@
 import { deepCopy } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { foldLegacyErrorConnections } from '../../../types/base';
 import type {
 	WorkflowJSON,
 	NodeJSON,
@@ -212,6 +213,11 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 				connections[nodeName] = nodeConns;
 			}
 		}
+
+		// Emit the modern error-pin shape (main[1]) regardless of whether the
+		// internal graph used an 'error' connection-type key (from .onError() or
+		// from an imported legacy workflow).
+		foldLegacyErrorConnections(connections);
 
 		// Build the workflow JSON
 		const json: WorkflowJSON = {

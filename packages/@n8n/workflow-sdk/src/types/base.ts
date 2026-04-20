@@ -157,6 +157,38 @@ export interface IConnections {
 }
 
 /**
+ * Fold legacy top-level `error` connection entries into the `main` output
+ * array in-place.
+ *
+ * Older n8n workflows serialized error-pin connections under a sibling
+ * `"error"` key next to `"main"` on a source node. The modern format — what
+ * the editor canvas renders and what `onError: 'continueErrorOutput'` exposes
+ * at runtime — puts the error pin as an extra slot at the end of the `main`
+ * array (index 1 for single-output nodes, index 2 for IF, etc.).
+ *
+ * Applied on both import and export so the SDK only ever hands out the modern
+ * shape, while still accepting legacy workflows as input.
+ */
+export function foldLegacyErrorConnections(connections: IConnections): void {
+	for (const nodeConns of Object.values(connections)) {
+		const errorOutputs = nodeConns.error;
+		if (!Array.isArray(errorOutputs) || errorOutputs.length === 0) continue;
+
+		const errorTargets = errorOutputs[0];
+		delete nodeConns.error;
+		if (!Array.isArray(errorTargets) || errorTargets.length === 0) continue;
+
+		const main = Array.isArray(nodeConns.main) ? nodeConns.main : [];
+		// If a node had only an error pin connected (no `main` key), pad an empty
+		// success slot so the error output ends up at `main[1]` — the correct
+		// position for a single-main-output node with onError: continueErrorOutput.
+		if (main.length === 0) main.push([]);
+		main.push(errorTargets);
+		nodeConns.main = main;
+	}
+}
+
+/**
  * Normalize workflow connections in-place.
  * Some workflows store connections as flat tuples [nodeName, type, index]
  * instead of the standard {node, type, index} objects. This converts them
