@@ -18,7 +18,12 @@ import {
 	traceSubAgentTools,
 	withTraceContextActor,
 } from './tracing-utils';
-import { renderHandoff } from '../../agent/handoff';
+import {
+	renderHandoff,
+	type HandoffRenderers,
+	type ResearchHandoffInput,
+	type SubAgentHandoff,
+} from '../../agent/handoff';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
@@ -30,6 +35,15 @@ import {
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
+
+function renderResearchTask(input: ResearchHandoffInput): string {
+	if (!input.constraints) return input.goal;
+	return `${input.goal}\n\nConstraints: ${input.constraints}`;
+}
+
+const researchRenderers: HandoffRenderers<Extract<SubAgentHandoff, { kind: 'research' }>> = {
+	buildTaskBlock: (h) => renderResearchTask(h.input),
+};
 
 export interface StartResearchAgentInput {
 	goal: string;
@@ -93,6 +107,7 @@ export async function startResearchAgentTask(
 			},
 		},
 		context,
+		researchRenderers,
 	);
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,

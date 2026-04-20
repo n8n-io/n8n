@@ -18,6 +18,7 @@ import {
 	observeOutcome,
 	renderHandoff,
 	type DelegateHandoffInput,
+	type HandoffRenderers,
 	type SubAgentHandoff,
 } from '../../agent/handoff';
 import { registerWithMastra } from '../../agent/register-with-mastra';
@@ -71,7 +72,7 @@ function buildDelegateHandoff(params: {
 	toolNames: string[];
 	artifacts?: unknown;
 	conversationContext?: string;
-}): SubAgentHandoff {
+}): Extract<SubAgentHandoff, { kind: 'delegate' }> {
 	const input: DelegateHandoffInput = {
 		role: params.role,
 		instructions: params.instructions,
@@ -83,11 +84,25 @@ function buildDelegateHandoff(params: {
 	return { taskKey: `delegate:${params.role}`, kind: 'delegate', input };
 }
 
+/** Merge the delegate's `artifacts` map with resolved resource IDs so the child sees a flat object. */
+const delegateRenderers: HandoffRenderers<Extract<SubAgentHandoff, { kind: 'delegate' }>> = {
+	buildTaskBlock: (h) => h.input.goal,
+	buildArtifacts: (h) => {
+		const merged: Record<string, unknown> = { ...(h.input.artifacts ?? {}) };
+		if (h.input.resources) {
+			for (const [k, v] of Object.entries(h.input.resources)) {
+				if (v !== undefined) merged[k] = v;
+			}
+		}
+		return Object.keys(merged).length > 0 ? merged : undefined;
+	},
+};
+
 async function renderDelegateBriefing(
 	context: OrchestrationContext,
-	handoff: SubAgentHandoff,
+	handoff: Extract<SubAgentHandoff, { kind: 'delegate' }>,
 ): Promise<string> {
-	const briefing = await renderHandoff(handoff, context);
+	const briefing = await renderHandoff(handoff, context, delegateRenderers);
 	return `${briefing}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
 }
 

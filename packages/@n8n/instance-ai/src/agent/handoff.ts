@@ -2,6 +2,11 @@
  * Unified sub-agent handoff contract: one typed envelope in (`SubAgentHandoff`),
  * one typed outcome out (`SubAgentOutcome`), one renderer (`renderHandoff`),
  * one observer (`observeOutcome`).
+ *
+ * `renderHandoff` is prompt-agnostic: each calling tool passes a
+ * `HandoffRenderers` bundle that produces the kind-specific sections. This file
+ * owns only the generic framing (conversation context, thread state, iteration
+ * log) so tool-specific prompts live next to the tools that use them.
  */
 
 import { z } from 'zod';
@@ -138,26 +143,39 @@ export interface HandoffRenderContext {
 	getRunningTaskSummaries?: () => Array<{ taskId: string; role: string; goal?: string }>;
 }
 
+/**
+ * Kind-specific prompt pieces supplied by the calling tool. Keeps the prompt
+ * strings co-located with the tool that owns the sub-agent instead of in
+ * `handoff.ts`. `buildTaskBlock` is required so a tool cannot skip producing
+ * the main `<task>` block.
+ */
+export interface HandoffRenderers<H extends SubAgentHandoff = SubAgentHandoff> {
+	buildTaskBlock: (handoff: H) => string;
+	buildArtifacts?: (handoff: H) => Record<string, unknown> | undefined;
+	buildRequirements?: (handoff: H) => string | undefined;
+}
+
 /** Render a handoff into the XML briefing string the child consumes via `Agent.stream()`. */
-export async function renderHandoff(
-	handoff: SubAgentHandoff,
+export async function renderHandoff<H extends SubAgentHandoff>(
+	handoff: H,
 	ctx: HandoffRenderContext,
+	renderers: HandoffRenderers<H>,
 ): Promise<string> {
 	const parts: string[] = [];
 
-	parts.push(`<task>\n${taskBlockFor(handoff)}\n</task>`);
+	parts.push(`<task>\n${renderers.buildTaskBlock(handoff)}\n</task>`);
 
-	const conversationContext = conversationContextFor(handoff);
+	const conversationContext = extractConversationContext(handoff);
 	if (conversationContext) {
 		parts.push(`<conversation-context>\n${conversationContext}\n</conversation-context>`);
 	}
 
-	const artifacts = artifactsFor(handoff);
+	const artifacts = renderers.buildArtifacts?.(handoff);
 	if (artifacts && Object.keys(artifacts).length > 0) {
 		parts.push(`<artifacts>\n${JSON.stringify(artifacts)}\n</artifacts>`);
 	}
 
-	const requirements = requirementsFor(handoff);
+	const requirements = renderers.buildRequirements?.(handoff);
 	if (requirements) {
 		parts.push(requirements);
 	}
@@ -186,132 +204,12 @@ export async function renderHandoff(
 	return parts.join('\n\n');
 }
 
-function taskBlockFor(h: SubAgentHandoff): string {
-	switch (h.kind) {
-		case 'delegate':
-			return h.input.goal;
-		case 'build-workflow':
-			return renderBuilderTask(h.input);
-		case 'research':
-			return renderResearchTask(h.input);
-		case 'manage-data-tables':
-			return h.input.goal;
-		case 'planner':
-			return renderPlannerTask(h.input);
-		case 'browser-credential-setup':
-			return renderBrowserCredTask(h.input);
-	}
-}
-
-function conversationContextFor(h: SubAgentHandoff): string | undefined {
-	switch (h.kind) {
-		case 'delegate':
-		case 'build-workflow':
-		case 'research':
-		case 'manage-data-tables':
-			return h.input.conversationContext;
-		default:
-			return undefined;
-	}
-}
-
-function artifactsFor(h: SubAgentHandoff): Record<string, unknown> | undefined {
-	if (h.kind !== 'delegate') return undefined;
-	const merged: Record<string, unknown> = { ...(h.input.artifacts ?? {}) };
-	if (h.input.resources) {
-		for (const [k, v] of Object.entries(h.input.resources)) {
-			if (v !== undefined) merged[k] = v;
-		}
-	}
-	return Object.keys(merged).length > 0 ? merged : undefined;
-}
-
-function requirementsFor(h: SubAgentHandoff): string | undefined {
-	if (h.kind === 'build-workflow' && h.input.sandboxMode) {
-		return DETACHED_BUILDER_REQUIREMENTS;
+/** Read `conversationContext` off any handoff input that carries it — no kind dispatch. */
+function extractConversationContext(h: SubAgentHandoff): string | undefined {
+	if ('conversationContext' in h.input && typeof h.input.conversationContext === 'string') {
+		return h.input.conversationContext;
 	}
 	return undefined;
-}
-
-function renderBuilderTask(input: BuilderHandoffInput): string {
-	const lines: string[] = [input.goal];
-	if (input.sandboxMode) {
-		lines.push('', `[WORK ITEM ID: ${input.workItemId}]`);
-		if (input.workflowId) {
-			lines.push(
-				`[CONTEXT: Modifying existing workflow ${input.workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${input.workflowId}" when calling submit-workflow.]`,
-			);
-		}
-	} else if (input.workflowId) {
-		lines.push(
-			'',
-			`[CONTEXT: Modifying existing workflow ${input.workflowId}. Use workflowId "${input.workflowId}" when calling build-workflow.]`,
-		);
-	}
-	return lines.join('\n');
-}
-
-function renderResearchTask(input: ResearchHandoffInput): string {
-	if (!input.constraints) return input.goal;
-	return `${input.goal}\n\nConstraints: ${input.constraints}`;
-}
-
-function renderPlannerTask(input: PlannerHandoffInput): string {
-	const parts: string[] = [];
-
-	if (input.recentMessages.length > 0) {
-		parts.push('## Recent conversation');
-		for (const m of input.recentMessages) {
-			const label = m.role === 'user' ? 'User' : 'Assistant';
-			const content = m.text.length > 2000 ? m.text.slice(0, 2000) + '...' : m.text;
-			parts.push(`**${label}:** ${content}`);
-		}
-	}
-
-	if (input.guidance) {
-		parts.push(`\n## Orchestrator guidance\n${input.guidance}`);
-	}
-
-	parts.push('\nDesign the solution blueprint based on the conversation above.');
-
-	return parts.join('\n\n');
-}
-
-function renderBrowserCredTask(input: BrowserCredHandoffInput): string {
-	const docsLine = input.docsUrl
-		? `**Documentation:** ${input.docsUrl}`
-		: '**Documentation:** No URL available — use `research` (action: web-search) to find setup instructions.';
-
-	let fieldsSection = '';
-	if (input.requiredFields && input.requiredFields.length > 0) {
-		const fieldLines = input.requiredFields.map((f) => {
-			const req = f.required ? ' [REQUIRED]' : '';
-			const desc = f.description ? ': ' + f.description : '';
-			return `- ${f.displayName} (${f.name})${req}${desc}`;
-		});
-		fieldsSection = `\n### Required Fields\n${fieldLines.join('\n')}`;
-	}
-
-	const isOAuth = input.credentialType.toLowerCase().includes('oauth');
-	const oauthSection =
-		isOAuth && input.oauth2CallbackUrl
-			? `\n### OAuth Redirect URL\n${input.oauth2CallbackUrl}\n` +
-				'Paste this into the "Authorized redirect URIs" field. ' +
-				'Do NOT navigate to the n8n instance to find it — use this URL directly.'
-			: '';
-
-	return [
-		`## Credential Setup: ${input.credentialType}`,
-		'',
-		docsLine,
-		fieldsSection,
-		oauthSection,
-		'',
-		'### Completion Criteria',
-		'Done ONLY when all required values are visible on screen or downloaded, and you have called `pause-for-user` telling the user what to copy.',
-	]
-		.filter(Boolean)
-		.join('\n');
 }
 
 /** UI-facing plan item shape; byte-identical to `plannedTaskArgSchema` in `@n8n/api-types`. */
@@ -384,43 +282,3 @@ export function observeOutcome(input: ObserveOutcomeInput): SubAgentOutcomeBase 
 		...(blockers.length > 0 ? { blockers } : {}),
 	};
 }
-
-// Kept in sync with `UNTESTABLE_TRIGGERS` in `build-workflow-agent.tool.ts`;
-// hardcoded to avoid a circular import.
-const UNTESTABLE_TRIGGER_LABELS = 'webhook, form, mcp, chat';
-
-const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
-
-You are running as a detached background task. Do not stop after a successful submit — verify the workflow works.
-
-### Completion criteria
-
-Your job is done when ONE of these is true:
-- the workflow is verified (ran successfully)
-- the workflow uses only event triggers (${UNTESTABLE_TRIGGER_LABELS}) and cannot be runtime-tested — stop after a successful submit. Do NOT publish it; the orchestrator will handle setup and publishing.
-- you are blocked after one repair attempt per unique failure
-
-### Submit discipline
-
-**Every file edit MUST be followed by submit-workflow before you do anything else.**
-The system tracks file hashes. If you edit the code and then call run-workflow or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/run.
-
-### Verification
-
-- If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
-- Otherwise call run-workflow to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
-- If verification fails, call debug-execution, fix the code, re-submit, and retry once
-- If the same failure signature repeats, stop and explain the block
-
-### Resource discovery
-
-Before writing code that uses external services, **resolve real resource IDs**:
-- Call explore-node-resources for any parameter with searchListMethod (calendars, spreadsheets, channels, models, etc.)
-- Do NOT use "primary", "default", or any assumed identifier — look up the actual value
-- Call get-suggested-nodes early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
-- Check @builderHint annotations in node type definitions for critical configuration guidance
-
-### Publishing
-
-Do NOT call \`publish-workflow\` for the main workflow. Publishing is the user's decision after testing. Your job ends at a successful submit. The only exception is sub-workflows in the compositional pattern — those must be published so the parent workflow can reference them.
-`;

@@ -30,7 +30,12 @@ import {
 	traceSubAgentTools,
 	withTraceRun,
 } from './tracing-utils';
-import { renderHandoff, type PlannerHandoffInput } from '../../agent/handoff';
+import {
+	renderHandoff,
+	type HandoffRenderers,
+	type PlannerHandoffInput,
+	type SubAgentHandoff,
+} from '../../agent/handoff';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
@@ -40,6 +45,31 @@ import type { OrchestrationContext } from '../../types';
 
 /** Number of recent thread messages to include as planner context. */
 const MESSAGE_HISTORY_COUNT = 5;
+
+function renderPlannerTask(input: PlannerHandoffInput): string {
+	const parts: string[] = [];
+
+	if (input.recentMessages.length > 0) {
+		parts.push('## Recent conversation');
+		for (const m of input.recentMessages) {
+			const label = m.role === 'user' ? 'User' : 'Assistant';
+			const content = m.text.length > 2000 ? m.text.slice(0, 2000) + '...' : m.text;
+			parts.push(`**${label}:** ${content}`);
+		}
+	}
+
+	if (input.guidance) {
+		parts.push(`\n## Orchestrator guidance\n${input.guidance}`);
+	}
+
+	parts.push('\nDesign the solution blueprint based on the conversation above.');
+
+	return parts.join('\n\n');
+}
+
+const plannerRenderers: HandoffRenderers<Extract<SubAgentHandoff, { kind: 'planner' }>> = {
+	buildTaskBlock: (h) => renderPlannerTask(h.input),
+};
 
 /** Read-only discovery tools the planner gets from domainTools. */
 const PLANNER_DOMAIN_TOOL_NAMES = [
@@ -213,6 +243,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					input: { recentMessages: messages, guidance: input.guidance },
 				},
 				context,
+				plannerRenderers,
 			);
 			const subtitle =
 				input.guidance ?? messages.find((m) => m.role === 'user')?.text ?? 'Planning...';

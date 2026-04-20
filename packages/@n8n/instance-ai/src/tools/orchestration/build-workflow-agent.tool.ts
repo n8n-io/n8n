@@ -29,6 +29,7 @@ import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import {
 	renderHandoff,
 	type BuilderHandoffInput,
+	type HandoffRenderers,
 	type SubAgentHandoff,
 	type SubAgentOutcome,
 } from '../../agent/handoff';
@@ -61,6 +62,67 @@ const UNTESTABLE_TRIGGERS = new Set([
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
+
+const UNTESTABLE_TRIGGER_LABELS = 'webhook, form, mcp, chat';
+
+const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
+
+You are running as a detached background task. Do not stop after a successful submit — verify the workflow works.
+
+### Completion criteria
+
+Your job is done when ONE of these is true:
+- the workflow is verified (ran successfully)
+- the workflow uses only event triggers (${UNTESTABLE_TRIGGER_LABELS}) and cannot be runtime-tested — stop after a successful submit. Do NOT publish it; the orchestrator will handle setup and publishing.
+- you are blocked after one repair attempt per unique failure
+
+### Submit discipline
+
+**Every file edit MUST be followed by submit-workflow before you do anything else.**
+The system tracks file hashes. If you edit the code and then call run-workflow or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/run.
+
+### Verification
+
+- If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
+- Otherwise call run-workflow to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
+- If verification fails, call debug-execution, fix the code, re-submit, and retry once
+- If the same failure signature repeats, stop and explain the block
+
+### Resource discovery
+
+Before writing code that uses external services, **resolve real resource IDs**:
+- Call explore-node-resources for any parameter with searchListMethod (calendars, spreadsheets, channels, models, etc.)
+- Do NOT use "primary", "default", or any assumed identifier — look up the actual value
+- Call get-suggested-nodes early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
+- Check @builderHint annotations in node type definitions for critical configuration guidance
+
+### Publishing
+
+Do NOT call \`publish-workflow\` for the main workflow. Publishing is the user's decision after testing. Your job ends at a successful submit. The only exception is sub-workflows in the compositional pattern — those must be published so the parent workflow can reference them.
+`;
+
+function renderBuilderTask(input: BuilderHandoffInput): string {
+	const lines: string[] = [input.goal];
+	if (input.sandboxMode) {
+		lines.push('', `[WORK ITEM ID: ${input.workItemId}]`);
+		if (input.workflowId) {
+			lines.push(
+				`[CONTEXT: Modifying existing workflow ${input.workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${input.workflowId}" when calling submit-workflow.]`,
+			);
+		}
+	} else if (input.workflowId) {
+		lines.push(
+			'',
+			`[CONTEXT: Modifying existing workflow ${input.workflowId}. Use workflowId "${input.workflowId}" when calling build-workflow.]`,
+		);
+	}
+	return lines.join('\n');
+}
+
+const builderRenderers: HandoffRenderers<Extract<SubAgentHandoff, { kind: 'build-workflow' }>> = {
+	buildTaskBlock: (h) => renderBuilderTask(h.input),
+	buildRequirements: (h) => (h.input.sandboxMode ? DETACHED_BUILDER_REQUIREMENTS : undefined),
+};
 
 function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerType {
 	if (!attempt?.triggerNodeTypes || attempt.triggerNodeTypes.length === 0) {
@@ -278,12 +340,12 @@ export async function startBuildWorkflowAgentTask(
 		sandboxMode: useSandbox,
 		conversationContext: input.conversationContext,
 	};
-	const handoff: SubAgentHandoff = {
+	const handoff: Extract<SubAgentHandoff, { kind: 'build-workflow' }> = {
 		taskKey: `build:${workflowId ?? 'new'}`,
 		kind: 'build-workflow',
 		input: builderInput,
 	};
-	const briefing = await renderHandoff(handoff, context);
+	const briefing = await renderHandoff(handoff, context, builderRenderers);
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'workflow-builder',

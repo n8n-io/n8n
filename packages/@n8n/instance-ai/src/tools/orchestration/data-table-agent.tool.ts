@@ -19,7 +19,7 @@ import {
 	traceSubAgentTools,
 	withTraceContextActor,
 } from './tracing-utils';
-import { renderHandoff } from '../../agent/handoff';
+import { renderHandoff, type HandoffRenderers, type SubAgentHandoff } from '../../agent/handoff';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
@@ -33,6 +33,12 @@ import {
 import type { OrchestrationContext } from '../../types';
 
 const DATA_TABLE_TOOL_NAME = 'data-tables';
+
+const dataTableRenderers: HandoffRenderers<
+	Extract<SubAgentHandoff, { kind: 'manage-data-tables' }>
+> = {
+	buildTaskBlock: (h) => h.input.goal,
+};
 
 export interface StartDataTableAgentInput {
 	task: string;
@@ -144,6 +150,7 @@ export async function startDataTableAgentTask(
 						},
 					},
 					context,
+					dataTableRenderers,
 				);
 
 				const traceParent = getTraceParentRun();
