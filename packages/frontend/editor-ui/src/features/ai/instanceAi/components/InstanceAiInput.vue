@@ -38,7 +38,8 @@ const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length >
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-const canSubmit = computed(() => isComposerDirty.value && !isBusy.value);
+const isGatedBySetup = computed(() => store.isAwaitingConfirmation);
+const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGatedBySetup.value);
 const canShowSuggestions = computed(
 	() => Boolean(props.suggestions?.length) && !isComposerDirty.value && !isBusy.value,
 );
@@ -47,6 +48,9 @@ const visibleSuggestionThreadId = computed(() =>
 );
 
 const placeholder = computed(() => {
+	if (isGatedBySetup.value) {
+		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
+	}
 	if (previewPromptKey.value && isInputVisuallyEmpty.value) {
 		return i18n.baseText(previewPromptKey.value);
 	}
@@ -88,7 +92,7 @@ function resetDraftComposer() {
 }
 
 function canSubmitMessage(message: string, attachmentCount = 0) {
-	return (message.length > 0 || attachmentCount > 0) && !isBusy.value;
+	return (message.length > 0 || attachmentCount > 0) && !isBusy.value && !isGatedBySetup.value;
 }
 
 function submitComposerMessage(message: string, attachments?: InstanceAiAttachment[]) {
@@ -183,6 +187,7 @@ function handleSuggestionSubmit(payload: {
 			:placeholder="placeholder"
 			:is-streaming="props.isStreaming"
 			:can-submit="canSubmit"
+			:disabled="isGatedBySetup"
 			show-voice
 			show-attach
 			@submit="handleSubmit"

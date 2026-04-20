@@ -275,6 +275,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return items;
 	});
 
+	/** True while the run is paused awaiting the user to resolve a confirmation (e.g. workflow setup wizard). */
+	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
+
 	function resolveConfirmation(
 		requestId: string,
 		action: 'approved' | 'denied' | 'deferred',
@@ -1033,6 +1036,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsPercentageRemaining,
 		isLowCredits,
 		pendingConfirmations,
+		isAwaitingConfirmation,
 		// Actions
 		newThread,
 		deleteThread,
