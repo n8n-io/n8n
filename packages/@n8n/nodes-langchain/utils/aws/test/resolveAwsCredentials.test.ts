@@ -18,8 +18,13 @@ jest.mock('n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils',
 	getSystemCredentials: jest.fn(),
 }));
 
+jest.mock('@n8n/ai-utilities', () => ({
+	getNodeProxyAgent: jest.fn(),
+}));
+
 import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
 import { getSystemCredentials } from 'n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils';
+import { getNodeProxyAgent } from '@n8n/ai-utilities';
 
 import { resolveAwsCredentials } from '../resolveAwsCredentials';
 
@@ -219,5 +224,51 @@ describe('resolveAwsCredentials — useSystemCredentialsForRole', () => {
 		await masterProvider();
 		await masterProvider();
 		expect(getSystemCredentials).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('resolveAwsCredentials — proxy target URL', () => {
+	beforeEach(() => {
+		(getNodeProxyAgent as jest.Mock).mockReset();
+		(fromTemporaryCredentials as jest.Mock).mockClear();
+	});
+
+	it('calls getNodeProxyAgent with the concrete STS endpoint URL', async () => {
+		(getNodeProxyAgent as jest.Mock).mockReturnValue(undefined);
+		const context = makeContext({
+			authentication: 'assumeRole',
+			awsAssumeRoleCredential: {
+				region: 'eu-west-2',
+				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'ext-id',
+				roleSessionName: 'n8n-session',
+				stsAccessKeyId: 'AKIASTS',
+				stsSecretAccessKey: 'stsSecret',
+				useSystemCredentialsForRole: false,
+			},
+		});
+		await resolveAwsCredentials(context);
+		expect(getNodeProxyAgent).toHaveBeenCalledWith('https://sts.eu-west-2.amazonaws.com');
+	});
+
+	it('builds a NodeHttpHandler only when getNodeProxyAgent returns a proxy', async () => {
+		(getNodeProxyAgent as jest.Mock).mockReturnValue(undefined);
+		const context = makeContext({
+			authentication: 'assumeRole',
+			awsAssumeRoleCredential: {
+				region: 'us-east-1',
+				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'ext-id',
+				roleSessionName: 'n8n-session',
+				stsAccessKeyId: 'AKIASTS',
+				stsSecretAccessKey: 'stsSecret',
+				useSystemCredentialsForRole: false,
+			},
+		});
+		await resolveAwsCredentials(context);
+		const callArg = (fromTemporaryCredentials as jest.Mock).mock.calls[0][0] as {
+			clientConfig: { requestHandler?: unknown };
+		};
+		expect(callArg.clientConfig.requestHandler).toBeUndefined();
 	});
 });
