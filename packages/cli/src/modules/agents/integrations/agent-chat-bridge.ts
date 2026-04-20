@@ -97,11 +97,11 @@ export class AgentChatBridge {
 	/** Short-lived set of run IDs that have been resumed to prevent double resumption */
 	private readonly activeResumedRuns = new Set<string>();
 
-	/** Store for shortening callback data on platforms with size limits (Telegram, WhatsApp, etc.) */
+	/** Store for shortening callback data on platforms with size limits (Telegram) */
 	private readonly callbackStore?: CallbackStore;
 
 	/** Platforms where callback data must be shortened */
-	private static readonly SHORT_CALLBACK_PLATFORMS = new Set(['telegram', 'whatsapp']);
+	private static readonly SHORT_CALLBACK_PLATFORMS = new Set(['telegram']);
 
 	constructor(
 		private readonly bot: ChatBot,
