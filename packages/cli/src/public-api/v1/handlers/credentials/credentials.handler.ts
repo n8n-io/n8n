@@ -6,14 +6,15 @@ import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type express from 'express';
-import type { ICredentialsDecrypted } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	validCredentialsProperties,
@@ -123,22 +124,19 @@ export = {
 			express.Response<{ status: 'OK' | 'Error'; message: string } | { message: string }>
 		> => {
 			const { id: credentialId } = req.params;
-			const storedCredential = await getCredential(credentialId);
-			if (!storedCredential) {
-				return res.status(404).json({ message: 'Not Found' });
+			try {
+				const credentialTestResult = await Container.get(CredentialsService).testById(
+					req.user.id,
+					credentialId,
+				);
+				return res.json(credentialTestResult);
+			} catch (error) {
+				if (error instanceof CredentialNotFoundError) {
+					throw new NotFoundError(error.message);
+				}
+
+				throw error;
 			}
-
-			const credentialsService = Container.get(CredentialsService);
-			const decryptedData = credentialsService.decrypt(storedCredential, true);
-			const mergedCredentials: ICredentialsDecrypted = {
-				id: storedCredential.id,
-				name: storedCredential.name,
-				type: storedCredential.type,
-				data: decryptedData,
-			};
-
-			const credentialTestResult = await credentialsService.test(req.user.id, mergedCredentials);
-			return res.json(credentialTestResult);
 		},
 	],
 	createCredential: [
