@@ -1,0 +1,34 @@
+type: object
+properties:
+  force:
+    type: boolean
+    example: false
+  commitMessage:
+    type: string
+    example: 'chore: automated daily push'
+  ids:
+    type: array
+    description: >
+      Simple list of workflow or credential IDs to push (e.g. ["abc123", "def456"]).
+      Takes precedence over fileNames. If both ids and fileNames are omitted or empty,
+      all eligible files will be pushed.
+    items:
+      type: string
+    example: ['abc123', 'def456']
+  fileNames:
+    type: array
+    description: >
+      List of file selectors (id + type) to push. Use ids instead for an even simpler interface.
+      If both ids and fileNames are omitted or empty, all eligible files will be pushed.
+      Only id and type are required; all other file metadata is resolved server-side.
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [workflow, credential, variables, tags, folders, project, datatable]
+      required:
+        - id
+        - type

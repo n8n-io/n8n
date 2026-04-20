@@ -1,0 +1,25 @@
+type: array
+items:
+  type: object
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    type:
+      type: string
+      enum: [workflow, credential, variables, tags, folders, project, datatable]
+    status:
+      type: string
+      enum: [new, modified, deleted, renamed, conflicted, ignored]
+    location:
+      type: string
+      enum: [local, remote]
+    conflict:
+      type: boolean
+    file:
+      type: string
+    updatedAt:
+      type: string
+    pushed:
+      type: boolean

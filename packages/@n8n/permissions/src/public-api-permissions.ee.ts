@@ -14,6 +14,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:delete',
 	'user:enforceMfa',
 	'sourceControl:pull',
+	'sourceControl:push',
 	'securityAudit:generate',
 	'project:create',
 	'project:update',
