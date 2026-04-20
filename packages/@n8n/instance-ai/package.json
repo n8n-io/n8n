@@ -10,9 +10,9 @@
     "test": "jest",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "eval:instance-ai": "node evaluations/cli/boot.cjs",
-    "eval:e2e": "node evaluations/cli/boot.cjs e2e",
-    "eval:subagent": "node evaluations/cli/boot.cjs subagent"
+    "eval:instance-ai": "tsx evaluations/cli/boot.ts",
+    "eval:e2e": "tsx evaluations/cli/boot.ts e2e",
+    "eval:subagent": "tsx evaluations/cli/boot.ts subagent"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
