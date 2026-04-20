@@ -36,15 +36,16 @@ describe('HubspotTrigger getEntityProperties', () => {
 		expect(mockedHubspotApiRequest.mock.contexts[0]).toBe(context);
 	});
 
-	it('returns empty array for non-array responses', async () => {
+	it('throws for non-array responses', async () => {
 		mockedHubspotApiRequest.mockResolvedValueOnce({ results: [] });
+		const endpoint = '/properties/v2/contacts/properties';
+		const context = {
+			getNode: jest.fn().mockReturnValue({}),
+		} as unknown as ILoadOptionsFunctions;
 
-		const result = await getEntityProperties.call(
-			{} as ILoadOptionsFunctions,
-			'/properties/v2/contacts/properties',
+		await expect(getEntityProperties.call(context, endpoint)).rejects.toThrow(
+			`HubSpot returned an unexpected response while loading properties from "${endpoint}". Expected an array of properties.`,
 		);
-
-		expect(result).toEqual([]);
 	});
 
 	it('filters invalid property entries', async () => {

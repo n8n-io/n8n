@@ -21,7 +21,10 @@ export async function getEntityProperties(
 	const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 
 	if (!Array.isArray(properties)) {
-		return returnData;
+		throw new NodeOperationError(
+			this.getNode(),
+			`HubSpot returned an unexpected response while loading properties from "${endpoint}". Expected an array of properties.`,
+		);
 	}
 
 	for (const property of properties) {
