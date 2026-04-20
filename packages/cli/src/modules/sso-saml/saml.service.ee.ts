@@ -6,7 +6,7 @@ import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import axios from 'axios';
-import { createPublicKey, X509Certificate } from 'crypto';
+import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
 import type express from 'express';
 import { Cipher, createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -40,12 +40,16 @@ import { SamlValidator } from './saml-validator';
 import { getServiceProviderInstance } from './service-provider.ee';
 import type { SamlLoginBinding, SamlUserAttributes } from './types';
 
+const TEST_CONFIG_TTL_MS = 10 * 60 * 1000;
+
 @Service()
 export class SamlService {
 	private identityProviderInstance: IdentityProviderInstance | undefined;
 
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	private samlify: typeof import('samlify') | undefined;
+
+	private readonly pendingTestConfigs = new Map<string, { metadata: string; expiresAt: number }>();
 
 	private _samlPreferences: SamlPreferences = {
 		mapping: {
@@ -292,17 +296,9 @@ export class SamlService {
 			throw new UnexpectedError('Samlify is not initialized');
 		}
 
-		let idp: IdentityProviderInstance;
-		if (metadata) {
-			const validationResult = await this.validator.validateMetadata(metadata);
-			if (!validationResult) {
-				throw new InvalidSamlMetadataError();
-			}
-			idp = this.samlify.IdentityProvider({ metadata });
-			this.validator.validateIdentityProvider(idp);
-		} else {
-			idp = this.getIdentityProviderInstance();
-		}
+		const idp = metadata
+			? await this.createIdentityProviderFromMetadata(metadata)
+			: this.getIdentityProviderInstance();
 
 		binding ??= this._samlPreferences.loginBinding ?? 'redirect';
 		const sp = this.getServiceProviderInstance();
@@ -314,9 +310,61 @@ export class SamlService {
 		};
 	}
 
+	/**
+	 * Temporarily stores IdP metadata for a pending connection test so it can be
+	 * retrieved when the IdP posts back to the ACS endpoint. Returns an opaque
+	 * token to be embedded in the RelayState.
+	 */
+	storePendingTestConfig(metadata: string): string {
+		this.pruneExpiredTestConfigs();
+		const testId = randomBytes(6).toString('hex');
+		this.pendingTestConfigs.set(testId, {
+			metadata,
+			expiresAt: Date.now() + TEST_CONFIG_TTL_MS,
+		});
+		return testId;
+	}
+
+	/**
+	 * Retrieves and removes the pending test metadata associated with the given
+	 * token. Returns undefined if the token is unknown or expired.
+	 */
+	consumePendingTestConfig(testId: string): string | undefined {
+		this.pruneExpiredTestConfigs();
+		const entry = this.pendingTestConfigs.get(testId);
+		if (!entry) return undefined;
+		this.pendingTestConfigs.delete(testId);
+		if (entry.expiresAt < Date.now()) return undefined;
+		return entry.metadata;
+	}
+
+	private pruneExpiredTestConfigs(): void {
+		const now = Date.now();
+		for (const [id, entry] of this.pendingTestConfigs) {
+			if (entry.expiresAt < now) this.pendingTestConfigs.delete(id);
+		}
+	}
+
+	private async createIdentityProviderFromMetadata(
+		metadata: string,
+	): Promise<IdentityProviderInstance> {
+		await this.loadSamlify();
+		if (this.samlify === undefined) {
+			throw new UnexpectedError('Samlify is not initialized');
+		}
+		const validationResult = await this.validator.validateMetadata(metadata);
+		if (!validationResult) {
+			throw new InvalidSamlMetadataError();
+		}
+		const idp = this.samlify.IdentityProvider({ metadata });
+		this.validator.validateIdentityProvider(idp);
+		return idp;
+	}
+
 	async handleSamlLogin(
 		req: express.Request,
 		binding: SamlLoginBinding,
+		metadataOverride?: string,
 	): Promise<{
 		authenticatedUser: User | undefined;
 		attributes: SamlUserAttributes;
@@ -325,6 +373,7 @@ export class SamlService {
 		const { mapped: attributes, raw: rawAttributes } = await this.getAttributesFromLoginResponse(
 			req,
 			binding,
+			metadataOverride,
 		);
 
 		if (attributes.email) {
@@ -660,14 +709,18 @@ export class SamlService {
 	async getAttributesFromLoginResponse(
 		req: express.Request,
 		binding: SamlLoginBinding,
+		metadataOverride?: string,
 	): Promise<{ mapped: SamlUserAttributes; raw: Record<string, unknown> }> {
 		let parsedSamlResponse;
 		if (!this._samlPreferences.mapping)
 			throw new BadRequestError('Error fetching SAML Attributes, no Attribute mapping set');
 		try {
 			await this.loadSamlify();
+			const idp = metadataOverride
+				? await this.createIdentityProviderFromMetadata(metadataOverride)
+				: this.getIdentityProviderInstance();
 			parsedSamlResponse = await this.getServiceProviderInstance().parseLoginResponse(
-				this.getIdentityProviderInstance(),
+				idp,
 				binding,
 				req,
 			);

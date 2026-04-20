@@ -162,5 +162,16 @@ export function getMappedSamlAttributesFromFlowResult(
 }
 
 export function isConnectionTestRequest(payload: SamlAcsDto): boolean {
-	return payload.RelayState === getServiceProviderConfigTestReturnUrl();
+	if (!payload.RelayState) return false;
+	return payload.RelayState.startsWith(getServiceProviderConfigTestReturnUrl());
+}
+
+export function extractTestIdFromRelayState(relayState: string | undefined): string | undefined {
+	if (!relayState) return undefined;
+	try {
+		const url = new URL(relayState);
+		return url.searchParams.get('t') ?? undefined;
+	} catch {
+		return undefined;
+	}
 }
