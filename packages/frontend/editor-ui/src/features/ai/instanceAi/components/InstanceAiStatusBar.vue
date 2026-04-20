@@ -132,16 +132,16 @@ onUnmounted(() => {
 }
 
 .muted {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 
 	.label {
-		color: var(--color--text--tint-2);
+		color: var(--color--text--tint-1);
 		font-weight: var(--font-weight--regular);
 	}
 }
 
 .glyph {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 
