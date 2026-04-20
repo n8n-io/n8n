@@ -12,9 +12,7 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const tools = computed<AgentJsonToolRef[]>(() => props.config?.tools ?? []);
 
-const nodeToolsEnabled = computed<boolean>(
-	() => props.config?.config?.nodeTools?.enabled !== false,
-);
+const nodeToolsEnabled = computed<boolean>(() => props.config?.config?.nodeTools?.enabled === true);
 
 function setNodeToolsEnabled(enabled: boolean) {
 	emit('update:config', {

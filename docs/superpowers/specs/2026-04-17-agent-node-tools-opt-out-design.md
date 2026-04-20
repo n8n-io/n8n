@@ -1,21 +1,20 @@
 # Per-agent toggle for the built-in node tool chain
 
-**Status:** Approved (2026-04-17)
+**Status:** Approved (2026-04-17) — revised to opt-in default on 2026-04-20
 
 ## Summary
 
 The agent runtime currently attaches the built-in node tool chain
 (`search_nodes`, `get_node_types`, `list_credentials`, `run_node_tool`) to every
 agent unconditionally via `AgentsService.attachNodeTools`. This spec adds a
-per-agent setting so an agent author can disable the chain. The setting lives
-in the agent's JSON config, defaults to enabled, and surfaces as a toggle in
-the existing Tools panel of the agent editor.
+per-agent setting so an agent author can enable the chain. The setting lives
+in the agent's JSON config, defaults to **disabled**, and surfaces as a toggle
+in the existing Tools panel of the agent editor.
 
 ## Goals
 
 - Give agent authors a per-agent on/off switch for the built-in node tool chain.
-- Default to the current behavior (enabled) so existing agents keep working
-  without any user action.
+- Default to **disabled** — authors opt in explicitly when they want the chain.
 - Keep the toggle close to where authors already manage tools.
 - Leave room to extend the setting later (e.g. per-tool granularity, filters)
   without another schema break.
@@ -54,15 +53,15 @@ config: z
 per-tool flags, filters, or limits, they slot in alongside `enabled` without
 another breaking change.
 
-**Defaulting rule:** absence means enabled. The runtime check is
+**Defaulting rule:** absence means disabled. The runtime check is
 
 ```ts
-const nodeToolsEnabled = config.config?.nodeTools?.enabled !== false;
+const nodeToolsEnabled = config.config?.nodeTools?.enabled === true;
 ```
 
-so any of the following equivalently mean "on": no `config` block, no
-`nodeTools` key, `nodeTools: {}`, `nodeTools: { enabled: true }`. Only an
-explicit `enabled: false` disables the chain.
+Only an explicit `nodeTools: { enabled: true }` enables the chain; every other
+shape (no `config` block, no `nodeTools` key, `nodeTools: {}`, or
+`nodeTools: { enabled: false }`) leaves the chain off.
 
 ### Backend gate
 
@@ -100,7 +99,7 @@ tool list. The row contains:
 - **Description:** "Let the agent search the n8n node catalog and execute
   nodes on demand."
 - **Toggle:** standard design-system switch, bound to
-  `config.config?.nodeTools?.enabled !== false`.
+  `config.config?.nodeTools?.enabled === true`.
 
 When the user flips the toggle, the panel emits the existing
 `update:config` event with the merged partial:
@@ -121,15 +120,17 @@ i18n keys live in `@n8n/i18n` alongside the other agent panel strings.
 
 ### Behavior matrix
 
-| Scenario                                  | Effect                          |
-| ----------------------------------------- | ------------------------------- |
-| Existing agent, schema has no `nodeTools` | Tools attached (current default) |
-| New agent created today                   | Tools attached                  |
-| Author disables toggle                    | Tools not attached on next run  |
-| Author re-enables                         | Tools attached on next run      |
+| Scenario                                  | Effect                             |
+| ----------------------------------------- | ---------------------------------- |
+| Existing agent, schema has no `nodeTools` | Tools not attached (new default)   |
+| New agent created today                   | Tools not attached                 |
+| Author enables toggle                     | Tools attached on next run         |
+| Author disables toggle                    | Tools not attached on next run     |
 
 No DB migration is required: the agent schema lives in the agent's JSON
-`schema` column, and the change is additive.
+`schema` column, and the change is additive. Note that existing agents that
+were relying on the unconditionally-attached tool chain will need to opt in
+explicitly to restore previous behavior.
 
 ## Testing
 

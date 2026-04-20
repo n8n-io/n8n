@@ -32,14 +32,14 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 }
 
 describe('AgentToolsPanel — built-in node tools toggle', () => {
-	it('shows the toggle as on when config has no nodeTools field', () => {
+	it('shows the toggle as off when config has no nodeTools field', () => {
 		const wrapper = mount(AgentToolsPanel, {
 			props: { config: makeConfig(), agentTools: {} },
 			global: { stubs: STUBS },
 		});
 
 		const toggle = wrapper.get('[data-testid="node-tools-toggle"]');
-		expect((toggle.element as HTMLInputElement).checked).toBe(true);
+		expect((toggle.element as HTMLInputElement).checked).toBe(false);
 	});
 
 	it('shows the toggle as on when config.nodeTools.enabled is true', () => {
@@ -70,7 +70,7 @@ describe('AgentToolsPanel — built-in node tools toggle', () => {
 		).toBe(false);
 	});
 
-	it('emits update:config with merged nodeTools.enabled when flipped off', async () => {
+	it('emits update:config with merged nodeTools.enabled when flipped on', async () => {
 		const wrapper = mount(AgentToolsPanel, {
 			props: {
 				config: makeConfig({
@@ -88,15 +88,15 @@ describe('AgentToolsPanel — built-in node tools toggle', () => {
 		expect(events![0][0]).toEqual({
 			config: {
 				toolCallConcurrency: 4,
-				nodeTools: { enabled: false },
+				nodeTools: { enabled: true },
 			},
 		});
 	});
 
-	it('emits update:config with nodeTools.enabled: true when flipped back on', async () => {
+	it('emits update:config with nodeTools.enabled: false when flipped back off', async () => {
 		const wrapper = mount(AgentToolsPanel, {
 			props: {
-				config: makeConfig({ config: { nodeTools: { enabled: false } } }),
+				config: makeConfig({ config: { nodeTools: { enabled: true } } }),
 				agentTools: {},
 			},
 			global: { stubs: STUBS },
@@ -106,7 +106,7 @@ describe('AgentToolsPanel — built-in node tools toggle', () => {
 
 		const events = wrapper.emitted('update:config');
 		expect(events![0][0]).toEqual({
-			config: { nodeTools: { enabled: true } },
+			config: { nodeTools: { enabled: false } },
 		});
 	});
 });

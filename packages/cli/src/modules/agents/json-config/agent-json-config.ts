@@ -140,9 +140,9 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
  * Returns whether the built-in node tool chain (search_nodes, get_node_types,
  * list_credentials, run_node_tool) should be attached to an agent runtime.
  *
- * Absent or partial config defaults to enabled — only an explicit
- * `nodeTools: { enabled: false }` opts an agent out.
+ * Absent or partial config defaults to disabled — only an explicit
+ * `nodeTools: { enabled: true }` opts an agent in.
  */
 export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
-	return config?.nodeTools?.enabled !== false;
+	return config?.nodeTools?.enabled === true;
 }

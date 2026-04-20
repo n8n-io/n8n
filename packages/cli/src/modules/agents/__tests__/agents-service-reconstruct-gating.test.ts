@@ -98,16 +98,13 @@ describe('AgentsService.reconstructFromConfig — node tools gating', () => {
 		return { service, agentsToolsService, credentialProvider };
 	}
 
-	it('attaches node tools when config.nodeTools is absent (default-on)', async () => {
+	it('does not attach node tools when config.nodeTools is absent (default-off)', async () => {
 		const { service, agentsToolsService, credentialProvider } = setup();
 		const entity = makeAgentEntity(); // no config block at all
 
 		await (service as unknown as Reconstructable).reconstructFromConfig(entity, credentialProvider);
 
-		expect(agentsToolsService.getRuntimeTools).toHaveBeenCalledWith(
-			credentialProvider,
-			'project-1',
-		);
+		expect(agentsToolsService.getRuntimeTools).not.toHaveBeenCalled();
 	});
 
 	it('attaches node tools when config.nodeTools.enabled is true', async () => {
@@ -116,7 +113,10 @@ describe('AgentsService.reconstructFromConfig — node tools gating', () => {
 
 		await (service as unknown as Reconstructable).reconstructFromConfig(entity, credentialProvider);
 
-		expect(agentsToolsService.getRuntimeTools).toHaveBeenCalled();
+		expect(agentsToolsService.getRuntimeTools).toHaveBeenCalledWith(
+			credentialProvider,
+			'project-1',
+		);
 	});
 
 	it('does not attach node tools when config.nodeTools.enabled is false', async () => {

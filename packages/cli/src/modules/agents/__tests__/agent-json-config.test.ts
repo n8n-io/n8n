@@ -45,19 +45,19 @@ describe('AgentJsonConfigSchema — config.nodeTools', () => {
 });
 
 describe('isNodeToolsEnabled', () => {
-	it('returns true when config is undefined', () => {
-		expect(isNodeToolsEnabled(undefined)).toBe(true);
+	it('returns false when config is undefined', () => {
+		expect(isNodeToolsEnabled(undefined)).toBe(false);
 	});
 
-	it('returns true when config has no nodeTools field', () => {
-		expect(isNodeToolsEnabled({})).toBe(true);
+	it('returns false when config has no nodeTools field', () => {
+		expect(isNodeToolsEnabled({})).toBe(false);
 	});
 
-	it('returns true when nodeTools.enabled is true', () => {
-		expect(isNodeToolsEnabled({ nodeTools: { enabled: true } })).toBe(true);
-	});
-
-	it('returns false only when nodeTools.enabled is explicitly false', () => {
+	it('returns false when nodeTools.enabled is false', () => {
 		expect(isNodeToolsEnabled({ nodeTools: { enabled: false } })).toBe(false);
+	});
+
+	it('returns true only when nodeTools.enabled is explicitly true', () => {
+		expect(isNodeToolsEnabled({ nodeTools: { enabled: true } })).toBe(true);
 	});
 });
