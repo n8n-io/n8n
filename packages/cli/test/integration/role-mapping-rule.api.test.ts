@@ -200,6 +200,60 @@ describe('POST /role-mapping-rule', () => {
 		expect(tooHigh.body.data.order).toBe(1);
 	});
 
+	it('should insert at a middle position and shift subsequent rules down', async () => {
+		const first = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.a', order: 0 })
+			.expect(200);
+		const second = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.b', order: 1 })
+			.expect(200);
+		const third = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.c', order: 2 })
+			.expect(200);
+
+		const inserted = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.middle', order: 1 })
+			.expect(200);
+
+		expect(inserted.body.data.order).toBe(1);
+
+		const list = await ownerAgent.get('/role-mapping-rule').expect(200);
+		expect(list.body.data.items.map((r: { id: string }) => r.id)).toEqual([
+			first.body.data.id,
+			inserted.body.data.id,
+			second.body.data.id,
+			third.body.data.id,
+		]);
+		expect(list.body.data.items.map((r: { order: number }) => r.order)).toEqual([0, 1, 2, 3]);
+	});
+
+	it('should allow instance and project rules to share the same order value', async () => {
+		const teamProject = await createTeamProject(undefined, owner);
+
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, order: 0 })
+			.expect(200);
+
+		const projectRule = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				expression: 'claims.project',
+				role: 'project:editor',
+				type: 'project',
+				order: 0,
+				projectIds: [teamProject.id],
+			})
+			.expect(200);
+
+		expect(projectRule.body.data.order).toBe(0);
+		expect(projectRule.body.data.type).toBe('project');
+	});
+
 	it('should normalize order when created with an abnormally high order value', async () => {
 		await ownerAgent
 			.post('/role-mapping-rule')
