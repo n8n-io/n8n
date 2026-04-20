@@ -213,7 +213,7 @@ export class CredentialsOverwrites {
 			.map((type) => this.overwriteData[type])
 			.filter((type): type is ICredentialDataDecryptedObject => !!type);
 
-		if (entries.length === 0) return undefined;
+		if (entries.length === 0) return {};
 
 		return entries.reduce(
 			(acc, current) => Object.assign(acc, current),
