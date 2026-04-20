@@ -259,6 +259,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.instanceBaseUrl;
 	}
 
+	async listAgents(): Promise<Array<{ id: string; name: string }>> {
+		if (!this.additionalData.listAgents || !this.additionalData.userId) {
+			return [];
+		}
+		return await this.additionalData.listAgents(this.additionalData.userId);
+	}
+
 	getInstanceId() {
 		return this.instanceSettings.instanceId;
 	}

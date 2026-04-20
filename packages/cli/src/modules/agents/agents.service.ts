@@ -16,6 +16,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
+import type { ExecuteAgentData } from 'n8n-workflow';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -48,14 +49,6 @@ import {
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
-
-export interface ExecuteAgentData {
-	response: string;
-	structuredOutput: unknown;
-	usage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
-	toolCalls: Array<{ toolName: string; input: unknown; result: unknown }>;
-	finishReason: string;
-}
 
 @Service()
 export class AgentsService {

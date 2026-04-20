@@ -28,6 +28,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	EnvProviderState,
 	ExecuteWorkflowData,
+	ExecuteAgentData,
 	RelatedExecution,
 	IRunExecutionData,
 } from 'n8n-workflow';
@@ -248,6 +249,43 @@ export async function executeWorkflow(
 	return await executionPromise;
 }
 
+/**
+ * Executes an agent with the given ID and message.
+ */
+export async function executeAgent(
+	agentId: string,
+	message: string,
+	executionId: string,
+	threadId: string,
+	additionalData: IWorkflowExecuteAdditionalData,
+): Promise<ExecuteAgentData> {
+	if (!additionalData.userId) {
+		throw new UnexpectedError('Cannot execute agent without a userId in additional data');
+	}
+	if (!additionalData.projectId) {
+		throw new UnexpectedError('Cannot execute agent without a projectId in additional data');
+	}
+
+	const { AgentsService } = await import('@/modules/agents/agents.service');
+	const agentsService = Container.get(AgentsService);
+
+	return await agentsService.executeForWorkflow(
+		agentId,
+		message,
+		executionId,
+		threadId,
+		additionalData.userId,
+		additionalData.projectId,
+	);
+}
+
+async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
+	const { AgentsService } = await import('@/modules/agents/agents.service');
+	const agentsService = Container.get(AgentsService);
+	const agents = await agentsService.findByUser(userId);
+	return agents.map((agent) => ({ id: agent.id, name: agent.name }));
+}
+
 async function startExecution(
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: ExecuteWorkflowOptions,
@@ -311,6 +349,8 @@ async function startExecution(
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		additionalDataIntegrated.executeAgent = additionalData.executeAgent;
+		additionalDataIntegrated.listAgents = additionalData.listAgents;
 		// Propagate the root execution mode so nested subworkflows retain the original
 		// mode (e.g. 'manual') even though their own WorkflowExecute runs as 'integrated'
 		additionalDataIntegrated.rootExecutionMode =
@@ -477,6 +517,8 @@ export async function getBase({
 		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
+		executeAgent,
+		listAgents,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
 		instanceBaseUrl: urlBaseWebhook,
 		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,
