@@ -13,7 +13,6 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
