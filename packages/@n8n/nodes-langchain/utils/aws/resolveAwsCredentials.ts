@@ -7,6 +7,7 @@ import type {
 	AwsIamCredentialsType,
 	AWSRegion,
 } from 'n8n-nodes-base/dist/credentials/common/aws/types';
+import { getSystemCredentials } from 'n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils';
 import { ApplicationError, type ISupplyDataFunctions } from 'n8n-workflow';
 
 export type ResolvedAwsCredentials = {
@@ -45,11 +46,38 @@ export async function resolveAwsCredentials(
 		throw new ApplicationError('Role Session Name is required when assuming a role.');
 	}
 
-	const masterCredentials: AwsCredentialIdentity = {
-		accessKeyId: creds.stsAccessKeyId!.trim(),
-		secretAccessKey: creds.stsSecretAccessKey!.trim(),
-		...(creds.stsSessionToken?.trim() ? { sessionToken: creds.stsSessionToken.trim() } : {}),
-	};
+	let masterCredentials: AwsCredentialIdentity | AwsCredentialIdentityProvider;
+	if (creds.useSystemCredentialsForRole) {
+		masterCredentials = async () => {
+			const sys = await getSystemCredentials();
+			if (!sys) {
+				throw new ApplicationError(
+					'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
+				);
+			}
+			return {
+				accessKeyId: sys.accessKeyId,
+				secretAccessKey: sys.secretAccessKey,
+				...(sys.sessionToken ? { sessionToken: sys.sessionToken } : {}),
+			};
+		};
+	} else {
+		if (!creds.stsAccessKeyId || creds.stsAccessKeyId.trim() === '') {
+			throw new ApplicationError(
+				'STS Access Key ID is required when not using system credentials.',
+			);
+		}
+		if (!creds.stsSecretAccessKey || creds.stsSecretAccessKey.trim() === '') {
+			throw new ApplicationError(
+				'STS Secret Access Key is required when not using system credentials.',
+			);
+		}
+		masterCredentials = {
+			accessKeyId: creds.stsAccessKeyId.trim(),
+			secretAccessKey: creds.stsSecretAccessKey.trim(),
+			...(creds.stsSessionToken?.trim() ? { sessionToken: creds.stsSessionToken.trim() } : {}),
+		};
+	}
 
 	const stsTarget = `https://sts.${creds.region}.amazonaws.com`;
 	const proxyAgent = getNodeProxyAgent(stsTarget);
