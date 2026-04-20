@@ -30,7 +30,7 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 	}
 
 	/** Atomically deactivates any existing active key of the same type, then saves the given entity as active. */
-	async insertAsActive(entity: DeploymentKey): Promise<DeploymentKey> {
+	async insertAsActive(entity: DeploymentKey & { status: 'active' }): Promise<DeploymentKey> {
 		return await this.manager.transaction(async (tx) => {
 			await tx.update(
 				DeploymentKey,
