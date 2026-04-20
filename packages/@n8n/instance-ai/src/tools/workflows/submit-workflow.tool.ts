@@ -181,6 +181,11 @@ export function createSubmitWorkflowTool(
 			projectId,
 			name,
 		}: z.infer<typeof submitWorkflowInputSchema>) => {
+			const permKey = workflowId ? 'updateWorkflow' : 'createWorkflow';
+			if (context.permissions?.[permKey] === 'blocked') {
+				return { success: false, errors: ['Action blocked by admin'] };
+			}
+
 			// Resolve file path: relative paths resolve against workspace root, ~ is expanded
 			const root = await getWorkspaceRoot(workspace);
 			let filePath: string;

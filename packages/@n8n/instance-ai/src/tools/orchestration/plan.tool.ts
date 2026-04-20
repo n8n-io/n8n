@@ -41,10 +41,8 @@ const planInputSchema = z.object({
 		),
 });
 
-const REPLAN_MARKER = '<planned-task-follow-up type="replan"';
-
 function isReplanContext(context: OrchestrationContext): boolean {
-	return (context.currentUserMessage ?? '').includes(REPLAN_MARKER);
+	return context.isReplanFollowUp === true;
 }
 
 /**
