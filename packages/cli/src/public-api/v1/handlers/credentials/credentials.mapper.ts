@@ -21,7 +21,9 @@ export function toPublicApiCredentialResponse(
 	});
 
 	if (!parsed.success) {
-		throw new UnexpectedError('Public API credential response failed validation');
+		throw new UnexpectedError('Failed to parse credential response', {
+			cause: parsed.error,
+		});
 	}
 
 	return parsed.data;
