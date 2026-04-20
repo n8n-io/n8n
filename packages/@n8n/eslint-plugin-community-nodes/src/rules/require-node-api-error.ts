@@ -1,3 +1,4 @@
+import { DefinitionType } from '@typescript-eslint/scope-manager';
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 
 import { isFileType } from '../utils/index.js';
@@ -14,19 +15,15 @@ function getThrowCalleeName(argument: TSESTree.Expression): string | null {
 	return null;
 }
 
-function getEnclosingCatchClause(node: TSESTree.Node): TSESTree.CatchClause | null {
+function isInsideCatchClause(node: TSESTree.Node): boolean {
 	let current: TSESTree.Node | undefined = node.parent;
 	while (current) {
 		if (current.type === AST_NODE_TYPES.CatchClause) {
-			return current;
+			return true;
 		}
 		current = current.parent;
 	}
-	return null;
-}
-
-function isCatchParam(catchClause: TSESTree.CatchClause, name: string): boolean {
-	return catchClause.param?.type === AST_NODE_TYPES.Identifier && catchClause.param.name === name;
+	return false;
 }
 
 export const RequireNodeApiErrorRule = createRule({
@@ -62,17 +59,20 @@ export const RequireNodeApiErrorRule = createRule({
 
 		return {
 			ThrowStatement(node) {
-				const catchClause = getEnclosingCatchClause(node);
-				if (!catchClause) return;
+				if (!isInsideCatchClause(node)) return;
 				if (!node.argument) return;
 
 				const { argument } = node;
 
-				if (
-					argument.type === AST_NODE_TYPES.Identifier &&
-					isCatchParam(catchClause, argument.name)
-				) {
-					context.report({ node, messageId: 'useNodeApiError' });
+				if (argument.type === AST_NODE_TYPES.Identifier) {
+					const scope = context.sourceCode.getScope(node);
+					const ref = scope.references.find((r) => r.identifier === argument);
+					const isCatchParam =
+						ref?.resolved?.defs.some((def) => def.type === DefinitionType.CatchClause) ?? false;
+
+					if (isCatchParam) {
+						context.report({ node, messageId: 'useNodeApiError' });
+					}
 					return;
 				}
 

@@ -76,6 +76,17 @@ try {
 }`,
 		},
 		{
+			name: 'shadowed variable with same name as catch param',
+			code: `
+try {
+	await apiRequest();
+} catch (error) {
+	const fn = (error: Error) => {
+		throw error;
+	};
+}`,
+		},
+		{
 			name: 'no throw in catch block',
 			code: `
 try {
