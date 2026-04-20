@@ -1,6 +1,12 @@
 import type { Channel, Connection, ConsumeMessage, Message } from 'amqplib';
 import { mock, mockDeep } from 'jest-mock-extended';
-import type { INode, IRun, ITriggerFunctions, IWorkflowMetadata } from 'n8n-workflow';
+import type {
+	IExecuteResponsePromiseData,
+	INode,
+	IRun,
+	ITriggerFunctions,
+	IWorkflowMetadata,
+} from 'n8n-workflow';
 
 const mockChannel = mock<Channel>();
 const mockConnection = mock<Connection>({ createChannel: async () => mockChannel });
@@ -336,44 +342,168 @@ describe('RabbitMQ GenericFunctions', () => {
 			expect(messageTracker.answered).toHaveBeenCalledWith(message);
 		});
 
-		it('should ack a message with "acknowledgeMode" set to "laterMessageNode"', async () => {
-			let resolvePromise: (data: IRun) => void = () => {};
-			const deferredPromise = {
-				promise: new Promise<IRun>((resolve) => {
-					resolvePromise = resolve;
-				}),
-				resolve: jest.fn(),
-				reject: jest.fn(),
+		describe('acknowledgeMode = "laterMessageNode"', () => {
+			const buildRunDeferred = () => {
+				let resolvePromise: (data: IRun) => void = () => {};
+				const deferred = {
+					promise: new Promise<IRun>((resolve) => {
+						resolvePromise = resolve;
+					}),
+					resolve: jest.fn(),
+					reject: jest.fn(),
+				};
+				return { deferred, resolve: (data: IRun) => resolvePromise(data) };
 			};
-			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
 
-			const handleMessagePromise = handleMessage.call(
-				context,
-				message,
-				mockChannel,
-				messageTracker,
-				'laterMessageNode',
-				options,
-			);
+			const buildHookDeferred = () => {
+				let resolvePromise: (data: IExecuteResponsePromiseData) => void = () => {};
+				const deferred = {
+					promise: new Promise<IExecuteResponsePromiseData>((resolve) => {
+						resolvePromise = resolve;
+					}),
+					resolve: jest.fn(),
+					reject: jest.fn(),
+				};
+				return {
+					deferred,
+					resolve: (data: IExecuteResponsePromiseData) => resolvePromise(data),
+				};
+			};
 
-			await Promise.resolve(); // yield control to let handleMessage run
+			it('should ack the message on a clean execution when Delete-from-Queue was not fired', async () => {
+				// Simulates the engine's teardown: resolveExecutionResponsePromise
+				// resolves the hook with an empty {}, then finalizeExecution
+				// resolves the IRun with no error.
+				const { deferred: hookDeferred, resolve: resolveHook } = buildHookDeferred();
+				const { deferred: runDeferred, resolve: resolveRun } = buildRunDeferred();
+				context.helpers.createDeferredPromise
+					.mockReturnValueOnce(hookDeferred)
+					.mockReturnValueOnce(runDeferred);
 
-			expect(messageTracker.received).toHaveBeenCalledWith(message);
-			expect(context.emit).toHaveBeenCalledWith([[item]], deferredPromise, undefined);
-			expect(mockChannel.ack).not.toHaveBeenCalled();
-			expect(messageTracker.answered).not.toHaveBeenCalled();
+				const handleMessagePromise = handleMessage.call(
+					context,
+					message,
+					mockChannel,
+					messageTracker,
+					'laterMessageNode',
+					options,
+				);
 
-			resolvePromise({
-				data: {
-					resultData: {
-						error: undefined,
-					},
-				},
-			} as IRun);
-			await handleMessagePromise;
+				await Promise.resolve();
 
-			expect(mockChannel.ack).toHaveBeenCalledWith(message);
-			expect(messageTracker.answered).toHaveBeenCalledWith(message);
+				expect(messageTracker.received).toHaveBeenCalledWith(message);
+				expect(context.emit).toHaveBeenCalledWith([[item]], hookDeferred, runDeferred);
+				expect(mockChannel.ack).not.toHaveBeenCalled();
+				expect(messageTracker.answered).not.toHaveBeenCalled();
+
+				resolveHook({} as IExecuteResponsePromiseData);
+				resolveRun({
+					data: { resultData: { error: undefined } },
+				} as IRun);
+				await handleMessagePromise;
+
+				expect(mockChannel.ack).toHaveBeenCalledWith(message);
+				expect(mockChannel.nack).not.toHaveBeenCalled();
+				expect(messageTracker.answered).toHaveBeenCalledWith(message);
+			});
+
+			it('should nack the message when the execution errors before the Delete-from-Queue node runs', async () => {
+				// Real engine behavior on crash: resolveExecutionResponsePromise
+				// resolves the hook with {} first, then finalizeExecution
+				// resolves the IRun with the error. The hook payload shape is
+				// the only reliable signal — empty {} means cleanup, so we must
+				// fall through to the IRun and nack on error.
+				const { deferred: hookDeferred, resolve: resolveHook } = buildHookDeferred();
+				const { deferred: runDeferred, resolve: resolveRun } = buildRunDeferred();
+				context.helpers.createDeferredPromise
+					.mockReturnValueOnce(hookDeferred)
+					.mockReturnValueOnce(runDeferred);
+
+				const handleMessagePromise = handleMessage.call(
+					context,
+					message,
+					mockChannel,
+					messageTracker,
+					'laterMessageNode',
+					options,
+				);
+
+				await Promise.resolve();
+
+				resolveHook({} as IExecuteResponsePromiseData);
+				resolveRun({
+					data: { resultData: { error: new Error('workflow crashed') } },
+				} as IRun);
+				await handleMessagePromise;
+
+				expect(mockChannel.ack).not.toHaveBeenCalled();
+				expect(mockChannel.nack).toHaveBeenCalledWith(message);
+				expect(messageTracker.answered).toHaveBeenCalledWith(message);
+			});
+
+			it('should ack as soon as the Delete-from-Queue hook fires, without waiting for the full execution', async () => {
+				// Happy path: sendResponse from the Delete-from-Queue node
+				// resolves the hook with the item JSON mid-execution. Ack
+				// immediately, don't wait for the IRun (downstream nodes may
+				// still be running).
+				const { deferred: hookDeferred, resolve: resolveHook } = buildHookDeferred();
+				const { deferred: runDeferred } = buildRunDeferred();
+				context.helpers.createDeferredPromise
+					.mockReturnValueOnce(hookDeferred)
+					.mockReturnValueOnce(runDeferred);
+
+				const handleMessagePromise = handleMessage.call(
+					context,
+					message,
+					mockChannel,
+					messageTracker,
+					'laterMessageNode',
+					options,
+				);
+
+				await Promise.resolve();
+				expect(mockChannel.ack).not.toHaveBeenCalled();
+
+				resolveHook({ content: 'hello' } as unknown as IExecuteResponsePromiseData);
+				await handleMessagePromise;
+
+				expect(mockChannel.ack).toHaveBeenCalledWith(message);
+				expect(mockChannel.nack).not.toHaveBeenCalled();
+				expect(messageTracker.answered).toHaveBeenCalledWith(message);
+			});
+
+			it('should ack when Delete-from-Queue fired before the workflow errored', async () => {
+				// At-least-once semantics: if the Delete-from-Queue node ran
+				// (real sendResponse with a non-empty payload), the user's
+				// intent was satisfied. A later crash in a downstream node
+				// should still ack.
+				const { deferred: hookDeferred, resolve: resolveHook } = buildHookDeferred();
+				const { deferred: runDeferred, resolve: resolveRun } = buildRunDeferred();
+				context.helpers.createDeferredPromise
+					.mockReturnValueOnce(hookDeferred)
+					.mockReturnValueOnce(runDeferred);
+
+				const handleMessagePromise = handleMessage.call(
+					context,
+					message,
+					mockChannel,
+					messageTracker,
+					'laterMessageNode',
+					options,
+				);
+
+				await Promise.resolve();
+
+				resolveHook({ content: 'hello' } as unknown as IExecuteResponsePromiseData);
+				resolveRun({
+					data: { resultData: { error: new Error('downstream crash') } },
+				} as IRun);
+				await handleMessagePromise;
+
+				expect(mockChannel.ack).toHaveBeenCalledWith(message);
+				expect(mockChannel.nack).not.toHaveBeenCalled();
+				expect(messageTracker.answered).toHaveBeenCalledWith(message);
+			});
 		});
 
 		it('should handle error when "acknowledgeMode" is set to "immediately"', async () => {
