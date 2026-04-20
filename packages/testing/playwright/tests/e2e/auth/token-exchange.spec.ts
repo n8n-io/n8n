@@ -28,6 +28,11 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},
 	() => {
+		// All tests in this file share a single n8n container. Parallelising them
+		// would pay the ~30–90 s container startup per worker; the tests themselves
+		// are short API calls, so serial execution is cheaper overall.
+		test.describe.configure({ mode: 'serial' });
+
 		test.beforeEach(async ({ api }) => {
 			await api.enableFeature('tokenExchange');
 		});
@@ -150,10 +155,10 @@ test.describe(
 		// -- Token Expiry --
 
 		test.describe('Token expiry', () => {
-			test('should reject API call with expired access token @auth:owner', async ({ api }) => {
+			test('should return a bounded expires_in on exchange @auth:owner', async ({ api }) => {
 				const now = Math.floor(Date.now() / 1000);
-				// Issue a token that expires in 6 seconds (just above the 5s MIN_REMAINING_LIFETIME)
-				const subjectToken = mintExternalJwt({ exp: now + 6 });
+				const subjectTtlSeconds = 6;
+				const subjectToken = mintExternalJwt({ exp: now + subjectTtlSeconds });
 
 				const exchangeResponse = await api.request.post('/rest/auth/oauth/token', {
 					form: {
@@ -161,93 +166,68 @@ test.describe(
 						subject_token: subjectToken,
 					},
 				});
-
 				expect(exchangeResponse.ok()).toBe(true);
-				const { access_token: accessToken } = await exchangeResponse.json();
 
-				// Immediate call should succeed
+				const { access_token: accessToken, expires_in: expiresIn } = await exchangeResponse.json();
+
+				// Access token lifetime must not exceed the subject token's remaining TTL
+				expect(expiresIn).toBeGreaterThan(0);
+				expect(expiresIn).toBeLessThanOrEqual(subjectTtlSeconds);
+
+				// Token is usable immediately after exchange
 				const immediateResponse = await api.request.get('/api/v1/workflows', {
 					headers: { 'x-n8n-api-key': accessToken },
 				});
 				expect(immediateResponse.ok()).toBe(true);
 
-				// Wait for expiry
-				await new Promise((resolve) => setTimeout(resolve, 7_000));
-
-				// Call after expiry should fail
-				const expiredResponse = await api.request.get('/api/v1/workflows', {
-					headers: { 'x-n8n-api-key': accessToken },
-				});
-				expect(expiredResponse.status()).toBe(401);
+				// Real-clock rejection of expired access tokens is covered by
+				// integration tests against the JWT middleware to avoid an e2e sleep.
 			});
 		});
 
 		// -- Error Cases --
 
 		test.describe('Error cases', () => {
-			test('should reject expired external JWT @auth:owner', async ({ api }) => {
+			test('should reject invalid subject tokens with invalid_grant @auth:owner', async ({
+				api,
+			}) => {
 				const now = Math.floor(Date.now() / 1000);
-				const expiredToken = mintExternalJwt({ exp: now - 60 });
-
-				const response = await api.request.post('/rest/auth/oauth/token', {
-					form: {
-						grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
-						subject_token: expiredToken,
-					},
-				});
-
-				expect(response.status()).toBe(400);
-				const body = await response.json();
-				expect(body.error).toBe('invalid_grant');
-			});
-
-			test('should reject JWT signed with untrusted key @auth:owner', async ({ api }) => {
 				const { privateKey: untrustedKey } = generateKeyPairSync('rsa', {
 					modulusLength: 2048,
 					publicKeyEncoding: { type: 'spki', format: 'pem' },
 					privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
 				});
 
-				const token = mintExternalJwtWithKey(untrustedKey);
-
-				const response = await api.request.post('/rest/auth/oauth/token', {
+				// Prime the replay cache with a successful exchange, then reuse the same jti.
+				const replayedToken = mintExternalJwt();
+				const firstReplay = await api.request.post('/rest/auth/oauth/token', {
 					form: {
 						grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
-						subject_token: token,
+						subject_token: replayedToken,
 					},
 				});
+				expect(firstReplay.ok()).toBe(true);
 
-				expect(response.status()).toBe(400);
-				const body = await response.json();
-				expect(body.error).toBe('invalid_grant');
-			});
+				const cases: Array<{ name: string; token: string }> = [
+					{ name: 'expired subject token', token: mintExternalJwt({ exp: now - 60 }) },
+					{ name: 'untrusted signing key', token: mintExternalJwtWithKey(untrustedKey) },
+					{ name: 'replayed jti', token: replayedToken },
+				];
 
-			test('should reject replayed JWT with same jti @auth:owner', async ({ api }) => {
-				const token = mintExternalJwt();
-
-				// First exchange should succeed
-				const first = await api.request.post('/rest/auth/oauth/token', {
-					form: {
-						grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
-						subject_token: token,
-					},
-				});
-				expect(first.ok()).toBe(true);
-
-				// Replay should fail
-				const replay = await api.request.post('/rest/auth/oauth/token', {
-					form: {
-						grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
-						subject_token: token,
-					},
-				});
-				expect(replay.status()).toBe(400);
-				const body = await replay.json();
-				expect(body.error).toBe('invalid_grant');
+				for (const { name, token } of cases) {
+					const response = await api.request.post('/rest/auth/oauth/token', {
+						form: {
+							grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
+							subject_token: token,
+						},
+					});
+					expect(response.status(), name).toBe(400);
+					const body = await response.json();
+					expect(body.error, name).toBe('invalid_grant');
+				}
 			});
 
 			test('should reject JWT with missing required claims @auth:owner', async ({ api }) => {
-				// Mint a JWT without the sub claim — override to empty string
 				const token = mintExternalJwt({ sub: '' });
 
 				const response = await api.request.post('/rest/auth/oauth/token', {
