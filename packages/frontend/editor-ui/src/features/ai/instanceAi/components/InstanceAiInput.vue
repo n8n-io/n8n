@@ -41,7 +41,11 @@ const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAtt
 const isGatedBySetup = computed(() => store.isAwaitingConfirmation);
 const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGatedBySetup.value);
 const canShowSuggestions = computed(
-	() => Boolean(props.suggestions?.length) && !isComposerDirty.value && !isBusy.value,
+	() =>
+		Boolean(props.suggestions?.length) &&
+		!isComposerDirty.value &&
+		!isBusy.value &&
+		!isGatedBySetup.value,
 );
 const visibleSuggestionThreadId = computed(() =>
 	canShowSuggestions.value ? store.currentThreadId : null,
@@ -236,7 +240,7 @@ function handleSuggestionSubmit(payload: {
 			<InstanceAiPromptSuggestions
 				v-if="canShowSuggestions && props.suggestions"
 				:suggestions="props.suggestions"
-				:disabled="isBusy"
+				:disabled="isBusy || isGatedBySetup"
 				@preview-change="previewPromptKey = $event"
 				@quick-examples-opened="handleQuickExamplesOpened"
 				@submit-suggestion="handleSuggestionSubmit"
