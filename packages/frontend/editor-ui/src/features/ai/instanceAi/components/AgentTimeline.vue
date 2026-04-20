@@ -28,10 +28,8 @@ const rootStore = useRootStore();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
-	for (const entry of store.resourceRegistry.values()) {
-		if (entry.id === artifact.resourceId) return entry.name;
-	}
-	return artifact.name;
+	const entry = store.producedArtifacts.get(artifact.resourceId);
+	return entry?.name ?? artifact.name;
 }
 
 function formatRelativeTime(isoTime: string): string {
@@ -199,21 +197,13 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:is-loading="toolCallsById[entry.toolCallId].isLoading"
 					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
 				/>
-				<!-- Hidden tool calls (builder/data-table/researcher/planner handled by child agent via AgentSection) -->
+				<!-- Hidden tool calls (builder/data-table/researcher handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
-				<!-- Planner: suppress tool call — PlanReviewPanel renders after the child AgentSection -->
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
-				<!-- Answered questions (read-only after resolution) -->
-				<AnsweredQuestions
-					v-else-if="
-						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
-						!toolCallsById[entry.toolCallId].isLoading
-					"
-					:tool-call="toolCallsById[entry.toolCallId]"
-				/>
-				<!-- Plan review from plan() tool: always render inline -->
+				<!-- Plan review must match before the planner renderHint suppression:
+				     when the plan tool attaches the confirmation to its own tool call
+				     (no planner child agent), that suppression would otherwise hide it. -->
 				<PlanReviewPanel
 					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
 					:planned-tasks="
@@ -225,6 +215,16 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					:read-only="!toolCallsById[entry.toolCallId].isLoading"
 					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
 					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
+				/>
+				<!-- Planner: suppress tool call — PlanReviewPanel renders after the child AgentSection -->
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
+				<!-- Answered questions (read-only after resolution) -->
+				<AnsweredQuestions
+					v-else-if="
+						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
+						!toolCallsById[entry.toolCallId].isLoading
+					"
+					:tool-call="toolCallsById[entry.toolCallId]"
 				/>
 				<!-- Suppress default tool call while questions are pending -->
 				<template

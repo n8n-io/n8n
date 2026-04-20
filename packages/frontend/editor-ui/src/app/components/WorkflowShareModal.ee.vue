@@ -78,7 +78,8 @@ const workflowScopes = computed(
 		workflowsStore.workflow.scopes,
 );
 const workflowSharedWithProjects = computed(
-	() => workflowListEntry.value?.sharedWithProjects ?? workflowsStore.workflow.sharedWithProjects,
+	() =>
+		workflowDocumentStore.value?.sharedWithProjects ?? workflowListEntry.value?.sharedWithProjects,
 );
 const loading = ref(true);
 const isDirty = ref(false);
@@ -203,6 +204,9 @@ const onSave = async () => {
 			workflowId,
 			sharedWithProjects: sharedWithProjects.value,
 		});
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).setSharedWithProjects(
+			sharedWithProjects.value,
+		);
 
 		toast.showMessage({
 			title: i18n.baseText('workflows.shareModal.onSave.success.title'),

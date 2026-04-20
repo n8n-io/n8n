@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
+
 import { parseCliArgs } from './args';
 import { N8nClient } from '../clients/n8n-client';
 import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
@@ -6,7 +9,7 @@ import { loadWorkflowTestCases } from '../data/workflows';
 import { createLogger } from '../harness/logger';
 import { runWorkflowTestCase, runWithConcurrency } from '../harness/runner';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
-import { writeWorkflowReport } from '../report/workflow-report';
+import type { WorkflowTestCaseResult } from '../types';
 
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
@@ -31,7 +34,7 @@ async function main(): Promise<void> {
 	logger.success('Authenticated');
 
 	logger.info('Seeding credentials...');
-	const seedResult = await seedCredentials(client);
+	const seedResult = await seedCredentials(client, undefined, logger);
 	logger.info(`Seeded ${String(seedResult.credentialIds.length)} credential(s)`);
 
 	const preRunWorkflowIds = await snapshotWorkflowIds(client);
@@ -40,8 +43,8 @@ async function main(): Promise<void> {
 	// Run test cases with bounded concurrency.
 	// Each test case builds a workflow (uses n8n's agent) then runs scenarios
 	// (uses our Anthropic key for Phase 1 + Phase 2 mock generation).
-	// At Tier 4 (20K RPM) no practical limit is needed — set high to run all in parallel.
 	const MAX_CONCURRENT_TEST_CASES = 4;
+	const startTime = Date.now();
 	let results;
 	try {
 		results = await runWithConcurrency(
@@ -64,12 +67,60 @@ async function main(): Promise<void> {
 		await cleanupCredentials(client, seedResult.credentialIds).catch(() => {});
 	}
 
-	// Generate HTML report
-	const reportPath = writeWorkflowReport(results);
-	console.log(`Report: ${reportPath}`);
+	const totalDuration = Date.now() - startTime;
 
-	// Print summary
-	console.log('\n=== Workflow Test Case Results ===\n');
+	// Write eval-results.json for CI consumption (PR comments, artifacts)
+	const outputPath = writeEvalResults(results, totalDuration, args.outputDir);
+	console.log(`Results: ${outputPath}`);
+
+	// Print console summary
+	printSummary(results);
+}
+
+/** Write structured JSON results for CI (PR comments, artifact upload). */
+function writeEvalResults(
+	results: WorkflowTestCaseResult[],
+	duration: number,
+	outputDir?: string,
+): string {
+	const allScenarios = results.flatMap((r) => r.scenarioResults);
+	const passed = allScenarios.filter((s) => s.success).length;
+
+	const report = {
+		timestamp: new Date().toISOString(),
+		duration,
+		summary: {
+			testCases: results.length,
+			built: results.filter((r) => r.workflowBuildSuccess).length,
+			scenariosTotal: allScenarios.length,
+			scenariosPassed: passed,
+			passRate: allScenarios.length > 0 ? passed / allScenarios.length : 0,
+		},
+		testCases: results.map((r) => ({
+			name: r.testCase.prompt.slice(0, 70),
+			built: r.workflowBuildSuccess,
+			buildError: r.buildError,
+			workflowId: r.workflowId,
+			scenarios: r.scenarioResults.map((sr) => ({
+				name: sr.scenario.name,
+				passed: sr.success,
+				score: sr.score,
+				reasoning: sr.reasoning,
+				failureCategory: sr.failureCategory,
+				rootCause: sr.rootCause,
+			})),
+		})),
+	};
+
+	const dir = outputDir ?? process.cwd();
+	mkdirSync(dir, { recursive: true });
+	const outputPath = join(dir, 'eval-results.json');
+	writeFileSync(outputPath, JSON.stringify(report, null, 2));
+	return outputPath;
+}
+
+function printSummary(results: WorkflowTestCaseResult[]): void {
+	console.log('\n=== Workflow Eval Results ===\n');
 	for (const r of results) {
 		const buildStatus = r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
 		console.log(`${r.testCase.prompt.slice(0, 70)}...`);
@@ -89,6 +140,14 @@ async function main(): Promise<void> {
 		}
 		console.log('');
 	}
+
+	// Totals
+	const allScenarios = results.flatMap((r) => r.scenarioResults);
+	const passed = allScenarios.filter((s) => s.success).length;
+	const built = results.filter((r) => r.workflowBuildSuccess).length;
+	console.log(
+		`${String(built)}/${String(results.length)} built | ${String(passed)}/${String(allScenarios.length)} passed (${String(allScenarios.length > 0 ? Math.round((passed / allScenarios.length) * 100) : 0)}%)`,
+	);
 }
 
 main().catch((error) => {

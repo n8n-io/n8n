@@ -257,7 +257,7 @@ onUnmounted(() => {
 					<N8nButton
 						variant="solid"
 						size="large"
-						:disabled="!hasChosen"
+						:disabled="!hasChosen || isSaving"
 						:label="
 							isEnabled
 								? i18n.baseText('instanceAi.welcomeModal.enable')

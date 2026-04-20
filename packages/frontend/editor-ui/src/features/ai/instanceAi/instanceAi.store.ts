@@ -160,9 +160,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const gatewayDirectory = computed(() => instanceAiSettingsStore.gatewayDirectory);
 	const activeDirectory = computed(() => gatewayDirectory.value);
 
-	// Resource registry — maps known resource names to their types & IDs
+	// Resource registry — two collections derived from tool-call results:
+	//   * producedArtifacts: resources the agent built/created/mutated (panel).
+	//   * resourceNameIndex: every named resource seen, keyed by lowercased name
+	//     (markdown linking).
 	const workflowsListStore = useWorkflowsListStore();
-	const { registry: resourceRegistry } = useResourceRegistry(
+	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 	);
@@ -542,12 +545,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		resetThreadRuntimeState(null);
 		currentThreadId.value = newThreadId;
 
-		threads.value.unshift({
-			id: newThreadId,
-			title: NEW_CONVERSATION_TITLE,
-			createdAt: new Date().toISOString(),
-		});
-
 		connectSSE(newThreadId);
 		return newThreadId;
 	}
@@ -579,16 +576,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				// Switch to first remaining thread
 				switchThread(threads.value[0].id);
 			} else {
-				// No threads left — create a new one
+				// No threads left — prepare a fresh thread (added to sidebar on first message)
 				const freshId = uuidv4();
 				closeSSE();
 				resetThreadRuntimeState(null);
 				currentThreadId.value = freshId;
-				threads.value.push({
-					id: freshId,
-					title: NEW_CONVERSATION_TITLE,
-					createdAt: new Date().toISOString(),
-				});
 				connectSSE(freshId);
 			}
 		}
@@ -596,7 +588,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return { currentThreadId: currentThreadId.value, wasActive };
 	}
 
-	async function loadThreads(): Promise<void> {
+	async function loadThreads(): Promise<boolean> {
 		try {
 			const result = await fetchThreadsApi(rootStore.restApiContext);
 			for (const thread of result.threads) {
@@ -613,8 +605,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				metadata: t.metadata ?? undefined,
 			}));
 			threads.value = [...localOnly, ...serverThreads];
+			return true;
 		} catch {
 			// Silently ignore — threads will remain client-side only
+			return false;
 		}
 	}
 
@@ -1036,7 +1030,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		activeDirectory,
 		contextualSuggestion,
 		currentTasks,
-		resourceRegistry,
+		producedArtifacts,
+		resourceNameIndex,
 		rateableResponseId,
 		creditsRemaining,
 		creditsPercentageRemaining,

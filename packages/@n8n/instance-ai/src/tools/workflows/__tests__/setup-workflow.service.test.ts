@@ -7,6 +7,7 @@ import {
 	applyNodeChanges,
 	buildCompletedReport,
 	createCredentialCache,
+	stripStaleCredentialsFromWorkflow,
 } from '../setup-workflow.service';
 
 // ---------------------------------------------------------------------------
@@ -356,6 +357,147 @@ describe('buildSetupRequests', () => {
 		// list should only be called once due to caching
 		expect(context.credentialService.list).toHaveBeenCalledTimes(1);
 	});
+
+	it('does not generate credential request for HTTP Request with auth=none and stale node.credentials', async () => {
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue([]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{
+					name: 'httpHeaderAuth',
+					displayOptions: { show: { authentication: ['genericCredentialType'] } },
+				},
+			],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { authentication: 'none', url: 'https://api.example.com' },
+			credentials: { httpHeaderAuth: { id: 'old-cred', name: 'Stale Header Auth' } },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result.find((r) => r.credentialType === 'httpHeaderAuth')).toBeUndefined();
+	});
+
+	it('fallback: displayOptions filtering takes priority over stale node.credentials', async () => {
+		// Remove getNodeCredentialTypes to force fallback path
+		delete (context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes;
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{
+					name: 'httpHeaderAuth',
+					displayOptions: { show: { authentication: ['genericCredentialType'] } },
+				},
+			],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { authentication: 'none', url: 'https://api.example.com' },
+			credentials: { httpHeaderAuth: { id: 'old-cred', name: 'Stale Header Auth' } },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result.find((r) => r.credentialType === 'httpHeaderAuth')).toBeUndefined();
+	});
+
+	it('fallback: node with assigned credentials matching description is still detected', async () => {
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue([]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result.find((r) => r.credentialType === 'slackApi')).toBeDefined();
+	});
+
+	it('fallback: node.credentials with types not in description are excluded', async () => {
+		// Remove getNodeCredentialTypes to force fallback path
+		delete (context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes;
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+
+		const node = makeNode({
+			credentials: {
+				slackApi: { id: 'cred-1', name: 'My Slack' },
+				httpHeaderAuth: { id: 'stale', name: 'Stale Auth' },
+			},
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result.find((r) => r.credentialType === 'slackApi')).toBeDefined();
+		expect(result.find((r) => r.credentialType === 'httpHeaderAuth')).toBeUndefined();
+	});
+
+	it('treats placeholder values as parameter issues', async () => {
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+			properties: [{ name: 'email', displayName: 'Email', type: 'string' }],
+		});
+
+		const node = makeNode({
+			parameters: { email: '<__PLACEHOLDER_VALUE__your_email__>' },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].parameterIssues).toBeDefined();
+		expect(result[0].parameterIssues!.email).toEqual(
+			expect.arrayContaining([expect.stringContaining('your_email')]),
+		);
+	});
+
+	it('adds placeholder issue even when param already has validation issues', async () => {
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+			properties: [{ name: 'email', displayName: 'Email', type: 'string', required: true }],
+		});
+		(context.nodeService as unknown as Record<string, unknown>).getParameterIssues = jest
+			.fn()
+			.mockResolvedValue({ email: ['Parameter "Email" is required'] });
+
+		const node = makeNode({
+			parameters: { email: '<__PLACEHOLDER_VALUE__your_email__>' },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result).toHaveLength(1);
+		const issues = result[0].parameterIssues!.email;
+		expect(issues).toHaveLength(2);
+		expect(issues).toEqual(
+			expect.arrayContaining([
+				'Parameter "Email" is required',
+				expect.stringContaining('your_email'),
+			]),
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -526,6 +668,101 @@ describe('applyNodeChanges', () => {
 		expect(result.failed).toHaveLength(1);
 		expect(result.failed[0].error).toContain('Failed to save workflow');
 	});
+
+	it('strips credentials not valid for the current parameters', async () => {
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { authentication: 'none', url: 'https://api.example.com' },
+			credentials: { httpHeaderAuth: { id: 'stale', name: 'Stale Header Auth' } },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{
+					name: 'httpHeaderAuth',
+					displayOptions: { show: { authentication: ['genericCredentialType'] } },
+				},
+			],
+		});
+		(context.workflowService.updateFromWorkflowJSON as jest.Mock).mockResolvedValue(undefined);
+
+		await applyNodeChanges(context, 'wf-1');
+
+		const calls = (context.workflowService.updateFromWorkflowJSON as jest.Mock).mock.calls as Array<
+			[string, WorkflowJSON]
+		>;
+		const savedJson = calls[0][1];
+		const savedNode = savedJson.nodes.find((n) => n.name === 'HTTP Request');
+		expect(savedNode?.credentials).toBeUndefined();
+	});
+
+	it('preserves just-applied credentials even if description would exclude them', async () => {
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { authentication: 'none' },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+		(context.credentialService.get as jest.Mock).mockResolvedValue({
+			id: 'cred-1',
+			name: 'My Header Auth',
+		});
+		(context.workflowService.updateFromWorkflowJSON as jest.Mock).mockResolvedValue(undefined);
+
+		await applyNodeChanges(context, 'wf-1', {
+			'HTTP Request': { httpHeaderAuth: 'cred-1' },
+		});
+
+		const calls = (context.workflowService.updateFromWorkflowJSON as jest.Mock).mock.calls as Array<
+			[string, WorkflowJSON]
+		>;
+		const savedJson = calls[0][1];
+		const savedNode = savedJson.nodes.find((n) => n.name === 'HTTP Request');
+		expect(savedNode?.credentials).toEqual({
+			httpHeaderAuth: { id: 'cred-1', name: 'My Header Auth' },
+		});
+	});
+
+	it('keeps credentials matching description displayOptions', async () => {
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+			},
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Header Auth' } },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+		(context.workflowService.updateFromWorkflowJSON as jest.Mock).mockResolvedValue(undefined);
+
+		await applyNodeChanges(context, 'wf-1');
+
+		const calls = (context.workflowService.updateFromWorkflowJSON as jest.Mock).mock.calls as Array<
+			[string, WorkflowJSON]
+		>;
+		const savedJson = calls[0][1];
+		const savedNode = savedJson.nodes.find((n) => n.name === 'HTTP Request');
+		expect(savedNode?.credentials).toEqual({
+			httpHeaderAuth: { id: 'cred-1', name: 'Header Auth' },
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -560,5 +797,119 @@ describe('buildCompletedReport', () => {
 	it('returns empty array when nothing was applied', () => {
 		const report = buildCompletedReport(undefined, undefined);
 		expect(report).toHaveLength(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// stripStaleCredentialsFromWorkflow
+// ---------------------------------------------------------------------------
+
+describe('stripStaleCredentialsFromWorkflow', () => {
+	let context: InstanceAiContext;
+
+	beforeEach(() => {
+		context = createMockContext();
+	});
+
+	it('removes credential entries that no longer match the node parameters', async () => {
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { authentication: 'none', url: 'https://api.example.com' },
+			credentials: { httpHeaderAuth: { id: 'stale', name: 'Stale Header Auth' } },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{
+					name: 'httpHeaderAuth',
+					displayOptions: { show: { authentication: ['genericCredentialType'] } },
+				},
+			],
+		});
+
+		await stripStaleCredentialsFromWorkflow(context, wfJson);
+
+		expect(wfJson.nodes[0].credentials).toBeUndefined();
+	});
+
+	it('keeps credential entries that match the current parameters', async () => {
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+			},
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Header Auth' } },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+
+		await stripStaleCredentialsFromWorkflow(context, wfJson);
+
+		expect(wfJson.nodes[0].credentials).toEqual({
+			httpHeaderAuth: { id: 'cred-1', name: 'Header Auth' },
+		});
+	});
+
+	it('strips per-node — clean nodes are unaffected, stale nodes are scrubbed', async () => {
+		const cleanNode = makeNode({
+			name: 'OpenRouter',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+			},
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'OpenRouter Auth' } },
+		});
+		const staleNode = makeNode({
+			name: 'Joke API',
+			id: 'node-2',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { authentication: 'none', url: 'https://icanhazdadjoke.com/' },
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'OpenRouter Auth' } },
+		});
+		const wfJson = makeWorkflowJSON([cleanNode, staleNode]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{
+					name: 'httpHeaderAuth',
+					displayOptions: { show: { authentication: ['genericCredentialType'] } },
+				},
+			],
+		});
+
+		await stripStaleCredentialsFromWorkflow(context, wfJson);
+
+		expect(wfJson.nodes[0].credentials).toEqual({
+			httpHeaderAuth: { id: 'cred-1', name: 'OpenRouter Auth' },
+		});
+		expect(wfJson.nodes[1].credentials).toBeUndefined();
+	});
+
+	it('is a no-op for nodes without credentials', async () => {
+		const node = makeNode({
+			parameters: { authentication: 'none' },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+
+		await stripStaleCredentialsFromWorkflow(context, wfJson);
+
+		expect(wfJson.nodes[0].credentials).toBeUndefined();
+		expect(context.nodeService.getDescription).not.toHaveBeenCalled();
 	});
 });
