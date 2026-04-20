@@ -5,6 +5,7 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { MCP_ARCHIVE_WORKFLOW_TOOL } from './constants';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -25,6 +26,7 @@ export const createArchiveWorkflowTool = (
 	user: User,
 	workflowService: WorkflowService,
 	telemetry: Telemetry,
+	collaborationService: CollaborationService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_ARCHIVE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -52,6 +54,8 @@ export const createArchiveWorkflowTool = (
 			if (!workflow) {
 				throw new Error("Workflow not found or you don't have permission to archive it.");
 			}
+
+			await collaborationService.broadcastWorkflowUpdate(workflowId, user.id);
 
 			telemetryPayload.results = {
 				success: true,

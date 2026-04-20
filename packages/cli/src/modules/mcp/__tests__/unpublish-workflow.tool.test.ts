@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -13,12 +14,16 @@ describe('unpublish-workflow MCP tool', () => {
 	let workflowFinderService: WorkflowFinderService;
 	let workflowService: WorkflowService;
 	let telemetry: Telemetry;
+	let collaborationService: CollaborationService;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowService = mockInstance(WorkflowService);
 		telemetry = mockInstance(Telemetry, {
 			track: jest.fn(),
+		});
+		collaborationService = mockInstance(CollaborationService, {
+			broadcastWorkflowUpdate: jest.fn(),
 		});
 	});
 
@@ -29,6 +34,7 @@ describe('unpublish-workflow MCP tool', () => {
 				workflowFinderService,
 				workflowService,
 				telemetry,
+				collaborationService,
 			);
 
 			expect(tool.name).toBe('unpublish_workflow');
@@ -51,6 +57,7 @@ describe('unpublish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				const result = await tool.handler(
@@ -79,6 +86,7 @@ describe('unpublish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				const result = await tool.handler(
@@ -108,6 +116,7 @@ describe('unpublish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				await tool.handler({ workflowId: 'wf-1' }, {} as Parameters<typeof tool.handler>[1]);
@@ -136,6 +145,7 @@ describe('unpublish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				await tool.handler(
@@ -172,6 +182,7 @@ describe('unpublish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				const result = await tool.handler(

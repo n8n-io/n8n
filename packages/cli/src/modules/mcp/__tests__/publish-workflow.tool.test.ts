@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 import { createWorkflow } from './mock.utils';
 import { createPublishWorkflowTool } from '../tools/publish-workflow.tool';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -14,12 +15,16 @@ describe('publish-workflow MCP tool', () => {
 	let workflowFinderService: WorkflowFinderService;
 	let workflowService: WorkflowService;
 	let telemetry: Telemetry;
+	let collaborationService: CollaborationService;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowService = mockInstance(WorkflowService);
 		telemetry = mockInstance(Telemetry, {
 			track: jest.fn(),
+		});
+		collaborationService = mockInstance(CollaborationService, {
+			broadcastWorkflowUpdate: jest.fn(),
 		});
 	});
 
@@ -30,6 +35,7 @@ describe('publish-workflow MCP tool', () => {
 				workflowFinderService,
 				workflowService,
 				telemetry,
+				collaborationService,
 			);
 
 			expect(tool.name).toBe('publish_workflow');
@@ -52,6 +58,7 @@ describe('publish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				const result = await tool.handler(
@@ -82,6 +89,7 @@ describe('publish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				const result = await tool.handler(
@@ -113,6 +121,7 @@ describe('publish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				const result = await tool.handler(
@@ -146,6 +155,7 @@ describe('publish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				await tool.handler(
@@ -178,6 +188,7 @@ describe('publish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				await tool.handler(
@@ -214,6 +225,7 @@ describe('publish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				const result = await tool.handler(

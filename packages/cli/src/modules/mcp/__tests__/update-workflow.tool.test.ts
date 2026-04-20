@@ -4,6 +4,7 @@ import type { INode } from 'n8n-workflow';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
@@ -87,6 +88,7 @@ describe('update-workflow MCP tool', () => {
 	let credentialsService: CredentialsService;
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
+	let collaborationService: CollaborationService;
 
 	const mockExistingWorkflow = Object.assign(new WorkflowEntity(), {
 		id: 'wf-1',
@@ -121,6 +123,9 @@ describe('update-workflow MCP tool', () => {
 			findOneOrFail: jest.fn().mockResolvedValue({ projectId: 'project-1' }),
 		});
 		nodeTypes = mockInstance(NodeTypes);
+		collaborationService = mockInstance(CollaborationService, {
+			broadcastWorkflowUpdate: jest.fn(),
+		});
 
 		mockParseAndValidate.mockImplementation(async () => ({
 			workflow: { ...mockWorkflowJson, nodes: mockNodes.map((n) => ({ ...n })) },
@@ -139,6 +144,7 @@ describe('update-workflow MCP tool', () => {
 			nodeTypes,
 			credentialsService,
 			sharedWorkflowRepository,
+			collaborationService,
 		);
 
 	// Helper to call handler with proper typing (optional fields default to undefined)

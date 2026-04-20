@@ -3,6 +3,7 @@ import { User } from '@n8n/db';
 
 import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -27,6 +28,7 @@ describe('archive-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowService: WorkflowService;
 	let telemetry: Telemetry;
+	let collaborationService: CollaborationService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -35,9 +37,13 @@ describe('archive-workflow MCP tool', () => {
 		telemetry = mockInstance(Telemetry, {
 			track: jest.fn(),
 		});
+		collaborationService = mockInstance(CollaborationService, {
+			broadcastWorkflowUpdate: jest.fn(),
+		});
 	});
 
-	const createTool = () => createArchiveWorkflowTool(user, workflowService, telemetry);
+	const createTool = () =>
+		createArchiveWorkflowTool(user, workflowService, telemetry, collaborationService);
 
 	describe('smoke tests', () => {
 		test('creates tool with correct name and destructiveHint=true', () => {
