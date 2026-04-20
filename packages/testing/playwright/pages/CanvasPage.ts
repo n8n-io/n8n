@@ -560,7 +560,9 @@ export class CanvasPage extends BasePage {
 
 	async executeNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).hover();
-		await this.nodeExecuteButton(nodeName).click();
+		const button = this.nodeExecuteButton(nodeName);
+		await expect(button).toBeVisible();
+		await button.click();
 	}
 
 	async selectAll(): Promise<void> {
