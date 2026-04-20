@@ -29,7 +29,7 @@ import type { RoleMappingConfig, ResolvedRoles, RoleResolverContext } from './ro
 import { RoleResolverService } from './role-resolver.service.ee';
 
 export function isExpressionMappingFlagEnabled(): boolean {
-	return process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY === 'true';
+	return process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING === 'true';
 }
 
 @Service()

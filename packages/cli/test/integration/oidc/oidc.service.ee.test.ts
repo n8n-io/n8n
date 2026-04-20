@@ -935,15 +935,15 @@ describe('OIDC service', () => {
 				});
 
 				beforeEach(() => {
-					originalEnvFlag = process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
-					process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = 'true';
+					originalEnvFlag = process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING;
+					process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING = 'true';
 				});
 
 				afterEach(async () => {
 					if (originalEnvFlag === undefined) {
-						delete process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+						delete process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING;
 					} else {
-						process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = originalEnvFlag;
+						process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING = originalEnvFlag;
 					}
 					await roleMappingRuleRepository.delete({});
 				});
