@@ -14,7 +14,7 @@ import type {
 	BlueprintResearchItem,
 	BlueprintWorkflowItem,
 } from './blueprint.schema';
-import type { PlannedHandoff } from '../../agent/handoff';
+import { DELEGATE_DEFAULT_INSTRUCTIONS, type PlannedHandoff } from '../../agent/handoff';
 import type { PlannedTask } from '../../types';
 
 // ---------------------------------------------------------------------------
@@ -140,8 +140,7 @@ function delegateItemToTask(di: BlueprintDelegateItem): PlannedTask {
 			kind: 'delegate',
 			input: {
 				role: di.title,
-				instructions:
-					'Complete the delegated task using the provided tools. Return concrete results only.',
+				instructions: DELEGATE_DEFAULT_INSTRUCTIONS,
 				goal: di.description,
 				toolNames: di.requiredTools,
 			},

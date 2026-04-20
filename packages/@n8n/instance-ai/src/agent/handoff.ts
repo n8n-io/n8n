@@ -40,6 +40,21 @@ export const delegateHandoffInputSchema = z.object({
 });
 export type DelegateHandoffInput = z.infer<typeof delegateHandoffInputSchema>;
 
+/**
+ * Default `instructions` for delegate sub-agents spawned by the planner (blueprint,
+ * plan tool, detached delegate tasks). The orchestrator-authored `delegate` tool
+ * passes its own `instructions`; these paths don't, so a shared default is used.
+ *
+ * Keep it short and behavioural: what to do, what NOT to do (re-plan, delegate
+ * further, narrate steps), and what to return (the values the orchestrator will
+ * consume — tool outputs, IDs, findings — not a prose summary of work done).
+ */
+export const DELEGATE_DEFAULT_INSTRUCTIONS =
+	'You are a sub-agent completing a single delegated task with the provided tools. ' +
+	'Do not plan new work, delegate further, or narrate your process. ' +
+	'When you finish, return the specific outputs the orchestrator needs to proceed — ' +
+	'tool results, IDs, values, or findings — not a description of what you did.';
+
 export const builderHandoffInputSchema = z.object({
 	goal: z.string(),
 	workflowId: z.string().optional(),

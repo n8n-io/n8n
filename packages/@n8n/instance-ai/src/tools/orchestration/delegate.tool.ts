@@ -14,6 +14,7 @@ import {
 	withTraceRun,
 } from './tracing-utils';
 import {
+	DELEGATE_DEFAULT_INSTRUCTIONS,
 	observeOutcome,
 	renderHandoff,
 	type DelegateHandoffInput,
@@ -158,8 +159,7 @@ export async function startDetachedDelegateTask(
 
 	const handoff = buildDelegateHandoff({
 		role,
-		instructions:
-			'Complete the delegated task using the provided tools. Return concrete results only.',
+		instructions: DELEGATE_DEFAULT_INSTRUCTIONS,
 		goal: input.spec,
 		toolNames: input.tools,
 		artifacts: input.artifacts,
@@ -193,8 +193,7 @@ export async function startDetachedDelegateTask(
 				const subAgent = createSubAgent({
 					agentId: subAgentId,
 					role,
-					instructions:
-						'Complete the delegated task using the provided tools. Return concrete results only.',
+					instructions: DELEGATE_DEFAULT_INSTRUCTIONS,
 					tools: tracedTools,
 					modelId: context.modelId,
 					traceRun: traceContext?.actorRun,

@@ -3,7 +3,7 @@ import { taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import type { PlannedHandoff } from '../../agent/handoff';
+import { DELEGATE_DEFAULT_INSTRUCTIONS, type PlannedHandoff } from '../../agent/handoff';
 import type { OrchestrationContext, PlannedTask } from '../../types';
 
 const plannedTaskSchema = z.object({
@@ -35,8 +35,7 @@ function toPlannedHandoff(task: PlanToolTask): PlannedHandoff {
 				kind: 'delegate',
 				input: {
 					role: task.title,
-					instructions:
-						'Complete the delegated task using the provided tools. Return concrete results only.',
+					instructions: DELEGATE_DEFAULT_INSTRUCTIONS,
 					goal: task.spec,
 					toolNames: task.tools ?? [],
 				},
