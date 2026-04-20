@@ -9,7 +9,7 @@ import { KeyManagerService } from '@/modules/encryption-key-manager/key-manager.
 const makeKey = (overrides: Partial<DeploymentKey> = {}): DeploymentKey =>
 	({
 		id: 'key-1',
-		type: 'encryption',
+		type: 'data_encryption',
 		value: 'secret',
 		algorithm: 'aes-256-gcm',
 		status: 'active',
@@ -79,7 +79,7 @@ describe('KeyManagerService', () => {
 
 			expect(result).toEqual({ id: key.id, value: key.value, algorithm: 'aes-256-cbc' });
 			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { type: 'encryption', algorithm: 'aes-256-cbc' },
+				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 			});
 		});
 
@@ -100,7 +100,7 @@ describe('KeyManagerService', () => {
 
 			expect(repository.findActiveByType).not.toHaveBeenCalled();
 			expect(repository.create).toHaveBeenCalledWith(
-				expect.objectContaining({ status: 'inactive', type: 'encryption' }),
+				expect.objectContaining({ status: 'inactive', type: 'data_encryption' }),
 			);
 			expect(result).toEqual({ id: 'new-key' });
 		});

@@ -12,7 +12,7 @@ export class KeyManagerService {
 	/** Returns the current active encryption key. Throws if none exists or if multiple are found. */
 	async getActiveKey(): Promise<KeyInfo> {
 		const activeKeys = await this.deploymentKeyRepository.find({
-			where: { type: 'encryption', status: 'active' },
+			where: { type: 'data_encryption', status: 'active' },
 		});
 		if (activeKeys.length === 0) {
 			throw new NotFoundError('No active encryption key found');
@@ -34,7 +34,7 @@ export class KeyManagerService {
 	/** Returns the legacy CBC key (used to decrypt rows with NULL encryptionKeyId). */
 	async getLegacyKey(): Promise<KeyInfo> {
 		const key = await this.deploymentKeyRepository.findOne({
-			where: { type: 'encryption', algorithm: 'aes-256-cbc' },
+			where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 		});
 		if (!key) {
 			throw new NotFoundError('No legacy aes-256-cbc encryption key found');
@@ -49,14 +49,14 @@ export class KeyManagerService {
 	 */
 	async addKey(value: string, algorithm: string, setAsActive = false): Promise<{ id: string }> {
 		if (setAsActive) {
-			const current = await this.deploymentKeyRepository.findActiveByType('encryption');
+			const current = await this.deploymentKeyRepository.findActiveByType('data_encryption');
 			if (current) {
 				await this.markInactive(current.id);
 			}
 		}
 
 		const entity = this.deploymentKeyRepository.create({
-			type: 'encryption',
+			type: 'data_encryption',
 			value,
 			algorithm,
 			status: setAsActive ? 'active' : 'inactive',
@@ -70,7 +70,7 @@ export class KeyManagerService {
 	 * Transitions the current active key to 'inactive' first.
 	 */
 	async setActiveKey(id: string): Promise<void> {
-		const current = await this.deploymentKeyRepository.findActiveByType('encryption');
+		const current = await this.deploymentKeyRepository.findActiveByType('data_encryption');
 		if (current && current.id !== id) {
 			await this.markInactive(current.id);
 		}
