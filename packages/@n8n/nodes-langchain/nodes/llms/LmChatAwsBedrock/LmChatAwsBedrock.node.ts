@@ -8,6 +8,7 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 
 import {
 	NodeConnectionTypes,
@@ -48,17 +49,13 @@ export class LmChatAwsBedrock implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
 			baseURL: '=https://bedrock.{{$credentials?.region ?? "eu-central-1"}}.amazonaws.com',
 		},
 		properties: [
+			awsNodeAuthOptions,
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
 			{
 				displayName: 'Model Source',
