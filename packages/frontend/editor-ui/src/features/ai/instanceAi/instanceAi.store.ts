@@ -160,9 +160,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const gatewayDirectory = computed(() => instanceAiSettingsStore.gatewayDirectory);
 	const activeDirectory = computed(() => gatewayDirectory.value);
 
-	// Resource registry — maps known resource names to their types & IDs
+	// Resource registry — two collections derived from tool-call results:
+	//   * producedArtifacts: resources the agent built/created/mutated (panel).
+	//   * resourceNameIndex: every named resource seen, keyed by lowercased name
+	//     (markdown linking).
 	const workflowsListStore = useWorkflowsListStore();
-	const { registry: resourceRegistry } = useResourceRegistry(
+	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 	);
@@ -1027,7 +1030,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		activeDirectory,
 		contextualSuggestion,
 		currentTasks,
-		resourceRegistry,
+		producedArtifacts,
+		resourceNameIndex,
 		rateableResponseId,
 		creditsRemaining,
 		creditsPercentageRemaining,
