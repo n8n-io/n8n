@@ -1,6 +1,11 @@
 import { ref, reactive, computed, type Ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { getBuilderMessages, clearBuilderMessages } from './useAgentApi';
+import {
+	getBuilderMessages,
+	clearBuilderMessages,
+	getChatMessages,
+	clearChatMessages,
+} from './useAgentApi';
 import { convertDbMessages, type ChatMessage, type ToolCall } from './agentChatMessages';
 
 export interface UseAgentChatStreamParams {
@@ -18,7 +23,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const messages = ref<ChatMessage[]>([]);
 	const isStreaming = ref(false);
 	const abortController = ref<AbortController | null>(null);
-	const builderHistoryLoaded = ref(false);
+	const historyLoaded = ref(false);
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
@@ -27,10 +32,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return 'receiving';
 	});
 
-	async function loadBuilderHistory(): Promise<void> {
-		if (builderHistoryLoaded.value) return;
+	async function loadHistory(): Promise<void> {
+		if (historyLoaded.value) return;
+		const fetchMessages = params.endpoint.value === 'build' ? getBuilderMessages : getChatMessages;
 		try {
-			const dbMessages = await getBuilderMessages(
+			const dbMessages = await fetchMessages(
 				rootStore.restApiContext,
 				params.projectId.value,
 				params.agentId.value,
@@ -41,21 +47,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		} catch {
 			// Silently ignore — just start with empty chat
 		} finally {
-			builderHistoryLoaded.value = true;
+			historyLoaded.value = true;
 		}
 	}
 
 	async function clearHistory(): Promise<void> {
-		if (params.endpoint.value !== 'build') {
-			messages.value = [];
-			return;
-		}
+		const clearRemote =
+			params.endpoint.value === 'build' ? clearBuilderMessages : clearChatMessages;
 		try {
-			await clearBuilderMessages(
-				rootStore.restApiContext,
-				params.projectId.value,
-				params.agentId.value,
-			);
+			await clearRemote(rootStore.restApiContext, params.projectId.value, params.agentId.value);
 			messages.value = [];
 		} catch {
 			// ignore
@@ -226,7 +226,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		messages,
 		isStreaming,
 		messagingState,
-		loadBuilderHistory,
+		loadHistory,
 		clearHistory,
 		sendMessage,
 		stopGenerating,

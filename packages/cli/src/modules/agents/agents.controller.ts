@@ -15,7 +15,7 @@ import {
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
 } from './agents.dto';
-import { AgentsService } from './agents.service';
+import { AgentsService, chatThreadId } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
@@ -232,7 +232,7 @@ export class AgentsController {
 			for await (const chunk of this.agentsService.executeForChat(
 				agentId,
 				message,
-				`test-${agentId}`,
+				chatThreadId(agentId),
 				req.user.id,
 				projectId,
 				credentialProvider,
@@ -262,6 +262,23 @@ export class AgentsController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		await this.agentsBuilderService.clearBuilderMessages(agentId);
+		return { ok: true };
+	}
+
+	@Get('/:agentId/chat/messages')
+	async getChatMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		return await this.agentsService.getChatMessages(agentId);
+	}
+
+	@Delete('/:agentId/chat/messages')
+	async clearChatMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		await this.agentsService.clearChatMessages(agentId);
 		return { ok: true };
 	}
 

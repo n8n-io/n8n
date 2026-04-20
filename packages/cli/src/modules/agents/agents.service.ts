@@ -58,6 +58,11 @@ interface InjectRuntimeDependenciesParams {
 	nodeToolsEnabled: boolean;
 }
 
+/** Derive a stable thread ID for the test-chat of a given agent. */
+export function chatThreadId(agentId: string): string {
+	return `test-${agentId}`;
+}
+
 export interface ExecuteAgentData {
 	response: string;
 	structuredOutput: unknown;
@@ -286,6 +291,18 @@ export class AgentsService {
 
 		this.clearRuntimes(agentId);
 
+		// Remove the test-chat thread + its messages so deleting an agent
+		// doesn't leave orphaned rows in agents_threads / agents_messages.
+		// Swallow errors — the agent is already gone; best-effort cleanup.
+		try {
+			await this.clearChatMessages(agentId);
+		} catch (error) {
+			this.logger.debug('Failed to clear test chat on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
+
 		this.logger.debug('Deleted SDK agent', { agentId, projectId });
 
 		return true;
@@ -486,6 +503,24 @@ export class AgentsService {
 		}
 
 		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId);
+	}
+
+	/**
+	 * Return persisted test-chat messages for an agent. Mirrors the builder's
+	 * history API so the frontend can restore the Test panel on reload.
+	 */
+	async getChatMessages(agentId: string) {
+		return await this.n8nMemory.getMessages(chatThreadId(agentId));
+	}
+
+	/** Clear persisted test-chat messages for an agent. */
+	async clearChatMessages(agentId: string) {
+		const threadId = chatThreadId(agentId);
+		const messages = await this.n8nMemory.getMessages(threadId);
+		if (messages.length > 0) {
+			await this.n8nMemory.deleteMessages(messages.map((m) => m.id));
+		}
+		await this.n8nMemory.deleteThread(threadId);
 	}
 
 	/**

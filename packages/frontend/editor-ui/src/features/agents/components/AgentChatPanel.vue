@@ -36,7 +36,7 @@ const {
 	messages,
 	isStreaming,
 	messagingState,
-	loadBuilderHistory,
+	loadHistory,
 	clearHistory,
 	sendMessage,
 	stopGenerating,
@@ -69,9 +69,7 @@ function sendMessageFromOutside(message: string) {
 defineExpose({ sendMessageFromOutside });
 
 onMounted(() => {
-	if (props.endpoint === 'build') {
-		void loadBuilderHistory();
-	}
+	void loadHistory();
 	if (props.initialMessage) {
 		sendMessageFromOutside(props.initialMessage);
 	}

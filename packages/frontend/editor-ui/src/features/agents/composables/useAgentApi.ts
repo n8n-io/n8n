@@ -223,6 +223,30 @@ export const clearBuilderMessages = async (
 	);
 };
 
+export const getChatMessages = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<unknown[]> => {
+	return await makeRestApiRequest<unknown[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
+export const clearChatMessages = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
 export const deleteCustomTool = async (
 	context: IRestApiContext,
 	projectId: string,
