@@ -317,37 +317,37 @@ watch(agentId, initialize, { immediate: true });
 						agentName || locale.baseText('agents.home.untitledAgent')
 					}}</N8nText>
 				</div>
-				<div :class="$style.mainHeaderRight">
-					<div
-						v-if="mode !== 'building'"
-						:class="$style.chatModeToggle"
-						role="group"
-						:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
-						data-testid="agent-chat-mode-toggle"
+				<div
+					v-if="mode !== 'building'"
+					:class="[$style.chatModeToggle, $style.chatModeToggleCenter]"
+					role="group"
+					:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
+					data-testid="agent-chat-mode-toggle"
+				>
+					<button
+						type="button"
+						:class="[$style.chatModeBtn, chatMode === 'build' && $style.chatModeBtnActive]"
+						:disabled="isChatStreaming"
+						:aria-pressed="chatMode === 'build'"
+						data-testid="agent-chat-mode-build"
+						@click="setChatMode('build')"
 					>
-						<button
-							type="button"
-							:class="[$style.chatModeBtn, chatMode === 'build' && $style.chatModeBtnActive]"
-							:disabled="isChatStreaming"
-							:aria-pressed="chatMode === 'build'"
-							data-testid="agent-chat-mode-build"
-							@click="setChatMode('build')"
-						>
-							<N8nIcon icon="wand-sparkles" :size="14" />
-							<span>{{ locale.baseText('agents.builder.chatMode.build') }}</span>
-						</button>
-						<button
-							type="button"
-							:class="[$style.chatModeBtn, chatMode === 'test' && $style.chatModeBtnActive]"
-							:disabled="isChatStreaming"
-							:aria-pressed="chatMode === 'test'"
-							data-testid="agent-chat-mode-test"
-							@click="setChatMode('test')"
-						>
-							<N8nIcon icon="message-square" :size="14" />
-							<span>{{ locale.baseText('agents.builder.chatMode.test') }}</span>
-						</button>
-					</div>
+						<N8nIcon icon="wand-sparkles" :size="14" />
+						<span>{{ locale.baseText('agents.builder.chatMode.build') }}</span>
+					</button>
+					<button
+						type="button"
+						:class="[$style.chatModeBtn, chatMode === 'test' && $style.chatModeBtnActive]"
+						:disabled="isChatStreaming"
+						:aria-pressed="chatMode === 'test'"
+						data-testid="agent-chat-mode-test"
+						@click="setChatMode('test')"
+					>
+						<N8nIcon icon="message-square" :size="14" />
+						<span>{{ locale.baseText('agents.builder.chatMode.test') }}</span>
+					</button>
+				</div>
+				<div :class="$style.mainHeaderRight">
 					<button
 						:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
 						data-testid="toggle-settings"
@@ -440,6 +440,7 @@ watch(agentId, initialize, { immediate: true });
 }
 
 .mainHeader {
+	position: relative;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -500,6 +501,13 @@ watch(agentId, initialize, { immediate: true });
 	padding: var(--spacing--5xs);
 	border-radius: var(--radius);
 	background-color: var(--color--foreground--tint-2);
+}
+
+.chatModeToggleCenter {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
 }
 
 .chatModeBtn {
