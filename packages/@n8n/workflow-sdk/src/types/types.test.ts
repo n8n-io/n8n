@@ -191,7 +191,7 @@ describe('Base Types', () => {
 			expect(connections.HTTP.error).toBeUndefined();
 		});
 
-		it('appends error after existing multi-output main slots (IF node)', () => {
+		it('places error after existing multi-output main slots (IF node) when node info is passed', () => {
 			const connections: IConnections = {
 				IF: {
 					main: [
@@ -202,7 +202,9 @@ describe('Base Types', () => {
 				},
 			};
 
-			foldLegacyErrorConnections(connections);
+			foldLegacyErrorConnections(connections, [
+				{ name: 'IF', type: 'n8n-nodes-base.if', parameters: {} },
+			]);
 
 			expect(connections.IF.main).toHaveLength(3);
 			expect(connections.IF.main[2]).toEqual([{ node: 'ErrorHandler', type: 'main', index: 0 }]);
@@ -238,6 +240,45 @@ describe('Base Types', () => {
 
 			expect(connections.HTTP.main).toHaveLength(2);
 			expect(connections.HTTP.main[1]).toEqual([{ node: 'ErrorHandler', type: 'main', index: 0 }]);
+		});
+
+		it('places error at main[2] for a sparse IF node when node info is passed', () => {
+			const connections: IConnections = {
+				IF: {
+					main: [[{ node: 'True', type: 'main', index: 0 }]],
+					error: [[{ node: 'ErrorHandler', type: 'main', index: 0 }]],
+				},
+			};
+
+			foldLegacyErrorConnections(connections, [
+				{ name: 'IF', type: 'n8n-nodes-base.if', parameters: {} },
+			]);
+
+			expect(connections.IF.main).toHaveLength(3);
+			expect(connections.IF.main[0]).toEqual([{ node: 'True', type: 'main', index: 0 }]);
+			expect(connections.IF.main[1]).toEqual([]);
+			expect(connections.IF.main[2]).toEqual([{ node: 'ErrorHandler', type: 'main', index: 0 }]);
+		});
+
+		it('places error at main[numCases + 1] for a Switch node using its rules length', () => {
+			const connections: IConnections = {
+				Switch: {
+					main: [[{ node: 'Case 0', type: 'main', index: 0 }]],
+					error: [[{ node: 'OnError', type: 'main', index: 0 }]],
+				},
+			};
+
+			foldLegacyErrorConnections(connections, [
+				{
+					name: 'Switch',
+					type: 'n8n-nodes-base.switch',
+					parameters: { rules: { values: [{}, {}, {}] } },
+				},
+			]);
+
+			// 3 cases + 1 fallback = errorIndex 4
+			expect(connections.Switch.main).toHaveLength(5);
+			expect(connections.Switch.main[4]).toEqual([{ node: 'OnError', type: 'main', index: 0 }]);
 		});
 
 		it('drops an empty legacy error entry without mutating main', () => {

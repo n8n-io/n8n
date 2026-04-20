@@ -2602,7 +2602,7 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					// matching fold.
 					const normalizedOriginalConns = deepCopy(json.connections);
 					normalizeConnections(normalizedOriginalConns);
-					foldLegacyErrorConnections(normalizedOriginalConns);
+					foldLegacyErrorConnections(normalizedOriginalConns, json.nodes);
 					const filteredOriginal = filterEmptyConnections(normalizedOriginalConns, validNodeNames);
 					const filteredParsed = filterEmptyConnections(parsedJson.connections);
 

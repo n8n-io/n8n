@@ -171,7 +171,7 @@ describe('Real Workflow Round-Trip', () => {
 					// the comparison itself handles the old/new equivalence.
 					const normalizedOriginalConns = deepCopy(json.connections);
 					normalizeConnections(normalizedOriginalConns);
-					foldLegacyErrorConnections(normalizedOriginalConns);
+					foldLegacyErrorConnections(normalizedOriginalConns, json.nodes);
 					const filteredOriginal = filterEmptyConnections(normalizedOriginalConns);
 					const filteredExported = filterEmptyConnections(exported.connections);
 
