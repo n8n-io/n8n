@@ -477,6 +477,7 @@ export class AgentsService {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		integrationType?: string,
 	): AsyncGenerator<StreamChunk> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
@@ -493,6 +494,7 @@ export class AgentsService {
 			publishedAgentData,
 			credentialProvider,
 			userId,
+			integrationType,
 		);
 
 		yield* this.streamChatResponse(agentInstance, agentId, message, threadId, userId);

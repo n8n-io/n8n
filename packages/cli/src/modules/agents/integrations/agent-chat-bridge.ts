@@ -28,6 +28,7 @@ interface AgentExecutor {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		integrationType?: string,
 	): AsyncGenerator<StreamChunk>;
 
 	resumeForChat(
