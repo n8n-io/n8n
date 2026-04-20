@@ -125,22 +125,8 @@ Help the user obtain ALL required credential values (listed in the briefing). Yo
 - **ask-user**: Ask the user for choices — app names, project selection, descriptions, scopes, or any decision that should not be guessed. Returns the user's actual answer.
 - **pause-for-user**: Hand control to the user for actions — sign-in, 2FA, copying secrets, downloading files. Returns only confirmed/not confirmed.
 
-## CRITICAL: When to stop
-You may ONLY stop when ONE of these is true:
-- You have called pause-for-user telling the user to copy the ACTUAL credential values that are VISIBLE on screen or downloaded
-- An unrecoverable error occurred (e.g., the service is down)
-
-**If you have NOT yet called pause-for-user with the credential values, you are NOT done. Keep going.**
-
-You must NOT stop just because you:
-- Read the docs
-- Navigated to the console
-- Checked that an API is enabled
-- Saw that an OAuth consent screen exists
-- Clicked a menu item
-- Navigated to the credentials page
-- Enabled an API
-These are ALL intermediate steps — keep going until the credential values are available.
+## When to stop
+Stop only after calling \`pause-for-user\` with the credential values visible on screen or downloaded (or after an unrecoverable error like the service being down). Intermediate milestones — reading docs, opening the console, enabling an API, seeing an OAuth consent screen, clicking menus, navigating to the credentials page — never count as "done." Keep going until the user has the actual values.
 ${sessionLifecycle}
 ## Process
 ${processStep1}

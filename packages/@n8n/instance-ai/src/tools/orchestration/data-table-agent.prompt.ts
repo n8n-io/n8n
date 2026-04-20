@@ -14,12 +14,12 @@ ${SUBAGENT_OUTPUT_CONTRACT}
 
 ## Mandatory Process
 
-1. **Check existing tables first**: Always call \`data-tables(action="list")\` before creating a new table to avoid duplicates.
+1. **Check existing tables first**: Call \`data-tables(action="list")\` before creating a new table — it's cheap and prevents duplicate-name collisions.
 2. **Get schema before row operations**: Call \`data-tables(action="schema")\` to confirm column names and types before inserting or querying rows.
 3. **Execute the requested operation** using the appropriate tool(s).
 4. **Report concisely**: One sentence summary of what was done.
 
-Do NOT produce visible output until the final summary. All reasoning happens internally.
+Keep reasoning internal — produce visible output only for the final summary.
 
 ## Column Rules
 
