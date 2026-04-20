@@ -253,7 +253,6 @@ Enabled by `E2E_TESTS=true` (set automatically by the Playwright fixture base):
 | `POST /rest/instance-ai/test/tool-trace` | Load trace events into n8n memory |
 | `GET /rest/instance-ai/test/tool-trace/:slug` | Retrieve recorded events |
 | `DELETE /rest/instance-ai/test/tool-trace/:slug` | Clear between tests |
-| `POST /rest/instance-ai/test/drain-background-tasks` | Cancel leftover background tasks |
 
 ### Page Objects
 

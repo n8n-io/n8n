@@ -310,8 +310,13 @@ export function useSetupCards(
 				if (storeNode) {
 					const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
 					if (Object.keys(liveIssues).length > 0) return false;
-					// Also check for remaining placeholder values in node parameters
-					if (hasPlaceholderDeep(storeNode.parameters)) return false;
+					// Check for remaining placeholder values only in tracked parameters
+					const tracked = trackedParamNames.value.get(req.node.name);
+					if (tracked) {
+						for (const paramName of tracked) {
+							if (hasPlaceholderDeep(storeNode.parameters[paramName])) return false;
+						}
+					}
 				}
 			}
 		}

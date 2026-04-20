@@ -12,6 +12,7 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
 import { OwnershipService } from '@/services/ownership.service';
+import { UrlService } from '@/services/url.service';
 
 interface GatewayTokenResponse {
 	token: string;
@@ -44,6 +45,7 @@ export class AiGatewayService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
 		private readonly userRepository: UserRepository,
+		private readonly urlService: UrlService,
 	) {}
 
 	/**
@@ -273,6 +275,7 @@ export class AiGatewayService {
 				...(user && {
 					userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
 				}),
+				instanceUrl: this.urlService.getInstanceBaseUrl(),
 			}),
 		});
 

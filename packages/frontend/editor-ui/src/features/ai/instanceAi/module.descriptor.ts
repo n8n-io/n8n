@@ -10,14 +10,15 @@ const InstanceAiOptinModal = async () => await import('./components/InstanceAiOp
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
-	name: 'Instance AI',
-	description: 'Chat with the n8n Instance AI agent.',
+	name: 'AI Assistant',
+	description: 'Chat with your n8n instance.',
 	icon: 'sparkles',
 	routes: [
 		{
 			name: INSTANCE_AI_VIEW,
 			path: '/instance-ai',
 			component: InstanceAiView,
+			props: true,
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],
@@ -27,6 +28,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			name: INSTANCE_AI_THREAD_VIEW,
 			path: '/instance-ai/:threadId',
 			component: InstanceAiView,
+			props: true,
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],

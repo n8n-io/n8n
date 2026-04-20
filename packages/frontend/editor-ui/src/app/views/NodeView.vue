@@ -301,7 +301,9 @@ const isCanvasReadOnly = computed(() => {
 });
 
 const canExecuteOnCanvas = computed(() => {
-	if (isDemoRoute.value) return false;
+	if (isDemoRoute.value) {
+		return route.query.canExecute === 'true';
+	}
 	if (editableWorkflow.value.isArchived) return false;
 	if (builderStore.streaming) return false;
 	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
@@ -1782,6 +1784,7 @@ onBeforeUnmount(() => {
 			:show-fallback-nodes="showFallbackNodes"
 			:event-bus="canvasEventBus"
 			:read-only="isCanvasReadOnly"
+			:can-execute="canExecuteOnCanvas"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
 			:suppress-interaction="experimentalNdvStore.isMapperOpen"

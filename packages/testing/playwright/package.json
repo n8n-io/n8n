@@ -42,6 +42,7 @@
     "@n8n/api-types": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/db": "workspace:*",
+    "@n8n/instance-ai": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
