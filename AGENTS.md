@@ -146,7 +146,7 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - Import from appropriate error classes in each package
 
 ### Frontend Development
-- Refer to `packages/frontend/AGENTS.md` when working in `packages/frontend/**`
+- Refer to `packages/frontend/AGENTS.md`
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
