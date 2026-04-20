@@ -2991,6 +2991,25 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
 			workflow.id,
 			owner.id,
+			undefined,
+		);
+	});
+
+	test('should broadcast workflow update excluding the push-ref client', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const payload = {
+			name: 'name updated',
+		};
+
+		await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.set('push-ref', 'my-push-ref')
+			.send(payload);
+
+		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			workflow.id,
+			owner.id,
+			'my-push-ref',
 		);
 	});
 
@@ -3649,6 +3668,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
 			workflow.id,
 			owner.id,
+			undefined,
 		);
 	});
 
@@ -4124,6 +4144,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
 			workflow.id,
 			owner.id,
+			undefined,
 		);
 	});
 
@@ -4347,6 +4368,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
 			workflow.id,
 			owner.id,
+			undefined,
 		);
 	});
 
@@ -4514,6 +4536,7 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
 			workflow.id,
 			owner.id,
+			undefined,
 		);
 	});
 

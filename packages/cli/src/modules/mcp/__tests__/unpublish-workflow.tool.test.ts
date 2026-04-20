@@ -100,6 +100,8 @@ describe('unpublish-workflow MCP tool', () => {
 				});
 
 				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1');
+
+				expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
 			});
 		});
 

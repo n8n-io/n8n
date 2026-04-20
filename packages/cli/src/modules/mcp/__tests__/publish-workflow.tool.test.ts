@@ -106,6 +106,8 @@ describe('publish-workflow MCP tool', () => {
 				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
 					versionId: undefined,
 				});
+
+				expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
 			});
 
 			test('publishes specific version when versionId provided', async () => {

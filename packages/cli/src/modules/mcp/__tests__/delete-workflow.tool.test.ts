@@ -78,6 +78,8 @@ describe('archive-workflow MCP tool', () => {
 			expect(response.workflowId).toBe('wf-1');
 			expect(response.name).toBe('My Workflow');
 			expect(result.isError).toBeUndefined();
+
+			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
 		});
 
 		test('returns error when workflow not found or no permission to archive', async () => {

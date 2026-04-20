@@ -198,6 +198,8 @@ describe('update-workflow MCP tool', () => {
 			expect(response.url).toBe('https://n8n.example.com/workflow/wf-1');
 			expect(response.autoAssignedCredentials).toEqual([]);
 			expect(result.isError).toBeUndefined();
+
+			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
 		});
 
 		test('sets correct workflow entity defaults', async () => {
