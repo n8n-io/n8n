@@ -16,7 +16,7 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { InstanceAiService } from '../instance-ai.service';
 
 import { resolveSubAgentRole } from './sub-agent-roles';
 
@@ -29,7 +29,7 @@ export class SubAgentEvalService {
 
 	constructor(
 		private readonly adapterService: InstanceAiAdapterService,
-		private readonly settingsService: InstanceAiSettingsService,
+		private readonly instanceAiService: InstanceAiService,
 		logger: Logger,
 	) {
 		this.logger = logger.scoped('sub-agent-eval');
@@ -52,7 +52,7 @@ export class SubAgentEvalService {
 		};
 
 		const tools = createAllTools(context);
-		const modelId = request.modelId ?? (await this.settingsService.resolveModelConfig(user));
+		const modelId = request.modelId ?? (await this.instanceAiService.resolveAgentModelConfig(user));
 		const agentId = `eval-${role.label}-${randomUUID()}`;
 
 		const agent = createSubAgent({

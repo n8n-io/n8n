@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
-import { InstanceAiSettingsService } from '../../instance-ai-settings.service';
+import { InstanceAiService } from '../../instance-ai.service';
 import { SubAgentEvalService } from '../sub-agent-eval.service';
 
 function makeAgentResult(
@@ -39,7 +39,7 @@ jest.mock('@n8n/instance-ai', () => ({
 
 describe('SubAgentEvalService', () => {
 	const adapter = mock<InstanceAiAdapterService>();
-	const settings = mock<InstanceAiSettingsService>();
+	const instanceAiService = mock<InstanceAiService>();
 	const user = mock<User>({ id: 'user-1' });
 	const logger = mock<Logger>();
 
@@ -48,8 +48,10 @@ describe('SubAgentEvalService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
-		service = new SubAgentEvalService(adapter, settings, logger);
-		settings.resolveModelConfig.mockResolvedValue('anthropic/claude-sonnet-4-20250514');
+		service = new SubAgentEvalService(adapter, instanceAiService, logger);
+		instanceAiService.resolveAgentModelConfig.mockResolvedValue(
+			'anthropic/claude-sonnet-4-20250514',
+		);
 	});
 
 	it('throws when the role is unknown', async () => {
