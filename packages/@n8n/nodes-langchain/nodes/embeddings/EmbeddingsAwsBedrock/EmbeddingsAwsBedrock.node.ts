@@ -3,6 +3,7 @@ import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockEmbeddings } from '@langchain/aws';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { getNodeProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 
 import {
 	NodeConnectionTypes,
@@ -17,12 +18,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 		displayName: 'Embeddings AWS Bedrock',
 		name: 'embeddingsAwsBedrock',
 		icon: 'file:bedrock.svg',
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		group: ['transform'],
 		version: 1,
 		description: 'Use Embeddings AWS Bedrock',
@@ -53,11 +49,13 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			baseURL: '=https://bedrock.{{$credentials?.region ?? "eu-central-1"}}.amazonaws.com',
 		},
 		properties: [
+			awsNodeAuthOptions,
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
+				allowArbitraryValues: true, // Hide issues when model name is specified in the expression and does not match any of the options
 				description:
 					'The model which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html">Learn more</a>.',
 				typeOptions: {
