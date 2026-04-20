@@ -6,7 +6,7 @@
  * state machine, and this logic is testable independently.
  */
 import { findPlaceholderDetails } from '@n8n/utils';
-import type { IDataObject, NodeJSON, DisplayOptions } from '@n8n/workflow-sdk';
+import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
@@ -38,7 +38,7 @@ export function createCredentialCache(): CredentialCache {
  * static credentials filtered by displayOptions, plus the dynamic types
  * implied by `authentication: genericCredentialType | predefinedCredentialType`.
  */
-async function getValidCredentialTypes(
+export async function getValidCredentialTypes(
 	context: InstanceAiContext,
 	node: NodeJSON,
 ): Promise<Set<string>> {
@@ -108,6 +108,43 @@ async function getValidCredentialTypes(
 	}
 
 	return types;
+}
+
+/**
+ * Drop credential entries from a node whose type is no longer valid for the
+ * node's current parameters (e.g. an `httpHeaderAuth` left over from an earlier
+ * builder revision after `authentication` was switched to `none`). Mutates
+ * `node.credentials` in place. Types in `preserveTypes` are kept regardless —
+ * used by the apply path so a credential the user just assigned isn't stripped.
+ */
+export async function stripStaleCredentialsFromNode(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	preserveTypes?: Set<string>,
+): Promise<void> {
+	if (!node.credentials || Object.keys(node.credentials).length === 0) return;
+	const validTypes = await getValidCredentialTypes(context, node);
+	const cleaned: NonNullable<typeof node.credentials> = {};
+	for (const [credType, value] of Object.entries(node.credentials)) {
+		if (validTypes.has(credType) || preserveTypes?.has(credType)) {
+			cleaned[credType] = value;
+		}
+	}
+	node.credentials = Object.keys(cleaned).length > 0 ? cleaned : undefined;
+}
+
+/**
+ * Run {@link stripStaleCredentialsFromNode} over every node in a workflow.
+ * Intended to run after `resolveCredentials` in the builder save paths so the
+ * LLM can't persist stale credential references between turns.
+ */
+export async function stripStaleCredentialsFromWorkflow(
+	context: InstanceAiContext,
+	json: WorkflowJSON,
+): Promise<void> {
+	await Promise.all(
+		(json.nodes ?? []).map(async (node) => await stripStaleCredentialsFromNode(context, node)),
+	);
 }
 
 /**
@@ -635,20 +672,10 @@ export async function applyNodeChanges(
 		}
 
 		// Drop credential entries that are no longer valid for the node's current
-		// parameters (e.g. httpHeaderAuth left over when authentication was later
-		// switched to 'none'). Entries just applied via credsMap are preserved so
-		// a user can assign an auxiliary credential without it being cleaned up.
-		if (node.credentials && Object.keys(node.credentials).length > 0) {
-			const validTypes = await getValidCredentialTypes(context, node);
-			const appliedTypes = new Set(credsMap ? Object.keys(credsMap) : []);
-			const cleaned: NonNullable<typeof node.credentials> = {};
-			for (const [credType, value] of Object.entries(node.credentials)) {
-				if (validTypes.has(credType) || appliedTypes.has(credType)) {
-					cleaned[credType] = value;
-				}
-			}
-			node.credentials = Object.keys(cleaned).length > 0 ? cleaned : undefined;
-		}
+		// parameters. Entries just applied via credsMap are preserved so a user
+		// can assign an auxiliary credential without it being cleaned up.
+		const appliedTypes = new Set(credsMap ? Object.keys(credsMap) : []);
+		await stripStaleCredentialsFromNode(context, node, appliedTypes);
 	}
 
 	// Single save for all changes

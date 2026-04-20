@@ -7,6 +7,7 @@ import {
 	applyNodeChanges,
 	buildCompletedReport,
 	createCredentialCache,
+	stripStaleCredentialsFromWorkflow,
 } from '../setup-workflow.service';
 
 // ---------------------------------------------------------------------------
@@ -796,5 +797,119 @@ describe('buildCompletedReport', () => {
 	it('returns empty array when nothing was applied', () => {
 		const report = buildCompletedReport(undefined, undefined);
 		expect(report).toHaveLength(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// stripStaleCredentialsFromWorkflow
+// ---------------------------------------------------------------------------
+
+describe('stripStaleCredentialsFromWorkflow', () => {
+	let context: InstanceAiContext;
+
+	beforeEach(() => {
+		context = createMockContext();
+	});
+
+	it('removes credential entries that no longer match the node parameters', async () => {
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { authentication: 'none', url: 'https://api.example.com' },
+			credentials: { httpHeaderAuth: { id: 'stale', name: 'Stale Header Auth' } },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{
+					name: 'httpHeaderAuth',
+					displayOptions: { show: { authentication: ['genericCredentialType'] } },
+				},
+			],
+		});
+
+		await stripStaleCredentialsFromWorkflow(context, wfJson);
+
+		expect(wfJson.nodes[0].credentials).toBeUndefined();
+	});
+
+	it('keeps credential entries that match the current parameters', async () => {
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+			},
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Header Auth' } },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+
+		await stripStaleCredentialsFromWorkflow(context, wfJson);
+
+		expect(wfJson.nodes[0].credentials).toEqual({
+			httpHeaderAuth: { id: 'cred-1', name: 'Header Auth' },
+		});
+	});
+
+	it('strips per-node — clean nodes are unaffected, stale nodes are scrubbed', async () => {
+		const cleanNode = makeNode({
+			name: 'OpenRouter',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+			},
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'OpenRouter Auth' } },
+		});
+		const staleNode = makeNode({
+			name: 'Joke API',
+			id: 'node-2',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { authentication: 'none', url: 'https://icanhazdadjoke.com/' },
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'OpenRouter Auth' } },
+		});
+		const wfJson = makeWorkflowJSON([cleanNode, staleNode]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{
+					name: 'httpHeaderAuth',
+					displayOptions: { show: { authentication: ['genericCredentialType'] } },
+				},
+			],
+		});
+
+		await stripStaleCredentialsFromWorkflow(context, wfJson);
+
+		expect(wfJson.nodes[0].credentials).toEqual({
+			httpHeaderAuth: { id: 'cred-1', name: 'OpenRouter Auth' },
+		});
+		expect(wfJson.nodes[1].credentials).toBeUndefined();
+	});
+
+	it('is a no-op for nodes without credentials', async () => {
+		const node = makeNode({
+			parameters: { authentication: 'none' },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+
+		await stripStaleCredentialsFromWorkflow(context, wfJson);
+
+		expect(wfJson.nodes[0].credentials).toBeUndefined();
+		expect(context.nodeService.getDescription).not.toHaveBeenCalled();
 	});
 });
