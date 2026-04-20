@@ -33,9 +33,7 @@ export class SecurityPolicyInstanceSettingsLoader {
 			return 'skipped';
 		}
 
-		this.logger.info(
-			'N8N_SECURITY_POLICY_MANAGED_BY_ENV is enabled — applying security policy env vars',
-		);
+		this.logger.info('securityPolicyManagedByEnv is enabled — applying security policy env vars');
 
 		await this.mfaService.enforceMFA(mfaEnforcedEnabled);
 

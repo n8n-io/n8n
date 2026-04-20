@@ -6,6 +6,14 @@ import type { Cipher } from 'n8n-core';
 
 import { SamlInstanceSettingsLoader } from '../loaders/saml.instance-settings-loader';
 
+const mockSetCurrentAuthenticationMethod = jest.fn();
+const mockGetCurrentAuthenticationMethod = jest.fn().mockReturnValue('email');
+jest.mock('@/sso.ee/sso-helpers', () => ({
+	setCurrentAuthenticationMethod: (...args: unknown[]) =>
+		mockSetCurrentAuthenticationMethod(...args),
+	getCurrentAuthenticationMethod: () => mockGetCurrentAuthenticationMethod(),
+}));
+
 describe('SamlInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
 	const settingsRepository = mock<SettingsRepository>();
@@ -13,10 +21,9 @@ describe('SamlInstanceSettingsLoader', () => {
 
 	const validConfig: Partial<InstanceSettingsLoaderConfig> = {
 		ssoManagedByEnv: true,
-		ssoProtocol: 'saml',
 		samlMetadata: '<xml>metadata</xml>',
 		samlMetadataUrl: '',
-		samlLoginEnabled: false,
+		samlLoginEnabled: true,
 		samlLoginLabel: '',
 		samlLoginBinding: 'redirect',
 		samlAcsBinding: 'post',
@@ -33,13 +40,13 @@ describe('SamlInstanceSettingsLoader', () => {
 		samlMappingUserPrincipalName: '',
 		samlMappingInstanceRole: '',
 		samlMappingProjectRoles: '',
+		oidcLoginEnabled: false,
 		ssoUserRoleProvisioning: 'disabled',
 	};
 
 	const createLoader = (configOverrides: Partial<InstanceSettingsLoaderConfig> = {}) => {
 		const config = {
 			ssoManagedByEnv: false,
-			ssoProtocol: '',
 			samlMetadata: '',
 			samlMetadataUrl: '',
 			samlLoginEnabled: false,
@@ -59,6 +66,7 @@ describe('SamlInstanceSettingsLoader', () => {
 			samlMappingUserPrincipalName: '',
 			samlMappingInstanceRole: '',
 			samlMappingProjectRoles: '',
+			oidcLoginEnabled: false,
 			ssoUserRoleProvisioning: 'disabled',
 			...configOverrides,
 		} as InstanceSettingsLoaderConfig;
@@ -70,6 +78,7 @@ describe('SamlInstanceSettingsLoader', () => {
 		jest.resetAllMocks();
 		logger.scoped.mockReturnThis();
 		cipher.encrypt.mockReturnValue('encrypted-key');
+		mockGetCurrentAuthenticationMethod.mockReturnValue('email');
 	});
 
 	it('should skip when ssoManagedByEnv is false', async () => {
@@ -79,53 +88,6 @@ describe('SamlInstanceSettingsLoader', () => {
 
 		expect(result).toBe('skipped');
 		expect(settingsRepository.save).not.toHaveBeenCalled();
-	});
-
-	it('should skip when ssoProtocol is set to oidc', async () => {
-		const loader = createLoader({ ...validConfig, ssoProtocol: 'oidc' });
-
-		const result = await loader.run();
-
-		expect(result).toBe('skipped');
-		expect(settingsRepository.save).not.toHaveBeenCalled();
-	});
-
-	it('should run when ssoProtocol is explicitly set to saml', async () => {
-		const loader = createLoader({ ...validConfig, ssoProtocol: 'saml' });
-
-		const result = await loader.run();
-
-		expect(result).toBe('created');
-		expect(settingsRepository.save).toHaveBeenCalled();
-	});
-
-	it('should throw when ssoProtocol is saml but neither metadata nor metadataUrl is provided', async () => {
-		const loader = createLoader({
-			...validConfig,
-			ssoProtocol: 'saml',
-			samlMetadata: '',
-			samlMetadataUrl: '',
-		});
-
-		await expect(loader.run()).rejects.toThrow(
-			'At least one of N8N_SSO_SAML_METADATA or N8N_SSO_SAML_METADATA_URL is required',
-		);
-	});
-
-	it('should throw when ssoProtocol is not set', async () => {
-		const loader = createLoader({ ...validConfig, ssoProtocol: '' });
-
-		await expect(loader.run()).rejects.toThrow(
-			'N8N_SSO_PROTOCOL is required when N8N_SSO_MANAGED_BY_ENV is enabled',
-		);
-	});
-
-	it('should throw when ssoProtocol has an invalid value', async () => {
-		const loader = createLoader({ ...validConfig, ssoProtocol: 'ldap' });
-
-		await expect(loader.run()).rejects.toThrow(
-			'N8N_SSO_PROTOCOL is required when N8N_SSO_MANAGED_BY_ENV is enabled',
-		);
 	});
 
 	it('should warn when SAML env vars are set but ssoManagedByEnv is false', async () => {
@@ -142,6 +104,30 @@ describe('SamlInstanceSettingsLoader', () => {
 		);
 	});
 
+	it('should throw when both SAML and OIDC login are enabled', async () => {
+		const loader = createLoader({
+			...validConfig,
+			samlLoginEnabled: true,
+			oidcLoginEnabled: true,
+		});
+
+		await expect(loader.run()).rejects.toThrow(
+			'N8N_SSO_SAML_LOGIN_ENABLED and N8N_SSO_OIDC_LOGIN_ENABLED cannot both be true',
+		);
+	});
+
+	it('should throw when neither metadata nor metadataUrl is provided and loginEnabled is true', async () => {
+		const loader = createLoader({
+			...validConfig,
+			samlMetadata: '',
+			samlMetadataUrl: '',
+		});
+
+		await expect(loader.run()).rejects.toThrow(
+			'At least one of N8N_SSO_SAML_METADATA or N8N_SSO_SAML_METADATA_URL is required',
+		);
+	});
+
 	it('should throw when loginBinding has an invalid value', async () => {
 		const loader = createLoader({ ...validConfig, samlLoginBinding: 'invalid' });
 
@@ -152,6 +138,12 @@ describe('SamlInstanceSettingsLoader', () => {
 		const loader = createLoader({ ...validConfig, samlAcsBinding: 'invalid' });
 
 		await expect(loader.run()).rejects.toThrow('N8N_SSO_SAML_ACS_BINDING');
+	});
+
+	it('should throw when ssoUserRoleProvisioning has an invalid value', async () => {
+		const loader = createLoader({ ...validConfig, ssoUserRoleProvisioning: 'invalid' });
+
+		await expect(loader.run()).rejects.toThrow('N8N_SSO_USER_ROLE_PROVISIONING must be one of');
 	});
 
 	it('should upsert settings when valid config is provided with metadata', async () => {
@@ -172,7 +164,7 @@ describe('SamlInstanceSettingsLoader', () => {
 		);
 		expect(savedValue).toEqual({
 			metadata: '<xml>metadata</xml>',
-			loginEnabled: false,
+			loginEnabled: true,
 			loginBinding: 'redirect',
 			acsBinding: 'post',
 			ignoreSSL: false,
@@ -273,55 +265,125 @@ describe('SamlInstanceSettingsLoader', () => {
 	});
 
 	it('should set authentication method to saml when loginEnabled is true', async () => {
-		const loader = createLoader({ ...validConfig, samlLoginEnabled: true });
+		const loader = createLoader(validConfig);
 
 		await loader.run();
 
-		// First call: SAML preferences, second call: authentication method
-		expect(settingsRepository.save).toHaveBeenCalledTimes(2);
+		expect(mockSetCurrentAuthenticationMethod).toHaveBeenCalledWith('saml');
+	});
+
+	it('should set authentication method to email when loginEnabled is false and current is saml', async () => {
+		mockGetCurrentAuthenticationMethod.mockReturnValue('saml');
+		const loader = createLoader({
+			ssoManagedByEnv: true,
+			samlLoginEnabled: false,
+		});
+
+		await loader.run();
+
+		expect(mockSetCurrentAuthenticationMethod).toHaveBeenCalledWith('email');
+	});
+
+	it('should not change authentication method when loginEnabled is false and current is not saml', async () => {
+		mockGetCurrentAuthenticationMethod.mockReturnValue('oidc');
+		const loader = createLoader({
+			ssoManagedByEnv: true,
+			samlLoginEnabled: false,
+		});
+
+		await loader.run();
+
+		expect(mockSetCurrentAuthenticationMethod).not.toHaveBeenCalled();
+	});
+
+	it('should write loginEnabled=false to DB when no SAML env vars are set', async () => {
+		const loader = createLoader({ ssoManagedByEnv: true });
+
+		const result = await loader.run();
+
+		expect(result).toBe('created');
 		expect(settingsRepository.save).toHaveBeenCalledWith(
-			{
-				key: 'userManagement.authenticationMethod',
-				value: 'saml',
-				loadOnStartup: true,
-			},
-			{ transaction: false },
+			expect.objectContaining({
+				key: 'features.saml',
+				value: JSON.stringify({ loginEnabled: false }),
+			}),
 		);
 	});
 
-	it('should not set authentication method when loginEnabled is false', async () => {
-		const loader = createLoader({ ...validConfig, samlLoginEnabled: false });
+	it('should soft-validate and save when loginEnabled is false but env vars are set', async () => {
+		const loader = createLoader({
+			...validConfig,
+			samlLoginEnabled: false,
+		});
 
+		const result = await loader.run();
+
+		expect(result).toBe('created');
+		expect(settingsRepository.save).toHaveBeenCalledWith(
+			expect.objectContaining({ key: 'features.saml' }),
+		);
+	});
+
+	it('should warn and not fail when loginEnabled is false but env vars are invalid', async () => {
+		const loader = createLoader({
+			ssoManagedByEnv: true,
+			samlLoginEnabled: false,
+			samlMetadata: '<xml>metadata</xml>',
+			samlLoginBinding: 'invalid',
+		});
+
+		const result = await loader.run();
+
+		expect(result).toBe('created');
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('SAML env vars are set but invalid'),
+		);
+	});
+
+	it('should disable stale OIDC loginEnabled in DB when SAML is enabled', async () => {
+		settingsRepository.findOne.mockResolvedValue({
+			key: 'features.oidc',
+			value: JSON.stringify({ loginEnabled: true, clientId: 'old-id' }),
+			loadOnStartup: true,
+		} as never);
+
+		const loader = createLoader(validConfig);
 		await loader.run();
 
-		// Only one call: SAML preferences
-		expect(settingsRepository.save).toHaveBeenCalledTimes(1);
-		expect(settingsRepository.save).not.toHaveBeenCalledWith(
-			expect.objectContaining({ key: 'userManagement.authenticationMethod' }),
-			expect.anything(),
+		expect(settingsRepository.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				key: 'features.oidc',
+				value: JSON.stringify({ loginEnabled: false, clientId: 'old-id' }),
+			}),
 		);
 	});
 
-	it('should throw when ssoUserRoleProvisioning has an invalid value', async () => {
-		const loader = createLoader({ ...validConfig, ssoUserRoleProvisioning: 'invalid' });
+	it('should not touch OIDC DB entry if it does not exist', async () => {
+		settingsRepository.findOne.mockResolvedValue(null);
 
-		await expect(loader.run()).rejects.toThrow('N8N_SSO_USER_ROLE_PROVISIONING must be one of');
+		const loader = createLoader(validConfig);
+		await loader.run();
+
+		// save is called once for SAML preferences, not for OIDC cleanup
+		const saveCalls = settingsRepository.save.mock.calls;
+		expect(saveCalls.every((call) => (call[0] as { key: string }).key === 'features.saml')).toBe(
+			true,
+		);
 	});
 
-	it('should write provisioning config with disabled provisioning by default', async () => {
+	it('should write provisioning config when loginEnabled is true', async () => {
 		const loader = createLoader(validConfig);
 
 		await loader.run();
 
 		expect(settingsRepository.upsert).toHaveBeenCalledWith(
-			{
+			expect.objectContaining({
 				key: 'features.provisioning',
 				value: JSON.stringify({
 					scopesProvisionInstanceRole: false,
 					scopesProvisionProjectRoles: false,
 				}),
-				loadOnStartup: true,
-			},
+			}),
 			{ conflictPaths: ['key'] },
 		);
 	});
@@ -332,14 +394,13 @@ describe('SamlInstanceSettingsLoader', () => {
 		await loader.run();
 
 		expect(settingsRepository.upsert).toHaveBeenCalledWith(
-			{
+			expect.objectContaining({
 				key: 'features.provisioning',
 				value: JSON.stringify({
 					scopesProvisionInstanceRole: true,
 					scopesProvisionProjectRoles: false,
 				}),
-				loadOnStartup: true,
-			},
+			}),
 			{ conflictPaths: ['key'] },
 		);
 	});
@@ -353,14 +414,13 @@ describe('SamlInstanceSettingsLoader', () => {
 		await loader.run();
 
 		expect(settingsRepository.upsert).toHaveBeenCalledWith(
-			{
+			expect.objectContaining({
 				key: 'features.provisioning',
 				value: JSON.stringify({
 					scopesProvisionInstanceRole: true,
 					scopesProvisionProjectRoles: true,
 				}),
-				loadOnStartup: true,
-			},
+			}),
 			{ conflictPaths: ['key'] },
 		);
 	});

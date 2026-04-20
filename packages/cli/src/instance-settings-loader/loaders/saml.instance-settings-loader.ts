@@ -3,13 +3,18 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { jsonParse, OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
+import { OIDC_PREFERENCES_DB_KEY } from '@/modules/sso-oidc/constants';
 import { SAML_PREFERENCES_DB_KEY } from '@/modules/sso-saml/constants';
+import {
+	getCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
 
-import { provisioningSchema, ssoProtocolSchema } from './sso-schemas';
+import { provisioningSchema } from './sso-schemas';
 
 const samlLoginBindingSchema = z.enum(['redirect', 'post'], {
 	errorMap: () => ({
@@ -146,14 +151,29 @@ export class SamlInstanceSettingsLoader {
 			return 'skipped';
 		}
 
-		const protocolResult = ssoProtocolSchema.safeParse(this.instanceSettingsLoaderConfig);
-		if (!protocolResult.success) {
-			throw new OperationalError(protocolResult.error.issues[0].message);
+		const { samlLoginEnabled, oidcLoginEnabled } = this.instanceSettingsLoaderConfig;
+
+		if (samlLoginEnabled && oidcLoginEnabled) {
+			throw new OperationalError(
+				'N8N_SSO_SAML_LOGIN_ENABLED and N8N_SSO_OIDC_LOGIN_ENABLED cannot both be true. Only one SSO protocol can be enabled at a time.',
+			);
 		}
 
-		if (protocolResult.data.ssoProtocol !== 'saml') {
-			return 'skipped';
+		const hasSamlEnvVars = !!(samlMetadata || samlMetadataUrl);
+
+		if (samlLoginEnabled) {
+			return await this.applyStrictConfig();
 		}
+
+		if (hasSamlEnvVars) {
+			return await this.applySoftConfig();
+		}
+
+		return await this.applyDisabledConfig();
+	}
+
+	private async applyStrictConfig(): Promise<'created'> {
+		this.logger.info('SAML login is enabled — applying SAML SSO env vars');
 
 		const samlResult = samlEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
 		if (!samlResult.success) {
@@ -166,9 +186,7 @@ export class SamlInstanceSettingsLoader {
 		}
 
 		const preferences = samlResult.data;
-		const provisioning = provisioningResult.data;
 
-		// Encrypt signing private key before storing
 		if (preferences.signingPrivateKey) {
 			preferences.signingPrivateKey = this.cipher.encrypt(preferences.signingPrivateKey);
 		}
@@ -182,26 +200,88 @@ export class SamlInstanceSettingsLoader {
 		await this.settingsRepository.upsert(
 			{
 				key: PROVISIONING_PREFERENCES_DB_KEY,
-				value: JSON.stringify(provisioning),
+				value: JSON.stringify(provisioningResult.data),
 				loadOnStartup: true,
 			},
 			{ conflictPaths: ['key'] },
 		);
 
-		// Activate SAML as the authentication method when login is enabled
-		if (preferences.loginEnabled) {
-			await this.settingsRepository.save(
-				{
-					key: 'userManagement.authenticationMethod',
-					value: 'saml',
-					loadOnStartup: true,
-				},
-				{ transaction: false },
-			);
-		}
+		await setCurrentAuthenticationMethod('saml');
+		await this.disableStaleOtherProtocol();
 
 		this.logger.debug('SAML configuration applied from environment variables');
 
 		return 'created';
+	}
+
+	private async applySoftConfig(): Promise<'created'> {
+		this.logger.info('SAML login is disabled but env vars are set — validating SAML config');
+
+		const samlResult = samlEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
+		if (!samlResult.success) {
+			this.logger.warn(
+				`SAML env vars are set but invalid — skipping SAML config: ${samlResult.error.issues[0].message}`,
+			);
+			await this.writeLoginEnabled(false);
+			await this.updateAuthMethod(false);
+			return 'created';
+		}
+
+		const preferences = samlResult.data;
+
+		if (preferences.signingPrivateKey) {
+			preferences.signingPrivateKey = this.cipher.encrypt(preferences.signingPrivateKey);
+		}
+
+		await this.settingsRepository.save({
+			key: SAML_PREFERENCES_DB_KEY,
+			value: JSON.stringify(preferences),
+			loadOnStartup: true,
+		});
+
+		await this.updateAuthMethod(false);
+
+		this.logger.debug('SAML configuration pre-staged from environment variables (login disabled)');
+
+		return 'created';
+	}
+
+	private async applyDisabledConfig(): Promise<'created'> {
+		this.logger.debug('No SAML env vars set — writing loginEnabled=false to DB');
+
+		await this.writeLoginEnabled(false);
+		await this.updateAuthMethod(false);
+
+		return 'created';
+	}
+
+	private async writeLoginEnabled(enabled: boolean): Promise<void> {
+		await this.settingsRepository.save({
+			key: SAML_PREFERENCES_DB_KEY,
+			value: JSON.stringify({ loginEnabled: enabled }),
+			loadOnStartup: true,
+		});
+	}
+
+	private async updateAuthMethod(loginEnabled: boolean): Promise<void> {
+		if (loginEnabled) {
+			await setCurrentAuthenticationMethod('saml');
+		} else if (getCurrentAuthenticationMethod() === 'saml') {
+			await setCurrentAuthenticationMethod('email');
+		}
+	}
+
+	private async disableStaleOtherProtocol(): Promise<void> {
+		const oidcPrefs = await this.settingsRepository.findOne({
+			where: { key: OIDC_PREFERENCES_DB_KEY },
+		});
+		if (oidcPrefs) {
+			const parsed = jsonParse<Record<string, unknown>>(oidcPrefs.value);
+			if (parsed.loginEnabled) {
+				parsed.loginEnabled = false;
+				oidcPrefs.value = JSON.stringify(parsed);
+				await this.settingsRepository.save(oidcPrefs);
+			}
+		}
 	}
 }
