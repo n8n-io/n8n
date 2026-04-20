@@ -556,6 +556,7 @@ function onRenameNode(value: string) {
 							v-else
 							ref="inputField"
 							v-model="inputValue"
+							:autosize="{ minRows: 3, maxRows: 20 }"
 							:class="$style.editor"
 							:readonly="isReadOnly"
 							type="textarea"
