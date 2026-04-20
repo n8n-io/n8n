@@ -62,8 +62,17 @@ async function getValidCredentialTypes(
 				node.credentials as Record<string, unknown> | undefined,
 			);
 			for (const t of dynamic) types.add(t);
-		} catch {
-			// Ignore — fall through to description-based detection.
+		} catch (error) {
+			// Falling through to description-based detection is safe, but the dynamic
+			// resolver isn't expected to throw — log so we can investigate if it does.
+			context.logger?.warn(
+				'[setup-workflow] getNodeCredentialTypes threw during credential validation',
+				{
+					nodeType: node.type,
+					typeVersion,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
 		}
 	}
 

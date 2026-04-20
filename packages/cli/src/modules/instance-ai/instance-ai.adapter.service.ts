@@ -203,6 +203,7 @@ export class InstanceAiAdapterService {
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
+			logger: this.logger,
 		};
 	}
 
