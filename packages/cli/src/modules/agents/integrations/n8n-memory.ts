@@ -123,6 +123,10 @@ export class N8nMemory implements BuiltMemory {
 		await this.messageRepository.delete(messageIds);
 	}
 
+	async deleteMessagesByThread(threadId: string): Promise<void> {
+		await this.messageRepository.delete({ threadId });
+	}
+
 	// ── Working memory ───────────────────────────────────────────────────
 
 	async getWorkingMemory(params: {

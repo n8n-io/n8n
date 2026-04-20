@@ -516,10 +516,7 @@ export class AgentsService {
 	/** Clear persisted test-chat messages for an agent. */
 	async clearChatMessages(agentId: string) {
 		const threadId = chatThreadId(agentId);
-		const messages = await this.n8nMemory.getMessages(threadId);
-		if (messages.length > 0) {
-			await this.n8nMemory.deleteMessages(messages.map((m) => m.id));
-		}
+		await this.n8nMemory.deleteMessagesByThread(threadId);
 		await this.n8nMemory.deleteThread(threadId);
 	}
 
