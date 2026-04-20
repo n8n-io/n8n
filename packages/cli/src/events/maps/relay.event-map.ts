@@ -16,7 +16,7 @@ import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-
 
 import type { AiEventMap } from './ai.event-map';
 
-export type WorkflowActionSource = 'ui' | 'api' | 'n8n-mcp';
+export type WorkflowActionSource = 'ui' | 'api' | 'n8n-mcp' | 'n8n-ai';
 
 export type UserLike = {
 	id: string;
