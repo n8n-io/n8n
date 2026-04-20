@@ -1,0 +1,147 @@
+{
+	"name": "Node connector state rendering",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [240, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "assign1",
+							"name": "step1",
+							"value": "=1",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "node-step-1",
+			"name": "Step 1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [460, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "assign2",
+							"name": "step2",
+							"value": "=2",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "node-step-2",
+			"name": "Step 2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [680, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "assign3",
+							"name": "step3",
+							"value": "=3",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "node-step-3",
+			"name": "Step 3",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [900, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "assign4",
+							"name": "step4",
+							"value": "=4",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "node-step-4",
+			"name": "Step 4",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1120, 300]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Step 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Step 1": {
+			"main": [
+				[
+					{
+						"node": "Step 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Step 2": {
+			"main": [
+				[
+					{
+						"node": "Step 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Step 3": {
+			"main": [
+				[
+					{
+						"node": "Step 4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "test-version",
+	"id": "test-workflow",
+	"tags": []
+}
