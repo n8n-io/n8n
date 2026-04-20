@@ -246,7 +246,7 @@ watch(
 	},
 );
 
-defineExpose({ iframeRef });
+defineExpose({ iframeRef, reloadExecution: loadExecution });
 </script>
 
 <template>

@@ -18,6 +18,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			name: INSTANCE_AI_VIEW,
 			path: '/instance-ai',
 			component: InstanceAiView,
+			props: true,
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],
@@ -27,6 +28,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			name: INSTANCE_AI_THREAD_VIEW,
 			path: '/instance-ai/:threadId',
 			component: InstanceAiView,
+			props: true,
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],

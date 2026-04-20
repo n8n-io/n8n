@@ -17,6 +17,18 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 		return await this.find({ where: { type } });
 	}
 
+	/**
+	 * Inserts the entity if no active row with that type exists yet.
+	 * On a unique-index conflict (concurrent multi-main startup), the insert
+	 * is silently ignored. The caller should read the winner's value afterwards.
+	 */
+	async insertOrIgnore(
+		entityData: Pick<DeploymentKey, 'type' | 'value' | 'status' | 'algorithm'>,
+	): Promise<void> {
+		const entity = this.create(entityData);
+		await this.createQueryBuilder().insert().values(entity).orIgnore().execute();
+	}
+
 	/** Atomically deactivates any existing active key of the same type, then saves the given entity as active. */
 	async insertAsActive(entity: DeploymentKey): Promise<DeploymentKey> {
 		return await this.manager.transaction(async (tx) => {

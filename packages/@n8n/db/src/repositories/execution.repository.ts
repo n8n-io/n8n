@@ -602,21 +602,28 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.delete({ id: In(executionIds) });
 	}
 
-	async getWaitingExecutions(): Promise<Array<Pick<ExecutionEntity, 'id' | 'waitTill'>>> {
-		// DB-clock lookahead: 5s poll + 10s buffer = 15s window.
+	async getWaitingExecutions() {
+		// Find all the executions which should be triggered in the next 70 seconds
+		const waitTill = new Date(Date.now() + 70000);
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			waitTill: LessThanOrEqual(waitTill),
+			status: Not('crashed'),
+		};
+
 		const dbType = this.globalConfig.database.type;
+		if (dbType === 'sqlite') {
+			// This is needed because of issue in TypeORM <> SQLite:
+			// https://github.com/typeorm/typeorm/issues/2286
+			where.waitTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(waitTill));
+		}
 
-		const lookaheadCondition =
-			dbType === 'postgresdb'
-				? "e.waitTill <= NOW() + INTERVAL '15 seconds'"
-				: "e.waitTill <= datetime('now', '+15 seconds')";
-
-		return await this.createQueryBuilder('e')
-			.select(['e.id', 'e.waitTill'])
-			.where(lookaheadCondition)
-			.andWhere('e.status = :status', { status: 'waiting' })
-			.orderBy('e.waitTill', 'ASC')
-			.getMany();
+		return await this.findMultipleExecutions({
+			select: ['id', 'waitTill'],
+			where,
+			order: {
+				waitTill: 'ASC',
+			},
+		});
 	}
 
 	async getExecutionsCountForPublicApi(params: {
