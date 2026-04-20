@@ -315,20 +315,20 @@ export class N8nClient {
 	}
 
 	/**
-	 * Archive a workflow by ID (soft delete) — used by the eval CLI to clean up
-	 * workflows created during sub-agent runs.
-	 * DELETE /rest/workflows/:id
+	 * Archive a workflow (soft-delete). Required before hard-deleting.
+	 * POST /rest/workflows/:id/archive
 	 */
 	async archiveWorkflow(id: string): Promise<void> {
-		await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
+		await this.fetch(`/rest/workflows/${id}/archive`, { method: 'POST' });
 	}
 
 	/**
-	 * Delete a workflow by ID.
+	 * Delete a workflow by ID. The workflow must be archived first.
 	 * DELETE /rest/workflows/:id
 	 */
 	async deleteWorkflow(id: string): Promise<void> {
 		await this.archiveWorkflow(id);
+		await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
 	}
 
 	/**
