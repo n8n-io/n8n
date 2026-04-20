@@ -355,7 +355,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 				await connection.testConnection(providerKey.value);
 			}
 		} catch (error) {
-			toast.showError(error, i18n.baseText('generic.error'), error?.response?.data?.data.error);
+			toast.showError(error, i18n.baseText('generic.error'), {
+				message: error?.response?.data?.data.error,
+			});
 		}
 	}
 
@@ -494,7 +496,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			toast.showError(
 				new Error(i18n.baseText('generic.missing.permissions')),
 				i18n.baseText('generic.error'),
-				i18n.baseText('generic.missing.permissions'),
+				{ message: i18n.baseText('generic.missing.permissions') },
 			);
 			return false;
 		}
@@ -512,7 +514,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 			return success;
 		} catch (error) {
-			toast.showError(error, i18n.baseText('generic.error'), error?.response?.data?.data.error);
+			toast.showError(error, i18n.baseText('generic.error'), {
+				message: error?.response?.data?.data.error,
+			});
 			return false;
 		} finally {
 			isSaving.value = false;

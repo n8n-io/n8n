@@ -51,6 +51,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import type { WorkflowObjectAccessors } from '../types';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -775,7 +776,7 @@ export function useNodeHelpers() {
 	function getNodeSubtitle(
 		data: INode,
 		nodeType: INodeTypeDescription,
-		workflow: Workflow,
+		workflow: WorkflowObjectAccessors,
 	): string | undefined {
 		if (!data) {
 			return undefined;
@@ -966,7 +967,7 @@ export function useNodeHelpers() {
 	}
 
 	function getNodeHints(
-		workflow: Workflow,
+		workflow: WorkflowObjectAccessors,
 		node: INode,
 		nodeTypeData: INodeTypeDescription,
 		nodeInputData?: {

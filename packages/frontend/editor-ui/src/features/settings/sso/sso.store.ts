@@ -37,6 +37,7 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const initialize = (options: {
 		authenticationMethod: UserManagementAuthenticationMethod;
+		managedByEnv?: boolean;
 		config: {
 			ldap?: Pick<LdapConfig, 'loginLabel' | 'loginEnabled'>;
 			saml?: Pick<SamlPreferences, 'loginLabel' | 'loginEnabled'>;
@@ -52,6 +53,7 @@ export const useSSOStore = defineStore('sso', () => {
 		};
 	}) => {
 		authenticationMethod.value = options.authenticationMethod;
+		ssoManagedByEnv.value = options.managedByEnv ?? false;
 
 		isEnterpriseLdapEnabled.value = options.features.ldap;
 		if (options.config.ldap) {
@@ -132,9 +134,12 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const isEnterpriseOidcEnabled = ref(false);
 
+	const ssoManagedByEnv = ref(false);
+
 	const getOidcConfig = async () => {
 		const config = await ssoApi.getOidcConfig(rootStore.restApiContext);
 		oidcConfig.value = config;
+		oidc.value.loginEnabled = config.loginEnabled;
 		return config;
 	};
 
@@ -224,6 +229,7 @@ export const useSSOStore = defineStore('sso', () => {
 
 		oidc,
 		oidcConfig,
+		ssoManagedByEnv,
 		isOidcLoginEnabled,
 		isEnterpriseOidcEnabled,
 		isDefaultAuthenticationOidc,
