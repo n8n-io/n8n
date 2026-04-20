@@ -20,7 +20,7 @@ const telemetry = useTelemetry();
 const instanceAiSettingsStore = useInstanceAiSettingsStore();
 
 const choice = ref<'enable' | 'disable' | null>(null);
-const computerUseEnabled = ref(!(instanceAiSettingsStore.settings?.localGatewayDisabled ?? false));
+const computerUseEnabled = ref(!(instanceAiSettingsStore.settings?.localGatewayDisabled ?? true));
 const isEnabled = computed(() => choice.value === 'enable');
 const hasChosen = computed(() => choice.value !== null);
 const isSaving = ref(false);
