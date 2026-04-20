@@ -100,6 +100,27 @@ describe('useExecutionPushEvents', () => {
 			// Buffer should be reset for the new execution
 			expect(getBufferedEvents('wf-1')).toHaveLength(1); // only executionStarted for exec-2
 		});
+
+		test('appends to eventLog when same executionId resumes (Wait node)', () => {
+			const { getStatus, getBufferedEvents } = useExecutionPushEvents();
+
+			// First part: execution starts, nodes run, then Wait pauses
+			simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
+			simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'ManualTrigger'));
+			simulatePushEvent(nodeExecuteAfterEvent('exec-1', 'ManualTrigger'));
+			simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'Wait'));
+			simulatePushEvent(nodeExecuteAfterEvent('exec-1', 'Wait'));
+
+			expect(getBufferedEvents('wf-1')).toHaveLength(5);
+
+			// Wait resumes — server sends another executionStarted with same ID
+			simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
+
+			expect(getStatus('wf-1')).toBe('running');
+			// eventLog should grow (append), not reset
+			expect(getBufferedEvents('wf-1')).toHaveLength(6);
+			expect(getBufferedEvents('wf-1')[5].type).toBe('executionStarted');
+		});
 	});
 
 	describe('executionFinished', () => {

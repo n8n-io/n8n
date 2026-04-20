@@ -52,6 +52,7 @@ export class ModuleRegistry {
 		'otel',
 		'token-exchange',
 		'instance-version-history',
+		'encryption-key-manager',
 	];
 
 	private readonly activeModules: string[] = [];

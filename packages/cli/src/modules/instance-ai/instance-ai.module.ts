@@ -38,8 +38,10 @@ export class InstanceAiModule implements ModuleInterface {
 	}
 
 	async settings() {
+		const { GlobalConfig } = await import('@n8n/config');
 		const { InstanceAiService } = await import('./instance-ai.service');
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
+		const globalConfig = Container.get(GlobalConfig);
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = service.isEnabled();
@@ -50,6 +52,7 @@ export class InstanceAiModule implements ModuleInterface {
 			localGatewayDisabled,
 			proxyEnabled: service.isProxyEnabled(),
 			optinModalDismissed,
+			cloudManaged: globalConfig.deployment.type === 'cloud',
 		};
 	}
 

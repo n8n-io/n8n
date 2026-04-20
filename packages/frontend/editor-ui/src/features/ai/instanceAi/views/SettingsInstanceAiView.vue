@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import ModelSection from '../components/settings/ModelSection.vue';
 import LocalGatewaySection from '../components/settings/LocalGatewaySection.vue';
@@ -16,6 +17,7 @@ import AdvancedSection from '../components/settings/AdvancedSection.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
+const settingsStore = useSettingsStore();
 const store = useInstanceAiSettingsStore();
 
 const isAdmin = computed(() => store.canManage);
@@ -46,7 +48,9 @@ const permissionKeys: Array<{ key: keyof InstanceAiPermissions; labelKey: BaseTe
 	},
 ];
 
-const isEnabled = computed(() => store.settings?.enabled ?? false);
+const isEnabled = computed(
+	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
+);
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));
@@ -87,26 +91,29 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 		<template v-else>
 			<template v-if="isAdmin">
 				<div :class="$style.card">
-					<div :class="$style.settingsRow">
-						<div :class="$style.settingsRowLeft">
-							<span :class="$style.settingsRowLabel">
+					<div :class="$style.sectionBlock">
+						<div :class="$style.enableSection">
+							<N8nHeading tag="h2" size="small">
 								{{ i18n.baseText('settings.n8nAgent.enable.label') }}
-							</span>
-							<span :class="$style.settingsRowDescription">
-								{{ i18n.baseText('settings.n8nAgent.enable.description') }}
-							</span>
+							</N8nHeading>
+							<div :class="$style.switchRow">
+								<span :class="$style.switchDescription">
+									{{ i18n.baseText('settings.n8nAgent.enable.description') }}
+								</span>
+								<ElSwitch
+									:model-value="isEnabled"
+									:disabled="store.isSaving"
+									data-test-id="n8n-agent-enable-toggle"
+									@update:model-value="handleEnabledToggle"
+								/>
+							</div>
 						</div>
-						<ElSwitch
-							:class="$style.toggle"
-							:model-value="isEnabled"
-							:disabled="store.isSaving"
-							data-test-id="n8n-agent-enable-toggle"
-							@update:model-value="handleEnabledToggle"
-						/>
 					</div>
 				</div>
+			</template>
 
-				<div :class="$style.card">
+			<template v-if="isEnabled">
+				<div v-if="isAdmin" :class="$style.card">
 					<div :class="$style.settingsRow">
 						<div :class="$style.settingsRowLeft">
 							<span :class="$style.settingsRowLabel">
@@ -125,46 +132,13 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 						/>
 					</div>
 				</div>
-			</template>
-
-			<div :class="$style.card">
-				<div :class="$style.sectionBlock">
-					<ModelSection />
-				</div>
-			</div>
-
-			<div :class="$style.card">
-				<div :class="$style.sectionBlock">
-					<LocalGatewaySection />
-				</div>
-			</div>
-
-			<template v-if="isAdmin">
 				<div :class="$style.card">
 					<div :class="$style.sectionBlock">
-						<SandboxSection />
+						<LocalGatewaySection />
 					</div>
 				</div>
 
-				<div :class="$style.card">
-					<div :class="$style.sectionBlock">
-						<MemorySection />
-					</div>
-				</div>
-
-				<div :class="$style.card">
-					<div :class="$style.sectionBlock">
-						<SearchSection />
-					</div>
-				</div>
-
-				<div :class="$style.card">
-					<div :class="$style.sectionBlock">
-						<AdvancedSection />
-					</div>
-				</div>
-
-				<template v-if="isEnabled">
+				<template v-if="isAdmin">
 					<div :class="$style.permissionsHeader">
 						<N8nHeading :class="$style.sectionTitle" tag="h3" size="medium">
 							{{ i18n.baseText('settings.n8nAgent.permissions.title') }}
@@ -211,6 +185,38 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 									:label="i18n.baseText('settings.n8nAgent.permissions.blocked')"
 								/>
 							</N8nSelect>
+						</div>
+					</div>
+				</template>
+
+				<div v-if="!store.isProxyEnabled" :class="$style.card">
+					<div :class="$style.sectionBlock">
+						<ModelSection />
+					</div>
+				</div>
+
+				<template v-if="isAdmin">
+					<div v-if="!store.isProxyEnabled" :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<SandboxSection />
+						</div>
+					</div>
+
+					<div v-if="!store.isCloudManaged" :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<MemorySection />
+						</div>
+					</div>
+
+					<div v-if="!store.isProxyEnabled" :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<SearchSection />
+						</div>
+					</div>
+
+					<div v-if="!store.isCloudManaged" :class="$style.card">
+						<div :class="$style.sectionBlock">
+							<AdvancedSection />
 						</div>
 					</div>
 				</template>
@@ -273,10 +279,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 	background: var(--color--background--light-3);
 }
 
-.toggle {
-	--switch--color--background--active: var(--color--primary);
-}
-
 .settingsRow {
 	display: flex;
 	align-items: center;
@@ -335,6 +337,24 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 .permissionSelect {
 	width: 178px;
 	flex-shrink: 0;
+}
+
+.enableSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.switchRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing--4xs) 0;
+}
+
+.switchDescription {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 
 .footer {

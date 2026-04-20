@@ -54,7 +54,6 @@ import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
@@ -331,34 +330,6 @@ export async function resolveRequiredParameters(
 	return Object.fromEntries(resolvedEntries);
 }
 
-function getConnectedNodes(
-	direction: 'upstream' | 'downstream',
-	workflow: WorkflowObjectAccessors,
-	nodeName: string,
-): string[] {
-	let checkNodes: string[];
-	if (direction === 'downstream') {
-		checkNodes = workflow.getChildNodes(nodeName);
-	} else if (direction === 'upstream') {
-		checkNodes = workflow.getParentNodes(nodeName);
-	} else {
-		throw new Error(`The direction "${direction}" is not supported!`);
-	}
-
-	// Find also all nodes which are connected to the child nodes via a non-main input
-	let connectedNodes: string[] = [];
-	checkNodes.forEach((checkNode) => {
-		connectedNodes = [
-			...connectedNodes,
-			checkNode,
-			...workflow.getParentNodes(checkNode, 'ALL_NON_MAIN'),
-		];
-	});
-
-	// Remove duplicates
-	return [...new Set(connectedNodes)];
-}
-
 function getNodeTypes(): INodeTypes {
 	return useWorkflowsStore().getNodeTypes();
 }
@@ -533,7 +504,6 @@ export function useWorkflowHelpers() {
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowState = injectWorkflowState();
-	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
 	const projectsStore = useProjectsStore();
@@ -966,12 +936,13 @@ export function useWorkflowHelpers() {
 
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
 		const workflow = workflowsListStore.getWorkflowById(workflowId);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		// Check if workflow is new (not saved) or belongs to personal project
 		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || !workflow?.id) {
 			return 'owner';
 		} else if (
-			workflow?.sharedWithProjects?.some(
+			workflowDocumentStore.sharedWithProjects?.some(
 				(project) => project.id === projectsStore.personalProject?.id,
 			)
 		) {
@@ -1017,13 +988,6 @@ export function useWorkflowHelpers() {
 			}
 		}
 
-		if (workflowData.sharedWithProjects) {
-			workflowsEEStore.setWorkflowSharedWith({
-				workflowId: workflowData.id,
-				sharedWithProjects: workflowData.sharedWithProjects,
-			});
-		}
-
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = convertWorkflowTagsToIds(tags);
 
@@ -1060,6 +1024,7 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.setMeta(workflowData.meta);
 		initializedWorkflowDocumentStore.setParentFolder(workflowData.parentFolder ?? null);
 		initializedWorkflowDocumentStore.setScopes(workflowData.scopes ?? []);
+		initializedWorkflowDocumentStore.setSharedWithProjects(workflowData.sharedWithProjects ?? []);
 		initializedWorkflowDocumentStore.setDescription(workflowData.description);
 		tagsStore.upsertTags(tags);
 
@@ -1133,7 +1098,6 @@ export function useWorkflowHelpers() {
 	return {
 		resolveParameter,
 		resolveRequiredParameters,
-		getConnectedNodes,
 		getNodeTypes,
 		connectionInputData,
 		executeData,

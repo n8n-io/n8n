@@ -253,3 +253,412 @@ export const messageOptions: INodePropertyCollection[] = [
 		],
 	},
 ];
+
+export const imageGenerateOptions: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	placeholder: 'Add Option',
+	type: 'collection',
+	default: {},
+	displayOptions: {
+		show: {
+			'@version': [{ _cnd: { lt: 2.2 } }],
+		},
+	},
+	options: [
+		{
+			displayName: 'Number of Images',
+			name: 'n',
+			default: 1,
+			description: 'Number of images to generate',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+				maxValue: 10,
+			},
+			displayOptions: {
+				show: {
+					'/model': ['dall-e-2'],
+				},
+			},
+		},
+		{
+			displayName: 'Quality',
+			name: 'dalleQuality',
+			type: 'options',
+			description:
+				'The quality of the image that will be generated, HD creates images with finer details and greater consistency across the image',
+			options: [
+				{
+					name: 'HD',
+					value: 'hd',
+				},
+				{
+					name: 'Standard',
+					value: 'standard',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/model': ['dall-e-3'],
+				},
+			},
+			default: 'standard',
+		},
+		{
+			displayName: 'Quality',
+			name: 'quality',
+			type: 'options',
+			description:
+				'The quality of the image that will be generated, High creates images with finer details and greater consistency across the image',
+			options: [
+				{
+					name: 'High',
+					value: 'high',
+				},
+				{
+					name: 'Medium',
+					value: 'medium',
+				},
+				{
+					name: 'Low',
+					value: 'low',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/model': [{ _cnd: { includes: 'gpt-image' } }],
+				},
+			},
+			default: 'medium',
+		},
+
+		{
+			displayName: 'Resolution',
+			name: 'size',
+			type: 'options',
+			options: [
+				{
+					name: '256x256',
+					value: '256x256',
+				},
+				{
+					name: '512x512',
+					value: '512x512',
+				},
+				{
+					name: '1024x1024',
+					value: '1024x1024',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/model': ['dall-e-2'],
+				},
+			},
+			default: '1024x1024',
+		},
+		{
+			displayName: 'Resolution',
+			name: 'size',
+			type: 'options',
+			options: [
+				{
+					name: '1024x1024',
+					value: '1024x1024',
+				},
+				{
+					name: '1792x1024',
+					value: '1792x1024',
+				},
+				{
+					name: '1024x1792',
+					value: '1024x1792',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/model': ['dall-e-3'],
+				},
+			},
+			default: '1024x1024',
+		},
+		{
+			displayName: 'Resolution',
+			name: 'size',
+			type: 'options',
+			options: [
+				{
+					name: '1024x1024',
+					value: '1024x1024',
+				},
+				{
+					name: '1024x1536',
+					value: '1024x1536',
+				},
+				{
+					name: '1536x1024',
+					value: '1536x1024',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/model': [{ _cnd: { includes: 'gpt-image' } }],
+				},
+			},
+			default: '1024x1024',
+		},
+
+		{
+			displayName: 'Style',
+			name: 'style',
+			type: 'options',
+			options: [
+				{
+					name: 'Natural',
+					value: 'natural',
+					description: 'Produce more natural looking images',
+				},
+				{
+					name: 'Vivid',
+					value: 'vivid',
+					description: 'Lean towards generating hyper-real and dramatic images',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/model': ['dall-e-3'],
+				},
+			},
+			default: 'vivid',
+		},
+		{
+			displayName: 'Respond with Image URL(s)',
+			name: 'returnImageUrls',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to return image URL(s) instead of binary file(s)',
+			displayOptions: {
+				hide: {
+					'/model': [{ _cnd: { includes: 'gpt-image' } }],
+				},
+			},
+		},
+		{
+			displayName: 'Put Output in Field',
+			name: 'binaryPropertyOutput',
+			type: 'string',
+			default: 'data',
+			hint: 'The name of the output field to put the binary file data in',
+			displayOptions: {
+				show: {
+					returnImageUrls: [false],
+				},
+			},
+		},
+	],
+};
+
+export const imageGenerateOptionsRLC: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	placeholder: 'Add Option',
+	type: 'collection',
+	default: {},
+	displayOptions: {
+		show: {
+			'@version': [{ _cnd: { gte: 2.2 } }],
+		},
+	},
+	options: [
+		{
+			displayName: 'Number of Images',
+			name: 'n',
+			default: 1,
+			description: 'Number of images to generate',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+				maxValue: 10,
+			},
+			displayOptions: {
+				show: {
+					'/modelId': ['dall-e-2'],
+				},
+			},
+		},
+		{
+			displayName: 'Quality',
+			name: 'dalleQuality',
+			type: 'options',
+			description:
+				'The quality of the image that will be generated, HD creates images with finer details and greater consistency across the image',
+			options: [
+				{
+					name: 'HD',
+					value: 'hd',
+				},
+				{
+					name: 'Standard',
+					value: 'standard',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/modelId': ['dall-e-3'],
+				},
+			},
+			default: 'standard',
+		},
+		{
+			displayName: 'Quality',
+			name: 'quality',
+			type: 'options',
+			description:
+				'The quality of the image that will be generated, High creates images with finer details and greater consistency across the image',
+			options: [
+				{
+					name: 'High',
+					value: 'high',
+				},
+				{
+					name: 'Medium',
+					value: 'medium',
+				},
+				{
+					name: 'Low',
+					value: 'low',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/modelId': [{ _cnd: { includes: 'gpt-image' } }],
+				},
+			},
+			default: 'medium',
+		},
+
+		{
+			displayName: 'Resolution',
+			name: 'size',
+			type: 'options',
+			options: [
+				{
+					name: '256x256',
+					value: '256x256',
+				},
+				{
+					name: '512x512',
+					value: '512x512',
+				},
+				{
+					name: '1024x1024',
+					value: '1024x1024',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/modelId': ['dall-e-2'],
+				},
+			},
+			default: '1024x1024',
+		},
+		{
+			displayName: 'Resolution',
+			name: 'size',
+			type: 'options',
+			options: [
+				{
+					name: '1024x1024',
+					value: '1024x1024',
+				},
+				{
+					name: '1792x1024',
+					value: '1792x1024',
+				},
+				{
+					name: '1024x1792',
+					value: '1024x1792',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/modelId': ['dall-e-3'],
+				},
+			},
+			default: '1024x1024',
+		},
+		{
+			displayName: 'Resolution',
+			name: 'size',
+			type: 'options',
+			options: [
+				{
+					name: '1024x1024',
+					value: '1024x1024',
+				},
+				{
+					name: '1024x1536',
+					value: '1024x1536',
+				},
+				{
+					name: '1536x1024',
+					value: '1536x1024',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/modelId': [{ _cnd: { includes: 'gpt-image' } }],
+				},
+			},
+			default: '1024x1024',
+		},
+		{
+			displayName: 'Style',
+			name: 'style',
+			type: 'options',
+			options: [
+				{
+					name: 'Natural',
+					value: 'natural',
+					description: 'Produce more natural looking images',
+				},
+				{
+					name: 'Vivid',
+					value: 'vivid',
+					description: 'Lean towards generating hyper-real and dramatic images',
+				},
+			],
+			displayOptions: {
+				show: {
+					'/modelId': ['dall-e-3'],
+				},
+			},
+			default: 'vivid',
+		},
+		{
+			displayName: 'Respond with Image URL(s)',
+			name: 'returnImageUrls',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to return image URL(s) instead of binary file(s)',
+			displayOptions: {
+				hide: {
+					'/modelId': [{ _cnd: { includes: 'gpt-image' } }],
+				},
+			},
+		},
+		{
+			displayName: 'Put Output in Field',
+			name: 'binaryPropertyOutput',
+			type: 'string',
+			default: 'data',
+			hint: 'The name of the output field to put the binary file data in',
+			displayOptions: {
+				show: {
+					returnImageUrls: [false],
+				},
+			},
+		},
+	],
+};

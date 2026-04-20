@@ -173,6 +173,13 @@ function handleSuggestionSubmit(payload: {
 	});
 	submitComposerMessage(i18n.baseText(payload.promptKey));
 }
+
+const resizable = computed(() => {
+	if (previewPromptKey.value) {
+		return { minRows: 2, maxRows: 2 };
+	}
+	return undefined;
+});
 </script>
 
 <template>
@@ -183,6 +190,7 @@ function handleSuggestionSubmit(payload: {
 			:placeholder="placeholder"
 			:is-streaming="props.isStreaming"
 			:can-submit="canSubmit"
+			:autosize="resizable"
 			show-voice
 			show-attach
 			@submit="handleSubmit"

@@ -112,6 +112,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'token-exchange-user-provisioned': (event) => this.tokenExchangeUserProvisioned(event),
 			'token-exchange-role-updated': (event) => this.tokenExchangeRoleUpdated(event),
 			'embed-login': (event) => this.embedLogin(event),
+			'embed-login-failed': (event) => this.embedLoginFailed(event),
 			'expression-mapping-roles-resolved': (event) => this.expressionMappingRolesResolved(event),
 			'role-mapping-rule-created': (event) => this.roleMappingRuleCreated(event),
 			'role-mapping-rule-updated': (event) => this.roleMappingRuleUpdated(event),
@@ -1064,6 +1065,13 @@ export class LogStreamingEventRelay extends EventRelay {
 	private embedLogin(event: RelayEventMap['embed-login']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.token-exchange.embed-login',
+			payload: event,
+		});
+	}
+
+	private embedLoginFailed(event: RelayEventMap['embed-login-failed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.embed-login-failed',
 			payload: event,
 		});
 	}
