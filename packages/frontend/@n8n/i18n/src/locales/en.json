@@ -5092,6 +5092,8 @@
 	"instanceAi.view.title": "Instance AI",
 	"instanceAi.view.subtitle": "Chat with your n8n instance",
 	"instanceAi.input.placeholder": "Ask anything...",
+	"instanceAi.input.suspendedPlaceholder": "Complete or skip the setup above to continue",
+	"instanceAi.statusBar.waitingForInput": "Waiting for your input",
 	"instanceAi.input.send": "Send",
 	"instanceAi.input.stop": "Stop",
 	"instanceAi.input.researchToggle": "Deep research",
