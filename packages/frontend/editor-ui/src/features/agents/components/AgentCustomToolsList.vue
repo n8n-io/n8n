@@ -8,15 +8,9 @@ import { N8nIcon, N8nText } from '@n8n/design-system';
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
 import type { CustomToolEntry } from '../agent.types';
 
-const props = withDefaults(
-	defineProps<{
-		agentTools: Record<string, CustomToolEntry>;
-		readOnly?: boolean;
-	}>(),
-	{
-		readOnly: false,
-	},
-);
+const props = defineProps<{
+	agentTools: Record<string, CustomToolEntry>;
+}>();
 
 const toolContainers = ref<Record<string, HTMLDivElement | null>>({});
 const toolViews = new Map<string, EditorView>();
@@ -132,7 +126,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="[$style.root, readOnly && $style.rootReadOnly]">
+	<div :class="$style.root">
 		<div v-for="[id, entry] in toolEntries" :key="id" :class="$style.toolBlock">
 			<button :class="$style.toolHeader" @click="toggleTool(id)">
 				<N8nIcon :icon="expandedTools[id] ? 'chevron-down' : 'chevron-right'" :size="12" />
@@ -152,11 +146,6 @@ onBeforeUnmount(() => {
 .root {
 	display: flex;
 	flex-direction: column;
-}
-
-.rootReadOnly {
-	opacity: 0.6;
-	pointer-events: none;
 }
 
 .toolBlock {

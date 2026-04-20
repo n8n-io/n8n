@@ -226,7 +226,7 @@ function onResizeStart(event: MouseEvent) {
 			</div>
 		</div>
 
-		<div :class="[$style.body, codeOnly && $style.bodyCodeOnly]">
+		<div :class="$style.body">
 			<template v-if="!codeOnly">
 				<!-- Model section -->
 				<div :class="[$style.staticSection, $style.modelSection]">
@@ -333,9 +333,7 @@ function onResizeStart(event: MouseEvent) {
 
 			<template v-if="codeOnly">
 				<!-- Config JSON (collapsible top-level section) -->
-				<div
-					:class="[$style.section, codeOnly && expandedSections.configJson && $style.sectionGrow]"
-				>
+				<div :class="$style.section">
 					<button :class="$style.sectionHeader" @click="toggleSection('configJson')">
 						<div :class="$style.sectionHeaderLeft">
 							<N8nIcon
@@ -372,7 +370,7 @@ function onResizeStart(event: MouseEvent) {
 						</div>
 					</button>
 					<div v-if="expandedSections.customTools" :class="$style.codeSection">
-						<AgentCustomToolsList :agent-tools="agentTools" :read-only="building" />
+						<AgentCustomToolsList :agent-tools="agentTools" />
 					</div>
 				</div>
 			</template>
@@ -427,26 +425,6 @@ function onResizeStart(event: MouseEvent) {
 .body {
 	flex: 1;
 	overflow-y: auto;
-}
-
-.bodyCodeOnly {
-	display: flex;
-	flex-direction: column;
-	overflow-y: auto;
-}
-
-.bodyCodeOnly .section {
-	flex-shrink: 0;
-}
-
-.bodyCodeOnly .sectionGrow {
-	flex: 1;
-	min-height: 0;
-}
-
-.bodyCodeOnly .sectionGrow .codeSection {
-	flex: 1;
-	min-height: 0;
 }
 
 .staticSection {
@@ -505,18 +483,6 @@ function onResizeStart(event: MouseEvent) {
 .codeSection {
 	display: flex;
 	flex-direction: column;
-	min-height: 0;
-}
-
-.sectionGrow {
-	flex: 1;
-	min-height: 0;
-	display: flex;
-	flex-direction: column;
-}
-
-.sectionGrow .codeSection {
-	flex: 1;
 	min-height: 0;
 }
 
