@@ -115,21 +115,24 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect(buildBtn.classes().some((c) => c.includes('chatModeBtnActive'))).toBe(false);
 	});
 
-	it('passes endpoint=chat to the panel by default and endpoint=build after clicking Build', async () => {
+	it('mounts both Test and Build panels and toggles their visibility via v-show', async () => {
 		const wrapper = await renderView();
 		(wrapper.vm as unknown as { mode: string }).mode = 'chat';
 		await nextTick();
 
-		expect(wrapper.find('[data-testid="chat-panel-stub"]').attributes('data-endpoint')).toBe(
-			'chat',
-		);
+		const testPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]');
+		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
+		expect(testPanel.exists()).toBe(true);
+		expect(buildPanel.exists()).toBe(true);
+
+		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
+		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
 
 		await wrapper.find('[data-testid="agent-chat-mode-build"]').trigger('click');
 		await nextTick();
 
-		expect(wrapper.find('[data-testid="chat-panel-stub"]').attributes('data-endpoint')).toBe(
-			'build',
-		);
+		expect((testPanel.element as HTMLElement).style.display).toBe('none');
+		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
 	});
 
 	it('disables both toggle buttons while a response is streaming', async () => {
@@ -137,7 +140,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		(wrapper.vm as unknown as { mode: string }).mode = 'chat';
 		await nextTick();
 
-		(wrapper.vm as unknown as { isChatStreaming: boolean }).isChatStreaming = true;
+		(wrapper.vm as unknown as { isTestStreaming: boolean }).isTestStreaming = true;
 		await nextTick();
 
 		const buildBtn = wrapper.find('[data-testid="agent-chat-mode-build"]');
@@ -157,8 +160,9 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 		expect(vm.mode).toBe('chat');
 		expect(vm.chatMode).toBe('build');
-		expect(wrapper.find('[data-testid="chat-panel-stub"]').attributes('data-endpoint')).toBe(
-			'build',
-		);
+
+		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
+		expect(buildPanel.exists()).toBe(true);
+		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
 	});
 });

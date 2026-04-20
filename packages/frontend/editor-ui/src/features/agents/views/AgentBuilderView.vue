@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
@@ -40,7 +40,9 @@ type Mode = 'home' | 'building' | 'chat';
 type ChatMode = 'build' | 'test';
 const mode = ref<Mode>('home');
 const chatMode = ref<ChatMode>('test');
-const isChatStreaming = ref(false);
+const isTestStreaming = ref(false);
+const isBuildChatStreaming = ref(false);
+const isChatStreaming = computed(() => isTestStreaming.value || isBuildChatStreaming.value);
 const settingsVisible = ref(true);
 const isBuilding = ref(false);
 const agentName = ref('');
@@ -113,6 +115,11 @@ function startChat(msg: string) {
 		// Agent already built — go straight into the chat experience.
 		initialPrompt.value = msg;
 		mode.value = 'chat';
+		// Clear once the panel has mounted and consumed the prop, so a later
+		// remount (e.g. toggling between Build/Test) doesn't replay the message.
+		void nextTick(() => {
+			initialPrompt.value = undefined;
+		});
 		telemetry.track('User started agent chat', { agent_id: agentId.value });
 		return;
 	}
@@ -127,6 +134,14 @@ function startChat(msg: string) {
 
 function onBuildStreamingChange(streaming: boolean) {
 	isBuilding.value = streaming;
+}
+
+function onTestStreamingChange(streaming: boolean) {
+	isTestStreaming.value = streaming;
+}
+
+function onBuildChatStreamingChange(streaming: boolean) {
+	isBuildChatStreaming.value = streaming;
 }
 
 function setChatMode(next: ChatMode) {
@@ -349,6 +364,14 @@ watch(agentId, initialize, { immediate: true });
 				</div>
 				<div :class="$style.mainHeaderRight">
 					<button
+						v-if="mode === 'chat' && chatMode === 'test'"
+						:class="$style.toggleBtn"
+						data-testid="new-chat"
+						@click="mode = 'home'"
+					>
+						<N8nIcon icon="message-circle-plus" :size="16" />
+					</button>
+					<button
 						:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
 						data-testid="toggle-settings"
 						@click="settingsVisible = !settingsVisible"
@@ -389,17 +412,27 @@ watch(agentId, initialize, { immediate: true });
 						@update:streaming="onBuildStreamingChange"
 						@done="onBuildDone"
 					/>
-					<AgentChatPanel
-						v-else
-						:key="`chat-${chatMode}`"
-						:project-id="projectId"
-						:agent-id="agentId"
-						mode="inline"
-						:endpoint="chatMode === 'build' ? 'build' : 'chat'"
-						:initial-message="initialPrompt"
-						@config-updated="onConfigUpdated"
-						@update:streaming="isChatStreaming = $event"
-					/>
+					<div v-else key="chat" :class="$style.chatHost">
+						<AgentChatPanel
+							v-show="chatMode === 'test'"
+							:project-id="projectId"
+							:agent-id="agentId"
+							mode="inline"
+							endpoint="chat"
+							:initial-message="initialPrompt"
+							@config-updated="onConfigUpdated"
+							@update:streaming="onTestStreamingChange"
+						/>
+						<AgentChatPanel
+							v-show="chatMode === 'build'"
+							:project-id="projectId"
+							:agent-id="agentId"
+							mode="inline"
+							endpoint="build"
+							@config-updated="onConfigUpdated"
+							@update:streaming="onBuildChatStreamingChange"
+						/>
+					</div>
 				</Transition>
 			</div>
 		</div>
@@ -464,6 +497,14 @@ watch(agentId, initialize, { immediate: true });
 }
 
 .mainBody {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.chatHost {
 	flex: 1;
 	display: flex;
 	flex-direction: column;
