@@ -11,11 +11,13 @@
 
 import { Client } from 'langsmith/client';
 import { evaluate } from 'langsmith/evaluation';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 
+import { N8nClient } from '../clients/n8n-client';
 import { createFeedbackExtractor, mapExampleToTestCase } from './langsmith';
 import { runSubAgent } from './runner';
+import type { RunSubAgentDeps } from './runner';
 import type { SubAgentTestCase, SubAgentRunnerConfig, SubAgentResult } from './types';
 
 // ---------------------------------------------------------------------------
@@ -33,6 +35,8 @@ interface CliArgs {
 	dataset?: string;
 	experiment?: string;
 	concurrency: number;
+	baseUrl: string;
+	keepWorkflows: boolean;
 }
 
 function requirePositiveInt(raw: string | undefined, flag: string): number {
@@ -52,6 +56,8 @@ function parseArgs(argv: string[]): CliArgs {
 		modelId: process.env.N8N_INSTANCE_AI_EVAL_MODEL ?? 'anthropic/claude-sonnet-4-20250514',
 		subagent: 'builder',
 		concurrency: 5,
+		baseUrl: process.env.N8N_EVAL_BASE_URL ?? 'http://localhost:5678',
+		keepWorkflows: false,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -87,6 +93,12 @@ function parseArgs(argv: string[]): CliArgs {
 				break;
 			case '--concurrency':
 				args.concurrency = requirePositiveInt(argv[++i], '--concurrency');
+				break;
+			case '--base-url':
+				args.baseUrl = argv[++i];
+				break;
+			case '--keep-workflows':
+				args.keepWorkflows = true;
 				break;
 			default:
 				break;
@@ -209,7 +221,11 @@ function printSummary(results: SubAgentResult[]): void {
 // LangSmith mode
 // ---------------------------------------------------------------------------
 
-async function runLangsmithMode(args: CliArgs, config: SubAgentRunnerConfig): Promise<void> {
+async function runLangsmithMode(
+	args: CliArgs,
+	config: SubAgentRunnerConfig,
+	deps: RunSubAgentDeps,
+): Promise<void> {
 	const apiKey = process.env.LANGSMITH_API_KEY;
 	if (!apiKey) {
 		console.error('Error: LANGSMITH_API_KEY is required for --dataset mode');
@@ -221,7 +237,7 @@ async function runLangsmithMode(args: CliArgs, config: SubAgentRunnerConfig): Pr
 	const target = async (inputs: Record<string, unknown>) => {
 		const testCase = mapExampleToTestCase(inputs);
 		testCase.subagent ??= args.subagent;
-		const result = await runSubAgent(testCase, config);
+		const result = await runSubAgent(testCase, config, deps);
 
 		return {
 			prompt: testCase.prompt,
@@ -269,7 +285,11 @@ async function runLangsmithMode(args: CliArgs, config: SubAgentRunnerConfig): Pr
 // Local mode (sequential, with optional single prompt)
 // ---------------------------------------------------------------------------
 
-async function runLocalMode(args: CliArgs, config: SubAgentRunnerConfig): Promise<void> {
+async function runLocalMode(
+	args: CliArgs,
+	config: SubAgentRunnerConfig,
+	deps: RunSubAgentDeps,
+): Promise<void> {
 	let testCases: SubAgentTestCase[];
 
 	if (args.prompt) {
@@ -301,7 +321,7 @@ async function runLocalMode(args: CliArgs, config: SubAgentRunnerConfig): Promis
 				console.log(`Starting: ${testCase.id} — ${truncate(testCase.prompt, 80)}`);
 			}
 
-			const result = await runSubAgent(testCase, config);
+			const result = await runSubAgent(testCase, config, deps);
 			results.push(result);
 			printResult(result, args.verbose);
 		}
@@ -317,7 +337,7 @@ async function runLocalMode(args: CliArgs, config: SubAgentRunnerConfig): Promis
 			}
 
 			const batchResults = await Promise.all(
-				batch.map(async (testCase) => await runSubAgent(testCase, config)),
+				batch.map(async (testCase) => await runSubAgent(testCase, config, deps)),
 			);
 
 			for (const result of batchResults) {
@@ -337,24 +357,6 @@ async function runLocalMode(args: CliArgs, config: SubAgentRunnerConfig): Promis
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
 
-	const apiKey = process.env.N8N_INSTANCE_AI_MODEL_API_KEY ?? process.env.ANTHROPIC_API_KEY;
-	if (!apiKey) {
-		console.error('Error: Set N8N_INSTANCE_AI_MODEL_API_KEY or ANTHROPIC_API_KEY');
-		process.exit(1);
-	}
-
-	const nodesJsonPath = join(__dirname, '..', 'nodes.json');
-	if (!existsSync(nodesJsonPath)) {
-		console.error(
-			'Error: evaluations/nodes.json not found. Node search will return empty results.\n' +
-				'Generate it from a running n8n instance (requires auth):\n' +
-				'  1. curl -c cookies.txt -X POST http://localhost:5678/rest/login -H "Content-Type: application/json" -d \'{"email":"...","password":"..."}\'\n' +
-				'  2. curl -b cookies.txt http://localhost:5678/types/nodes.json > packages/@n8n/instance-ai/evaluations/nodes.json\n' +
-				'  3. rm cookies.txt',
-		);
-		process.exit(1);
-	}
-
 	const config: SubAgentRunnerConfig = {
 		modelId: args.modelId,
 		timeoutMs: args.timeoutMs,
@@ -362,10 +364,15 @@ async function main(): Promise<void> {
 		verbose: args.verbose,
 	};
 
+	const client = new N8nClient(args.baseUrl);
+	await client.login();
+
+	const deps: RunSubAgentDeps = { client, deleteAfterRun: !args.keepWorkflows };
+
 	if (args.dataset) {
-		await runLangsmithMode(args, config);
+		await runLangsmithMode(args, config, deps);
 	} else {
-		await runLocalMode(args, config);
+		await runLocalMode(args, config, deps);
 	}
 }
 
