@@ -360,6 +360,7 @@ function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'card
 							:class="[
 								$style.card,
 								$style[typeClass(item.kind)],
+								item.kind !== 'user' && $style.cardResponse,
 								selectedIndex === idx && $style.cardSelected,
 							]"
 							@click="selectItem(idx)"
@@ -688,7 +689,7 @@ function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'card
 .triggerRow {
 	display: flex;
 	align-items: flex-start;
-	padding-left: var(--spacing--sm);
+	padding-left: var(--spacing--md);
 	position: relative;
 }
 
@@ -733,7 +734,7 @@ function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'card
 	&::after {
 		content: '';
 		position: absolute;
-		left: var(--spacing--sm);
+		left: var(--spacing--md);
 		top: 0;
 		bottom: 0;
 		width: 2px;
@@ -747,6 +748,7 @@ function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'card
 	padding: var(--spacing--xs) var(--spacing--sm);
 	background-color: var(--color--background);
 	border: 2px solid var(--color--foreground);
+	border-left: none;
 	border-radius: var(--radius--lg);
 	font-size: var(--font-size--sm);
 	cursor: pointer;
@@ -763,8 +765,8 @@ function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'card
 		left: 0;
 		width: 3px;
 		background: color-mix(in srgb, var(--color--neutral-300) 45%, transparent);
-		border-top-left-radius: calc(var(--radius--lg) - 2px);
-		border-bottom-left-radius: calc(var(--radius--lg) - 2px);
+		border-top-left-radius: var(--radius--lg);
+		border-bottom-left-radius: var(--radius--lg);
 		pointer-events: none;
 	}
 
@@ -790,6 +792,10 @@ function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'card
 			background-color: var(--color--neutral-850);
 		}
 	}
+}
+
+.cardResponse {
+	margin-left: var(--spacing--xs);
 }
 
 .cardUser::before {
