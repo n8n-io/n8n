@@ -388,7 +388,7 @@ overrides:
   undici@6: ^6.24.0
   undici@7: ^7.24.0
   tar: ^7.5.11
-  hono: 4.12.7
+  hono: 4.12.14
   ajv@6: 6.14.0
   ajv@7: 8.18.0
   ajv@8: 8.18.0
@@ -6778,7 +6778,7 @@ packages:
     resolution: {integrity: sha512-hZ7nOssGqRgyV3FVVQdfi+U4q02uB23bpnYpdvNXkYTRRyWx84b7yf1ans+dnJ/7h41sGL3CeQTfO+ZGxuO+Iw==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      hono: 4.12.7
+      hono: 4.12.14
 
   '@huggingface/inference@4.0.5':
     resolution: {integrity: sha512-/Qc45BGrN+FBA3JfdeoHfafxfNShH/dxvOsXbBdcxyxIRIYOyefeiXSlShZGVCaiqYpm+10na28D0YtvjKPTlw==}
@@ -11817,6 +11817,7 @@ packages:
 
   '@xata.io/client@0.28.4':
     resolution: {integrity: sha512-B02WHIA/ViHya84XvH6JCo13rd5h4S5vVyY2aYi6fIcjDIbCpsSLJ4oGWpdodovRYeAZy9Go4OhdyZwMIRC4BQ==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
       typescript: 6.0.2
 
@@ -11827,6 +11828,7 @@ packages:
   '@xmldom/xmldom@0.8.12':
     resolution: {integrity: sha512-9k/gHF6n/pAi/9tqr3m3aqkuiNosYTurLLUtc7xQ9sxB/wm7WPygCv8GYa6mS0fLJEHhqMC1ATYhz++U/lRHqg==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@zilliz/milvus2-sdk-node@2.5.7':
     resolution: {integrity: sha512-5gvIlllZCDkbcy1O9WjV4bZWgq+mlNekl5W4JcyO0HpyPcovoGF6cgWksl38kjXSl7WUSt1jWm2Q71Ua3r6foA==}
@@ -15289,7 +15291,7 @@ packages:
       '@standard-community/standard-json': ^0.3.5
       '@standard-community/standard-openapi': ^0.2.9
       '@types/json-schema': ^7.0.15
-      hono: 4.12.7
+      hono: 4.12.14
       openapi-types: ^12.1.3
     peerDependenciesMeta:
       '@hono/standard-validator':
@@ -15297,8 +15299,8 @@ packages:
       hono:
         optional: true
 
-  hono@4.12.7:
-    resolution: {integrity: sha512-jq9l1DM0zVIvsm3lv9Nw9nlJnMNPOcAtsbsgiUhWcFzPE99Gvo6yRTlszSLLYacMeQ6quHD6hMfId8crVHvexw==}
+  hono@4.12.14:
+    resolution: {integrity: sha512-am5zfg3yu6sqn5yjKBNqhnTX7Cv+m00ox+7jbaKkrLMRJ4rAdldd1xPd/JzbBWspqaQv6RSTrgFN95EsfhC+7w==}
     engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
@@ -25525,7 +25527,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.15.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.15.0(debug@4.4.3))
+      axios-retry: 4.5.0(axios@1.15.0)
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -26089,9 +26091,9 @@ snapshots:
       protobufjs: 7.5.4
       yargs: 17.7.2
 
-  '@hono/node-server@1.19.10(hono@4.12.7)':
+  '@hono/node-server@1.19.10(hono@4.12.14)':
     dependencies:
-      hono: 4.12.7
+      hono: 4.12.14
 
   '@huggingface/inference@4.0.5':
     dependencies:
@@ -27398,8 +27400,8 @@ snapshots:
       dotenv: 17.3.1
       execa: 9.6.1
       gray-matter: 4.0.3
-      hono: 4.12.7
-      hono-openapi: 1.3.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(hono@4.12.7)(openapi-types@12.1.3)
+      hono: 4.12.14
+      hono-openapi: 1.3.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(hono@4.12.14)(openapi-types@12.1.3)
       ignore: 7.0.5
       js-tiktoken: 1.0.21
       json-schema: 0.4.0
@@ -27515,7 +27517,7 @@ snapshots:
       '@microsoft/agents-a365-runtime': 0.1.0-preview.113
       '@microsoft/agents-a365-tooling': 0.1.0-preview.113(zod@3.25.67)
       '@microsoft/agents-hosting': 1.2.3
-      hono: 4.12.7
+      hono: 4.12.14
       langchain: 1.2.30(@langchain/core@1.1.34(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(vue@3.5.26(typescript@6.0.2))(zod-to-json-schema@3.23.3(zod@3.25.67))
       uuid: 9.0.1
     optionalDependencies:
@@ -27542,7 +27544,7 @@ snapshots:
       '@microsoft/agents-hosting': 1.2.3
       '@modelcontextprotocol/sdk': 1.26.0(zod@3.25.67)
       express: 5.2.1
-      hono: 4.12.7
+      hono: 4.12.14
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - debug
@@ -27621,7 +27623,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.26.0(zod@3.25.67)':
     dependencies:
-      '@hono/node-server': 1.19.10(hono@4.12.7)
+      '@hono/node-server': 1.19.10(hono@4.12.14)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -27631,7 +27633,7 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.2.1
       express-rate-limit: 8.2.2(express@5.2.1)
-      hono: 4.12.7
+      hono: 4.12.14
       jose: 6.1.3
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
@@ -27643,7 +27645,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.28.0(zod@3.25.67)':
     dependencies:
-      '@hono/node-server': 1.19.10(hono@4.12.7)
+      '@hono/node-server': 1.19.10(hono@4.12.14)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -27653,7 +27655,7 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.2.1
       express-rate-limit: 8.2.2(express@5.2.1)
-      hono: 4.12.7
+      hono: 4.12.14
       jose: 6.1.3
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
@@ -32929,11 +32931,6 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.15.0(debug@4.4.3)):
-    dependencies:
-      axios: 1.15.0(debug@4.4.3)
-      is-retry-allowed: 2.2.0
-
   axios-retry@4.5.0(axios@1.15.0):
     dependencies:
       axios: 1.15.0
@@ -36728,16 +36725,16 @@ snapshots:
     dependencies:
       parse-passwd: 1.0.0
 
-  hono-openapi@1.3.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(hono@4.12.7)(openapi-types@12.1.3):
+  hono-openapi@1.3.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(hono@4.12.14)(openapi-types@12.1.3):
     dependencies:
       '@standard-community/standard-json': 0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67)
       '@standard-community/standard-openapi': 0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67)
       '@types/json-schema': 7.0.15
       openapi-types: 12.1.3
     optionalDependencies:
-      hono: 4.12.7
+      hono: 4.12.14
 
-  hono@4.12.7: {}
+  hono@4.12.14: {}
 
   hookable@5.5.3: {}
 
