@@ -18,6 +18,8 @@ import {
 	type AwsSecurityHeaders,
 } from './types';
 import { sign } from 'aws4';
+import { getProxyForUrl } from 'proxy-from-env';
+import { ProxyAgent } from 'undici';
 
 import { getSystemCredentials } from './system-credentials-utils';
 
@@ -325,10 +327,14 @@ export async function assumeRole(
 		throw new ApplicationError('Failed to sign STS request');
 	}
 
+	const proxyUrl = getProxyForUrl(stsEndpoint);
+	const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
 	const response = await fetch(stsEndpoint, {
 		method: 'POST',
 		headers: signOpts.headers as Record<string, string>,
 		body: bodyContent,
+		// @ts-expect-error undici dispatcher option is not in standard fetch types
+		dispatcher,
 	});
 
 	if (!response.ok) {
