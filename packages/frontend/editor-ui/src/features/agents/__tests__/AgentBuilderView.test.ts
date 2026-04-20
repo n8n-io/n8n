@@ -94,8 +94,12 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		return wrapper;
 	}
 
-	it('hides the toggle in home mode', async () => {
+	it('shows the toggle in home mode and hides it in building mode', async () => {
 		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(true);
+
+		(wrapper.vm as unknown as { mode: string }).mode = 'building';
+		await nextTick();
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
 	});
 
@@ -142,21 +146,19 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect((testBtn.element as HTMLButtonElement).disabled).toBe(true);
 	});
 
-	it('resets chatMode to test every time chat mode is entered', async () => {
+	it('transitions from home to chat when a toggle segment is clicked', async () => {
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as { mode: string; chatMode: string };
 
-		vm.mode = 'chat';
-		await nextTick();
+		expect(vm.mode).toBe('home');
+
 		await wrapper.find('[data-testid="agent-chat-mode-build"]').trigger('click');
 		await nextTick();
+
+		expect(vm.mode).toBe('chat');
 		expect(vm.chatMode).toBe('build');
-
-		vm.mode = 'home';
-		await nextTick();
-		vm.mode = 'chat';
-		await nextTick();
-
-		expect(vm.chatMode).toBe('test');
+		expect(wrapper.find('[data-testid="chat-panel-stub"]').attributes('data-endpoint')).toBe(
+			'build',
+		);
 	});
 });

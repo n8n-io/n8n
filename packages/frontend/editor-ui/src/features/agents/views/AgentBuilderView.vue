@@ -73,12 +73,6 @@ watch(
 	{ immediate: true },
 );
 
-watch(mode, (m) => {
-	if (m === 'chat') {
-		chatMode.value = 'test';
-	}
-});
-
 async function fetchAgent() {
 	const data = await getAgent(rootStore.restApiContext, projectId.value, agentId.value);
 	agent.value = data;
@@ -137,8 +131,13 @@ function onBuildStreamingChange(streaming: boolean) {
 
 function setChatMode(next: ChatMode) {
 	if (isChatStreaming.value) return;
-	if (chatMode.value === next) return;
+	const chatModeChanged = chatMode.value !== next;
+	const enteringChat = mode.value !== 'chat';
+	if (!chatModeChanged && !enteringChat) return;
 	chatMode.value = next;
+	if (enteringChat) {
+		mode.value = 'chat';
+	}
 	telemetry.track('User switched agent chat mode', {
 		agent_id: agentId.value,
 		mode: next,
@@ -282,6 +281,7 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 async function initialize() {
 	agent.value = null;
 	mode.value = 'home';
+	chatMode.value = 'test';
 	isBuilding.value = false;
 	agentIcon.value = { type: 'icon', value: 'robot' };
 	initialPrompt.value = undefined;
@@ -291,6 +291,10 @@ async function initialize() {
 
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
+
+	if (config.value?.instructions?.trim()) {
+		mode.value = 'chat';
+	}
 
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
@@ -315,7 +319,7 @@ watch(agentId, initialize, { immediate: true });
 				</div>
 				<div :class="$style.mainHeaderRight">
 					<div
-						v-if="mode === 'chat'"
+						v-if="mode !== 'building'"
 						:class="$style.chatModeToggle"
 						role="group"
 						:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
@@ -344,14 +348,6 @@ watch(agentId, initialize, { immediate: true });
 							<span>{{ locale.baseText('agents.builder.chatMode.test') }}</span>
 						</button>
 					</div>
-					<button
-						v-if="mode === 'chat'"
-						:class="$style.toggleBtn"
-						data-testid="new-chat"
-						@click="mode = 'home'"
-					>
-						<N8nIcon icon="message-circle-plus" :size="16" />
-					</button>
 					<button
 						:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
 						data-testid="toggle-settings"
