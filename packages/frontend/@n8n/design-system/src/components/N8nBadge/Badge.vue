@@ -21,6 +21,7 @@ interface BadgeProps {
 	clickable?: boolean;
 	text?: string;
 	elevated?: boolean;
+	class?: string | string[] | Record<string, boolean>;
 }
 
 defineOptions({ name: 'N8nBadge' });
@@ -44,14 +45,17 @@ const textSize = computed<TextStep>(() => BADGE_SIZE_TO_TEXT_SIZE[props.size]);
 			$style[props.size],
 			{ [$style.border]: props.showBorder, [$style.clickable]: props.clickable },
 			{ [$style.elevated]: props.elevated },
+			props.class,
 		]"
 	>
-		<N8nText v-if="props.text" :step="textSize" :bold="props.bold" :compact="true">{{
+		<slot name="leading"></slot>
+		<N8nText v-if="props.text" :step="textSize" :bold="props.bold" :truncate="true">{{
 			props.text
 		}}</N8nText>
-		<N8nText v-else :step="textSize" :bold="props.bold" :compact="true">
+		<N8nText v-else :step="textSize" :bold="props.bold" :truncate="true">
 			<slot></slot>
 		</N8nText>
+		<slot name="trailing"></slot>
 	</span>
 </template>
 
@@ -65,9 +69,12 @@ const textSize = computed<TextStep>(() => BADGE_SIZE_TO_TEXT_SIZE[props.size]);
 
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	gap: var(--spacing--3xs);
 	white-space: nowrap;
 	user-select: none;
+	width: fit-content;
+	max-width: var(--spacing--4xl);
 
 	padding: var(--n8n--badge-padding);
 	height: var(--n8n--badge-height);

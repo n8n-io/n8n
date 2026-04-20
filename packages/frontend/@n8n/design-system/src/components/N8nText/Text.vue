@@ -12,6 +12,7 @@ interface TextProps {
 	align?: TextAlign;
 	compact?: boolean;
 	tag?: string;
+	truncate?: boolean;
 }
 
 defineOptions({ name: 'N8nText' });
@@ -20,6 +21,7 @@ const props = withDefaults(defineProps<TextProps>(), {
 	size: 'medium',
 	compact: false,
 	tag: 'span',
+	truncate: false,
 });
 
 const $style = useCssModule();
@@ -34,6 +36,10 @@ const classes = computed(() => {
 
 	if (props.compact) {
 		applied.push('compact');
+	}
+
+	if (props.truncate) {
+		applied.push('truncate');
 	}
 
 	if (props.step) {
@@ -199,5 +205,11 @@ const classes = computed(() => {
 
 .align-center {
 	text-align: center;
+}
+
+.truncate {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 </style>
