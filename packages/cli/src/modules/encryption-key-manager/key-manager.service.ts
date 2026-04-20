@@ -47,14 +47,14 @@ export class KeyManagerService {
 
 	/**
 	 * Inserts a new encryption key row.
-	 * If setAsActive is true, transitions the current active key to 'deprecating' first,
+	 * If setAsActive is true, transitions the current active key to 'inactive' first,
 	 * then inserts the new key as 'active'. Otherwise inserts as 'inactive'.
 	 */
 	async addKey(value: string, algorithm: string, setAsActive = false): Promise<{ id: string }> {
 		if (setAsActive) {
 			const current = await this.deploymentKeyRepository.findActiveByType('encryption');
 			if (current) {
-				await this.markDeprecating(current.id);
+				await this.markInactive(current.id);
 			}
 		}
 
@@ -63,7 +63,6 @@ export class KeyManagerService {
 			value,
 			algorithm,
 			status: setAsActive ? 'active' : 'inactive',
-			deprecatedAt: null,
 		});
 		const saved = await this.deploymentKeyRepository.save(entity);
 		return { id: saved.id };
@@ -71,22 +70,14 @@ export class KeyManagerService {
 
 	/**
 	 * Sets the given key as active.
-	 * Transitions the current active key to 'deprecating' first.
+	 * Transitions the current active key to 'inactive' first.
 	 */
 	async setActiveKey(id: string): Promise<void> {
 		const current = await this.deploymentKeyRepository.findActiveByType('encryption');
 		if (current && current.id !== id) {
-			await this.markDeprecating(current.id);
+			await this.markInactive(current.id);
 		}
 		await this.deploymentKeyRepository.update(id, { status: 'active' });
-	}
-
-	/** Transitions key to 'deprecating' status and records deprecatedAt timestamp. */
-	async markDeprecating(id: string): Promise<void> {
-		await this.deploymentKeyRepository.update(id, {
-			status: 'deprecating',
-			deprecatedAt: new Date(),
-		});
 	}
 
 	/** Transitions key to 'inactive'. Usage count guard to be added in T13. */

@@ -13,7 +13,6 @@ const makeKey = (overrides: Partial<DeploymentKey> = {}): DeploymentKey =>
 		value: 'secret',
 		algorithm: 'aes-256-gcm',
 		status: 'active',
-		deprecatedAt: null,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		...overrides,
@@ -133,7 +132,7 @@ describe('KeyManagerService', () => {
 			expect(result).toEqual({ id: 'new-key' });
 		});
 
-		it('demotes existing active key before inserting new active key', async () => {
+		it('marks existing active key inactive before inserting new active key', async () => {
 			const existing = makeKey({ id: 'old-key' });
 			repository.findActiveByType.mockResolvedValue(existing);
 			const saved = makeKey({ id: 'new-key', status: 'active' });
@@ -142,25 +141,19 @@ describe('KeyManagerService', () => {
 
 			await Container.get(KeyManagerService).addKey('new-secret', 'aes-256-gcm', true);
 
-			expect(repository.update).toHaveBeenCalledWith(
-				'old-key',
-				expect.objectContaining({ status: 'deprecating', deprecatedAt: expect.any(Date) }),
-			);
+			expect(repository.update).toHaveBeenCalledWith('old-key', { status: 'inactive' });
 			expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' }));
 		});
 	});
 
 	describe('setActiveKey()', () => {
-		it('demotes existing active key and promotes target', async () => {
+		it('marks existing active key inactive and promotes target', async () => {
 			const current = makeKey({ id: 'current' });
 			repository.findActiveByType.mockResolvedValue(current);
 
 			await Container.get(KeyManagerService).setActiveKey('target');
 
-			expect(repository.update).toHaveBeenCalledWith(
-				'current',
-				expect.objectContaining({ status: 'deprecating', deprecatedAt: expect.any(Date) }),
-			);
+			expect(repository.update).toHaveBeenCalledWith('current', { status: 'inactive' });
 			expect(repository.update).toHaveBeenCalledWith('target', { status: 'active' });
 		});
 
@@ -173,7 +166,7 @@ describe('KeyManagerService', () => {
 			expect(repository.update).toHaveBeenCalledWith('target', { status: 'active' });
 		});
 
-		it('does not demote itself when target is already the active key', async () => {
+		it('does not mark itself inactive when target is already the active key', async () => {
 			const current = makeKey({ id: 'target' });
 			repository.findActiveByType.mockResolvedValue(current);
 
@@ -181,17 +174,6 @@ describe('KeyManagerService', () => {
 
 			expect(repository.update).toHaveBeenCalledTimes(1);
 			expect(repository.update).toHaveBeenCalledWith('target', { status: 'active' });
-		});
-	});
-
-	describe('markDeprecating()', () => {
-		it('sets status to deprecating and records deprecatedAt', async () => {
-			await Container.get(KeyManagerService).markDeprecating('key-1');
-
-			expect(repository.update).toHaveBeenCalledWith(
-				'key-1',
-				expect.objectContaining({ status: 'deprecating', deprecatedAt: expect.any(Date) }),
-			);
 		});
 	});
 
