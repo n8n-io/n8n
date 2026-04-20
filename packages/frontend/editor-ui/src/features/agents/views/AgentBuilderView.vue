@@ -361,14 +361,6 @@ watch(agentId, initialize, { immediate: true });
 				</div>
 				<div :class="$style.mainHeaderRight">
 					<button
-						v-if="mode === 'chat' && chatMode === 'test'"
-						:class="$style.toggleBtn"
-						data-testid="new-chat"
-						@click="mode = 'home'"
-					>
-						<N8nIcon icon="message-circle-plus" :size="16" />
-					</button>
-					<button
 						:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
 						data-testid="toggle-settings"
 						@click="settingsVisible = !settingsVisible"
