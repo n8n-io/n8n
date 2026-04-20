@@ -188,9 +188,25 @@ async function handleTypeDefinition(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'type-definition' }>,
 ) {
+	// Mastra validates against the flattened top-level schema (required for
+	// Anthropic's `type: "object"` constraint), which makes every variant field
+	// optional. Re-assert the variant contract so missing/invalid inputs return
+	// a structured error the model can self-correct from, instead of crashing
+	// downstream on `input.nodeIds.map`.
+	const parsed = typeDefinitionAction.safeParse(input);
+	if (!parsed.success) {
+		return {
+			definitions: [],
+			error: parsed.error.issues
+				.map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
+				.join('; '),
+		};
+	}
+	const { nodeIds } = parsed.data;
+
 	if (!context.nodeService.getNodeTypeDefinition) {
 		return {
-			definitions: input.nodeIds.map((req: z.infer<typeof nodeRequestSchema>) => ({
+			definitions: nodeIds.map((req: z.infer<typeof nodeRequestSchema>) => ({
 				nodeId: typeof req === 'string' ? req : req.nodeId,
 				content: '',
 				error: 'Node type definitions are not available.',
@@ -199,7 +215,7 @@ async function handleTypeDefinition(
 	}
 
 	const definitions = await Promise.all(
-		input.nodeIds.map(async (req: z.infer<typeof nodeRequestSchema>) => {
+		nodeIds.map(async (req: z.infer<typeof nodeRequestSchema>) => {
 			const nodeId = typeof req === 'string' ? req : req.nodeId;
 			const options = typeof req === 'string' ? undefined : req;
 
