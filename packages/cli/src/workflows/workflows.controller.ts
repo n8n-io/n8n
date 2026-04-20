@@ -340,7 +340,7 @@ export class WorkflowsController {
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(updatedWorkflow);
 
-		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id, clientId);
 
 		return { ...updatedWorkflow, scopes, checksum };
 	}
@@ -406,7 +406,7 @@ export class WorkflowsController {
 
 		const checksum = await calculateWorkflowChecksum(workflow);
 
-		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id, clientId);
 
 		return { ...workflow, checksum };
 	}
@@ -440,7 +440,7 @@ export class WorkflowsController {
 
 		const checksum = await calculateWorkflowChecksum(workflow);
 
-		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id, clientId);
 
 		return { ...workflow, checksum };
 	}
@@ -474,7 +474,7 @@ export class WorkflowsController {
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(workflow);
 
-		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id, clientId);
 
 		return { ...workflow, scopes, checksum };
 	}
@@ -505,7 +505,7 @@ export class WorkflowsController {
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(workflow);
 
-		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id);
+		await this.collaborationService.broadcastWorkflowUpdate(workflowId, req.user.id, clientId);
 
 		return { ...workflow, scopes, checksum };
 	}

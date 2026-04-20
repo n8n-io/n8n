@@ -286,7 +286,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	}
 
 	async function handleWorkflowUpdate() {
-		if (isCurrentTabWriter.value || !collaboratingWorkflowId.value) {
+		if (!collaboratingWorkflowId.value) {
 			return;
 		}
 

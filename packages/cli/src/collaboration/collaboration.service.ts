@@ -242,7 +242,11 @@ export class CollaborationService {
 		this.push.sendToUsers({ type: 'writeAccessReleased', data: msgData }, userIds);
 	}
 
-	async broadcastWorkflowUpdate(workflowId: Workflow['id'], updatedByUserId: User['id']) {
+	async broadcastWorkflowUpdate(
+		workflowId: Workflow['id'],
+		updatedByUserId: User['id'],
+		excludePushRef?: string,
+	) {
 		const collaborators = await this.state.getCollaborators(workflowId);
 		const userIds = collaborators.map((user) => user.userId);
 
@@ -255,7 +259,7 @@ export class CollaborationService {
 			userId: updatedByUserId,
 		};
 
-		this.push.sendToUsers({ type: 'workflowUpdated', data: msgData }, userIds);
+		this.push.sendToUsers({ type: 'workflowUpdated', data: msgData }, userIds, excludePushRef);
 	}
 
 	/**
