@@ -204,4 +204,66 @@ describe('useRoleMappingRules', () => {
 			expect(composable.projectRules.value.every((r) => r.type === 'project')).toBe(true);
 		});
 	});
+
+	describe('save', () => {
+		it('should send creates without an order field', async () => {
+			vi.mocked(roleMappingRuleApi.createRoleMappingRule).mockResolvedValue(makeRule());
+
+			composable.addRule('instance');
+			composable.updateRule(composable.instanceRules.value[0].id, {
+				expression: '$claims.admin',
+				role: 'global:member',
+			});
+
+			await composable.save();
+
+			expect(roleMappingRuleApi.createRoleMappingRule).toHaveBeenCalledTimes(1);
+			const [, payload] = vi.mocked(roleMappingRuleApi.createRoleMappingRule).mock.calls[0];
+			expect(payload).not.toHaveProperty('order');
+			expect(payload).toMatchObject({
+				expression: '$claims.admin',
+				role: 'global:member',
+				type: 'instance',
+			});
+		});
+
+		it('should serialize create calls to preserve user-intended order', async () => {
+			const callOrder: string[] = [];
+			vi.mocked(roleMappingRuleApi.createRoleMappingRule).mockImplementation(
+				async (_ctx, input) => {
+					callOrder.push(input.expression);
+					await new Promise((r) => setTimeout(r, 0));
+					return makeRule({ expression: input.expression });
+				},
+			);
+
+			composable.addRule('instance');
+			composable.addRule('instance');
+			composable.updateRule(composable.instanceRules.value[0].id, { expression: 'first' });
+			composable.updateRule(composable.instanceRules.value[1].id, { expression: 'second' });
+
+			await composable.save();
+
+			expect(callOrder).toEqual(['first', 'second']);
+		});
+
+		it('should include order on updates to existing persisted rules', async () => {
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
+				makeRule({ id: 'persisted-1', type: 'instance', order: 0, expression: 'orig' }),
+			]);
+			vi.mocked(roleMappingRuleApi.updateRoleMappingRule).mockResolvedValue(
+				makeRule({ id: 'persisted-1' }),
+			);
+
+			await composable.loadRules();
+			composable.updateRule('persisted-1', { expression: 'edited' });
+			await composable.save();
+
+			expect(roleMappingRuleApi.updateRoleMappingRule).toHaveBeenCalledWith(
+				expect.anything(),
+				'persisted-1',
+				expect.objectContaining({ order: 0 }),
+			);
+		});
+	});
 });

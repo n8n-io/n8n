@@ -90,8 +90,6 @@ export class RoleMappingRuleService {
 
 		assertRoleCompatibleWithMappingType(role, dto.type);
 
-		await this.assertOrderAvailable(dto.type, dto.order);
-
 		const projects =
 			uniqueProjectIds.length > 0
 				? await this.projectRepository.findBy({ id: In(uniqueProjectIds) })
@@ -101,16 +99,37 @@ export class RoleMappingRuleService {
 			throw new BadRequestError('One or more projects were not found');
 		}
 
+		const existingRules = await this.roleMappingRuleRepository.find({
+			where: { type: dto.type },
+			select: ['id', 'order'],
+			order: { order: 'ASC' },
+		});
+
+		// Clamp the requested index into the valid range. Omitted order appends.
+		const requestedOrder = dto.order ?? existingRules.length;
+		const targetIndex = Math.min(Math.max(requestedOrder, 0), existingRules.length);
+
+		// Save the new rule at a temporary order beyond any currently-used slot,
+		// so the unique (type, order) constraint cannot fire on the initial insert.
+		const maxOrder = existingRules.length > 0 ? existingRules[existingRules.length - 1].order : -1;
+		const tempOrder = Math.max(maxOrder, existingRules.length - 1) + 1;
+
 		const rule = new RoleMappingRule();
 		rule.expression = dto.expression;
 		rule.role = role;
 		rule.type = dto.type;
-		rule.order = dto.order;
+		rule.order = tempOrder;
 		rule.projects = projects;
 
 		const saved = await this.roleMappingRuleRepository.save(rule);
 
-		await this.normalizeOrderForType(dto.type);
+		// Build the final ordering: existing rules in their current order, with the
+		// newly saved rule spliced in at targetIndex. applyOrder atomically renumbers
+		// everything to [0..n-1] using its two-phase transaction.
+		const reorderedIds = existingRules.map((r) => r.id);
+		reorderedIds.splice(targetIndex, 0, saved.id);
+
+		await this.applyOrder(reorderedIds);
 
 		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
 			where: { id: saved.id },

@@ -19,7 +19,7 @@ export type CreateRoleMappingRuleInput = {
 	expression: string;
 	role: string;
 	type: RoleMappingRuleType;
-	order: number;
+	order?: number;
 	projectIds?: string[];
 };
 
