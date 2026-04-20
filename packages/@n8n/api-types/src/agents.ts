@@ -21,6 +21,7 @@ export interface AgentJsonToolRef {
 	node?: NodeToolConfig;
 	inputSchema?: Record<string, unknown>;
 	requireApproval?: boolean;
+	allOutputs?: boolean;
 }
 
 export interface AgentJsonConfig {
