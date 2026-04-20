@@ -109,10 +109,11 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		await nextTick();
 
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(true);
-		const testBtn = wrapper.find('[data-testid="agent-chat-mode-test"]');
-		const buildBtn = wrapper.find('[data-testid="agent-chat-mode-build"]');
-		expect(testBtn.classes().some((c) => c.includes('chatModeBtnActive'))).toBe(true);
-		expect(buildBtn.classes().some((c) => c.includes('chatModeBtnActive'))).toBe(false);
+		const radios = wrapper.findAll('[role="radio"]');
+		const testRadio = radios.find((r) => r.text().includes('Test'));
+		const buildRadio = radios.find((r) => r.text().includes('Build'));
+		expect(testRadio?.attributes('aria-checked')).toBe('true');
+		expect(buildRadio?.attributes('aria-checked')).toBe('false');
 	});
 
 	it('mounts both Test and Build panels and toggles their visibility via v-show', async () => {
@@ -128,7 +129,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
 		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
 
-		await wrapper.find('[data-testid="agent-chat-mode-build"]').trigger('click');
+		await wrapper.find('[data-test-id="radio-button-build"]').trigger('click');
 		await nextTick();
 
 		expect((testPanel.element as HTMLElement).style.display).toBe('none');
@@ -141,7 +142,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 		expect(vm.mode).toBe('home');
 
-		await wrapper.find('[data-testid="agent-chat-mode-build"]').trigger('click');
+		await wrapper.find('[data-test-id="radio-button-build"]').trigger('click');
 		await nextTick();
 
 		expect(vm.mode).toBe('chat');

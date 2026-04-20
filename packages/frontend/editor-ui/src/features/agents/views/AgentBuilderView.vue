@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIcon, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -151,6 +151,11 @@ function setChatMode(next: ChatMode) {
 		mode: next,
 	});
 }
+
+const chatModeOptions = computed(() => [
+	{ label: locale.baseText('agents.builder.chatMode.build'), value: 'build' as const },
+	{ label: locale.baseText('agents.builder.chatMode.test'), value: 'test' as const },
+]);
 
 function onBuildDone() {
 	// Build stream finished. Let the fade-out animation play, then drop the
@@ -326,40 +331,32 @@ watch(agentId, initialize, { immediate: true });
 						agentName || locale.baseText('agents.home.untitledAgent')
 					}}</N8nText>
 				</div>
-				<div
+				<N8nRadioButtons
 					v-if="mode !== 'building'"
-					:class="[$style.chatModeToggle, $style.chatModeToggleCenter]"
-					role="group"
+					:class="$style.chatModeToggleCenter"
+					:model-value="chatMode"
+					:options="chatModeOptions"
 					:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
 					data-testid="agent-chat-mode-toggle"
+					@update:model-value="setChatMode"
 				>
-					<button
-						type="button"
-						:class="[$style.chatModeBtn, chatMode === 'build' && $style.chatModeBtnActive]"
-						:aria-pressed="chatMode === 'build'"
-						data-testid="agent-chat-mode-build"
-						@click="setChatMode('build')"
-					>
-						<N8nIcon
-							v-if="isBuilding || isBuildChatStreaming"
-							icon="loader-circle"
-							:size="14"
-							:spin="true"
-						/>
-						<N8nIcon v-else icon="wand-sparkles" :size="14" />
-						<span>{{ locale.baseText('agents.builder.chatMode.build') }}</span>
-					</button>
-					<button
-						type="button"
-						:class="[$style.chatModeBtn, chatMode === 'test' && $style.chatModeBtnActive]"
-						:aria-pressed="chatMode === 'test'"
-						data-testid="agent-chat-mode-test"
-						@click="setChatMode('test')"
-					>
-						<N8nIcon icon="message-square" :size="14" />
-						<span>{{ locale.baseText('agents.builder.chatMode.test') }}</span>
-					</button>
-				</div>
+					<template #option="option">
+						<span :class="$style.chatModeOption">
+							<N8nIcon
+								v-if="option.value === 'build' && (isBuilding || isBuildChatStreaming)"
+								icon="loader-circle"
+								:size="14"
+								:spin="true"
+							/>
+							<N8nIcon
+								v-else
+								:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
+								:size="14"
+							/>
+							<span>{{ option.label }}</span>
+						</span>
+					</template>
+				</N8nRadioButtons>
 				<div :class="$style.mainHeaderRight">
 					<button
 						:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
@@ -525,15 +522,6 @@ watch(agentId, initialize, { immediate: true });
 	background-color: var(--color--foreground--tint-1);
 }
 
-.chatModeToggle {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--5xs);
-	padding: var(--spacing--5xs);
-	border-radius: var(--radius);
-	background-color: var(--color--foreground--tint-2);
-}
-
 .chatModeToggleCenter {
 	position: absolute;
 	left: 50%;
@@ -541,33 +529,10 @@ watch(agentId, initialize, { immediate: true });
 	transform: translate(-50%, -50%);
 }
 
-.chatModeBtn {
+.chatModeOption {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	height: 26px;
-	padding: 0 var(--spacing--2xs);
-	border: none;
-	background: none;
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	border-radius: var(--radius);
-	cursor: pointer;
-}
-
-.chatModeBtn:hover:not(:disabled) {
-	color: var(--color--text);
-}
-
-.chatModeBtn:disabled {
-	cursor: not-allowed;
-	opacity: 0.5;
-}
-
-.chatModeBtnActive {
-	background-color: var(--color--background);
-	color: var(--color--text);
 }
 </style>
 
