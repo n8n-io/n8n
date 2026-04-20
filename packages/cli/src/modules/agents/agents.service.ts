@@ -487,17 +487,26 @@ export class AgentsService {
 			throw new NotFoundError(`Agent ${agentId} is not published`);
 		}
 
-		// Always reconstruct from the published snapshot — no caching.
-		// Integration traffic must always run the published version, never a cached draft.
-		const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
-		const agentInstance = await this.reconstructFromConfig(
-			publishedAgentData,
-			credentialProvider,
-			userId,
-			integrationType,
-		);
+		// Reconstruct from the published snapshot and cache the runtime so that
+		// a follow-up `resumeForChat` (HITL button click) can find it via
+		// `findRuntimeForAgent`. Integration traffic only ever runs the published
+		// version — drafts stay in their own cache under different keys.
+		const key = this.runtimeKey(agentId, userId, integrationType);
+		let runtime = this.runtimes.get(key);
+		if (!runtime) {
+			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
+			const agentInstance = await this.reconstructFromConfig(
+				publishedAgentData,
+				credentialProvider,
+				userId,
+				integrationType,
+			);
+			this.runtimes.set(key, { agent: agentInstance, agentId, userId });
+			runtime = this.runtimes.get(key);
+			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
+		}
 
-		yield* this.streamChatResponse(agentInstance, agentId, message, threadId, userId);
+		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId);
 	}
 
 	/**
