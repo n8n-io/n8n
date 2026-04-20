@@ -278,8 +278,6 @@ export {
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
-	instanceAiFilesystemResponseSchema,
-	instanceAiGatewayCapabilitiesSchema,
 	mcpToolSchema,
 	mcpToolCallRequestSchema,
 	mcpToolCallResultSchema,
@@ -302,6 +300,8 @@ export {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiFilesystemResponseDto,
 	applyBranchReadOnlyOverrides,
 } from './schemas/instance-ai.schema';
 

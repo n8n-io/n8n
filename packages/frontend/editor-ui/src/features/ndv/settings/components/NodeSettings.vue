@@ -466,7 +466,9 @@ const setHttpNodeParameters = (parameters: CurlToJSONResponse) => {
 			name: 'parameters',
 			value: parameters as unknown as INodeParameters,
 		});
-	} catch {}
+	} catch (error) {
+		console.error('Failed to apply cURL parameters to node:', error);
+	}
 };
 
 const onSwitchSelectedNode = (node: string) => {
