@@ -18,4 +18,5 @@ export class ProvisioningConfigPatchDto extends Z.class({
 	scopesInstanceRoleClaimName: z.string().optional().nullable(),
 	scopesProjectsRolesClaimName: z.string().optional().nullable(),
 	scopesUseExpressionMapping: z.boolean().optional().nullable(),
+	deleteProjectRules: z.boolean().optional(),
 }) {}

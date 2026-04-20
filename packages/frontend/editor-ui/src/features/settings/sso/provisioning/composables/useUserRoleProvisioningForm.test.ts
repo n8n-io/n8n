@@ -395,4 +395,160 @@ describe('useUserRoleProvisioningForm', () => {
 			expect(mappingMethod.value).toBe('idp');
 		});
 	});
+
+	describe('isDroppingProjectRules', () => {
+		it('is true when pending a switch away from instance_and_project (IdP mapping)', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: true,
+					scopesProvisionProjectRoles: true,
+				}),
+			);
+
+			const { formValue, roleAssignment, isDroppingProjectRules } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
+
+			expect(isDroppingProjectRules.value).toBe(false);
+
+			roleAssignment.value = 'instance';
+
+			expect(isDroppingProjectRules.value).toBe(true);
+		});
+
+		it('is true when pending a switch away from expression-based instance_and_project', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({ scopesUseExpressionMapping: true }),
+			);
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
+				mockInstanceRule,
+				mockProjectRule,
+			]);
+
+			const { roleAssignment, isDroppingProjectRules } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance_and_project'));
+
+			expect(isDroppingProjectRules.value).toBe(false);
+
+			roleAssignment.value = 'instance';
+
+			expect(isDroppingProjectRules.value).toBe(true);
+		});
+
+		it('is false when there were never stored project rules', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
+			);
+
+			const { formValue, roleAssignment, isDroppingProjectRules } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+
+			roleAssignment.value = 'manual';
+
+			expect(isDroppingProjectRules.value).toBe(false);
+		});
+	});
+
+	describe('saveProvisioningConfig → deleteProjectRules payload', () => {
+		it('adds deleteProjectRules when dropping instance_and_project (IdP mapping)', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: true,
+					scopesProvisionProjectRoles: true,
+				}),
+			);
+			vi.mocked(provisioningApi.saveProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
+			);
+
+			const { formValue, roleAssignment, saveProvisioningConfig } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
+
+			roleAssignment.value = 'instance';
+			await saveProvisioningConfig(false);
+
+			expect(provisioningApi.saveProvisioningConfig).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					scopesProvisionInstanceRole: true,
+					scopesProvisionProjectRoles: false,
+					scopesUseExpressionMapping: false,
+					deleteProjectRules: true,
+				}),
+			);
+		});
+
+		it('adds deleteProjectRules when dropping expression-based project scope', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({ scopesUseExpressionMapping: true }),
+			);
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
+				mockInstanceRule,
+				mockProjectRule,
+			]);
+			vi.mocked(provisioningApi.saveProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({ scopesUseExpressionMapping: true }),
+			);
+
+			const { roleAssignment, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance_and_project'));
+
+			roleAssignment.value = 'instance';
+			await saveProvisioningConfig(false);
+
+			expect(provisioningApi.saveProvisioningConfig).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ deleteProjectRules: true }),
+			);
+		});
+
+		it('omits deleteProjectRules when stored state had no project rules', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
+			);
+			vi.mocked(provisioningApi.saveProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({}),
+			);
+
+			const { formValue, roleAssignment, saveProvisioningConfig } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+
+			roleAssignment.value = 'manual';
+			await saveProvisioningConfig(false);
+
+			expect(provisioningApi.saveProvisioningConfig).toHaveBeenCalledTimes(1);
+			const payload = vi.mocked(provisioningApi.saveProvisioningConfig).mock.calls[0]?.[1] ?? {};
+			expect(payload).not.toHaveProperty('deleteProjectRules');
+		});
+
+		it('adds deleteProjectRules when SSO is being disabled and stored state had project rules', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: true,
+					scopesProvisionProjectRoles: true,
+				}),
+			);
+			vi.mocked(provisioningApi.saveProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({}),
+			);
+
+			const { formValue, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
+
+			await saveProvisioningConfig(true);
+
+			expect(provisioningApi.saveProvisioningConfig).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					scopesProvisionInstanceRole: false,
+					scopesProvisionProjectRoles: false,
+					scopesUseExpressionMapping: false,
+					deleteProjectRules: true,
+				}),
+			);
+		});
+	});
 });

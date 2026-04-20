@@ -75,6 +75,7 @@ const {
 	saveProvisioningConfig,
 	roleAssignmentTransition,
 	storedHasProjectRoles,
+	isDroppingProjectRules,
 	revertRoleAssignment,
 } = useUserRoleProvisioningForm(SupportedProtocols.SAML);
 
@@ -404,6 +405,7 @@ onMounted(async () => {
 				v-model="showUserRoleProvisioningDialog"
 				:transition-type="roleAssignmentTransition"
 				:show-project-roles-csv="storedHasProjectRoles || roleAssignment === 'instance_and_project'"
+				:will-delete-project-rules="isDroppingProjectRules"
 				auth-protocol="saml"
 				@confirm-provisioning="onSave(true)"
 				@cancel="

@@ -135,12 +135,21 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 			return;
 		}
 
-		await provisioningStore.saveProvisioningConfig(
-			getProvisioningConfigFromDropdowns(effectiveRoleAssignment, effectiveMappingMethod),
-		);
+		const shouldDeleteProjectRules =
+			stored.roleAssignment === 'instance_and_project' &&
+			effectiveRoleAssignment !== 'instance_and_project';
+
+		await provisioningStore.saveProvisioningConfig({
+			...getProvisioningConfigFromDropdowns(effectiveRoleAssignment, effectiveMappingMethod),
+			...(shouldDeleteProjectRules ? { deleteProjectRules: true } : {}),
+		});
 
 		roleAssignment.value = effectiveRoleAssignment;
 		mappingMethod.value = effectiveMappingMethod;
+
+		if (shouldDeleteProjectRules) {
+			storedHasProjectRules.value = false;
+		}
 
 		sendTrackingEventForUserProvisioning(
 			toLegacyValue(effectiveRoleAssignment, effectiveMappingMethod),
@@ -163,6 +172,12 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 
 	const storedHasProjectRoles = computed(
 		() => storedValues.value.roleAssignment === 'instance_and_project',
+	);
+
+	const isDroppingProjectRules = computed(
+		() =>
+			storedValues.value.roleAssignment === 'instance_and_project' &&
+			roleAssignment.value !== 'instance_and_project',
 	);
 
 	const revertRoleAssignment = () => {
@@ -199,6 +214,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		saveProvisioningConfig,
 		roleAssignmentTransition,
 		storedHasProjectRoles,
+		isDroppingProjectRules,
 		revertRoleAssignment,
 	};
 }
