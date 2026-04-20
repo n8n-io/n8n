@@ -52,6 +52,10 @@ test.describe(
 					},
 				});
 
+				console.log('Exchange response', await exchangeResponse.text());
+
+				expect(exchangeResponse.status()).toBe(200);
+
 				expect(exchangeResponse.ok()).toBe(true);
 				const body = await exchangeResponse.json();
 				expect(body).toMatchObject({
