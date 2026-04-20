@@ -1,4 +1,5 @@
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -125,7 +126,8 @@ export const createUpdateWorkflowTool = (
 			const handler = new ParseValidateHandler({ generatePinData: false });
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
-			const workflowJson = result.workflow;
+
+			const workflowJson = layoutWorkflowJSON(result.workflow);
 
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
@@ -134,7 +136,7 @@ export const createUpdateWorkflowTool = (
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
 				pinData: workflowJson.pinData,
-				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
+				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
 			});
 
 			resolveNodeWebhookIds(workflowUpdateData, nodeTypes);
