@@ -20,7 +20,6 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -158,13 +157,19 @@ function hookFunctionsWorkflowEvents(
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
 		if (runData.status === 'waiting') {
 			const { executionId, workflowData: workflow } = this;
-			const isIndefinite = runData.waitTill?.getTime() === WAIT_INDEFINITELY.getTime();
-
-			eventService.emit('execution-waiting', {
-				executionId,
-				workflowId: workflow.id,
-				waitTill: isIndefinite ? null : (runData.waitTill ?? null),
-			});
+			const lastNodeName = runData.data.resultData.lastNodeExecuted;
+			const lastNodeTaskData = lastNodeName
+				? runData.data.resultData.runData[lastNodeName]
+				: undefined;
+			const latestTask = lastNodeTaskData?.at(-1);
+			const isWaitingForWebhook = latestTask?.metadata?.resumeUrl;
+			if (isWaitingForWebhook) {
+				// As of today we only emit the execution-waiting event for webhook wait nodes.
+				eventService.emit('execution-waiting', {
+					executionId,
+					workflowId: workflow.id,
+				});
+			}
 			return;
 		}
 

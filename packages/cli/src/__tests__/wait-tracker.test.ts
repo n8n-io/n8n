@@ -7,8 +7,6 @@ import type { IWorkflowBase, IRun, INode, IExecuteData, ITaskData } from 'n8n-wo
 import { createDeferredPromise, createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
-import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import type { EventService } from '@/events/event.service';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { DbClock } from '@/services/db-clock.service';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -26,8 +24,6 @@ describe('WaitTracker', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const multiMainSetup = mock<MultiMainSetup>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
-	const eventService = mock<EventService>();
-
 	const project = mock<Project>({ id: 'projectId' });
 	const execution = mock<IExecutionResponse>({
 		id: '123',
@@ -60,7 +56,6 @@ describe('WaitTracker', () => {
 			instanceSettings,
 			dbClock,
 			errorReporter,
-			eventService,
 		);
 		multiMainSetup.on.mockReturnThis();
 	});
@@ -161,27 +156,6 @@ describe('WaitTracker', () => {
 				false,
 				execution.id,
 			);
-		});
-
-		it('should emit execution-resumed after run() succeeds', async () => {
-			await waitTracker.startExecution(execution.id);
-
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'execution-resumed',
-				expect.objectContaining({
-					executionId: execution.id,
-					workflowId: execution.workflowData.id,
-					resumeSource: 'timer',
-				}),
-			);
-		});
-
-		it('should not emit execution-resumed when run() throws ExecutionAlreadyResumingError', async () => {
-			workflowRunner.run.mockRejectedValueOnce(new ExecutionAlreadyResumingError(execution.id));
-
-			await waitTracker.startExecution(execution.id);
-
-			expect(eventService.emit).not.toHaveBeenCalledWith('execution-resumed', expect.anything());
 		});
 
 		it('should preserve original startedAt timestamp when resuming execution', async () => {
@@ -669,7 +643,6 @@ describe('WaitTracker', () => {
 				instanceSettings,
 				dbClock,
 				errorReporter,
-				eventService,
 			);
 
 			// Server clock is 3s ahead — exceeds 2s threshold
@@ -839,7 +812,6 @@ describe('WaitTracker', () => {
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
 				dbClock,
 				errorReporter,
-				eventService,
 			);
 
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);

@@ -1895,12 +1895,10 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `execution-waiting` event with a concrete waitTill date', () => {
-			const waitTill = new Date('2025-06-01T12:00:00.000Z');
+		it('should log on `execution-waiting` event', () => {
 			const event: RelayEventMap['execution-waiting'] = {
 				executionId: 'exec-waiting-123',
 				workflowId: 'wf-waiting-456',
-				waitTill,
 			};
 
 			eventService.emit('execution-waiting', event);
@@ -1910,54 +1908,31 @@ describe('LogStreamingEventRelay', () => {
 				payload: {
 					executionId: 'exec-waiting-123',
 					workflowId: 'wf-waiting-456',
-					waitTill: waitTill.toISOString(),
 				},
 			});
 		});
 
-		it('should log on `execution-waiting` event with null waitTill (indefinite wait)', () => {
-			const event: RelayEventMap['execution-waiting'] = {
-				executionId: 'exec-waiting-indefinite',
-				workflowId: 'wf-waiting-789',
-				waitTill: null,
+		it('should log on `execution-resumed` event with resumeSource webhook', () => {
+			const responseAt = new Date('2025-06-02T08:00:00.000Z');
+			const event: RelayEventMap['execution-resumed'] = {
+				executionId: 'exec-resumed-123',
+				workflowId: 'wf-resumed-456',
+				resumeSource: 'webhook',
+				responseAt,
 			};
 
-			eventService.emit('execution-waiting', event);
+			eventService.emit('execution-resumed', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.workflow.waiting',
+				eventName: 'n8n.audit.workflow.resumed',
 				payload: {
-					executionId: 'exec-waiting-indefinite',
-					workflowId: 'wf-waiting-789',
-					waitTill: null,
+					executionId: 'exec-resumed-123',
+					workflowId: 'wf-resumed-456',
+					resumeSource: 'webhook',
+					responseAt: responseAt.toISOString(),
 				},
 			});
 		});
-
-		it.each(['webhook', 'form', 'timer'] as const)(
-			'should log on `execution-resumed` event with resumeSource %s',
-			(resumeSource) => {
-				const responseAt = new Date('2025-06-02T08:00:00.000Z');
-				const event: RelayEventMap['execution-resumed'] = {
-					executionId: 'exec-resumed-123',
-					workflowId: 'wf-resumed-456',
-					resumeSource,
-					responseAt,
-				};
-
-				eventService.emit('execution-resumed', event);
-
-				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-					eventName: 'n8n.audit.workflow.resumed',
-					payload: {
-						executionId: 'exec-resumed-123',
-						workflowId: 'wf-resumed-456',
-						resumeSource,
-						responseAt: responseAt.toISOString(),
-					},
-				});
-			},
-		);
 
 		it('should log on `workflow-executed` event for retry user execution', () => {
 			const event: RelayEventMap['workflow-executed'] = {

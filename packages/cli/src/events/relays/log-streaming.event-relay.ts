@@ -769,17 +769,12 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	private executionWaiting({
-		executionId,
-		workflowId,
-		waitTill,
-	}: RelayEventMap['execution-waiting']) {
+	private executionWaiting({ executionId, workflowId }: RelayEventMap['execution-waiting']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.waiting',
 			payload: {
 				executionId,
 				workflowId,
-				waitTill: waitTill?.toISOString() ?? null,
 			},
 		});
 	}

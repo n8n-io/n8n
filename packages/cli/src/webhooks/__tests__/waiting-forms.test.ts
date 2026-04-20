@@ -25,10 +25,6 @@ class TestWaitingForms extends WaitingForms {
 	): { valid: boolean; webhookPath?: string } {
 		return this.validateToken(req, execution);
 	}
-
-	exposeShouldEmitResumedEvent(req: WaitingWebhookRequest): boolean {
-		return this.shouldEmitResumedEvent(req);
-	}
 }
 
 describe('WaitingForms', () => {
@@ -679,18 +675,6 @@ describe('WaitingForms', () => {
 
 			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 			expect(result).toEqual({ noWebhookResponse: true });
-		});
-	});
-
-	describe('shouldEmitResumedEvent', () => {
-		it('should return false for GET requests (form page load)', () => {
-			const req = mock<WaitingWebhookRequest>({ method: 'GET' });
-			expect(waitingForms.exposeShouldEmitResumedEvent(req)).toBe(false);
-		});
-
-		it('should return true for POST requests (form submission)', () => {
-			const req = mock<WaitingWebhookRequest>({ method: 'POST' });
-			expect(waitingForms.exposeShouldEmitResumedEvent(req)).toBe(true);
 		});
 	});
 

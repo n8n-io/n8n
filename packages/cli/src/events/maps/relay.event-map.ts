@@ -472,18 +472,12 @@ export type RelayEventMap = {
 	'execution-waiting': {
 		executionId: string;
 		workflowId: string;
-		/**
-		 * Only defined for 'interval' or 'specific time' wait modes,
-		 * or optionally for 'form' wait mode, where a "max wait time", can be defined.
-		 * Will be null for webhook wait mode.
-		 */
-		waitTill: Date | null;
 	};
 
 	'execution-resumed': {
 		executionId: string;
 		workflowId: string;
-		resumeSource: 'webhook' | 'form' | 'timer';
+		resumeSource: 'webhook';
 		responseAt: Date;
 	};
 

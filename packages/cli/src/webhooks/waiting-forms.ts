@@ -32,10 +32,6 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 	}
 
-	protected override shouldEmitResumedEvent(req: WaitingWebhookRequest): boolean {
-		return req.method === 'POST';
-	}
-
 	findCompletionPage(workflow: Workflow, runData: IRunData, lastNodeExecuted: string) {
 		const parentNodes = workflow.getParentNodes(lastNodeExecuted);
 		const lastNode = workflow.nodes[lastNodeExecuted];
