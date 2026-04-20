@@ -15,7 +15,7 @@ export class OpenAi extends VersionedNodeType {
 			name: 'openAi',
 			icon: { light: 'file:openAi.svg', dark: 'file:openAi.dark.svg' },
 			group: ['transform'],
-			defaultVersion: 2.1,
+			defaultVersion: 2.2,
 			subtitle: `={{(${prettifyOperation})($parameter.resource, $parameter.operation)}}`,
 			description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
 			codex: {
@@ -70,6 +70,7 @@ export class OpenAi extends VersionedNodeType {
 			1.8: new OpenAiV1(baseDescription),
 			2: new OpenAiV2(baseDescription),
 			2.1: new OpenAiV2(baseDescription),
+			2.2: new OpenAiV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
