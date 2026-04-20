@@ -48,6 +48,18 @@ const agentIcon = ref<IconOrEmoji>({ type: 'icon', value: 'robot' });
 const agent = ref<AgentResource | null>(null);
 const updatedAt = ref<string>('');
 const initialPrompt = ref<string | undefined>(undefined);
+const continueSessionId = computed(() => route.query.continueSessionId as string | undefined);
+const continueSessionThread = computed(() => {
+	const id = continueSessionId.value;
+	if (!id) return undefined;
+	return sessionsStore.threads.find((t) => t.id === id);
+});
+const continueSessionTitle = computed(() => {
+	const thread = continueSessionThread.value;
+	if (!thread) return undefined;
+	return thread.title ?? `Session ${thread.sessionNumber}`;
+});
+const continueSessionEmoji = computed(() => continueSessionThread.value?.emoji ?? undefined);
 const buildPrompt = ref<string>('');
 const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle');
 
@@ -269,7 +281,6 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 	// MODAL_CLOSE (X / Escape) → don't call next(), stay on page
 });
 
-
 async function initialize() {
 	agent.value = null;
 	mode.value = 'home';
@@ -292,6 +303,32 @@ async function initialize() {
 }
 
 watch(agentId, initialize, { immediate: true });
+
+watch(
+	continueSessionId,
+	(id, prev) => {
+		if (id) {
+			mode.value = 'chat';
+		} else if (prev) {
+			mode.value = 'home';
+		}
+	},
+	{ immediate: true },
+);
+
+function onContinueLoaded(count: number) {
+	if (count === 0) {
+		const { continueSessionId: _dropped, ...rest } = route.query;
+		void router.replace({ query: rest });
+		mode.value = 'home';
+	}
+}
+
+function onChatBack() {
+	const { continueSessionId: _dropped, ...rest } = route.query;
+	void router.replace({ query: rest });
+	mode.value = 'home';
+}
 </script>
 
 <template>
@@ -359,13 +396,18 @@ watch(agentId, initialize, { immediate: true });
 					/>
 					<AgentChatPanel
 						v-else
-						key="chat"
+						:key="continueSessionId ? `chat-${continueSessionId}` : 'chat'"
 						:project-id="projectId"
 						:agent-id="agentId"
 						mode="inline"
 						endpoint="chat"
 						:initial-message="initialPrompt"
+						:continue-session-id="continueSessionId"
+						:session-title="continueSessionTitle"
+						:session-emoji="continueSessionEmoji"
 						@config-updated="onConfigUpdated"
+						@continue-loaded="onContinueLoaded"
+						@back="onChatBack"
 					/>
 				</Transition>
 			</div>

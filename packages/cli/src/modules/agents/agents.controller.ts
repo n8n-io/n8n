@@ -1,6 +1,7 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
+import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -272,17 +273,18 @@ export class AgentsController {
 		@Body payload: AgentChatMessageDto,
 	) {
 		const { projectId } = req.params;
-		const { message } = payload;
+		const { message, sessionId } = payload;
 
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
 		const send = initSseResponse(res);
+		const threadId = sessionId ?? randomUUID();
 
 		try {
 			for await (const chunk of this.agentsService.executeForChat(
 				agentId,
 				message,
-				`test-${agentId}`,
+				threadId,
 				req.user.id,
 				projectId,
 				credentialProvider,
@@ -290,13 +292,23 @@ export class AgentsController {
 			)) {
 				this.sendStreamChunk(chunk, send);
 			}
-			send({ done: true });
+			send({ done: true, sessionId: threadId });
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
 			send({ error: errorMessage });
 		}
 
 		res.end();
+	}
+
+	@Get('/:agentId/chat/:threadId/messages')
+	async getChatMessages(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		return await this.agentsService.getChatMessages(threadId);
 	}
 
 	@Get('/:agentId/build/messages')

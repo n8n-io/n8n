@@ -311,6 +311,11 @@ export class AgentsService {
 		return undefined;
 	}
 
+	/** Return persisted chat messages for a given session/thread. */
+	async getChatMessages(threadId: string) {
+		return await this.n8nMemory.getMessages(threadId);
+	}
+
 	private getMemoryFactory(): MemoryFactory {
 		return (params: AgentJsonMemoryConfig) => {
 			if (params.storage === 'n8n') {

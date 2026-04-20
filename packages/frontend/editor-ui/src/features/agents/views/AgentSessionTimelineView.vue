@@ -302,6 +302,14 @@ function goBack() {
 	});
 }
 
+function continueChat() {
+	void router.push({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: { continueSessionId: threadId.value },
+	});
+}
+
 function selectItem(idx: number) {
 	selectedIndex.value = selectedIndex.value === idx ? null : idx;
 }
@@ -333,6 +341,14 @@ function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'card
 				<span :class="$style.stat">${{ thread.totalCost.toFixed(4) }}</span>
 				<span :class="$style.statSep">·</span>
 				<span :class="$style.stat">{{ formatDuration(thread.totalDuration) }}</span>
+				<button
+					v-if="triggerSource === 'chat'"
+					:class="$style.continueButton"
+					@click="continueChat"
+				>
+					<N8nIcon icon="message-square" :size="12" />
+					Continue chat
+				</button>
 			</div>
 		</div>
 
@@ -671,6 +687,25 @@ function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'card
 
 .statSep {
 	color: var(--color--text--tint-1);
+}
+
+.continueButton {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	margin-left: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	background: none;
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius);
+	color: var(--color--primary);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	cursor: pointer;
+
+	&:hover {
+		background-color: var(--color--foreground--tint-1);
+	}
 }
 
 .panels {

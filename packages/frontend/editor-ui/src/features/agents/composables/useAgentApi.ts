@@ -223,6 +223,19 @@ export const clearBuilderMessages = async (
 	);
 };
 
+export const getChatMessages = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<unknown[]> => {
+	return await makeRestApiRequest<unknown[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
+	);
+};
+
 export const deleteCustomTool = async (
 	context: IRestApiContext,
 	projectId: string,

@@ -2,7 +2,11 @@
 import { ref, reactive, computed, onMounted, nextTick, useTemplateRef, watch } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { getBuilderMessages, clearBuilderMessages } from '../composables/useAgentApi';
+import {
+	getBuilderMessages,
+	clearBuilderMessages,
+	getChatMessages,
+} from '../composables/useAgentApi';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
@@ -15,12 +19,18 @@ const props = withDefaults(
 		mode?: 'panel' | 'inline';
 		endpoint?: 'build' | 'chat';
 		initialMessage?: string;
+		continueSessionId?: string;
+		sessionTitle?: string;
+		sessionEmoji?: string;
 	}>(),
 	{
 		visible: true,
 		mode: 'panel',
 		endpoint: 'chat',
 		initialMessage: undefined,
+		continueSessionId: undefined,
+		sessionTitle: undefined,
+		sessionEmoji: undefined,
 	},
 );
 
@@ -29,6 +39,8 @@ const emit = defineEmits<{
 	codeDelta: [delta: string];
 	configUpdated: [];
 	'update:streaming': [streaming: boolean];
+	'continue-loaded': [count: number];
+	back: [];
 }>();
 
 const rootStore = useRootStore();
@@ -47,6 +59,8 @@ const inputText = ref('');
 const isStreaming = ref(false);
 const abortController = ref<AbortController | null>(null);
 const builderHistoryLoaded = ref(false);
+const chatHistoryLoaded = ref(false);
+const chatSessionId = ref<string>(props.continueSessionId ?? crypto.randomUUID());
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
 const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
@@ -68,19 +82,35 @@ function scrollToBottom() {
 
 /** Convert persisted agent messages into the frontend ChatMessage format. */
 function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
+	type Part = {
+		type: string;
+		text?: string;
+		toolName?: string;
+		toolCallId?: string;
+		input?: unknown;
+		result?: unknown;
+		output?: unknown;
+	};
+	type Msg = { id?: string; role?: string; content?: Part[] };
+
+	// Pre-pass: build a map of toolCallId → result so tool results living in
+	// separate (e.g. "tool" role) messages are still paired with their calls.
+	const resultsById = new Map<string, unknown>();
+	const resultsByName: Array<{ name: string; result: unknown }> = [];
+	for (const raw of dbMessages) {
+		const msg = raw as Msg;
+		if (!Array.isArray(msg.content)) continue;
+		for (const part of msg.content) {
+			if (part.type !== 'tool-result') continue;
+			const value = part.result ?? part.output;
+			if (part.toolCallId) resultsById.set(part.toolCallId, value);
+			else if (part.toolName) resultsByName.push({ name: part.toolName, result: value });
+		}
+	}
+
 	const result: ChatMessage[] = [];
 	for (const raw of dbMessages) {
-		const msg = raw as {
-			id?: string;
-			role?: string;
-			content?: Array<{
-				type: string;
-				text?: string;
-				toolName?: string;
-				input?: unknown;
-				result?: unknown;
-			}>;
-		};
+		const msg = raw as Msg;
 		if (!msg.role || !Array.isArray(msg.content)) continue;
 		if (msg.role !== 'user' && msg.role !== 'assistant') continue;
 
@@ -94,12 +124,16 @@ function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
 			} else if (part.type === 'tool-call' && part.toolName) {
-				toolCalls.push({ tool: part.toolName, input: part.input });
-			} else if (part.type === 'tool-result' && part.toolName) {
-				const existing = toolCalls.find((t) => t.tool === part.toolName && t.output === undefined);
-				if (existing) {
-					existing.output = part.result;
+				let output: unknown;
+				if (part.toolCallId && resultsById.has(part.toolCallId)) {
+					output = resultsById.get(part.toolCallId);
+				} else {
+					const idx = resultsByName.findIndex((r) => r.name === part.toolName);
+					if (idx >= 0) output = resultsByName.splice(idx, 1)[0].result;
 				}
+				// Historical tool calls are always complete — fall back to null so
+				// the UI shows a done state instead of the pending spinner.
+				toolCalls.push({ tool: part.toolName, input: part.input, output: output ?? null });
 			}
 		}
 
@@ -132,9 +166,30 @@ async function loadBuilderHistory() {
 	}
 }
 
+async function loadChatHistory(threadId: string) {
+	if (chatHistoryLoaded.value) return;
+	try {
+		const dbMessages = await getChatMessages(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			threadId,
+		);
+		if (dbMessages.length > 0) {
+			messages.value = convertDbMessages(dbMessages);
+		}
+	} catch {
+		// Silently ignore — just start with empty chat
+	} finally {
+		chatHistoryLoaded.value = true;
+		emit('continue-loaded', messages.value.length);
+	}
+}
+
 async function onClearHistory() {
 	if (props.endpoint !== 'build') {
 		messages.value = [];
+		chatSessionId.value = crypto.randomUUID();
 		return;
 	}
 	try {
@@ -180,7 +235,9 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 				'browser-id': browserId,
 			},
 			credentials: 'include',
-			body: JSON.stringify({ message }),
+			body: JSON.stringify(
+				endpoint === 'chat' ? { message, sessionId: chatSessionId.value } : { message },
+			),
 			signal: controller.signal,
 		});
 
@@ -326,6 +383,8 @@ defineExpose({ sendMessageFromOutside });
 onMounted(() => {
 	if (props.endpoint === 'build') {
 		void loadBuilderHistory();
+	} else if (props.continueSessionId) {
+		void loadChatHistory(props.continueSessionId);
 	}
 	if (props.initialMessage) {
 		sendMessageFromOutside(props.initialMessage);
@@ -335,7 +394,14 @@ onMounted(() => {
 
 <template>
 	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
-		<div v-if="messages.length > 0" :class="$style.topBar">
+		<div v-if="continueSessionId" :class="[$style.topBar, $style.topBarContinue]">
+			<button :class="$style.backBtn" title="Back to agent" @click="emit('back')">
+				<N8nIcon icon="arrow-left" :size="14" />
+			</button>
+			<span v-if="sessionEmoji" :class="$style.sessionEmoji">{{ sessionEmoji }}</span>
+			<span v-if="sessionTitle" :class="$style.sessionTitle">{{ sessionTitle }}</span>
+		</div>
+		<div v-else-if="endpoint === 'build' && messages.length > 0" :class="$style.topBar">
 			<button
 				:class="$style.clearBtn"
 				title="Clear chat history"
@@ -498,6 +564,44 @@ onMounted(() => {
 .clearBtn:hover {
 	background-color: var(--color--foreground--tint-1);
 	color: var(--color--danger);
+}
+
+.topBarContinue {
+	justify-content: flex-start;
+	gap: var(--spacing--2xs);
+}
+
+.backBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: none;
+	cursor: pointer;
+	color: var(--color--primary);
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
+
+	&:hover {
+		background-color: var(--color--foreground--tint-1);
+	}
+}
+
+.sessionEmoji {
+	font-size: var(--font-size--md);
+	line-height: 1;
+	flex-shrink: 0;
+}
+
+.sessionTitle {
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 /* Messages area — matches ChatHub layout */
