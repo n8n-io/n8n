@@ -202,6 +202,12 @@ function formatTimestamp(ts: number): string {
 	return `${date} ${time}`;
 }
 
+function formatTime(ts: number): string {
+	if (!ts) return '';
+	const { time } = convertToDisplayDate(new Date(ts).toISOString());
+	return time;
+}
+
 function formatDuration(ms: number): string {
 	if (!ms || ms <= 0) return '0ms';
 	if (ms < 1000) return `${ms}ms`;
@@ -235,6 +241,13 @@ const triggerLabel = computed(() => {
 
 const triggerIcon = computed(() => {
 	return triggerSource.value === 'slack' ? 'slack' : 'bolt-filled';
+});
+
+const triggerTimestamp = computed(() => {
+	const first = timelineItems.value[0];
+	if (first?.timestamp) return formatTimestamp(first.timestamp);
+	if (thread.value) return formatTimestamp(new Date(thread.value.createdAt).getTime());
+	return '';
 });
 
 /** Parse a value that might be a JSON string into an object for display. */
@@ -292,6 +305,13 @@ function goBack() {
 function selectItem(idx: number) {
 	selectedIndex.value = selectedIndex.value === idx ? null : idx;
 }
+
+function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'cardTool' | undefined {
+	if (kind === 'user') return 'cardUser';
+	if (kind === 'text') return 'cardAgent';
+	if (kind === 'tool-call') return 'cardTool';
+	return undefined;
+}
 </script>
 
 <template>
@@ -330,21 +350,30 @@ function selectItem(idx: number) {
 							{{ triggerLabel }}
 						</div>
 						<span :class="$style.triggerTimestamp">
-							{{ thread ? formatTimestamp(new Date(thread.createdAt).getTime()) : '' }}
+							{{ triggerTimestamp }}
 						</span>
 					</div>
 					<div :class="$style.timeline">
 						<div
 							v-for="(item, idx) in timelineItems"
 							:key="idx"
-							:class="[$style.card, selectedIndex === idx && $style.cardSelected]"
+							:class="[
+								$style.card,
+								$style[typeClass(item.kind)],
+								selectedIndex === idx && $style.cardSelected,
+							]"
 							@click="selectItem(idx)"
 						>
 							<!-- User message -->
 							<template v-if="item.kind === 'user'">
-								<span :class="$style.cardLabel">
-									{{ i18n.baseText('agentSessions.timeline.user') }}
-								</span>
+								<div :class="$style.cardHeader">
+									<div :class="$style.cardHeaderLeft">
+										<span :class="$style.cardLabel">
+											{{ i18n.baseText('agentSessions.timeline.user') }}
+										</span>
+									</div>
+									<span :class="$style.cardTime">{{ formatTime(item.timestamp) }}</span>
+								</div>
 								<VueMarkdown
 									:source="item.content ?? ''"
 									class="agent-markdown"
@@ -355,12 +384,15 @@ function selectItem(idx: number) {
 							<!-- Assistant text -->
 							<template v-else-if="item.kind === 'text'">
 								<div :class="$style.cardHeader">
-									<span :class="$style.cardLabel">
-										{{ thread?.agentName ?? i18n.baseText('agentSessions.timeline.assistant') }}
-									</span>
-									<span v-if="item.resumed" :class="[$style.badge, $style.badgeResumed]">
-										Resumed
-									</span>
+									<div :class="$style.cardHeaderLeft">
+										<span :class="$style.cardLabel">
+											{{ thread?.agentName ?? i18n.baseText('agentSessions.timeline.assistant') }}
+										</span>
+										<span v-if="item.resumed" :class="[$style.badge, $style.badgeResumed]">
+											Resumed
+										</span>
+									</div>
+									<span :class="$style.cardTime">{{ formatTime(item.timestamp) }}</span>
 								</div>
 								<VueMarkdown
 									:source="item.content ?? ''"
@@ -372,39 +404,52 @@ function selectItem(idx: number) {
 							<!-- Tool call -->
 							<template v-else-if="item.kind === 'tool-call' && item.toolCall">
 								<div :class="$style.cardHeader">
-									<span :class="$style.cardLabel">
-										<N8nIcon icon="wrench" :class="$style.cardIcon" />
-										{{ i18n.baseText('agentSessions.timeline.tool') }} &rarr;
-										{{ item.toolCall.name }}
-									</span>
-									<span
-										:class="[
-											$style.badge,
-											item.toolCall.success ? $style.badgeSuccess : $style.badgeError,
-										]"
-									>
-										{{
-											item.toolCall.success
-												? i18n.baseText('agentSessions.timeline.success')
-												: i18n.baseText('agentSessions.timeline.error')
-										}}
-									</span>
+									<div :class="$style.cardHeaderLeft">
+										<span :class="$style.cardLabel">
+											<N8nIcon icon="wrench" :class="$style.cardIcon" />
+											{{ i18n.baseText('agentSessions.timeline.tool') }} &rarr;
+											{{ item.toolCall.name }}
+										</span>
+										<span
+											:class="[
+												$style.badge,
+												item.toolCall.success ? $style.badgeSuccess : $style.badgeError,
+											]"
+										>
+											{{
+												item.toolCall.success
+													? i18n.baseText('agentSessions.timeline.success')
+													: i18n.baseText('agentSessions.timeline.error')
+											}}
+										</span>
+									</div>
+									<span :class="$style.cardTime">{{ formatTime(item.timestamp) }}</span>
 								</div>
 							</template>
 
 							<!-- Working memory -->
 							<template v-else-if="item.kind === 'working-memory'">
-								<span :class="$style.cardLabel">
-									<N8nIcon icon="brain" :class="$style.cardIcon" />
-									{{ i18n.baseText('agentSessions.timeline.memory') }}
-								</span>
+								<div :class="$style.cardHeader">
+									<div :class="$style.cardHeaderLeft">
+										<span :class="$style.cardLabel">
+											<N8nIcon icon="brain" :class="$style.cardIcon" />
+											{{ i18n.baseText('agentSessions.timeline.memory') }}
+										</span>
+									</div>
+									<span :class="$style.cardTime">{{ formatTime(item.timestamp) }}</span>
+								</div>
 							</template>
 
 							<!-- Suspension -->
 							<template v-else-if="item.kind === 'suspension'">
-								<span :class="$style.cardLabel">
-									{{ i18n.baseText('agentSessions.timeline.suspension') }}
-								</span>
+								<div :class="$style.cardHeader">
+									<div :class="$style.cardHeaderLeft">
+										<span :class="$style.cardLabel">
+											{{ i18n.baseText('agentSessions.timeline.suspension') }}
+										</span>
+									</div>
+									<span :class="$style.cardTime">{{ formatTime(item.timestamp) }}</span>
+								</div>
 							</template>
 						</div>
 					</div>
@@ -550,11 +595,27 @@ function selectItem(idx: number) {
 </template>
 
 <style module lang="scss">
+@mixin dark-mode {
+	body[data-theme='dark'] & {
+		@content;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		body:not([data-theme]) & {
+			@content;
+		}
+	}
+}
+
 .view {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
+
+	@include dark-mode {
+		background-color: var(--color--neutral-950);
+	}
 }
 
 .topBar {
@@ -693,6 +754,20 @@ function selectItem(idx: number) {
 		border-color 0.15s,
 		background-color 0.15s;
 
+	// Type-indicator strip on the left edge
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: 3px;
+		background: color-mix(in srgb, var(--color--neutral-300) 45%, transparent);
+		border-top-left-radius: calc(var(--radius--lg) - 2px);
+		border-bottom-left-radius: calc(var(--radius--lg) - 2px);
+		pointer-events: none;
+	}
+
 	&:hover {
 		background-color: var(--color--foreground--tint-2);
 	}
@@ -701,6 +776,32 @@ function selectItem(idx: number) {
 		border-color: var(--color--warning);
 		background-color: var(--color--foreground--tint-2);
 	}
+
+	@include dark-mode {
+		background-color: var(--color--neutral-900);
+		border-color: var(--color--neutral-800);
+
+		&:hover {
+			background-color: var(--color--neutral-850);
+		}
+
+		&.cardSelected {
+			border-color: var(--color--warning);
+			background-color: var(--color--neutral-850);
+		}
+	}
+}
+
+.cardUser::before {
+	background: color-mix(in srgb, var(--color--blue-400) 45%, transparent);
+}
+
+.cardAgent::before {
+	background: color-mix(in srgb, var(--color--primary) 45%, transparent);
+}
+
+.cardTool::before {
+	background: color-mix(in srgb, var(--color--success) 45%, transparent);
 }
 
 .cardSelected {
@@ -712,6 +813,20 @@ function selectItem(idx: number) {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
+}
+
+.cardHeaderLeft {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.cardTime {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-2);
+	font-variant-numeric: tabular-nums;
+	flex-shrink: 0;
 }
 
 .cardLabel {
@@ -772,6 +887,10 @@ function selectItem(idx: number) {
 	flex: 4;
 	overflow-y: auto;
 	padding: var(--spacing--sm);
+
+	@include dark-mode {
+		background-color: var(--color--neutral-900);
+	}
 }
 
 .detailHeader {
