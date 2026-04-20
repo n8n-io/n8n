@@ -87,8 +87,12 @@ class AzureCohereRerank extends BaseDocumentCompressor {
 			}
 
 			return rerankedDocuments.length > 0 ? rerankedDocuments : documents.slice(0, topN);
-		} catch {
-			return documents.slice(0, topN);
+		} catch (error) {
+			if (error instanceof Error) {
+				throw new Error(`Azure Cohere rerank request failed: ${error.message}`);
+			}
+
+			throw new Error('Azure Cohere rerank request failed');
 		}
 	}
 }

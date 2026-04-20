@@ -1,4 +1,9 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class AzureCohereRerankApi implements ICredentialType {
 	name = 'azureCohereRerankApi';
@@ -32,6 +37,14 @@ export class AzureCohereRerankApi implements ICredentialType {
 			headers: {
 				Authorization: '=Bearer {{$credentials.apiKey}}',
 			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{ $credentials.baseUrl.replace(new RegExp("/+$"), "") }}',
+			url: '={{ $credentials.baseUrl.toLowerCase().includes("/providers/cohere") ? "/v2/models" : "/providers/cohere/v2/models" }}',
+			method: 'GET',
 		},
 	};
 }
