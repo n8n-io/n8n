@@ -60,6 +60,7 @@ export interface IExecutionBase {
 	status: ExecutionStatus;
 	waitTill?: Date | null;
 	storedAt: ExecutionDataStorageLocation;
+	tracingContext?: { traceparent: string; tracestate?: string } | null;
 }
 
 // Required by PublicUser

@@ -1572,6 +1572,14 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			if (additionalData.otel?.injectTraceHeaders) {
+				requestOptions.headers ??= {};
+				additionalData.otel.injectTraceHeaders(
+					additionalData.executionId!,
+					node.name,
+					requestOptions.headers as Record<string, string>,
+				);
+			}
 			return await httpRequest(requestOptions, additionalData.ssrfBridge);
 		},
 		requestWithAuthenticationPaginated,
@@ -1617,6 +1625,14 @@ export const getRequestHelperFunctions = (
 					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			if (additionalData.otel?.injectTraceHeaders && typeof uriOrObject === 'object') {
+				uriOrObject.headers ??= {};
+				additionalData.otel.injectTraceHeaders(
+					additionalData.executionId!,
+					node.name,
+					uriOrObject.headers as Record<string, string>,
+				);
 			}
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
 		},
