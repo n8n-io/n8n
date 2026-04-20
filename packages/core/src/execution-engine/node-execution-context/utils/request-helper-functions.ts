@@ -71,6 +71,7 @@ import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
+import { getDefaultN8nOutboundUserAgent } from './outbound-user-agent';
 import { parseIncomingMessage } from './parse-incoming-message';
 // Imported for side effects: sets axios defaults and registers the request interceptor
 import './request-helpers/axios-config';
@@ -613,7 +614,7 @@ export function convertN8nRequestToAxios(
 	if (!userAgentHeader) {
 		axiosRequest.headers = {
 			...axiosRequest.headers,
-			'User-Agent': 'n8n',
+			'User-Agent': getDefaultN8nOutboundUserAgent(),
 		};
 	}
 

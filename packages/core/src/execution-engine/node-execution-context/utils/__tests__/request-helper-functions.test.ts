@@ -19,6 +19,7 @@ import type { SecureContextOptions } from 'tls';
 import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
+import { getDefaultN8nOutboundUserAgent } from '../outbound-user-agent';
 import {
 	applyPaginationRequestData,
 	convertN8nRequestToAxios,
@@ -543,7 +544,7 @@ describe('Request Helper Functions', () => {
 					url: 'https://example.com',
 					headers: expect.objectContaining({
 						'Custom-Header': 'test',
-						'User-Agent': 'n8n',
+						'User-Agent': getDefaultN8nOutboundUserAgent(),
 					}),
 					params: { param1: 'value1' },
 				}),
@@ -589,7 +590,7 @@ describe('Request Helper Functions', () => {
 					data: formData,
 					headers: expect.objectContaining({
 						...formData.getHeaders(),
-						'User-Agent': 'n8n',
+						'User-Agent': getDefaultN8nOutboundUserAgent(),
 					}),
 				}),
 			);
@@ -953,29 +954,11 @@ describe('Request Helper Functions', () => {
 			scope.done();
 		});
 
-		test('should set default user agent', async () => {
-			const scope = nock(baseUrl, {
-				reqheaders: {
-					'user-agent': 'n8n',
-				},
-			})
-				.get('/test')
-				.reply(200, { success: true });
-
-			const response = await httpRequest({
-				method: 'GET',
-				url: `${baseUrl}/test`,
-			});
-
-			expect(response).toEqual({ success: true });
-			scope.done();
-		});
-
 		test('should respect custom headers', async () => {
 			const scope = nock(baseUrl, {
 				reqheaders: {
 					'X-Custom-Header': 'custom-value',
-					'user-agent': 'n8n',
+					'user-agent': getDefaultN8nOutboundUserAgent(),
 				},
 			})
 				.get('/test')

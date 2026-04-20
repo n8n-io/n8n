@@ -120,7 +120,6 @@ describe('Test Github Node', () => {
 					'githubOAuth2Api',
 					{
 						body: {},
-						headers: { 'User-Agent': 'n8n' },
 						json: true,
 						method: 'GET',
 						qs: {},
