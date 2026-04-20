@@ -106,7 +106,7 @@ describe('KeyManagerService', () => {
 	});
 
 	describe('addKey()', () => {
-		it('inserts as inactive when setAsPrimary is not set', async () => {
+		it('inserts as inactive when setAsActive is not set', async () => {
 			const saved = makeKey({ id: 'new-key', status: 'inactive' });
 			repository.create.mockReturnValue(saved);
 			repository.save.mockResolvedValue(saved);
@@ -120,7 +120,7 @@ describe('KeyManagerService', () => {
 			expect(result).toEqual({ id: 'new-key' });
 		});
 
-		it('inserts as active without demoting when setAsPrimary=true and no current active', async () => {
+		it('inserts as active without demoting when setAsActive=true and no current active', async () => {
 			repository.findActiveByType.mockResolvedValue(null);
 			const saved = makeKey({ id: 'new-key', status: 'active' });
 			repository.create.mockReturnValue(saved);
@@ -150,12 +150,12 @@ describe('KeyManagerService', () => {
 		});
 	});
 
-	describe('setPrimaryKey()', () => {
+	describe('setActiveKey()', () => {
 		it('demotes existing active key and promotes target', async () => {
 			const current = makeKey({ id: 'current' });
 			repository.findActiveByType.mockResolvedValue(current);
 
-			await Container.get(KeyManagerService).setPrimaryKey('target');
+			await Container.get(KeyManagerService).setActiveKey('target');
 
 			expect(repository.update).toHaveBeenCalledWith(
 				'current',
@@ -167,7 +167,7 @@ describe('KeyManagerService', () => {
 		it('promotes target without demoting when no current active key', async () => {
 			repository.findActiveByType.mockResolvedValue(null);
 
-			await Container.get(KeyManagerService).setPrimaryKey('target');
+			await Container.get(KeyManagerService).setActiveKey('target');
 
 			expect(repository.update).toHaveBeenCalledTimes(1);
 			expect(repository.update).toHaveBeenCalledWith('target', { status: 'active' });
@@ -177,7 +177,7 @@ describe('KeyManagerService', () => {
 			const current = makeKey({ id: 'target' });
 			repository.findActiveByType.mockResolvedValue(current);
 
-			await Container.get(KeyManagerService).setPrimaryKey('target');
+			await Container.get(KeyManagerService).setActiveKey('target');
 
 			expect(repository.update).toHaveBeenCalledTimes(1);
 			expect(repository.update).toHaveBeenCalledWith('target', { status: 'active' });
@@ -200,14 +200,6 @@ describe('KeyManagerService', () => {
 			await Container.get(KeyManagerService).markInactive('key-1');
 
 			expect(repository.update).toHaveBeenCalledWith('key-1', { status: 'inactive' });
-		});
-	});
-
-	describe('removeKey()', () => {
-		it('deletes the key row', async () => {
-			await Container.get(KeyManagerService).removeKey('key-1');
-
-			expect(repository.delete).toHaveBeenCalledWith('key-1');
 		});
 	});
 });

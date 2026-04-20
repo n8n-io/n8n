@@ -47,11 +47,11 @@ export class KeyManagerService {
 
 	/**
 	 * Inserts a new encryption key row.
-	 * If setAsPrimary is true, transitions the current active key to 'deprecating' first,
+	 * If setAsActive is true, transitions the current active key to 'deprecating' first,
 	 * then inserts the new key as 'active'. Otherwise inserts as 'inactive'.
 	 */
-	async addKey(value: string, algorithm: string, setAsPrimary = false): Promise<{ id: string }> {
-		if (setAsPrimary) {
+	async addKey(value: string, algorithm: string, setAsActive = false): Promise<{ id: string }> {
+		if (setAsActive) {
 			const current = await this.deploymentKeyRepository.findActiveByType('encryption');
 			if (current) {
 				await this.markDeprecating(current.id);
@@ -62,7 +62,7 @@ export class KeyManagerService {
 			type: 'encryption',
 			value,
 			algorithm,
-			status: setAsPrimary ? 'active' : 'inactive',
+			status: setAsActive ? 'active' : 'inactive',
 			deprecatedAt: null,
 		});
 		const saved = await this.deploymentKeyRepository.save(entity);
@@ -73,7 +73,7 @@ export class KeyManagerService {
 	 * Sets the given key as active.
 	 * Transitions the current active key to 'deprecating' first.
 	 */
-	async setPrimaryKey(id: string): Promise<void> {
+	async setActiveKey(id: string): Promise<void> {
 		const current = await this.deploymentKeyRepository.findActiveByType('encryption');
 		if (current && current.id !== id) {
 			await this.markDeprecating(current.id);
@@ -93,11 +93,5 @@ export class KeyManagerService {
 	async markInactive(id: string): Promise<void> {
 		// TODO: T13 will add usage check — throw ConflictError if usage count > 0
 		await this.deploymentKeyRepository.update(id, { status: 'inactive' });
-	}
-
-	/** Removes the key row. Usage count guard to be added in T13. */
-	async removeKey(id: string): Promise<void> {
-		// TODO: T13 will add usage check — throw ConflictError if usage count > 0
-		await this.deploymentKeyRepository.delete(id);
 	}
 }
