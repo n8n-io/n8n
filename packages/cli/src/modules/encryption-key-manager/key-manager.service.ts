@@ -21,17 +21,14 @@ export class KeyManagerService {
 			throw new Error('Encryption key invariant violated: multiple active keys found');
 		}
 		const key = activeKeys[0];
-		if (!key.algorithm) {
-			throw new NotFoundError('Active encryption key has no algorithm set');
-		}
-		return { id: key.id, value: key.value, algorithm: key.algorithm };
+		return { id: key.id, value: key.value, algorithm: key.algorithm! };
 	}
 
 	/** Returns a key by id, or null if not found. */
 	async getKeyById(id: string): Promise<KeyInfo | null> {
 		const key = await this.deploymentKeyRepository.findOne({ where: { id } });
-		if (!key || !key.algorithm) return null;
-		return { id: key.id, value: key.value, algorithm: key.algorithm };
+		if (!key) return null;
+		return { id: key.id, value: key.value, algorithm: key.algorithm! };
 	}
 
 	/** Returns the legacy CBC key (used to decrypt rows with NULL encryptionKeyId). */

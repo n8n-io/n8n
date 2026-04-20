@@ -48,12 +48,6 @@ describe('KeyManagerService', () => {
 				'Encryption key invariant violated: multiple active keys found',
 			);
 		});
-
-		it('throws NotFoundError when active key has null algorithm', async () => {
-			repository.find.mockResolvedValue([makeKey({ algorithm: null })]);
-
-			await expect(Container.get(KeyManagerService).getActiveKey()).rejects.toThrow(NotFoundError);
-		});
 	});
 
 	describe('getKeyById()', () => {
@@ -71,14 +65,6 @@ describe('KeyManagerService', () => {
 			repository.findOne.mockResolvedValue(null);
 
 			const result = await Container.get(KeyManagerService).getKeyById('missing');
-
-			expect(result).toBeNull();
-		});
-
-		it('returns null when key has null algorithm', async () => {
-			repository.findOne.mockResolvedValue(makeKey({ algorithm: null }));
-
-			const result = await Container.get(KeyManagerService).getKeyById('key-1');
 
 			expect(result).toBeNull();
 		});
