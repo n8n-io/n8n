@@ -2,7 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import type { GenerateContentResponse } from '../../helpers/interfaces';
-import { uploadFile } from '../../helpers/utils';
+import { getFilenameFromMimeType, uploadFile } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -210,12 +210,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			throw new Error('No image data returned from Gemini API');
 		}
 
+		const mimeType = imagePart.inlineData.mimeType;
+		const fileName = getFilenameFromMimeType(mimeType, 'image', 'png');
 		const bufferOut = Buffer.from(imagePart.inlineData.data, 'base64');
-		const binaryOut = await this.helpers.prepareBinaryData(
-			bufferOut,
-			'image.png',
-			imagePart.inlineData.mimeType,
-		);
+		const binaryOut = await this.helpers.prepareBinaryData(bufferOut, fileName, mimeType);
 		return {
 			binary: {
 				[outputKey]: binaryOut,
