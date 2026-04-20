@@ -42,6 +42,8 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 export = {
 	getCredentials: [
@@ -103,12 +105,12 @@ export = {
 		async (
 			req: CredentialRequest.Get,
 			res: express.Response,
-		): Promise<express.Response<PublicApiCredentialResponse | { message: string }>> => {
+		): Promise<express.Response<PublicApiCredentialResponse>> => {
 			const { id: credentialId } = req.params;
 
 			const credential = await getCredential(credentialId);
 			if (!credential) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Credential not found');
 			}
 
 			return res.json(toPublicApiCredentialResponse(credential));
@@ -159,24 +161,24 @@ export = {
 		async (
 			req: CredentialRequest.Update,
 			res: express.Response,
-		): Promise<express.Response<PublicApiCredentialResponse | { message: string }>> => {
+		): Promise<express.Response<PublicApiCredentialResponse>> => {
 			const { id: credentialId } = req.params;
 
 			const existingCredential = await getCredential(credentialId);
 			if (!existingCredential) {
-				return res.status(404).json({ message: 'Credential not found' });
+				throw new NotFoundError('Credential not found');
 			}
 
 			if (req.body.isGlobal !== undefined && req.body.isGlobal !== existingCredential.isGlobal) {
 				if (!Container.get(LicenseState).isSharingLicensed()) {
-					return res.status(403).json({ message: 'You are not licensed for sharing credentials' });
+					throw new ForbiddenError('You are not licensed for sharing credentials');
 				}
 
 				const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
 				if (!canShareGlobally) {
-					return res.status(403).json({
-						message: 'You do not have permission to change global sharing for credentials',
-					});
+					throw new ForbiddenError(
+						'You do not have permission to change global sharing for credentials',
+					);
 				}
 			}
 
@@ -186,15 +188,10 @@ export = {
 				return res.json(toPublicApiCredentialResponse(updatedCredential));
 			} catch (error) {
 				if (error instanceof CredentialsIsNotUpdatableError) {
-					return res.status(400).json({ message: error.message });
+					throw new BadRequestError(error.message);
 				}
 
-				if (error instanceof ResponseError) {
-					return res.status(error.httpStatusCode).json({ message: error.message });
-				}
-
-				const message = error instanceof Error ? error.message : 'Unknown error';
-				return res.status(500).json({ message });
+				throw error;
 			}
 		},
 	],
@@ -234,7 +231,7 @@ export = {
 			}
 
 			if (!credential) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			await removeCredential(req.user, credential);
@@ -249,7 +246,7 @@ export = {
 			try {
 				Container.get(CredentialTypes).getByName(credentialTypeName);
 			} catch (error) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const schema = Container.get(CredentialsHelper)
