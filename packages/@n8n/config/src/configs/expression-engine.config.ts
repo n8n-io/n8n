@@ -33,4 +33,20 @@ export class ExpressionEngineConfig {
 	/** Memory limit in MB for the V8 isolate used by the VM bridge. */
 	@Env('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT')
 	bridgeMemoryLimit: number = 128;
+
+	/** Whether to emit observability signals (metrics, traces, logs) for the VM evaluator. */
+	@Env('N8N_EXPRESSION_ENGINE_OBSERVABILITY_ENABLED')
+	observabilityEnabled: boolean = true;
+
+	/** Whether to emit OpenTelemetry spans for expression evaluation. */
+	@Env('N8N_EXPRESSION_ENGINE_TRACES_ENABLED')
+	tracesEnabled: boolean = true;
+
+	/** Threshold in ms above which an evaluation is considered "slow" and gets a span. */
+	@Env('N8N_EXPRESSION_ENGINE_SLOW_EVAL_THRESHOLD_MS')
+	slowEvaluationThresholdMs: number = 50;
+
+	/** Head-based sampling rate (0.0–1.0) for healthy-path spans. Slow and erroring expressions always emit. */
+	@Env('N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE')
+	tracesSampleRate: number = 0.0;
 }

@@ -49,4 +49,49 @@ describe('ExpressionEngineConfig', () => {
 			expect(consoleWarnSpy).toHaveBeenCalled();
 		});
 	});
+
+	describe('observability defaults', () => {
+		test('observabilityEnabled defaults to true', () => {
+			jest.replaceProperty(process, 'env', {});
+			expect(Container.get(ExpressionEngineConfig).observabilityEnabled).toBe(true);
+		});
+
+		test('tracesEnabled defaults to true', () => {
+			jest.replaceProperty(process, 'env', {});
+			expect(Container.get(ExpressionEngineConfig).tracesEnabled).toBe(true);
+		});
+
+		test('slowEvaluationThresholdMs defaults to 50', () => {
+			jest.replaceProperty(process, 'env', {});
+			expect(Container.get(ExpressionEngineConfig).slowEvaluationThresholdMs).toBe(50);
+		});
+
+		test('tracesSampleRate defaults to 0', () => {
+			jest.replaceProperty(process, 'env', {});
+			expect(Container.get(ExpressionEngineConfig).tracesSampleRate).toBe(0);
+		});
+	});
+
+	describe('observability overrides', () => {
+		test('N8N_EXPRESSION_ENGINE_OBSERVABILITY_ENABLED disables observability', () => {
+			jest.replaceProperty(process, 'env', {
+				N8N_EXPRESSION_ENGINE_OBSERVABILITY_ENABLED: 'false',
+			});
+			expect(Container.get(ExpressionEngineConfig).observabilityEnabled).toBe(false);
+		});
+
+		test('N8N_EXPRESSION_ENGINE_SLOW_EVAL_THRESHOLD_MS overrides threshold', () => {
+			jest.replaceProperty(process, 'env', {
+				N8N_EXPRESSION_ENGINE_SLOW_EVAL_THRESHOLD_MS: '100',
+			});
+			expect(Container.get(ExpressionEngineConfig).slowEvaluationThresholdMs).toBe(100);
+		});
+
+		test('N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE overrides sample rate', () => {
+			jest.replaceProperty(process, 'env', {
+				N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE: '0.25',
+			});
+			expect(Container.get(ExpressionEngineConfig).tracesSampleRate).toBe(0.25);
+		});
+	});
 });

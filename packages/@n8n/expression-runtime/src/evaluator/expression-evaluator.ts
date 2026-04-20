@@ -4,12 +4,32 @@ import type {
 	EvaluatorConfig,
 	WorkflowData,
 	EvaluateOptions,
+	ObservabilityProvider,
 	RuntimeBridge,
 } from '../types';
 import { DEFAULT_BRIDGE_CONFIG } from '../types/bridge';
 import { IsolateError } from '@n8n/errors';
 import { IsolatePool, PoolDisposedError, PoolExhaustedError } from '../pool/isolate-pool';
+import { classifyExpressionError } from './error-classification';
 import { LruCache } from './lru-cache';
+
+export const EVALUATION_DURATION_METRIC = 'expression.evaluation.duration_ms';
+
+function recordOutcome(
+	observability: ObservabilityProvider,
+	start: number,
+	status: 'success' | 'error',
+	error?: unknown,
+): void {
+	const durationMs = performance.now() - start;
+	observability.metrics.histogram(EVALUATION_DURATION_METRIC, durationMs);
+	observability.metrics.counter('expression.evaluations', 1, { status });
+	if (error !== undefined) {
+		observability.metrics.counter('expression.errors', 1, {
+			type: classifyExpressionError(error),
+		});
+	}
+}
 
 export class ExpressionEvaluator implements IExpressionEvaluator {
 	private config: EvaluatorConfig;
@@ -82,20 +102,17 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		// Transform template expression → sanitized JavaScript (cached)
 		const transformedCode = this.getTransformedCode(expression);
 
+		const { observability } = this.config;
+		const start = observability ? performance.now() : 0;
+
 		try {
 			const result = bridge.execute(transformedCode, data, {
 				timezone: options?.timezone,
 			});
-
-			if (this.config.observability) {
-				this.config.observability.metrics.counter('expression.evaluation.success', 1);
-			}
-
+			if (observability) recordOutcome(observability, start, 'success');
 			return result;
 		} catch (error) {
-			if (this.config.observability) {
-				this.config.observability.metrics.counter('expression.evaluation.error', 1);
-			}
+			if (observability) recordOutcome(observability, start, 'error', error);
 			throw error;
 		}
 	}

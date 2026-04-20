@@ -1,0 +1,165 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/unbound-method */
+import type { Logger } from '@n8n/backend-common';
+import { ExpressionEngineConfig } from '@n8n/config';
+import { trace } from '@opentelemetry/api';
+import { mock } from 'jest-mock-extended';
+import promClient from 'prom-client';
+
+import { ExpressionObservabilityProvider } from '../expression-observability.provider';
+
+const scopedLogger = mock<Logger>();
+
+function buildConfig(overrides: Partial<ExpressionEngineConfig> = {}): ExpressionEngineConfig {
+	const config = new ExpressionEngineConfig();
+	return Object.assign(config, overrides);
+}
+
+function buildLogger(): Logger {
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(scopedLogger as unknown as Logger);
+	return logger;
+}
+
+describe('ExpressionObservabilityProvider', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		promClient.register.clear();
+	});
+
+	describe('when disabled', () => {
+		it('delegates to NoOpProvider for metrics/traces/logs', () => {
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig({ observabilityEnabled: false }),
+				buildLogger(),
+			);
+
+			expect(() => {
+				provider.metrics.counter('expression.evaluations', 1, { status: 'success' });
+				provider.metrics.gauge('expression.code_cache.size', 5);
+				provider.metrics.histogram('expression.evaluation.duration_ms', 10);
+				provider.logs.info('hello');
+				provider.traces.startSpan('x').end();
+			}).not.toThrow();
+		});
+	});
+
+	describe('metrics adapter', () => {
+		it('registers a prom counter with _total suffix and records labeled increments', async () => {
+			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+			provider.metrics.counter('expression.evaluations', 1, { status: 'success' });
+			provider.metrics.counter('expression.evaluations', 1, { status: 'error' });
+
+			const metric = promClient.register.getSingleMetric('n8n_expression_evaluations_total');
+			expect(metric).toBeDefined();
+			const output = await promClient.register.metrics();
+			expect(output).toContain('n8n_expression_evaluations_total{status="success"} 1');
+			expect(output).toContain('n8n_expression_evaluations_total{status="error"} 1');
+		});
+
+		it('registers a prom gauge with the cleaned name', async () => {
+			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+			provider.metrics.gauge('expression.code_cache.size', 42);
+
+			const output = await promClient.register.metrics();
+			expect(output).toContain('n8n_expression_code_cache_size 42');
+		});
+
+		it('registers a prom histogram with bucketed observations', async () => {
+			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+			provider.metrics.histogram('expression.evaluation.duration_ms', 3);
+
+			const output = await promClient.register.metrics();
+			expect(output).toContain('n8n_expression_evaluation_duration_ms_bucket');
+			expect(output).toContain('n8n_expression_evaluation_duration_ms_count 1');
+		});
+	});
+
+	describe('tail sampling', () => {
+		const startSpanMock = jest.fn().mockReturnValue({
+			setStatus: jest.fn(),
+			setAttribute: jest.fn(),
+			recordException: jest.fn(),
+			end: jest.fn(),
+		});
+
+		beforeEach(() => {
+			startSpanMock.mockClear();
+			jest.spyOn(trace, 'getTracer').mockReturnValue({
+				startSpan: startSpanMock,
+			} as unknown as ReturnType<typeof trace.getTracer>);
+		});
+
+		it('drops healthy spans under the slow threshold', () => {
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig({ slowEvaluationThresholdMs: 50, tracesSampleRate: 0 }),
+				buildLogger(),
+			);
+			provider.metrics.histogram('expression.evaluation.duration_ms', 10, { status: 'success' });
+			expect(startSpanMock).not.toHaveBeenCalled();
+		});
+
+		it('keeps spans that exceed the slow threshold', () => {
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig({ slowEvaluationThresholdMs: 50 }),
+				buildLogger(),
+			);
+			provider.metrics.histogram('expression.evaluation.duration_ms', 100, { status: 'success' });
+			expect(startSpanMock).toHaveBeenCalledWith(
+				'expression.evaluate',
+				expect.objectContaining({
+					attributes: expect.objectContaining({
+						'expression.outcome': 'slow',
+						'expression.engine': 'vm',
+					}),
+				}),
+			);
+		});
+
+		it('keeps spans when status is error, regardless of duration', () => {
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig({ slowEvaluationThresholdMs: 50 }),
+				buildLogger(),
+			);
+			provider.metrics.histogram('expression.evaluation.duration_ms', 5, {
+				status: 'error',
+				type: 'timeout',
+			});
+			expect(startSpanMock).toHaveBeenCalledWith(
+				'expression.evaluate',
+				expect.objectContaining({
+					attributes: expect.objectContaining({
+						'expression.outcome': 'error',
+						'expression.error.type': 'timeout',
+					}),
+				}),
+			);
+		});
+
+		it('does not start spans when tracesEnabled=false', () => {
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig({ tracesEnabled: false, slowEvaluationThresholdMs: 10 }),
+				buildLogger(),
+			);
+			provider.metrics.histogram('expression.evaluation.duration_ms', 500, { status: 'error' });
+			expect(startSpanMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('logs adapter', () => {
+		it('delegates to scoped logger', () => {
+			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+			provider.logs.info('hello', { k: 'v' });
+			provider.logs.warn('warn', { k: 'v' });
+			provider.logs.error('boom', new Error('x'), { k: 'v' });
+
+			expect(scopedLogger.info).toHaveBeenCalledWith('hello', { k: 'v' });
+			expect(scopedLogger.warn).toHaveBeenCalledWith('warn', { k: 'v' });
+			expect(scopedLogger.error).toHaveBeenCalledWith(
+				'boom',
+				expect.objectContaining({ error: expect.any(Error), k: 'v' }),
+			);
+		});
+	});
+});
