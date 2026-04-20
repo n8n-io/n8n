@@ -49,6 +49,9 @@ export const instanceAiTestConfig = {
 			N8N_INSTANCE_AI_MODEL: 'anthropic/claude-sonnet-4-6',
 			N8N_INSTANCE_AI_MODEL_API_KEY: ANTHROPIC_API_KEY,
 			N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED: 'true',
+			// Prevent community-node-types requests to api-staging.n8n.io
+			// from polluting proxy recordings
+			N8N_VERIFIED_PACKAGES_ENABLED: 'false',
 		},
 	},
 } as const;
@@ -59,18 +62,24 @@ export const test = base.extend<InstanceAiFixtures>({
 	},
 
 	instanceAiProxySetup: [
-		async ({ services, backendUrl }, use, testInfo) => {
+		async ({ n8nContainer, backendUrl }, use, testInfo) => {
+			// Local-build mode (no Docker container) — skip all proxy setup.
+			// LLM calls go straight to Anthropic, no recording or replay.
+			if (!n8nContainer) {
+				await use(undefined);
+				return;
+			}
+			const services = n8nContainer.services;
 			const testSlug = slugify(testInfo.title);
 			const folder = `instance-ai/${testSlug}`;
 
 			await services.proxy.clearAllExpectations();
 
-			// Cancel any leftover background tasks from previous tests so their
-			// auto-follow-up LLM calls don't contaminate this test's recordings.
+			// Wipe instance-ai threads, per-thread in-memory state, background tasks,
+			// and user workflows so the orchestrator's `list-workflows` tool can't see
+			// leftovers from a prior test and contaminate this test's recorded responses.
 			try {
-				await fetch(`${backendUrl}/rest/instance-ai/test/drain-background-tasks`, {
-					method: 'POST',
-				});
+				await fetch(`${backendUrl}/rest/instance-ai/test/reset`, { method: 'POST' });
 			} catch {
 				// Endpoint may not be available
 			}
