@@ -70,11 +70,11 @@ defineProps<{
 }
 
 .toolStepDone {
-	color: var(--color--text--tint-2);
+	color: var(--color--success);
 }
 
 .toolStepLoading {
-	color: var(--color--text--tint-2);
+	color: var(--color--primary);
 }
 
 .toolStepLabel {
