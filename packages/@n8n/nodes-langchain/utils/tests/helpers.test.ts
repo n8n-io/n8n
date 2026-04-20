@@ -322,6 +322,39 @@ describe('getConnectedTools', () => {
 		});
 	});
 
+	it('should ignore disabled parent tool nodes when mapping source node metadata', async () => {
+		const mockParentNodes = [
+			{ name: 'RegularTool', type: 'test', typeVersion: 1, disabled: false },
+			{ name: 'Disabled Tool', type: 'test', typeVersion: 1, disabled: true },
+			{ name: 'MCP Client Tool', type: 'test', typeVersion: 1, disabled: false },
+		];
+		const mockTools = [
+			{ name: 'tool1', description: 'desc1' },
+			new StructuredToolkit([
+				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
+				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+			] as any),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+		expect(tools[0].metadata).toEqual({
+			isFromToolkit: false,
+			sourceNodeName: 'RegularTool',
+		});
+		expect(tools[1].metadata).toEqual({
+			isFromToolkit: true,
+			sourceNodeName: 'MCP Client Tool',
+		});
+		expect(tools[2].metadata).toEqual({
+			isFromToolkit: true,
+			sourceNodeName: 'MCP Client Tool',
+		});
+	});
+
 	it('should preserve existing metadata when adding toolkit metadata', async () => {
 		const mockParentNodes = [{ name: 'MCP Client Tool' }];
 		const mockTools = [
