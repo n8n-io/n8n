@@ -137,7 +137,8 @@ export class McpTrigger extends Node {
 		],
 	};
 
-	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const context = this;
 		const webhookName = context.getWebhookName();
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject() as unknown as CompressionResponse;
