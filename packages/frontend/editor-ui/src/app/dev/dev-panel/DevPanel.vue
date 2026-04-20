@@ -19,7 +19,7 @@ type TrackedAnnotation = Annotation & { elements: Element[] };
 const MARKER_SIZE = 22;
 
 const { status } = useChannelHealth();
-const { isPicking, hoveredElement, selectedElement, start, stop, clearSelection } =
+const { isPicking, hoveredElement, selectedElement, dragRect, start, stop, clearSelection } =
 	useElementPicker();
 const sending = ref(false);
 const annotations = shallowRef<TrackedAnnotation[]>([]);
@@ -250,7 +250,13 @@ function generateId() {
 }
 
 function startPicker() {
-	start({ onShiftPick: handleShiftPick });
+	start({ onShiftPick: handleShiftPick, onDragSelect: handleDragSelect });
+}
+
+function handleDragSelect(els: Element[]) {
+	if (els.length === 0) return;
+	pendingMulti.value = els;
+	commitPendingMulti();
 }
 
 function handleShiftPick(el: Element) {
@@ -387,7 +393,18 @@ async function copyAllAnnotations() {
 
 <template>
 	<div :[DEV_PANEL_ROOT_ATTR]="true" class="dev-panel-root">
-		<div v-if="isPicking" class="dev-panel-hover-overlay" :style="hoverOverlayStyle" />
+		<div v-if="isPicking && !dragRect" class="dev-panel-hover-overlay" :style="hoverOverlayStyle" />
+
+		<div
+			v-if="dragRect"
+			class="dev-panel-drag-rect"
+			:style="{
+				top: `${dragRect.y}px`,
+				left: `${dragRect.x}px`,
+				width: `${dragRect.width}px`,
+				height: `${dragRect.height}px`,
+			}"
+		/>
 
 		<div
 			v-for="(outline, idx) in pendingOutlines"
@@ -588,8 +605,8 @@ async function copyAllAnnotations() {
 .dev-panel-hover-overlay {
 	position: fixed;
 	pointer-events: none;
-	background: rgb(80 130 255 / 15%);
-	border: 2px solid var(--color--primary);
+	background: rgb(37 99 235 / 15%);
+	border: 2px solid #2563eb;
 	border-radius: var(--radius--sm);
 	transition: all 40ms linear;
 }
@@ -601,6 +618,15 @@ async function copyAllAnnotations() {
 	border: 2px dashed #2563eb;
 	border-radius: var(--radius--sm);
 	z-index: 2147483643;
+}
+
+.dev-panel-drag-rect {
+	position: fixed;
+	pointer-events: none;
+	background: rgb(34 197 94 / 15%);
+	border: 1px solid #22c55e;
+	border-radius: var(--radius--sm);
+	z-index: 2147483645;
 }
 
 .dev-panel-marker {
