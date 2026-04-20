@@ -158,8 +158,8 @@ export function createSubmitWorkflowTool(
 		id: 'submit-workflow',
 		description:
 			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, ' +
-			'and saves it to n8n as a draft. The workflow must be explicitly published via ' +
-			'publish-workflow before it will run on its triggers in production.',
+			'and saves it to n8n as a draft. Publishing policy lives in the builder prompt ' +
+			'(main workflows wait for the user; sub-workflow chunks may be auto-published).',
 		inputSchema: submitWorkflowInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),

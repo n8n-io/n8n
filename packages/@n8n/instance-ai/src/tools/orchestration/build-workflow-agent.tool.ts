@@ -120,26 +120,26 @@ Your job is done when ONE of these is true:
 ### Submit discipline
 
 **Every file edit MUST be followed by submit-workflow before you do anything else.**
-The system tracks file hashes. If you edit the code and then call run-workflow or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/run.
+The system tracks file hashes. If you edit the code and then call \`executions(action="run")\` or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/run.
 
 ### Verification
 
 - If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
-- Otherwise call run-workflow to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
-- If verification fails, call debug-execution, fix the code, re-submit, and retry once
+- Otherwise call \`executions(action="run")\` to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
+- If verification fails, call \`executions(action="debug")\`, fix the code, re-submit, and retry once
 - If the same failure signature repeats, stop and explain the block
 
 ### Resource discovery
 
 Before writing code that uses external services, **resolve real resource IDs**:
-- Call explore-node-resources for any parameter with searchListMethod (calendars, spreadsheets, channels, models, etc.)
+- Call \`nodes(action="explore-resources")\` for any parameter with searchListMethod (calendars, spreadsheets, channels, models, etc.)
 - Do NOT use "primary", "default", or any assumed identifier — look up the actual value
-- Call get-suggested-nodes early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
+- Call \`nodes(action="suggested")\` early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
 - Check @builderHint annotations in node type definitions for critical configuration guidance
 
 ### Publishing
 
-Do NOT call \`publish-workflow\` for the main workflow. Publishing is the user's decision after testing. Your job ends at a successful submit. The only exception is sub-workflows in the compositional pattern — those must be published so the parent workflow can reference them.
+Do NOT call \`workflows(action="publish")\` for the main workflow. Publishing is the user's decision after testing. Your job ends at a successful submit. The only exception is sub-workflows in the compositional pattern — those must be published so the parent workflow can reference them.
 `;
 
 function hashContent(content: string | null): string {

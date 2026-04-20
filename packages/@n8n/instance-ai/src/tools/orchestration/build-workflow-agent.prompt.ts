@@ -27,6 +27,28 @@ import {
 	WORKFLOW_SDK_PATTERNS,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
+// ── Shared output discipline (single source of truth) ──────────────────────
+
+const BUILDER_OUTPUT_DISCIPLINE = `## Output Discipline
+- Your text output is visible to the user. Be concise and natural.
+- Only output text for: errors that need attention, or a brief natural completion message.
+- No emojis, no filler phrases, no markdown headers in your text output.
+- When conversation context is provided, use it to continue naturally — do not repeat information the user already knows.
+
+### No narration (critical)
+Do NOT announce what you're about to do. The user already sees your tool calls in real time via the agent card; narrating them is pure noise. Stay silent while working; speak only on completion or when blocked.
+
+BAD (do not write anything like this):
+  - "I'll build this family AI assistant for Telegram. Let me start by discovering credentials and resources..."
+  - "I'll start by reading the current workflow code and looking up the correct Linear node type definition."
+  - "I don't see any pinData — let me check if there's something embedded in the workflow..."
+  - "Let me look up the Slack channel IDs now."
+
+GOOD (one-line, only on completion or block):
+  - "Family AI assistant workflow ready — uses Telegram, OpenAI, and your shopping list data table."
+  - "Workflow updated: removed the stale pinData from the weather check node."
+  - "Blocked: the Linear API credential is missing and the setup wizard is needed before I can continue."`;
+
 // ── Shared placeholder guidance (single source of truth) ────────────────────
 
 // prettier-ignore
@@ -51,7 +73,13 @@ const SDK_CODE_RULES = `## SDK Code Rules
 - **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.
 - **IF node combinator** must be \`'and'\` or \`'or'\` (not \`'any'\` or \`'all'\`).`;
 
-const BUILDER_SPECIFIC_PATTERNS = `## Critical Patterns (Common Mistakes)
+// The AI Agent subnode example below differs by mode:
+//   tool mode  → `newCredential('OpenAI')`
+//   sandbox    → raw `{ id, name }` object (newCredential() serializes to undefined)
+function buildBuilderSpecificPatterns(mode: 'tool' | 'sandbox'): string {
+	const openAiCredExample =
+		mode === 'sandbox' ? "{ id: 'credId', name: 'OpenAI account' }" : "newCredential('OpenAI')";
+	return `## Critical Patterns (Common Mistakes)
 
 **Pay attention to @builderHint annotations in search results and type definitions** — these provide critical guidance on how to correctly configure node parameters. Write them out as notes when reviewing — they prevent common configuration mistakes.
 
@@ -72,7 +100,7 @@ const model = languageModel({
   config: {
     name: 'OpenAI Chat Model',
     parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' } },
-    credentials: { openAiApi: newCredential('OpenAI') }
+    credentials: { openAiApi: ${openAiCredExample} }
   }
 });
 
@@ -418,36 +446,76 @@ ${CONNECTION_CHANGING_PARAMETERS}
 
 ### Baseline Flow Control Nodes
 ${BASELINE_FLOW_CONTROL}`;
+}
+
+const BUILDER_SPECIFIC_PATTERNS_TOOL = buildBuilderSpecificPatterns('tool');
+const BUILDER_SPECIFIC_PATTERNS_SANDBOX = buildBuilderSpecificPatterns('sandbox');
 
 // ── Composed SDK rules from shared + local sources ───────────────────────────
 
-const SDK_RULES_AND_PATTERNS = [
-	SDK_CODE_RULES,
-	WORKFLOW_RULES,
-	'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
-	'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
-	'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
-	'## Node-Specific Configuration Guides',
-	IF_NODE_GUIDE.content,
-	SWITCH_NODE_GUIDE.content,
-	SET_NODE_GUIDE.content,
-	HTTP_REQUEST_GUIDE.content,
-	TOOL_NODES_GUIDE.content,
-	EMBEDDING_NODES_GUIDE.content,
-	RESOURCE_LOCATOR_GUIDE.content,
-	BUILDER_SPECIFIC_PATTERNS,
-].join('\n\n');
+// Sandbox-mode variant of WORKFLOW_RULES: rule 1 (credentials) uses raw {id, name}
+// objects because `submit-workflow` runs the code natively via tsx and expects that
+// form. Rules 2 and 3 are mode-agnostic and mirror the shared WORKFLOW_RULES.
+const SANDBOX_WORKFLOW_RULES = `Follow these rules strictly when generating workflows:
+
+1. **Always use raw credential objects from \`credentials(action="list")\`**
+   - Wire credentials as \`{ id, name }\` objects returned by \`credentials(action="list")\`
+   - NEVER use placeholder strings, fake API keys, or hardcoded auth values
+   - Example: \`credentials: { slackApi: { id: 'yXYBqho73obh58ZS', name: 'Slack Bot' } }\`
+   - The key (e.g. \`slackApi\`) is the credential **type** from the node type definition
+
+2. **Handle empty outputs with \`alwaysOutputData: true\`**
+   - Nodes that query data (Data Table get, Google Sheets lookup, HTTP Request, etc.) may return 0 items
+   - When a node returns 0 items, all downstream nodes are SKIPPED — the workflow chain breaks silently
+   - Set \`alwaysOutputData: true\` on any node whose output feeds downstream nodes and might return empty results
+   - Common cases: fresh/empty Data Tables, filtered queries, conditional lookups, API searches with no matches
+   - Example: \`config: { ..., alwaysOutputData: true }\`
+
+3. **Use \`executeOnce: true\` for single-execution nodes**
+   - When a node receives N items but should only execute once (not N times), set \`executeOnce: true\`
+   - Common cases: sending a summary notification, generating a report, calling an API that doesn't need per-item execution
+   - Example: \`config: { ..., executeOnce: true }\``;
+
+function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
+	// Shared WORKFLOW_SDK_PATTERNS uses `newCredential('X')` throughout. That
+	// form is correct for tool mode but serializes to undefined in sandbox mode
+	// (see submit-workflow.tool.ts — `NewCredentialImpl.toJSON() === undefined`).
+	// Prepend an override note when composing for sandbox so the LLM substitutes
+	// raw `{id, name}` objects in the shared examples below.
+	const sandboxOverride =
+		mode === 'sandbox'
+			? "> **Sandbox credential override**: The SDK pattern examples below use `newCredential('X')`. " +
+				"In sandbox mode, replace every `newCredential('X')` with the raw `{ id, name }` object from " +
+				'`credentials(action="list")`. `newCredential()` serializes to `undefined` in sandbox and will ' +
+				'silently drop credentials from the saved workflow.'
+			: null;
+	return [
+		SDK_CODE_RULES,
+		mode === 'sandbox' ? SANDBOX_WORKFLOW_RULES : WORKFLOW_RULES,
+		...(sandboxOverride ? [sandboxOverride] : []),
+		'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
+		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
+		'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
+		'## Node-Specific Configuration Guides',
+		IF_NODE_GUIDE.content,
+		SWITCH_NODE_GUIDE.content,
+		SET_NODE_GUIDE.content,
+		HTTP_REQUEST_GUIDE.content,
+		TOOL_NODES_GUIDE.content,
+		EMBEDDING_NODES_GUIDE.content,
+		RESOURCE_LOCATOR_GUIDE.content,
+		mode === 'sandbox' ? BUILDER_SPECIFIC_PATTERNS_SANDBOX : BUILDER_SPECIFIC_PATTERNS_TOOL,
+	].join('\n\n');
+}
+
+const SDK_RULES_AND_PATTERNS_TOOL = composeSdkRulesAndPatterns('tool');
+const SDK_RULES_AND_PATTERNS_SANDBOX = composeSdkRulesAndPatterns('sandbox');
 
 // ── Original tool-based builder prompt ───────────────────────────────────────
 
 export const BUILDER_AGENT_PROMPT = `You are an expert n8n workflow builder. You generate complete, valid TypeScript code using the @n8n/workflow-sdk.
 
-## Output Discipline
-- Your text output is visible to the user. Be concise but natural.
-- Do NOT narrate your process ("I'll build this step by step", "Let me start by"). Just do the work.
-- No emojis, no filler phrases, no markdown headers in your text output.
-- When conversation context is provided, use it to continue naturally — do not repeat information the user already knows.
-- Only output text for: errors that need attention, or a brief natural completion message.
+${BUILDER_OUTPUT_DISCIPLINE}
 
 ## Repair Strategy
 When called with failure details for an existing workflow, start from the pre-loaded code — do not re-discover node types already present.
@@ -466,13 +534,13 @@ When called with failure details for an existing workflow, start from the pre-lo
 
 Do NOT produce visible output until step 4. All reasoning happens internally.
 
-## Credential Rules
+## Credential Rules (tool mode)
 - Always use \`newCredential('Credential Name')\` for credentials, never fake keys or placeholders.
-- NEVER use raw credential objects like \`{ id: '...', name: '...' }\`.
+- NEVER use raw credential objects like \`{ id: '...', name: '...' }\` — that form is for sandbox mode only.
 - When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
 - Unresolved credentials (where the user chose mock data or no credential is available) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
 
-${SDK_RULES_AND_PATTERNS}
+${SDK_RULES_AND_PATTERNS_TOOL}
 `;
 
 // ── Sandbox-based builder prompt ─────────────────────────────────────────────
@@ -480,12 +548,7 @@ ${SDK_RULES_AND_PATTERNS}
 export function createSandboxBuilderAgentPrompt(workspaceRoot: string): string {
 	return `You are an expert n8n workflow builder working inside a sandbox with real TypeScript tooling. You write workflow code as files and use \`tsc\` for validation.
 
-## Output Discipline
-- Your text output is visible to the user. Be concise but natural.
-- Do NOT narrate your process ("I'll build this step by step", "Let me start by"). Just do the work.
-- No emojis, no filler phrases, no markdown headers in your text output.
-- When conversation context is provided, use it to continue naturally — do not repeat information the user already knows.
-- Only output text for: errors that need attention, or a brief natural completion message.
+${BUILDER_OUTPUT_DISCIPLINE}
 
 ## Workspace Layout
 
@@ -677,9 +740,9 @@ When called with failure details for an existing workflow, start from the pre-lo
 - **For large HTML, use the file-based pattern.** Write HTML to \`chunks/page.html\`, then \`readFileSync\` + \`JSON.stringify\` in your SDK code. NEVER embed large HTML directly in jsCode — it will break. See the web_app_pattern section.
 - **Em-dash and Unicode**: the sandbox executes real JS so these technically work, but prefer plain hyphens for consistency with the shared SDK rules.
 
-## Credentials
+## Credentials (sandbox mode)
 
-Call \`credentials(action="list")\` early. Each credential has an \`id\`, \`name\`, and \`type\`. Wire them into nodes like this:
+Sandbox mode uses **raw credential objects** (not \`newCredential()\`). Call \`credentials(action="list")\` early. Each credential has an \`id\`, \`name\`, and \`type\`. Wire them into nodes like this:
 
 \`\`\`typescript
 credentials: {
@@ -770,7 +833,7 @@ When modifying an existing workflow, the current code is **already pre-loaded** 
 - Run tsc → submit-workflow with the \`workflowId\`
 - Do NOT call \`workflows(action="get-as-code")\` — the file is already populated
 
-${SDK_RULES_AND_PATTERNS}
+${SDK_RULES_AND_PATTERNS_SANDBOX}
 `;
 }
 

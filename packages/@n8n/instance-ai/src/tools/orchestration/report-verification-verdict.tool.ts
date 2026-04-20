@@ -18,7 +18,10 @@ import { verificationVerdictSchema } from '../../workflow-loop/workflow-loop-sta
 export const reportVerificationVerdictInputSchema = z.object({
 	workItemId: z.string().describe('The work item ID from the build task (wi_XXXXXXXX)'),
 	workflowId: z.string().describe('The workflow ID that was verified'),
-	executionId: z.string().optional().describe('The execution ID from run-workflow, if available'),
+	executionId: z
+		.string()
+		.optional()
+		.describe('The execution ID from `executions(action="run")`, if available'),
 	verdict: verificationVerdictSchema.describe(
 		'Your assessment: "verified" if the workflow ran correctly, ' +
 			'"needs_patch" if a specific node needs fixing, ' +

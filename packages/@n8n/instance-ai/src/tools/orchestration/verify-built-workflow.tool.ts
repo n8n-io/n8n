@@ -29,7 +29,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 		id: 'verify-built-workflow',
 		description:
 			'Run a built workflow that has mocked credentials, using sidecar verification pin data ' +
-			'from the build outcome. Use this instead of run-workflow when the build had mocked credentials.',
+			'from the build outcome. Use this instead of `executions(action="run")` when the build had mocked credentials.',
 		inputSchema: verifyBuiltWorkflowInputSchema,
 		outputSchema: z.object({
 			executionId: z.string().optional(),
