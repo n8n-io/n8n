@@ -22,8 +22,9 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { TEMPLATE_SETUP_EXPERIENCE, AI_GATEWAY_EXPERIMENT } from '@/app/constants/experiments';
+import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -90,6 +91,8 @@ const SettingsExternalSecrets = async () => {
 };
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
+const SettingsInstanceRegistryView = async () =>
+	await import('@/features/settings/instanceRegistry/views/SettingsInstanceRegistryView.vue');
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
@@ -679,7 +682,7 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
-				path: 'n8n-gateway',
+				path: 'n8n-connect',
 				name: VIEWS.AI_GATEWAY_SETTINGS,
 				component: SettingsAiGatewayView,
 				meta: {
@@ -687,18 +690,14 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							const postHogStore = usePostHog();
-							return (
-								postHogStore.getVariant(AI_GATEWAY_EXPERIMENT.name) ===
-									AI_GATEWAY_EXPERIMENT.variant && settingsStore.isAiGatewayEnabled
-							);
+							return settingsStore.isAiGatewayEnabled;
 						},
 					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties() {
 							return {
-								feature: 'ai-gateway',
+								feature: 'n8n-connect',
 							};
 						},
 					},
@@ -893,6 +892,31 @@ export const routes: RouteRecordRaw[] = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
+					},
+				},
+			},
+			{
+				path: 'instance-registry',
+				name: VIEWS.INSTANCE_REGISTRY,
+				component: SettingsInstanceRegistryView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'orchestration:read',
+						},
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('INSTANCE_REGISTRY');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'instance-registry',
+							};
+						},
 					},
 				},
 			},

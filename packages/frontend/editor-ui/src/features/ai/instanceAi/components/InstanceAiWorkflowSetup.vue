@@ -216,6 +216,7 @@ const ExpressionContextProvider = defineComponent({
 // ---------------------------------------------------------------------------
 
 let previousWorkflow: IWorkflowDb | null = null;
+let isMounted = true;
 
 // ---------------------------------------------------------------------------
 // Trigger test result + disabled helpers
@@ -339,6 +340,7 @@ const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
 // ---------------------------------------------------------------------------
 
 onUnmounted(() => {
+	isMounted = false;
 	stopDeleteListener();
 	stopCreateListener();
 	if (previousWorkflow) {
@@ -364,13 +366,18 @@ onMounted(async () => {
 		console.warn('Failed to preload credentials/node types for Instance AI workflow setup', error);
 	}
 
+	if (!isMounted) return;
+
 	try {
 		const workflowData = await fetchWorkflowApi(rootStore.restApiContext, props.workflowId);
+		if (!isMounted) return;
 		previousWorkflow = { ...workflowsStore.workflow };
 		workflowsStore.setWorkflow(workflowData);
 	} catch (error) {
 		console.warn('Failed to fetch workflow for Instance AI setup', error);
 	}
+
+	if (!isMounted) return;
 
 	isStoreReady.value = true;
 
@@ -451,7 +458,11 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
 <template>
 	<div>
-		<template v-if="!isSubmitted && !isApplying">
+		<div v-if="!isStoreReady" :class="$style.submitted">
+			<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
+			<span>{{ i18n.baseText('instanceAi.workflowSetup.loading' as BaseTextKey) }}</span>
+		</div>
+		<template v-else-if="!isSubmitted && !isApplying">
 			<!-- Streamlined confirm mode: all items pre-resolved by AI -->
 			<div
 				v-if="allPreResolved && !showFullWizard"
@@ -499,14 +510,14 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.later')"
 							data-test-id="instance-ai-workflow-setup-later"
 							@click="handleLater"
 						/>
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							data-test-id="instance-ai-workflow-setup-apply-button"
@@ -519,7 +530,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 			<div
 				v-else-if="currentDisplayCard?.type === 'single' && currentCard"
 				data-test-id="instance-ai-workflow-setup-card"
-				:class="[$style.card, { [$style.completed]: isCardComplete(currentCard) }]"
+				:class="$style.card"
 			>
 				<!-- Header -->
 				<header :class="$style.header">
@@ -702,7 +713,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.later')"
 							data-test-id="instance-ai-workflow-setup-later"
@@ -711,7 +722,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
 						<N8nButton
 							v-if="currentCard.isTestable && currentCard.isTrigger && currentCard.isFirstTrigger"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.testTrigger')"
 							:disabled="isTriggerTestDisabled(currentCard)"
@@ -720,7 +731,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						/>
 
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:disabled="!anyCardComplete"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
@@ -1012,10 +1023,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 	padding: 0;
 	border: var(--border);
 	border-radius: var(--radius);
-
-	&.completed {
-		border-color: var(--color--success);
-	}
+	background-color: var(--color--background--light-3);
 }
 
 .confirmCard {
@@ -1025,8 +1033,8 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 	gap: var(--spacing--sm);
 	padding: 0;
 	border: var(--border);
-	border-color: var(--color--success);
 	border-radius: var(--radius);
+	background-color: var(--color--background--light-3);
 }
 
 .confirmSummary {

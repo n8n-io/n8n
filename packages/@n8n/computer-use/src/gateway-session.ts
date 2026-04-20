@@ -1,5 +1,5 @@
 import type { PermissionMode, ToolGroup } from './config';
-import { TOOL_GROUP_DEFINITIONS } from './config';
+import { isProtectedSettingsPath, TOOL_GROUP_DEFINITIONS } from './config';
 import type { SettingsStore } from './settings-store';
 
 /**
@@ -72,6 +72,14 @@ export class GatewaySession {
 	 *  4. Group mode            → via getGroupMode() (includes cross-group constraints)
 	 */
 	check(toolGroup: ToolGroup, resource: string): PermissionMode {
+		// Self-protection: prevent tools from accessing the gateway settings directory
+		if (
+			(toolGroup === 'filesystemWrite' || toolGroup === 'filesystemRead') &&
+			isProtectedSettingsPath(resource)
+		) {
+			return 'deny';
+		}
+
 		const rp = this.settingsStore.getResourcePermissions(toolGroup);
 		if (rp.deny.includes(resource)) return 'deny';
 		if (rp.allow.includes(resource)) return 'allow';

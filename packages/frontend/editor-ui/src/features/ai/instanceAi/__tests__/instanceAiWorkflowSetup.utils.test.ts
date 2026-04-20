@@ -142,6 +142,20 @@ describe('isParamValueSet', () => {
 	test('returns true for non-empty resource locator', () => {
 		expect(isParamValueSet({ __rl: true, value: 'some-id', mode: 'list' })).toBe(true);
 	});
+
+	test('returns false for placeholder sentinel string', () => {
+		expect(isParamValueSet('<__PLACEHOLDER_VALUE__your_email__>')).toBe(false);
+	});
+
+	test('returns false for resource locator with placeholder sentinel value', () => {
+		expect(
+			isParamValueSet({
+				__rl: true,
+				value: '<__PLACEHOLDER_VALUE__channel_name__>',
+				mode: 'list',
+			}),
+		).toBe(false);
+	});
 });
 
 // ---------------------------------------------------------------------------
