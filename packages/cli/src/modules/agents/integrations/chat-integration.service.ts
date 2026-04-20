@@ -128,10 +128,21 @@ export class ChatIntegrationService {
 		// Initialize the Chat instance (connects adapters, state adapter, etc.)
 		await chat.initialize();
 
-		// Register Telegram webhook if running in webhook mode
-		if (integrationType === 'telegram' && this.getTelegramMode() === 'webhook') {
-			const botToken = this.extractTelegramBotToken(decryptedData);
-			await this.registerTelegramWebhook(botToken, agentId, projectId);
+		// Post-initialize hooks (e.g. Telegram setWebhook) run AFTER chat is live.
+		// If one throws we must shut the chat down, otherwise adapters/timers leak.
+		try {
+			if (integrationType === 'telegram' && this.getTelegramMode() === 'webhook') {
+				const botToken = this.extractTelegramBotToken(decryptedData);
+				await this.registerTelegramWebhook(botToken, agentId, projectId);
+			}
+		} catch (error) {
+			await chat.shutdown().catch((shutdownError: unknown) => {
+				this.logger.warn(
+					`[ChatIntegrationService] Shutdown after failed post-connect hook threw: ${shutdownError instanceof Error ? shutdownError.message : String(shutdownError)}`,
+				);
+			});
+			bridge.dispose();
+			throw error;
 		}
 
 		// The `chat` variable is returned by `new Chat(...)` from the ESM-only
@@ -280,6 +291,8 @@ export class ChatIntegrationService {
 			);
 		}
 
+		conn.bridge.dispose();
+
 		this.connections.delete(key);
 		this.logger.info(`[ChatIntegrationService] Disconnected: ${key}`);
 	}
@@ -382,8 +395,10 @@ export class ChatIntegrationService {
 	}
 
 	private buildWebhookUrl(agentId: string, projectId: string, platform: string): string {
-		const base = this.urlService.getInstanceBaseUrl();
-		return `${base}/rest/projects/${projectId}/agents/v2/${agentId}/webhooks/${platform}`;
+		// getWebhookBaseUrl returns the URL with a trailing slash, honours the
+		// WEBHOOK_URL env var used by n8n's other webhook triggers.
+		const base = this.urlService.getWebhookBaseUrl();
+		return `${base}rest/projects/${projectId}/agents/v2/${agentId}/webhooks/${platform}`;
 	}
 
 	private async registerTelegramWebhook(

@@ -112,7 +112,7 @@ export class AgentChatBridge {
 		private readonly logger: Logger,
 		private readonly n8nUserId: string,
 		private readonly n8nProjectId: string,
-		private readonly integrationType: string = 'slack',
+		private readonly integrationType: string,
 	) {
 		if (AgentChatBridge.SHORT_CALLBACK_PLATFORMS.has(integrationType)) {
 			this.callbackStore = new CallbackStore();
@@ -133,7 +133,7 @@ export class AgentChatBridge {
 		logger: Logger,
 		n8nUserId: string,
 		n8nProjectId: string,
-		integrationType: string = 'slack',
+		integrationType: string,
 	): AgentChatBridge {
 		return new AgentChatBridge(
 			bot as ChatBot,
@@ -177,6 +177,11 @@ export class AgentChatBridge {
 				await this.postErrorToThread(event.thread, error);
 			}
 		});
+	}
+
+	/** Release long-lived resources (callback store timer). */
+	dispose(): void {
+		this.callbackStore?.dispose();
 	}
 
 	/**
@@ -526,13 +531,22 @@ export class AgentChatBridge {
 		let { actionId, value } = event;
 		const { thread } = event;
 
-		// Resolve short callback keys back to full action data
+		// Resolve short callback keys back to full action data. If the key is
+		// missing the action was already handled or the entry expired — let the
+		// user know rather than silently swallowing the click.
 		if (this.callbackStore) {
 			const resolved = await this.callbackStore.resolve(actionId);
-			if (resolved) {
-				actionId = resolved.actionId;
-				value = resolved.value;
+			if (!resolved) {
+				this.logger.warn('[AgentChatBridge] Callback key not found or expired', {
+					actionId,
+				});
+				await thread.post(
+					'This action is no longer available. The link may have expired or already been used.',
+				);
+				return;
 			}
+			actionId = resolved.actionId;
+			value = resolved.value;
 		}
 
 		let runId: string;
