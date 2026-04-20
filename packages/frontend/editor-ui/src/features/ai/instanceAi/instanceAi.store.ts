@@ -542,12 +542,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		resetThreadRuntimeState(null);
 		currentThreadId.value = newThreadId;
 
-		threads.value.unshift({
-			id: newThreadId,
-			title: NEW_CONVERSATION_TITLE,
-			createdAt: new Date().toISOString(),
-		});
-
 		connectSSE(newThreadId);
 		return newThreadId;
 	}
@@ -579,16 +573,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				// Switch to first remaining thread
 				switchThread(threads.value[0].id);
 			} else {
-				// No threads left — create a new one
+				// No threads left — prepare a fresh thread (added to sidebar on first message)
 				const freshId = uuidv4();
 				closeSSE();
 				resetThreadRuntimeState(null);
 				currentThreadId.value = freshId;
-				threads.value.push({
-					id: freshId,
-					title: NEW_CONVERSATION_TITLE,
-					createdAt: new Date().toISOString(),
-				});
 				connectSSE(freshId);
 			}
 		}
@@ -596,7 +585,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return { currentThreadId: currentThreadId.value, wasActive };
 	}
 
-	async function loadThreads(): Promise<void> {
+	async function loadThreads(): Promise<boolean> {
 		try {
 			const result = await fetchThreadsApi(rootStore.restApiContext);
 			for (const thread of result.threads) {
@@ -613,8 +602,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				metadata: t.metadata ?? undefined,
 			}));
 			threads.value = [...localOnly, ...serverThreads];
+			return true;
 		} catch {
 			// Silently ignore — threads will remain client-side only
+			return false;
 		}
 	}
 

@@ -4,7 +4,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { isPresent } from '@/app/utils/typesUtils';
-import type { IConnectedNode, Workflow } from 'n8n-workflow';
+import type { IConnectedNode } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { truncate } from '@n8n/utils/string/truncate';
@@ -12,7 +12,6 @@ import { truncate } from '@n8n/utils/string/truncate';
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 type Props = {
 	nodes: IConnectedNode[];
-	workflow: Workflow;
 	modelValue: string | null;
 };
 

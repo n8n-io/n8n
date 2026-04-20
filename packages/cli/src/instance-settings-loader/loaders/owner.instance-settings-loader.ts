@@ -1,8 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -63,7 +64,7 @@ export class OwnerInstanceSettingsLoader {
 		const result = ownerEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
 
 		if (!result.success) {
-			throw new OperationalError(result.error.issues[0].message);
+			throw new InstanceBootstrappingError(result.error.issues[0].message);
 		}
 
 		await this.ownershipService.setupOwner(result.data.payload, result.data.options);
