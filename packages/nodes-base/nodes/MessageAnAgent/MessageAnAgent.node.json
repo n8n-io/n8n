@@ -8,6 +8,6 @@
 	},
 	"alias": ["agent", "ai", "sdk"],
 	"subcategories": {
-		"AI": ["Agents"]
+		"AI": ["Agents", "Root Nodes"]
 	}
 }

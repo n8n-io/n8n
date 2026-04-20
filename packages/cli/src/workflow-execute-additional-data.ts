@@ -262,8 +262,19 @@ export async function executeAgent(
 	if (!additionalData.userId) {
 		throw new UnexpectedError('Cannot execute agent without a userId in additional data');
 	}
-	if (!additionalData.projectId) {
-		throw new UnexpectedError('Cannot execute agent without a projectId in additional data');
+
+	let projectId = additionalData.projectId;
+	if (!projectId) {
+		if (!additionalData.workflowId) {
+			throw new UnexpectedError(
+				'Cannot execute agent without a projectId or workflowId in additional data',
+			);
+		}
+		const { OwnershipService } = await import('@/services/ownership.service');
+		const project = await Container.get(OwnershipService).getWorkflowProjectCached(
+			additionalData.workflowId,
+		);
+		projectId = project.id;
 	}
 
 	const { AgentsService } = await import('@/modules/agents/agents.service');
@@ -275,7 +286,7 @@ export async function executeAgent(
 		executionId,
 		threadId,
 		additionalData.userId,
-		additionalData.projectId,
+		projectId,
 	);
 }
 
