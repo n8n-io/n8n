@@ -6,9 +6,6 @@
 // with the existing binary-check suite.
 // ---------------------------------------------------------------------------
 
-import { runBinaryChecks } from '../binaryChecks/index';
-import type { BinaryCheckContext } from '../binaryChecks/types';
-import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type {
 	CapturedWorkflow,
 	Feedback,
@@ -16,6 +13,9 @@ import type {
 	SubAgentRunnerConfig,
 	SubAgentTestCase,
 } from './types';
+import { runBinaryChecks } from '../binaryChecks/index';
+import type { BinaryCheckContext } from '../binaryChecks/types';
+import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 
 export interface RunSubAgentDeps {
 	client: N8nClient;

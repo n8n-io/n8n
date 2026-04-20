@@ -14,11 +14,10 @@ import { evaluate } from 'langsmith/evaluation';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 
-import { N8nClient } from '../clients/n8n-client';
 import { createFeedbackExtractor, mapExampleToTestCase } from './langsmith';
-import { runSubAgent } from './runner';
-import type { RunSubAgentDeps } from './runner';
+import { runSubAgent, type RunSubAgentDeps } from './runner';
 import type { SubAgentTestCase, SubAgentRunnerConfig, SubAgentResult } from './types';
+import { N8nClient } from '../clients/n8n-client';
 
 // ---------------------------------------------------------------------------
 // Args
