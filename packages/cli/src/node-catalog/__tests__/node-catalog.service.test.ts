@@ -233,6 +233,15 @@ describe('NodeCatalogService', () => {
 
 			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
 		});
+
+		test('is order-independent across nodeIds', async () => {
+			await service.initialize();
+
+			await service.getNodeTypes(['n8n-nodes-base.gmail', 'n8n-nodes-base.slack']);
+			await service.getNodeTypes(['n8n-nodes-base.slack', 'n8n-nodes-base.gmail']);
+
+			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('getSuggestedNodes', () => {

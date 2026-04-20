@@ -1,5 +1,6 @@
 import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { isToolType, isTriggerNodeType } from 'n8n-workflow';
@@ -75,22 +76,38 @@ const runNodeInputSchema = z.object({
 @Service()
 export class AgentsToolsService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 	) {}
 
-	/** Tools usable from both the builder and the agent runtime. */
-	getSharedTools(credentialProvider: CredentialProvider): BuiltTool[] {
+	/**
+	 * Tools usable from both the builder and the agent runtime.
+	 *
+	 * `listCredentialsUsageHint` lets each caller tailor the `list_credentials`
+	 * description to its flow — the runtime points at `run_node_tool`, while the
+	 * builder points at code generation.
+	 */
+	getSharedTools(
+		credentialProvider: CredentialProvider,
+		listCredentialsUsageHint: string,
+	): BuiltTool[] {
 		return [
 			this.buildSearchNodesTool(),
 			this.buildGetNodeTypesTool(),
-			this.buildListCredentialsTool(credentialProvider),
+			this.buildListCredentialsTool(credentialProvider, listCredentialsUsageHint),
 		];
 	}
 
 	/** Shared tools plus the runtime-only `run_node_tool` which binds to a project. */
 	getRuntimeTools(credentialProvider: CredentialProvider, projectId: string): BuiltTool[] {
-		return [...this.getSharedTools(credentialProvider), this.buildRunNodeTool(projectId)];
+		return [
+			...this.getSharedTools(
+				credentialProvider,
+				'Call this before run_node_tool to know which credential to pass.',
+			),
+			this.buildRunNodeTool(projectId),
+		];
 	}
 
 	private buildSearchNodesTool(): BuiltTool {
@@ -127,11 +144,13 @@ export class AgentsToolsService {
 			.build();
 	}
 
-	private buildListCredentialsTool(credentialProvider: CredentialProvider): BuiltTool {
+	private buildListCredentialsTool(
+		credentialProvider: CredentialProvider,
+		usageHint: string,
+	): BuiltTool {
 		return new Tool('list_credentials')
 			.description(
-				'List the credentials available to the user. Returns an array of credential names and types. ' +
-					'Call this before run_node_tool to know which credential to pass.',
+				`List the credentials available to the user. Returns an array of credential names and types. ${usageHint}`,
 			)
 			.input(listCredentialsInputSchema)
 			.handler(async () => {
@@ -173,14 +192,23 @@ export class AgentsToolsService {
 					}
 				}
 
-				return await this.ephemeralNodeExecutor.executeInline({
-					nodeType,
-					nodeTypeVersion,
-					nodeParameters: (nodeParameters ?? {}) as INodeParameters,
-					credentialDetails: credentials,
-					inputData: [{ json: (inputData ?? {}) as IDataObject }],
-					projectId,
-				});
+				try {
+					return await this.ephemeralNodeExecutor.executeInline({
+						nodeType,
+						nodeTypeVersion,
+						nodeParameters: (nodeParameters ?? {}) as INodeParameters,
+						credentialDetails: credentials,
+						inputData: [{ json: (inputData ?? {}) as IDataObject }],
+						projectId,
+					});
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					this.logger.warn('run_node_tool execution failed', { nodeType, error });
+					return {
+						status: 'error',
+						message: `Node execution failed: ${message}`,
+					};
+				}
 			})
 			.build();
 	}

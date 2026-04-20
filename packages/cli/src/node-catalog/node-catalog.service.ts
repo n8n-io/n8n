@@ -121,7 +121,7 @@ export class NodeCatalogService {
 	/** Get TypeScript type definitions for nodes, with result caching. */
 	async getNodeTypes(nodeIds: NodeRequest[]): Promise<string> {
 		const cacheKey = JSON.stringify(
-			nodeIds.map((id) => (typeof id === 'string' ? id : JSON.stringify(id))),
+			nodeIds.map((id) => (typeof id === 'string' ? id : JSON.stringify(id))).sort(),
 		);
 		const cached = this.getCache.get(cacheKey);
 		if (cached) return cached;

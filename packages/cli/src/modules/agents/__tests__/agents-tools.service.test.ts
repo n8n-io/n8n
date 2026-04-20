@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { CredentialProvider } from '@n8n/agents';
+import type { Logger } from '@n8n/backend-common';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -24,9 +25,11 @@ function makeService() {
 
 	const ephemeralNodeExecutor = mock<EphemeralNodeExecutor>();
 
-	const service = new AgentsToolsService(nodeCatalogService, ephemeralNodeExecutor);
+	const logger = mock<Logger>();
 
-	return { service, nodeCatalogService, ephemeralNodeExecutor };
+	const service = new AgentsToolsService(logger, nodeCatalogService, ephemeralNodeExecutor);
+
+	return { service, nodeCatalogService, ephemeralNodeExecutor, logger };
 }
 
 function makeCredentialProvider(
@@ -45,7 +48,7 @@ describe('AgentsToolsService', () => {
 	describe('getSharedTools()', () => {
 		it('returns search_nodes, get_node_types, and list_credentials', () => {
 			const { service } = makeService();
-			const names = service.getSharedTools(makeCredentialProvider()).map((t) => t.name);
+			const names = service.getSharedTools(makeCredentialProvider(), 'hint').map((t) => t.name);
 			expect(names).toEqual(['search_nodes', 'get_node_types', 'list_credentials']);
 		});
 	});
@@ -199,6 +202,22 @@ describe('AgentsToolsService', () => {
 				status: 'error',
 				message: expect.stringContaining('"method"'),
 			});
+		});
+
+		it('returns a structured error when executeInline throws', async () => {
+			const { service, ephemeralNodeExecutor, logger } = makeService();
+			ephemeralNodeExecutor.executeInline.mockRejectedValue(new Error('boom'));
+
+			const result = await getRunTool(service).handler!(
+				{ nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 4 },
+				ctx,
+			);
+
+			expect(result).toMatchObject({
+				status: 'error',
+				message: expect.stringContaining('boom'),
+			});
+			expect(logger.warn).toHaveBeenCalled();
 		});
 
 		it('maps inputData, passes credentials and projectId through to executeInline', async () => {

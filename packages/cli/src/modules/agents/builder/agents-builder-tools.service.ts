@@ -226,7 +226,10 @@ export class AgentsBuilderToolsService {
 		return [
 			buildCustomToolTool,
 			listWorkflowsTool,
-			...this.agentsToolsService.getSharedTools(credentialProvider),
+			...this.agentsToolsService.getSharedTools(
+				credentialProvider,
+				'Call this BEFORE generating code to know which .credential() value to use.',
+			),
 		];
 	}
 }

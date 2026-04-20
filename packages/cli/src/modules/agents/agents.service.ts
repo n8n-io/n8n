@@ -50,6 +50,14 @@ import { AgentPublishedVersionRepository } from './repositories/agent-published-
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 
+interface InjectRuntimeDependenciesParams {
+	agent: agents.Agent;
+	agentId: string;
+	projectId: string;
+	credentialProvider: CredentialProvider;
+	nodeToolsEnabled: boolean;
+}
+
 export interface ExecuteAgentData {
 	response: string;
 	structuredOutput: unknown;
@@ -360,13 +368,9 @@ export class AgentsService {
 	 * `nodeToolsEnabled` comes from the agent's `config.nodeTools.enabled` flag
 	 * (opt-in, defaults to false) — see {@link isNodeToolsEnabled}.
 	 */
-	private async injectRuntimeDependencies(
-		agent: agents.Agent,
-		agentId: string,
-		projectId: string,
-		credentialProvider: CredentialProvider,
-		nodeToolsEnabled: boolean,
-	): Promise<void> {
+	private async injectRuntimeDependencies(params: InjectRuntimeDependenciesParams): Promise<void> {
+		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled } = params;
+
 		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
 		try {
 			const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
@@ -924,13 +928,13 @@ export class AgentsService {
 			memoryFactory: this.getMemoryFactory(),
 		});
 
-		await this.injectRuntimeDependencies(
-			reconstructed,
-			agentEntity.id,
-			agentEntity.projectId,
+		await this.injectRuntimeDependencies({
+			agent: reconstructed,
+			agentId: agentEntity.id,
+			projectId: agentEntity.projectId,
 			credentialProvider,
-			isNodeToolsEnabled(config.config),
-		);
+			nodeToolsEnabled: isNodeToolsEnabled(config.config),
+		});
 
 		return reconstructed;
 	}
