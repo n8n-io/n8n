@@ -209,6 +209,12 @@ export class Webhook extends Node {
 		],
 	};
 
+	/**
+	 * Handles an incoming HTTP request for this webhook. Checks IP allowlist, bot filtering,
+	 * and authentication before routing the request body to the appropriate handler (binary,
+	 * multipart, or JSON). Returns `noWebhookResponse: true` when the response has already
+	 * been written directly (e.g. auth failure), otherwise returns `workflowData` for execution.
+	 */
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const { typeVersion: nodeVersion, type: nodeType } = context.getNode();
 		const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
@@ -313,10 +319,24 @@ export class Webhook extends Node {
 		};
 	}
 
+	/**
+	 * Runs the authentication check configured on the node (none, basicAuth, headerAuth, or
+	 * jwtAuth). Returns the decoded JWT payload for jwtAuth, undefined otherwise.
+	 *
+	 * @throws {WebhookAuthorizationError} if credentials are missing or do not match.
+	 */
 	private async validateAuth(context: IWebhookFunctions) {
 		return await validateWebhookAuthentication(context, this.authPropertyName);
 	}
 
+	/**
+	 * Streams the raw request body to a temp file and copies it into binary-data storage.
+	 * Unlike JSON handling, the output item has an empty body and carries the file under
+	 * binary[binaryPropertyName]. Note: the body is currently written to disk twice — see
+	 * the inline TODO for the intended single-pass improvement.
+	 *
+	 * @throws {NodeOperationError} if the stream pipeline fails.
+	 */
 	private async handleBinaryData(
 		context: IWebhookFunctions,
 		prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
