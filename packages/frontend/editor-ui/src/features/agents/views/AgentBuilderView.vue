@@ -316,18 +316,14 @@ watch(
 	{ immediate: true },
 );
 
-function onContinueLoaded(count: number) {
-	if (count === 0) {
-		const { continueSessionId: _dropped, ...rest } = route.query;
-		void router.replace({ query: rest });
-		mode.value = 'home';
-	}
-}
-
-function onChatBack() {
+function exitContinueMode() {
 	const { continueSessionId: _dropped, ...rest } = route.query;
 	void router.replace({ query: rest });
 	mode.value = 'home';
+}
+
+function onContinueLoaded(count: number) {
+	if (count === 0) exitContinueMode();
 }
 </script>
 
@@ -407,7 +403,7 @@ function onChatBack() {
 						:session-emoji="continueSessionEmoji"
 						@config-updated="onConfigUpdated"
 						@continue-loaded="onContinueLoaded"
-						@back="onChatBack"
+						@back="exitContinueMode"
 					/>
 				</Transition>
 			</div>

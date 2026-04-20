@@ -314,11 +314,11 @@ function selectItem(idx: number) {
 	selectedIndex.value = selectedIndex.value === idx ? null : idx;
 }
 
-function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'cardTool' | undefined {
+function typeClass(kind: TimelineItem['kind']): 'cardUser' | 'cardAgent' | 'cardTool' | '' {
 	if (kind === 'user') return 'cardUser';
 	if (kind === 'text') return 'cardAgent';
 	if (kind === 'tool-call') return 'cardTool';
-	return undefined;
+	return '';
 }
 </script>
 
