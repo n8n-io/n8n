@@ -1,4 +1,5 @@
 // services/api-helper.ts
+import type { ClusterInfoResponse } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import { setTimeout as wait } from 'node:timers/promises';
 
@@ -271,6 +272,22 @@ export class ApiHelpers {
 		const userApi = new ApiHelpers(userContext);
 		await userApi.login({ email: user.email, password: user.password });
 		return userApi;
+	}
+
+	/**
+	 * Fetch cluster info from the instance registry endpoint.
+	 * Requires `N8N_ENV_FEAT_INSTANCE_REGISTRY=true` on every container.
+	 */
+	async getClusterInfo(): Promise<ClusterInfoResponse> {
+		const response = await this.request.get('/rest/instance-registry');
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-registry failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+		const plain = await response.json();
+		console.log('Cluster info: ', JSON.stringify(plain));
+		return (plain as { data: ClusterInfoResponse }).data;
 	}
 
 	/**
