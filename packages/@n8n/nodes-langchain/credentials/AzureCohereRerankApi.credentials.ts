@@ -42,8 +42,9 @@ export class AzureCohereRerankApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{ $credentials.baseUrl.replace(new RegExp("/+$"), "") }}',
-			url: '={{ $credentials.baseUrl.toLowerCase().includes("/providers/cohere") ? "/v2/models" : "/providers/cohere/v2/models" }}',
+			baseURL:
+				'={{ (() => { const cleaned = $credentials.baseUrl.trim().replace(new RegExp("/+$"), ""); const lower = cleaned.toLowerCase(); const fullMarker = "/providers/cohere/v2/rerank"; const marker = "/providers/cohere"; if (lower.includes(fullMarker)) { return `${cleaned.slice(0, lower.indexOf(fullMarker))}/providers/cohere`; } if (lower.includes(marker)) { return `${cleaned.slice(0, lower.indexOf(marker))}/providers/cohere`; } return `${cleaned}/providers/cohere`; })() }}',
+			url: '/v2/models',
 			method: 'GET',
 		},
 	};
