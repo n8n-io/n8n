@@ -1,18 +1,21 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nBadge from './Badge.vue';
+import { BADGE_THEME } from '@n8n/design-system/types/badge';
+
+const SIZE_OPTIONS = ['small', 'medium', 'large'] as const;
 
 export default {
 	title: 'Core/Badge',
 	component: N8nBadge,
 	argTypes: {
 		theme: {
-			type: 'text',
-			options: ['default', 'primary', 'secondary', 'tertiary'],
+			control: 'select',
+			options: BADGE_THEME,
 		},
 		size: {
-			type: 'select',
-			options: ['small', 'medium', 'large'],
+			control: 'select',
+			options: SIZE_OPTIONS,
 		},
 	},
 
