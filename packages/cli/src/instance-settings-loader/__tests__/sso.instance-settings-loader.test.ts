@@ -30,22 +30,6 @@ describe('SsoInstanceSettingsLoader', () => {
 		samlMetadata: '',
 		samlMetadataUrl: '',
 		samlLoginEnabled: false,
-		samlLoginLabel: '',
-		samlLoginBinding: 'redirect',
-		samlAcsBinding: 'post',
-		samlIgnoreSsl: false,
-		samlAuthnRequestsSigned: false,
-		samlWantAssertionsSigned: true,
-		samlWantMessageSigned: true,
-		samlSigningPrivateKey: '',
-		samlSigningCertificate: '',
-		samlRelayState: '',
-		samlMappingEmail: '',
-		samlMappingFirstName: '',
-		samlMappingLastName: '',
-		samlMappingUserPrincipalName: '',
-		samlMappingInstanceRole: '',
-		samlMappingProjectRoles: '',
 		ssoUserRoleProvisioning: 'disabled',
 	};
 
@@ -127,18 +111,6 @@ describe('SsoInstanceSettingsLoader', () => {
 			);
 		});
 
-		it('should throw when loginBinding has an invalid value', async () => {
-			const loader = createLoader({ ...validSamlConfig, samlLoginBinding: 'invalid' });
-
-			await expect(loader.run()).rejects.toThrow('N8N_SSO_SAML_LOGIN_BINDING');
-		});
-
-		it('should throw when acsBinding has an invalid value', async () => {
-			const loader = createLoader({ ...validSamlConfig, samlAcsBinding: 'invalid' });
-
-			await expect(loader.run()).rejects.toThrow('N8N_SSO_SAML_ACS_BINDING');
-		});
-
 		it('should save SAML preferences when valid config with metadata is provided', async () => {
 			const loader = createLoader(validSamlConfig);
 
@@ -150,13 +122,6 @@ describe('SsoInstanceSettingsLoader', () => {
 			expect(JSON.parse(saved!.value)).toEqual({
 				metadata: '<xml>metadata</xml>',
 				loginEnabled: true,
-				loginBinding: 'redirect',
-				acsBinding: 'post',
-				ignoreSSL: false,
-				authnRequestsSigned: false,
-				wantAssertionsSigned: true,
-				wantMessageSigned: true,
-				relayState: '',
 			});
 		});
 
@@ -172,68 +137,6 @@ describe('SsoInstanceSettingsLoader', () => {
 			const saved = JSON.parse(getSaveCall('features.saml')!.value);
 			expect(saved.metadataUrl).toBe('https://idp.example.com/metadata');
 			expect(saved.metadata).toBeUndefined();
-		});
-
-		it('should encrypt signing private key before storing', async () => {
-			const loader = createLoader({
-				...validSamlConfig,
-				samlSigningPrivateKey: 'my-private-key',
-				samlSigningCertificate: 'my-certificate',
-			});
-
-			await loader.run();
-
-			expect(cipher.encrypt).toHaveBeenCalledWith('my-private-key');
-			const saved = JSON.parse(getSaveCall('features.saml')!.value);
-			expect(saved.signingPrivateKey).toBe('encrypted:my-private-key');
-			expect(saved.signingCertificate).toBe('my-certificate');
-		});
-
-		it('should include attribute mapping when non-empty fields are set', async () => {
-			const loader = createLoader({
-				...validSamlConfig,
-				samlMappingEmail: 'email',
-				samlMappingFirstName: 'givenName',
-				samlMappingLastName: 'surname',
-				samlMappingUserPrincipalName: 'upn',
-				samlMappingInstanceRole: 'role',
-			});
-
-			await loader.run();
-
-			const saved = JSON.parse(getSaveCall('features.saml')!.value);
-			expect(saved.mapping).toEqual({
-				email: 'email',
-				firstName: 'givenName',
-				lastName: 'surname',
-				userPrincipalName: 'upn',
-				n8nInstanceRole: 'role',
-			});
-		});
-
-		it('should split comma-separated project roles into array', async () => {
-			const loader = createLoader({
-				...validSamlConfig,
-				samlMappingProjectRoles: 'proj1:admin, proj2:editor, proj3:viewer',
-			});
-
-			await loader.run();
-
-			const saved = JSON.parse(getSaveCall('features.saml')!.value);
-			expect(saved.mapping.n8nProjectRoles).toEqual([
-				'proj1:admin',
-				'proj2:editor',
-				'proj3:viewer',
-			]);
-		});
-
-		it('should not include mapping when all mapping fields are empty', async () => {
-			const loader = createLoader(validSamlConfig);
-
-			await loader.run();
-
-			const saved = JSON.parse(getSaveCall('features.saml')!.value);
-			expect(saved.mapping).toBeUndefined();
 		});
 
 		it('should set authentication method to saml when SAML login is enabled', async () => {
@@ -393,19 +296,6 @@ describe('SsoInstanceSettingsLoader', () => {
 			const loader = createLoader({
 				...validSamlConfig,
 				samlLoginEnabled: false,
-			});
-
-			const result = await loader.run();
-
-			expect(result).toBe('created');
-			expect(getSaveCall('features.saml')?.value).toBe(JSON.stringify({ loginEnabled: false }));
-		});
-
-		it('should ignore invalid SAML env vars and write loginEnabled=false when SAML is not enabled', async () => {
-			const loader = createLoader({
-				ssoManagedByEnv: true,
-				samlMetadata: '<xml>metadata</xml>',
-				samlLoginBinding: 'invalid',
 			});
 
 			const result = await loader.run();

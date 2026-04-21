@@ -37,110 +37,16 @@ const samlEnvSchema = z
 		samlMetadata: z.string(),
 		samlMetadataUrl: z.string(),
 		samlLoginEnabled: z.boolean(),
-		samlLoginLabel: z.string(),
-		samlLoginBinding: z.enum(['redirect', 'post'], {
-			errorMap: () => ({
-				message: 'N8N_SSO_SAML_LOGIN_BINDING must be one of: redirect, post',
-			}),
-		}),
-		samlAcsBinding: z.enum(['redirect', 'post'], {
-			errorMap: () => ({
-				message: 'N8N_SSO_SAML_ACS_BINDING must be one of: redirect, post',
-			}),
-		}),
-		samlIgnoreSsl: z.boolean(),
-		samlAuthnRequestsSigned: z.boolean(),
-		samlWantAssertionsSigned: z.boolean(),
-		samlWantMessageSigned: z.boolean(),
-		samlSigningPrivateKey: z.string(),
-		samlSigningCertificate: z.string(),
-		samlRelayState: z.string(),
-		samlMappingEmail: z.string(),
-		samlMappingFirstName: z.string(),
-		samlMappingLastName: z.string(),
-		samlMappingUserPrincipalName: z.string(),
-		samlMappingInstanceRole: z.string(),
-		samlMappingProjectRoles: z.string(),
 	})
 	.refine((data) => data.samlMetadata || data.samlMetadataUrl, {
 		message:
 			'At least one of N8N_SSO_SAML_METADATA or N8N_SSO_SAML_METADATA_URL is required when configuring SAML via environment variables',
 	})
-	.transform(
-		({
-			samlMetadata,
-			samlMetadataUrl,
-			samlLoginEnabled,
-			samlLoginLabel,
-			samlLoginBinding,
-			samlAcsBinding,
-			samlIgnoreSsl,
-			samlAuthnRequestsSigned,
-			samlWantAssertionsSigned,
-			samlWantMessageSigned,
-			samlSigningPrivateKey,
-			samlSigningCertificate,
-			samlRelayState,
-			samlMappingEmail,
-			samlMappingFirstName,
-			samlMappingLastName,
-			samlMappingUserPrincipalName,
-			samlMappingInstanceRole,
-			samlMappingProjectRoles,
-		}) => {
-			const mapping = buildSamlMapping({
-				samlMappingEmail,
-				samlMappingFirstName,
-				samlMappingLastName,
-				samlMappingUserPrincipalName,
-				samlMappingInstanceRole,
-				samlMappingProjectRoles,
-			});
-
-			return {
-				...(samlMetadata ? { metadata: samlMetadata } : {}),
-				...(samlMetadataUrl ? { metadataUrl: samlMetadataUrl } : {}),
-				loginEnabled: samlLoginEnabled,
-				...(samlLoginLabel ? { loginLabel: samlLoginLabel } : {}),
-				loginBinding: samlLoginBinding,
-				acsBinding: samlAcsBinding,
-				ignoreSSL: samlIgnoreSsl,
-				authnRequestsSigned: samlAuthnRequestsSigned,
-				wantAssertionsSigned: samlWantAssertionsSigned,
-				wantMessageSigned: samlWantMessageSigned,
-				...(samlSigningPrivateKey ? { signingPrivateKey: samlSigningPrivateKey } : {}),
-				...(samlSigningCertificate ? { signingCertificate: samlSigningCertificate } : {}),
-				relayState: samlRelayState,
-				...(mapping ? { mapping } : {}),
-			};
-		},
-	);
-
-function buildSamlMapping(fields: {
-	samlMappingEmail: string;
-	samlMappingFirstName: string;
-	samlMappingLastName: string;
-	samlMappingUserPrincipalName: string;
-	samlMappingInstanceRole: string;
-	samlMappingProjectRoles: string;
-}) {
-	const mapping: Record<string, unknown> = {};
-
-	if (fields.samlMappingEmail) mapping.email = fields.samlMappingEmail;
-	if (fields.samlMappingFirstName) mapping.firstName = fields.samlMappingFirstName;
-	if (fields.samlMappingLastName) mapping.lastName = fields.samlMappingLastName;
-	if (fields.samlMappingUserPrincipalName)
-		mapping.userPrincipalName = fields.samlMappingUserPrincipalName;
-	if (fields.samlMappingInstanceRole) mapping.n8nInstanceRole = fields.samlMappingInstanceRole;
-	if (fields.samlMappingProjectRoles) {
-		mapping.n8nProjectRoles = fields.samlMappingProjectRoles
-			.split(',')
-			.map((v) => v.trim())
-			.filter(Boolean);
-	}
-
-	return Object.keys(mapping).length > 0 ? mapping : undefined;
-}
+	.transform(({ samlMetadata, samlMetadataUrl, samlLoginEnabled }) => ({
+		...(samlMetadata ? { metadata: samlMetadata } : {}),
+		...(samlMetadataUrl ? { metadataUrl: samlMetadataUrl } : {}),
+		loginEnabled: samlLoginEnabled,
+	}));
 
 const oidcEnvSchema = z
 	.object({
@@ -259,14 +165,7 @@ export class SsoInstanceSettingsLoader {
 		}
 	}
 
-	private async writeSamlPreferences(preferences: {
-		signingPrivateKey?: string;
-		[key: string]: unknown;
-	}): Promise<void> {
-		if (preferences.signingPrivateKey) {
-			preferences.signingPrivateKey = this.cipher.encrypt(preferences.signingPrivateKey);
-		}
-
+	private async writeSamlPreferences(preferences: Record<string, unknown>): Promise<void> {
 		await this.settingsRepository.save({
 			key: SAML_PREFERENCES_DB_KEY,
 			value: JSON.stringify(preferences),
