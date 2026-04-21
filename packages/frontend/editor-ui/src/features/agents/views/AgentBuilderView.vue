@@ -350,13 +350,14 @@ async function initialize() {
 
 watch(agentId, initialize, { immediate: true });
 
+// Only react to the arrival of a session id — clearing the param is always
+// accompanied by an explicit `mode` assignment from the caller (exitContinueMode,
+// startChat), so auto-resetting to 'home' here would race and override those.
 watch(
 	continueSessionId,
-	(id, prev) => {
+	(id) => {
 		if (id) {
 			mode.value = 'chat';
-		} else if (prev) {
-			mode.value = 'home';
 		}
 	},
 	{ immediate: true },
