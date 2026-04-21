@@ -143,6 +143,59 @@ describe('NoDanglingNodesCheck', () => {
 		expect(violations).toEqual([]);
 	});
 
+	it('treats sub-nodes attached via non-main connections as reachable', async () => {
+		const check = buildCheck();
+		const trigger = makeNode({ id: 't1', name: 'Trigger', type: TRIGGER });
+		const agent = makeNode({ id: 'a1', name: 'Agent', type: NODE });
+		const languageModel = makeNode({ id: 'lm1', name: 'LanguageModel', type: NODE });
+		const connections: IConnections = {
+			Trigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+			LanguageModel: {
+				ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+			},
+		};
+
+		const violations = await check.evaluate(makeCtx([trigger, agent, languageModel], connections));
+
+		expect(violations).toEqual([]);
+	});
+
+	it('treats sub-nodes chained off other sub-nodes as reachable', async () => {
+		const check = buildCheck();
+		const trigger = makeNode({ id: 't1', name: 'Trigger', type: TRIGGER });
+		const agent = makeNode({ id: 'a1', name: 'Agent', type: NODE });
+		const tool = makeNode({ id: 'tool1', name: 'Tool', type: NODE });
+		const memory = makeNode({ id: 'mem1', name: 'Memory', type: NODE });
+		const connections: IConnections = {
+			Trigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+			Tool: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+			Memory: { ai_memory: [[{ node: 'Tool', type: 'ai_memory', index: 0 }]] },
+		};
+
+		const violations = await check.evaluate(makeCtx([trigger, agent, tool, memory], connections));
+
+		expect(violations).toEqual([]);
+	});
+
+	it('still flags sub-nodes whose parent is not reachable from a trigger', async () => {
+		const check = buildCheck();
+		const trigger = makeNode({ id: 't1', name: 'Trigger', type: TRIGGER });
+		const danglingAgent = makeNode({ id: 'a1', name: 'Agent', type: NODE });
+		const languageModel = makeNode({ id: 'lm1', name: 'LanguageModel', type: NODE });
+		const connections: IConnections = {
+			LanguageModel: {
+				ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+			},
+		};
+
+		const violations = await check.evaluate(
+			makeCtx([trigger, danglingAgent, languageModel], connections),
+		);
+
+		expect(violations).toHaveLength(2);
+		expect(violations.map((v) => v.nodeIds?.[0]).sort()).toEqual(['a1', 'lm1']);
+	});
+
 	it('treats unknown node types as non-triggers', async () => {
 		const nodeTypes = mock<NodeTypes>();
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {

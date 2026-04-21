@@ -51,6 +51,28 @@ export class NoDanglingNodesCheck implements WorkflowCheckType {
 			for (const name of descendants) reachable.add(name);
 		}
 
+		// Sub-nodes (e.g. language models, tools, memory) are the source of non-main
+		// connections into their parent node. Mark them reachable when their parent is,
+		// and loop until stable to handle sub-nodes chained off other sub-nodes.
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (const [sourceName, connectionsByType] of Object.entries(ctx.connections)) {
+				if (reachable.has(sourceName)) continue;
+				for (const [connectionType, connectionGroups] of Object.entries(connectionsByType)) {
+					if (connectionType === NodeConnectionTypes.Main) continue;
+					const reachesReachable = (connectionGroups ?? []).some((group) =>
+						(group ?? []).some((connection) => reachable.has(connection.node)),
+					);
+					if (reachesReachable) {
+						reachable.add(sourceName);
+						changed = true;
+						break;
+					}
+				}
+			}
+		}
+
 		const violations: WorkflowCheckViolation[] = [];
 		for (const node of ctx.nodes) {
 			if (node.disabled) continue;
