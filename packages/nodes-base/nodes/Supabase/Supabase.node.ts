@@ -138,9 +138,17 @@ export class Supabase implements INodeType {
 					undefined,
 					header,
 				);
-				for (const column of Object.keys(definitions[tableName].properties as IDataObject)) {
+
+				const properties = definitions[tableName]?.properties as
+					| { [column: string]: { type: string } }
+					| undefined;
+				if (!properties) {
+					return returnData;
+				}
+
+				for (const column of Object.keys(properties)) {
 					returnData.push({
-						name: `${column} - (${definitions[tableName].properties[column].type})`,
+						name: `${column} - (${properties[column].type})`,
 						value: column,
 					});
 				}
