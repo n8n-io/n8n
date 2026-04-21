@@ -11,7 +11,7 @@ import type { INode, IWorkflowBase } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
-import { WorkflowIndexService } from '../workflow-index.service';
+import { extractRawRefsFromNodes, WorkflowIndexService } from '../workflow-index.service';
 
 describe('WorkflowIndexService', () => {
 	let service: WorkflowIndexService;
@@ -736,5 +736,99 @@ describe('WorkflowIndexService', () => {
 				);
 			}
 		});
+	});
+});
+
+describe('extractRawRefsFromNodes', () => {
+	const makeNode = (overrides: Partial<INode> = {}): INode =>
+		({
+			id: 'n1',
+			name: 'Node 1',
+			type: 'n8n-nodes-base.dataTable',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			...overrides,
+		}) as INode;
+
+	it('collects credential ids from node.credentials', () => {
+		const nodes = [
+			makeNode({
+				type: 'n8n-nodes-base.slack',
+				credentials: { slackApi: { id: 'c1', name: 'Prod' } },
+			}),
+			makeNode({
+				type: 'n8n-nodes-base.slack',
+				credentials: { slackApi: { id: 'c2', name: 'Dev' } },
+			}),
+		];
+		expect(extractRawRefsFromNodes(nodes).credentialIds).toEqual(['c1', 'c2']);
+	});
+
+	it('skips null credential ids', () => {
+		const nodes = [
+			makeNode({
+				type: 'n8n-nodes-base.slack',
+				credentials: { slackApi: { id: null as unknown as string, name: 'Missing' } },
+			}),
+		];
+		expect(extractRawRefsFromNodes(nodes).credentialIds).toEqual([]);
+	});
+
+	it('extracts id-mode data-table references', () => {
+		const nodes = [
+			makeNode({ parameters: { dataTableId: { mode: 'id', value: 'dt-1' } } }),
+			makeNode({ parameters: { dataTableId: { mode: 'list', value: 'dt-2' } } }),
+		];
+		const refs = extractRawRefsFromNodes(nodes);
+		expect(refs.dataTableIdRefs).toEqual(['dt-1', 'dt-2']);
+		expect(refs.dataTableNameRefs).toEqual([]);
+	});
+
+	it('extracts name-mode data-table references separately', () => {
+		const nodes = [makeNode({ parameters: { dataTableId: { mode: 'name', value: 'Customers' } } })];
+		const refs = extractRawRefsFromNodes(nodes);
+		expect(refs.dataTableIdRefs).toEqual([]);
+		expect(refs.dataTableNameRefs).toEqual(['Customers']);
+	});
+
+	it('skips expression-based values', () => {
+		const nodes = [
+			makeNode({ parameters: { dataTableId: { mode: 'id', value: '={{$json.tableId}}' } } }),
+		];
+		expect(extractRawRefsFromNodes(nodes).dataTableIdRefs).toEqual([]);
+	});
+
+	it('skips empty values', () => {
+		const nodes = [makeNode({ parameters: { dataTableId: { mode: 'id', value: '' } } })];
+		expect(extractRawRefsFromNodes(nodes).dataTableIdRefs).toEqual([]);
+	});
+
+	it('ignores non-data-table node types', () => {
+		const nodes = [
+			makeNode({
+				type: 'n8n-nodes-base.set',
+				parameters: { dataTableId: { mode: 'id', value: 'dt-1' } },
+			}),
+		];
+		expect(extractRawRefsFromNodes(nodes).dataTableIdRefs).toEqual([]);
+	});
+
+	it('covers all DATA_TABLE_NODE_TYPES (including evaluation nodes)', () => {
+		const nodes = [
+			makeNode({
+				type: 'n8n-nodes-base.evaluationTrigger',
+				parameters: { dataTableId: { mode: 'id', value: 'dt-eval' } },
+			}),
+		];
+		expect(extractRawRefsFromNodes(nodes).dataTableIdRefs).toEqual(['dt-eval']);
+	});
+
+	it('de-dupes across multiple nodes', () => {
+		const nodes = [
+			makeNode({ parameters: { dataTableId: { mode: 'id', value: 'dt-1' } } }),
+			makeNode({ parameters: { dataTableId: { mode: 'id', value: 'dt-1' } } }),
+		];
+		expect(extractRawRefsFromNodes(nodes).dataTableIdRefs).toEqual(['dt-1']);
 	});
 });

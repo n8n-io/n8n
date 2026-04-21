@@ -3,6 +3,7 @@ import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
+	InstanceAiWorkflowReferences,
 } from '@n8n/api-types';
 
 export interface ResourceEntry {
@@ -14,29 +15,16 @@ export interface ResourceEntry {
 	projectId?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers (defined before use to satisfy no-use-before-define)
-// ---------------------------------------------------------------------------
-
 interface Collections {
-	/** Resources produced/mutated by the agent in this thread, keyed by resource ID. */
 	produced: Map<string, ResourceEntry>;
-	/** Every resource seen in any tool call, keyed by lowercased name — for markdown linking. */
 	byName: Map<string, ResourceEntry>;
+	refsByWorkflow: Map<string, Map<string, ResourceEntry>>;
 }
 
 function optionalString(val: unknown): string | undefined {
 	return typeof val === 'string' ? val : undefined;
 }
 
-/**
- * Upsert a produced artifact. When an entry for the same `id` already exists,
- * optional fields provided by the new call win; fields it omits are preserved
- * from the existing entry. Callers are responsible for resolving `name` using
- * the existing entry as a fallback so partial updates (e.g. a patch
- * `build-workflow` call that carries only a `workflowId`) don't regress a
- * known name to 'Untitled'.
- */
 function recordProduced(col: Collections, entry: ResourceEntry): void {
 	const existing = col.produced.get(entry.id);
 	const merged: ResourceEntry = existing
@@ -60,6 +48,26 @@ function indexByName(col: Collections, entry: ResourceEntry): void {
 	col.byName.set(entry.name.toLowerCase(), entry);
 }
 
+function recordReferencesForWorkflow(col: Collections, refs: InstanceAiWorkflowReferences): void {
+	const inner = new Map<string, ResourceEntry>();
+	for (const t of refs.referencedDataTables) {
+		const entry: ResourceEntry = {
+			type: 'data-table',
+			id: t.id,
+			name: t.name,
+			projectId: t.projectId,
+		};
+		inner.set(t.id, entry);
+		indexByName(col, entry);
+	}
+	for (const c of refs.appliedCredentials) {
+		const entry: ResourceEntry = { type: 'credential', id: c.id, name: c.name };
+		inner.set(c.id, entry);
+		indexByName(col, entry);
+	}
+	col.refsByWorkflow.set(refs.workflowId, inner);
+}
+
 function entryFromListItem(
 	type: ResourceEntry['type'],
 	obj: Record<string, unknown>,
@@ -75,7 +83,6 @@ function entryFromListItem(
 	return entry;
 }
 
-/** Tools whose results may contain resource info (workflows, credentials, data tables). */
 const ARTIFACT_TOOLS = new Set([
 	'build-workflow',
 	'build-workflow-with-agent',
@@ -90,13 +97,25 @@ const ARTIFACT_TOOLS = new Set([
 	'delete-data-table-rows',
 ]);
 
+function isWorkflowReferences(val: unknown): val is InstanceAiWorkflowReferences {
+	if (!val || typeof val !== 'object') return false;
+	const r = val as Partial<InstanceAiWorkflowReferences>;
+	return (
+		typeof r.workflowId === 'string' &&
+		Array.isArray(r.referencedDataTables) &&
+		Array.isArray(r.appliedCredentials)
+	);
+}
+
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
 	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
 
-	// --- Workflows --------------------------------------------------------
-	// List result: { workflows: [{ id, name }, ...] } — index by name only.
+	if (isWorkflowReferences(result.references)) {
+		recordReferencesForWorkflow(col, result.references);
+	}
+
 	if (Array.isArray(result.workflows)) {
 		for (const wf of result.workflows as Array<Record<string, unknown>>) {
 			const entry = entryFromListItem('workflow', wf);
@@ -104,9 +123,6 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// build-workflow / build-workflow-with-agent / submit-workflow:
-	// { workflowId, workflowName? } — produced. Patch calls may omit the name,
-	// so fall back to the existing entry before regressing to 'Untitled'.
 	if (typeof result.workflowId === 'string') {
 		const existing = col.produced.get(result.workflowId);
 		const name =
@@ -117,7 +133,6 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		recordProduced(col, { type: 'workflow', id: result.workflowId, name });
 	}
 
-	// Single workflow object: { workflow: { id, name, ... } } — produced.
 	if (result.workflow && typeof result.workflow === 'object') {
 		const obj = result.workflow as Record<string, unknown>;
 		if (typeof obj.id === 'string') {
@@ -134,8 +149,6 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// --- Credentials -----------------------------------------------------
-	// Credentials never show in the panel; only needed for name linking.
 	if (Array.isArray(result.credentials)) {
 		for (const cred of result.credentials as Array<Record<string, unknown>>) {
 			const entry = entryFromListItem('credential', cred);
@@ -143,8 +156,6 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// --- Data tables -----------------------------------------------------
-	// List results — index by name only.
 	if (Array.isArray(result.tables)) {
 		for (const table of result.tables as Array<Record<string, unknown>>) {
 			const entry = entryFromListItem('data-table', table);
@@ -158,7 +169,6 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// Singular data table (e.g. data-tables action=create) — produced.
 	if (result.table && typeof result.table === 'object') {
 		const obj = result.table as Record<string, unknown>;
 		if (typeof obj.id === 'string') {
@@ -175,9 +185,6 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// Data table mutation results (insert/update/delete-data-table-rows):
-	// { dataTableId, projectId, tableName? } — produced. Preserves an
-	// existing name if the mutation result doesn't carry `tableName`.
 	if (typeof result.dataTableId === 'string' && typeof result.projectId === 'string') {
 		const existing = col.produced.get(result.dataTableId);
 		const name = optionalString(result.tableName) ?? existing?.name ?? result.dataTableId;
@@ -190,13 +197,20 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 }
 
-function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void {
-	for (const tc of node.toolCalls) {
-		extractFromToolCall(tc, col);
+function collectToolCalls(node: InstanceAiAgentNode, out: InstanceAiToolCallState[]): void {
+	for (const tc of node.toolCalls) out.push(tc);
+	for (const child of node.children) collectToolCalls(child, out);
+}
+
+function compareByStartedAt(a: InstanceAiToolCallState, b: InstanceAiToolCallState): number {
+	if (a.startedAt && b.startedAt) {
+		if (a.startedAt < b.startedAt) return -1;
+		if (a.startedAt > b.startedAt) return 1;
+		return 0;
 	}
-	for (const child of node.children) {
-		collectFromAgentNode(child, col);
-	}
+	if (a.startedAt) return -1;
+	if (b.startedAt) return 1;
+	return 0;
 }
 
 function enrichWorkflowNames(
@@ -214,23 +228,6 @@ function enrichWorkflowNames(
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Composable
-// ---------------------------------------------------------------------------
-
-/**
- * Scans tool-call results in the conversation and returns two collections:
- *
- * - `producedArtifacts` (keyed by resource id) — things the agent built,
- *   submitted, created, or mutated. Powers the Artifacts panel and the
- *   canvas preview tabs. Repeated writes to the same resource update the
- *   existing entry instead of creating a duplicate.
- *
- * - `resourceNameIndex` (keyed by lowercased name) — every named resource
- *   seen in any tool call, including list results. Used only for markdown
- *   name→link replacement so references to listed workflows/tables still
- *   resolve.
- */
 export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
 	workflowNameLookup?: (id: string) => string | undefined,
@@ -239,12 +236,16 @@ export function useResourceRegistry(
 		const col: Collections = {
 			produced: new Map<string, ResourceEntry>(),
 			byName: new Map<string, ResourceEntry>(),
+			refsByWorkflow: new Map<string, Map<string, ResourceEntry>>(),
 		};
 
+		const toolCalls: InstanceAiToolCallState[] = [];
 		for (const msg of messages()) {
 			if (!msg.agentTree) continue;
-			collectFromAgentNode(msg.agentTree, col);
+			collectToolCalls(msg.agentTree, toolCalls);
 		}
+		toolCalls.sort(compareByStartedAt);
+		for (const tc of toolCalls) extractFromToolCall(tc, col);
 
 		if (workflowNameLookup) {
 			enrichWorkflowNames(col, workflowNameLookup);
@@ -253,8 +254,20 @@ export function useResourceRegistry(
 		return col;
 	});
 
+	const referencedArtifacts = computed((): Map<string, ResourceEntry> => {
+		const result = new Map<string, ResourceEntry>();
+		for (const inner of collections.value.refsByWorkflow.values()) {
+			for (const [id, entry] of inner) {
+				if (collections.value.produced.has(id)) continue;
+				result.set(id, entry);
+			}
+		}
+		return result;
+	});
+
 	return {
 		producedArtifacts: computed(() => collections.value.produced),
+		referencedArtifacts,
 		resourceNameIndex: computed(() => collections.value.byName),
 	};
 }

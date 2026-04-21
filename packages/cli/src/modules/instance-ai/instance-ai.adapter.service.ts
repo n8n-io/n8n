@@ -36,6 +36,7 @@ import type {
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
 import { wrapUntrustedData } from '@n8n/instance-ai';
+import type { InstanceAiWorkflowReferences } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -100,6 +101,8 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { extractRawRefsFromNodes } from '@/modules/workflow-index/workflow-index.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -179,6 +182,7 @@ export class InstanceAiAdapterService {
 		private readonly eventService: EventService,
 		private readonly roleService: RoleService,
 		private readonly telemetry: Telemetry,
+		private readonly ownershipService: OwnershipService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -204,6 +208,92 @@ export class InstanceAiAdapterService {
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
+			getWorkflowReferences: async (workflowId) =>
+				await this.resolveWorkflowReferences(user, workflowId),
+		};
+	}
+
+	private async resolveWorkflowReferences(
+		user: User,
+		workflowId: string,
+	): Promise<InstanceAiWorkflowReferences> {
+		const empty: InstanceAiWorkflowReferences = {
+			workflowId,
+			referencedDataTables: [],
+			appliedCredentials: [],
+		};
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+		if (!workflow) return empty;
+
+		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+		const { credentialIds, dataTableIdRefs, dataTableNameRefs } = extractRawRefsFromNodes(
+			workflow.nodes ?? [],
+		);
+
+		const credentialResults = await Promise.allSettled(
+			credentialIds.map(async (id) => {
+				const cred = await this.credentialsFinderService.findCredentialForUser(id, user, [
+					'credential:read',
+				]);
+				if (!cred) throw new Error('inaccessible');
+				return { id: cred.id, name: cred.name, credentialType: cred.type };
+			}),
+		);
+		const appliedCredentials = credentialResults
+			.filter(
+				(r): r is PromiseFulfilledResult<{ id: string; name: string; credentialType: string }> =>
+					r.status === 'fulfilled',
+			)
+			.map((r) => r.value);
+
+		const dataTablesById = new Map<string, { id: string; name: string; projectId: string }>();
+
+		await Promise.all(
+			dataTableIdRefs.map(async (id) => {
+				const allowed = await userHasScopes(user, ['dataTable:read'], false, { dataTableId: id });
+				if (!allowed) return;
+				try {
+					const table = await this.dataTableRepository.findOneBy({ id });
+					if (table)
+						dataTablesById.set(table.id, {
+							id: table.id,
+							name: table.name,
+							projectId: table.projectId,
+						});
+				} catch {
+					// drop silently — inaccessible or missing
+				}
+			}),
+		);
+
+		if (dataTableNameRefs.length > 0) {
+			try {
+				const { data: tables } = await this.dataTableService.getManyAndCount({
+					filter: { projectId: project.id },
+				});
+				const byName = new Map(tables.map((t) => [t.name, t]));
+				for (const name of dataTableNameRefs) {
+					const match = byName.get(name);
+					if (match && !dataTablesById.has(match.id)) {
+						dataTablesById.set(match.id, {
+							id: match.id,
+							name: match.name,
+							projectId: project.id,
+						});
+					}
+				}
+			} catch {
+				// drop silently
+			}
+		}
+
+		return {
+			workflowId,
+			referencedDataTables: [...dataTablesById.values()],
+			appliedCredentials,
 		};
 	}
 
@@ -1139,6 +1229,19 @@ export class InstanceAiAdapterService {
 		};
 
 		return {
+			async get(dataTableId) {
+				const projectId = await resolveProjectIdForTable(['dataTable:read'], dataTableId);
+				const table = await dataTableRepository.findOneByOrFail({ id: dataTableId });
+				return {
+					id: table.id,
+					name: table.name,
+					projectId,
+					columns: table.columns.map((c) => ({ id: c.id, name: c.name, type: c.type })),
+					createdAt: table.createdAt.toISOString(),
+					updatedAt: table.updatedAt.toISOString(),
+				};
+			},
+
 			async list(options) {
 				const projectId = await resolveProjectId(['dataTable:listProject'], options?.projectId);
 				const { data: tables } = await dataTableService.getManyAndCount({

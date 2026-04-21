@@ -48,11 +48,11 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 
 function setup(workflowNameLookup?: (id: string) => string | undefined) {
 	const messages = ref<InstanceAiMessage[]>([]);
-	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
+	const { producedArtifacts, referencedArtifacts, resourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		workflowNameLookup,
 	);
-	return { messages, producedArtifacts, resourceNameIndex };
+	return { messages, producedArtifacts, referencedArtifacts, resourceNameIndex };
 }
 
 // ---------------------------------------------------------------------------
@@ -469,6 +469,173 @@ describe('useResourceRegistry', () => {
 				name: 'dt-no-name',
 				projectId: 'proj-3',
 			});
+		});
+	});
+
+	describe('workflow references', () => {
+		test('workflows(action="setup") result lands tables in referencedArtifacts and credentials in referencedArtifacts', async () => {
+			const { messages, producedArtifacts, referencedArtifacts } = setup();
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								result: {
+									success: true,
+									references: {
+										workflowId: 'wf-1',
+										referencedDataTables: [{ id: 'dt-1', name: 'Customers', projectId: 'proj-1' }],
+										appliedCredentials: [
+											{ id: 'c-1', name: 'Prod Slack', credentialType: 'slackApi' },
+										],
+									},
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(referencedArtifacts.value.get('dt-1')).toEqual({
+				type: 'data-table',
+				id: 'dt-1',
+				name: 'Customers',
+				projectId: 'proj-1',
+			} satisfies ResourceEntry);
+			expect(referencedArtifacts.value.get('c-1')).toEqual({
+				type: 'credential',
+				id: 'c-1',
+				name: 'Prod Slack',
+			} satisfies ResourceEntry);
+			expect(producedArtifacts.value.has('dt-1')).toBe(false);
+			expect(producedArtifacts.value.has('c-1')).toBe(false);
+		});
+
+		test('a later emission for the same workflow replaces the earlier reference set', async () => {
+			const { messages, referencedArtifacts } = setup();
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-early',
+								toolName: 'build-workflow',
+								startedAt: '2026-04-20T10:00:00Z',
+								result: {
+									success: true,
+									workflowId: 'wf-1',
+									references: {
+										workflowId: 'wf-1',
+										referencedDataTables: [{ id: 'dt-old', name: 'Old', projectId: 'p' }],
+										appliedCredentials: [],
+									},
+								},
+							}),
+							makeToolCall({
+								toolCallId: 'tc-late',
+								toolName: 'build-workflow',
+								startedAt: '2026-04-20T11:00:00Z',
+								result: {
+									success: true,
+									workflowId: 'wf-1',
+									references: {
+										workflowId: 'wf-1',
+										referencedDataTables: [{ id: 'dt-new', name: 'New', projectId: 'p' }],
+										appliedCredentials: [],
+									},
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(referencedArtifacts.value.has('dt-old')).toBe(false);
+			expect(referencedArtifacts.value.get('dt-new')?.name).toBe('New');
+		});
+
+		test('startedAt sorts emissions globally across parent and child agents', async () => {
+			const { messages, referencedArtifacts } = setup();
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'parent-late',
+								toolName: 'workflows',
+								startedAt: '2026-04-20T12:00:00Z',
+								result: {
+									references: {
+										workflowId: 'wf-1',
+										referencedDataTables: [{ id: 'dt-parent', name: 'Parent', projectId: 'p' }],
+										appliedCredentials: [],
+									},
+								},
+							}),
+						],
+						children: [
+							makeAgentNode({
+								agentId: 'child',
+								toolCalls: [
+									makeToolCall({
+										toolCallId: 'child-later',
+										toolName: 'submit-workflow',
+										startedAt: '2026-04-20T13:00:00Z',
+										result: {
+											success: true,
+											workflowId: 'wf-1',
+											references: {
+												workflowId: 'wf-1',
+												referencedDataTables: [{ id: 'dt-child', name: 'Child', projectId: 'p' }],
+												appliedCredentials: [],
+											},
+										},
+									}),
+								],
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(referencedArtifacts.value.has('dt-parent')).toBe(false);
+			expect(referencedArtifacts.value.get('dt-child')?.name).toBe('Child');
+		});
+
+		test('produced wins over referenced when the same id appears in both', async () => {
+			const { messages, producedArtifacts, referencedArtifacts } = setup();
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'data-tables',
+								result: {
+									table: { id: 'dt-shared', name: 'Shared', projectId: 'p' },
+								},
+							}),
+							makeToolCall({
+								toolName: 'workflows',
+								result: {
+									references: {
+										workflowId: 'wf-1',
+										referencedDataTables: [{ id: 'dt-shared', name: 'Shared', projectId: 'p' }],
+										appliedCredentials: [],
+									},
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.value.has('dt-shared')).toBe(true);
+			expect(referencedArtifacts.value.has('dt-shared')).toBe(false);
 		});
 	});
 });

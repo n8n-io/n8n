@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { formatTimestamp } from '../utils/format-timestamp';
+import { resolveReferences } from './workflows/resolve-references';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
@@ -392,6 +393,11 @@ async function handleSetup(
 		const allFailedNodes = [...(failedNodes ?? []), ...credTestFailures];
 		const mergedFailedNodes = allFailedNodes.length > 0 ? allFailedNodes : undefined;
 
+		const references = await resolveReferences(context, input.workflowId, {
+			excludeNodeNames: credFailedNodeNames,
+			nodes: updatedWorkflow.nodes,
+		});
+
 		if (pendingRequests.length > 0) {
 			const skippedNodes = pendingRequests.map((r) => ({
 				nodeName: r.node.name,
@@ -406,6 +412,7 @@ async function handleSetup(
 				failedNodes: mergedFailedNodes,
 				updatedNodes,
 				updatedConnections,
+				...(references ? { references } : {}),
 			};
 		}
 
@@ -415,6 +422,7 @@ async function handleSetup(
 			failedNodes: mergedFailedNodes,
 			updatedNodes,
 			updatedConnections,
+			...(references ? { references } : {}),
 		};
 	} catch (error) {
 		return {

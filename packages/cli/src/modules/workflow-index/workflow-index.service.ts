@@ -381,3 +381,41 @@ export class WorkflowIndexService {
 		return undefined;
 	}
 }
+
+export interface RawExtractedRefs {
+	credentialIds: string[];
+	dataTableIdRefs: string[];
+	dataTableNameRefs: string[];
+}
+
+export function extractRawRefsFromNodes(nodes: INode[]): RawExtractedRefs {
+	const credentialIds = new Set<string>();
+	const dataTableIdRefs = new Set<string>();
+	const dataTableNameRefs = new Set<string>();
+
+	for (const node of nodes) {
+		if (node.credentials) {
+			for (const cred of Object.values(node.credentials)) {
+				if (cred?.id) credentialIds.add(cred.id);
+			}
+		}
+
+		if (!DATA_TABLE_NODE_TYPES.includes(node.type)) continue;
+
+		const locator = node.parameters?.dataTableId as { mode?: string; value?: unknown } | undefined;
+		if (!locator || typeof locator.value !== 'string' || locator.value === '') continue;
+		if (locator.value.includes('{')) continue; // matches WorkflowIndexService expression-skip
+
+		if (locator.mode === 'name') {
+			dataTableNameRefs.add(locator.value);
+		} else {
+			dataTableIdRefs.add(locator.value);
+		}
+	}
+
+	return {
+		credentialIds: [...credentialIds],
+		dataTableIdRefs: [...dataTableIdRefs],
+		dataTableNameRefs: [...dataTableNameRefs],
+	};
+}

@@ -1,19 +1,27 @@
 <script lang="ts" setup>
 import { computed, inject } from 'vue';
+import { useRouter } from 'vue-router';
 import { N8nHeading, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 const i18n = useI18n();
+const router = useRouter();
 const store = useInstanceAiStore();
+const uiStore = useUIStore();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
 	'openDataTablePreview',
 	undefined,
 );
+
+function dataTableUrl(projectId: string | undefined, id: string): string {
+	return projectId ? `/projects/${projectId}/datatables/${id}` : '/home/datatables';
+}
 
 function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 	if (artifact.type === 'workflow' && artifact.id) {
@@ -22,7 +30,20 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 			return;
 		}
 		openPreview?.(artifact.id);
-	} else if (artifact.type === 'data-table' && artifact.id) {
+		return;
+	}
+
+	if (artifact.type === 'data-table' && artifact.id) {
+		const isReferenced = !store.producedArtifacts.has(artifact.id);
+		if (isReferenced) {
+			const url = dataTableUrl(artifact.projectId, artifact.id);
+			if (e.metaKey || e.ctrlKey) {
+				window.open(url, '_blank');
+				return;
+			}
+			void router.push(url);
+			return;
+		}
 		if (e.metaKey || e.ctrlKey) {
 			window.open('/data-tables', '_blank');
 			return;
@@ -30,6 +51,11 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		if (artifact.projectId) {
 			openDataTablePreview?.(artifact.id, artifact.projectId);
 		}
+		return;
+	}
+
+	if (artifact.type === 'credential' && artifact.id) {
+		uiStore.openExistingCredential(artifact.id);
 	}
 }
 
@@ -52,11 +78,18 @@ const statusIconMap: Record<
 	cancelled: { icon: 'ban', spin: false, className: 'cancelledIcon' },
 };
 
-// --- Artifacts ---
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
+	const seen = new Set<string>();
 	for (const entry of store.producedArtifacts.values()) {
-		if (entry.type === 'workflow' || entry.type === 'data-table') {
+		if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'credential') {
+			result.push(entry);
+			seen.add(entry.id);
+		}
+	}
+	for (const entry of store.referencedArtifacts.values()) {
+		if (seen.has(entry.id)) continue;
+		if (entry.type === 'data-table' || entry.type === 'credential') {
 			result.push(entry);
 		}
 	}
@@ -66,6 +99,7 @@ const artifacts = computed((): ResourceEntry[] => {
 const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
+	credential: 'key-round',
 };
 </script>
 
@@ -99,6 +133,7 @@ const artifactIconMap: Record<string, IconName> = {
 				<div :class="$style.emptyIcons">
 					<N8nIcon icon="workflow" :size="30" :class="$style.emptyIcon" />
 					<N8nIcon icon="table" :size="30" :class="$style.emptyIcon" />
+					<N8nIcon icon="key-round" :size="30" :class="$style.emptyIcon" />
 				</div>
 				<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
 			</div>

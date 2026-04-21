@@ -3,6 +3,7 @@ import { generateWorkflowCode, layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
+import { resolveReferences } from './resolve-references';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
 import type { InstanceAiContext } from '../../types';
@@ -53,6 +54,17 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			workflowId: z.string().optional(),
 			errors: z.array(z.string()).optional(),
 			warnings: z.array(z.string()).optional(),
+			references: z
+				.object({
+					workflowId: z.string(),
+					referencedDataTables: z.array(
+						z.object({ id: z.string(), name: z.string(), projectId: z.string() }),
+					),
+					appliedCredentials: z.array(
+						z.object({ id: z.string(), name: z.string(), credentialType: z.string() }),
+					),
+				})
+				.optional(),
 		}),
 		execute: async (input: z.infer<typeof buildWorkflowInputSchema>) => {
 			const permKey = input.workflowId ? 'updateWorkflow' : 'createWorkflow';
@@ -171,6 +183,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						json,
 						opts,
 					);
+					const references = await resolveReferences(context, updated.id);
 					return {
 						success: true,
 						workflowId: updated.id,
@@ -178,9 +191,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							informational.length > 0
 								? informational.map((w) => `[${w.code}]: ${w.message}`)
 								: undefined,
+						...(references ? { references } : {}),
 					};
 				} else {
 					const created = await context.workflowService.createFromWorkflowJSON(json, opts);
+					const references = await resolveReferences(context, created.id);
 					return {
 						success: true,
 						workflowId: created.id,
@@ -188,6 +203,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							informational.length > 0
 								? informational.map((w) => `[${w.code}]: ${w.message}`)
 								: undefined,
+						...(references ? { references } : {}),
 					};
 				}
 			} catch (error) {

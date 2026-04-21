@@ -2,13 +2,17 @@
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import type { ComponentPublicInstance } from 'vue';
 import { computed, inject, onBeforeUnmount, onMounted, onUpdated, ref, useCssModule } from 'vue';
+import { useRouter } from 'vue-router';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const props = defineProps<{
 	content: string;
 }>();
 
 const store = useInstanceAiStore();
+const uiStore = useUIStore();
+const router = useRouter();
 const styles = useCssModule();
 const wrapperRef = ref<ComponentPublicInstance | null>(null);
 
@@ -160,7 +164,6 @@ function enhanceResourceLinks(): void {
 						)
 					: undefined;
 
-			// Swap href to the real app URL (used for Cmd+click / new tab)
 			link.href =
 				type === 'data-table' && registryEntry?.projectId
 					? `/projects/${registryEntry.projectId}/datatables/${id}`
@@ -169,21 +172,33 @@ function enhanceResourceLinks(): void {
 			link.dataset.resourceId = id;
 			applyResourceChip(link, type);
 
-			// Regular click opens preview; Cmd/Ctrl+click falls through to default (new tab)
+			const isReferencedTable =
+				type === 'data-table' && !store.producedArtifacts.has(id) && registryEntry?.projectId;
+
 			const handler = (e: MouseEvent) => {
-				if (e.metaKey || e.ctrlKey) return; // Let browser handle new-tab
+				if (e.metaKey || e.ctrlKey) return;
 
-				const canPreview =
-					(type === 'workflow' && openWorkflowPreview) ||
-					(type === 'data-table' && registryEntry?.projectId && openDataTablePreview);
+				if (type === 'credential') {
+					e.preventDefault();
+					uiStore.openExistingCredential(id);
+					return;
+				}
 
-				if (!canPreview) return; // Let browser navigate normally
+				if (type === 'workflow' && openWorkflowPreview) {
+					e.preventDefault();
+					openWorkflowPreview(id);
+					return;
+				}
 
-				e.preventDefault();
-				if (type === 'workflow') {
-					openWorkflowPreview?.(id);
-				} else if (type === 'data-table' && registryEntry?.projectId) {
-					openDataTablePreview?.(id, registryEntry.projectId);
+				if (isReferencedTable && registryEntry?.projectId) {
+					e.preventDefault();
+					void router.push(`/projects/${registryEntry.projectId}/datatables/${id}`);
+					return;
+				}
+
+				if (type === 'data-table' && registryEntry?.projectId && openDataTablePreview) {
+					e.preventDefault();
+					openDataTablePreview(id, registryEntry.projectId);
 				}
 			};
 			link.addEventListener('click', handler);

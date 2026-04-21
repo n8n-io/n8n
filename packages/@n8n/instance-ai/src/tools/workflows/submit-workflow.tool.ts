@@ -15,6 +15,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
+import { resolveReferences } from './resolve-references';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
@@ -174,6 +175,17 @@ export function createSubmitWorkflowTool(
 			verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
 			errors: z.array(z.string()).optional(),
 			warnings: z.array(z.string()).optional(),
+			references: z
+				.object({
+					workflowId: z.string(),
+					referencedDataTables: z.array(
+						z.object({ id: z.string(), name: z.string(), projectId: z.string() }),
+					),
+					appliedCredentials: z.array(
+						z.object({ id: z.string(), name: z.string(), credentialType: z.string() }),
+					),
+				})
+				.optional(),
 		}),
 		execute: async ({
 			filePath: rawFilePath,
@@ -375,6 +387,7 @@ export function createSubmitWorkflowTool(
 						: undefined,
 				hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 			});
+			const references = await resolveReferences(context, savedId);
 			return {
 				success: true,
 				workflowId: savedId,
@@ -392,6 +405,7 @@ export function createSubmitWorkflowTool(
 					informational.length > 0
 						? informational.map((w) => `[${w.code}]: ${w.message}`)
 						: undefined,
+				...(references ? { references } : {}),
 			};
 		},
 	});

@@ -1020,3 +1020,25 @@ export interface InstanceAiEvalExecutionResult {
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
 }) {}
+
+// ---------------------------------------------------------------------------
+// Workflow references
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiReferencedDataTable {
+	id: string;
+	name: string;
+	projectId: string;
+}
+
+export interface InstanceAiAppliedCredential {
+	id: string;
+	name: string;
+	credentialType: string;
+}
+
+export interface InstanceAiWorkflowReferences {
+	workflowId: string;
+	referencedDataTables: InstanceAiReferencedDataTable[];
+	appliedCredentials: InstanceAiAppliedCredential[];
+}

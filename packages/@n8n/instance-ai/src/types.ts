@@ -7,6 +7,7 @@ import type {
 	TaskList,
 	InstanceAiAttachment,
 	InstanceAiPermissions,
+	InstanceAiWorkflowReferences,
 	McpTool,
 	McpToolCallRequest,
 	McpToolCallResult,
@@ -351,6 +352,7 @@ export interface DataTableFilterInput {
 // ── Data table service ───────────────────────────────────────────────────────
 
 export interface InstanceAiDataTableService {
+	get(dataTableId: string): Promise<DataTableSummary>;
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
 		name: string,
@@ -534,6 +536,7 @@ export interface InstanceAiContext {
 	currentUserAttachments?: InstanceAiAttachment[];
 	/** Optional logger for diagnostics from domain tools. */
 	logger?: Logger;
+	getWorkflowReferences?(workflowId: string): Promise<InstanceAiWorkflowReferences>;
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
