@@ -195,6 +195,7 @@ function formatJson(value: unknown): string {
 	align-self: flex-end;
 	display: flex;
 	justify-content: flex-end;
+	width: 100%;
 }
 
 .userAttachments {

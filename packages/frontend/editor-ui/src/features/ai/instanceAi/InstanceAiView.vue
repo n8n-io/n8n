@@ -328,11 +328,12 @@ watch(
 	() => props.threadId,
 	(threadId) => {
 		if (!threadId) {
-			// /instance-ai base route (no :threadId) — thread appears in sidebar
-			// only after the first message is sent (via syncThread in sendMessage)
-			if (store.sseState === 'disconnected') {
-				reconnectThreadIfHydrationApplied(store.currentThreadId);
-			}
+			// /instance-ai base route (no :threadId) — reset to a clean empty
+			// state. Without this, `currentThreadId` keeps pointing at the
+			// last thread and the sidebar highlights it alongside the empty
+			// main view (AI-2408). A new thread is created on the first
+			// `sendMessage` via `syncThread`.
+			store.clearCurrentThread();
 			return;
 		}
 		if (threadId === store.currentThreadId) {
