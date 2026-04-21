@@ -45,6 +45,7 @@ const props = defineProps<{
 	building?: boolean;
 	codeOnly?: boolean;
 	connectedTriggers?: string[];
+	agentStatus: 'draft' | 'production';
 }>();
 
 const emit = defineEmits<{
@@ -294,6 +295,7 @@ watch(
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
+							:agent-status="agentStatus"
 							@update:connected-triggers="
 								(list: string[]) => emit('update:connected-triggers', list)
 							"

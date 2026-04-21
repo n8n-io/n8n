@@ -12,11 +12,13 @@ import {
 	disconnectIntegration,
 	getIntegrationStatus,
 } from '../composables/useAgentApi';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	agentName: string;
+	agentStatus: 'draft' | 'production';
 }>();
 
 const emit = defineEmits<{
@@ -25,6 +27,7 @@ const emit = defineEmits<{
 
 const rootStore = useRootStore();
 const uiStore = useUIStore();
+const agentTelemetry = useAgentTelemetry();
 
 interface CredentialOption {
 	id: string;
@@ -167,11 +170,14 @@ async function copyManifest() {
 	}, 2000);
 }
 
-function emitConnectedTriggers() {
-	const triggers = Object.keys(statuses.value)
+function computeConnectedTriggers(): string[] {
+	return Object.keys(statuses.value)
 		.filter((t) => statuses.value[t] === 'connected')
 		.sort();
-	emit('update:connected-triggers', triggers);
+}
+
+function emitConnectedTriggers() {
+	emit('update:connected-triggers', computeConnectedTriggers());
 }
 
 async function fetchStatus() {
@@ -232,6 +238,18 @@ async function onConnect(type: string) {
 			type,
 			credId,
 		);
+
+		// Optimistically mark as connected before fetchStatus() reconciles
+		// so the telemetry payload reflects the just-connected trigger.
+		statuses.value[type] = 'connected';
+		const triggers = computeConnectedTriggers();
+		agentTelemetry.trackAddedTrigger({
+			agentId: props.agentId,
+			triggerType: type,
+			triggers,
+			status: props.agentStatus,
+		});
+
 		await fetchStatus();
 	} catch (e: unknown) {
 		const msg =
