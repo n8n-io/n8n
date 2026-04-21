@@ -5,7 +5,10 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { BASE_URL_EXPRESSION } from '../nodes/llms/LmChatAlibabaCloud/alibaba-cloud-base-url';
+import {
+	COMPATIBLE_MODE_SUFFIX,
+	REGION_BASE_HOSTS,
+} from '../nodes/llms/LmChatAlibabaCloud/alibaba-cloud-base-url';
 
 export class AlibabaCloudApi implements ICredentialType {
 	name = 'alibabaCloudApi';
@@ -66,6 +69,12 @@ export class AlibabaCloudApi implements ICredentialType {
 			description:
 				'The Workspace ID required for the Germany (Frankfurt) region. Find it in the Model Studio console under the Germany region settings.',
 		},
+		{
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'hidden',
+			default: `={{ (() => { const hosts = ${JSON.stringify(REGION_BASE_HOSTS)}; const region = $self.region; if (region === "eu-central-1") { return "https://" + $self.workspaceId + ".eu-central-1.maas.aliyuncs.com"; } return hosts[region] || hosts["ap-southeast-1"]; })() }}`,
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -79,8 +88,8 @@ export class AlibabaCloudApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: BASE_URL_EXPRESSION,
-			url: '/models',
+			baseURL: '={{ $credentials.url }}',
+			url: `${COMPATIBLE_MODE_SUFFIX}/models`,
 		},
 	};
 }

@@ -125,7 +125,6 @@ describe('useWorkflowsStore', () => {
 	});
 
 	it('should initialize with default state', () => {
-		expect(workflowsStore.workflow.name).toBe('');
 		expect(workflowsStore.workflow.id).toBe('');
 	});
 

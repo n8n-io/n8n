@@ -320,6 +320,7 @@ export class McpService {
 		const createTool = createCreateWorkflowFromCodeTool(
 			user,
 			this.workflowCreationService,
+			this.workflowFinderService,
 			this.urlService,
 			this.telemetry,
 			this.nodeTypes,
