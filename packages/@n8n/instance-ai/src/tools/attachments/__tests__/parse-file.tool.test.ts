@@ -44,6 +44,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			listSearchable: jest.fn(),
 		},
 		dataTableService: {
+			get: jest.fn(),
 			list: jest.fn(),
 			create: jest.fn(),
 			delete: jest.fn(),
