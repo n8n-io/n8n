@@ -97,11 +97,11 @@ function writeEvalResults(
 	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
 	const totalScenariosCount = allScenarios.length;
 
-	const passAtNCount =
+	const passAtKCount =
 		totalScenariosCount > 0
 			? allScenarios.reduce((sum, s) => sum + (s.passAtK[totalRuns - 1] ?? 0), 0)
 			: 0;
-	const passHatNCount =
+	const passHatKCount =
 		totalScenariosCount > 0
 			? allScenarios.reduce((sum, s) => sum + (s.passHatK[totalRuns - 1] ?? 0), 0)
 			: 0;
@@ -114,8 +114,8 @@ function writeEvalResults(
 			testCases: testCases.length,
 			built: testCases.filter((tc) => tc.buildSuccessCount > 0).length,
 			scenariosTotal: totalScenariosCount,
-			passAtN: totalScenariosCount > 0 ? passAtNCount / totalScenariosCount : 0,
-			passHatN: totalScenariosCount > 0 ? passHatNCount / totalScenariosCount : 0,
+			passAtK: totalScenariosCount > 0 ? passAtKCount / totalScenariosCount : 0,
+			passHatK: totalScenariosCount > 0 ? passHatKCount / totalScenariosCount : 0,
 		},
 		testCases: testCases.map((tc) => ({
 			name: tc.testCase.prompt.slice(0, 70),
@@ -125,8 +125,8 @@ function writeEvalResults(
 				name: sa.scenario.name,
 				passCount: sa.passCount,
 				totalRuns,
-				passAtN: sa.passAtK[totalRuns - 1] ?? 0,
-				passHatN: sa.passHatK[totalRuns - 1] ?? 0,
+				passAtK: sa.passAtK[totalRuns - 1] ?? 0,
+				passHatK: sa.passHatK[totalRuns - 1] ?? 0,
 				runs: sa.runs.map((sr) => ({
 					passed: sr.success,
 					score: sr.score,
@@ -166,11 +166,11 @@ function printSummary(evaluation: MultiRunEvaluation): void {
 
 		for (const sa of tc.scenarios) {
 			if (multiRun) {
-				const passAtN = Math.round((sa.passAtK[totalRuns - 1] ?? 0) * 100);
-				const passHatN = Math.round((sa.passHatK[totalRuns - 1] ?? 0) * 100);
+				const passAtK = Math.round((sa.passAtK[totalRuns - 1] ?? 0) * 100);
+				const passHatK = Math.round((sa.passHatK[totalRuns - 1] ?? 0) * 100);
 				console.log(
 					`  ${sa.scenario.name}: ${String(sa.passCount)}/${String(totalRuns)} passed` +
-						` | pass@${String(totalRuns)}: ${String(passAtN)}% | pass^${String(totalRuns)}: ${String(passHatN)}%`,
+						` | pass@${String(totalRuns)}: ${String(passAtK)}% | pass^${String(totalRuns)}: ${String(passHatK)}%`,
 				);
 			} else {
 				const sr = sa.runs[0];
@@ -189,26 +189,24 @@ function printSummary(evaluation: MultiRunEvaluation): void {
 	if (multiRun) {
 		const allScenarios = testCases.flatMap((tc) => tc.scenarios);
 		const total = allScenarios.length;
-		const avgPassAtN =
+		const avgPassAtK =
 			total > 0
 				? Math.round(
-						(allScenarios.reduce((sum, s) => sum + (s.passAtK[totalRuns - 1] ?? 0), 0) /
-							total) *
+						(allScenarios.reduce((sum, s) => sum + (s.passAtK[totalRuns - 1] ?? 0), 0) / total) *
 							100,
 					)
 				: 0;
-		const avgPassHatN =
+		const avgPassHatK =
 			total > 0
 				? Math.round(
-						(allScenarios.reduce((sum, s) => sum + (s.passHatK[totalRuns - 1] ?? 0), 0) /
-							total) *
+						(allScenarios.reduce((sum, s) => sum + (s.passHatK[totalRuns - 1] ?? 0), 0) / total) *
 							100,
 					)
 				: 0;
 
 		console.log('\n=== Aggregate Metrics ===\n');
-		console.log(`  pass@${String(totalRuns)}: ${String(avgPassAtN)}%`);
-		console.log(`  pass^${String(totalRuns)}: ${String(avgPassHatN)}%`);
+		console.log(`  pass@${String(totalRuns)}: ${String(avgPassAtK)}%`);
+		console.log(`  pass^${String(totalRuns)}: ${String(avgPassHatK)}%`);
 	}
 
 	// Totals
