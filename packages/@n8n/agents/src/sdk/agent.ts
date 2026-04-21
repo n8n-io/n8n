@@ -35,7 +35,6 @@ import type {
 	ResumeOptions,
 } from '../types';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
-import type { ResolvedCredential } from '../types/sdk/credential-provider';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
 
@@ -108,8 +107,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private checkpointStore?: 'memory' | CheckpointStore;
 
 	private thinkingConfig?: ThinkingConfig;
-
-	private resolvedCredential?: ResolvedCredential;
 
 	private runtime?: AgentRuntime;
 
