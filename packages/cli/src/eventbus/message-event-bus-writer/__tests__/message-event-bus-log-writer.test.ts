@@ -86,6 +86,62 @@ describe('MessageEventBusLogWriter.readLoggedMessagesFromFile', () => {
 		);
 	});
 
+	it('uses per-file count so prior file accumulation does not abort the next file', async () => {
+		const maxMessagesPerParse = 5;
+		setMaxMessagesPerParse(maxMessagesPerParse);
+		writer = new MessageEventBusLogWriter();
+
+		// File 1: 4 unconfirmed messages (below limit)
+		const lines1: string[] = [];
+		for (let i = 0; i < 4; i++) {
+			lines1.push(makeWorkflowStartedLine(`old-id-${i}`, `old-exec-${i}`));
+		}
+		const logFile1 = writeLogFile('old.log', lines1);
+
+		// File 2: 4 unconfirmed messages (below limit per-file, but 8 total)
+		const lines2: string[] = [];
+		for (let i = 0; i < 4; i++) {
+			lines2.push(makeWorkflowStartedLine(`new-id-${i}`, `new-exec-${i}`));
+		}
+		const logFile2 = writeLogFile('new.log', lines2);
+
+		const results = {
+			loggedMessages: [] as EventMessageTypes[],
+			sentMessages: [] as EventMessageTypes[],
+			unfinishedExecutions: {} as Record<string, EventMessageTypes[]>,
+		};
+
+		await writer.readLoggedMessagesFromFile(results, 'unsent', logFile1);
+		await writer.readLoggedMessagesFromFile(results, 'unsent', logFile2);
+
+		// Both files should be fully parsed (8 total, each file under limit)
+		expect(results.loggedMessages).toHaveLength(8);
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('does not apply the guard in "all" mode since confirms do not prune', async () => {
+		const maxMessagesPerParse = 5;
+		setMaxMessagesPerParse(maxMessagesPerParse);
+		writer = new MessageEventBusLogWriter();
+
+		const lines: string[] = [];
+		for (let i = 0; i < 20; i++) {
+			lines.push(makeWorkflowStartedLine(`id-${i}`, `exec-${i}`));
+		}
+		const logFile = writeLogFile('all-mode.log', lines);
+
+		const results = {
+			loggedMessages: [] as EventMessageTypes[],
+			sentMessages: [] as EventMessageTypes[],
+			unfinishedExecutions: {} as Record<string, EventMessageTypes[]>,
+		};
+
+		await writer.readLoggedMessagesFromFile(results, 'all', logFile);
+
+		expect(results.loggedMessages).toHaveLength(20);
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
 	it('does not abort when confirms prune the working set below the limit', async () => {
 		const maxMessagesPerParse = 5;
 		setMaxMessagesPerParse(maxMessagesPerParse);

@@ -206,20 +206,27 @@ export class MessageEventBusLogWriter {
 		if (logFileName && existsSync(logFileName)) {
 			try {
 				const stream = createReadStream(logFileName);
+				stream.on('error', () => {}); // absorb errors after destroy()
 				const rl = readline.createInterface({
 					input: stream,
 					crlfDelay: Infinity,
 				});
-				// Safety guard: abort if the in-memory working set grows too large.
+				// Safety guard: abort if the per-file working set grows too large.
 				// Healthy files stay small because confirm lines prune loggedMessages as
 				// they stream; legacy files with orphaned messages (pre-PR #27334) are
 				// the pathological case this guards against.
+				// The guard is skipped in 'all' mode because confirms don't prune there,
+				// so the count would grow monotonically even for healthy files.
 				const maxMessagesPerParse = this.globalConfig.eventBus.logWriter.maxMessagesPerParse;
+				const baselineCount = results.loggedMessages.length;
 				let aborted = false;
 				rl.on('line', (line) => {
 					if (aborted) return;
 					this.processLoggedLine(line, results, mode, logFileName);
-					if (results.loggedMessages.length > maxMessagesPerParse) {
+					if (
+						mode !== 'all' &&
+						results.loggedMessages.length - baselineCount > maxMessagesPerParse
+					) {
 						aborted = true;
 						this.logger.warn(
 							`Event log ${logFileName} exceeded ${maxMessagesPerParse} in-memory messages during parse; aborting to prevent out-of-memory. Some unfinished execution recovery may be skipped. Tune via N8N_EVENTBUS_LOGWRITER_MAXMESSAGESPERPARSE.`,
