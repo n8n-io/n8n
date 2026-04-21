@@ -442,8 +442,8 @@ watch(
 							@config-updated="onConfigUpdated"
 						/>
 						<AgentChatPanel
-							v-if="chatModeOpened.build && isBuilderConfigured"
-							v-show="chatMode === 'build'"
+							v-if="chatModeOpened.build"
+							v-show="chatMode === 'build' && isBuilderConfigured"
 							:project-id="projectId"
 							:agent-id="agentId"
 							mode="inline"
@@ -452,7 +452,7 @@ watch(
 							@update:streaming="onBuildChatStreamingChange"
 						/>
 						<AgentBuilderUnconfiguredEmptyState
-							v-else-if="chatModeOpened.build && !isBuilderConfigured"
+							v-if="chatModeOpened.build && !isBuilderConfigured"
 						/>
 					</div>
 				</Transition>

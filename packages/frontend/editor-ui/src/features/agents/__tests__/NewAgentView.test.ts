@@ -28,15 +28,31 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (key: string, opts?: { interpolate?: Record<string, string> }) => {
-			if (key === 'agents.newAgent.heading') {
-				return `Let's build something${opts?.interpolate?.name ?? ''}`;
-			}
-			return key;
-		},
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showError: vi.fn() }),
+}));
+
+vi.mock('../agentBuilderSettings.store', () => ({
+	useAgentBuilderSettingsStore: () => ({
+		isConfigured: true,
+		fetchStatus: vi.fn().mockResolvedValue(undefined),
 	}),
+}));
+
+vi.mock('../components/AgentBuilderUnconfiguredEmptyState.vue', () => ({
+	default: { name: 'AgentBuilderUnconfiguredEmptyState', template: '<div />' },
+}));
+
+const baseTextFn = (key: string, opts?: { interpolate?: Record<string, string> }) => {
+	if (key === 'agents.newAgent.heading') {
+		return `Let's build something${opts?.interpolate?.name ?? ''}`;
+	}
+	return key;
+};
+
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({ baseText: baseTextFn }),
+	i18n: { baseText: baseTextFn },
 }));
 
 describe('NewAgentView', () => {

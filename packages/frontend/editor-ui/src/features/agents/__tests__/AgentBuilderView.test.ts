@@ -1,5 +1,5 @@
-/* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+/* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick } from 'vue';
 
@@ -43,13 +43,51 @@ vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: vi.fn(),
 }));
 
-vi.mock('../composables/useAgentConfig', () => ({
-	useAgentConfig: () => ({
-		config: { value: { name: 'Agent One', instructions: '' } },
-		fetchConfig: vi.fn().mockResolvedValue(undefined),
-		updateConfig: vi.fn().mockResolvedValue({ versionId: 'v1' }),
+/**
+ * Keep AgentBuilderView's dependency graph light: static imports of sidebar /
+ * chat / home SFCs would otherwise pull in ChatHub, users store, etc. before
+ * mount stubs apply.
+ */
+vi.mock('../components/AgentSettingsSidebar.vue', () => ({
+	default: { name: 'AgentSettingsSidebar', template: '<div data-testid="settings-stub" />' },
+}));
+vi.mock('../components/AgentChatPanel.vue', () => ({
+	default: {
+		name: 'AgentChatPanel',
+		props: ['endpoint', 'projectId', 'agentId', 'mode', 'initialMessage', 'visible'],
+		template: '<div data-testid="chat-panel-stub" :data-endpoint="endpoint" />',
+	},
+}));
+vi.mock('../components/AgentHomeContent.vue', () => ({
+	default: { name: 'AgentHomeContent', template: '<div data-testid="home-stub" />' },
+}));
+vi.mock('../components/AgentBuilderProgress.vue', () => ({
+	default: { name: 'AgentBuilderProgress', template: '<div data-testid="progress-stub" />' },
+}));
+vi.mock('../components/AgentBuilderUnconfiguredEmptyState.vue', () => ({
+	default: {
+		name: 'AgentBuilderUnconfiguredEmptyState',
+		template: '<div data-testid="agent-builder-unconfigured-stub" />',
+	},
+}));
+
+vi.mock('../agentBuilderSettings.store', () => ({
+	useAgentBuilderSettingsStore: () => ({
+		isConfigured: true,
+		fetchStatus: vi.fn().mockResolvedValue(undefined),
 	}),
 }));
+
+vi.mock('../composables/useAgentConfig', async () => {
+	const { ref } = await import('vue');
+	return {
+		useAgentConfig: () => ({
+			config: ref({ name: 'Agent One', instructions: '' }),
+			fetchConfig: vi.fn().mockResolvedValue(undefined),
+			updateConfig: vi.fn().mockResolvedValue({ versionId: 'v1' }),
+		}),
+	};
+});
 
 const baseTextFn = (key: string) => {
 	const map: Record<string, string> = {
@@ -66,6 +104,12 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentBuilderView — chat mode toggle', () => {
+	// First Vite transform of this SFC + design-system deps can exceed the default
+	// 5s test timeout; warm the module once so each case measures mount behavior.
+	beforeAll(async () => {
+		await import('../views/AgentBuilderView.vue');
+	}, 30_000);
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
@@ -75,14 +119,6 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		const wrapper = mount(AgentBuilderView, {
 			global: {
 				stubs: {
-					AgentChatPanel: {
-						name: 'AgentChatPanel',
-						template: '<div data-testid="chat-panel-stub" :data-endpoint="endpoint" />',
-						props: ['endpoint', 'projectId', 'agentId', 'mode', 'initialMessage'],
-					},
-					AgentHomeContent: { template: '<div data-testid="home-stub" />' },
-					AgentBuilderProgress: { template: '<div data-testid="progress-stub" />' },
-					AgentSettingsSidebar: { template: '<div data-testid="settings-stub" />' },
 					N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 					N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
 					N8nActionDropdown: { template: '<div />' },
