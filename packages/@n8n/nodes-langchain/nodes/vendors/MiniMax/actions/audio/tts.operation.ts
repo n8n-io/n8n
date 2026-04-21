@@ -69,7 +69,7 @@ const properties: INodeProperties[] = [
 		required: true,
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 		description:
-			'Voice ID to use for speech synthesis. Browse available voices in the <a href="https://platform.minimax.io/faq/system-voice-id">MiniMax documentation</a>.',
+			'Voice ID to use for speech synthesis. Browse available voices in the <a href="https://platform.minimax.io/docs/faq/system-voice-id">MiniMax documentation</a>.',
 		placeholder: 'e.g. English_Graceful_Lady',
 	},
 	{
