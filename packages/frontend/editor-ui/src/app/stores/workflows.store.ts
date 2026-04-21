@@ -571,19 +571,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		const wfId = workflow.value.id;
-		const workflowDocumentStore = wfId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(wfId))
-			: undefined;
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
 
 		return new Workflow({
 			id,
-			name: workflowDocumentStore?.name ?? '',
+			name: workflowDocumentStore.name,
 			nodes: copyData ? deepCopy(nodes) : nodes,
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,
 			nodeTypes,
-			settings: workflowDocumentStore?.settings ?? { ...DEFAULT_SETTINGS },
-			pinData: workflowDocumentStore?.getPinDataSnapshot() ?? {},
+			settings: workflowDocumentStore.settings,
+			pinData: workflowDocumentStore.getPinDataSnapshot(),
 		});
 	}
 
@@ -602,23 +600,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function fetchLastSuccessfulExecution() {
-		const workflowDocumentStore = workflowId.value
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
-			: undefined;
-		const workflowPermissions = getResourcePermissions(workflowDocumentStore?.scopes).workflow;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowId.value),
+		);
+		const workflowPermissions = getResourcePermissions(workflowDocumentStore.scopes).workflow;
 
 		try {
 			const wfId = workflow.value.id;
-			const workflowDocumentStore = wfId
-				? useWorkflowDocumentStore(createWorkflowDocumentId(wfId))
-				: undefined;
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
 
 			if (
 				isNewWorkflow.value ||
 				sourceControlStore.preferences.branchReadOnly ||
 				uiStore.isReadOnlyView ||
 				!workflowPermissions.update ||
-				workflowDocumentStore?.isArchived
+				workflowDocumentStore.isArchived
 			) {
 				return;
 			}
@@ -1425,11 +1421,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		let currentVersionId = '';
 		let currentChecksum = '';
 		const isCurrentWorkflow = id === workflow.value.id;
-		const workflowDocumentStore = isCurrentWorkflow
-			? useWorkflowDocumentStore(createWorkflowDocumentId(id))
-			: undefined;
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
 
-		if (isCurrentWorkflow && workflowDocumentStore) {
+		if (isCurrentWorkflow) {
 			currentSettings = workflowDocumentStore.settings;
 			currentVersionId = workflowDocumentStore.versionId;
 			currentChecksum = workflowDocumentStore.checksum;
@@ -1457,7 +1451,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		});
 
 		// Update local store state to reflect the change
-		if (isCurrentWorkflow && workflowDocumentStore) {
+		if (isCurrentWorkflow) {
 			workflowDocumentStore.setSettings(updated.settings ?? {});
 		} else if (workflowsListStore.getWorkflowById(id)) {
 			workflowsListStore.updateWorkflowInCache(id, {

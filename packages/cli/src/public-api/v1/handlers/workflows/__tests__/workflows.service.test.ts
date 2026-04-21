@@ -39,7 +39,7 @@ describe('createWorkflow (public API)', () => {
 		expect(workflowCreationService.createWorkflow).toHaveBeenCalledTimes(1);
 		const [u, workflowArg, opts] = workflowCreationService.createWorkflow.mock.calls[0];
 		expect(u).toBe(user);
-		expect(opts).toEqual({ projectId: 'proj-1', publicApi: true });
+		expect(opts).toEqual({ projectId: 'proj-1', publicApi: true, source: 'api' });
 		expect('projectId' in (workflowArg as object)).toBe(false);
 		expect(workflowArg.name).toBe('Test Workflow');
 	});

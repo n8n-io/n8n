@@ -969,7 +969,8 @@ function onClickConnectionAdd(connection: Connection) {
 
 function onClickReplaceNode(nodeId: string) {
 	const node = workflowDocumentStore?.value?.getNodeById(nodeId);
-	if (!node) return;
+	const expression = workflowDocumentStore?.value?.getExpressionHandler();
+	if (!node || !expression) return;
 	const nodeType = nodeTypesStore.getNodeType(node.type);
 	if (!nodeType) return;
 
@@ -978,11 +979,11 @@ function onClickReplaceNode(nodeId: string) {
 	if (isTriggerNode(nodeType)) {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.REPLACE_NODE_ACTION);
 	} else {
-		const inputs = NodeHelpers.getNodeInputs(editableWorkflowObject.value, node, nodeType).map(
-			(output) => (typeof output === 'string' ? output : output.type),
+		const inputs = NodeHelpers.getNodeInputs({ expression }, node, nodeType).map((output) =>
+			typeof output === 'string' ? output : output.type,
 		);
-		const outputs = NodeHelpers.getNodeOutputs(editableWorkflowObject.value, node, nodeType).map(
-			(output) => (typeof output === 'string' ? output : output.type),
+		const outputs = NodeHelpers.getNodeOutputs({ expression }, node, nodeType).map((output) =>
+			typeof output === 'string' ? output : output.type,
 		);
 
 		// We want to infer a matching filter to show, e.g. when swapping out tools

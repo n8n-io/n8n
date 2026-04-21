@@ -67,6 +67,7 @@ export const createPublishWorkflowTool = (
 
 			const activatedWorkflow = await workflowService.activateWorkflow(user, workflowId, {
 				versionId,
+				source: 'n8n-mcp',
 			});
 
 			const output: PublishWorkflowOutput = {

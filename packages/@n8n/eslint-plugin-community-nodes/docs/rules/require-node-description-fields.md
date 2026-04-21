@@ -1,4 +1,4 @@
-# Node class description must define all required fields (`@n8n/community-nodes/require-node-description-fields`)
+# Node class description must define all required fields: icon, subtitle (`@n8n/community-nodes/require-node-description-fields`)
 
 💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 

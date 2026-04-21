@@ -57,7 +57,9 @@ export const createUnpublishWorkflowTool = (
 		try {
 			await getMcpWorkflow(workflowId, user, ['workflow:unpublish'], workflowFinderService);
 
-			await workflowService.deactivateWorkflow(user, workflowId);
+			await workflowService.deactivateWorkflow(user, workflowId, {
+				source: 'n8n-mcp',
+			});
 
 			const output: UnpublishWorkflowOutput = {
 				success: true,

@@ -22,10 +22,10 @@ const TRIVIAL_MESSAGE_MAX_WORDS = 3;
 const MAX_TITLE_LENGTH = 80;
 
 /**
- * Whether a user message is too trivial to bother sending to an LLM for
- * title generation (e.g. "hey", "hello"). For these, the LLM tends to
- * hallucinate an assistant-voice reply as the title instead of echoing
- * the user intent — it's better to just use the message itself.
+ * Whether a user message has too little substance to title a conversation
+ * (e.g. "hey", "hello"). For these, the LLM tends to hallucinate an
+ * assistant-voice reply as the title — better to signal "defer, not enough
+ * signal yet" so the caller can retry once more context accumulates.
  */
 function isTrivialMessage(message: string): boolean {
 	const normalized = message.trim();
@@ -69,7 +69,7 @@ export async function generateTitleFromMessage(
 	if (!trimmed) return null;
 
 	if (isTrivialMessage(trimmed)) {
-		return sanitizeTitle(trimmed) || null;
+		return null;
 	}
 
 	const result = await generateText({
