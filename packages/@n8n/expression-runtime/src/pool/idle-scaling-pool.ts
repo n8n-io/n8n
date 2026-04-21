@@ -32,11 +32,11 @@ export class IdleScalingPool {
 
 	acquire(): RuntimeBridge {
 		if (this.disposed) throw new PoolDisposedError();
-		this.resetIdleTimer();
 		if (!this.innerPool) {
 			this.triggerScaleUp();
 			throw new PoolExhaustedError();
 		}
+		this.resetIdleTimer();
 		return this.innerPool.acquire();
 	}
 
