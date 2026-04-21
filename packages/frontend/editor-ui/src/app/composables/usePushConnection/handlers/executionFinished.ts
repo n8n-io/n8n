@@ -275,12 +275,9 @@ export function handleExecutionFinishedWithWaitTill(
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const workflowSaving = useWorkflowSaving(options);
-	const workflowObject = workflowsStore.workflowObject;
 
-	const workflowDocumentStore = workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId))
-		: undefined;
-	const workflowSettings = workflowDocumentStore?.settings ?? {};
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+	const workflowSettings = workflowDocumentStore.settings;
 	const saveManualExecutions =
 		workflowSettings.saveManualExecutions ?? settingsStore.saveManualExecutions;
 
@@ -298,7 +295,7 @@ export function handleExecutionFinishedWithWaitTill(
 	}
 
 	// Workflow did start but had been put to wait
-	useDocumentTitle().setDocumentTitle(workflowObject.name as string, 'IDLE');
+	useDocumentTitle().setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 }
 
 /**
@@ -312,11 +309,13 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	const documentTitle = useDocumentTitle();
 	const workflowHelpers = useWorkflowHelpers();
-	const workflowObject = workflowsStore.workflowObject;
 
-	documentTitle.setDocumentTitle(workflowObject.name as string, 'ERROR');
+	documentTitle.setDocumentTitle(workflowDocumentStore.name, 'ERROR');
 
 	if (
 		runExecutionData.resultData.error?.name === 'ExpressionError' &&
@@ -343,13 +342,13 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				error.context.nodeCause &&
 				['paired_item_no_info', 'paired_item_invalid_info'].includes(error.context.type as string)
 			) {
-				const node = workflowObject.getNode(error.context.nodeCause as string);
+				const node = workflowDocumentStore.getNodeByName(error.context.nodeCause as string);
 
 				if (node) {
-					const workflowDocumentStore = workflowsStore.workflowId
-						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-						: undefined;
-					eventData.is_pinned = !!workflowDocumentStore?.pinData?.[node.name];
+					const workflowDocumentStore = useWorkflowDocumentStore(
+						createWorkflowDocumentId(workflowsStore.workflowId),
+					);
+					eventData.is_pinned = !!workflowDocumentStore.pinData?.[node.name];
 					eventData.mode = node.parameters.mode;
 					eventData.node_type = node.type;
 					eventData.operation = node.parameters.operation;
@@ -413,18 +412,17 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const toast = useToast();
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowObject = workflowsStore.workflowObject;
-	const workflowName = workflowObject.name ?? '';
 
-	const workflowDocumentStore = workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined;
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+	const workflowName = workflowDocumentStore.name;
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
-		const node = workflowDocumentStore?.getNodeByName(workflowExecution.executedNode) ?? null;
+		const node = workflowDocumentStore.getNodeByName(workflowExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		const nodeOutput =
 			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];

@@ -47,9 +47,7 @@ const DEFAULT_FOCUS_PANEL_DATA: FocusPanelData = { isActive: false, parameters: 
 export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const focusPanelStorage = useStorage(LOCAL_STORAGE_FOCUS_PANEL);
 
@@ -79,7 +77,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 	const focusedNodeParameters = computed<Array<RichFocusedNodeParameter | FocusedNodeParameter>>(
 		() =>
 			_focusedNodeParameters.value.map((x) => {
-				const node = workflowDocumentStore.value?.getNodeById(x.nodeId);
+				const node = workflowDocumentStore.value.getNodeById(x.nodeId);
 				if (!node) return x;
 
 				const value = get(node?.parameters ?? {}, x.parameterPath.replace(/parameters\./, ''));
