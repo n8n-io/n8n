@@ -4,17 +4,13 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 const props = withDefaults(
 	defineProps<{
 		anchor: Element;
-		sending: boolean;
-		channelAvailable: boolean;
 		initialPrompt?: string;
 		isEditing?: boolean;
-		elementsCount?: number;
 	}>(),
-	{ initialPrompt: '', isEditing: false, elementsCount: 1 },
+	{ initialPrompt: '', isEditing: false },
 );
 
 const emit = defineEmits<{
-	send: [prompt: string];
 	add: [prompt: string];
 	cancel: [];
 }>();
@@ -65,12 +61,6 @@ function handleKeyDown(event: KeyboardEvent) {
 	}
 }
 
-function handleSend() {
-	const text = prompt.value.trim();
-	if (!text || props.sending) return;
-	emit('send', text);
-}
-
 function handleAdd() {
 	const text = prompt.value.trim();
 	if (!text) return;
@@ -112,27 +102,14 @@ watch(
 					? 'Edit the annotation. ⌘↵ to save, Esc to cancel.'
 					: 'Describe the change. ⌘↵ to add, Esc to cancel.'
 			"
-			:disabled="sending"
 			rows="4"
 		/>
 		<div class="dev-panel-actions">
-			<button type="button" class="dev-panel-button" :disabled="sending" @click="emit('cancel')">
-				Cancel
-			</button>
-			<button
-				v-if="!isEditing && elementsCount <= 1"
-				type="button"
-				class="dev-panel-button"
-				:disabled="!prompt.trim() || sending || !channelAvailable"
-				:title="channelAvailable ? 'Send immediately to Claude' : 'Claude channel not running'"
-				@click="handleSend"
-			>
-				{{ sending ? 'Sending…' : 'Send now' }}
-			</button>
+			<button type="button" class="dev-panel-button" @click="emit('cancel')">Cancel</button>
 			<button
 				type="button"
 				class="dev-panel-button dev-panel-button--primary"
-				:disabled="!prompt.trim() || sending"
+				:disabled="!prompt.trim()"
 				:title="isEditing ? 'Save changes (⌘↵)' : 'Add to annotations list (⌘↵)'"
 				@click="handleAdd"
 			>

@@ -3,7 +3,6 @@ import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 
 import PromptPopover from './PromptPopover.vue';
 import { loadAnnotations, resolveElementForContext, saveAnnotations } from './annotationStorage';
-import { sendPrompt } from './channelClient';
 import { collectElementContext } from './collectElementContext';
 import {
 	currentPagePath,
@@ -12,16 +11,31 @@ import {
 	type Annotation,
 } from './formatPrompt';
 import { DEV_PANEL_ROOT_ATTR, useElementPicker } from './useElementPicker';
-import { useChannelHealth } from './useChannelHealth';
 
 type TrackedAnnotation = Annotation & { elements: Element[] };
 
 const MARKER_SIZE = 22;
+const VISIBILITY_STORAGE_KEY = 'n8n-dev-panel:visible';
 
-const { status } = useChannelHealth();
+function loadVisibility(): boolean {
+	try {
+		return window.localStorage.getItem(VISIBILITY_STORAGE_KEY) === '1';
+	} catch {
+		return false;
+	}
+}
+
+function saveVisibility(value: boolean) {
+	try {
+		window.localStorage.setItem(VISIBILITY_STORAGE_KEY, value ? '1' : '0');
+	} catch {
+		// ignore
+	}
+}
+
 const { isPicking, hoveredElement, selectedElement, dragRect, start, stop, clearSelection } =
 	useElementPicker();
-const sending = ref(false);
+const visible = ref(loadVisibility());
 const annotations = shallowRef<TrackedAnnotation[]>([]);
 const pendingMulti = shallowRef<Element[]>([]);
 const toast = ref<{ kind: 'info' | 'error'; message: string } | null>(null);
@@ -36,18 +50,8 @@ const editingPrompt = computed(() => {
 	return annotations.value.find((a) => a.id === id)?.prompt ?? '';
 });
 
-const channelAvailable = computed(() => status.value === 'connected');
 const annotationCount = computed(() => annotations.value.length);
 const hasAnnotations = computed(() => annotationCount.value > 0);
-const currentTargetsCount = computed(() =>
-	pendingMulti.value.length > 0 ? pendingMulti.value.length : 1,
-);
-
-const fabTooltip = computed(() => {
-	if (status.value === 'connected') return 'Open dev panel — channel connected';
-	if (status.value === 'checking') return 'Open dev panel — checking channel';
-	return 'Open dev panel — channel not running (clipboard still works)';
-});
 
 const hoverOverlayStyle = computed(() => {
 	const el = hoveredElement.value;
@@ -135,6 +139,20 @@ function handleShiftKeyUp(event: KeyboardEvent) {
 	commitPendingMulti();
 }
 
+function handleToggleShortcut(event: KeyboardEvent) {
+	if (!event.ctrlKey || !event.shiftKey) return;
+	if (event.key.toLowerCase() !== 'd') return;
+	event.preventDefault();
+	visible.value = !visible.value;
+	if (!visible.value) {
+		expanded.value = false;
+		stop();
+		clearSelection();
+		pendingMulti.value = [];
+		editingId.value = null;
+	}
+}
+
 function updatePath() {
 	currentPath.value = window.location.pathname;
 }
@@ -208,6 +226,7 @@ onMounted(() => {
 	window.addEventListener('scroll', scheduleBump, true);
 	window.addEventListener('resize', scheduleBump);
 	window.addEventListener('keyup', handleShiftKeyUp, true);
+	window.addEventListener('keydown', handleToggleShortcut, true);
 	window.addEventListener('popstate', updatePath);
 	patchHistory();
 	loadForPath(currentPath.value);
@@ -219,6 +238,7 @@ onUnmounted(() => {
 	window.removeEventListener('scroll', scheduleBump, true);
 	window.removeEventListener('resize', scheduleBump);
 	window.removeEventListener('keyup', handleShiftKeyUp, true);
+	window.removeEventListener('keydown', handleToggleShortcut, true);
 	window.removeEventListener('popstate', updatePath);
 	restoreHistory?.();
 	domObserver?.disconnect();
@@ -226,6 +246,8 @@ onUnmounted(() => {
 	if (frameId !== null) cancelAnimationFrame(frameId);
 	if (resolveFrameId !== null) cancelAnimationFrame(resolveFrameId);
 });
+
+watch(visible, saveVisibility);
 
 watch(currentPath, (newPath, oldPath) => {
 	if (newPath === oldPath) return;
@@ -308,24 +330,6 @@ function currentTargets(): Element[] {
 	return anchor ? [anchor] : [];
 }
 
-async function handleSend(prompt: string) {
-	const anchor = selectedElement.value;
-	if (!anchor) return;
-
-	sending.value = true;
-	try {
-		await sendPrompt({ prompt, ...collectElementContext(anchor) });
-		showToast('info', 'Sent to Claude');
-		clearSelection();
-		pendingMulti.value = [];
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Failed to send';
-		showToast('error', message);
-	} finally {
-		sending.value = false;
-	}
-}
-
 function handleAdd(prompt: string) {
 	const targets = currentTargets();
 	if (targets.length === 0) return;
@@ -392,7 +396,7 @@ async function copyAllAnnotations() {
 </script>
 
 <template>
-	<div :[DEV_PANEL_ROOT_ATTR]="true" class="dev-panel-root">
+	<div v-if="visible" :[DEV_PANEL_ROOT_ATTR]="true" class="dev-panel-root">
 		<div v-if="isPicking && !dragRect" class="dev-panel-hover-overlay" :style="hoverOverlayStyle" />
 
 		<div
@@ -449,12 +453,8 @@ async function copyAllAnnotations() {
 		<PromptPopover
 			v-if="selectedElement"
 			:anchor="selectedElement"
-			:sending="sending"
-			:channel-available="channelAvailable"
 			:initial-prompt="editingPrompt"
 			:is-editing="!!editingId"
-			:elements-count="currentTargetsCount"
-			@send="handleSend"
 			@add="handleAdd"
 			@cancel="handleCancel"
 		/>
@@ -468,7 +468,7 @@ async function copyAllAnnotations() {
 				v-if="!expanded"
 				type="button"
 				class="dev-panel-fab"
-				:title="fabTooltip"
+				title="Open dev panel"
 				@click="expandPanel"
 			>
 				<svg
@@ -485,11 +485,6 @@ async function copyAllAnnotations() {
 					<line x1="4" y1="14" x2="10" y2="14" />
 					<path d="M17 13l1.5 3 3 1.5-3 1.5L17 22l-1.5-3-3-1.5 3-1.5z" fill="currentColor" />
 				</svg>
-				<span
-					class="dev-panel-fab-status"
-					:class="`dev-panel-fab-status--${status}`"
-					aria-hidden="true"
-				/>
 				<span v-if="hasAnnotations" class="dev-panel-fab-badge">{{ annotationCount }}</span>
 			</button>
 
@@ -750,30 +745,6 @@ async function copyAllAnnotations() {
 	justify-content: center;
 	border: 2px solid #1a1a1a;
 	box-sizing: border-box;
-}
-
-.dev-panel-fab-status {
-	position: absolute;
-	bottom: 2px;
-	right: 2px;
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	background: var(--color--text--tint-3);
-	border: 2px solid #1a1a1a;
-	box-sizing: border-box;
-}
-
-.dev-panel-fab-status--connected {
-	background: var(--color--success);
-}
-
-.dev-panel-fab-status--disconnected {
-	background: var(--color--danger);
-}
-
-.dev-panel-fab-status--checking {
-	background: var(--color--warning);
 }
 
 .dev-panel-toolbar {
