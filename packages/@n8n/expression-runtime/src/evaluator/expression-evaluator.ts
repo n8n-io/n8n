@@ -48,16 +48,16 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		};
 
 		this.pool =
-			config.idleTimeoutMs !== undefined
-				? new IdleScalingPool(
+			config.idleTimeoutMs === undefined
+				? new IsolatePool(this.createBridge, config.poolSize ?? 1, onReplenishFailed, logger)
+				: new IdleScalingPool(
 						this.createBridge,
 						config.poolSize ?? 1,
 						config.idleTimeoutMs,
 						onReplenishFailed,
 						logger,
 						config.observability,
-					)
-				: new IsolatePool(this.createBridge, config.poolSize ?? 1, onReplenishFailed, logger);
+					);
 	}
 
 	async initialize(): Promise<void> {
