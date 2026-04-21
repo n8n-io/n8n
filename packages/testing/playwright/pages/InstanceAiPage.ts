@@ -213,6 +213,25 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('n8n-agent-enable-toggle');
 	}
 
+	// ── Workflow Setup ────────────────────────────────────────────────
+
+	getWorkflowSetupCard(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-card');
+	}
+
+	getWorkflowSetupParameterIssues(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('parameter-issues');
+	}
+
+	/** The editable `<input>` / `<textarea>` of the nth `parameter-item` in the setup card. */
+	getWorkflowSetupParameterInput(index = 0): Locator {
+		return this.getWorkflowSetupCard()
+			.getByTestId('parameter-item')
+			.nth(index)
+			.locator('input, textarea')
+			.first();
+	}
+
 	// ── Artifacts ─────────────────────────────────────────────────────
 
 	getArtifactCards(): Locator {

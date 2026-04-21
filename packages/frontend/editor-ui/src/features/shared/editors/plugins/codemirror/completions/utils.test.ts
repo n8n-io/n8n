@@ -1,10 +1,9 @@
-import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
+import { createTestNode } from '@/__tests__/mocks';
 import * as ndvStore from '@/features/ndv/shared/ndv.store';
 import { CompletionContext, insertCompletionText } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import {
 	autocompletableNodeNames,
@@ -22,6 +21,22 @@ vi.mock('@/app/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: vi.fn().mockReturnValue({
 		getCurrentWorkflow: vi.fn(),
 	}),
+}));
+
+const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
+	mockWorkflowDocumentStore: {
+		getChildNodes: vi.fn().mockReturnValue([]),
+		getParentNodesByDepth: vi.fn().mockReturnValue([]),
+		allNodes: [],
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
+	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
 const editorFromString = (docWithCursor: string) => {
@@ -95,25 +110,14 @@ describe('completion utils', () => {
 				createTestNode({ name: 'Node 2' }),
 				createTestNode({ name: 'Node 3' }),
 			];
-			const connections = {
-				[nodes[0].name]: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: nodes[1].name, type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-				[nodes[1].name]: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: nodes[2].name, type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-			};
-			const workflowObject = createTestWorkflowObject({
-				nodes,
-				connections,
-			});
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.workflowObject = workflowObject;
+			mockedStore(useWorkflowsStore);
+			mockWorkflowDocumentStore.getChildNodes.mockReturnValue([]);
+			mockWorkflowDocumentStore.getParentNodesByDepth.mockReturnValue([
+				{ name: 'Node 2', depth: 1 },
+				{ name: 'Node 1', depth: 2 },
+			]);
+
 			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
 			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
 
@@ -126,25 +130,12 @@ describe('completion utils', () => {
 				createTestNode({ name: 'Agent' }),
 				createTestNode({ name: 'Tool' }),
 			];
-			const connections: IConnections = {
-				[nodes[0].name]: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: nodes[1].name, type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-				[nodes[2].name]: {
-					[NodeConnectionTypes.AiMemory]: [
-						[{ node: nodes[1].name, type: NodeConnectionTypes.AiMemory, index: 0 }],
-					],
-				},
-			};
-			const workflowObject = createTestWorkflowObject({
-				nodes,
-				connections,
-			});
 
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.workflowObject = workflowObject;
+			mockedStore(useWorkflowsStore);
+			mockWorkflowDocumentStore.getChildNodes.mockReturnValue(['Agent']);
+			mockWorkflowDocumentStore.getParentNodesByDepth.mockReturnValue([
+				{ name: 'Normal Node', depth: 1 },
+			]);
 
 			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
 			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
