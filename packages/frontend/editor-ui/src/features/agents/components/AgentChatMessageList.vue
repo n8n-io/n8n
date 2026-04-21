@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
@@ -17,11 +17,21 @@ const displayGroups = computed(() => buildDisplayGroups(props.messages));
 
 function scrollToBottom(): void {
 	void nextTick(() => {
-		if (scrollRef.value) {
-			scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
-		}
+		// Double rAF — async children (markdown, highlighters) can grow content
+		// after the first frame, so we measure on the second one.
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				if (scrollRef.value) {
+					scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
+				}
+			});
+		});
 	});
 }
+
+onMounted(() => {
+	if (props.messages.length > 0) scrollToBottom();
+});
 
 watch(
 	() => [props.messages.length, props.messagingState],
