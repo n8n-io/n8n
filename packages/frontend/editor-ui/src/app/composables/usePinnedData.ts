@@ -178,11 +178,7 @@ export function usePinnedData(
 
 		if (typeof data === 'object') data = JSON.stringify(data);
 
-		const { pinData: _pinData, ...workflowObjectWithoutPinData } =
-			workflowsStore.createWorkflowObject(
-				workflowsStore.workflow.nodes,
-				workflowsStore.workflow.connections,
-			);
+		const { pinData: _pinData, ...workflowObjectWithoutPinData } = workflowsStore.workflow;
 		const currentPinData = (workflowDocumentStore.value?.pinData ?? {}) as IPinData;
 		const workflowJson = jsonStringify(workflowObjectWithoutPinData, { replaceCircularRefs: true });
 
