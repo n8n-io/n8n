@@ -1,0 +1,274 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createComponentRenderer } from '@/__tests__/render';
+import { createTestingPinia } from '@pinia/testing';
+import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
+import { fireEvent, waitFor } from '@testing-library/vue';
+
+import AgentToolsModal from '../components/AgentToolsModal.vue';
+import type { AgentJsonToolRef } from '../types';
+
+vi.mock('virtual:node-popularity-data', () => ({
+	default: [
+		{ id: 'n8n-nodes-base.slack', popularity: 100 },
+		{ id: 'n8n-nodes-base.gmail', popularity: 90 },
+		{ id: 'n8n-nodes-base.github', popularity: 50 },
+	],
+}));
+
+vi.mock('@n8n/i18n', () => {
+	const i18n = {
+		baseText: (key: string, opts?: { interpolate?: Record<string, unknown> }) => {
+			if (opts?.interpolate) {
+				const { count } = opts.interpolate as { count?: number };
+				if (key === 'agents.tools.availableTools') return `Available tools (${count})`;
+			}
+			const map: Record<string, string> = {
+				'agents.tools.title': 'Tools',
+				'agents.tools.search.placeholder': 'Search tools',
+				'agents.tools.noResults': 'No tools found',
+				'agents.tools.connected': 'Connected',
+				'agents.tools.connect': 'Connect',
+				'agents.tools.configure': 'Configure',
+				'agents.tools.addCredentials': 'Add credentials',
+			};
+			return map[key] ?? key;
+		},
+	};
+	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
+});
+
+vi.mock('vue-router', () => ({
+	useRouter: () => ({ push: vi.fn(), resolve: vi.fn(() => ({ href: '' })) }),
+	useRoute: () => ({ params: {}, query: {} }),
+	RouterLink: { template: '<a><slot /></a>' },
+}));
+
+const mockConfirm = vi.fn();
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: mockConfirm }),
+}));
+
+vi.mock('uuid', () => ({ v4: () => 'mock-uuid' }));
+
+const SLACK: INodeTypeDescription = {
+	displayName: 'Slack',
+	name: 'n8n-nodes-base.slack',
+	group: ['output'],
+	version: 1,
+	description: 'Send messages to Slack',
+	defaults: { name: 'Slack' },
+	inputs: [],
+	outputs: [{ type: NodeConnectionTypes.AiTool }],
+	properties: [],
+	credentials: [{ name: 'slackApi', required: true }],
+};
+
+const GMAIL: INodeTypeDescription = {
+	...SLACK,
+	displayName: 'Gmail',
+	name: 'n8n-nodes-base.gmail',
+	description: 'Send emails via Gmail',
+	credentials: [{ name: 'gmailOAuth2', required: true }],
+};
+
+const GITHUB: INodeTypeDescription = {
+	...SLACK,
+	displayName: 'GitHub',
+	name: 'n8n-nodes-base.github',
+	description: 'Manage GitHub repositories',
+	credentials: [{ name: 'githubApi', required: true }],
+};
+
+const NODE_WITH_INPUTS: INodeTypeDescription = {
+	...SLACK,
+	name: 'n8n-nodes-base.subagent',
+	displayName: 'Subagent',
+	inputs: ['main'],
+};
+
+const ElDialogStub = {
+	template: `
+		<div role="dialog">
+			<slot name="header" />
+			<slot />
+			<slot name="footer" />
+		</div>
+	`,
+	props: [
+		'modelValue',
+		'beforeClose',
+		'class',
+		'center',
+		'width',
+		'showClose',
+		'closeOnClickModal',
+		'closeOnPressEscape',
+		'style',
+		'appendTo',
+		'lockScroll',
+		'appendToBody',
+	],
+};
+
+const MODAL_NAME = 'AgentToolsModal';
+
+const renderComponent = createComponentRenderer(AgentToolsModal, {
+	global: {
+		stubs: {
+			ElDialog: ElDialogStub,
+			NodeIcon: { template: '<div data-test-id="node-icon" />' },
+		},
+	},
+});
+
+describe('AgentToolsModal', () => {
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		createTestingPinia({ stubActions: false });
+
+		nodeTypesStore = mockedStore(useNodeTypesStore);
+		uiStore = mockedStore(useUIStore);
+
+		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
+			if (name === SLACK.name) return SLACK;
+			if (name === GMAIL.name) return GMAIL;
+			if (name === GITHUB.name) return GITHUB;
+			if (name === NODE_WITH_INPUTS.name) return NODE_WITH_INPUTS;
+			return null;
+		});
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [SLACK.name, GMAIL.name, GITHUB.name, NODE_WITH_INPUTS.name],
+		};
+
+		uiStore.openModal(MODAL_NAME);
+		uiStore.closeModal = vi.fn();
+	});
+
+	function defaultProps(tools: AgentJsonToolRef[] = [], onConfirm = vi.fn()) {
+		return {
+			props: {
+				modalName: MODAL_NAME,
+				data: { tools, onConfirm },
+			},
+		};
+	}
+
+	function toolRef(
+		nodeType: string,
+		overrides: Partial<AgentJsonToolRef['node']> = {},
+	): AgentJsonToolRef {
+		return {
+			type: 'node',
+			name: nodeType,
+			node: {
+				nodeType,
+				nodeTypeVersion: 1,
+				credentials: { slackApi: { id: 'c', name: 'cred' } },
+				...overrides,
+			},
+		};
+	}
+
+	async function typeInSearch(container: Element, value: string) {
+		const input = container.querySelector('input') as HTMLInputElement | null;
+		expect(input).not.toBeNull();
+		await fireEvent.update(input!, value);
+	}
+
+	it('renders the modal header', () => {
+		const { getByRole } = renderComponent(defaultProps());
+		expect(getByRole('dialog').textContent).toContain('Tools');
+	});
+
+	it('lists available node-type tools, excluding nodes that take main inputs', () => {
+		const { getByTestId, queryByText } = renderComponent(defaultProps());
+		const available = getByTestId('agent-tools-available-list');
+		expect(available.textContent).toContain('Slack');
+		expect(available.textContent).toContain('Gmail');
+		expect(available.textContent).toContain('GitHub');
+		// Nodes with inputs are not simple tools — they should be excluded.
+		expect(queryByText('Subagent')).toBeNull();
+	});
+
+	it('shows an empty Connected section when no tools are configured', () => {
+		const { queryByTestId } = renderComponent(defaultProps());
+		expect(queryByTestId('agent-tools-connected-list')).toBeNull();
+	});
+
+	it('renders configured node tools in the Connected list', () => {
+		const { getByTestId } = renderComponent(defaultProps([toolRef(SLACK.name)]));
+		const connected = getByTestId('agent-tools-connected-list');
+		expect(connected.textContent).toContain(SLACK.name);
+	});
+
+	it('surfaces the "Add credentials" chip on rows missing credentials', () => {
+		const tool = toolRef(GMAIL.name, { credentials: undefined });
+		const { queryByTestId } = renderComponent(defaultProps([tool]));
+		expect(queryByTestId('agent-tool-add-credentials-chip')).not.toBeNull();
+	});
+
+	it('does not surface the chip when credentials are present', () => {
+		const tool = toolRef(SLACK.name);
+		const { queryByTestId } = renderComponent(defaultProps([tool]));
+		expect(queryByTestId('agent-tool-add-credentials-chip')).toBeNull();
+	});
+
+	it('hides already-connected node types from the Available list', () => {
+		const { getByTestId } = renderComponent(defaultProps([toolRef(SLACK.name)]));
+		const available = getByTestId('agent-tools-available-list');
+		expect(available.textContent).not.toContain('Slack');
+		expect(available.textContent).toContain('Gmail');
+	});
+
+	it('filters both sections by search query (debounced)', async () => {
+		const { getByTestId, queryByTestId, container } = renderComponent(
+			defaultProps([toolRef(SLACK.name)]),
+		);
+
+		await typeInSearch(container, 'gmail');
+
+		await waitFor(() => {
+			const available = getByTestId('agent-tools-available-list');
+			expect(available.textContent).toContain('Gmail');
+			expect(available.textContent).not.toContain('GitHub');
+		});
+		expect(queryByTestId('agent-tools-connected-list')).toBeNull();
+	});
+
+	it('shows an empty state when search matches nothing', async () => {
+		const { queryByTestId, queryByText, container } = renderComponent(defaultProps());
+		await typeInSearch(container, 'zzzzz');
+
+		await waitFor(() => {
+			expect(queryByText('No tools found')).not.toBeNull();
+			expect(queryByTestId('agent-tools-available-list')).toBeNull();
+		});
+	});
+
+	it('calls onConfirm with a new tool ref when Add is clicked on an available node', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId } = renderComponent(defaultProps([], onConfirm));
+
+		const available = getByTestId('agent-tools-available-list');
+		const addButton = available.querySelector('button');
+		expect(addButton).not.toBeNull();
+		await fireEvent.click(addButton!);
+
+		expect(onConfirm).toHaveBeenCalledTimes(1);
+		const [tools] = onConfirm.mock.calls[0];
+		expect(tools).toHaveLength(1);
+		expect(tools[0]).toMatchObject({ type: 'node', node: { nodeType: SLACK.name } });
+	});
+
+	it('shows the available tools count in the section heading', () => {
+		const { getByTestId } = renderComponent(defaultProps());
+		const wrapper = getByTestId('agent-tools-list');
+		expect(wrapper.textContent).toContain('Available tools (3)');
+	});
+});

@@ -8,18 +8,21 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import type { AgentResource, AgentJsonConfig } from '../types';
+import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { CustomToolEntry } from '../agent.types';
+import { AGENT_TOOLS_MODAL_KEY } from '../constants';
 import { CHATHUB_TO_CATALOG, CATALOG_TO_CHATHUB } from '../provider-mapping';
 import AgentPublishButton from './AgentPublishButton.vue';
 import AgentToolsPanel from './AgentToolsPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentIntegrationsPanel from './AgentIntegrationsPanel.vue';
 import AgentCodeEditor from './AgentCodeEditor.vue';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const locale = useI18n();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
+const uiStore = useUIStore();
 
 const props = defineProps<{
 	config: AgentJsonConfig | null;
@@ -127,6 +130,18 @@ watch(
 function onInstructionsChange(value: string) {
 	instructions.value = value;
 	emit('update:config', { instructions: value });
+}
+
+function openToolsModal() {
+	uiStore.openModalWithData({
+		name: AGENT_TOOLS_MODAL_KEY,
+		data: {
+			tools: (props.config?.tools ?? []) as AgentJsonToolRef[],
+			onConfirm: (tools: AgentJsonToolRef[]) => {
+				emit('update:config', { tools });
+			},
+		},
+	});
 }
 
 // --- Collapsible sections ---
@@ -281,7 +296,14 @@ function onResizeStart(event: MouseEvent) {
 							locale.baseText('agents.settings.tools')
 						}}</N8nText>
 					</div>
-					<span role="button" tabindex="0" :class="$style.addBtn" @click.stop @keydown.enter.stop>
+					<span
+						role="button"
+						tabindex="0"
+						:class="$style.addBtn"
+						data-test-id="agent-add-tool-btn"
+						@click.stop="openToolsModal"
+						@keydown.enter.stop="openToolsModal"
+					>
 						<N8nIcon icon="plus" :size="16" />
 					</span>
 				</button>
