@@ -52,4 +52,12 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
 	},
+	'workflowAuthoringCheck:list': {
+		displayName: 'List Workflow Authoring Checks',
+		description: 'Allows listing workflow authoring check configuration.',
+	},
+	'workflowAuthoringCheck:update': {
+		displayName: 'Update Workflow Authoring Checks',
+		description: 'Allows updating workflow authoring check configuration.',
+	},
 };

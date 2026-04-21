@@ -136,6 +136,8 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'roleMappingRule:update',
 	'roleMappingRule:delete',
 	'roleMappingRule:list',
+	'workflowAuthoringCheck:list',
+	'workflowAuthoringCheck:update',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();

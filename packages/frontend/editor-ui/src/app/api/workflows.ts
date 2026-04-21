@@ -138,7 +138,12 @@ export async function getWorkflowWriteLock(context: IRestApiContext, workflowId:
 export async function activateWorkflow(
 	context: IRestApiContext,
 	workflowId: string,
-	data: { versionId: string; name?: string; description?: string },
+	data: {
+		versionId: string;
+		name?: string;
+		description?: string;
+		skipAuthoringChecksWarnings?: boolean;
+	},
 ): Promise<IWorkflowDb> {
 	return await makeRestApiRequest<IWorkflowDb>(
 		context,

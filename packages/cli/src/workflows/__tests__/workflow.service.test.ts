@@ -62,6 +62,7 @@ describe('WorkflowService', () => {
 				webhookServiceMock, // webhookService
 				mock(), // licenseState
 				mock(), // projectRepository
+				mock(), // authoringChecks
 			);
 		});
 
@@ -208,6 +209,7 @@ describe('WorkflowService', () => {
 				mock(), // webhookService
 				licenseStateMock, // licenseState
 				mock(), // projectRepository
+				mock(), // authoringChecks
 			);
 
 			jest.clearAllMocks();

@@ -48,6 +48,7 @@ describe('permissions', () => {
 			credentialResolver: {},
 			instanceAi: {},
 			roleMappingRule: {},
+			workflowAuthoringCheck: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -173,6 +174,7 @@ describe('permissions', () => {
 			credentialResolver: {},
 			instanceAi: {},
 			roleMappingRule: {},
+			workflowAuthoringCheck: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

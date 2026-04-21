@@ -462,13 +462,14 @@ export class WorkflowsController {
 			'activate',
 		);
 
-		const { versionId, name, description, expectedChecksum } = body;
+		const { versionId, name, description, expectedChecksum, skipAuthoringChecksWarnings } = body;
 
 		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
 			versionId,
 			name,
 			description,
 			expectedChecksum,
+			skipAuthoringChecksWarnings,
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);

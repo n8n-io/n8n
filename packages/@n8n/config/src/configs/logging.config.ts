@@ -41,6 +41,7 @@ export const LOG_SCOPES = [
 	'instance-settings-loader',
 	'instance-registry',
 	'encryption-key-manager',
+	'workflow-authoring-checks',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

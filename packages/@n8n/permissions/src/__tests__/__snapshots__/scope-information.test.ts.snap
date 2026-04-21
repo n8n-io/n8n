@@ -190,6 +190,9 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "roleMappingRule:delete",
   "roleMappingRule:list",
   "roleMappingRule:*",
+  "workflowAuthoringCheck:list",
+  "workflowAuthoringCheck:update",
+  "workflowAuthoringCheck:*",
   "*",
 ]
 `;

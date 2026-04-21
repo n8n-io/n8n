@@ -62,8 +62,10 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 
 import { WorkflowValidationService } from './workflow-validation.service';
+import { WorkflowAuthoringChecksProxy } from './authoring-checks-proxy.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { WorkflowAuthoringChecksFailedError } from '@/errors/response-errors/workflow-authoring-checks-failed.error';
 
 @Service()
 export class WorkflowService {
@@ -92,6 +94,7 @@ export class WorkflowService {
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
+		private readonly authoringChecks: WorkflowAuthoringChecksProxy,
 	) {}
 
 	async getMany(
@@ -651,6 +654,7 @@ export class WorkflowService {
 			name?: string;
 			description?: string;
 			expectedChecksum?: string;
+			skipAuthoringChecksWarnings?: boolean;
 			source?: WorkflowActionSource;
 		},
 	): Promise<WorkflowEntity> {
@@ -704,6 +708,13 @@ export class WorkflowService {
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
+		await this._runAuthoringChecks(
+			workflowId,
+			versionToActivate.nodes,
+			versionToActivate.connections,
+			workflow.settings,
+			options?.skipAuthoringChecksWarnings ?? false,
+		);
 
 		if (previousActiveVersionId) {
 			await this.activeWorkflowManager.remove(workflowId);
@@ -1215,6 +1226,39 @@ export class WorkflowService {
 				invalidReferences: validation.invalidReferences,
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Sub-workflow validation failed');
+		}
+	}
+
+	private async _runAuthoringChecks(
+		workflowId: string,
+		nodes: INode[],
+		connections: IConnections,
+		settings: IWorkflowSettings | undefined,
+		skipWarnings: boolean,
+	) {
+		const results = await this.authoringChecks.runAll({
+			workflowId,
+			nodes,
+			connections,
+			settings,
+		});
+
+		if (results.length === 0) return;
+
+		const hasBlocking = results.some((r) => r.severity === 'blocking');
+
+		if (hasBlocking) {
+			throw new WorkflowAuthoringChecksFailedError(
+				'Workflow activation was refused by authoring checks.',
+				{ results },
+			);
+		}
+
+		if (!skipWarnings) {
+			throw new WorkflowAuthoringChecksFailedError(
+				'Workflow has authoring check warnings. Retry with skipAuthoringChecksWarnings=true to publish anyway.',
+				{ results },
+			);
 		}
 	}
 }

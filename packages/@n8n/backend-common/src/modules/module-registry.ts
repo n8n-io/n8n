@@ -53,6 +53,7 @@ export class ModuleRegistry {
 		'token-exchange',
 		'instance-version-history',
 		'encryption-key-manager',
+		'workflow-authoring-checks',
 	];
 
 	private readonly activeModules: string[] = [];

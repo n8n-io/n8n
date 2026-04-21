@@ -1334,7 +1334,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function publishWorkflow(
 		id: string,
-		data: { versionId: string; name?: string; description?: string; expectedChecksum?: string },
+		data: {
+			versionId: string;
+			name?: string;
+			description?: string;
+			expectedChecksum?: string;
+			skipAuthoringChecksWarnings?: boolean;
+		},
 	): Promise<IWorkflowDb> {
 		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,

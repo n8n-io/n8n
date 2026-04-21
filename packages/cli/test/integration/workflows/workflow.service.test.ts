@@ -25,6 +25,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
+import { WorkflowAuthoringChecksProxy } from '@/workflows/authoring-checks-proxy.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -84,6 +85,7 @@ beforeAll(async () => {
 		webhookServiceMock,
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
+		Container.get(WorkflowAuthoringChecksProxy), // authoringChecks (no inner set, no-ops)
 	);
 });
 

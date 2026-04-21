@@ -22,6 +22,9 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { previewWorkflowAuthoringChecks } from '@/features/workflows/authoringChecks/authoringChecks.api';
+import { WORKFLOW_AUTHORING_CHECKS_MODAL_KEY } from '@/features/workflows/authoringChecks/authoringChecks.constants';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -30,6 +33,7 @@ export function useWorkflowActivate() {
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
+	const rootStore = useRootStore();
 	const telemetry = useTelemetry();
 	const toast = useToast();
 	const i18n = useI18n();
@@ -82,10 +86,11 @@ export function useWorkflowActivate() {
 		return parseWebhookConflictError(error) !== null;
 	};
 
-	const publishWorkflow = async (
+	const performPublish = async (
 		workflowId: string,
 		versionId: string,
-		options?: { name?: string; description?: string },
+		options: { name?: string; description?: string } | undefined,
+		skipAuthoringChecksWarnings: boolean,
 	) => {
 		updatingWorkflowActivation.value = true;
 
@@ -115,6 +120,7 @@ export function useWorkflowActivate() {
 				name: options?.name,
 				description: options?.description,
 				expectedChecksum,
+				skipAuthoringChecksWarnings: skipAuthoringChecksWarnings || undefined,
 			});
 
 			if (!updatedWorkflow.activeVersion || !updatedWorkflow.checksum) {
@@ -173,6 +179,44 @@ export function useWorkflowActivate() {
 		} finally {
 			updatingWorkflowActivation.value = false;
 		}
+	};
+
+	const publishWorkflow = async (
+		workflowId: string,
+		versionId: string,
+		options?: { name?: string; description?: string },
+	) => {
+		updatingWorkflowActivation.value = true;
+		let preview;
+		try {
+			preview = await previewWorkflowAuthoringChecks(
+				rootStore.restApiContext,
+				workflowId,
+				versionId,
+			);
+		} catch {
+			// Preview is best-effort; server still enforces blocking/warning checks on activate
+		} finally {
+			updatingWorkflowActivation.value = false;
+		}
+
+		if (preview && preview.results.length > 0) {
+			const hasBlocking = preview.results.some((r) => r.severity === 'blocking');
+			uiStore.openModalWithData({
+				name: WORKFLOW_AUTHORING_CHECKS_MODAL_KEY,
+				data: {
+					results: preview.results,
+					onConfirm: hasBlocking
+						? undefined
+						: () => {
+								void performPublish(workflowId, versionId, options, true);
+							},
+				} as unknown as Record<string, unknown>,
+			});
+			return { success: false, errorHandled: true };
+		}
+
+		return await performPublish(workflowId, versionId, options, false);
 	};
 
 	const unpublishWorkflowFromHistory = async (workflowId: string) => {
