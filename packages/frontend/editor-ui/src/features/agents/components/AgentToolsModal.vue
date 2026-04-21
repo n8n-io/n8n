@@ -23,6 +23,7 @@ import {
 	toolRefToNode,
 	workflowToNewToolRef,
 } from '../composables/useAgentToolRefAdapter';
+import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 
 const props = defineProps<{
 	modalName: string;
@@ -30,6 +31,8 @@ const props = defineProps<{
 		tools: AgentJsonToolRef[];
 		/** Optional — when present, the Available list will include workflows scoped to this project. */
 		projectId?: string;
+		/** Optional — tagged onto telemetry events for correlation with agent analytics. */
+		agentId?: string;
 		onConfirm: (tools: AgentJsonToolRef[]) => void;
 	};
 }>();
@@ -39,6 +42,7 @@ const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const message = useMessage();
 const workflowsListStore = useWorkflowsListStore();
+const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 
@@ -153,6 +157,23 @@ const configuredTools = computed<ConfiguredToolView[]>(() => {
 	return out;
 });
 
+/** Connected workflow tools — mirrors `configuredTools` for the Connected section. */
+interface ConfiguredWorkflowView {
+	ref: AgentJsonToolRef;
+	name: string;
+	description?: string;
+}
+
+const configuredWorkflows = computed<ConfiguredWorkflowView[]>(() =>
+	workingTools.value
+		.filter((t) => t.type === 'workflow')
+		.map((ref) => ({
+			ref,
+			name: ref.name ?? (ref.workflow as string),
+			description: ref.description,
+		})),
+);
+
 // --- Search filtering -------------------------------------------------------
 
 const filteredConfiguredTools = computed(() => {
@@ -162,6 +183,15 @@ const filteredConfiguredTools = computed(() => {
 		(t) =>
 			t.node.name.toLowerCase().includes(query) ||
 			t.nodeType.displayName.toLowerCase().includes(query),
+	);
+});
+
+const filteredConfiguredWorkflows = computed(() => {
+	if (!debouncedSearchQuery.value) return configuredWorkflows.value;
+	const query = debouncedSearchQuery.value.toLowerCase();
+	return configuredWorkflows.value.filter(
+		(w) =>
+			w.name.toLowerCase().includes(query) || (w.description ?? '').toLowerCase().includes(query),
 	);
 });
 
@@ -201,6 +231,7 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 			existingToolNames,
 			onConfirm: (savedRef: AgentJsonToolRef) => {
 				workingTools.value = [...workingTools.value, savedRef];
+				toolTelemetry.trackAdded(savedRef);
 				commit();
 			},
 		},
@@ -208,10 +239,12 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 }
 
 function handleAddTool(nodeType: INodeTypeDescription) {
+	toolTelemetry.trackAddStarted('node');
 	openConfigForNewRef(nodeTypeToNewToolRef(nodeType));
 }
 
 function handleAddWorkflow(workflow: IWorkflowDb) {
+	toolTelemetry.trackAddStarted('workflow');
 	openConfigForNewRef(workflowToNewToolRef(workflow));
 }
 
@@ -227,6 +260,7 @@ async function handleRemoveTool(toolRef: AgentJsonToolRef) {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	workingTools.value = workingTools.value.filter((t) => t !== toolRef);
+	toolTelemetry.trackRemoved(toolRef);
 	commit();
 }
 
@@ -243,6 +277,7 @@ function handleConfigureTool(toolRef: AgentJsonToolRef) {
 			existingToolNames,
 			onConfirm: (updatedRef: AgentJsonToolRef) => {
 				workingTools.value = workingTools.value.map((t) => (t === toolRef ? updatedRef : t));
+				toolTelemetry.trackEdited(updatedRef);
 				commit();
 			},
 		},
@@ -281,7 +316,10 @@ function commit() {
 			</N8nInput>
 
 			<div :class="$style.listWrapper" data-test-id="agent-tools-list">
-				<div v-if="filteredConfiguredTools.length > 0" :class="$style.section">
+				<div
+					v-if="filteredConfiguredTools.length + filteredConfiguredWorkflows.length > 0"
+					:class="$style.section"
+				>
 					<div :class="$style.toolsList" data-test-id="agent-tools-connected-list">
 						<AgentToolItem
 							v-for="tool in filteredConfiguredTools"
@@ -293,6 +331,51 @@ function commit() {
 							@configure="handleConfigureTool(tool.ref)"
 							@remove="handleRemoveTool(tool.ref)"
 						/>
+						<div
+							v-for="wf in filteredConfiguredWorkflows"
+							:key="`wf-${wf.name}`"
+							:class="$style.workflowRow"
+							data-test-id="agent-tools-connected-workflow-row"
+						>
+							<div :class="$style.workflowLabel">
+								<div :class="$style.workflowIconWrapper">
+									<N8nIcon icon="workflow" :size="20" :class="$style.workflowIcon" />
+								</div>
+								<div :class="$style.workflowTextWrapper">
+									<N8nText size="small" color="text-dark" :class="$style.workflowName">
+										{{ wf.name }}
+									</N8nText>
+									<N8nText
+										v-if="wf.description"
+										size="small"
+										color="text-light"
+										:class="$style.workflowDescription"
+									>
+										{{ wf.description }}
+									</N8nText>
+								</div>
+							</div>
+							<div :class="$style.workflowActions">
+								<button
+									type="button"
+									:class="$style.workflowActionBtn"
+									:title="i18n.baseText('agents.tools.configure')"
+									data-test-id="agent-tools-connected-workflow-configure"
+									@click="handleConfigureTool(wf.ref)"
+								>
+									<N8nIcon icon="settings" :size="16" />
+								</button>
+								<button
+									type="button"
+									:class="$style.workflowActionBtn"
+									:title="i18n.baseText('agents.tools.remove')"
+									data-test-id="agent-tools-connected-workflow-remove"
+									@click="handleRemoveTool(wf.ref)"
+								>
+									<N8nIcon icon="trash-2" :size="16" />
+								</button>
+							</div>
+						</div>
 					</div>
 				</div>
 
@@ -358,6 +441,7 @@ function commit() {
 				<div
 					v-if="
 						filteredConfiguredTools.length === 0 &&
+						filteredConfiguredWorkflows.length === 0 &&
 						filteredAvailableTools.length === 0 &&
 						filteredAvailableWorkflows.length === 0
 					"
@@ -451,6 +535,31 @@ function commit() {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.workflowActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	flex-shrink: 0;
+}
+
+.workflowActionBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	background: none;
+	cursor: pointer;
+	color: var(--color--text--tint-1);
+	border-radius: var(--radius);
+
+	&:hover {
+		background-color: var(--color--foreground--tint-1);
+		color: var(--color--text);
+	}
 }
 
 .emptyState {

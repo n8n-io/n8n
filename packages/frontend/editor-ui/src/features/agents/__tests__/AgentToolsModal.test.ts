@@ -461,6 +461,74 @@ describe('AgentToolsModal', () => {
 			});
 		});
 
+		it('renders connected workflow tools in the Connected section', () => {
+			const existing: AgentJsonToolRef = {
+				type: 'workflow',
+				workflow: 'Daily digest',
+				name: 'Daily digest',
+				description: 'Summary',
+			};
+
+			const { getAllByTestId, getByTestId } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [existing], onConfirm: vi.fn() },
+				},
+			});
+
+			const connectedList = getByTestId('agent-tools-connected-list');
+			expect(connectedList.textContent).toContain('Daily digest');
+			expect(connectedList.textContent).toContain('Summary');
+			expect(getAllByTestId('agent-tools-connected-workflow-row')).toHaveLength(1);
+			expect(getByTestId('agent-tools-connected-workflow-configure')).toBeTruthy();
+			expect(getByTestId('agent-tools-connected-workflow-remove')).toBeTruthy();
+		});
+
+		it('opens the config modal when the configure button on a connected workflow row is clicked', async () => {
+			const existing: AgentJsonToolRef = {
+				type: 'workflow',
+				workflow: 'Daily digest',
+				name: 'Daily digest',
+			};
+			const { getByTestId } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [existing], onConfirm: vi.fn() },
+				},
+			});
+
+			await fireEvent.click(getByTestId('agent-tools-connected-workflow-configure'));
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+			expect(payload.name).toBe('agentToolConfigModal');
+			expect(payload.data.toolRef).toStrictEqual(existing);
+		});
+
+		it('removes a connected workflow via the row trash button (after confirm)', async () => {
+			mockConfirm.mockResolvedValueOnce('confirm');
+			const existing: AgentJsonToolRef = {
+				type: 'workflow',
+				workflow: 'Daily digest',
+				name: 'Daily digest',
+			};
+			const onConfirm = vi.fn();
+			const { getByTestId } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [existing], onConfirm },
+				},
+			});
+
+			await fireEvent.click(getByTestId('agent-tools-connected-workflow-remove'));
+			// Wait for the async confirm resolution + commit
+			await waitFor(() => {
+				expect(onConfirm).toHaveBeenCalled();
+			});
+			const [tools] = onConfirm.mock.calls[0];
+			expect(tools).toEqual([]);
+		});
+
 		it('appends the configured workflow ref to workingTools on save', async () => {
 			seedWorkflows([makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' })]);
 			const onConfirm = vi.fn();

@@ -28,6 +28,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:config': [changes: Partial<AgentJsonConfig>];
 	configure: [ref: AgentJsonToolRef];
+	remove: [ref: AgentJsonToolRef];
 }>();
 
 const i18n = useI18n();
@@ -104,6 +105,7 @@ const rows = computed<ToolRowView[]>(() =>
 function removeTool(ref: AgentJsonToolRef) {
 	const updated = tools.value.filter((t) => t !== ref);
 	emit('update:config', { tools: updated });
+	emit('remove', ref);
 }
 </script>
 

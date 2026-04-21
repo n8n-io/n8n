@@ -11,6 +11,7 @@ import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { CustomToolEntry } from '../agent.types';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
+import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import { CHATHUB_TO_CATALOG, CATALOG_TO_CHATHUB } from '../provider-mapping';
 import AgentPublishButton from './AgentPublishButton.vue';
 import AgentToolsPanel from './AgentToolsPanel.vue';
@@ -132,12 +133,15 @@ function onInstructionsChange(value: string) {
 	emit('update:config', { instructions: value });
 }
 
+const toolTelemetry = useAgentToolTelemetry(props.agentId);
+
 function openToolsModal() {
 	uiStore.openModalWithData({
 		name: AGENT_TOOLS_MODAL_KEY,
 		data: {
 			tools: (props.config?.tools ?? []) as AgentJsonToolRef[],
 			projectId: props.projectId,
+			agentId: props.agentId,
 			onConfirm: (tools: AgentJsonToolRef[]) => {
 				emit('update:config', { tools });
 			},
@@ -159,9 +163,14 @@ function openToolConfigModal(toolRef: AgentJsonToolRef) {
 			onConfirm: (updatedRef: AgentJsonToolRef) => {
 				const updatedTools = currentTools.map((t) => (t === toolRef ? updatedRef : t));
 				emit('update:config', { tools: updatedTools });
+				toolTelemetry.trackEdited(updatedRef);
 			},
 		},
 	});
+}
+
+function onSidebarToolRemoved(toolRef: AgentJsonToolRef) {
+	toolTelemetry.trackRemoved(toolRef);
 }
 
 // --- Collapsible sections ---
@@ -333,6 +342,7 @@ function onResizeStart(event: MouseEvent) {
 						:agent-tools="agentTools"
 						@update:config="(changes) => emit('update:config', changes)"
 						@configure="openToolConfigModal"
+						@remove="onSidebarToolRemoved"
 					/>
 				</div>
 			</div>
