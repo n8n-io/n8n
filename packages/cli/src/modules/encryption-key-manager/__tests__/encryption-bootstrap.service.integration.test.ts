@@ -5,12 +5,8 @@ import { InstanceSettings } from 'n8n-core';
 
 import { EncryptionBootstrapService } from '../encryption-bootstrap.service';
 
-const FLAG = 'N8N_ENCRYPTION_KEY_IDENTIFICATION_ENABLED';
-let originalFlag: string | undefined;
-
 beforeAll(async () => {
 	mockInstance(InstanceSettings, {
-		isLeader: true,
 		encryptionKey: 'legacy-encryption-key',
 		n8nFolder: '/tmp/n8n-test',
 	});
@@ -18,14 +14,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	originalFlag = process.env[FLAG];
-	process.env[FLAG] = 'true';
 	await testDb.truncate(['DeploymentKey']);
-});
-
-afterEach(() => {
-	if (originalFlag === undefined) delete process.env[FLAG];
-	else process.env[FLAG] = originalFlag;
 });
 
 afterAll(async () => {
@@ -60,5 +49,16 @@ describe('EncryptionBootstrapService (integration)', () => {
 
 		expect(rows).toHaveLength(1);
 		expect(rows[0].id).toBe(firstRow.id);
+	});
+
+	it('produces exactly one active row under concurrent runs', async () => {
+		const service = Container.get(EncryptionBootstrapService);
+
+		await Promise.all([service.run(), service.run(), service.run()]);
+
+		const rows = await Container.get(DeploymentKeyRepository).find({
+			where: { type: 'data_encryption', status: 'active' },
+		});
+		expect(rows).toHaveLength(1);
 	});
 });
