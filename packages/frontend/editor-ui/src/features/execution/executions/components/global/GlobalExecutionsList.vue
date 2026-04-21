@@ -24,7 +24,7 @@ import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 
 import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
-import { ElSkeletonItem } from 'element-plus';
+
 const props = withDefaults(
 	defineProps<{
 		executions: ExecutionSummaryWithScopes[];
@@ -422,13 +422,6 @@ const goToUpgrade = () => {
 							@retry-original="retryOriginalExecution"
 							@go-to-upgrade="goToUpgrade"
 						/>
-						<template v-if="executionsStore.loading && !executions.length">
-							<tr v-for="item in executionsStore.itemsPerPage" :key="item">
-								<td v-for="col in 9" :key="col">
-									<ElSkeletonItem />
-								</td>
-							</tr>
-						</template>
 						<tr>
 							<td colspan="9" style="text-align: center">
 								<template v-if="!executions.length">
