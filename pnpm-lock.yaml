@@ -2550,9 +2550,6 @@ importers:
       dotenv:
         specifier: 17.2.3
         version: 17.2.3
-      esbuild:
-        specifier: ^0.25.0
-        version: 0.25.10
       express:
         specifier: 5.1.0
         version: 5.1.0
@@ -2709,6 +2706,9 @@ importers:
       sshpk:
         specifier: 1.18.0
         version: 1.18.0
+      sucrase:
+        specifier: 3.35.0
+        version: 3.35.0
       swagger-ui-express:
         specifier: 5.0.1
         version: 5.0.1(express@5.1.0)
@@ -2830,6 +2830,9 @@ importers:
       concurrently:
         specifier: ^8.2.0
         version: 8.2.0
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.10
       ioredis-mock:
         specifier: ^8.8.1
         version: 8.8.1(@types/ioredis-mock@8.2.2)(ioredis@5.3.2)

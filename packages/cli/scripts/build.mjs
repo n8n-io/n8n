@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import shell from 'shelljs';
 import { rawTimeZones } from '@vvo/tzdb';
 import glob from 'fast-glob';
+import { buildAgentLibraryBundle } from './bundle-agent-library.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,7 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 generateUserManagementEmailTemplates();
 generateTimezoneData();
+await buildAgentLibraryBundle();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
