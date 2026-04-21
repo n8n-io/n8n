@@ -1,11 +1,15 @@
 <script lang="ts" setup>
-import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
 import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed } from 'vue';
 import { getToolIcon, useToolLabel } from '../toolLabels';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ButtonLike from './ButtonLike.vue';
 import DataSection from './DataSection.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -13,6 +17,8 @@ import ToolCallStep from './ToolCallStep.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
+	/** When provided, renders only these entries instead of the full timeline. */
+	visibleEntries?: InstanceAiTimelineEntry[];
 }>();
 
 const i18n = useI18n();
@@ -60,10 +66,12 @@ const toolCallsById = computed(() => {
 	return map;
 });
 
+const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
+
 const steps = computed((): TimelineStep[] => {
 	const result: TimelineStep[] = [];
 
-	for (const entry of props.agentNode.timeline) {
+	for (const entry of timelineEntries.value) {
 		if (entry.type === 'text') {
 			const longText = isLongTextContent(entry.content);
 			result.push({
@@ -138,15 +146,9 @@ const steps = computed((): TimelineStep[] => {
 					</AnimatedCollapsibleContent>
 				</CollapsibleRoot>
 				<ButtonLike v-else>
-					<N8nIcon :icon="step.icon" size="small" />
-					{{ step.label }}
+					<InstanceAiMarkdown :content="step.label" />
 				</ButtonLike>
 			</template>
-
-			<ButtonLike v-else-if="step.type === 'done'">
-				<N8nIcon :icon="step.icon" size="small" />
-				{{ step.label }}
-			</ButtonLike>
 		</template>
 	</div>
 </template>

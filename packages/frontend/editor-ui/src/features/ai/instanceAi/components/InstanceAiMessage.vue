@@ -210,6 +210,7 @@ function formatJson(value: unknown): string {
 	border-radius: var(--radius--xl);
 	white-space: pre-wrap;
 	word-break: break-word;
+	max-width: 90%;
 }
 
 .assistantWrapper {

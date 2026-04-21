@@ -772,7 +772,7 @@ function handleStop() {
 }
 
 .message {
-	width: 90%;
+	// width: 90%;
 }
 
 .scrollButtonContainer {
