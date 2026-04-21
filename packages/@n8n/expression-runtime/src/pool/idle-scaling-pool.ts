@@ -72,8 +72,13 @@ export class IdleScalingPool {
 	}
 
 	private async drainPendingTransitions(): Promise<void> {
-		if (this.pendingScaleUp) await this.pendingScaleUp.catch(() => {});
-		if (this.pendingScaleDown) await this.pendingScaleDown.catch(() => {});
+		// Snapshot both fields before awaiting so a transition starting between reads
+		// can't be missed. Waits for transitions in flight now, not ones started later.
+		const promises: Promise<void>[] = [];
+		if (this.pendingScaleUp) promises.push(this.pendingScaleUp.catch(() => {}));
+		if (this.pendingScaleDown) promises.push(this.pendingScaleDown.catch(() => {}));
+
+		await Promise.all(promises);
 	}
 
 	private createInnerPool(): IsolatePool {
