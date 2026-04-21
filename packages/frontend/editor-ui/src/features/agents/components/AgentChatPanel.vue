@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
@@ -37,6 +38,18 @@ const emit = defineEmits<{
 	'continue-loaded': [count: number];
 	back: [];
 }>();
+
+const locale = useI18n();
+
+// The sub-header title reflects which of the three chat states we're in:
+//   - Builder          → "Builder"
+//   - New/ephemeral chat → "New chat"
+//   - Continue chat    → persisted session title
+const displayTitle = computed(() => {
+	if (props.sessionTitle) return props.sessionTitle;
+	if (props.endpoint === 'build') return locale.baseText('agents.chat.builderTitle');
+	return locale.baseText('agents.chat.newChat');
+});
 
 const inputText = ref('');
 
@@ -98,17 +111,26 @@ onBeforeUnmount(() => {
 
 <template>
 	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
-		<div v-if="continueSessionId" :class="[$style.topBar, $style.topBarContinue]">
-			<button :class="$style.backBtn" title="Back to agent" @click="emit('back')">
+		<div :class="$style.subHeader">
+			<button
+				:class="$style.backBtn"
+				:title="locale.baseText('agents.chat.back')"
+				@click="emit('back')"
+			>
 				<N8nIcon icon="arrow-left" :size="14" />
 			</button>
 			<span v-if="sessionEmoji" :class="$style.sessionEmoji">{{ sessionEmoji }}</span>
-			<span v-if="sessionTitle" :class="$style.sessionTitle">{{ sessionTitle }}</span>
-		</div>
-		<div v-else-if="endpoint === 'build' && messages.length > 0" :class="$style.topBar">
+			<N8nIcon
+				v-else
+				:class="$style.sessionIcon"
+				:icon="endpoint === 'build' ? 'wand-sparkles' : 'message-square'"
+				:size="14"
+			/>
+			<span :class="$style.sessionTitle">{{ displayTitle }}</span>
 			<button
+				v-if="endpoint === 'build' && messages.length > 0"
 				:class="$style.clearBtn"
-				title="Clear chat history"
+				:title="locale.baseText('agents.chat.clearHistory')"
 				data-testid="chat-clear"
 				@click="onClearHistory"
 			>
@@ -181,9 +203,13 @@ onBeforeUnmount(() => {
 	color: var(--color--danger);
 }
 
-.topBarContinue {
-	justify-content: flex-start;
+.subHeader {
+	display: flex;
+	align-items: center;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+	flex-shrink: 0;
 }
 
 .backBtn {
@@ -196,6 +222,7 @@ onBeforeUnmount(() => {
 	color: var(--color--primary);
 	padding: var(--spacing--4xs);
 	border-radius: var(--radius);
+	flex-shrink: 0;
 
 	&:hover {
 		background-color: var(--color--foreground--tint-1);
@@ -208,6 +235,11 @@ onBeforeUnmount(() => {
 	flex-shrink: 0;
 }
 
+.sessionIcon {
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
+}
+
 .sessionTitle {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
@@ -217,6 +249,7 @@ onBeforeUnmount(() => {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;
+	flex: 1;
 }
 
 .inputArea {
