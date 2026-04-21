@@ -36,8 +36,12 @@ const mockPollTaskResult = pollTaskResult as jest.Mock;
 describe('AlicloudModelStudio Operations', () => {
 	let mockExecuteFunctions: ReturnType<typeof mock<IExecuteFunctions>>;
 
+	let mockNode: { typeVersion: number };
+
 	beforeEach(() => {
+		mockNode = { typeVersion: 1 };
 		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockExecuteFunctions.getNode.mockReturnValue(mockNode as any);
 		mockExecuteFunctions.getNodeInputs.mockReturnValue([{ type: 'main' }]);
 		mockExecuteFunctions.getExecutionCancelSignal.mockReturnValue(undefined);
 	});
@@ -46,12 +50,55 @@ describe('AlicloudModelStudio Operations', () => {
 		jest.clearAllMocks();
 	});
 
+	describe('Text: message (v1.1 RLC)', () => {
+		it('should extract model value from RLC parameter with extractValue', async () => {
+			mockNode.typeVersion = 1.1;
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any, options?: any) => {
+					if (param === 'modelId' && options?.extractValue) {
+						return 'qwen3.5-flash';
+					}
+					const params: Record<string, unknown> = {
+						messages: {
+							messageValues: [{ role: 'user', content: 'Hello from v1.1' }],
+						},
+						options: {},
+						simplify: true,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			const mockResponse = {
+				output: {
+					choices: [{ message: { content: [{ text: 'Hi from v1.1!' }] } }],
+				},
+				usage: { input_tokens: 5, output_tokens: 3 },
+			};
+			mockApiRequest.mockResolvedValue(mockResponse);
+
+			const result = await textMessageExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('modelId', 0, '', {
+				extractValue: true,
+			});
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				'/api/v1/services/aigc/multimodal-generation/generation',
+				expect.objectContaining({
+					body: expect.objectContaining({ model: 'qwen3.5-flash' }),
+				}),
+			);
+			expect(result.json).toEqual({ content: 'Hi from v1.1!' });
+		});
+	});
+
 	describe('Text: message', () => {
-		it('should send correct request body to text-generation endpoint for non-multimodal model', async () => {
+		it('should send correct request body to text-generation endpoint for text-only model', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
-						modelId: 'some-text-only-model',
+						modelId: 'qwen-coder-turbo',
 						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
 						options: {},
 						simplify: true,
@@ -73,7 +120,7 @@ describe('AlicloudModelStudio Operations', () => {
 				'/api/v1/services/aigc/text-generation/generation',
 				{
 					body: expect.objectContaining({
-						model: 'some-text-only-model',
+						model: 'qwen-coder-turbo',
 						input: {
 							messages: [{ role: 'user', content: 'Hello' }],
 						},
@@ -131,7 +178,7 @@ describe('AlicloudModelStudio Operations', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
-						modelId: 'some-text-only-model',
+						modelId: 'qwen-coder-turbo',
 						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
 						options: {},
 						simplify: false,
@@ -151,10 +198,45 @@ describe('AlicloudModelStudio Operations', () => {
 
 			expect(result.json).toEqual({
 				content: 'Hi there!',
-				model: 'some-text-only-model',
+				model: 'qwen-coder-turbo',
 				usage: { input_tokens: 5, output_tokens: 3 },
 				fullResponse: mockResponse,
 			});
+		});
+	});
+
+	describe('Image: analyze (v1.1 RLC)', () => {
+		it('should extract model value from RLC parameter with extractValue', async () => {
+			mockNode.typeVersion = 1.1;
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any, options?: any) => {
+					if (param === 'modelId' && options?.extractValue) {
+						return 'qwen3-vl-flash';
+					}
+					const params: Record<string, unknown> = {
+						inputType: 'url',
+						imageUrl: 'https://example.com/photo.jpg',
+						question: 'Describe this',
+						visionOptions: {},
+						simplify: true,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			mockApiRequest.mockResolvedValue({
+				output: {
+					choices: [{ message: { content: [{ text: 'A photo' }] } }],
+				},
+				usage: { input_tokens: 10, output_tokens: 2 },
+			});
+
+			const result = await imageAnalyzeExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('modelId', 0, '', {
+				extractValue: true,
+			});
+			expect(result.json).toEqual({ content: 'A photo' });
 		});
 	});
 
@@ -208,6 +290,43 @@ describe('AlicloudModelStudio Operations', () => {
 		});
 	});
 
+	describe('Image: generate (v1.1 RLC)', () => {
+		it('should extract model value from RLC parameter with extractValue', async () => {
+			mockNode.typeVersion = 1.1;
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any, options?: any) => {
+					if (param === 'modelId' && options?.extractValue) {
+						return 'z-image-turbo';
+					}
+					const params: Record<string, unknown> = {
+						prompt: 'A mountain landscape',
+						imageOptions: {},
+						downloadImage: false,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			mockApiRequest.mockResolvedValue({
+				output: {
+					choices: [{ message: { content: [{ image: 'https://result.aliyuncs.com/gen.png' }] } }],
+				},
+				usage: { input_tokens: 10 },
+			});
+
+			const result = await imageGenerateExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('modelId', 0, '', {
+				extractValue: true,
+			});
+			expect(result.json).toEqual({
+				model: 'z-image-turbo',
+				imageUrl: 'https://result.aliyuncs.com/gen.png',
+				usage: { input_tokens: 10 },
+			});
+		});
+	});
+
 	describe('Image: generate', () => {
 		it('should send prompt and return URL-only when downloadImage is false', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
@@ -258,6 +377,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 		it('should auto-download image as binary when downloadImage is true', async () => {
 			const deepMock = mockDeep<IExecuteFunctions>();
+			deepMock.getNode.mockReturnValue({ typeVersion: 1 } as any);
 			deepMock.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
@@ -320,6 +440,44 @@ describe('AlicloudModelStudio Operations', () => {
 		});
 	});
 
+	describe('Video: textToVideo (v1.1 RLC)', () => {
+		it('should extract model value from RLC parameter with extractValue', async () => {
+			mockNode.typeVersion = 1.1;
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any, options?: any) => {
+					if (param === 'modelId' && options?.extractValue) {
+						return 'wan2.6-t2v';
+					}
+					const params: Record<string, unknown> = {
+						prompt: 'A sunset timelapse',
+						resolution: '720P',
+						duration: 3,
+						shotType: 'single',
+						simplify: true,
+						downloadVideo: false,
+						videoOptions: {},
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			mockApiRequest.mockResolvedValue({ output: { task_id: 't2v-rlc-1' } });
+			mockPollTaskResult.mockResolvedValue({
+				output: { task_status: 'SUCCEEDED', video_url: 'https://result.aliyuncs.com/t2v.mp4' },
+				usage: { input_tokens: 20 },
+			});
+
+			const result = await videoT2VExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('modelId', 0, '', {
+				extractValue: true,
+			});
+			expect(result.json).toEqual({
+				videoUrl: 'https://result.aliyuncs.com/t2v.mp4',
+			});
+		});
+	});
+
 	describe('Video: textToVideo', () => {
 		it('should create async task, poll until SUCCEEDED, and return video URL with metadata', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
@@ -378,6 +536,46 @@ describe('AlicloudModelStudio Operations', () => {
 					videoUrl: 'https://result.aliyuncs.com/video.mp4',
 				}),
 			);
+		});
+	});
+
+	describe('Video: imageToVideo (v1.1 RLC)', () => {
+		it('should extract model value from RLC parameter with extractValue', async () => {
+			mockNode.typeVersion = 1.1;
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any, options?: any) => {
+					if (param === 'modelId' && options?.extractValue) {
+						return 'wan2.6-i2v-flash';
+					}
+					const params: Record<string, unknown> = {
+						inputType: 'url',
+						imgUrl: 'https://example.com/frame.png',
+						prompt: 'A flower blooming',
+						resolution: '720P',
+						duration: 3,
+						shotType: 'single',
+						simplify: true,
+						downloadVideo: false,
+						imageToVideoOptions: {},
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			mockApiRequest.mockResolvedValue({ output: { task_id: 'i2v-rlc-1' } });
+			mockPollTaskResult.mockResolvedValue({
+				output: { task_status: 'SUCCEEDED', video_url: 'https://result.aliyuncs.com/i2v.mp4' },
+				usage: { input_tokens: 30 },
+			});
+
+			const result = await videoI2VExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('modelId', 0, '', {
+				extractValue: true,
+			});
+			expect(result.json).toEqual({
+				videoUrl: 'https://result.aliyuncs.com/i2v.mp4',
+			});
 		});
 	});
 

@@ -2,6 +2,7 @@ import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n
 import { updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
 import type { IImageOptions, IModelStudioRequestBody } from '../../helpers/interfaces';
+import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -37,6 +38,15 @@ const properties: INodeProperties[] = [
 		],
 		default: 'z-image-turbo',
 		description: 'The model to use for image generation',
+		displayOptions: {
+			show: { '@version': [1] },
+		},
+	},
+	{
+		...modelRLC('imageGenerationModelSearch'),
+		displayOptions: {
+			show: { '@version': [{ _cnd: { gte: 1.1 } }] },
+		},
 	},
 	{
 		displayName: 'Prompt',
@@ -148,7 +158,11 @@ export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const model = this.getNodeParameter('modelId', itemIndex) as string;
+	const nodeVersion = this.getNode().typeVersion;
+	const model =
+		nodeVersion >= 1.1
+			? (this.getNodeParameter('modelId', itemIndex, '', { extractValue: true }) as string)
+			: (this.getNodeParameter('modelId', itemIndex) as string);
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const imageOptions = this.getNodeParameter('imageOptions', itemIndex, {}) as IImageOptions;
 	const downloadImage = this.getNodeParameter('downloadImage', itemIndex, true) as boolean;
