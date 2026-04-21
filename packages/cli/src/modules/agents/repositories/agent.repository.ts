@@ -38,4 +38,25 @@ export class AgentRepository extends Repository<Agent> {
 			.innerJoinAndSelect('agent.publishedVersion', 'publishedVersion')
 			.getMany();
 	}
+
+	/**
+	 * Finds agents whose `integrations` JSON column contains an entry matching
+	 * the given `type` + `credentialId`, excluding `excludeAgentId`.
+	 *
+	 * Filters in memory because `integrations` is a JSON column with no portable
+	 * SQL query across SQLite/Postgres/MySQL. Agent counts per instance are small
+	 * enough that this is fine.
+	 */
+	async findByIntegrationCredential(
+		type: string,
+		credentialId: string,
+		excludeAgentId: string,
+	): Promise<Agent[]> {
+		const agents = await this.find();
+		return agents.filter(
+			(agent) =>
+				agent.id !== excludeAgentId &&
+				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
+		);
+	}
 }
