@@ -15,6 +15,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
+import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
@@ -303,6 +304,12 @@ export function createSubmitWorkflowTool(
 			// For new nodes: look up credentials by name from the credential service.
 			// Unresolved credentials are mocked via pinned data when available.
 			const mockResult = await resolveCredentials(json, workflowId, context, credentialMap);
+
+			// Strip credential entries that are no longer valid for the current
+			// parameters. Resolution above (and the LLM itself) can re-emit stale
+			// references between turns; without this, setup analysis would surface
+			// a credential request for a node that no longer needs one.
+			await stripStaleCredentialsFromWorkflow(context, json);
 
 			// Ensure webhook nodes have a webhookId so n8n registers clean paths
 			// (e.g., "{uuid}/dashboard" instead of "{workflowId}/{encodedNodeName}/dashboard").

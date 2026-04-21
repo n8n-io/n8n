@@ -248,7 +248,7 @@ describe('update-workflow MCP tool', () => {
 				user,
 				expect.any(WorkflowEntity),
 				'custom-wf-id',
-				{ aiBuilderAssisted: true },
+				{ aiBuilderAssisted: true, source: 'n8n-mcp' },
 			);
 		});
 

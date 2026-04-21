@@ -533,6 +533,8 @@ export interface InstanceAiContext {
 	 * Used to register `parse-file` and supply data to the parser.
 	 */
 	currentUserAttachments?: InstanceAiAttachment[];
+	/** Optional logger for diagnostics from domain tools. */
+	logger?: Logger;
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────

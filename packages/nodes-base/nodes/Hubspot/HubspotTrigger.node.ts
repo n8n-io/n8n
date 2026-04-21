@@ -13,6 +13,32 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
 
+export async function getEntityProperties(
+	this: ILoadOptionsFunctions,
+	endpoint: string,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+
+	if (!Array.isArray(properties)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`HubSpot returned an unexpected response while loading properties from "${endpoint}". Expected an array of properties.`,
+		);
+	}
+
+	for (const property of properties) {
+		if (typeof property?.label === 'string' && typeof property?.name === 'string') {
+			returnData.push({
+				name: property.label,
+				value: property.name,
+			});
+		}
+	}
+
+	return returnData;
+}
+
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HubSpot Trigger',
@@ -224,6 +250,52 @@ export class HubspotTrigger implements INodeType {
 								default: '',
 								required: true,
 							},
+							{
+								displayName: 'Property Name or ID',
+								name: 'property',
+								type: 'options',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+								typeOptions: {
+									loadOptionsDependsOn: ['ticket.propertyChange'],
+									loadOptionsMethod: 'getTicketProperties',
+								},
+								displayOptions: {
+									show: {
+										name: ['ticket.propertyChange'],
+									},
+								},
+								default: '',
+								required: true,
+							},
+							{
+								displayName: 'Property Name or ID',
+								name: 'property',
+								type: 'options',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+								options: [
+									{
+										name: 'Assigned To',
+										value: 'assignedTo',
+									},
+									{
+										name: 'Is Archived',
+										value: 'isArchived',
+									},
+									{
+										name: 'Status',
+										value: 'status',
+									},
+								],
+								displayOptions: {
+									show: {
+										name: ['conversation.propertyChange'],
+									},
+								},
+								default: '',
+								required: true,
+							},
 						],
 					},
 				],
@@ -251,53 +323,17 @@ export class HubspotTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available contacts to display them to user so that they can
-			// select them easily
 			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const property of properties) {
-					const propertyName = property.label;
-					const propertyId = property.name;
-					returnData.push({
-						name: propertyName,
-						value: propertyId,
-					});
-				}
-				return returnData;
+				return await getEntityProperties.call(this, '/properties/v2/contacts/properties');
 			},
-			// Get all the available companies to display them to user so that they can
-			// select them easily
 			async getCompanyProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/companies/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const property of properties) {
-					const propertyName = property.label;
-					const propertyId = property.name;
-					returnData.push({
-						name: propertyName,
-						value: propertyId,
-					});
-				}
-				return returnData;
+				return await getEntityProperties.call(this, '/properties/v2/companies/properties');
 			},
-			// Get all the available deals to display them to user so that they can
-			// select them easily
 			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/deals/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const property of properties) {
-					const propertyName = property.label;
-					const propertyId = property.name;
-					returnData.push({
-						name: propertyName,
-						value: propertyId,
-					});
-				}
-				return returnData;
+				return await getEntityProperties.call(this, '/properties/v2/deals/properties');
+			},
+			async getTicketProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await getEntityProperties.call(this, '/properties/v2/tickets/properties');
 			},
 		},
 	};
@@ -447,6 +483,9 @@ export class HubspotTrigger implements INodeType {
 			}
 			if (subscriptionType.includes('ticket')) {
 				bodyData[i].ticketId = bodyData[i].objectId;
+			}
+			if (subscriptionType.includes('conversation')) {
+				bodyData[i].conversationId = bodyData[i].objectId;
 			}
 			delete bodyData[i].objectId;
 		}

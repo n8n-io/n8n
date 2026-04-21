@@ -73,18 +73,16 @@ const plannerRenderers: HandoffRenderers<Extract<SubAgentHandoff, { kind: 'plann
 
 /** Read-only discovery tools the planner gets from domainTools. */
 const PLANNER_DOMAIN_TOOL_NAMES = [
-	'search-nodes',
-	'get-suggested-nodes',
-	'get-best-practices',
-	'list-credentials',
-	'list-data-tables',
-	'get-data-table-schema',
-	'list-workflows',
+	'nodes',
+	'templates',
+	'credentials',
+	'data-tables',
+	'workflows',
 	'ask-user',
 ];
 
 /** Research tools added when available. */
-const PLANNER_RESEARCH_TOOL_NAMES = ['web-search', 'fetch-url'];
+const PLANNER_RESEARCH_TOOL_NAMES = ['research'];
 
 // ---------------------------------------------------------------------------
 // Message history retrieval
