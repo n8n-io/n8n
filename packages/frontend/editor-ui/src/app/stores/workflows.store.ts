@@ -8,14 +8,7 @@ import {
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
-import type {
-	INodeMetadata,
-	INodeUi,
-	IStartRunData,
-	IWorkflowDb,
-	NodeMetadataMap,
-	WorkflowValidationIssue,
-} from '@/Interface';
+import type { INodeUi, IStartRunData, IWorkflowDb, WorkflowValidationIssue } from '@/Interface';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -137,7 +130,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowExecutionResultDataLastUpdate = ref<number>();
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
 	const executionWaitingForWebhook = ref(false);
-	const nodeMetadata = ref<NodeMetadataMap>({});
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
@@ -473,22 +465,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	/** @deprecated Use `workflowDocumentStore.getNodesByIds()` instead. */
 	function getNodesByIds(nodeIds: string[]): INodeUi[] {
 		return nodeIds.map(getNodeById).filter(isPresent);
-	}
-
-	function getParametersLastUpdate(nodeName: string): number | undefined {
-		return nodeMetadata.value[nodeName]?.parametersLastUpdatedAt;
-	}
-
-	function getPinnedDataLastUpdate(nodeName: string): number | undefined {
-		return nodeMetadata.value[nodeName]?.pinnedDataLastUpdatedAt;
-	}
-
-	function getPinnedDataLastRemovedAt(nodeName: string): number | undefined {
-		return nodeMetadata.value[nodeName]?.pinnedDataLastRemovedAt;
-	}
-
-	function isNodePristine(nodeName: string): boolean {
-		return nodeMetadata.value[nodeName] === undefined || nodeMetadata.value[nodeName].pristine;
 	}
 
 	function getExecutionDataById(id: string): ExecutionSummary | undefined {
@@ -1000,13 +976,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			uiStore.lastSelectedNode = nameData.new;
 		}
 
-		const { [nameData.old]: removed, ...rest } = nodeMetadata.value;
-		nodeMetadata.value = { ...rest, [nameData.new]: nodeMetadata.value[nameData.old] };
-
 		if (workflowId.value) {
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowId.value),
 			);
+			workflowDocumentStore.renameNodeMetadata(nameData.old, nameData.new);
 			workflowDocumentStore.renamePinDataNode(nameData.old, nameData.new);
 		}
 
@@ -1056,10 +1030,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			if (node.position) {
 				node.position = snapPositionToGrid(node.position);
 			}
-
-			if (!nodeMetadata.value[node.name]) {
-				nodeMetadata.value[node.name] = { pristine: true };
-			}
 		});
 
 		workflow.value.nodes = nodes;
@@ -1085,18 +1055,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		workflow.value.nodes.push(nodeData);
 		workflowObject.value.setNodes(workflow.value.nodes);
-
-		// Init node metadata
-		if (!nodeMetadata.value[nodeData.name]) {
-			nodeMetadata.value[nodeData.name] = {} as INodeMetadata;
-		}
 	}
 
 	/** @deprecated Use `workflowDocumentStore.removeNode()` instead. */
 	function removeNode(node: INodeUi): void {
-		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
-		nodeMetadata.value = remainingNodeMetadata;
-
 		if (workflowId.value) {
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowId.value),
@@ -1531,10 +1493,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return url.toString();
 	}
 
-	function setNodePristine(nodeName: string, isPristine: boolean): void {
-		nodeMetadata.value[nodeName].pristine = isPristine;
-	}
-
 	function resetChatMessages(): void {
 		chatMessages.value = [];
 	}
@@ -1666,7 +1624,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		activeExecutionId: readonlyActiveExecutionId,
 		previousExecutionId: readonlyPreviousExecutionId,
 		executionWaitingForWebhook,
-		nodeMetadata,
 		isInDebugMode,
 		chatMessages,
 		chatPartialExecutionDestinationNode,
@@ -1704,10 +1661,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		findRootWithMainConnection,
 		getNodeById,
 		getNodesByIds,
-		getParametersLastUpdate,
-		getPinnedDataLastUpdate,
-		getPinnedDataLastRemovedAt,
-		isNodePristine,
 		getExecutionDataById,
 		getNodeTypes,
 		getNodes,
@@ -1755,7 +1708,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		deleteExecution,
 		addToCurrentExecutions,
 		getBinaryUrl,
-		setNodePristine,
 		resetChatMessages,
 		appendChatMessage,
 		checkIfNodeHasChatParent,
