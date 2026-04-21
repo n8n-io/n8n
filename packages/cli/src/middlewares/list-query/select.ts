@@ -9,18 +9,17 @@ import { UserSelect } from './dtos/user.select.dto';
 import { WorkflowSelect } from './dtos/workflow.select.dto';
 
 export const selectListQueryMiddleware: RequestHandler = (req, res, next) => {
-	const listQueryReq = req;
-	const { select: rawSelect } = listQueryReq.query;
+	const { select: rawSelect } = req.query;
 
 	if (!rawSelect || typeof rawSelect !== 'string') return next();
 
 	let Select;
 
-	if (listQueryReq.baseUrl.endsWith('workflows') || listQueryReq.path.endsWith('workflows')) {
+	if (req.baseUrl.endsWith('workflows') || req.path.endsWith('workflows')) {
 		Select = WorkflowSelect;
-	} else if (listQueryReq.baseUrl.endsWith('credentials')) {
+	} else if (req.baseUrl.endsWith('credentials')) {
 		Select = CredentialsSelect;
-	} else if (listQueryReq.baseUrl.endsWith('users')) {
+	} else if (req.baseUrl.endsWith('users')) {
 		Select = UserSelect;
 	} else {
 		return next();
@@ -31,7 +30,7 @@ export const selectListQueryMiddleware: RequestHandler = (req, res, next) => {
 
 		if (Object.keys(select).length === 0) return next();
 
-		appendListQueryOptions(listQueryReq, { select });
+		appendListQueryOptions(req, { select });
 
 		next();
 	} catch (maybeError) {

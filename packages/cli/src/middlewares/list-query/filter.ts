@@ -9,8 +9,7 @@ import { UserFilter } from './dtos/user.filter.dto';
 import { WorkflowFilter } from './dtos/workflow.filter.dto';
 
 export const filterListQueryMiddleware: RequestHandler = async (req, res, next) => {
-	const listQueryReq = req;
-	const { filter: rawFilter } = listQueryReq.query;
+	const { filter: rawFilter } = req.query;
 
 	if (!rawFilter || typeof rawFilter !== 'string') return next();
 
@@ -31,7 +30,7 @@ export const filterListQueryMiddleware: RequestHandler = async (req, res, next) 
 
 		if (Object.keys(filter).length === 0) return next();
 
-		appendListQueryOptions(listQueryReq, { filter });
+		appendListQueryOptions(req, { filter });
 
 		next();
 	} catch (maybeError) {

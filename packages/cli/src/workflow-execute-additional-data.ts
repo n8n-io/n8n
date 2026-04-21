@@ -525,7 +525,7 @@ export async function getBase({
 			envProviderState: EnvProviderState,
 			executeData?: IExecuteData,
 		) {
-			return await Container.get(TaskRequester as ServiceIdentifier<TaskRequester>).startTask(
+			return await Container.get(TaskRequester).startTask(
 				additionalData,
 				jobType,
 				settings,

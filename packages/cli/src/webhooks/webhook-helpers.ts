@@ -83,13 +83,6 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 import merge from 'lodash/merge';
 
-export function isWebhookOrWebhookOptionsRequest(
-	req: express.Request,
-): req is WebhookRequest | WebhookOptionsRequest {
-	// Mostly a dumb type guard to keep TS happy
-	return req.method === 'OPTIONS' || typeof req.path === 'string';
-}
-
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {
 	toolName: string;
