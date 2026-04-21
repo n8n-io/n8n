@@ -312,7 +312,7 @@ export class AgentsController {
 				projectId,
 				message,
 				credentialProvider,
-				req.user.id,
+				req.user,
 			)) {
 				if (chunk.type === 'tool-call-delta') {
 					// Track which tool is streaming
@@ -347,7 +347,11 @@ export class AgentsController {
 			send({ done: true });
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Build failed';
-			send({ error: errorMessage });
+			const errorCode =
+				error && typeof error === 'object' && 'code' in error
+					? (error as { code?: unknown }).code
+					: undefined;
+			send({ error: errorMessage, ...(typeof errorCode === 'string' ? { code: errorCode } : {}) });
 		}
 
 		res.end();

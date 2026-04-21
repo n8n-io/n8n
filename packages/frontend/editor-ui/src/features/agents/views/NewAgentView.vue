@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -10,6 +10,8 @@ import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { createAgent } from '../composables/useAgentApi';
 import { AGENT_BUILDER_VIEW } from '../constants';
+import { useAgentBuilderSettingsStore } from '../agentBuilderSettings.store';
+import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
 
 const router = useRouter();
 const locale = useI18n();
@@ -17,12 +19,20 @@ const rootStore = useRootStore();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const builderSettingsStore = useAgentBuilderSettingsStore();
 
 const projectId = computed(() => projectsStore.personalProject?.id ?? '');
 const firstName = computed(() => usersStore.currentUser?.firstName ?? '');
+const isBuilderConfigured = computed(() => builderSettingsStore.isConfigured);
 
 const inputText = ref('');
 const isCreating = ref(false);
+
+onMounted(() => {
+	// Refresh the readiness signal so the empty-state CTA reflects the latest
+	// admin configuration. Never blocks the rest of the view.
+	void builderSettingsStore.fetchStatus().catch(() => {});
+});
 
 interface SuggestionTemplate {
 	icon: string;
@@ -119,56 +129,59 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 		</div>
 
 		<div :class="$style.center">
-			<h1 :class="$style.heading">
-				{{
-					locale.baseText('agents.newAgent.heading', {
-						interpolate: { name: firstName ? `, ${firstName}` : '' },
-					})
-				}}
-			</h1>
+			<AgentBuilderUnconfiguredEmptyState v-if="!isBuilderConfigured" />
+			<template v-else>
+				<h1 :class="$style.heading">
+					{{
+						locale.baseText('agents.newAgent.heading', {
+							interpolate: { name: firstName ? `, ${firstName}` : '' },
+						})
+					}}
+				</h1>
 
-			<div :class="$style.inputWrapper">
-				<ChatInputBase
-					v-model="inputText"
-					:placeholder="locale.baseText('agents.newAgent.placeholder')"
-					:is-streaming="false"
-					:can-submit="inputText.trim().length > 0 && !isCreating"
-					:show-voice="true"
-					:show-attach="false"
-					@submit="submitDescription"
-				/>
-			</div>
+				<div :class="$style.inputWrapper">
+					<ChatInputBase
+						v-model="inputText"
+						:placeholder="locale.baseText('agents.newAgent.placeholder')"
+						:is-streaming="false"
+						:can-submit="inputText.trim().length > 0 && !isCreating"
+						:show-voice="true"
+						:show-attach="false"
+						@submit="submitDescription"
+					/>
+				</div>
 
-			<div :class="$style.suggestions">
-				<N8nText :class="$style.suggestionsLabel" tag="h3" size="medium" bold>
-					{{ locale.baseText('agents.newAgent.suggestions') }}
-				</N8nText>
+				<div :class="$style.suggestions">
+					<N8nText :class="$style.suggestionsLabel" tag="h3" size="medium" bold>
+						{{ locale.baseText('agents.newAgent.suggestions') }}
+					</N8nText>
 
-				<div :class="$style.suggestionGrid">
-					<div
-						v-for="suggestion in suggestions"
-						:key="suggestion.name"
-						:class="$style.suggestionCard"
-						data-testid="agent-suggestion-card"
-						@click="selectSuggestion(suggestion)"
-					>
-						<div :class="$style.suggestionHeader">
-							<span :class="$style.suggestionIcon">{{ suggestion.icon }}</span>
-							<N8nText tag="span" bold size="small" :class="$style.suggestionName">
-								{{ suggestion.name }}
+					<div :class="$style.suggestionGrid">
+						<div
+							v-for="suggestion in suggestions"
+							:key="suggestion.name"
+							:class="$style.suggestionCard"
+							data-testid="agent-suggestion-card"
+							@click="selectSuggestion(suggestion)"
+						>
+							<div :class="$style.suggestionHeader">
+								<span :class="$style.suggestionIcon">{{ suggestion.icon }}</span>
+								<N8nText tag="span" bold size="small" :class="$style.suggestionName">
+									{{ suggestion.name }}
+								</N8nText>
+							</div>
+							<N8nText
+								tag="span"
+								size="small"
+								color="text-light"
+								:class="$style.suggestionDescription"
+							>
+								{{ suggestion.description }}
 							</N8nText>
 						</div>
-						<N8nText
-							tag="span"
-							size="small"
-							color="text-light"
-							:class="$style.suggestionDescription"
-						>
-							{{ suggestion.description }}
-						</N8nText>
 					</div>
 				</div>
-			</div>
+			</template>
 		</div>
 	</div>
 </template>

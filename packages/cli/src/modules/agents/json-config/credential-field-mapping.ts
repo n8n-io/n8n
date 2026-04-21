@@ -72,3 +72,13 @@ export function mapCredentialForProvider(
 	const mapped = mapper(raw);
 	return Object.fromEntries(Object.entries(mapped).filter(([, v]) => v !== undefined));
 }
+
+/** Provider IDs the agents runtime knows how to map a credential for. */
+export const SUPPORTED_AGENT_PROVIDERS = Object.keys(
+	PROVIDER_CREDENTIAL_MAPPERS,
+) as readonly string[];
+
+/** Whether a given provider id has a registered credential mapper. */
+export function isSupportedAgentProvider(provider: string): boolean {
+	return provider in PROVIDER_CREDENTIAL_MAPPERS;
+}

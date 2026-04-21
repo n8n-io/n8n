@@ -19,6 +19,7 @@ import {
 	CHATHUB_TO_CATALOG,
 	CATALOG_TO_CHATHUB,
 	AGENT_UNSUPPORTED_PROVIDERS,
+	sanitizeModelId,
 } from '../provider-mapping';
 import AgentPublishButton from './AgentPublishButton.vue';
 import AgentToolsPanel from './AgentToolsPanel.vue';
@@ -117,21 +118,6 @@ const selectedAgent = computed<ChatModelDto | null>(() => {
 		groupIcon: null,
 	};
 });
-
-/** Strip "models/" prefix from Gemini model IDs (e.g. "models/gemini-2.5-flash" → "gemini-2.5-flash") */
-function sanitizeGeminiModelId(provider: string, modelId: string): string {
-	if (provider === 'google') {
-		return modelId.replace(/^models\//, '');
-	}
-	return modelId;
-}
-
-function sanitizeModelId(provider: string, modelId: string): string {
-	if (provider === 'google') {
-		return sanitizeGeminiModelId(provider, modelId);
-	}
-	return modelId;
-}
 
 function onModelChange(selection: ChatHubConversationModel) {
 	if (!isLlmProviderModel(selection)) return;

@@ -15,11 +15,13 @@ import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables
 import type { AgentResource, AgentJsonConfig } from '../types';
 import { PROJECT_AGENTS } from '../constants';
 import { useAgentConfig } from '../composables/useAgentConfig';
+import { useAgentBuilderSettingsStore } from '../agentBuilderSettings.store';
 import { agentsEventBus } from '../agents.eventBus';
 import AgentBuilderProgress from '../components/AgentBuilderProgress.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentHomeContent from '../components/AgentHomeContent.vue';
 import AgentSettingsSidebar from '../components/AgentSettingsSidebar.vue';
+import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -29,6 +31,7 @@ const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const message = useMessage();
 const { showError } = useToast();
+const builderSettingsStore = useAgentBuilderSettingsStore();
 
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
@@ -59,6 +62,7 @@ const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle');
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
+const isBuilderConfigured = computed(() => builderSettingsStore.isConfigured);
 
 /**
  * An agent is considered "built" once it has instructions configured.
@@ -309,6 +313,10 @@ async function initialize() {
 	localConfig.value = null;
 	saveStatus.value = 'idle';
 
+	// Refresh builder readiness so the empty-state CTA reflects the latest
+	// admin configuration. Never blocks the rest of the load.
+	void builderSettingsStore.fetchStatus().catch(() => {});
+
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
 
@@ -432,7 +440,7 @@ watch(
 							@config-updated="onConfigUpdated"
 						/>
 						<AgentChatPanel
-							v-if="chatModeOpened.build"
+							v-if="chatModeOpened.build && isBuilderConfigured"
 							v-show="chatMode === 'build'"
 							:project-id="projectId"
 							:agent-id="agentId"
@@ -440,6 +448,9 @@ watch(
 							endpoint="build"
 							@config-updated="onConfigUpdated"
 							@update:streaming="onBuildChatStreamingChange"
+						/>
+						<AgentBuilderUnconfiguredEmptyState
+							v-else-if="chatModeOpened.build && !isBuilderConfigured"
 						/>
 					</div>
 				</Transition>
