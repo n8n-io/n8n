@@ -452,8 +452,9 @@ onMounted(async () => {
 			</div>
 		</div>
 
-		<div v-if="!isSsoManagedByEnv" :class="$style.buttons">
+		<div :class="$style.buttons">
 			<N8nButton
+				v-if="!isSsoManagedByEnv"
 				:disabled="!isSaveEnabled"
 				:loading="savingForm"
 				size="large"
