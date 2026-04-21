@@ -1,3 +1,4 @@
+import { setImmediate } from 'node:timers/promises';
 import type { Mock } from 'vitest';
 import { vi } from 'vitest';
 import type { ObservabilityProvider, RuntimeBridge } from '../types';
@@ -12,9 +13,7 @@ export function createMockBridge(): RuntimeBridge {
 }
 
 export async function flushMicrotasks(): Promise<void> {
-	for (let i = 0; i < 10; i++) {
-		await Promise.resolve();
-	}
+	await setImmediate();
 }
 
 export function createDeferredBridgeFactory(): {
