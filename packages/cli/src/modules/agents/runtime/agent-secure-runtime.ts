@@ -14,9 +14,6 @@ import type { ToolExecutor } from '../json-config/from-json-config';
  * JS string at startup and loaded into each isolate context as source code.
  * This avoids module resolution issues with pnpm workspace symlinks.
  *
- * Pattern inspired by Budibase's jsRunner:
- * https://github.com/Budibase/budibase/tree/master/packages/server/src/jsRunner
- *
  * The runtime maintains a pool of V8 isolates (`AgentIsolatePool`) to handle
  * concurrent requests without sharing heap memory. Each public method acquires
  * a slot, runs the operation in a fresh context, and releases the slot back.
@@ -249,7 +246,6 @@ export class AgentSecureRuntime {
 
 	/**
 	 * Run code in the isolate and return the result.
-	 * Uses the Budibase pattern: set result on a global, then copy it out.
 	 */
 	private runInContext<T>(context: ivm.Context, slot: AgentIsolateSlot, code: string): T {
 		// Set up module.exports
