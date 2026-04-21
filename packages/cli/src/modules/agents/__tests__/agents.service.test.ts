@@ -5,10 +5,11 @@ import { mock } from 'jest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentsService } from '../agents.service';
+import { AgentsService, chatThreadId } from '../agents.service';
 import type { AgentPublishedVersion } from '../entities/agent-published-version.entity';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { AgentPublishedVersionRepository } from '../repositories/agent-published-version.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -52,12 +53,14 @@ describe('AgentsService', () => {
 	let service: AgentsService;
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentPublishedVersionRepository: jest.Mocked<AgentPublishedVersionRepository>;
+	let n8nMemory: jest.Mocked<N8nMemory>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 
 		agentRepository = mock<AgentRepository>();
 		agentPublishedVersionRepository = mock<AgentPublishedVersionRepository>();
+		n8nMemory = mock<N8nMemory>();
 
 		service = new AgentsService(
 			mockLogger(),
@@ -74,7 +77,7 @@ describe('AgentsService', () => {
 			mock(),
 			mock(),
 			mock(),
-			mock(),
+			n8nMemory,
 			agentPublishedVersionRepository,
 		);
 	});
@@ -248,6 +251,69 @@ describe('AgentsService', () => {
 
 			expect(result.publishedVersion).toBeNull();
 			expect(result).toBe(agent);
+		});
+	});
+
+	describe('getChatMessages', () => {
+		it('scopes the memory lookup to the caller via resourceId', async () => {
+			n8nMemory.getMessages.mockResolvedValue([]);
+
+			await service.getChatMessages(agentId, userId);
+
+			expect(n8nMemory.getMessages).toHaveBeenCalledWith(chatThreadId(agentId), {
+				resourceId: userId,
+			});
+		});
+
+		it('returns whatever memory returns for this user', async () => {
+			const persisted = [{ id: 'm1' }, { id: 'm2' }];
+			n8nMemory.getMessages.mockResolvedValue(persisted as never);
+
+			const result = await service.getChatMessages(agentId, userId);
+
+			expect(result).toBe(persisted);
+		});
+	});
+
+	describe('clearChatMessages', () => {
+		it('deletes only the caller’s messages on the shared test-chat thread', async () => {
+			await service.clearChatMessages(agentId, userId);
+
+			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId), userId);
+			// Must not wipe the thread row — other users share it.
+			expect(n8nMemory.deleteThread).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('clearAllChatMessages', () => {
+		it('deletes every message and the thread row itself', async () => {
+			await service.clearAllChatMessages(agentId);
+
+			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			// Second arg must be absent — undefined means "all users".
+			expect(n8nMemory.deleteMessagesByThread.mock.calls[0]).toHaveLength(1);
+			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+		});
+	});
+
+	describe('delete — chat cleanup', () => {
+		it('removes the test-chat thread + messages after removing the agent', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.delete(agentId, projectId);
+
+			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+		});
+
+		it('still returns true when chat cleanup fails — agent removal is the primary intent', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			n8nMemory.deleteMessagesByThread.mockRejectedValueOnce(new Error('db down'));
+
+			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 		});
 	});
 });

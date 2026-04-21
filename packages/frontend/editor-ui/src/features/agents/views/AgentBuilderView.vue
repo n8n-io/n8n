@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIcon, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -37,7 +37,14 @@ const agentId = computed(() => route.params.agentId as string);
 
 // UI state
 type Mode = 'home' | 'building' | 'chat';
+type ChatMode = 'build' | 'test';
 const mode = ref<Mode>('home');
+const chatMode = ref<ChatMode>('test');
+const isBuildChatStreaming = ref(false);
+// Track which chat panels have been activated so we can lazy-mount them.
+// Both panels used to mount together on first chat entry and each fire a
+// loadHistory() call — only mount one until the user actually opens the other.
+const chatModeOpened = ref<Record<ChatMode, boolean>>({ test: false, build: false });
 const settingsVisible = ref(true);
 const isBuilding = ref(false);
 const agentName = ref('');
@@ -110,6 +117,11 @@ function startChat(msg: string) {
 		// Agent already built — go straight into the chat experience.
 		initialPrompt.value = msg;
 		mode.value = 'chat';
+		// Clear once the panel has mounted and consumed the prop, so a later
+		// remount (e.g. toggling between Build/Test) doesn't replay the message.
+		void nextTick(() => {
+			initialPrompt.value = undefined;
+		});
 		telemetry.track('User started agent chat', { agent_id: agentId.value });
 		return;
 	}
@@ -125,6 +137,29 @@ function startChat(msg: string) {
 function onBuildStreamingChange(streaming: boolean) {
 	isBuilding.value = streaming;
 }
+
+function onBuildChatStreamingChange(streaming: boolean) {
+	isBuildChatStreaming.value = streaming;
+}
+
+function setChatMode(next: ChatMode) {
+	const chatModeChanged = chatMode.value !== next;
+	const enteringChat = mode.value !== 'chat';
+	if (!chatModeChanged && !enteringChat) return;
+	chatMode.value = next;
+	if (enteringChat) {
+		mode.value = 'chat';
+	}
+	telemetry.track('User switched agent chat mode', {
+		agent_id: agentId.value,
+		mode: next,
+	});
+}
+
+const chatModeOptions = computed(() => [
+	{ label: locale.baseText('agents.builder.chatMode.build'), value: 'build' as const },
+	{ label: locale.baseText('agents.builder.chatMode.test'), value: 'test' as const },
+]);
 
 function onBuildDone() {
 	// Build stream finished. Let the fade-out animation play, then drop the
@@ -263,7 +298,10 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 async function initialize() {
 	agent.value = null;
 	mode.value = 'home';
+	chatMode.value = 'test';
+	chatModeOpened.value = { test: false, build: false };
 	isBuilding.value = false;
+	isBuildChatStreaming.value = false;
 	agentIcon.value = { type: 'icon', value: 'robot' };
 	initialPrompt.value = undefined;
 	buildPrompt.value = '';
@@ -273,6 +311,10 @@ async function initialize() {
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
 
+	if (config.value?.instructions?.trim()) {
+		mode.value = 'chat';
+	}
+
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
 		void router.replace({ query: { ...route.query, prompt: undefined } });
@@ -281,6 +323,16 @@ async function initialize() {
 }
 
 watch(agentId, initialize, { immediate: true });
+
+watch(
+	[mode, chatMode],
+	([m, cm]) => {
+		if (m === 'chat') {
+			chatModeOpened.value[cm] = true;
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -294,15 +346,33 @@ watch(agentId, initialize, { immediate: true });
 						agentName || locale.baseText('agents.home.untitledAgent')
 					}}</N8nText>
 				</div>
+				<N8nRadioButtons
+					v-if="mode !== 'building'"
+					:class="$style.chatModeToggleCenter"
+					:model-value="chatMode"
+					:options="chatModeOptions"
+					:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
+					data-testid="agent-chat-mode-toggle"
+					@update:model-value="setChatMode"
+				>
+					<template #option="option">
+						<span :class="$style.chatModeOption">
+							<N8nIcon
+								v-if="option.value === 'build' && (isBuilding || isBuildChatStreaming)"
+								icon="loader-circle"
+								:size="14"
+								:spin="true"
+							/>
+							<N8nIcon
+								v-else
+								:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
+								:size="14"
+							/>
+							<span>{{ option.label }}</span>
+						</span>
+					</template>
+				</N8nRadioButtons>
 				<div :class="$style.mainHeaderRight">
-					<button
-						v-if="mode === 'chat'"
-						:class="$style.toggleBtn"
-						data-testid="new-chat"
-						@click="mode = 'home'"
-					>
-						<N8nIcon icon="message-circle-plus" :size="16" />
-					</button>
 					<button
 						:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
 						data-testid="toggle-settings"
@@ -344,16 +414,33 @@ watch(agentId, initialize, { immediate: true });
 						@update:streaming="onBuildStreamingChange"
 						@done="onBuildDone"
 					/>
-					<AgentChatPanel
-						v-else
-						key="chat"
-						:project-id="projectId"
-						:agent-id="agentId"
-						mode="inline"
-						endpoint="chat"
-						:initial-message="initialPrompt"
-						@config-updated="onConfigUpdated"
-					/>
+					<div v-else key="chat" :class="$style.chatHost">
+						<!--
+							v-if on `chatModeOpened` lazy-mounts each panel the first time
+							its tab is activated; v-show then preserves state (messages,
+							input, scroll) without re-firing loadHistory on every toggle.
+						-->
+						<AgentChatPanel
+							v-if="chatModeOpened.test"
+							v-show="chatMode === 'test'"
+							:project-id="projectId"
+							:agent-id="agentId"
+							mode="inline"
+							endpoint="chat"
+							:initial-message="initialPrompt"
+							@config-updated="onConfigUpdated"
+						/>
+						<AgentChatPanel
+							v-if="chatModeOpened.build"
+							v-show="chatMode === 'build'"
+							:project-id="projectId"
+							:agent-id="agentId"
+							mode="inline"
+							endpoint="build"
+							@config-updated="onConfigUpdated"
+							@update:streaming="onBuildChatStreamingChange"
+						/>
+					</div>
 				</Transition>
 			</div>
 		</div>
@@ -369,7 +456,8 @@ watch(agentId, initialize, { immediate: true });
 			:updated-at="updatedAt"
 			:agent="agent"
 			:save-status="saveStatus"
-			:building="isBuilding"
+			:building="isBuilding || isBuildChatStreaming"
+			:code-only="mode === 'chat' && chatMode === 'build'"
 			@update:config="onConfigFieldUpdate"
 			@published="onPublished"
 			@unpublished="onUnpublished"
@@ -394,6 +482,7 @@ watch(agentId, initialize, { immediate: true });
 }
 
 .mainHeader {
+	position: relative;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -424,6 +513,14 @@ watch(agentId, initialize, { immediate: true });
 	overflow: hidden;
 }
 
+.chatHost {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
+}
+
 .toggleBtn {
 	display: flex;
 	align-items: center;
@@ -445,6 +542,19 @@ watch(agentId, initialize, { immediate: true });
 .toggleBtnActive {
 	color: var(--color--text);
 	background-color: var(--color--foreground--tint-1);
+}
+
+.chatModeToggleCenter {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+}
+
+.chatModeOption {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 </style>
 
