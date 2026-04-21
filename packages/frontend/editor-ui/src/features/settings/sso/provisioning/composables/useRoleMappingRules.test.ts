@@ -206,28 +206,36 @@ describe('useRoleMappingRules', () => {
 	});
 
 	describe('save', () => {
-		it('should send creates without an order field', async () => {
+		it('should send the local order on creates so user-intended position is preserved', async () => {
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
+				makeRule({ id: 'persisted-1', type: 'instance', order: 0 }),
+			]);
 			vi.mocked(roleMappingRuleApi.createRoleMappingRule).mockResolvedValue(makeRule());
+			vi.mocked(roleMappingRuleApi.updateRoleMappingRule).mockResolvedValue(makeRule());
 
+			await composable.loadRules();
 			composable.addRule('instance');
-			composable.updateRule(composable.instanceRules.value[0].id, {
+			const localId = composable.instanceRules.value[1].id;
+			composable.updateRule(localId, {
 				expression: '$claims.admin',
 				role: 'global:member',
 			});
+			// Drag the new local rule above the persisted one.
+			await composable.reorder('instance', 1, 0);
 
 			await composable.save();
 
 			expect(roleMappingRuleApi.createRoleMappingRule).toHaveBeenCalledTimes(1);
 			const [, payload] = vi.mocked(roleMappingRuleApi.createRoleMappingRule).mock.calls[0];
-			expect(payload).not.toHaveProperty('order');
 			expect(payload).toMatchObject({
 				expression: '$claims.admin',
 				role: 'global:member',
 				type: 'instance',
+				order: 0,
 			});
 		});
 
-		it('should serialize create calls to preserve user-intended order', async () => {
+		it('should serialize create calls to avoid concurrent temp-order collisions', async () => {
 			const callOrder: string[] = [];
 			vi.mocked(roleMappingRuleApi.createRoleMappingRule).mockImplementation(
 				async (_ctx, input) => {
