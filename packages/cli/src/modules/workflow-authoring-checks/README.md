@@ -16,17 +16,13 @@ activated or explicitly previewed from the editor.
 flowchart TD
     A[User clicks Publish] --> B[WorkflowService activates workflow]
     B --> C[Proxy runAll]
-    C --> D{Module loaded}
+    C --> D{Any violations}
     D -->|No| OK[Activate workflow]
-    D -->|Yes| E[Load enabled instances]
-    E --> F[Validate config and evaluate each]
-    F --> G{Any violations}
-    G -->|No| OK
-    G -->|Yes| H{Any blocking}
+    D -->|Yes| H{Any blocking}
     H -->|Yes| BLOCK[HTTP 422 activation refused]
-    H -->|No, only warnings| I{skipAuthoringChecksWarnings true}
+    H -->|No| I{Skip warnings flag set}
     I -->|No| WARN[HTTP 422 retry with skip flag]
-    I -->|Yes| OK
+    I -->|Yes| OK2[Activate workflow]
 ```
 
 ## Check types vs. check instances
