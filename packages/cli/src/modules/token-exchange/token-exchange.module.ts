@@ -35,5 +35,11 @@ export class TokenExchangeModule implements ModuleInterface {
 
 		const { JtiCleanupService } = await import('./services/jti-cleanup.service');
 		Container.get(JtiCleanupService).init();
+
+		// Register the scoped JWT auth strategy into the public API auth chain.
+		// ScopedJwtStrategy runs after ApiKeyAuthStrategy (which abstains for token-exchange JWTs).
+		const { ScopedJwtStrategy } = await import('./services/scoped-jwt.strategy');
+		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry');
+		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	}
 }

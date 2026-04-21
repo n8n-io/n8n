@@ -52,7 +52,10 @@ import {
 } from './type-guards';
 import { validateFieldType } from './type-validation';
 import { deepCopy } from './utils';
-import type { Workflow } from './workflow';
+import type { Workflow } from '.';
+
+// To facilitate frontend refactoring, make some helper functions work without full workflow object
+type WorkflowForNodeHelpers = Pick<Workflow, 'expression'>;
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -371,16 +374,21 @@ export const checkConditions = (
 					return (propertyValue as number) >= from && (propertyValue as number) <= to;
 				}
 				if (key === 'includes') {
-					return (propertyValue as string).includes(targetValue);
+					return typeof propertyValue === 'string' && propertyValue.includes(targetValue as string);
 				}
 				if (key === 'startsWith') {
-					return (propertyValue as string).startsWith(targetValue);
+					return (
+						typeof propertyValue === 'string' && propertyValue.startsWith(targetValue as string)
+					);
 				}
 				if (key === 'endsWith') {
-					return (propertyValue as string).endsWith(targetValue);
+					return typeof propertyValue === 'string' && propertyValue.endsWith(targetValue as string);
 				}
 				if (key === 'regex') {
-					return new RegExp(targetValue as string).test(propertyValue as string);
+					return (
+						typeof propertyValue === 'string' &&
+						new RegExp(targetValue as string).test(propertyValue)
+					);
 				}
 				if (key === 'exists') {
 					return propertyValue !== null && propertyValue !== undefined && propertyValue !== '';
@@ -1148,7 +1156,7 @@ export function getConnectionTypes(
 }
 
 export function getNodeInputs(
-	workflow: Workflow,
+	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<NodeConnectionType | INodeInputConfiguration> {
@@ -1171,7 +1179,7 @@ export function getNodeInputs(
 }
 
 export function getNodeOutputs(
-	workflow: Workflow,
+	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<NodeConnectionType | INodeOutputConfiguration> {
@@ -1705,7 +1713,11 @@ export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
 	return nodeTypeData.group.includes('trigger');
 }
 
-export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
+export function isExecutable(
+	workflow: WorkflowForNodeHelpers,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+) {
 	if (!nodeTypeData) {
 		return false;
 	}

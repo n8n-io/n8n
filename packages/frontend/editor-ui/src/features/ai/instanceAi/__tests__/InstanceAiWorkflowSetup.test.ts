@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import InstanceAiWorkflowSetup from '../components/InstanceAiWorkflowSetup.vue';
@@ -75,6 +76,18 @@ vi.mock('@/features/workflows/canvas/experimental/composables/useExpressionResol
 
 const renderComponent = createComponentRenderer(InstanceAiWorkflowSetup);
 
+/** Render the component and wait for the async onMounted to complete (isStoreReady = true). */
+async function renderAndWait(
+	...args: Parameters<typeof renderComponent>
+): Promise<ReturnType<typeof renderComponent>> {
+	const result = renderComponent(...args);
+	// Wait for async onMounted (credential/workflow fetch) to complete so the wizard renders
+	await waitFor(() => {
+		expect(result.queryByText('instanceAi.workflowSetup.loading')).toBeNull();
+	});
+	return result;
+}
+
 function makeSetupNode(
 	overrides: Partial<InstanceAiWorkflowSetupNode> = {},
 ): InstanceAiWorkflowSetupNode {
@@ -143,7 +156,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				]),
 			];
 
-			const { getByTestId, getByText } = renderComponent({
+			const { getByTestId, getByText } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -177,7 +190,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				]),
 			];
 
-			const { getByTestId, getByText } = renderComponent({
+			const { getByTestId, getByText } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -208,7 +221,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				]),
 			];
 
-			const { getByTestId, getByText } = renderComponent({
+			const { getByTestId, getByText } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -243,7 +256,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				]),
 			];
 
-			const { getByTestId } = renderComponent({
+			const { getByTestId } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -270,6 +283,135 @@ describe('InstanceAiWorkflowSetup', () => {
 		});
 	});
 
+	describe('handleContinue in wizard mode', () => {
+		it('advances to the next step without applying when more steps remain', async () => {
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [
+					{ id: 'cred-1', name: 'Slack' },
+					{ id: 'cred-2', name: 'Slack 2' },
+				]),
+				makeSetupNodeWithCredentials('githubApi', [
+					{ id: 'cred-3', name: 'GitHub' },
+					{ id: 'cred-4', name: 'GitHub 2' },
+				]),
+				makeSetupNodeWithCredentials('notionApi', [
+					{ id: 'cred-5', name: 'Notion' },
+					{ id: 'cred-6', name: 'Notion 2' },
+				]),
+			];
+
+			const { getByTestId, getByText } = await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			expect(getByText('1 of 3')).toBeTruthy();
+
+			// Select a credential on step 1 — card becomes complete and auto-advances to step 2
+			await userEvent.click(getByTestId('credential-picker'));
+			expect(getByText('2 of 3')).toBeTruthy();
+
+			// Continue is enabled because card 1 is complete; clicking it should advance to step 3
+			await userEvent.click(getByTestId('instance-ai-workflow-setup-apply-button'));
+
+			expect(getByText('3 of 3')).toBeTruthy();
+			expect(confirmSpy).not.toHaveBeenCalled();
+		});
+
+		it('applies the setup when clicking Continue on the last step', async () => {
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+			vi.spyOn(store, 'findToolCallByRequestId').mockReturnValue({
+				toolCallId: 'tc-1',
+				toolName: 'test',
+				args: {},
+				isLoading: false,
+				result: { success: true, partial: false, updatedNodes: [] },
+			});
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [
+					{ id: 'cred-1', name: 'Slack' },
+					{ id: 'cred-2', name: 'Slack 2' },
+				]),
+			];
+
+			const { getByTestId } = await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// Single step — select a credential then click Continue
+			await userEvent.click(getByTestId('credential-picker'));
+			await userEvent.click(getByTestId('instance-ai-workflow-setup-apply-button'));
+
+			expect(confirmSpy).toHaveBeenCalledWith(
+				'req-1',
+				true,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				expect.objectContaining({ action: 'apply' }),
+			);
+		});
+	});
+
+	describe('handleContinue in confirm mode (allPreResolved)', () => {
+		it('applies the setup directly without advancing', async () => {
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+			vi.spyOn(store, 'findToolCallByRequestId').mockReturnValue({
+				toolCallId: 'tc-1',
+				toolName: 'test',
+				args: {},
+				isLoading: false,
+				result: { success: true, partial: false, updatedNodes: [] },
+			});
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack' }], {
+					needsAction: false,
+				}),
+				makeSetupNodeWithCredentials('githubApi', [{ id: 'cred-2', name: 'GitHub' }], {
+					needsAction: false,
+				}),
+			];
+
+			const { getByTestId } = await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// Confirm card shows Continue button — clicking it applies everything
+			await userEvent.click(getByTestId('instance-ai-workflow-setup-apply-button'));
+
+			expect(confirmSpy).toHaveBeenCalledWith(
+				'req-1',
+				true,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				expect.objectContaining({ action: 'apply' }),
+			);
+		});
+	});
+
 	describe('handleLater in confirm mode (allPreResolved)', () => {
 		it('defers the whole setup when all items are pre-resolved', async () => {
 			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
@@ -281,7 +423,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				}),
 			];
 
-			const { getByTestId, getByText } = renderComponent({
+			const { getByTestId, getByText } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -312,7 +454,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				]),
 			];
 
-			const { getByTestId, getByText } = renderComponent({
+			const { getByTestId, getByText } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -330,7 +472,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			expect(getByText('1 of 2')).toBeTruthy();
 		});
 
-		it('disables apply button when no card is completed', () => {
+		it('disables apply button when no card is completed', async () => {
 			const requests = [
 				makeSetupNodeWithCredentials('slackApi', [
 					{ id: 'cred-1', name: 'Slack' },
@@ -338,7 +480,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				]),
 			];
 
-			const { getByTestId } = renderComponent({
+			const { getByTestId } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -395,7 +537,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				),
 			];
 
-			const { getByText } = renderComponent({
+			const { getByText } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -419,7 +561,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				]),
 			];
 
-			const { getByTestId } = renderComponent({
+			const { getByTestId } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -437,7 +579,7 @@ describe('InstanceAiWorkflowSetup', () => {
 	});
 
 	describe('credential testing', () => {
-		it('renders card for auto-applied testable credential type', () => {
+		it('renders card for auto-applied testable credential type', async () => {
 			const credentialsStore = useCredentialsStore();
 			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(credentialsStore, 'getCredentialTypeByName', 'get').mockReturnValue(() => ({
@@ -452,7 +594,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				}),
 			];
 
-			const { getByTestId } = renderComponent({
+			const { getByTestId } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -465,7 +607,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			expect(getByTestId('instance-ai-workflow-setup-card')).toBeTruthy();
 		});
 
-		it('backend-tested credential remains complete when selection unchanged', () => {
+		it('backend-tested credential remains complete when selection unchanged', async () => {
 			const requests = [
 				makeSetupNodeWithCredentials('headerAuth', [{ id: 'cred-1', name: 'Header Auth' }], {
 					isAutoApplied: true,
@@ -482,7 +624,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				}),
 			];
 
-			const { getByTestId } = renderComponent({
+			const { getByTestId } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -536,7 +678,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				}),
 			];
 
-			const { getByTestId } = renderComponent({
+			const { getByTestId } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -565,14 +707,14 @@ describe('InstanceAiWorkflowSetup', () => {
 	});
 
 	describe('confirm mode', () => {
-		it('shows confirm card when all items are pre-resolved', () => {
+		it('shows confirm card when all items are pre-resolved', async () => {
 			const requests = [
 				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack' }], {
 					needsAction: false,
 				}),
 			];
 
-			const { getByTestId } = renderComponent({
+			const { getByTestId } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -591,7 +733,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				}),
 			];
 
-			const { getByTestId, queryByTestId } = renderComponent({
+			const { getByTestId, queryByTestId } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
@@ -629,7 +771,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				),
 			];
 
-			const { getByTestId, getByText } = renderComponent({
+			const { getByTestId, getByText } = await renderAndWait({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,

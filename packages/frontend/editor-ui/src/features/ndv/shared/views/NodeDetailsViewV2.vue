@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
 import type { MainPanelType, NodePanelType } from '../ndv.types';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IRunData, NodeConnectionType, Workflow } from 'n8n-workflow';
+import type { IRunData, NodeConnectionType } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
@@ -33,7 +34,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
@@ -45,6 +45,7 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import NDVFloatingNodes from '@/features/ndv/panel/components/NDVFloatingNodes.vue';
+import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
 const emit = defineEmits<{
 	valueChanged: [parameterData: IUpdateInformation];
 	switchSelectedNode: [nodeTypeName: string];
@@ -55,7 +56,7 @@ const emit = defineEmits<{
 
 const props = withDefaults(
 	defineProps<{
-		workflowObject: Workflow;
+		workflowObject: WorkflowObjectAccessors;
 		readOnly?: boolean;
 		isProductionExecutionPreview?: boolean;
 	}>(),
@@ -339,6 +340,8 @@ const currentNodePaneType = computed((): MainPanelType => {
 
 const { containerWidth, onDrag, onResize, onResizeEnd, panelWidthPercentage, panelWidthPixels } =
 	useNdvLayout({ container: containerRef, hasInputPanel, paneType: currentNodePaneType });
+
+const icon = useNodeIconSource(activeNodeType, activeNode);
 
 //methods
 const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) => {
@@ -733,7 +736,7 @@ onBeforeUnmount(() => {
 					:node-type-name="
 						activeNodeType?.defaults.name ?? activeNodeType?.displayName ?? activeNode.name
 					"
-					:icon="getNodeIconSource(activeNodeType ?? activeNode.type, activeNode)"
+					:icon="icon"
 					:docs-url="docsUrl"
 					@close="close"
 					@rename="onRename"

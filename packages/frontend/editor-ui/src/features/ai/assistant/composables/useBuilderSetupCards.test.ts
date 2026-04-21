@@ -49,6 +49,10 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => ({
 		pinData: {},
 		unpinNodeData: mockUnpinNodeData,
+		allNodes: [],
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
 	}),
 	createWorkflowDocumentId: (id: string) => id,
 }));

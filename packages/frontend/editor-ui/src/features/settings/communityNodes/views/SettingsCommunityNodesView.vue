@@ -113,11 +113,9 @@ onMounted(async () => {
 			selectedTab.value = 'installed';
 		}
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('settings.communityNodes.fetchError.title'),
-			i18n.baseText('settings.communityNodes.fetchError.message'),
-		);
+		toast.showError(error, i18n.baseText('settings.communityNodes.fetchError.title'), {
+			message: i18n.baseText('settings.communityNodes.fetchError.message'),
+		});
 	} finally {
 		loading.value = false;
 	}
