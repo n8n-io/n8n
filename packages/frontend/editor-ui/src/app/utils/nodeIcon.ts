@@ -1,6 +1,5 @@
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	isNodePreviewKey,
 	removePreviewToken,
@@ -11,8 +10,10 @@ import {
 	type INode,
 	type INodeTypeDescription,
 	type IWorkflowDataProxyAdditionalKeys,
+	type WorkflowExpression,
 	isExpression,
 } from 'n8n-workflow';
+import { isNodeIcon } from '@n8n/design-system';
 import { getThemedValue } from './nodeTypesUtils';
 
 type NodeIconSourceIcon = { type: 'icon'; name: string; color?: string };
@@ -36,10 +37,10 @@ export type IconNodeType = IconNodeTypeDescription | IconVersionNode;
 const resolveIconExpression = (
 	icon: string,
 	nodeType: IconNodeType,
-	node?: INode | null,
+	node: INode | null,
+	expression: WorkflowExpression,
 ): string | null => {
 	try {
-		const workflowsStore = useWorkflowsStore();
 		const defaults =
 			nodeType.defaults && 'parameters' in nodeType.defaults ? nodeType.defaults.parameters : {};
 		const parameters = node?.parameters ?? defaults ?? {};
@@ -47,7 +48,7 @@ const resolveIconExpression = (
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {};
 		additionalKeys.$parameter = parameters;
 
-		const result = workflowsStore.workflowObject.expression.getParameterValue(
+		const result = expression.getParameterValue(
 			icon,
 			null,
 			0,
@@ -65,7 +66,7 @@ const resolveIconExpression = (
 		}
 
 		const [prefix] = result.split(':');
-		if (prefix !== 'file' && prefix !== 'icon') {
+		if (prefix !== 'file' && prefix !== 'icon' && prefix !== 'node') {
 			return null;
 		}
 
@@ -75,11 +76,15 @@ const resolveIconExpression = (
 	}
 };
 
-export const getNodeIcon = (nodeType: IconNodeType, node?: INode | null): string | null => {
+export const getNodeIcon = (
+	nodeType: IconNodeType,
+	node: INode | null,
+	expression: WorkflowExpression | null,
+): string | null => {
 	const themedIcon = getThemedValue(nodeType.icon, useUIStore().appliedTheme);
 
-	if (isExpression(themedIcon)) {
-		return resolveIconExpression(themedIcon, nodeType, node);
+	if (isExpression(themedIcon) && expression) {
+		return resolveIconExpression(themedIcon, nodeType, node, expression);
 	}
 
 	return themedIcon;
@@ -141,7 +146,8 @@ const getIconFromNodeTypeString = (nodeTypeName: string): NodeIconSource | undef
 
 export function getNodeIconSource(
 	nodeType: IconNodeType | string | null | undefined,
-	node?: INode | null,
+	node: INode | null,
+	expression: WorkflowExpression | null,
 ): NodeIconSource | undefined {
 	if (!nodeType) return undefined;
 	if (typeof nodeType === 'string') return getIconFromNodeTypeString(nodeType);
@@ -166,7 +172,7 @@ export function getNodeIconSource(
 			fullNodeType = useNodeTypesStore().getNodeType(nodeType.name) ?? nodeType;
 		}
 
-		const icon = getNodeIcon(fullNodeType, node);
+		const icon = getNodeIcon(fullNodeType, node, expression);
 		if (!icon) return undefined;
 
 		const [type, iconName] = icon.split(':');
@@ -182,8 +188,25 @@ export function getNodeIconSource(
 			return undefined;
 		}
 
-		return createNamedIconSource(iconName, fullNodeType);
+		// For node icons (node:*), pass the full icon string including prefix
+		// For other icon types (fa:*, icon:*), pass just the icon name
+		const resolvedIconName = type === 'node' ? icon : iconName;
+		return createNamedIconSource(resolvedIconName, fullNodeType);
 	}
 
 	return undefined;
+}
+
+export type NodeIconContext = 'canvas' | 'configuration' | 'nodeList' | 'ndvHeader';
+
+export const NODE_ICON_SIZES = {
+	canvas: { new: 48, old: 40 },
+	configuration: { new: 36, old: 30 },
+	nodeList: { new: 24, old: 20 },
+	ndvHeader: { new: 24, old: 20 },
+} as const;
+
+export function getNodeIconSize(context: NodeIconContext, iconName?: string): number {
+	const sizes = NODE_ICON_SIZES[context];
+	return isNodeIcon(iconName) ? sizes.new : sizes.old;
 }

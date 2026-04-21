@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import type { ComponentPublicInstance } from 'vue';
-import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 const props = defineProps<{
@@ -46,11 +46,17 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
  * Only replaces names that appear as standalone words (not inside code spans
  * or existing links) and are at least 3 characters long to avoid false positives.
  */
-const processedContent = computed(() => {
-	const registry = store.resourceRegistry;
-	if (registry.size === 0) return props.content;
+/** Internal XML blocks that should never render in the chat (LLM may echo them). */
+const INTERNAL_BLOCK_PATTERN =
+	/<(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)[\s\S]*?<\/(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)>/g;
 
-	let result = props.content;
+const processedContent = computed(() => {
+	const registry = store.resourceNameIndex;
+
+	// Strip internal protocol blocks the LLM may have echoed
+	let result = props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim();
+
+	if (registry.size === 0) return result;
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts
 	const entries = [...registry.values()]
@@ -118,6 +124,9 @@ function applyResourceChip(link: HTMLAnchorElement, type: string): void {
 	}
 }
 
+/** Track click handlers attached to links so they can be cleaned up. */
+const linkHandlers = new WeakMap<HTMLAnchorElement, (e: MouseEvent) => void>();
+
 /**
  * Post-process the rendered DOM to transform resource links into
  * styled resource chips with icons. Handles both:
@@ -140,10 +149,15 @@ function enhanceResourceLinks(): void {
 		if (resourceMatch) {
 			const [, type, id] = resourceMatch;
 
-			// Look up registry entry (needed for projectId on data-table links)
+			// Look up registry entry (needed for projectId on data-table links).
+			// Search the name index because it contains both produced and listed
+			// resources — a user may click through to a data table the agent
+			// only referenced via a list call.
 			const registryEntry =
 				type === 'data-table'
-					? [...store.resourceRegistry.values()].find((r) => r.type === 'data-table' && r.id === id)
+					? [...store.resourceNameIndex.values()].find(
+							(r) => r.type === 'data-table' && r.id === id,
+						)
 					: undefined;
 
 			// Swap href to the real app URL (used for Cmd+click / new tab)
@@ -156,7 +170,7 @@ function enhanceResourceLinks(): void {
 			applyResourceChip(link, type);
 
 			// Regular click opens preview; Cmd/Ctrl+click falls through to default (new tab)
-			link.addEventListener('click', (e: MouseEvent) => {
+			const handler = (e: MouseEvent) => {
 				if (e.metaKey || e.ctrlKey) return; // Let browser handle new-tab
 
 				const canPreview =
@@ -171,7 +185,9 @@ function enhanceResourceLinks(): void {
 				} else if (type === 'data-table' && registryEntry?.projectId) {
 					openDataTablePreview?.(id, registryEntry.projectId);
 				}
-			});
+			};
+			link.addEventListener('click', handler);
+			linkHandlers.set(link, handler);
 
 			continue;
 		}
@@ -187,8 +203,25 @@ function enhanceResourceLinks(): void {
 	}
 }
 
+/** Remove click handlers from all enhanced links. */
+function cleanupLinkHandlers(): void {
+	if (!wrapperRef.value) return;
+	const allLinks = (wrapperRef.value.$el as HTMLElement).querySelectorAll<HTMLAnchorElement>('a');
+	for (const link of allLinks) {
+		const handler = linkHandlers.get(link);
+		if (handler) {
+			link.removeEventListener('click', handler);
+			linkHandlers.delete(link);
+		}
+	}
+}
+
 onMounted(enhanceResourceLinks);
-onUpdated(enhanceResourceLinks);
+onUpdated(() => {
+	cleanupLinkHandlers();
+	enhanceResourceLinks();
+});
+onBeforeUnmount(cleanupLinkHandlers);
 </script>
 
 <template>

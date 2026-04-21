@@ -97,6 +97,7 @@ describe('publish-workflow MCP tool', () => {
 
 				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
 					versionId: undefined,
+					source: 'n8n-mcp',
 				});
 			});
 
@@ -128,6 +129,7 @@ describe('publish-workflow MCP tool', () => {
 
 				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
 					versionId,
+					source: 'n8n-mcp',
 				});
 			});
 		});

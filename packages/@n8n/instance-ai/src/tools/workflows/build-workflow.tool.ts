@@ -3,6 +3,7 @@ import { generateWorkflowCode, layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
+import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
@@ -54,6 +55,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			warnings: z.array(z.string()).optional(),
 		}),
 		execute: async (input: z.infer<typeof buildWorkflowInputSchema>) => {
+			const permKey = input.workflowId ? 'updateWorkflow' : 'createWorkflow';
+			if (context.permissions?.[permKey] === 'blocked') {
+				return { success: false, errors: ['Action blocked by admin'] };
+			}
+
 			const { code, patches, workflowId, projectId, name } = input;
 			let finalCode: string;
 
@@ -147,6 +153,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// newCredential() produces NewCredentialImpl which serializes to undefined.
 			const credentialMap = await buildCredentialMap(context.credentialService);
 			await resolveCredentials(json, workflowId, context, credentialMap);
+
+			// Strip credential entries that are no longer valid for the current
+			// parameters. Resolution above (and the LLM itself) can re-emit stale
+			// references between turns; without this, setup analysis would surface
+			// a credential request for a node that no longer needs one.
+			await stripStaleCredentialsFromWorkflow(context, json);
 
 			// Ensure webhook nodes have a webhookId so n8n registers clean paths
 			await ensureWebhookIds(json, workflowId, context);

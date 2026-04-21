@@ -16,7 +16,7 @@ import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
-import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import { getNodeIconSize, type NodeIconSource } from '@/app/utils/nodeIcon';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -82,7 +82,11 @@ const classes = computed(() => {
 	};
 });
 
-const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
+const iconSize = computed(() => {
+	const iconName = iconSource.value?.type === 'icon' ? iconSource.value.name : undefined;
+	if (renderOptions.value.configuration) return getNodeIconSize('configuration', iconName);
+	return getNodeIconSize('canvas', iconName);
+});
 
 const nodeSize = computed(() =>
 	calculateNodeSize(

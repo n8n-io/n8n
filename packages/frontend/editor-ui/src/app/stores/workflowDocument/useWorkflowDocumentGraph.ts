@@ -1,4 +1,11 @@
-import type { IConnectedNode, IConnection, INode, NodeConnectionType } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	type IConnectedNode,
+	type IConnection,
+	type INode,
+	type INodeConnection,
+	type NodeConnectionType,
+} from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 // --- Composable ---
@@ -41,6 +48,30 @@ export function useWorkflowDocumentGraph() {
 		return workflowsStore.workflowObject.getConnectionsBetweenNodes(sources, targets);
 	}
 
+	function getConnectedNodes(direction: 'upstream' | 'downstream', nodeName: string): string[] {
+		let checkNodes: string[];
+		if (direction === 'downstream') {
+			checkNodes = workflowsStore.workflowObject.getChildNodes(nodeName);
+		} else if (direction === 'upstream') {
+			checkNodes = workflowsStore.workflowObject.getParentNodes(nodeName);
+		} else {
+			throw new Error(`The direction "${direction}" is not supported!`);
+		}
+
+		// Find also all nodes which are connected to the child nodes via a non-main input
+		let connectedNodes: string[] = [];
+		checkNodes.forEach((checkNode) => {
+			connectedNodes = [
+				...connectedNodes,
+				checkNode,
+				...workflowsStore.workflowObject.getParentNodes(checkNode, 'ALL_NON_MAIN'),
+			];
+		});
+
+		// Remove duplicates
+		return [...new Set(connectedNodes)];
+	}
+
 	// -----------------------------------------------------------------------
 	// Node lookup (returns INode from Workflow class, not INodeUi)
 	// -----------------------------------------------------------------------
@@ -53,12 +84,27 @@ export function useWorkflowDocumentGraph() {
 		return workflowsStore.workflowObject.getStartNode(destinationNode);
 	}
 
+	function getParentMainInputNode(node: INode): INode {
+		return workflowsStore.workflowObject.getParentMainInputNode(node);
+	}
+
+	function getNodeConnectionIndexes(
+		nodeName: string,
+		parentNodeName: string,
+		type: NodeConnectionType = NodeConnectionTypes.Main,
+	): INodeConnection | undefined {
+		return workflowsStore.workflowObject.getNodeConnectionIndexes(nodeName, parentNodeName, type);
+	}
+
 	return {
 		// Graph traversal
 		getParentNodes,
 		getChildNodes,
 		getParentNodesByDepth,
 		getConnectionsBetweenNodes,
+		getParentMainInputNode,
+		getNodeConnectionIndexes,
+		getConnectedNodes,
 
 		// Node lookup
 		getNodeByNameFromWorkflow,
