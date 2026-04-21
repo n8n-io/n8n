@@ -58,13 +58,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					params.agentId.value,
 				);
 			} else if (continueId) {
-				const raw = await getChatMessages(
+				dbMessages = await getChatMessages(
 					rootStore.restApiContext,
 					params.projectId.value,
 					params.agentId.value,
 					continueId,
 				);
-				dbMessages = raw as AgentPersistedMessageDto[];
 			} else {
 				dbMessages = await getTestChatMessages(
 					rootStore.restApiContext,

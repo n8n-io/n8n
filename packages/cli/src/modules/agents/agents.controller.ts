@@ -362,9 +362,7 @@ export class AgentsController {
 	}
 
 	@Delete('/:agentId/chat/messages')
-	async clearTestChatMessages(
-		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
-	) {
+	async clearTestChatMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);

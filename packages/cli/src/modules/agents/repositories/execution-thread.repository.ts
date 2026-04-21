@@ -80,7 +80,7 @@ export class ExecutionThreadRepository extends Repository<ExecutionThread> {
 		await this.update(threadId, { updatedAt: new Date() });
 	}
 
-	/** Atomically increment token and cost counters on a thread. */
+	/** Atomically increment token and cost counters on a thread in a single UPDATE. */
 	async incrementUsage(
 		threadId: string,
 		promptTokens: number,
@@ -88,14 +88,23 @@ export class ExecutionThreadRepository extends Repository<ExecutionThread> {
 		cost: number,
 		duration: number,
 	): Promise<void> {
-		await this.increment({ id: threadId }, 'totalPromptTokens', promptTokens);
-		await this.increment({ id: threadId }, 'totalCompletionTokens', completionTokens);
+		const set: Record<string, () => string> = {
+			totalPromptTokens: () => '"totalPromptTokens" + :promptTokens',
+			totalCompletionTokens: () => '"totalCompletionTokens" + :completionTokens',
+		};
 		if (cost > 0) {
-			await this.increment({ id: threadId }, 'totalCost', cost);
+			set.totalCost = () => '"totalCost" + :cost';
 		}
 		if (duration > 0) {
-			await this.increment({ id: threadId }, 'totalDuration', duration);
+			set.totalDuration = () => '"totalDuration" + :duration';
 		}
+
+		await this.createQueryBuilder()
+			.update(ExecutionThread)
+			.set(set)
+			.where('id = :threadId', { threadId })
+			.setParameters({ promptTokens, completionTokens, cost, duration })
+			.execute();
 	}
 
 	/** Delete a thread, validating project ownership. Returns true if deleted. */

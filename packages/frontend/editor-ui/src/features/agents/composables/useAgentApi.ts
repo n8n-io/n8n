@@ -229,8 +229,8 @@ export const getChatMessages = async (
 	projectId: string,
 	agentId: string,
 	threadId: string,
-): Promise<unknown[]> => {
-	return await makeRestApiRequest<unknown[]>(
+): Promise<AgentPersistedMessageDto[]> => {
+	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
