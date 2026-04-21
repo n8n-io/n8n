@@ -786,11 +786,11 @@ async function copyAllAnnotations() {
 }
 
 .dev-panel-toolbar-button--active {
-	background: var(--color--primary);
+	background: var(--color--blue-500);
 }
 
 .dev-panel-toolbar-button--active:hover:not(:disabled) {
-	background: var(--color--primary--shade-1);
+	background: var(--color--blue-600);
 }
 
 .dev-panel-toolbar-badge {
