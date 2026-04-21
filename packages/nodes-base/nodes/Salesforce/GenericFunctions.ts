@@ -305,7 +305,7 @@ const SALESFORCE_DATE_LITERALS = new Set([
 	'NEXT_FISCAL_YEAR',
 ]);
 
-export function getValue(value: any): string | number | boolean {
+export function getValue(value: any, nodeVersion: number): string | number | boolean {
 	if (value === null || value === undefined) {
 		return 'null';
 	}
@@ -379,6 +379,14 @@ export function getValue(value: any): string | number | boolean {
 			}
 		}
 
+		// In v1.1+, detect numeric strings and return them unquoted (leading zeros are preserved as strings)
+		if (nodeVersion >= 1.1 && /^-?(0|[1-9]\d*)(\.\d+)?$/.test(value)) {
+			const numericValue = Number(value);
+			if (Number.isFinite(numericValue)) {
+				return numericValue;
+			}
+		}
+
 		// All other strings are escaped and quoted
 		return `'${escapeSoqlString(value)}'`;
 	}
@@ -386,7 +394,7 @@ export function getValue(value: any): string | number | boolean {
 	throw new Error(`Unsupported value type: ${typeof value}`);
 }
 
-export function getConditions(options: IDataObject): string | undefined {
+export function getConditions(options: IDataObject, nodeVersion: number): string | undefined {
 	const conditions = (options.conditionsUi as IDataObject)?.conditionValues as IDataObject[];
 
 	if (!Array.isArray(conditions) || conditions.length === 0) {
@@ -396,7 +404,7 @@ export function getConditions(options: IDataObject): string | undefined {
 	const conditionStrings = conditions.map((condition: IDataObject) => {
 		const field = validateSoqlFieldName(condition.field as string);
 		const operator = validateSoqlOperator(condition.operation as string);
-		const value = getValue(condition.value);
+		const value = getValue(condition.value, nodeVersion);
 
 		return `${field} ${operator} ${value}`;
 	});
@@ -419,7 +427,13 @@ export function getDefaultFields(sobject: string) {
 	)[sobject];
 }
 
-export function getQuery(options: IDataObject, sobject: string, returnAll: boolean, limit = 0) {
+export function getQuery(
+	options: IDataObject,
+	sobject: string,
+	returnAll: boolean,
+	limit = 0,
+	nodeVersion: number,
+) {
 	const validSobject = validateSoqlObjectName(sobject);
 
 	const fields: string[] = [];
@@ -427,14 +441,20 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 		// options.fields is comma separated in standard Salesforce objects and array in custom Salesforce objects -- handle both cases
 		if (typeof options.fields === 'string') {
 			const fieldList = options.fields.split(',').map((f) => f.trim());
-			fields.push(...fieldList.map((f) => validateSoqlFieldName(f)));
+			fields.push.apply(
+				fields,
+				fieldList.map((f) => validateSoqlFieldName(f)),
+			);
 		} else {
-			fields.push(...(options.fields as string[]).map((f) => validateSoqlFieldName(f)));
+			fields.push.apply(
+				fields,
+				(options.fields as string[]).map((f) => validateSoqlFieldName(f)),
+			);
 		}
 	} else {
-		fields.push(...((getDefaultFields(validSobject) as string) || 'id').split(','));
+		fields.push.apply(fields, ((getDefaultFields(validSobject) as string) || 'id').split(','));
 	}
-	const conditions = getConditions(options);
+	const conditions = getConditions(options, nodeVersion);
 
 	let query = `SELECT ${fields.join(',')} FROM ${validSobject} ${conditions ? conditions : ''}`;
 
