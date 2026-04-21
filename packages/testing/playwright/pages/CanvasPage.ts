@@ -769,6 +769,18 @@ export class CanvasPage extends BasePage {
 		await this.page.getByTestId('workflow-chat-button').click();
 	}
 
+	getOpenChatButton(): Locator {
+		return this.page.getByRole('button', { name: 'Open chat' });
+	}
+
+	getHideChatButton(): Locator {
+		return this.page.getByRole('button', { name: 'Hide chat' });
+	}
+
+	getChatPanel(): Locator {
+		return this.page.getByTestId('canvas-chat');
+	}
+
 	// Input plus endpoints (to add supplemental nodes to parent inputs)
 	getInputPlusEndpointByType(nodeName: string, endpointType: string) {
 		return this.page

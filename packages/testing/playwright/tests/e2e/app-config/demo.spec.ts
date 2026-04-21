@@ -39,13 +39,13 @@ test.describe(
 		});
 
 		test('can override theme to dark', async ({ n8n }) => {
-			await n8n.demo.goto('dark');
+			await n8n.demo.goto({ theme: 'dark' });
 			await expect(n8n.demo.getBody()).toHaveAttribute('data-theme', 'dark');
 			expect(await n8n.notifications.getAllNotificationTexts()).toHaveLength(0);
 		});
 
 		test('can override theme to light', async ({ n8n }) => {
-			await n8n.demo.goto('light');
+			await n8n.demo.goto({ theme: 'light' });
 			await expect(n8n.demo.getBody()).toHaveAttribute('data-theme', 'light');
 			expect(await n8n.notifications.getAllNotificationTexts()).toHaveLength(0);
 		});
