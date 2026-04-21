@@ -1,5 +1,7 @@
 import { ref, reactive, computed, type Ref } from 'vue';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useToast } from '@/app/composables/useToast';
 import {
 	getBuilderMessages,
 	clearBuilderMessages,
@@ -19,6 +21,8 @@ export interface UseAgentChatStreamParams {
 
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
+	const locale = useI18n();
+	const { showError } = useToast();
 
 	const messages = ref<ChatMessage[]>([]);
 	const isStreaming = ref(false);
@@ -44,8 +48,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (dbMessages.length > 0) {
 				messages.value = convertDbMessages(dbMessages);
 			}
-		} catch {
-			// Silently ignore — just start with empty chat
+		} catch (error) {
+			showError(error, locale.baseText('agents.chat.loadHistory.error'));
 		} finally {
 			historyLoaded.value = true;
 		}
@@ -57,8 +61,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		try {
 			await clearRemote(rootStore.restApiContext, params.projectId.value, params.agentId.value);
 			messages.value = [];
-		} catch {
-			// ignore
+		} catch (error) {
+			showError(error, locale.baseText('agents.chat.clearHistory.error'));
 		}
 	}
 

@@ -5557,6 +5557,8 @@
 	"agents.builder.chatMode.build": "Build",
 	"agents.builder.chatMode.test": "Test",
 	"agents.builder.chatMode.ariaLabel": "Switch between builder and agent chat",
+	"agents.chat.loadHistory.error": "Could not load chat history",
+	"agents.chat.clearHistory.error": "Could not clear chat history",
 	"agents.list.published": "Published",
 	"agents.list.noDescription": "No description",
 	"agents.list.updatedAt": "Updated {date}",

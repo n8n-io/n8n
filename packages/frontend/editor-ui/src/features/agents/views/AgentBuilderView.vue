@@ -41,6 +41,10 @@ type ChatMode = 'build' | 'test';
 const mode = ref<Mode>('home');
 const chatMode = ref<ChatMode>('test');
 const isBuildChatStreaming = ref(false);
+// Track which chat panels have been activated so we can lazy-mount them.
+// Both panels used to mount together on first chat entry and each fire a
+// loadHistory() call — only mount one until the user actually opens the other.
+const chatModeOpened = ref<Record<ChatMode, boolean>>({ test: false, build: false });
 const settingsVisible = ref(true);
 const isBuilding = ref(false);
 const agentName = ref('');
@@ -295,6 +299,7 @@ async function initialize() {
 	agent.value = null;
 	mode.value = 'home';
 	chatMode.value = 'test';
+	chatModeOpened.value = { test: false, build: false };
 	isBuilding.value = false;
 	isBuildChatStreaming.value = false;
 	agentIcon.value = { type: 'icon', value: 'robot' };
@@ -318,6 +323,16 @@ async function initialize() {
 }
 
 watch(agentId, initialize, { immediate: true });
+
+watch(
+	[mode, chatMode],
+	([m, cm]) => {
+		if (m === 'chat') {
+			chatModeOpened.value[cm] = true;
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -400,7 +415,13 @@ watch(agentId, initialize, { immediate: true });
 						@done="onBuildDone"
 					/>
 					<div v-else key="chat" :class="$style.chatHost">
+						<!--
+							v-if on `chatModeOpened` lazy-mounts each panel the first time
+							its tab is activated; v-show then preserves state (messages,
+							input, scroll) without re-firing loadHistory on every toggle.
+						-->
 						<AgentChatPanel
+							v-if="chatModeOpened.test"
 							v-show="chatMode === 'test'"
 							:project-id="projectId"
 							:agent-id="agentId"
@@ -410,6 +431,7 @@ watch(agentId, initialize, { immediate: true });
 							@config-updated="onConfigUpdated"
 						/>
 						<AgentChatPanel
+							v-if="chatModeOpened.build"
 							v-show="chatMode === 'build'"
 							:project-id="projectId"
 							:agent-id="agentId"

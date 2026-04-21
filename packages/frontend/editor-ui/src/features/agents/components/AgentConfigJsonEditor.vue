@@ -88,6 +88,10 @@ watch(
 		const newText = configToJson(newConfig);
 		const current = jsonView.state.doc.toString();
 		if (current === newText) return;
+		// Don't stomp on the user's in-progress edit. An external config update
+		// (e.g. the builder streaming a new config) while the user is typing
+		// would otherwise replace their buffer mid-keystroke.
+		if (jsonView.hasFocus) return;
 		isProgrammaticJsonUpdate = true;
 		// Preserve the user's selection/cursor; CodeMirror clamps positions that
 		// would fall outside the new doc length.

@@ -294,10 +294,11 @@ export class AgentsService {
 		// Remove the test-chat thread + its messages so deleting an agent
 		// doesn't leave orphaned rows in agents_threads / agents_messages.
 		// Swallow errors — the agent is already gone; best-effort cleanup.
+		// Log at warn level so orphaned rows are observable in production.
 		try {
 			await this.clearAllChatMessages(agentId);
 		} catch (error) {
-			this.logger.debug('Failed to clear test chat on agent delete', {
+			this.logger.warn('Failed to clear test chat on agent delete', {
 				agentId,
 				error: error instanceof Error ? error.message : error,
 			});

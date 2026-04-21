@@ -1,3 +1,5 @@
+import type { AgentPersistedMessageDto } from '@n8n/api-types';
+
 export interface ToolCall {
 	tool: string;
 	toolCallId?: string;
@@ -70,7 +72,7 @@ export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
  * on the assistant message that issued the call. Without cross-message matching
  * the tool-call UI would stay on the loading indicator forever on reload.
  */
-export function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
+export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatMessage[] {
 	const result: ChatMessage[] = [];
 
 	const applyToolResult = (toolName: string, toolCallId: string | undefined, output: unknown) => {
@@ -87,19 +89,7 @@ export function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
 		}
 	};
 
-	for (const raw of dbMessages) {
-		const msg = raw as {
-			id?: string;
-			role?: string;
-			content?: Array<{
-				type: string;
-				text?: string;
-				toolName?: string;
-				toolCallId?: string;
-				input?: unknown;
-				result?: unknown;
-			}>;
-		};
+	for (const msg of dbMessages) {
 		if (!msg.role || !Array.isArray(msg.content)) continue;
 
 		if (msg.role === 'tool') {
@@ -111,7 +101,9 @@ export function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
 			continue;
 		}
 
-		if (msg.role !== 'user' && msg.role !== 'assistant') continue;
+		const role: ChatMessage['role'] | null =
+			msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'assistant' : null;
+		if (role === null) continue;
 
 		let text = '';
 		let thinking = '';
@@ -138,7 +130,7 @@ export function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
 
 		result.push({
 			id: msg.id ?? crypto.randomUUID(),
-			role: msg.role,
+			role,
 			content: text,
 			thinking: thinking || undefined,
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRef, watch, onMounted } from 'vue';
+import { ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
@@ -74,6 +74,13 @@ onMounted(() => {
 	if (props.initialMessage) {
 		sendMessageFromOutside(props.initialMessage);
 	}
+});
+
+// Abort any in-flight stream when the panel unmounts (e.g. route change,
+// chat mode reset). Without this the fetch keeps running and its reader
+// accumulates bytes until the browser gc's it.
+onBeforeUnmount(() => {
+	stopGenerating();
 });
 </script>
 
