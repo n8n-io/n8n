@@ -25,7 +25,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	configure: [];
-	remove: [];
 	add: [];
 }>();
 

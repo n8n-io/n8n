@@ -54,6 +54,27 @@ function createToolSettingsStub(emitValid: boolean) {
 	});
 }
 
+function createWorkflowToolConfigStub(emitValid: boolean) {
+	return defineComponent({
+		props: ['initialRef'],
+		emits: ['update:valid', 'update:node-name'],
+		setup(props, { emit, expose }) {
+			expose({
+				name: ref(props.initialRef?.name ?? ''),
+				description: ref(props.initialRef?.description ?? ''),
+				allOutputs: ref(props.initialRef?.allOutputs ?? false),
+				handleChangeName: vi.fn(),
+			});
+			onMounted(() => {
+				emit('update:valid', emitValid);
+				emit('update:node-name', props.initialRef?.name ?? '');
+			});
+			return {};
+		},
+		template: '<div data-test-id="workflow-tool-config-content" />',
+	});
+}
+
 const ElDialogStub = {
 	template: `
 		<div role="dialog">
@@ -114,6 +135,7 @@ function renderModal({
 				ElDialog: ElDialogStub,
 				NodeIcon: { template: '<div data-test-id="header-node-icon" />' },
 				NodeToolSettingsContent: createToolSettingsStub(valid),
+				WorkflowToolConfigContent: createWorkflowToolConfigStub(valid),
 			},
 		},
 	});
@@ -195,10 +217,23 @@ describe('AgentToolConfigModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('does not render when the toolRef has no node (e.g. custom/workflow tool)', () => {
+	it('does not render when the toolRef is a custom tool (no node, no workflow)', () => {
 		const { queryByTestId } = renderModal({
-			ref: { type: 'workflow', workflow: 'w-1' },
+			ref: { type: 'custom', id: 'custom-tool-1' },
 		});
 		expect(queryByTestId('agent-tool-config-modal')).toBeNull();
+	});
+
+	it('renders the workflow-tool config content for workflow refs', () => {
+		const { getByTestId, queryByTestId } = renderModal({
+			ref: {
+				type: 'workflow',
+				workflow: 'w-1',
+				name: 'My Workflow Tool',
+				description: 'Does something',
+			},
+		});
+		expect(getByTestId('workflow-tool-config-content')).toBeTruthy();
+		expect(queryByTestId('node-tool-settings-content')).toBeNull();
 	});
 });

@@ -1,5 +1,4 @@
 ---
-name: iterative-ui-development
 description: >-
   Close the Figma-to-code feedback loop without a human in the middle. Use
   when implementing UI from a Figma design, matching a mockup, iterating on

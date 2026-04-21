@@ -4,8 +4,7 @@ import Modal from '@/app/components/Modal.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { DEBOUNCE_TIME, getDebounceTime, MODAL_CONFIRM } from '@/app/constants';
-import { useMessage } from '@/app/composables/useMessage';
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import {
 	N8nHeading,
 	N8nIcon,
@@ -69,7 +68,6 @@ const props = defineProps<{
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const message = useMessage();
 const workflowsListStore = useWorkflowsListStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 
@@ -122,17 +120,22 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 
 // --- Workflow catalog -------------------------------------------------------
 
-onMounted(() => {
+onMounted(async () => {
 	// Fetch on open so the Available list populates with project-scoped workflows.
 	// Pre-filter by supported trigger types so users can't pick a workflow that
 	// would fail backend compatibility validation on save. Failures are
 	// non-fatal: the Available list just stays workflow-free.
-	void workflowsListStore
-		.searchWorkflows({
+	// `searchWorkflows` only returns results — it doesn't persist — so we pipe
+	// them into `setWorkflows` ourselves to populate `allWorkflows`.
+	try {
+		const workflows = await workflowsListStore.searchWorkflows({
 			projectId: props.data.projectId,
 			triggerNodeTypes: SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
-		})
-		.catch(() => []);
+		});
+		workflowsListStore.setWorkflows(workflows);
+	} catch {
+		// Non-fatal — the Available list just stays workflow-free.
+	}
 });
 
 /**
@@ -263,22 +266,6 @@ function handleAddWorkflow(workflow: IWorkflowDb) {
 	openConfigForNewRef(workflowToNewToolRef(workflow));
 }
 
-async function handleRemoveTool(toolRef: AgentJsonToolRef) {
-	const confirmed = await message.confirm(
-		i18n.baseText('agents.tools.confirmRemove.message'),
-		i18n.baseText('agents.tools.confirmRemove.title'),
-		{
-			confirmButtonText: i18n.baseText('agents.tools.remove'),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-		},
-	);
-	if (confirmed !== MODAL_CONFIRM) return;
-
-	workingTools.value = workingTools.value.filter((t) => t !== toolRef);
-	toolTelemetry.trackRemoved(toolRef);
-	commit();
-}
-
 function handleConfigureTool(toolRef: AgentJsonToolRef) {
 	// Node name collision check feeds the shared form's uniqueness logic.
 	const existingToolNames = workingTools.value
@@ -337,18 +324,17 @@ function commit() {
 				>
 					<div :class="$style.toolsList" data-test-id="agent-tools-connected-list">
 						<AgentToolItem
-							v-for="tool in filteredConfiguredTools"
-							:key="tool.node.id"
+							v-for="(tool, index) in filteredConfiguredTools"
+							:key="tool.ref.id ?? `node-${index}`"
 							:node-type="tool.nodeType"
 							:configured-node="tool.node"
 							:missing-credentials="tool.missingCredentials"
 							mode="configured"
 							@configure="handleConfigureTool(tool.ref)"
-							@remove="handleRemoveTool(tool.ref)"
 						/>
 						<div
-							v-for="wf in filteredConfiguredWorkflows"
-							:key="`wf-${wf.name}`"
+							v-for="(wf, index) in filteredConfiguredWorkflows"
+							:key="wf.ref.id ?? `wf-${index}`"
 							:class="$style.workflowRow"
 							data-test-id="agent-tools-connected-workflow-row"
 						>
