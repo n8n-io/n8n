@@ -275,6 +275,18 @@ export class CollaborationService {
 	}
 
 	/**
+	 * Throws if any user currently holds the write lock for the given workflow.
+	 */
+	async ensureWorkflowEditable(workflowId: Workflow['id']): Promise<void> {
+		const lock = await this.state.getWriteLock(workflowId);
+		if (lock) {
+			throw new LockedError(
+				'Cannot modify workflow while it is being edited by a user in the editor.',
+			);
+		}
+	}
+
+	/**
 	 * Validates that if a write lock exists for a workflow, the requesting client holds it.
 	 * Throws ConflictError (409) if same user but different tab holds the lock.
 	 * Throws LockedError (423) if different user holds the lock.
