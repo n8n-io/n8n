@@ -1238,3 +1238,55 @@ describe('mapPropertyToZodSchema with noDataExpression', () => {
 		expect(schema).toBe('stringOrExpression');
 	});
 });
+
+describe('mapPropertyToZodSchema for fixedCollection with field-count constraints', () => {
+	const buildFilters = (typeOptions: NodeProperty['typeOptions']): NodeProperty => ({
+		name: 'filters',
+		displayName: 'Filters',
+		type: 'fixedCollection',
+		default: {},
+		typeOptions,
+		options: [
+			{
+				name: 'conditions',
+				displayName: 'Conditions',
+				values: [{ name: 'keyName', displayName: 'Key', type: 'string', default: '' }],
+			},
+		],
+	});
+
+	it('applies .min() to the array when multipleValues and minRequiredFields are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 1 }),
+		);
+		expect(schema).toContain('conditions: z.array(');
+		expect(schema).toContain(').min(1)');
+	});
+
+	it('applies .max() to the array when multipleValues and maxAllowedFields are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, maxAllowedFields: 3 }),
+		);
+		expect(schema).toContain(').max(3)');
+	});
+
+	it('combines .min() and .max() when both constraints are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 1, maxAllowedFields: 5 }),
+		);
+		expect(schema).toContain('.min(1).max(5)');
+	});
+
+	it('omits .min() when minRequiredFields is 0', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 0 }),
+		);
+		expect(schema).not.toContain('.min(');
+	});
+
+	it('does not apply .min() when multipleValues is false', () => {
+		const schema = mapPropertyToZodSchema(buildFilters({ minRequiredFields: 1 }));
+		expect(schema).not.toContain('z.array(');
+		expect(schema).not.toContain('.min(');
+	});
+});
