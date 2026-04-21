@@ -72,6 +72,12 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: baseTextFn },
 }));
 
+// The first test in this file pays the one-time SFC transform cost for
+// AgentBuilderView.vue (~4s), which overruns vitest's default 5s test timeout.
+// A higher cap gives that first render enough headroom; subsequent tests hit
+// the cached module and finish well under the default budget anyway.
+vi.setConfig({ testTimeout: 15_000 });
+
 describe('AgentBuilderView — chat mode toggle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
