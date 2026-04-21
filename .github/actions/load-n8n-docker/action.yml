@@ -24,6 +24,4 @@ runs:
 
     - name: Load image into docker
       shell: bash
-      run: |
-        zstd -d -c /tmp/n8n-image.tar.zst | docker load
-        docker image ls n8nio/n8n:local n8nio/runners:local
+      run: zstd -d -c /tmp/n8n-image.tar.zst | docker load
