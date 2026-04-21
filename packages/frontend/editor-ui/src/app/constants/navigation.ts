@@ -65,10 +65,12 @@ export const enum VIEWS {
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
 	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
 	AI_SETTINGS = 'AISettingsView',
+	AI_GATEWAY_SETTINGS = 'AIGatewaySettingsView',
 	OAUTH_CONSENT = 'OAuthConsent',
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
+	INSTANCE_REGISTRY = 'InstanceRegistryView',
 	RESOURCE_CENTER = 'ResourceCenter',
 	RESOURCE_CENTER_SECTION = 'ResourceCenterSection',
 }

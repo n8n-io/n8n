@@ -406,4 +406,48 @@ describe('ExecutionRepository', () => {
 			expect(result.data.resultData.error?.message).toBe('The execution was cancelled manually');
 		});
 	});
+
+	describe('setRunning', () => {
+		beforeEach(() => {
+			entityManager.transaction.mockImplementation(async (fn: unknown) => {
+				return await (fn as (em: typeof entityManager) => Promise<unknown>)(entityManager);
+			});
+		});
+
+		test('should set startedAt when not already set', async () => {
+			const executionId = '123';
+
+			entityManager.findOneBy.mockResolvedValueOnce({ startedAt: null });
+
+			const result = await executionRepository.setRunning(executionId);
+
+			expect(entityManager.transaction).toHaveBeenCalled();
+			expect(entityManager.findOneBy).toHaveBeenCalledWith(ExecutionEntity, {
+				id: executionId,
+			});
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: executionId },
+				{ status: 'running', startedAt: expect.any(Date) },
+			);
+			expect(result).toBeInstanceOf(Date);
+		});
+
+		test('should preserve existing startedAt for resumed executions', async () => {
+			const executionId = '456';
+			const existingStartedAt = new Date('2025-12-02T09:04:47.150Z');
+
+			entityManager.findOneBy.mockResolvedValueOnce({ startedAt: existingStartedAt });
+
+			const result = await executionRepository.setRunning(executionId);
+
+			expect(entityManager.transaction).toHaveBeenCalled();
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: executionId },
+				{ status: 'running', startedAt: existingStartedAt },
+			);
+			expect(result).toBe(existingStartedAt);
+		});
+	});
 });

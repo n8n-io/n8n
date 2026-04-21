@@ -3,6 +3,7 @@ import type {
 	WorkflowPublishHistory,
 	WorkflowHistory,
 } from '@n8n/rest-api-client/api/workflowHistory';
+import { useI18n } from '@n8n/i18n';
 import dateformat from 'dateformat';
 
 export const getLastPublishedVersion = (
@@ -11,14 +12,26 @@ export const getLastPublishedVersion = (
 	return workflowPublishHistory.findLast((history) => history.event === 'activated');
 };
 
-export const generateVersionNameFromId = (versionId: string) => {
+export const generateVersionLabelFromId = (versionId: string) => {
 	return `Version ${versionId.substring(0, 8)}`;
 };
 
-export const getVersionLabel = (
-	workflowHistoryItem: Pick<WorkflowHistory, 'versionId' | 'name'>,
-) => {
-	return workflowHistoryItem.name ?? generateVersionNameFromId(workflowHistoryItem.versionId);
+export const getVersionLabel = ({
+	workflowHistory,
+	currentVersionId,
+}: {
+	workflowHistory: Pick<WorkflowHistory, 'versionId' | 'name'>;
+	currentVersionId?: string;
+}) => {
+	const i18n = useI18n();
+	if (workflowHistory.name) {
+		return workflowHistory.name;
+	}
+
+	const isCurrentVersion = workflowHistory.versionId === currentVersionId;
+	return isCurrentVersion
+		? i18n.baseText('workflowHistory.item.currentChanges')
+		: generateVersionLabelFromId(workflowHistory.versionId);
 };
 
 export const formatTimestamp = (value: string) => {
@@ -98,7 +111,7 @@ export const computeTimelineEntries = (items: WorkflowHistory[]): TimelineEntry[
 	return entries;
 };
 
-export const getActiveVersionId = (workflow: IWorkflowDb | null): string | undefined => {
+export const getPublishedVersionId = (workflow: IWorkflowDb | null): string | undefined => {
 	if (!workflow) {
 		return;
 	}

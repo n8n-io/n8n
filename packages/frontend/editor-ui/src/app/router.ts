@@ -24,6 +24,7 @@ import { useRecentResources } from '@/features/shared/commandBar/composables/use
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -90,6 +91,8 @@ const SettingsExternalSecrets = async () => {
 };
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
+const SettingsInstanceRegistryView = async () =>
+	await import('@/features/settings/instanceRegistry/views/SettingsInstanceRegistryView.vue');
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
@@ -100,6 +103,8 @@ const TestRunDetailView = async () =>
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
+const SettingsAiGatewayView = async () =>
+	await import('@/features/ai/gateway/views/SettingsAiGatewayView.vue');
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
 const ResourceCenterSectionView = async () =>
@@ -677,12 +682,44 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'n8n-connect',
+				name: VIEWS.AI_GATEWAY_SETTINGS,
+				component: SettingsAiGatewayView,
+				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isAiGatewayEnabled;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'n8n-connect',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'resolvers',
 				name: VIEWS.RESOLVERS,
 				component: SettingsResolversView,
 				meta: {
-					middleware: ['authenticated', 'custom'],
+					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
+						rbac: {
+							scope: [
+								'credentialResolver:read',
+								'credentialResolver:list',
+								'credentialResolver:create',
+								'credentialResolver:update',
+								'credentialResolver:delete',
+							],
+							options: { mode: 'allOf' },
+						},
 						custom: () => {
 							const { isEnabled } = useDynamicCredentials();
 							return isEnabled.value;
@@ -855,6 +892,31 @@ export const routes: RouteRecordRaw[] = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
+					},
+				},
+			},
+			{
+				path: 'instance-registry',
+				name: VIEWS.INSTANCE_REGISTRY,
+				component: SettingsInstanceRegistryView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'orchestration:read',
+						},
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('INSTANCE_REGISTRY');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'instance-registry',
+							};
+						},
 					},
 				},
 			},

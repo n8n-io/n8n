@@ -11,10 +11,10 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
@@ -81,7 +81,7 @@ const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-const workflowState = injectWorkflowState();
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
 const isTagsEditEnabled = ref(false);
@@ -213,7 +213,8 @@ function onNameSubmit(name: string) {
 	}
 
 	// Update workflow name in store and mark state as dirty
-	workflowState.setWorkflowName({ newName, setStateDirty: true });
+	workflowDocumentStore?.value?.setName(newName);
+	uiStore.markStateDirty('metadata');
 
 	documentTitle.setDocumentTitle(newName, 'IDLE');
 	renameInput.value?.forceCancel();
@@ -244,7 +245,7 @@ async function handleArchiveWorkflow() {
 
 	try {
 		const expectedChecksum =
-			props.id === workflowsStore.workflowId ? workflowDocumentStore?.value?.checksum : undefined;
+			props.id === workflowId.value ? workflowDocumentStore?.value?.checksum : undefined;
 		await workflowsStore.archiveWorkflow(props.id, expectedChecksum);
 		workflowDocumentStore?.value?.setActiveState({
 			activeVersionId: null,
@@ -511,7 +512,7 @@ $--header-spacing: 20px;
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--md);
+	gap: var(--spacing--4xs);
 	flex-wrap: nowrap;
 }
 

@@ -4,7 +4,6 @@ import { NodeApiError } from 'n8n-workflow';
 import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
-	getJwtToken,
 	getFieldNamesAndIds,
 	toOptions,
 	TableFieldMapper,
@@ -13,11 +12,9 @@ import {
 describe('Baserow > GenericFunctions', () => {
 	const mockExecuteFunctions: any = {
 		helpers: {
-			request: jest.fn(),
+			requestWithAuthentication: jest.fn(),
 		},
 		getCredentials: jest.fn().mockResolvedValue({
-			username: 'nathan@n8n.io',
-			password: 'this-is-a-fake-password',
 			host: 'https://api.baserow.io',
 		}),
 		getNodeParameter: jest.fn(),
@@ -26,25 +23,38 @@ describe('Baserow > GenericFunctions', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockExecuteFunctions.getCredentials.mockResolvedValue({
+			host: 'https://api.baserow.io',
+		});
 	});
 
 	describe('baserowApiRequest', () => {
 		it('should return data on success', async () => {
-			mockExecuteFunctions.helpers.request.mockResolvedValue({ success: true });
+			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue({
+				success: true,
+			});
 			const result = await baserowApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
 				'/endpoint',
-				'testJwt',
+				'baserowApi',
 			);
 			expect(result).toEqual({ success: true });
-			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalled();
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'baserowApi',
+				expect.objectContaining({
+					method: 'GET',
+					uri: 'https://api.baserow.io/endpoint',
+				}),
+			);
 		});
 
 		it('should throw NodeApiError on failure', async () => {
-			mockExecuteFunctions.helpers.request.mockRejectedValue({ error: 'fail' });
+			mockExecuteFunctions.helpers.requestWithAuthentication.mockRejectedValue({
+				error: 'fail',
+			});
 			await expect(
-				baserowApiRequest.call(mockExecuteFunctions, 'GET', '/endpoint', 'testJwt'),
+				baserowApiRequest.call(mockExecuteFunctions, 'GET', '/endpoint', 'baserowApi'),
 			).rejects.toThrow(NodeApiError);
 		});
 	});
@@ -54,7 +64,7 @@ describe('Baserow > GenericFunctions', () => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce(true) // returnAll
 				.mockReturnValue(1000); // limit
-			mockExecuteFunctions.helpers.request
+			mockExecuteFunctions.helpers.requestWithAuthentication
 				.mockResolvedValueOnce({ results: [{ data: 1 }], next: 'page2' })
 				.mockResolvedValueOnce({ results: [{ data: 2 }], next: null });
 
@@ -62,7 +72,7 @@ describe('Baserow > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'GET',
 				'/endpoint',
-				'testJwt',
+				'baserowApi',
 				{},
 				{},
 			);
@@ -71,36 +81,13 @@ describe('Baserow > GenericFunctions', () => {
 		});
 	});
 
-	describe('getJwtToken', () => {
-		it('should return a token', async () => {
-			mockExecuteFunctions.helpers.request.mockResolvedValue({ token: 'mockToken' });
-			const result = await getJwtToken.call(mockExecuteFunctions, {
-				username: 'nathan@n8n.io',
-				password: 'this-is-a-fake-password',
-				host: 'https://api.baserow.io',
-			});
-			expect(result).toBe('mockToken');
-		});
-
-		it('should throw NodeApiError if request fails', async () => {
-			mockExecuteFunctions.helpers.request.mockRejectedValue({ error: 'fail' });
-			await expect(
-				getJwtToken.call(mockExecuteFunctions, {
-					username: 'nathan@n8n.io',
-					password: 'this-is-a-fake-password',
-					host: 'https://api.baserow.io',
-				}),
-			).rejects.toThrow(NodeApiError);
-		});
-	});
-
 	describe('getFieldNamesAndIds', () => {
 		it('should return field names and ids', async () => {
-			mockExecuteFunctions.helpers.request.mockResolvedValue([
+			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue([
 				{ id: 1, name: 'field1' },
 				{ id: 2, name: 'field2' },
 			]);
-			const result = await getFieldNamesAndIds.call(mockExecuteFunctions, '1', 'testJwt');
+			const result = await getFieldNamesAndIds.call(mockExecuteFunctions, '1', 'baserowApi');
 			expect(result).toEqual({
 				names: ['field1', 'field2'],
 				ids: ['field_1', 'field_2'],

@@ -13,6 +13,28 @@ on:
         required: false
         type: boolean
         default: false
+      n8n-env:
+        description: 'JSON string of n8n env vars to inject into test containers, e.g. {"N8N_EXPRESSION_ENGINE":"vm"}'
+        required: false
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch/ref to test'
+        required: false
+        type: string
+        default: ''
+      playwright-only:
+        description: 'Only Playwright files changed — run impacted tests only'
+        required: false
+        type: boolean
+        default: false
+      n8n-env:
+        description: 'JSON string of n8n env vars to inject into test containers (e.g. {"N8N_EXPRESSION_ENGINE":"vm"})'
+        required: false
+        type: string
+        default: ''
 
 env:
   DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
@@ -30,13 +52,13 @@ jobs:
       skip-tests: ${{ steps.generate-matrix.outputs.skip-tests }}
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
 
       - name: Login to GHCR
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -52,10 +74,9 @@ jobs:
           IMAGE_BASE_NAME: ghcr.io/${{ github.repository }}
           IMAGE_TAG: ci-${{ github.run_id }}
           RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ github.repository_owner }}/runners
-          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
-          DOCKER_STATS_WEBHOOK_URL: ${{ secrets.DOCKER_STATS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Get changed files for impact analysis
         if: ${{ inputs.playwright-only }}
@@ -71,7 +92,7 @@ jobs:
         run: |
           ARGS=(--matrix 16 --orchestrate)
           if [[ "${{ inputs.playwright-only }}" == "true" ]]; then
-            ARGS+=(--impact "--files=$CHANGED_FILES")
+            ARGS+=(--impact "--files=$CHANGED_FILES" "--base=FETCH_HEAD")
           fi
           MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs "${ARGS[@]}")
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
@@ -91,6 +112,7 @@ jobs:
       runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
       pre-generated-matrix: '[{"shard":1,"images":""}]'
+      n8n-env: ${{ inputs.n8n-env }}
 
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
   # Only runs for internal PRs (not community/fork PRs)
@@ -110,6 +132,7 @@ jobs:
       workers: '1'
       use-custom-orchestration: true
       pre-generated-matrix: ${{ needs.prepare.outputs.matrix }}
+      n8n-env: ${{ inputs.n8n-env }}
     secrets: inherit
 
   # Community PR tests: Local mode with SQLite (no container building, no secrets required)
@@ -121,7 +144,7 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       test-mode: local
-      test-command: pnpm --filter=n8n-playwright test:local:e2e-only
+      test-command: pnpm --filter=n8n-playwright test:local
       shards: 7
       runner: ubuntu-latest
       workers: '1'
@@ -139,7 +162,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           sparse-checkout: .github/scripts
           sparse-checkout-cone-mode: false

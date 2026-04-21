@@ -8,7 +8,7 @@ import type {
 	ChatModelDto,
 	ChatSessionId,
 } from '@n8n/api-types';
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, useTemplateRef, watch, ref } from 'vue';
 import { useChatStore } from '../chat.store';
@@ -94,37 +94,38 @@ defineExpose({
 				"
 			/>
 		</div>
-		<N8nButton
-			v-if="showArtifactIcon"
-			variant="subtle"
-			size="medium"
-			icon="notebook-pen"
-			@click="emit('reopenArtifact')"
-		/>
-		<N8nButton
-			variant="subtle"
-			v-if="selectedModel?.model.provider === 'custom-agent'"
-			:class="$style.editAgent"
-			size="small"
-			icon="settings"
-			:label="i18n.baseText('chatHub.chat.header.button.editAgent')"
-			@click="emit('editCustomAgent', selectedModel.model.agentId)"
-		/>
-		<N8nButton
-			variant="subtle"
-			v-if="showOpenWorkflow"
-			:class="$style.editAgent"
-			size="small"
-			icon="settings"
-			:label="i18n.baseText('chatHub.chat.header.button.openWorkflow')"
-			@click="onOpenWorkflow"
-		/>
+		<div :class="$style.buttons">
+			<N8nButton
+				variant="subtle"
+				v-if="selectedModel?.model.provider === 'custom-agent'"
+				size="small"
+				icon="settings"
+				:label="i18n.baseText('chatHub.chat.header.button.editAgent')"
+				@click="emit('editCustomAgent', selectedModel.model.agentId)"
+			/>
+			<N8nIconButton
+				v-if="showArtifactIcon"
+				variant="subtle"
+				size="small"
+				icon="panel-right"
+				@click="emit('reopenArtifact')"
+			/>
+			<N8nButton
+				v-if="showOpenWorkflow"
+				variant="subtle"
+				size="small"
+				icon="settings"
+				:label="i18n.baseText('chatHub.chat.header.button.openWorkflow')"
+				@click="onOpenWorkflow"
+			/>
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .component {
-	padding-inline: var(--spacing--4xs);
+	padding-left: var(--spacing--4xs);
+	padding-right: var(--spacing--xs);
 	height: 56px;
 	flex-grow: 0;
 	flex-shrink: 0;
@@ -149,7 +150,9 @@ defineExpose({
 	margin-inline: var(--spacing--md);
 }
 
-.editAgent {
-	margin-right: var(--spacing--3xs);
+.buttons {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 </style>

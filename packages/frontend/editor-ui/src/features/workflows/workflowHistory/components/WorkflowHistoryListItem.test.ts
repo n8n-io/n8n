@@ -79,6 +79,28 @@ describe('WorkflowHistoryListItem', () => {
 		expect(emitted().compare).toEqual([[{ id: itemToCompareWith.versionId }]]);
 	});
 
+	it('should show a two-line compare tooltip with both version names', async () => {
+		const item = { ...workflowHistoryDataFactory(), name: 'Version 1 name' };
+		const itemToCompareWith = workflowHistoryDataFactory();
+		const compareName = 'Version 2 name';
+		const { getByTestId, findByText } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: { name: compareName, versionId: itemToCompareWith.versionId },
+				isWorkflowDiffsEnabled: true,
+			},
+		});
+
+		await userEvent.hover(getByTestId('workflow-history-compare-item-button'));
+
+		expect(await findByText('Compare “Version 2 name”')).toBeInTheDocument();
+		expect(await findByText('with “Version 1 name”')).toBeInTheDocument();
+	});
+
 	it('should not emit compare event when compareWith is missing', async () => {
 		const item = workflowHistoryDataFactory();
 		const { getByTestId, emitted } = renderComponent({
@@ -115,8 +137,8 @@ describe('WorkflowHistoryListItem', () => {
 		expect(queryByTestId('workflow-history-compare-item-button')).not.toBeInTheDocument();
 	});
 
-	it('should render current changes for first item', () => {
-		const item = workflowHistoryDataFactory();
+	it('should render current changes for first unnamed item', () => {
+		const item = { ...workflowHistoryDataFactory(), name: null };
 		const { getByText } = renderComponent({
 			pinia,
 			props: {
@@ -130,7 +152,22 @@ describe('WorkflowHistoryListItem', () => {
 		expect(getByText('Current changes')).toBeInTheDocument();
 	});
 
-	it('should render generated version label when name is missing', () => {
+	it('should render version name for first named item', () => {
+		const item = { ...workflowHistoryDataFactory(), name: 'Named Version' };
+		const { getByText } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 0,
+				actions,
+				isSelected: true,
+			},
+		});
+
+		expect(getByText('Named Version')).toBeInTheDocument();
+	});
+
+	it('should render a generated version label when the item has no name and it is not the first item', () => {
 		const item = { ...workflowHistoryDataFactory(), name: null };
 		const { getByText } = renderComponent({
 			pinia,

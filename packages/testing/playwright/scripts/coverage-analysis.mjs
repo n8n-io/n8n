@@ -70,8 +70,7 @@ const OUTPUT_MD = args.md === true;
 const OUT_JSON_FILE = args['out-json'];
 const DEEP_FILE = args.deep;
 
-const activeDomains =
-	DOMAIN === 'all' ? Object.entries(DOMAINS) : [[DOMAIN, DOMAINS[DOMAIN]]];
+const activeDomains = DOMAIN === 'all' ? Object.entries(DOMAINS) : [[DOMAIN, DOMAINS[DOMAIN]]];
 
 if (DOMAIN !== 'all' && !DOMAINS[DOMAIN]) {
 	console.error(`Unknown domain "${DOMAIN}". Use: frontend, nodes, or all.`);
@@ -79,7 +78,9 @@ if (DOMAIN !== 'all' && !DOMAINS[DOMAIN]) {
 }
 
 if (DEEP_FILE && (DEEP_FILE.startsWith('http') || DEEP_FILE.includes('..'))) {
-	console.error('--deep must be a relative repository file path (e.g. packages/editor-ui/src/App.vue)');
+	console.error(
+		'--deep must be a relative repository file path (e.g. packages/editor-ui/src/App.vue)',
+	);
 	process.exit(1);
 }
 
@@ -176,7 +177,7 @@ async function fetchFlagMap(flag) {
 	if (map.size === 0) {
 		process.stderr.write(
 			`  WARNING: flag "${flag}" returned 0 files. Codecov may still be indexing the upload.\n` +
-			`           Results for this flag will be empty. Re-run in a few minutes if this looks wrong.\n`,
+				`           Results for this flag will be empty. Re-run in a few minutes if this looks wrong.\n`,
 		);
 	}
 
@@ -262,7 +263,9 @@ function trunc(str, max) {
 
 function printGapTable(label, gaps, hasE2E, totalGapFiles) {
 	console.log(`\n${'═'.repeat(W)}`);
-	console.log(` GAPS — ${label}  (${totalGapFiles} files below ${GAP_THRESHOLD}% — top ${gaps.length} by uncovered lines)`);
+	console.log(
+		` GAPS — ${label}  (${totalGapFiles} files below ${GAP_THRESHOLD}% — top ${gaps.length} by uncovered lines)`,
+	);
 	console.log('═'.repeat(W));
 
 	const e2eHdr = hasE2E ? `${'E2E%'.padStart(7)} ` : '';
@@ -284,7 +287,9 @@ function printGapTable(label, gaps, hasE2E, totalGapFiles) {
 function printHotPathTable(hotPath) {
 	if (!hotPath.length) return;
 	console.log(`\n${'─'.repeat(W)}`);
-	console.log(` E2E HOT-PATH (E2E ≥ 80%, Unit < 15%) — covered by navigation, not deliberate unit tests`);
+	console.log(
+		` E2E HOT-PATH (E2E ≥ 80%, Unit < 15%) — covered by navigation, not deliberate unit tests`,
+	);
 	console.log('─'.repeat(W));
 	for (const [i, f] of hotPath.entries()) {
 		console.log(
@@ -370,7 +375,10 @@ async function deepDive(filePath) {
 	const e2eMap = new Map(e2eLines.map(([ln, h]) => [ln, h]));
 	const all = new Set([...unitMap.keys(), ...e2eMap.keys()]);
 
-	let both = 0, unitOnly = 0, e2eOnly = 0, neither = 0;
+	let both = 0,
+		unitOnly = 0,
+		e2eOnly = 0,
+		neither = 0;
 	const uncoveredLineNums = [];
 
 	for (const ln of all) {
@@ -379,7 +387,10 @@ async function deepDive(filePath) {
 		if (u && e) both++;
 		else if (u) unitOnly++;
 		else if (e) e2eOnly++;
-		else { neither++; uncoveredLineNums.push(ln); }
+		else {
+			neither++;
+			uncoveredLineNums.push(ln);
+		}
 	}
 
 	console.log(`\nPer-line breakdown: ${filePath}\n`);
@@ -446,7 +457,9 @@ async function main() {
 		return;
 	}
 
-	console.log(`\nCoverage Gap Analysis  |  ${date}  |  gap <${GAP_THRESHOLD}%  |  min ${MIN_LINES} lines`);
+	console.log(
+		`\nCoverage Gap Analysis  |  ${date}  |  gap <${GAP_THRESHOLD}%  |  min ${MIN_LINES} lines`,
+	);
 	for (const { domain, gaps, hotPath, hasE2E, totalGapFiles } of results) {
 		printGapTable(domain.label, gaps, hasE2E, totalGapFiles);
 		printHotPathTable(hotPath);

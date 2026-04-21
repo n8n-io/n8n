@@ -112,6 +112,7 @@ beforeEach(async () => {
 	anotherMember = await createMember();
 
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
@@ -141,6 +142,14 @@ describe('POST /workflows', () => {
 	test('should set pin data to null if no pin data', async () => {
 		const pinData = await testWithPinData(false);
 		expect(pinData).toBeNull();
+	});
+
+	test('should reject workflow with pinData exceeding size limit', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+		const workflow = makeWorkflow({ withPinData: false });
+		workflow.pinData = { data: [{ json: { data: largeValue } }] };
+		const response = await authOwnerAgent.post('/workflows').send(workflow);
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should retain accept `workflow.id`', async () => {
@@ -829,6 +838,7 @@ describe('POST /workflows', () => {
 		});
 
 		test('should persist redactionPolicy setting to the database on create', async () => {
+			testServer.license.enable('feat:dataRedaction');
 			const payload = {
 				name: 'Redaction Policy Workflow',
 				nodes: [],
@@ -1206,6 +1216,7 @@ describe('GET /workflows', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -1225,6 +1236,7 @@ describe('GET /workflows', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -2384,6 +2396,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -2403,6 +2416,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -3364,6 +3378,32 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(updatedWorkflow!.isArchived).toBe(true);
 	});
 
+	test('should reject update with pinData exceeding size limit', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ pinData: { myNode: [{ json: { data: largeValue } }] } });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should allow update without pinData on workflow that has oversized pinData', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1);
+		const workflow = await createWorkflow(
+			{ pinData: { myNode: [{ json: { data: largeValue } }] } as IPinData },
+			owner,
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Updated name' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.name).toBe('Updated name');
+	});
+
 	describe('Security: Mass Assignment Protection on Update', () => {
 		test.each([
 			{
@@ -3532,6 +3572,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should persist updated redactionPolicy setting to the database', async () => {
+		testServer.license.enable('feat:dataRedaction');
 		const workflow = await createWorkflowWithHistory(
 			{
 				settings: {

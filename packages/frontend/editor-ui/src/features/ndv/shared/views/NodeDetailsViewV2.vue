@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
 import type { MainPanelType, NodePanelType } from '../ndv.types';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IRunData, NodeConnectionType, Workflow } from 'n8n-workflow';
+import type { IRunData, NodeConnectionType } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
@@ -17,6 +18,7 @@ import { useNodeDocsUrl } from '@/app/composables/useNodeDocsUrl';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useStyles } from '@/app/composables/useStyles';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
 	APP_MODALS_ELEMENT_ID,
@@ -54,7 +56,7 @@ const emit = defineEmits<{
 
 const props = withDefaults(
 	defineProps<{
-		workflowObject: Workflow;
+		workflowObject: WorkflowObjectAccessors;
 		readOnly?: boolean;
 		isProductionExecutionPreview?: boolean;
 	}>(),
@@ -74,6 +76,7 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
+const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
@@ -180,7 +183,7 @@ const inputNodeName = computed<string | undefined>(() => {
 
 const inputNode = computed(() => {
 	if (inputNodeName.value) {
-		return workflowsStore.getNodeByName(inputNodeName.value);
+		return workflowDocumentStore?.value?.getNodeByName(inputNodeName.value) ?? null;
 	}
 	return null;
 });
@@ -403,7 +406,7 @@ const onDragEnd = () => {
 		// end_position: mainPanelDimensions.value.relativeLeft,
 		node_type: activeNodeType.value ? activeNodeType.value.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 	});
 };
 
@@ -489,7 +492,7 @@ const close = async () => {
 	telemetry.track('User closed node modal', {
 		node_type: activeNodeType.value ? activeNodeType.value?.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 	});
 	triggerWaitingWarningEnabled.value = false;
 	ndvStore.unsetActiveNodeName();
@@ -532,7 +535,7 @@ const onInputNodeChange = (value: string, index: number) => {
 	telemetry.track('User changed ndv input dropdown', {
 		node_type: activeNode.value ? activeNode.value.type : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		selection_value: index,
 		input_node_type: inputNode.value ? inputNode.value.type : '',
 	});
@@ -604,14 +607,14 @@ watch(
 
 			setTimeout(() => {
 				if (activeNode.value) {
-					const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(
+					const outgoingConnections = workflowDocumentStore?.value?.outgoingConnectionsByNodeName(
 						activeNode.value?.name,
 					);
 
 					telemetry.track('User opened node modal', {
 						node_id: activeNode.value?.id,
 						node_type: activeNodeType.value ? activeNodeType.value?.name : '',
-						workflow_id: workflowsStore.workflowId,
+						workflow_id: workflowId.value,
 						push_ref: pushRef.value,
 						is_editable: !hasForeignCredential.value,
 						parameters_pane_position: mainPanelPosition.value,

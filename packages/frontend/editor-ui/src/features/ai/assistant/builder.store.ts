@@ -34,9 +34,7 @@ import {
 } from './builder.utils';
 import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import pick from 'lodash/pick';
-import { type ITelemetryTrackProperties } from 'n8n-workflow';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { type IPinData, type ITelemetryTrackProperties } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { dedupe } from 'n8n-workflow';
@@ -47,16 +45,31 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
-import type { PlanMode } from '@/features/ai/assistant/assistant.types';
+import type { QuickReplyType } from '@n8n/api-types';
 import {
+	isVersionCardMessage,
+	type PlanMode,
+	type ChatRequest,
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
+	isWebFetchApprovalCustomMessage,
+	isWebFetchApprovalMessage,
+	isToolMessage as isApiToolMessage,
 } from '@/features/ai/assistant/assistant.types';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
-
-const INFINITE_CREDITS = -1;
+import { UNLIMITED_CREDITS } from '@n8n/api-types';
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
+
+/** Tool names that indicate the AI modified the workflow (used during session reload) */
+const WORKFLOW_MODIFYING_TOOLS = new Set([
+	'add_nodes',
+	'remove_nodes',
+	'connect_nodes',
+	'disconnect_nodes',
+	'update_node_parameters',
+	'generate_workflow',
+]);
 
 /**
  * Event types for the Workflow builder journey telemetry event
@@ -76,7 +89,19 @@ export type WorkflowBuilderJourneyEventType =
 	| 'user_opened_review_changes'
 	| 'user_closed_review_changes'
 	| 'user_expanded_review_changes'
-	| 'user_collapsed_review_changes';
+	| 'user_collapsed_review_changes'
+	| 'setup_wizard_shown'
+	| 'setup_wizard_step_navigated'
+	| 'setup_wizard_step_completed'
+	| 'setup_wizard_all_complete'
+	| 'web_fetch_approval_prompted'
+	| 'web_fetch_decision'
+	| 'web_fetch_completed'
+	| 'qa_question_answered'
+	| 'qa_question_skipped'
+	| 'qa_answers_submitted'
+	| 'user_clicked_run_with_test_data'
+	| 'user_clicked_configure_own';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -88,6 +113,18 @@ interface WorkflowBuilderJourneyEventProperties {
 	no_versions_reverted?: number;
 	completion_type?: 'workflow-ready' | 'input-needed';
 	mode?: 'plan' | 'build';
+	step?: number;
+	total?: number;
+	direction?: 'next' | 'prev';
+	domain?: string;
+	url?: string;
+	decision?: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
+	status?: string;
+	question_type?: 'single' | 'multi' | 'text';
+	question_index?: number;
+	total_questions?: number;
+	input_method?: 'click' | 'keyboard_number' | 'keyboard_enter';
+	custom_answer_used?: boolean;
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -142,8 +179,58 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		error: 0,
 	});
 
-	// Track whether a successful full execution has occurred in this session
+	// Version restore state — persisted to DB via workflow_builder_session
+	const activeVersionCardId = ref<string | undefined>(undefined);
+	const resumeAfterRestoreMessageId = ref<string | undefined>(undefined);
+
+	/** IDs of messages that should be collapsed (between restore point and resume point) */
+	const collapsedMessageIds = computed<Set<string>>(() => {
+		if (!activeVersionCardId.value) return new Set();
+		const activeIdx = chatMessages.value.findIndex((m) => m.id === activeVersionCardId.value);
+		if (activeIdx === -1) return new Set();
+
+		// If the active card is the last version card, nothing to collapse —
+		// messages after the latest version are the current conversation.
+		const cards = versionCardMessages.value;
+		if (cards.length > 0 && cards[cards.length - 1].id === activeVersionCardId.value) {
+			return new Set();
+		}
+
+		let endIdx = chatMessages.value.length;
+		if (resumeAfterRestoreMessageId.value) {
+			const resumeIdx = chatMessages.value.findIndex(
+				(m) => m.id === resumeAfterRestoreMessageId.value,
+			);
+			if (resumeIdx !== -1) endIdx = resumeIdx;
+		}
+
+		return new Set(
+			chatMessages.value
+				.slice(activeIdx + 1, endIdx)
+				.map((m) => m.id)
+				.filter(Boolean) as string[],
+		);
+	});
+
+	// Track whether any successful execution (full workflow or per-node) has occurred in this session
 	const hasHadSuccessfulExecution = ref(false);
+
+	// AI-generated test data — persists throughout the session for apply/re-apply
+	const generatedPinData = ref<IPinData | null>(null);
+
+	// Whether the generated pin data has been applied to workflow nodes
+	const pinDataApplied = ref(false);
+
+	// Setup wizard state
+	const wizardCurrentStep = ref(0);
+	const wizardClearedPlaceholders = ref(new Set<string>());
+	const wizardHasExecutedWorkflow = ref(false);
+
+	function resetWizardState() {
+		wizardCurrentStep.value = 0;
+		wizardClearedPlaceholders.value.clear();
+		wizardHasExecutedWorkflow.value = false;
+	}
 
 	// Track whether AI Builder made edits since last save (resets after each save)
 	const aiBuilderMadeEdits = ref(false);
@@ -166,7 +253,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const ndvStore = useNDVStore();
 	const route = useRoute();
 	const locale = useI18n();
@@ -243,7 +334,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			creditsClaimed.value === undefined ||
 			creditsQuota.value === undefined ||
 			// Can be the case if not using proxy service
-			creditsQuota.value === INFINITE_CREDITS
+			creditsQuota.value === UNLIMITED_CREDITS
 		) {
 			return undefined;
 		}
@@ -257,11 +348,32 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
 	});
 
+	const creditsPercentageRemaining = computed(() => {
+		if (
+			creditsQuota.value === undefined ||
+			creditsQuota.value === UNLIMITED_CREDITS ||
+			creditsRemaining.value === undefined
+		) {
+			return undefined;
+		}
+		if (creditsQuota.value === 0) return 0;
+		return (creditsRemaining.value / creditsQuota.value) * 100;
+	});
+
+	const isLowCredits = computed(() => {
+		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
+	});
+
 	const hasMessages = computed(() => chatMessages.value.length > 0);
 
+	/** All version card messages in chat order */
+	const versionCardMessages = computed(() => chatMessages.value.filter(isVersionCardMessage));
+
 	const latestRevertVersion = computed(() => {
-		const msg = chatMessages.value.findLast((m) => 'revertVersion' in m && m.revertVersion);
-		return msg && 'revertVersion' in msg ? msg.revertVersion : null;
+		const cards = versionCardMessages.value;
+		if (cards.length === 0) return null;
+		const last = cards[cards.length - 1];
+		return { id: last.data.versionId, createdAt: last.data.createdAt };
 	});
 
 	const isPlanModeAvailable = computed(() => {
@@ -277,7 +389,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const pendingInterruptMessage = computed(() => {
 		for (let i = chatMessages.value.length - 1; i >= 0; i--) {
 			const msg = chatMessages.value[i];
-			if (isPlanModeQuestionsMessage(msg) || isPlanModePlanMessage(msg)) {
+			if (
+				isPlanModeQuestionsMessage(msg) ||
+				isPlanModePlanMessage(msg) ||
+				isWebFetchApprovalCustomMessage(msg)
+			) {
 				return msg;
 			}
 			// Stop searching if we hit a user message — any interrupt before that is already resolved
@@ -304,7 +420,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	const shouldDisableChatInput = computed(() => {
 		const msg = pendingInterruptMessage.value;
-		return msg ? isPlanModeQuestionsMessage(msg) : false;
+		if (!msg) return false;
+		return isPlanModeQuestionsMessage(msg) || isWebFetchApprovalCustomMessage(msg);
 	});
 
 	// Chat management functions
@@ -320,7 +437,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		lastUserMessageId.value = undefined;
 		loadedSessionsForWorkflowId.value = undefined;
 		hasHadSuccessfulExecution.value = false;
+		generatedPinData.value = null;
+		pinDataApplied.value = false;
 		builderMode.value = 'build';
+		resetWizardState();
 	}
 
 	/**
@@ -426,7 +546,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return;
 		}
 
-		const workflowName = workflowsStore.workflowName;
+		const workflowName = workflowDocumentStore.value?.name ?? '';
 
 		const titleKey =
 			completionType === 'workflow-ready'
@@ -459,8 +579,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
-	function stopStreaming(payload?: StopStreamingPayload) {
-		streaming.value = false;
+	async function stopStreaming(payload?: StopStreamingPayload) {
 		isHelpStreaming.value = false;
 		if (streamingAbortController.value) {
 			streamingAbortController.value.abort();
@@ -474,20 +593,53 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const { revertVersion } = currentStreamingMessage.value ?? {};
 		currentStreamingMessage.value = undefined;
 
+		// Reset wizard state when streaming ends with a workflow update (AI changed the workflow)
+		if (userMessageId && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
+			resetWizardState();
+		}
+
 		// Only show "Restore version" on user messages that triggered a workflow modification.
 		// During planning or question phases no workflow changes happen, so skip it.
-		if (userMessageId && revertVersion && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
-			chatMessages.value = chatMessages.value.map((msg) =>
-				msg.id === userMessageId ? { ...msg, revertVersion } : msg,
-			);
+		// Skip on error/abort paths — the caller handles chatMessages directly and a
+		// late-resolving savePostModificationVersion() would race with those writes.
+		if (
+			!payload &&
+			userMessageId &&
+			revertVersion &&
+			hasWorkflowUpdateInCurrentBatch(userMessageId)
+		) {
+			// Save the post-modification state to create a new version entry.
+			// Falls back to the pre-modification revertVersion if the save fails.
+			const postModVersion = await savePostModificationVersion();
+			const versionForCard = postModVersion ?? revertVersion;
+
+			chatMessages.value = [
+				...chatMessages.value,
+				{
+					id: `version-card-${userMessageId}`,
+					role: 'assistant',
+					type: 'custom',
+					customType: 'version_card',
+					data: {
+						versionId: versionForCard.id,
+						createdAt: versionForCard.createdAt,
+					},
+				},
+			];
 		}
+
+		// Defer clearing the streaming flag until after the version card is appended.
+		// All callers use `void stopStreaming()` (fire-and-forget), so if we clear this
+		// flag before the async savePostModificationVersion() above, sendChatMessage can
+		// push a new user message before the version card, breaking message ordering.
+		streaming.value = false;
 
 		const wasAborted = payload && 'aborted' in payload && payload.aborted;
 
 		// Update page title on completion. We show Done when the user is not on the page
 		// Browser notifications are only shown when the tab is hidden
 		if (document.hidden) {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_DONE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'AI_DONE');
 			if (!wasAborted && userMessageId) {
 				const completionType = hasWorkflowUpdateInCurrentBatch(userMessageId)
 					? 'workflow-ready'
@@ -495,12 +647,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				notifyOnCompletion(completionType);
 			}
 		} else {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'IDLE');
 		}
 	}
 
 	function abortStreaming() {
-		stopStreaming({ aborted: true });
+		void stopStreaming({ aborted: true });
 	}
 
 	// Error handling
@@ -513,7 +665,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function handleServiceError(e: unknown, userMessageId: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
 
-		stopStreaming({
+		void stopStreaming({
 			error: e.message,
 		});
 		builderThinkingMessage.value = undefined;
@@ -555,11 +707,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		messageId: string,
 		focusedNodeNames?: string[],
 		planAnswers?: PlanMode.QuestionResponse[],
+		skipUserMessage?: boolean,
 	) {
-		const userMsg = planAnswers
-			? createUserAnswersMessage(planAnswers, messageId)
-			: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
-		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
+		if (!skipUserMessage) {
+			const userMsg = planAnswers
+				? createUserAnswersMessage(planAnswers, messageId)
+				: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
+			chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
+		}
 		const thinkingKey =
 			userMessage.trim() === '/compact'
 				? 'aiAssistant.thinkingSteps.compacting'
@@ -569,7 +724,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Updates page title to show AI is building (skip for help questions)
 		if (!isHelpStreaming.value) {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'AI_BUILDING');
 		}
 	}
 
@@ -664,10 +819,25 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	/**
+	 * Checks that a versionId has a corresponding workflow history entry.
+	 * The backend only creates history entries when nodes/connections change,
+	 * so the current versionId may not have one (e.g. initial creation).
+	 */
+	async function verifyVersionExists(
+		versionId: string,
+	): Promise<{ id: string; createdAt: string } | undefined> {
+		const workflowId = workflowsStore.workflowId;
+		const existing = await fetchExistingVersionIds(rootStore.restApiContext, workflowId, [
+			versionId,
+		]);
+		const createdAt = existing.get(versionId);
+		return createdAt ? { id: versionId, createdAt } : undefined;
+	}
+
+	/**
 	 * Saves the workflow and returns the version info for message history.
 	 * For new workflows, creates the workflow first.
 	 * For existing workflows, only saves if there are unsaved changes.
-	 * Returns the version ID and timestamp after any save operation.
 	 */
 	async function saveWorkflowAndGetRevertVersion(): Promise<
 		{ id: string; createdAt: string } | undefined
@@ -683,19 +853,38 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			}
 		}
 
-		const versionId = workflowsStore.workflowVersionId;
+		const versionId = workflowDocumentStore.value?.versionId;
 		if (!versionId) return undefined;
-
 		// Use workflow updatedAt as version timestamp
 		// might not be the same as "version.createdAt" but close enough
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		const updatedAt = workflowDocumentStore.updatedAt;
-		return {
-			id: versionId,
-			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
-		};
+		if (!workflowDocumentStore.value?.updatedAt) return undefined;
+
+		// Verify the versionId actually exists in workflow history.
+		// The backend only creates history entries when nodes/connections change,
+		// so the current versionId may not have a history entry (e.g., the initial
+		// workflow creation doesn't create one). Without a history entry, we can't
+		// restore to this version.
+		return await verifyVersionExists(versionId);
+	}
+
+	/**
+	 * Saves the workflow after AI modifications and returns the new version info.
+	 * Called after streaming completes to create a post-modification history entry.
+	 */
+	async function savePostModificationVersion(): Promise<
+		{ id: string; createdAt: string } | undefined
+	> {
+		try {
+			const saved = await workflowSaver.saveCurrentWorkflow();
+			if (!saved) return undefined;
+
+			const versionId = workflowDocumentStore.value?.versionId;
+			if (!versionId) return undefined;
+
+			return await verifyVersionExists(versionId);
+		} catch {
+			return undefined;
+		}
 	}
 
 	// Core API functions
@@ -709,7 +898,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	async function sendChatMessage(options: {
 		text: string;
 		source?: 'chat' | 'canvas' | 'empty-state';
-		quickReplyType?: string;
+		quickReplyType?: QuickReplyType;
 		initialGeneration?: boolean;
 		type?: 'message' | 'execution';
 		errorMessage?: string;
@@ -721,6 +910,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		planAnswers?: PlanMode.QuestionResponse[];
 		/** Whether this is a help question (e.g. credential or error help) that should not lock the canvas */
 		helpMessage?: boolean;
+		/** When true, skip adding the user message bubble to chat (e.g. web_fetch_approval decisions handled via buttons) */
+		skipUserMessage?: boolean;
 	}) {
 		isHelpStreaming.value = Boolean(options.helpMessage);
 		if (streaming.value) {
@@ -764,6 +955,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 		const userMessageId = generateMessageId();
 		lastUserMessageId.value = userMessageId;
+
+		// If sending a message after a restore, freeze the collapsed range
+		if (activeVersionCardId.value && !resumeAfterRestoreMessageId.value) {
+			resumeAfterRestoreMessageId.value = userMessageId;
+		}
+
 		const currentWorkflowJson = getWorkflowSnapshot();
 
 		const planApproved =
@@ -793,7 +990,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		resetManualExecutionStats();
 
-		prepareForStreaming(text, userMessageId, focusedNodeNames, options.planAnswers);
+		prepareForStreaming(
+			text,
+			userMessageId,
+			focusedNodeNames,
+			options.planAnswers,
+			options.skipUserMessage,
+		);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const modeForPayload =
@@ -801,10 +1004,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				? mode
 				: (mode ?? (builderMode.value === 'plan' ? 'plan' : undefined));
 		const payload = await createBuilderPayload(text, userMessageId, {
+			workflowId: workflowsStore.workflowId,
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
-			nodesForSchema: Object.keys(workflowsStore.nodesByName),
+			nodesForSchema: Object.keys(workflowDocumentStore.value?.nodesByName ?? {}),
 			mode: modeForPayload,
 			isPlanModeEnabled: isPlanModeAvailable.value,
 			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,
@@ -847,6 +1051,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					);
 					chatMessages.value = result.messages;
 
+					trackWebFetchEvents(response.messages);
+
 					if (result.shouldClearThinking) {
 						builderThinkingMessage.value = undefined;
 					} else if (result.thinkingMessage !== undefined) {
@@ -857,7 +1063,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					// (e.g., after submitting answers, before first tool call arrives).
 				},
 				() => {
-					stopStreaming();
+					void stopStreaming();
 				},
 				(e) => handleServiceError(e, userMessageId, retry),
 				revertVersion?.id,
@@ -977,16 +1183,198 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					latestSession.messages,
 					versionMap,
 				);
-				const convertedMessages = enrichedMessages
-					.map((msg) => {
-						// Use messageId from backend if available, otherwise generate new one
-						const id = 'id' in msg && typeof msg.id === 'string' ? msg.id : generateMessageId();
-						return mapAssistantMessageToUI(msg, id);
-					})
-					// Do not include wf updated messages from session
-					.filter((msg) => msg.type !== 'workflow-updated');
+
+				// Two-pass conversion: first convert all messages, then insert version
+				// cards in the correct position.
+				// During a live session, stopStreaming() appends version cards AFTER
+				// the AI response with the POST-modification version ID. On reload we
+				// must reproduce the same ordering and semantics:
+				//   user msg → tools → AI response → VERSION CARD → next user msg …
+				// The revertVersionId on a user message is the PRE-modification version
+				// for that generation. The POST-modification version is the revertVersionId
+				// on the NEXT user message (since savePostModificationVersion runs after
+				// AI generation, and the next saveWorkflowAndGetRevertVersion captures it).
+				// For the last generation, we use the current workflow's versionId.
+
+				// Pass 1: convert messages, stripping revertVersion from user messages
+				type ConvertedItem = {
+					msg: ChatUI.AssistantMessage;
+					versionCard?: ChatUI.AssistantMessage;
+				};
+
+				// Pre-scan: collect ordered revertVersionIds from user messages
+				// to map each generation to its post-modification version.
+				const userMsgRevertIds: string[] = [];
+				for (let i = 0; i < latestSession.messages.length; i++) {
+					const msg = latestSession.messages[i];
+					if ('revertVersionId' in msg && typeof msg.revertVersionId === 'string') {
+						userMsgRevertIds.push(msg.revertVersionId);
+					}
+				}
+
+				// Build post-modification version map and fetch their existence.
+				// For generation i, post-mod version = revertVersionId of generation i+1.
+				// For the last generation, use the current workflow version.
+				const postModVersionIds: string[] = [];
+				for (let i = 0; i < userMsgRevertIds.length; i++) {
+					if (i < userMsgRevertIds.length - 1) {
+						postModVersionIds.push(userMsgRevertIds[i + 1]);
+					} else {
+						const currentVersionId = workflowDocumentStore.value?.versionId;
+						if (currentVersionId) {
+							postModVersionIds.push(currentVersionId);
+						}
+					}
+				}
+
+				// Fetch existence for post-modification version IDs
+				const uniquePostModIds = [...new Set(postModVersionIds)].filter(
+					(id) => !versionMap.has(id),
+				);
+				const postModVersionMap =
+					uniquePostModIds.length > 0
+						? await fetchExistingVersionIds(rootStore.restApiContext, workflowId, uniquePostModIds)
+						: new Map<string, string>();
+
+				// Merge both version maps for lookups
+				const allVersionMap = new Map([...versionMap, ...postModVersionMap]);
+
+				// Track which revertVersionId we're on to look up the post-mod version
+				let revertIdIndex = 0;
+
+				const items: ConvertedItem[] = enrichedMessages.map((raw, idx) => {
+					const id = 'id' in raw && typeof raw.id === 'string' ? raw.id : generateMessageId();
+					const uiMsg = mapAssistantMessageToUI(raw, id);
+
+					// Use the ORIGINAL raw message to get revertVersionId.
+					// enrichMessagesWithRevertVersion strips revertVersionId when the
+					// version no longer exists in history (pruned), but we still need
+					// to create version cards for those messages.
+					const originalMsg = latestSession.messages[idx];
+					const revertVersionId =
+						'revertVersionId' in originalMsg && typeof originalMsg.revertVersionId === 'string'
+							? originalMsg.revertVersionId
+							: undefined;
+
+					if (uiMsg.type === 'text' && uiMsg.role === 'user' && revertVersionId) {
+						const currentRevertIndex = revertIdIndex;
+						revertIdIndex++;
+
+						// Only create a version card if there is a workflow-modifying
+						// message in this batch (between this user msg and the next).
+						// Plan/question phases have revertVersion but no workflow update.
+						// During live streaming, these are 'workflow-updated' messages.
+						// In session history from the API, these are tool messages with
+						// workflow-modifying tool names (add_nodes, connect_nodes, etc.).
+						let hasWorkflowUpdate = false;
+						for (let j = idx + 1; j < enrichedMessages.length; j++) {
+							const m = enrichedMessages[j];
+							if ('role' in m && m.role === 'user') break;
+							if ('type' in m && m.type === 'workflow-updated') {
+								hasWorkflowUpdate = true;
+								break;
+							}
+							if (isApiToolMessage(m) && WORKFLOW_MODIFYING_TOOLS.has(m.toolName)) {
+								hasWorkflowUpdate = true;
+								break;
+							}
+						}
+
+						// Strip revertVersion from the UI message (it's now on the card)
+						const { revertVersion: _, ...msgWithoutRevert } = uiMsg;
+
+						// Use post-modification version for the card (next user msg's revertVersionId,
+						// or current workflow version for the last generation).
+						const postModVersionId = postModVersionIds[currentRevertIndex];
+						const postModCreatedAt = postModVersionId
+							? allVersionMap.get(postModVersionId)
+							: undefined;
+						// Fall back to pre-modification version if post-mod is unavailable
+						const cardVersionId = postModVersionId ?? revertVersionId;
+						const cardCreatedAt = postModCreatedAt ?? allVersionMap.get(revertVersionId);
+
+						return {
+							msg: msgWithoutRevert,
+							...(hasWorkflowUpdate && {
+								versionCard: {
+									id: `version-card-${id}`,
+									role: 'assistant' as const,
+									type: 'custom' as const,
+									customType: 'version_card',
+									data: {
+										versionId: cardVersionId,
+										...(cardCreatedAt && { createdAt: cardCreatedAt }),
+									},
+								},
+							}),
+						};
+					}
+
+					return { msg: uiMsg };
+				});
+
+				// Pass 2: build final list, placing each version card after the AI
+				// response (just before the next user message, or at the end).
+				// Title is left undefined — ChatVersionCard computes a "Version #N" fallback.
+				const convertedMessages: ChatUI.AssistantMessage[] = [];
+				let pendingVersionCard: ChatUI.AssistantMessage | null = null;
+
+				for (const item of items) {
+					// When we reach a new user message, flush the pending card.
+					if (item.msg.role === 'user' && item.msg.type === 'text' && pendingVersionCard) {
+						convertedMessages.push(pendingVersionCard);
+						pendingVersionCard = null;
+					}
+
+					if (item.msg.type !== 'workflow-updated') {
+						convertedMessages.push(item.msg);
+					}
+
+					if (item.versionCard) {
+						pendingVersionCard = item.versionCard;
+					}
+				}
+
+				// Flush the last pending version card (for the most recent generation)
+				if (pendingVersionCard) {
+					convertedMessages.push(pendingVersionCard);
+				}
+
+				// Restore pin data state if pin data is currently applied on the workflow
+				const isPinDataEnabled =
+					posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name) ===
+					CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
+				if (isPinDataEnabled) {
+					const workflowDocumentStore = workflowsStore.workflowId
+						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+						: undefined;
+					const pinData = workflowDocumentStore?.getPinDataSnapshot();
+					if (pinData && Object.keys(pinData).length > 0) {
+						generatedPinData.value = pinData;
+						pinDataApplied.value = true;
+					}
+				}
 
 				chatMessages.value = convertedMessages;
+
+				// Restore collapse state from DB
+				if (
+					latestSession.activeVersionCardId &&
+					convertedMessages.some((m) => m.id === latestSession.activeVersionCardId)
+				) {
+					activeVersionCardId.value = latestSession.activeVersionCardId;
+				} else if (latestSession.activeVersionCardId) {
+					console.warn(
+						'[builder] activeVersionCardId not found in loaded messages — collapse state lost',
+						latestSession.activeVersionCardId,
+					);
+				}
+				if (
+					latestSession.resumeAfterRestoreMessageId &&
+					convertedMessages.some((m) => m.id === latestSession.resumeAfterRestoreMessageId)
+				) {
+					resumeAfterRestoreMessageId.value = latestSession.resumeAfterRestoreMessageId;
+				}
 
 				// Restore lastUserMessageId from the loaded session for telemetry tracking
 				const lastUserMsg = [...convertedMessages]
@@ -1007,13 +1395,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function unpinAllNodes() {
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-		const pinData = workflowDocumentStore?.pinData;
+		const pinData = workflowDocumentStore.value?.pinData;
 		if (!pinData) return;
 		for (const nodeName of Object.keys(pinData)) {
-			workflowDocumentStore?.unpinNodeData(nodeName);
+			workflowDocumentStore.value?.unpinNodeData(nodeName);
 			if (workflowsStore.nodeMetadata[nodeName]) {
 				workflowsStore.nodeMetadata[nodeName].pinnedDataLastRemovedAt = Date.now();
 			}
@@ -1021,13 +1406,43 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		uiStore.markStateDirty();
 	}
 
+	const hasGeneratedPinData = computed(
+		() => generatedPinData.value !== null && Object.keys(generatedPinData.value).length > 0,
+	);
+
+	/** True when generated pin data exists but hasn't been applied yet */
+	const hasDeferredPinData = computed(() => hasGeneratedPinData.value && !pinDataApplied.value);
+
+	function storeGeneratedPinData(pinData: IPinData) {
+		generatedPinData.value = {
+			...(generatedPinData.value ?? {}),
+			...pinData,
+		};
+	}
+
+	function applyGeneratedPinData() {
+		if (!generatedPinData.value || !workflowsStore.workflowId) return;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.setPinData({
+			...workflowDocumentStore.getPinDataSnapshot(),
+			...generatedPinData.value,
+		});
+		uiStore.markStateDirty();
+		pinDataApplied.value = true;
+	}
+
 	function clearExistingWorkflow() {
-		workflowState.removeAllConnections({ setStateDirty: false });
-		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
+		workflowDocumentStore.value?.removeAllConnections();
+		workflowDocumentStore.value?.removeAllNodes();
 	}
 
 	function getWorkflowSnapshot() {
-		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
+		return JSON.stringify({
+			nodes: workflowDocumentStore.value?.allNodes ?? [],
+			connections: workflowDocumentStore.value?.connectionsBySourceNode ?? {},
+		});
 	}
 
 	/**
@@ -1107,7 +1522,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Only applies when the chat is fresh (no messages) so it doesn't interfere
 	// with an active conversation.
 	watch(
-		[() => workflowsStore.workflowId, () => workflowsStore.workflow.nodes?.length ?? 0],
+		[() => workflowsStore.workflowId, () => (workflowDocumentStore.value?.allNodes ?? []).length],
 		([, nodesCount]) => {
 			if (chatMessages.value.length > 0) return;
 			if (!isPlanModeAvailable.value) return;
@@ -1141,20 +1556,40 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		telemetry.track('Workflow builder journey', payload);
 	}
 
+	function trackWebFetchEvents(messages: ChatRequest.MessageResponse[]) {
+		for (const msg of messages) {
+			if (isWebFetchApprovalMessage(msg)) {
+				trackWorkflowBuilderJourney('web_fetch_approval_prompted', {
+					domain: msg.domain,
+					url: msg.url,
+				});
+			}
+			if (
+				isApiToolMessage(msg) &&
+				msg.toolName === 'web_fetch' &&
+				(msg.status === 'completed' || msg.status === 'error')
+			) {
+				trackWorkflowBuilderJourney('web_fetch_completed', {
+					status: msg.status,
+				});
+			}
+		}
+	}
+
 	// Version management for workflow history
 	const workflowHistoryStore = useWorkflowHistoryStore();
 
 	/**
 	 * Restores the workflow to a previous version and truncates chat messages.
-	 * Finds the user message with the matching messageId and removes it
-	 * along with all messages after it.
+	 * Restores the workflow to the given version and collapses messages after
+	 * the version card (non-destructive — messages stay in DB and UI).
 	 *
 	 * @param versionId - The workflow version ID to restore to
-	 * @param messageId - The message ID to truncate from
+	 * @param versionCardId - The version card message ID to truncate after
 	 */
 	async function restoreToVersion(
 		versionId: string,
-		messageId: string,
+		versionCardId: string,
 	): Promise<IWorkflowDb | undefined> {
 		const workflowId = workflowsStore.workflowId;
 
@@ -1172,36 +1607,46 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// version id is important to update, because otherwise the next time user saves,
 		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
-		workflowState.setWorkflowProperty('versionId', updatedWorkflow.versionId);
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-		workflowDocumentStore.setUpdatedAt(updatedWorkflow.updatedAt);
+		workflowDocumentStore.value?.setVersionData({
+			versionId: updatedWorkflow.versionId,
+			name: workflowDocumentStore.value?.versionData?.name ?? null,
+			description: workflowDocumentStore.value?.versionData?.description ?? null,
+		});
+		workflowDocumentStore.value?.setUpdatedAt(updatedWorkflow.updatedAt);
 
-		// 2. Truncate messages in backend session (removes message with messageId and all after)
-		await truncateBuilderMessages(
-			rootStore.restApiContext,
-			workflowId,
-			messageId,
-			isCodeBuilder.value || undefined,
-		);
-
-		// 3. Truncate local chat messages - find user message with matching messageId
-		// and remove it along with all messages after it
-		const msgIndex = chatMessages.value.findIndex((msg) => msg.id === messageId);
-		const messagesBeingReverted =
-			msgIndex !== -1
+		// 2. Find the next user message after the version card to truncate backend session
+		const versionCardIndex = chatMessages.value.findIndex((msg) => msg.id === versionCardId);
+		const nextUserMsg =
+			versionCardIndex !== -1
 				? chatMessages.value
-						.slice(msgIndex)
-						.filter((msg) => 'revertVersion' in msg && msg.revertVersion).length
-				: 0;
-		if (msgIndex !== -1) {
-			chatMessages.value = chatMessages.value.slice(0, msgIndex);
+						.slice(versionCardIndex + 1)
+						.find((msg) => msg.role === 'user' && msg.type === 'text')
+				: undefined;
+
+		if (nextUserMsg?.id) {
+			await truncateBuilderMessages(
+				rootStore.restApiContext,
+				workflowId,
+				nextUserMsg.id,
+				versionCardId,
+				isCodeBuilder.value || undefined,
+			);
 		}
+
+		// 3. Mark messages after the version card as collapsed (non-destructive)
+		activeVersionCardId.value = versionCardId;
+		resumeAfterRestoreMessageId.value = undefined;
 
 		builderMode.value = 'build';
 
 		// 4. Track telemetry event for version restore
+		const messagesBeingReverted =
+			versionCardIndex !== -1
+				? chatMessages.value.slice(versionCardIndex + 1).filter((msg) => isVersionCardMessage(msg))
+						.length
+				: 0;
 		trackWorkflowBuilderJourney('revert_version_from_builder', {
-			revert_user_message_id: messageId,
+			revert_user_message_id: versionCardId,
 			revert_version_id: versionId,
 			no_versions_reverted: messagesBeingReverted,
 		});
@@ -1215,7 +1660,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function clearDoneIndicatorTitle() {
 		if (documentTitle.getDocumentState() === 'AI_DONE') {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'IDLE');
 		}
 	}
 
@@ -1225,6 +1670,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		chatMessages,
 		streaming,
 		isHelpStreaming,
+		activeVersionCardId,
+		resumeAfterRestoreMessageId,
+		collapsedMessageIds,
 		builderThinkingMessage,
 		isAIBuilderEnabled,
 		isCodeBuilder,
@@ -1243,15 +1691,26 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
+		creditsPercentageRemaining,
+		isLowCredits,
 		hasMessages,
 		latestRevertVersion,
+		versionCardMessages,
 		workflowTodos,
 		hasTodosHiddenByPinnedData,
 		hasHadSuccessfulExecution,
+		hasDeferredPinData,
+		hasGeneratedPinData,
+		pinDataApplied,
 		lastUserMessageId,
+		wizardCurrentStep,
+		wizardClearedPlaceholders,
+		wizardHasExecutedWorkflow,
 
 		// Methods
 		unpinAllNodes,
+		storeGeneratedPinData,
+		applyGeneratedPinData,
 		abortStreaming,
 		resetBuilderChat,
 		setBuilderMode,

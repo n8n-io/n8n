@@ -4,7 +4,12 @@ import type {
 	EvaluatorConfig,
 	WorkflowData,
 	EvaluateOptions,
+	RuntimeBridge,
 } from '../types';
+import { DEFAULT_BRIDGE_CONFIG } from '../types/bridge';
+import { IsolateError } from '@n8n/errors';
+import { IsolatePool, PoolDisposedError, PoolExhaustedError } from '../pool/isolate-pool';
+import { LruCache } from './lru-cache';
 
 export class ExpressionEvaluator implements IExpressionEvaluator {
 	private config: EvaluatorConfig;
@@ -16,24 +21,71 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 	// Cache: template expression → tournament-transformed JavaScript code
 	// Cache hit rate in production: ~99.9% (same expressions repeat within a workflow)
-	private codeCache = new Map<string, string>();
+	private codeCache: LruCache<string, string>;
+
+	private pool: IsolatePool;
+
+	private bridgesByCaller = new WeakMap<object, RuntimeBridge>();
+
+	private readonly createBridge: () => Promise<RuntimeBridge>;
 
 	constructor(config: EvaluatorConfig) {
 		this.config = config;
+		this.codeCache = new LruCache<string, string>(config.maxCodeCacheSize, () => {
+			this.config.observability?.metrics.counter('expression.code_cache.eviction', 1);
+		});
+		const logger = config.logger ?? DEFAULT_BRIDGE_CONFIG.logger;
+		this.createBridge = async () => {
+			const bridge = config.createBridge();
+			await bridge.initialize();
+			return bridge;
+		};
+		this.pool = new IsolatePool(
+			this.createBridge,
+			config.poolSize ?? 1,
+			(error) => {
+				logger.error('[IsolatePool] Failed to replenish bridge', { error });
+				config.observability?.metrics.counter('expression.pool.replenish_failed', 1);
+			},
+			logger,
+		);
 	}
 
 	async initialize(): Promise<void> {
-		await this.config.bridge.initialize();
+		await this.pool.initialize();
 	}
 
-	evaluate(expression: string, data: WorkflowData, _options?: EvaluateOptions): unknown {
-		if (this.disposed) throw new Error('Evaluator disposed');
+	async acquire(caller: object): Promise<void> {
+		if (this.bridgesByCaller.has(caller)) return;
+		let bridge: RuntimeBridge;
+		try {
+			bridge = this.pool.acquire();
+		} catch (error) {
+			if (error instanceof PoolDisposedError) throw error;
+			if (!(error instanceof PoolExhaustedError)) throw error;
+			bridge = await this.createBridge();
+		}
+		this.config.observability?.metrics.counter('expression.pool.acquired', 1);
+		this.bridgesByCaller.set(caller, bridge);
+	}
+
+	evaluate(
+		expression: string,
+		data: WorkflowData,
+		caller: object,
+		options?: EvaluateOptions,
+	): unknown {
+		if (this.disposed) throw new IsolateError('Evaluator disposed');
+
+		const bridge = this.getBridge(caller);
 
 		// Transform template expression → sanitized JavaScript (cached)
 		const transformedCode = this.getTransformedCode(expression);
 
 		try {
-			const result = this.config.bridge.execute(transformedCode, data);
+			const result = bridge.execute(transformedCode, data, {
+				timezone: options?.timezone,
+			});
 
 			if (this.config.observability) {
 				this.config.observability.metrics.counter('expression.evaluation.success', 1);
@@ -48,6 +100,32 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		}
 	}
 
+	private getBridge(caller: object): RuntimeBridge {
+		const bridge = this.bridgesByCaller.get(caller);
+		if (!bridge) {
+			throw new IsolateError('No bridge acquired for this context. Call acquire() first.');
+		}
+
+		// If the isolate died mid-execution (e.g. OOM), all remaining expressions
+		// in this execution are expected to fail. Recovery is per-execution, not per-expression.
+		if (bridge.isDisposed()) {
+			throw new IsolateError('Isolate for this caller is no longer available');
+		}
+
+		return bridge;
+	}
+
+	async release(caller: object): Promise<void> {
+		const bridge = this.bridgesByCaller.get(caller);
+		if (!bridge) return;
+		this.bridgesByCaller.delete(caller);
+		await this.pool.release(bridge);
+	}
+
+	async waitForReplenishment(): Promise<void> {
+		await this.pool.waitForReplenishment();
+	}
+
 	/**
 	 * Transform a template expression to executable JavaScript via tournament.
 	 *
@@ -60,8 +138,11 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	private getTransformedCode(expression: string): string {
 		const cached = this.codeCache.get(expression);
 		if (cached !== undefined) {
+			this.config.observability?.metrics.counter('expression.code_cache.hit', 1);
 			return cached;
 		}
+
+		this.config.observability?.metrics.counter('expression.code_cache.miss', 1);
 
 		if (!this.tournament) {
 			// Tournament requires an errorHandler but we only use getExpressionCode()
@@ -77,13 +158,15 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 		const [transformedCode] = this.tournament.getExpressionCode(expression);
 		this.codeCache.set(expression, transformedCode);
+		this.config.observability?.metrics.gauge('expression.code_cache.size', this.codeCache.size);
 		return transformedCode;
 	}
 
 	async dispose(): Promise<void> {
 		this.disposed = true;
 		this.codeCache.clear();
-		await this.config.bridge.dispose();
+		this.config.observability?.metrics.gauge('expression.code_cache.size', 0);
+		await this.pool.dispose();
 	}
 
 	isDisposed(): boolean {

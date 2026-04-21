@@ -71,6 +71,7 @@ export interface CredentialReference {
 export interface NewCredentialValue {
 	readonly __newCredential: true;
 	readonly name: string;
+	readonly id?: string;
 }
 
 // =============================================================================
@@ -233,6 +234,7 @@ export interface NodeJSON {
 	position: [number, number];
 	parameters?: IDataObject;
 	credentials?: Record<string, { id?: string; name: string }>;
+	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;
 	notesInFlow?: boolean;
@@ -352,6 +354,7 @@ export interface NodeConfig<TParams = IDataObject> {
 	credentials?: Record<string, CredentialReference | NewCredentialValue>;
 	name?: string;
 	position?: [number, number];
+	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;
 	notesInFlow?: boolean;
@@ -899,6 +902,11 @@ export interface GeneratePinDataOptions {
 	beforeWorkflow?: WorkflowJSON;
 }
 
+export interface ToJSONOptions {
+	/** Use Dagre-based layout matching the FE's tidy-up algorithm. Defaults to false (BFS layout). */
+	tidyUp?: boolean;
+}
+
 /**
  * Workflow builder for constructing workflows with a fluent API
  */
@@ -966,7 +974,7 @@ export interface WorkflowBuilder {
 	 */
 	validate(options?: ValidationOptions): ValidationResult;
 
-	toJSON(): WorkflowJSON;
+	toJSON(options?: ToJSONOptions): WorkflowJSON;
 
 	/**
 	 * Serialize the workflow to a specific format using registered serializers.
@@ -1069,7 +1077,7 @@ export type StickyFn = (
 
 export type PlaceholderFn = (hint: string) => PlaceholderValue;
 
-export type NewCredentialFn = (name: string) => NewCredentialValue;
+export type NewCredentialFn = (name: string, id?: string) => NewCredentialValue;
 
 export type IfElseFn = (
 	branches: [

@@ -7,6 +7,7 @@ const baseQuickConnectOptionSchema = z.object({
 	text: z.string(),
 	quickConnectType: z.string(),
 	consentText: z.string().optional(),
+	consentCheckbox: z.string().optional(),
 	config: z.never().optional(),
 	backendFlowConfig: z.never().optional(),
 });

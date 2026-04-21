@@ -100,6 +100,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
+	workflowVersionId?: string | null;
 	customData: Record<string, string>;
 	annotation: {
 		tags: ITagBase[];
@@ -126,6 +127,7 @@ export interface PublicUser {
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
 	lastActiveAt?: Date | null;
 	mfaAuthenticated?: boolean;
+	isManagedByEnv?: boolean;
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
@@ -198,6 +200,7 @@ export namespace ExecutionSummaries {
 		annotationTags: string[]; // tag IDs
 		vote: AnnotationVote;
 		projectId: string;
+		workflowVersionId: string;
 	}>;
 
 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
@@ -206,7 +209,12 @@ export namespace ExecutionSummaries {
 	>; // parsed from query params
 
 	type AccessFields = {
-		accessibleWorkflowIds?: string[];
+		user?: User;
+		sharingOptions?: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+		};
 	};
 
 	type RangeFields = {
@@ -299,7 +307,7 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc']);
+const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc', 'token-exchange']);
 
 export type AuthProviderType = z.infer<typeof ALL_AUTH_PROVIDERS>;
 
@@ -400,6 +408,23 @@ export type AuthenticationInformation = {
 	mfaEnrollmentRequired?: boolean;
 };
 
+/**
+ * Permission context carried by a scoped JWT issued via OAuth 2.0 token exchange.
+ * Present on AuthenticatedRequest only when authentication was performed via a
+ * scoped JWT; absent for API key and session auth.
+ *
+ * roles:    Role URNs from the issued token (e.g. ['project:editor']) — for audit logging only, not enforcement.
+ * scopes:   Concrete scopes resolved from those roles (e.g. ['workflow:create', 'workflow:read']).
+ * resource: Optional URN constraining which resource the token may access (e.g. 'urn:n8n:project:abc123').
+ * actor:    Actor identity for delegation — present when the token carries an `act` claim.
+ */
+export interface TokenGrant {
+	scopes: string[];
+	apiKeyScopes?: string[];
+	actor?: User;
+	subject: User;
+}
+
 export type AuthenticatedRequest<
 	RouteParams = {},
 	ResponseBody = {},
@@ -412,6 +437,7 @@ export type AuthenticatedRequest<
 	headers: express.Request['headers'] & {
 		'push-ref': string;
 	};
+	tokenGrant?: TokenGrant;
 };
 
 /**

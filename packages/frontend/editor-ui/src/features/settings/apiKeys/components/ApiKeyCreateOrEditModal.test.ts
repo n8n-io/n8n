@@ -9,8 +9,6 @@ import userEvent from '@testing-library/user-event';
 import { useApiKeysStore } from '../apiKeys.store';
 import { DateTime } from 'luxon';
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { createMockEnterpriseSettings } from '@/__tests__/mocks';
 
 const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 	pinia: createTestingPinia({
@@ -36,12 +34,10 @@ const testApiKey: ApiKeyWithRawValue = {
 };
 
 const apiKeysStore = mockedStore(useApiKeysStore);
-const settingsStore = mockedStore(useSettingsStore);
 
 describe('ApiKeyCreateOrEditModal', () => {
 	beforeEach(() => {
 		apiKeysStore.availableScopes = ['user:create', 'user:list'];
-		settingsStore.settings.enterprise = createMockEnterpriseSettings({ apiKeyScopes: false });
 	});
 
 	afterEach(() => {
@@ -190,12 +186,10 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(getByText('new api key')).toBeInTheDocument();
 	});
 
-	test('should allow creating API key with scopes when feat:apiKeyScopes is enabled', async () => {
-		settingsStore.settings.enterprise = createMockEnterpriseSettings({ apiKeyScopes: true });
-
+	test('should allow creating API key with scopes pre-selected', async () => {
 		apiKeysStore.createApiKey.mockResolvedValue(testApiKey);
 
-		const { getByText, getByPlaceholderText, getByTestId, getAllByText } = renderComponent({
+		const { getByText, getByPlaceholderText, getByTestId } = renderComponent({
 			props: {
 				mode: 'new',
 			},
@@ -213,77 +207,11 @@ describe('ApiKeyCreateOrEditModal', () => {
 		expect(scopesSelect).toBeInTheDocument();
 		expect(saveButton).toBeInTheDocument();
 
-		await userEvent.type(inputLabel, 'new label');
-
-		await userEvent.click(scopesSelect);
-
-		const userCreateScope = getByText('user:create');
-
-		expect(userCreateScope).toBeInTheDocument();
-
-		await userEvent.click(userCreateScope);
-
-		const [userCreateTag, userCreateSelectOption] = getAllByText('user:create');
-
-		expect(userCreateTag).toBeInTheDocument();
-		expect(userCreateSelectOption).toBeInTheDocument();
-
-		await userEvent.click(saveButton);
-
-		expect(getByText('API Key Created')).toBeInTheDocument();
-
-		expect(getByText('Done')).toBeInTheDocument();
-
-		expect(
-			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
-		).toBeInTheDocument();
-
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
-	});
-
-	test('should not let the user select scopes and show upgrade banner when feat:apiKeyScopes is disabled', async () => {
-		settingsStore.settings.enterprise = createMockEnterpriseSettings({ apiKeyScopes: false });
-
-		apiKeysStore.createApiKey.mockResolvedValue(testApiKey);
-
-		const { getByText, getByPlaceholderText, getByTestId, getByRole } = renderComponent({
-			props: {
-				mode: 'new',
-			},
-		});
-
-		await retry(() => expect(getByText('Create API Key')).toBeInTheDocument());
-		expect(getByText('Label')).toBeInTheDocument();
-
-		const inputLabel = getByPlaceholderText('e.g Internal Project');
-		const saveButton = getByText('Save');
-
-		expect(getByText('Upgrade')).toBeInTheDocument();
-		expect(getByText('to unlock the ability to modify API key scopes')).toBeInTheDocument();
-
-		const scopesSelect = getByTestId('scopes-select');
-
-		expect(inputLabel).toBeInTheDocument();
-		expect(scopesSelect).toBeInTheDocument();
-		expect(saveButton).toBeInTheDocument();
+		// All available scopes should be pre-selected for new keys
+		expect(scopesSelect).toHaveTextContent('user:create');
+		expect(scopesSelect).toHaveTextContent('user:list');
 
 		await userEvent.type(inputLabel, 'new label');
-
-		await userEvent.click(scopesSelect);
-
-		// Use separate semantic queries instead of destructuring
-		// The text is nested inside .el-select__tags-text which is inside .el-tag
-		const userCreateTag = getByText('user:create', { selector: '.el-select__tags-text' });
-		const userCreateSelectOption = getByRole('option', { name: 'user:create' });
-
-		expect(userCreateTag).toBeInTheDocument();
-		expect(userCreateSelectOption).toBeInTheDocument();
-
-		expect(userCreateSelectOption).toHaveClass('is-disabled');
-
-		await userEvent.click(userCreateSelectOption);
 
 		await userEvent.click(saveButton);
 

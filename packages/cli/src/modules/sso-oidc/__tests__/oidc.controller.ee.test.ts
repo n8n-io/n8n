@@ -1,12 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
 import { type Request, type Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import type { OidcInstanceSettingsLoader } from '@/instance-settings-loader/loaders/oidc.instance-settings-loader';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 
@@ -18,7 +19,15 @@ const oidcService = mock<OidcService>();
 const urlService = mock<UrlService>();
 const globalConfig = mock<GlobalConfig>();
 const logger = mock<Logger>();
-const controller = new OidcController(oidcService, authService, urlService, globalConfig, logger);
+const oidcSettingsLoader = mock<OidcInstanceSettingsLoader>();
+const controller = new OidcController(
+	oidcService,
+	authService,
+	urlService,
+	globalConfig,
+	logger,
+	oidcSettingsLoader,
+);
 
 const user = mock<User>({
 	id: '456',
@@ -39,6 +48,11 @@ describe('OidcController', () => {
 	});
 
 	describe('callbackHandler', () => {
+		beforeEach(() => {
+			// Default: non-test mode for regular login tests
+			oidcService.verifyState.mockReturnValue({ state: 'n8n_state:uuid' });
+		});
+
 		test('Should issue cookie with MFA flag set to true on successful OIDC login', async () => {
 			const req = mock<AuthlessRequest>({
 				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
@@ -146,6 +160,101 @@ describe('OidcController', () => {
 			// Verify that issueCookie was not called when login fails
 			expect(authService.issueCookie).not.toHaveBeenCalled();
 			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
+		test('Should render success page in test mode without creating session', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>({ send: jest.fn().mockReturnThis() });
+
+			oidcService.verifyState.mockReturnValueOnce({
+				state: 'n8n_state:uuid',
+				testMode: true,
+			});
+			oidcService.processTestCallback.mockResolvedValueOnce({
+				claims: { sub: 'test-sub', email: 'test@example.com' },
+				userInfo: {
+					sub: 'test-sub',
+					email: 'test@example.com',
+					given_name: 'Test',
+					family_name: 'User',
+				},
+			});
+
+			await controller.callbackHandler(req, res);
+
+			expect(oidcService.processTestCallback).toHaveBeenCalledWith(
+				expect.any(URL),
+				'state_value',
+				'nonce_value',
+			);
+			expect(res.send).toHaveBeenCalledWith(
+				expect.stringContaining('OIDC Connection Test was successful'),
+			);
+			expect(res.send).toHaveBeenCalledWith(expect.stringContaining('test@example.com'));
+			expect(authService.issueCookie).not.toHaveBeenCalled();
+			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
+		test('Should render failure page in test mode when processTestCallback throws', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>({ send: jest.fn().mockReturnThis() });
+
+			oidcService.verifyState.mockReturnValueOnce({
+				state: 'n8n_state:uuid',
+				testMode: true,
+			});
+			oidcService.processTestCallback.mockRejectedValueOnce(
+				new Error('Invalid authorization code'),
+			);
+
+			await controller.callbackHandler(req, res);
+
+			expect(res.send).toHaveBeenCalledWith(expect.stringContaining('OIDC Connection Test failed'));
+			expect(res.send).toHaveBeenCalledWith(expect.stringContaining('Invalid authorization code'));
+			expect(authService.issueCookie).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('testConnection', () => {
+		test('Should return URL and set cookies', async () => {
+			const req = mock<AuthenticatedRequest>();
+			const res = mock<Response>();
+			globalConfig.auth.cookie = { samesite: 'lax', secure: true };
+
+			const mockAuthUrl = new URL('https://provider.com/auth?client_id=123');
+			oidcService.generateTestLoginUrl.mockResolvedValueOnce({
+				url: mockAuthUrl,
+				state: 'test_state',
+				nonce: 'test_nonce',
+			});
+
+			const result = await controller.testConnection(req, res);
+
+			expect(result).toEqual({ url: 'https://provider.com/auth?client_id=123' });
+			expect(res.cookie).toHaveBeenCalledWith(OIDC_STATE_COOKIE_NAME, 'test_state', {
+				httpOnly: true,
+				sameSite: 'lax',
+				secure: true,
+				maxAge: 15 * Time.minutes.toMilliseconds,
+			});
+			expect(res.cookie).toHaveBeenCalledWith(OIDC_NONCE_COOKIE_NAME, 'test_nonce', {
+				httpOnly: true,
+				sameSite: 'lax',
+				secure: true,
+				maxAge: 15 * Time.minutes.toMilliseconds,
+			});
 		});
 	});
 

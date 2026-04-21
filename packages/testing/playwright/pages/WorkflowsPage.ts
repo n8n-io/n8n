@@ -5,6 +5,10 @@ import { AddResource } from './components/AddResource';
 import { ResourceCards } from './components/ResourceCards';
 
 export class WorkflowsPage extends BasePage {
+	async goto() {
+		await this.page.goto('/home/workflows');
+	}
+
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);
 
@@ -20,8 +24,8 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	async clearSearch() {
-		await this.clickByTestId('resources-list-search');
-		await this.page.getByTestId('resources-list-search').clear();
+		await this.getSearchBar().click();
+		await this.getSearchBar().clear();
 	}
 
 	getProjectName() {

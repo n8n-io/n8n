@@ -1,5 +1,6 @@
 import { describe, it, mock, before } from 'node:test';
 import assert from 'node:assert/strict';
+import { readPrLabels } from './github-helpers.mjs';
 
 /**
  * Run these tests by running
@@ -12,9 +13,14 @@ import assert from 'node:assert/strict';
 mock.module('./github-helpers.mjs', {
 	namedExports: {
 		ensureEnvVar: () => {}, // no-op
-		readPrLabels: () => {}, // no-op
+		readPrLabels: readPrLabels,
 		resolveRcBranchForTrack: mockResolveRcBranchForTrack,
 		writeGithubOutput: () => {}, //no-op
+		getPullRequestById: () => {
+			return {
+				labels: ['n8n team', 'Backport to Beta'],
+			};
+		},
 	},
 });
 
@@ -28,9 +34,11 @@ function mockResolveRcBranchForTrack(track) {
 	return undefined;
 }
 
-let labelsToReleaseCandidateBranches;
+let labelsToReleaseCandidateBranches, getLabels;
 before(async () => {
-	({ labelsToReleaseCandidateBranches } = await import('./compute-backport-targets.mjs'));
+	({ labelsToReleaseCandidateBranches, getLabels } = await import(
+		'./compute-backport-targets.mjs'
+	));
 });
 
 describe('Compute backport targets', () => {
@@ -58,5 +66,39 @@ describe('Compute backport targets', () => {
 		const result = labelsToReleaseCandidateBranches(labels);
 
 		assert.equal(result.size, 0);
+	});
+
+	it('Should parse labels properly in Pull request context', async () => {
+		process.env.GITHUB_EVENT_PATH = './fixtures/mock-github-event.json';
+		/** @type { Set<string> } */
+		const labels = await getLabels();
+
+		assert.equal(labels.size, 2);
+		assert.ok(labels.has('release'));
+		assert.ok(labels.has('Backport to Stable'));
+	});
+	it('Should parse labels properly in manual workflow context', async () => {
+		process.env.PULL_REQUEST_ID = '123';
+		/** @type { Set<string> } */
+		const labels = await getLabels();
+
+		assert.equal(labels.size, 2);
+		assert.ok(labels.has('n8n team'));
+		assert.ok(labels.has('Backport to Beta'));
+	});
+
+	it('Should throw when passed pull request id with #', async () => {
+		process.env.PULL_REQUEST_ID = '#123';
+		await assert.rejects(getLabels);
+	});
+
+	it('Should not throw when passed pull request id with just a number', async () => {
+		process.env.PULL_REQUEST_ID = '123';
+		await assert.doesNotReject(getLabels);
+	});
+
+	it('Should throw when passed pull request id with other than numbers included', async () => {
+		process.env.PULL_REQUEST_ID = 'abc-123';
+		await assert.rejects(getLabels);
 	});
 });

@@ -1,7 +1,7 @@
 {
   "name": "@n8n/eslint-plugin-community-nodes",
   "type": "module",
-  "version": "0.8.0",
+  "version": "0.12.0",
   "main": "./dist/plugin.js",
   "types": "./dist/plugin.d.ts",
   "exports": {
@@ -33,6 +33,8 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "n8n-workflow": "workspace:*",
     "@typescript-eslint/rule-tester": "^8.35.0",
     "eslint-doc-generator": "^2.2.2",
     "eslint-plugin-eslint-plugin": "^7.0.0",
@@ -41,7 +43,8 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "eslint": ">= 9"
+    "eslint": ">= 9",
+    "n8n-workflow": ">=2"
   },
   "eslint-doc-generator": {
     "configEmoji": [

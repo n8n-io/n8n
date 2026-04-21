@@ -8,7 +8,7 @@ import type {
 	ChatModelDto,
 } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
-import { useSpeechSynthesis } from '@vueuse/core';
+import { useElementSize, useSpeechSynthesis } from '@vueuse/core';
 import {
 	computed,
 	onBeforeMount,
@@ -84,6 +84,8 @@ const newFiles = ref<File[]>([]);
 const removedExistingIndices = ref<Set<number>>(new Set());
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const textareaRef = useTemplateRef<InstanceType<typeof N8nInput>>('textarea');
+const attachmentsRef = useTemplateRef('attachmentsRef');
+const attachmentsElSize = useElementSize(attachmentsRef, undefined, { box: 'border-box' });
 const markdownChunkRefs = useTemplateRef<
 	Array<ComponentPublicInstance<{
 		hoveredCodeBlockActions: HTMLElement | null;
@@ -129,6 +131,14 @@ const messageChunks = computed(() =>
 		// Handle error case with no content
 		if (message.status === 'error' && !chunk.content) {
 			return [{ type: 'text', content: i18n.baseText('chatHub.message.error.unknown') }];
+		}
+
+		// Footnote references ([^1]) and definitions ([^1]: ...) must stay in the same
+		// markdown-it instance to resolve correctly. Chunking splits them across instances,
+		// breaking the reference. Skip chunking when footnotes are present.
+		const hasFootnotes = /\[\^[^\]]+\]/.test(chunk.content);
+		if (hasFootnotes) {
+			return [{ type: 'text', content: chunk.content }];
 		}
 
 		return splitMarkdownIntoChunks(chunk.content).flatMap((content) =>
@@ -340,9 +350,14 @@ onBeforeMount(() => {
 				multiple
 				@change="handleFileSelect"
 			/>
-			<div v-if="isEditing" :class="$style.editContainer">
+			<div
+				v-if="isEditing"
+				:class="$style.editContainer"
+				:style="{ '--attachments--height': `${attachmentsElSize.height.value}px` }"
+			>
 				<div
 					v-if="message.type === 'human' && mergedAttachments.length > 0"
+					ref="attachmentsRef"
 					:class="$style.attachments"
 				>
 					<ChatFile
@@ -437,6 +452,13 @@ onBeforeMount(() => {
 }
 
 .markdownContent {
+	// ChatMarkdownChunk uses `inherit` for these properties so each consumer
+	// can control sizing. Set the values that were previously hardcoded in the
+	// chunk component to preserve ChatHub's appearance.
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xl);
+
 	> *:last-child > *:last-child {
 		margin-bottom: 0;
 	}
@@ -491,6 +513,13 @@ onBeforeMount(() => {
 	.chatMessage & {
 		margin-top: var(--spacing--xs);
 	}
+
+	.editContainer & {
+		position: absolute;
+		top: 0;
+		padding: var(--spacing--sm);
+		padding-bottom: 0;
+	}
 }
 
 .chatMessage {
@@ -544,19 +573,7 @@ onBeforeMount(() => {
 
 .editContainer {
 	width: 100%;
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--xs);
-	background-color: var(--color--background--light-3);
-	border: var(--border);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
-
-	&:focus-within,
-	&:hover {
-		border-color: var(--color--secondary);
-	}
+	position: relative;
 }
 
 .textarea {
@@ -566,10 +583,10 @@ onBeforeMount(() => {
 .textarea textarea {
 	font-family: inherit;
 	line-height: 1.5em;
-	resize: none;
-	background-color: transparent !important;
-	border: none !important;
-	padding: 0 !important;
+	padding: var(--spacing--sm);
+	padding-top: calc(var(--spacing--sm) + var(--attachments--height));
+	padding-bottom: 64px;
+	color: var(--color--text--shade-1);
 }
 
 .fileInput {
@@ -577,9 +594,18 @@ onBeforeMount(() => {
 }
 
 .editFooter {
+	position: absolute;
+	bottom: 0;
+	width: 100%;
+	padding: var(--spacing--xs);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	pointer-events: none;
+
+	& > * {
+		pointer-events: auto;
+	}
 }
 
 .editActions {

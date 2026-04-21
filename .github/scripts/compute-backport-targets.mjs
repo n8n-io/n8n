@@ -1,6 +1,11 @@
 // Creates backport PR's according to labels on merged PR
 
-import { readPrLabels, resolveRcBranchForTrack, writeGithubOutput } from './github-helpers.mjs';
+import {
+	getPullRequestById,
+	readPrLabels,
+	resolveRcBranchForTrack,
+	writeGithubOutput,
+} from './github-helpers.mjs';
 
 /** @type { Record<string, import('./github-helpers.mjs').ReleaseTrack> } */
 const BACKPORT_BY_TAG_MAP = {
@@ -50,8 +55,38 @@ export function labelsToReleaseCandidateBranches(labels) {
 	return targets;
 }
 
+/**
+ * This script is called in 2 cases:
+ *
+ * 1. When a PR is merged, in which case functions like `readPrLabels` reads PR info from GITHUB_EVENT_PATH
+ * 2. Manually via Workflow Dispatch, where a Pull Request ID is passed as an env parameter
+ *
+ * @returns { Promise<undefined | any> } Pull request object, if ID was provided in env params
+ */
+async function fetchPossiblePullRequestFromEnv() {
+	const pullRequestEnv = process.env.PULL_REQUEST_ID;
+	if (!pullRequestEnv) {
+		// No ID provided, will proceed to read data from GITHUB_EVENT_PATH
+		return undefined;
+	}
+
+	const pullRequestNumber = parseInt(pullRequestEnv);
+	if (isNaN(pullRequestNumber)) {
+		throw new Error(
+			"PULL_REQUEST_ID must be a number. It shouldn't contain any other symbols (#, PR, etc.)",
+		);
+	}
+
+	return await getPullRequestById(pullRequestNumber);
+}
+
+export async function getLabels() {
+	const pullRequest = await fetchPossiblePullRequestFromEnv();
+	return new Set(readPrLabels(pullRequest));
+}
+
 async function main() {
-	const labels = new Set(readPrLabels());
+	const labels = await getLabels();
 	if (!labels || labels.size === 0) {
 		console.log('No labels on PR. Exiting...');
 		return;

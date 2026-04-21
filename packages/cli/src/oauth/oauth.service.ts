@@ -160,14 +160,11 @@ export class OauthService {
 		decryptedData: ICredentialDataDecryptedObject,
 		additionalData: IWorkflowExecuteAdditionalData,
 	) {
-		const canUseExternalSecrets =
-			await this.credentialsHelper.credentialCanUseExternalSecrets(credential);
 		return (await this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedData,
 			credential.type,
 			'internal',
-			canUseExternalSecrets,
 			undefined,
 			undefined,
 		)) as unknown as T;
@@ -178,12 +175,56 @@ export class OauthService {
 		toUpdate: ICredentialDataDecryptedObject,
 		toDelete: string[] = [],
 	) {
+		if (toUpdate.oauthTokenData && typeof toUpdate.oauthTokenData === 'object') {
+			const identifier = OauthService.extractAccountIdentifier(
+				toUpdate.oauthTokenData as Record<string, unknown>,
+			);
+			if (identifier) {
+				toUpdate.accountIdentifier = identifier;
+			}
+		}
+
 		const credentials = new Credentials(credential, credential.type, credential.data);
 		credentials.updateData(toUpdate, toDelete);
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),
 			updatedAt: new Date(),
 		});
+	}
+
+	static extractAccountIdentifier(tokenData: Record<string, unknown>): string | undefined {
+		for (const key of ['email', 'login', 'username', 'user', 'account']) {
+			if (typeof tokenData[key] === 'string' && tokenData[key]) {
+				return tokenData[key];
+			}
+		}
+
+		if (typeof tokenData.id_token === 'string') {
+			const parts = tokenData.id_token.split('.');
+			if (parts.length === 3) {
+				try {
+					const payload: Record<string, unknown> = JSON.parse(
+						Buffer.from(parts[1], 'base64url').toString(),
+					);
+					if (typeof payload.email === 'string' && payload.email) {
+						return payload.email;
+					}
+					if (typeof payload.preferred_username === 'string' && payload.preferred_username) {
+						return payload.preferred_username;
+					}
+				} catch {}
+			}
+		}
+
+		const authedUser = tokenData.authed_user;
+		if (authedUser && typeof authedUser === 'object') {
+			const user = authedUser as Record<string, unknown>;
+			if (typeof user.id === 'string' && user.id) {
+				return user.id;
+			}
+		}
+
+		return undefined;
 	}
 
 	/** Get a credential without user check */
@@ -332,10 +373,94 @@ export class OauthService {
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			const serverUrl = oauthCredentials.serverUrl.replace(/\/$/, ''); // Remove trailing slash
-			const { data } = await axios.get<unknown>(
-				`${serverUrl}/.well-known/oauth-authorization-server`,
-			);
+			// Validate serverUrl to prevent SSRF attacks before any HTTP requests
+			this.validateOAuthUrlOrThrow(oauthCredentials.serverUrl);
+
+			// Step 1: Discover Protected Resource Metadata (RFC 9728 / MCP)
+			// Try to discover the authorization server URL from protected resource metadata
+			let authorizationServerUrl: string;
+
+			try {
+				const protectedResourceMetadata = await this.discoverProtectedResourceMetadata(
+					oauthCredentials.serverUrl,
+				);
+
+				// Use first authorization server from the list
+				// MCP spec allows multiple; we use the first one
+				authorizationServerUrl = protectedResourceMetadata.authorization_servers[0];
+
+				// Validate authorization server URL to prevent SSRF attacks
+				this.validateOAuthUrlOrThrow(authorizationServerUrl);
+
+				this.logger.debug('Protected resource discovery succeeded', {
+					resourceUrl: oauthCredentials.serverUrl,
+					authorizationServerUrl,
+				});
+			} catch (error) {
+				// Re-throw security validation errors immediately (don't fall back)
+				if (error instanceof BadRequestError && (error as Error).message.includes('OAuth url')) {
+					throw error;
+				}
+
+				// Fallback: If protected resource discovery fails,
+				// assume serverUrl IS the authorization server (backwards compatibility)
+				this.logger.debug(
+					'Protected resource discovery failed, assuming serverUrl is authorization server',
+					{
+						serverUrl: oauthCredentials.serverUrl,
+						error: (error as Error).message,
+					},
+				);
+				authorizationServerUrl = oauthCredentials.serverUrl;
+			}
+
+			// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
+			const issuerUrl = new URL(authorizationServerUrl);
+			const pathComponent = issuerUrl.pathname.replace(/\/$/, ''); // Remove trailing slash
+
+			// Build discovery URLs in priority order per MCP specification
+			const discoveryUrls = pathComponent
+				? [
+						// 1. RFC 8414: OAuth 2.0 Authorization Server Metadata (path insertion)
+						`${issuerUrl.origin}/.well-known/oauth-authorization-server${pathComponent}`,
+						// 2. OpenID Connect Discovery 1.0 (path insertion)
+						`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
+						// 3. OpenID Connect Discovery 1.0 (path appending)
+						`${authorizationServerUrl}/.well-known/openid-configuration`,
+					]
+				: [
+						// For root-level issuers (no path)
+						`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
+						`${issuerUrl.origin}/.well-known/openid-configuration`,
+					];
+
+			let data: unknown;
+			let lastError: Error | undefined;
+
+			// Try each discovery URL until one succeeds
+			for (const url of discoveryUrls) {
+				try {
+					// Validate each URL before making request (defense-in-depth)
+					this.validateOAuthUrlOrThrow(url);
+
+					const response = await axios.get<unknown>(url, {
+						validateStatus: (status) => status === 200,
+					});
+					data = response.data;
+					break; // Success - exit loop
+				} catch (error) {
+					lastError = error as Error;
+					// Continue to next URL
+				}
+			}
+
+			if (!data) {
+				throw new BadRequestError(
+					`Failed to discover OAuth2 authorization server metadata. Tried: ${discoveryUrls.join(', ')}. Last error: ${lastError?.message}`,
+				);
+			}
+
+			// Validate the metadata response
 			const metadataValidation = oAuthAuthorizationServerMetadataSchema.safeParse(data);
 			if (!metadataValidation.success) {
 				throw new BadRequestError(
@@ -552,6 +677,60 @@ export class OauthService {
 		}
 
 		return options;
+	}
+
+	/**
+	 * Discovers OAuth 2.0 Protected Resource Metadata per RFC 9728.
+	 * This is the first step in MCP-compliant OAuth discovery.
+	 * Returns the authorization_servers array from the metadata.
+	 */
+	private async discoverProtectedResourceMetadata(
+		resourceUrl: string,
+	): Promise<{ authorization_servers: string[] }> {
+		// Validate input to prevent SSRF (defense-in-depth)
+		this.validateOAuthUrlOrThrow(resourceUrl);
+
+		const url = new URL(resourceUrl);
+		const pathComponent = url.pathname.replace(/\/$/, ''); // Remove trailing slash
+
+		// Try discovery URLs per MCP spec and RFC 9728
+		const discoveryUrls = pathComponent
+			? [
+					// Path-specific first (e.g., https://mcp.notion.com/.well-known/oauth-protected-resource/mcp)
+					`${url.origin}/.well-known/oauth-protected-resource${pathComponent}`,
+					// Root fallback (e.g., https://mcp.notion.com/.well-known/oauth-protected-resource)
+					`${url.origin}/.well-known/oauth-protected-resource`,
+				]
+			: [
+					// Root only for root-level URLs
+					`${url.origin}/.well-known/oauth-protected-resource`,
+				];
+
+		for (const discoveryUrl of discoveryUrls) {
+			try {
+				// Validate each URL before making request (defense-in-depth)
+				this.validateOAuthUrlOrThrow(discoveryUrl);
+
+				const { data } = await axios.get(discoveryUrl, {
+					validateStatus: (status) => status === 200,
+				});
+
+				// Validate has authorization_servers field per RFC 9728
+				if (
+					data &&
+					Array.isArray(data.authorization_servers) &&
+					data.authorization_servers.length > 0
+				) {
+					return data as { authorization_servers: string[] };
+				}
+			} catch (error) {
+				// Continue to next URL
+			}
+		}
+
+		throw new BadRequestError(
+			`Failed to discover protected resource metadata. Tried: ${discoveryUrls.join(', ')}`,
+		);
 	}
 
 	private selectGrantTypeAndAuthenticationMethod(

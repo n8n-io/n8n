@@ -7,6 +7,7 @@ import { Config, Env, Nested } from '../decorators';
 export const LOG_SCOPES = [
 	'concurrency',
 	'external-secrets',
+	'instance-registry',
 	'license',
 	'mcp',
 	'multi-main-setup',
@@ -32,6 +33,13 @@ export const LOG_SCOPES = [
 	'source-control',
 	'dynamic-credentials',
 	'workflow-history-compaction',
+	'data-table-csv-import',
+	'ssrf-protection',
+	'token-exchange',
+	'instance-ai',
+	'instance-version-history',
+	'instance-settings-loader',
+	'instance-registry',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

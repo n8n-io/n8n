@@ -21,6 +21,10 @@ type Props = {
 
 const props = defineProps<Props>();
 
+defineEmits<{
+	imported: [];
+}>();
+
 const renameInput = useTemplateRef<{ forceFocus: () => void }>('renameInput');
 
 const dataTableStore = useDataTableStore();
@@ -136,6 +140,7 @@ watch(
 				location="breadcrumbs"
 				@rename="onRename"
 				@on-deleted="onDelete"
+				@imported="$emit('imported')"
 			/>
 		</div>
 	</div>

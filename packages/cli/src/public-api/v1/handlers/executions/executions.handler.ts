@@ -1,8 +1,10 @@
+import type { IExecutionBase } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
+import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -11,19 +13,28 @@ import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.err
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { RedactableExecution } from '@/executions/execution-redaction';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 
+function isRedactableExecution(
+	execution: IExecutionBase,
+): execution is IExecutionBase & RedactableExecution {
+	return 'data' in execution && 'workflowData' in execution;
+}
+
 import type { ExecutionRequest } from '../../../types';
-import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.middleware';
+import { publicApiScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { getExecutionTags, mapAnnotationTags, updateExecutionTags } from './executions.service';
 
 export = {
 	deleteExecution: [
-		apiKeyHasScope('execution:delete'),
+		publicApiScope('execution:delete'),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
 
@@ -69,7 +80,7 @@ export = {
 		},
 	],
 	getExecution: [
-		apiKeyHasScope('execution:read'),
+		publicApiScope('execution:read'),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
@@ -91,6 +102,32 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
+			if (includeData && isRedactableExecution(execution)) {
+				const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
+				const redactExecutionData = redactQuery.success
+					? redactQuery.data.redactExecutionData
+					: undefined;
+
+				try {
+					await Container.get(ExecutionRedactionServiceProxy).processExecution(execution, {
+						user: req.user,
+						redactExecutionData,
+						ipAddress: req.ip ?? '',
+						userAgent: req.headers['user-agent'] ?? '',
+					});
+				} catch (error) {
+					if (error instanceof ResponseError) {
+						return res.status(error.httpStatusCode).json({
+							code: error.httpStatusCode,
+							message: error.message,
+							hint: error.hint,
+							meta: 'meta' in error ? error.meta : undefined,
+						});
+					}
+					throw error;
+				}
+			}
+
 			Container.get(EventService).emit('user-retrieved-execution', {
 				userId: req.user.id,
 				publicApi: true,
@@ -100,7 +137,7 @@ export = {
 		},
 	],
 	getExecutions: [
-		apiKeyHasScope('execution:list'),
+		publicApiScope('execution:list'),
 		validCursor,
 		async (req: ExecutionRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const {
@@ -148,6 +185,36 @@ export = {
 			const count =
 				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
 
+			if (includeData) {
+				const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
+				const redactExecutionData = redactQuery.success
+					? redactQuery.data.redactExecutionData
+					: undefined;
+
+				const redactableExecutions = executions.filter(isRedactableExecution);
+				try {
+					await Container.get(ExecutionRedactionServiceProxy).processExecutions(
+						redactableExecutions,
+						{
+							user: req.user,
+							redactExecutionData,
+							ipAddress: req.ip ?? '',
+							userAgent: req.headers['user-agent'] ?? '',
+						},
+					);
+				} catch (error) {
+					if (error instanceof ResponseError) {
+						return res.status(error.httpStatusCode).json({
+							code: error.httpStatusCode,
+							message: error.message,
+							hint: error.hint,
+							meta: 'meta' in error ? error.meta : undefined,
+						});
+					}
+					throw error;
+				}
+			}
+
 			Container.get(EventService).emit('user-retrieved-all-executions', {
 				userId: req.user.id,
 				publicApi: true,
@@ -164,7 +231,7 @@ export = {
 		},
 	],
 	retryExecution: [
-		apiKeyHasScope('execution:retry'),
+		publicApiScope('execution:retry'),
 		async (req: ExecutionRequest.Retry, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
@@ -201,7 +268,7 @@ export = {
 		},
 	],
 	getExecutionTags: [
-		apiKeyHasScope('executionTags:list'),
+		publicApiScope('executionTags:list'),
 		async (req: ExecutionRequest.GetTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
@@ -224,7 +291,7 @@ export = {
 		},
 	],
 	updateExecutionTags: [
-		apiKeyHasScope('executionTags:update'),
+		publicApiScope('executionTags:update'),
 		async (req: ExecutionRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const newTagIds = req.body.map((tag) => tag.id);
@@ -255,7 +322,7 @@ export = {
 		},
 	],
 	stopExecution: [
-		apiKeyHasScope('execution:stop'),
+		publicApiScope('execution:stop'),
 		async (req: ExecutionRequest.Stop, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
 
@@ -283,7 +350,7 @@ export = {
 		},
 	],
 	stopManyExecutions: [
-		apiKeyHasScope('execution:stop'),
+		publicApiScope('execution:stop'),
 		async (req: ExecutionRequest.StopMany, res: express.Response): Promise<express.Response> => {
 			const { status: rawStatus, workflowId, startedAfter, startedBefore } = req.body;
 			const status: ExecutionStatus[] = rawStatus.map((x) => (x === 'queued' ? 'new' : x));

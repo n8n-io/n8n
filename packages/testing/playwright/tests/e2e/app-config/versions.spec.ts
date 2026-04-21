@@ -57,16 +57,18 @@ const requirements: TestRequirements = {
 	},
 };
 
-test.describe('Versions', {
-	annotation: [
-		{ type: 'owner', description: 'Adore' },
-	],
-}, () => {
-	test('should show updates in help section', async ({ n8n, setupRequirements }) => {
-		await setupRequirements(requirements);
-		await n8n.goHome();
-		await n8n.sideBar.expand();
-		await n8n.sideBar.clickHelpMenuItem();
-		await expect(n8n.sideBar.getVersionUpdateItem()).toContainText('Update (2 versions behind)');
-	});
-});
+test.describe(
+	'Versions',
+	{
+		annotation: [{ type: 'owner', description: 'Adore' }],
+	},
+	() => {
+		test('should show updates in help section', async ({ n8n, setupRequirements }) => {
+			await setupRequirements(requirements);
+			await n8n.goHome();
+			await n8n.sideBar.expand();
+			await n8n.sideBar.clickHelpMenuItem();
+			await expect(n8n.sideBar.getVersionUpdateItem()).toContainText('Update (2 versions behind)');
+		});
+	},
+);

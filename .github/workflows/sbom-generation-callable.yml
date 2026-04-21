@@ -39,7 +39,7 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout release tag
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.release_tag_ref }}
 
@@ -49,14 +49,14 @@ jobs:
           build-command: ''
 
       - name: Generate CycloneDX SBOM for source code
-        uses: anchore/sbom-action@f8bdd1d8ac5e901a77a92f111440fdb1b593736b # v0.20.6
+        uses: anchore/sbom-action@57aae528053a48a3f6235f2d9461b05fbcb7366d # v0.23.1
         with:
           path: ./
           format: cyclonedx-json
           output-file: sbom-source.cdx.json
 
       - name: Attest SBOM for source release
-        uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
+        uses: actions/attest-sbom@07e74fc4e78d1aad915e867f9a094073a9f71527 # v4.0.0
         with:
           subject-path: './package.json'
           sbom-path: 'sbom-source.cdx.json'

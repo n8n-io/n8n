@@ -219,22 +219,14 @@ function valueChanged(parameterData: IUpdateInformation) {
 				/>
 			</Suspense>
 
-			<div v-if="!isReadOnly" :class="$style.paramOptions">
+			<div v-if="parameterOptions.length > 0 && !isReadOnly" :class="$style.paramOptions">
 				<N8nButton
+					v-if="(parameter.options ?? []).length === 1"
 					style="width: 100%"
 					variant="subtle"
-					v-if="parameterOptions.length === 1"
 					:label="getPlaceholderText"
 					data-test-id="collection-parameter-add"
-					@click="optionSelected(parameterOptions[0].name)"
-				/>
-				<N8nButton
-					style="width: 100%"
-					variant="subtle"
-					v-else-if="(parameter.options ?? []).length === 1"
-					:label="getPlaceholderText"
-					:disabled="true"
-					data-test-id="collection-parameter-add"
+					@click="optionSelected(parameter.options![0].name)"
 				/>
 				<div v-else :class="$style.addOption">
 					<N8nSelect
@@ -243,7 +235,6 @@ function valueChanged(parameterData: IUpdateInformation) {
 						:placeholder="getPlaceholderText"
 						size="small"
 						filterable
-						:disabled="parameterOptions.length === 0"
 						data-test-id="collection-parameter-add"
 						@update:model-value="optionSelected"
 					>

@@ -1,0 +1,62 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"type": "STRING",
+			"string": "[{\"type\":\"text\",\"text\":\"You are the n8n Instance Agent — an AI assistant embedde",
+			"subString": true
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["3410"],
+			"vary": ["Accept-Encoding"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"set-cookie": [
+				"_cfuvid=yWsS2C4dRZNuHPmvx7_gFHBH96x100lgZMrEXHblC7c-1775805986.7840152-1.0.1.1-gn5xKLf_6FuPeOVlisqhzYJdeWigFNJLMzs2ou3SmTw; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+			],
+			"server-timing": ["x-originResponse;dur=3412"],
+			"request-id": ["req_011CZuhBNYjBXe9GCUEQxNg3"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-04-10T07:26:27Z"],
+			"anthropic-ratelimit-tokens-remaining": ["26976000"],
+			"anthropic-ratelimit-tokens-limit": ["27000000"],
+			"anthropic-ratelimit-requests-reset": ["2026-04-10T07:26:27Z"],
+			"anthropic-ratelimit-requests-remaining": ["19998"],
+			"anthropic-ratelimit-requests-limit": ["20000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-04-10T07:26:27Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["4500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["4500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-04-10T07:26:27Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["22476000"],
+			"anthropic-ratelimit-input-tokens-limit": ["22500000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 10 Apr 2026 07:26:30 GMT"],
+			"Content-Type": ["text/event-stream; charset=utf-8"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"],
+			"Cache-Control": ["no-cache"],
+			"CF-RAY": ["9ea005f968a0236c-TXL"]
+		},
+		"cookies": {
+			"_cfuvid": "yWsS2C4dRZNuHPmvx7_gFHBH96x100lgZMrEXHblC7c-1775805986.7840152-1.0.1.1-gn5xKLf_6FuPeOVlisqhzYJdeWigFNJLMzs2ou3SmTw"
+		},
+		"body": {
+			"type": "STRING",
+			"string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01BBs3FuNkjeYpZhftyTVE32\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1367,\"cache_creation_input_tokens\":12360,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":12360,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":1,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}          }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"The\"}          }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" workflow **\\\"preview auto-open test\\\"** is ready! It has a Manual Trigger connected to a Set node named \\\"preview auto-open test\\\".\"}  }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" Let me know if you'd like to run it or make any changes.\"}         }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":1367,\"cache_creation_input_tokens\":12360,\"cache_read_input_tokens\":0,\"output_tokens\":51}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"          }\n\n",
+			"rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxQkJzM0Z1TmtqZVlwWmhmdHlUVkUzMiIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEzNjcsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MTIzNjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjoxMjM2MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjEsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fX0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MCwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidGV4dCIsInRleHQiOiIifSAgICAgICAgICB9CgpldmVudDogcGluZwpkYXRhOiB7InR5cGUiOiAicGluZyJ9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IlRoZSJ9ICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRleHRfZGVsdGEiLCJ0ZXh0IjoiIHdvcmtmbG93ICoqXCJwcmV2aWV3IGF1dG8tb3BlbiB0ZXN0XCIqKiBpcyByZWFkeSEgSXQgaGFzIGEgTWFudWFsIFRyaWdnZXIgY29ubmVjdGVkIHRvIGEgU2V0IG5vZGUgbmFtZWQgXCJwcmV2aWV3IGF1dG8tb3BlbiB0ZXN0XCIuIn0gIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRleHRfZGVsdGEiLCJ0ZXh0IjoiIExldCBtZSBrbm93IGlmIHlvdSdkIGxpa2UgdG8gcnVuIGl0IG9yIG1ha2UgYW55IGNoYW5nZXMuIn0gICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdG9wCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RvcCIsImluZGV4IjowfQoKZXZlbnQ6IG1lc3NhZ2VfZGVsdGEKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9kZWx0YSIsImRlbHRhIjp7InN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGx9LCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEzNjcsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MTIzNjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJvdXRwdXRfdG9rZW5zIjo1MX19CgpldmVudDogbWVzc2FnZV9zdG9wCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2Vfc3RvcCIgICAgICAgICAgfQoK",
+			"contentType": "text/event-stream; charset=utf-8"
+		}
+	},
+	"id": "1775805992928-unknown-host-POST-_v1_messages-8a23f6c2.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

@@ -14,6 +14,7 @@ import { computed, onMounted, onUnmounted, watch } from 'vue';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { getNodeIconSize } from '@/app/utils/nodeIcon';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
@@ -83,7 +84,7 @@ const isCommunityNodeActionsMode = computed(() => {
 });
 
 const viewStackTitle = computed(() => {
-	if (nodeCreatorStore.oppeningContext === 'replacement') {
+	if (nodeCreatorStore.openingContext === 'replacement') {
 		return i18n.baseText('nodeCreator.replaceNode.title');
 	}
 	return activeViewStack.value.title;
@@ -122,12 +123,12 @@ function onSearch(value: string) {
 }
 
 function onTransitionEnd() {
-	cleanupOppeningContext();
+	cleanupopeningContext();
 	void setActiveItemIndex(getDefaultActiveIndex());
 }
 
-function cleanupOppeningContext() {
-	nodeCreatorStore.oppeningContext = null;
+function cleanupopeningContext() {
+	nodeCreatorStore.openingContext = null;
 }
 
 onMounted(() => {
@@ -136,7 +137,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-	cleanupOppeningContext();
+	cleanupopeningContext();
 	detachKeydownEvent();
 });
 
@@ -223,7 +224,14 @@ function onBackButton() {
 						:icon-source="activeViewStack.nodeIcon"
 						:circle="false"
 						:show-tooltip="false"
-						:size="20"
+						:size="
+							getNodeIconSize(
+								'nodeList',
+								activeViewStack.nodeIcon?.type === 'icon'
+									? activeViewStack.nodeIcon.name
+									: undefined,
+							)
+						"
 					/>
 					<p v-if="activeViewStack.title" :class="$style.title" v-text="viewStackTitle" />
 

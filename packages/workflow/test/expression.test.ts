@@ -2,7 +2,7 @@
 
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { workflow } from './ExpressionExtensions/helpers';
+import { workflow, asDuration, asInterval } from './ExpressionExtensions/helpers';
 import { baseFixtures } from './ExpressionFixtures/base';
 import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
 import * as Helpers from './helpers';
@@ -10,6 +10,7 @@ import { ExpressionReservedVariableError } from '../src/errors/expression-reserv
 import { ExpressionError } from '../src/errors/expression.error';
 import { Expression } from '../src/expression';
 import { extendSyntax } from '../src/extensions/expression-extension';
+import { createRunExecutionData } from '../src';
 import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
@@ -34,6 +35,13 @@ describe('Expression', () => {
 			nodeTypes,
 		});
 		const expression = workflow.expression;
+
+		beforeAll(async () => {
+			await expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await expression.releaseIsolate();
+		});
 
 		const evaluate = (value: string) =>
 			expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {});
@@ -88,32 +96,41 @@ describe('Expression', () => {
 			);
 
 			vi.useFakeTimers({ now: new Date() });
-			expect(evaluate('={{Interval.after(new Date(), 100)}}')).toEqual(
-				Interval.after(new Date(), 100),
-			);
+			const intervalResult = asInterval(evaluate('={{Interval.after(new Date(), 100)}}'));
+			expect(intervalResult).toBeInstanceOf(Interval);
+			expect(intervalResult.length('milliseconds')).toEqual(100);
 			vi.useRealTimers();
 
-			expect(evaluate('={{Duration.fromMillis(100)}}')).toEqual(Duration.fromMillis(100));
+			const durationResult = asDuration(evaluate('={{Duration.fromMillis(100)}}'));
+			expect(durationResult).toBeInstanceOf(Duration);
+			expect(durationResult.toMillis()).toEqual(100);
 
 			expect(evaluate('={{new Object()}}')).toEqual(new Object());
 
 			expect(evaluate('={{new Array()}}')).toEqual([]);
-			expect(evaluate('={{new Int8Array()}}')).toEqual(new Int8Array());
-			expect(evaluate('={{new Uint8Array()}}')).toEqual(new Uint8Array());
-			expect(evaluate('={{new Uint8ClampedArray()}}')).toEqual(new Uint8ClampedArray());
-			expect(evaluate('={{new Int16Array()}}')).toEqual(new Int16Array());
-			expect(evaluate('={{new Uint16Array()}}')).toEqual(new Uint16Array());
-			expect(evaluate('={{new Int32Array()}}')).toEqual(new Int32Array());
-			expect(evaluate('={{new Uint32Array()}}')).toEqual(new Uint32Array());
-			expect(evaluate('={{new Float32Array()}}')).toEqual(new Float32Array());
-			expect(evaluate('={{new Float64Array()}}')).toEqual(new Float64Array());
-			expect(evaluate('={{new BigInt64Array()}}')).toEqual(new BigInt64Array());
-			expect(evaluate('={{new BigUint64Array()}}')).toEqual(new BigUint64Array());
+			// Typed arrays: verify constructors are accessible and return correct length.
+			// We don't use toEqual(new Int8Array()) because the VM engine returns typed
+			// arrays from a different V8 realm, which breaks instanceof/toEqual despite
+			// being functionally identical. This is fine — typed arrays aren't a practical
+			// expression return type (they don't survive JSON serialization).
+			expect(evaluate('={{new Int8Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Uint8Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Uint8ClampedArray(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Int16Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Uint16Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Int32Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Uint32Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Float32Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Float64Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new BigInt64Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new BigUint64Array(3).length}}')).toEqual(3);
 
 			expect(evaluate('={{new Map()}}')).toEqual(new Map());
-			expect(evaluate('={{new WeakMap()}}')).toEqual(new WeakMap());
+			// WeakMap/WeakSet are not structured-cloneable, so they can't cross
+			// the VM isolate boundary. Verify the constructors are accessible instead.
+			expect(evaluate('={{new WeakMap() instanceof WeakMap}}')).toEqual(true);
 			expect(evaluate('={{new Set()}}')).toEqual(new Set());
-			expect(evaluate('={{new WeakSet()}}')).toEqual(new WeakSet());
+			expect(evaluate('={{new WeakSet() instanceof WeakSet}}')).toEqual(true);
 
 			expect(evaluate('={{new Error()}}')).toEqual(new Error());
 			expect(evaluate('={{new TypeError()}}')).toEqual(new TypeError());
@@ -123,13 +140,16 @@ describe('Expression', () => {
 			expect(evaluate('={{new ReferenceError()}}')).toEqual(new ReferenceError());
 			expect(evaluate('={{new URIError()}}')).toEqual(new URIError());
 
-			expect(evaluate('={{Intl}}')).toEqual(Intl);
+			// Intl from the isolate is a different realm object; verify it's accessible
+			expect(evaluate('={{typeof Intl}}')).toEqual('object');
 
-			expect(evaluate('={{new String()}}')).toEqual(new String());
-			expect(evaluate("={{new RegExp('')}}")).toEqual(new RegExp(''));
+			expect(evaluate('={{new String().toString()}}')).toEqual('');
+			expect(evaluate("={{new RegExp('').source}}")).toEqual('(?:)');
 
-			expect(evaluate('={{Math}}')).toEqual(Math);
-			expect(evaluate('={{new Number()}}')).toEqual(new Number());
+			// Namespace objects (Math, Atomics) come from a different V8 realm in the
+			// VM engine, so toEqual fails despite identical content. Verify accessibility.
+			expect(evaluate('={{typeof Math}}')).toEqual('object');
+			expect(evaluate('={{new Number().valueOf()}}')).toEqual(0);
 			expect(evaluate("={{BigInt('1')}}")).toEqual(BigInt('1'));
 			expect(evaluate('={{Infinity}}')).toEqual(Infinity);
 			expect(evaluate('={{NaN}}')).toEqual(NaN);
@@ -139,12 +159,12 @@ describe('Expression', () => {
 			expect(evaluate("={{parseInt('1', 10)}}")).toEqual(parseInt('1', 10));
 
 			expect(evaluate('={{JSON.stringify({})}}')).toEqual(JSON.stringify({}));
-			expect(evaluate('={{new ArrayBuffer(10)}}')).toEqual(new ArrayBuffer(10));
-			expect(evaluate('={{new SharedArrayBuffer(10)}}')).toEqual(new SharedArrayBuffer(10));
-			expect(evaluate('={{Atomics}}')).toEqual(Atomics);
-			expect(evaluate('={{new DataView(new ArrayBuffer(1))}}')).toEqual(
-				new DataView(new ArrayBuffer(1)),
-			);
+			// ArrayBuffer, SharedArrayBuffer, DataView, and Atomics come from a
+			// different V8 realm in the VM engine. Verify accessibility instead.
+			expect(evaluate('={{new ArrayBuffer(10).byteLength}}')).toEqual(10);
+			expect(evaluate('={{new SharedArrayBuffer(10).byteLength}}')).toEqual(10);
+			expect(evaluate('={{typeof Atomics}}')).toEqual('object');
+			expect(evaluate('={{new DataView(new ArrayBuffer(1)).byteLength}}')).toEqual(1);
 
 			expect(evaluate("={{encodeURI('https://google.com')}}")).toEqual(
 				encodeURI('https://google.com'),
@@ -161,6 +181,13 @@ describe('Expression', () => {
 
 			expect(evaluate('={{Boolean(1)}}')).toEqual(Boolean(1));
 			expect(evaluate('={{Symbol(1).toString()}}')).toEqual(Symbol(1).toString());
+		});
+
+		it('should expose correct process properties in sandbox', () => {
+			expect(evaluate('={{process.version}}')).toMatch(/^v\d+\.\d+\.\d+/);
+			expect(evaluate('={{typeof process.pid}}')).toBe('number');
+			expect(evaluate('={{process.version}}')).not.toBe(process.pid);
+			expect(evaluate('={{process.version}}')).toBe(process.version);
 		});
 
 		it('should not able to do arbitrary code execution', () => {
@@ -750,6 +777,49 @@ describe('Expression', () => {
 				);
 			});
 		});
+
+		describe('additionalKeys', () => {
+			const node = workflow.nodes.node;
+
+			it('should resolve $credentials in expressions', () => {
+				const result = expression.getSimpleParameterValue(
+					node,
+					'={{$credentials.serviceRole}}',
+					'internal',
+					{ $credentials: { serviceRole: 'test-api-key' } },
+					undefined,
+					'',
+				);
+
+				expect(result).toBe('test-api-key');
+			});
+
+			it('should resolve $credentials in template strings', () => {
+				const result = expression.getSimpleParameterValue(
+					node,
+					'=Bearer {{$credentials.serviceRole}}',
+					'internal',
+					{ $credentials: { serviceRole: 'test-api-key' } },
+					undefined,
+					'',
+				);
+
+				expect(result).toBe('Bearer test-api-key');
+			});
+
+			it('should resolve primitive additionalKeys', () => {
+				const result = expression.getSimpleParameterValue(
+					node,
+					'={{$pageCount}}',
+					'internal',
+					{ $pageCount: 42 },
+					undefined,
+					'',
+				);
+
+				expect(result).toBe(42);
+			});
+		});
 	});
 
 	describe('Test all expression value fixtures', () => {
@@ -809,7 +879,7 @@ describe('Expression', () => {
 	});
 
 	describe('resolveSimpleParameterValue with IWorkflowDataProxyData', () => {
-		it('should evaluate expression with provided IWorkflowDataProxyData', () => {
+		it('should evaluate expression with provided IWorkflowDataProxyData', async () => {
 			const nodeTypes = Helpers.NodeTypes();
 			const workflow = new Workflow({
 				id: 'test',
@@ -846,7 +916,9 @@ describe('Expression', () => {
 			// Test Expression with new API
 			const timezone = workflow.settings?.timezone ?? 'UTC';
 			const expression = new Expression(timezone);
+			await expression.acquireIsolate();
 			const result = expression.resolveSimpleParameterValue('={{ $json.value * 2 }}', data, false);
+			await expression.releaseIsolate();
 
 			expect(result).toBe(84);
 		});
@@ -896,8 +968,111 @@ describe('Expression', () => {
 		});
 	});
 
+	describe('$() node reference through expression engine', () => {
+		const nodeTypes = Helpers.NodeTypes();
+
+		function createTestWorkflow(connected: boolean) {
+			return new Workflow({
+				id: 'test-dollar-ref',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'source-id',
+						name: 'source',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'consumer-id',
+						name: 'consumer',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+				connections: connected
+					? { source: { main: [[{ node: 'consumer', type: 'main', index: 0 }]] } }
+					: {},
+				active: false,
+				nodeTypes,
+			});
+		}
+
+		const runExecutionData = createRunExecutionData({
+			resultData: {
+				runData: {
+					source: [
+						{
+							startTime: 1,
+							executionTime: 1,
+							executionIndex: 0,
+							source: [],
+							data: {
+								main: [[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }]],
+							},
+						},
+					],
+				},
+			},
+		});
+
+		it("should resolve $('source').item.json.city", async () => {
+			const testWorkflow = createTestWorkflow(true);
+
+			await testWorkflow.expression.acquireIsolate();
+			try {
+				const result = testWorkflow.expression.getParameterValue(
+					"={{ $('source').item.json.city }}",
+					runExecutionData,
+					0,
+					0,
+					'consumer',
+					[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }],
+					'manual',
+					{},
+					{
+						node: testWorkflow.getNode('consumer')!,
+						data: {},
+						source: {
+							main: [{ previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }],
+						},
+					},
+				);
+
+				expect(result).toBe('Prague');
+			} finally {
+				await testWorkflow.expression.releaseIsolate();
+			}
+		});
+
+		it('should throw ExpressionError when nodes are not connected', async () => {
+			const testWorkflow = createTestWorkflow(false);
+
+			await testWorkflow.expression.acquireIsolate();
+			try {
+				expect(() =>
+					testWorkflow.expression.getParameterValue(
+						"={{ $('source').item.json.city }}",
+						runExecutionData,
+						0,
+						0,
+						'consumer',
+						[{ json: {} }],
+						'manual',
+						{},
+					),
+				).toThrow(ExpressionError);
+			} finally {
+				await testWorkflow.expression.releaseIsolate();
+			}
+		});
+	});
+
 	describe('getParameterValue with IWorkflowDataProxyData', () => {
-		it('should evaluate simple expression with provided IWorkflowDataProxyData', () => {
+		it('should evaluate simple expression with provided IWorkflowDataProxyData', async () => {
 			const nodeTypes = Helpers.NodeTypes();
 			const workflow = new Workflow({
 				id: 'test',
@@ -932,11 +1107,13 @@ describe('Expression', () => {
 
 			const timezone = workflow.settings?.timezone ?? 'UTC';
 			const expression = new Expression(timezone);
+			await expression.acquireIsolate();
 			const result = expression.resolveSimpleParameterValue(
 				'={{ $json.text.toUpperCase() }}',
 				data,
 				false,
 			);
+			await expression.releaseIsolate();
 
 			expect(result).toBe('HELLO');
 		});
