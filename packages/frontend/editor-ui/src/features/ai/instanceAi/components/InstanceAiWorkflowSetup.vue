@@ -16,6 +16,7 @@ import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n
 import { N8nButton, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { NodeHelpers } from 'n8n-workflow';
 import { computed, defineComponent, onMounted, onUnmounted, provide, ref, toRef, watch } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import {
@@ -371,6 +372,27 @@ onMounted(async () => {
 	try {
 		const workflowData = await fetchWorkflowApi(rootStore.restApiContext, props.workflowId);
 		if (!isMounted) return;
+
+		// Apply node-type parameter defaults to each node, mirroring
+		// useCanvasOperations.resolveNodeParameters in initializeWorkspace. AI-generated
+		// workflow JSON can omit hidden parameters with defaults (e.g. `authentication`
+		// on the Google Sheets Trigger), and without them the backend's displayParameter
+		// check for credential displayOptions fails and load-options/resource-locator
+		// requests surface as "Credentials not found".
+		for (const node of workflowData.nodes ?? []) {
+			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (!nodeType) continue;
+			const resolved = NodeHelpers.getNodeParameters(
+				nodeType.properties,
+				node.parameters,
+				true,
+				false,
+				node,
+				nodeType,
+			);
+			node.parameters = resolved ?? {};
+		}
+
 		previousWorkflow = { ...workflowsStore.workflow };
 		workflowsStore.setWorkflow(workflowData);
 	} catch (error) {
