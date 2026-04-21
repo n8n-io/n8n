@@ -19,7 +19,11 @@ import {
 	getIntegrationStatus,
 } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
-import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
+import {
+	buildAgentConfigFingerprint,
+	deriveAgentStatus,
+} from '../composables/agentTelemetry.utils';
+import { useAgentTelemetry, type AgentConfigPart } from '../composables/useAgentTelemetry';
 import { PROJECT_AGENTS, AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentSessionsStore } from '../agentSessions.store';
@@ -38,6 +42,7 @@ const telemetry = useTelemetry();
 const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
 const { showError } = useToast();
+const agentTelemetry = useAgentTelemetry();
 
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
@@ -306,10 +311,34 @@ async function settleAutosave() {
 	if (autosaveInFlight) await autosaveInFlight;
 }
 
+function derivePart(updates: Partial<AgentJsonConfig>): AgentConfigPart | null {
+	if ('instructions' in updates) return 'instructions';
+	if ('model' in updates) return 'model';
+	if ('credential' in updates) return 'model';
+	if ('memory' in updates) return 'memory';
+	if ('tools' in updates) return 'tools';
+	if ('name' in updates) return 'name';
+	if ('description' in updates) return 'description';
+	return null;
+}
+
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	Object.assign(localConfig.value, updates);
 	scheduleAutosave();
+
+	const part = derivePart(updates);
+	if (!part) return;
+
+	void (async () => {
+		const fp = await buildAgentConfigFingerprint(localConfig.value, connectedTriggers.value);
+		agentTelemetry.trackEditedConfig({
+			agentId: agentId.value,
+			part,
+			configVersion: fp.config_version,
+			status: deriveAgentStatus(agent.value),
+		});
+	})();
 }
 
 async function onConfigUpdated() {
