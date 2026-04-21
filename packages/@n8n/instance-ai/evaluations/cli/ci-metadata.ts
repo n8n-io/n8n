@@ -37,8 +37,8 @@ export function buildCIMetadata(): CIMetadata {
  * Compute an informative experiment name prefix from branch and commit info.
  * Falls back to a generic name if no git context is available.
  *
- * - CI: uses GitHub Actions env vars (branch + short SHA)
- * - Local: shells out to git; includes `-dirty` suffix if there are uncommitted changes
+ * - CI: `ci-{branch}-{short-sha}` from GitHub Actions env vars
+ * - Local: `local-{branch}-{short-sha}[-dirty]` from git, dirty suffix if there are uncommitted changes
  * - Fallback: `instance-ai-workflow-evals`
  *
  * LangSmith appends its own random suffix, so this doesn't need to be unique.
@@ -60,7 +60,7 @@ function computeCIExperimentName(): string | undefined {
 	const sha = process.env.GITHUB_SHA;
 	if (!branch || !sha) return undefined;
 
-	return sanitize(`${branch}-${sha.slice(0, 7)}`);
+	return sanitize(`ci-${branch}-${sha.slice(0, 7)}`);
 }
 
 function computeLocalExperimentName(): string | undefined {
