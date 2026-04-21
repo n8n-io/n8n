@@ -98,7 +98,7 @@ describe('SsoInstanceSettingsLoader', () => {
 		});
 	});
 
-	describe('SAML strict config', () => {
+	describe('SAML config', () => {
 		it('should throw when neither metadata nor metadataUrl is provided and loginEnabled is true', async () => {
 			const loader = createLoader({
 				...validSamlConfig,
@@ -148,7 +148,7 @@ describe('SsoInstanceSettingsLoader', () => {
 		});
 	});
 
-	describe('OIDC strict config', () => {
+	describe('OIDC config', () => {
 		it('should throw when clientId is missing and loginEnabled is true', async () => {
 			const loader = createLoader({ ...validOidcConfig, oidcClientId: '' });
 			await expect(loader.run()).rejects.toThrow('N8N_SSO_OIDC_CLIENT_ID is required');
