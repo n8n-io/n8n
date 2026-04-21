@@ -173,7 +173,7 @@ jobs:
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
       # Community mode for fork PRs or when manually dispatched with the override.
-      community-mode: ${{ github.event.pull_request.head.repo.fork == true || inputs.force-community-mode == true }}
+      community-mode: true # TEMP: force community path for testing, revert before merge
     secrets: inherit
 
   e2e-tests:
@@ -188,7 +188,7 @@ jobs:
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
       playwright-only: ${{ needs.install-and-build.outputs.e2e == 'true' && needs.install-and-build.outputs.unit == 'false' }}
-      community-mode: ${{ github.event.pull_request.head.repo.fork == true || inputs.force-community-mode == true }}
+      community-mode: true # TEMP: force community path for testing, revert before merge
       docker-ref: ${{ needs.prepare-docker.outputs.docker-ref }}
       image-tag: ${{ needs.prepare-docker.outputs.image-tag }}
     secrets: inherit
@@ -213,13 +213,8 @@ jobs:
     name: E2E Performance
     needs: [install-and-build, prepare-docker]
     # Performance is internal-only (needs license secrets). Skipped in community mode.
-    if: >-
-      needs.prepare-docker.result == 'success' &&
-      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e_performance == 'true') &&
-      github.event_name == 'pull_request' &&
-      github.repository == 'n8n-io/n8n' &&
-      !github.event.pull_request.head.repo.fork &&
-      !inputs.force-community-mode
+    # TEMP: disabled while we force community mode for testing. Revert before merge.
+    if: false
     uses: ./.github/workflows/test-e2e-performance-reusable.yml
     with:
       docker-ref: ${{ needs.prepare-docker.outputs.docker-ref }}
