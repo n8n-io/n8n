@@ -50,7 +50,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
-	convertToWorkflowAccessors,
 } from '@/app/stores/workflowDocument.store';
 
 declare namespace HttpRequestNode {
@@ -292,7 +291,7 @@ export function useNodeHelpers() {
 		}
 
 		const nodeInputIssues = getNodeInputIssues(
-			convertToWorkflowAccessors(workflowDocumentStore.value),
+			workflowDocumentStore.value.getSnapshot(),
 			node,
 			nodeType,
 		);

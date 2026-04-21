@@ -40,7 +40,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
-	convertToWorkflowAccessors,
 } from '@/app/stores/workflowDocument.store';
 import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -192,7 +191,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				directParentNodes,
 				runData,
 				workflowData.pinData,
-				convertToWorkflowAccessors(workflowDocumentStore.value),
+				workflowDocumentStore.value.getSnapshot(),
 			);
 
 			const { startNodeNames } = consolidatedData;

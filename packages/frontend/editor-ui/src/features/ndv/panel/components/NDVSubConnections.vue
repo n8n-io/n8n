@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import {
-	convertToWorkflowAccessors,
-	injectWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed, ref, watch } from 'vue';
 import { NodeHelpers } from 'n8n-workflow';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -67,9 +64,7 @@ const nodeData = computed(
 const ndvStore = useNDVStore();
 
 const workflowObjectAccessors = computed(() =>
-	workflowDocumentStore?.value
-		? convertToWorkflowAccessors(workflowDocumentStore.value)
-		: undefined,
+	workflowDocumentStore?.value ? workflowDocumentStore.value.getSnapshot() : undefined,
 );
 
 const nodeInputIssues = computed(() => {

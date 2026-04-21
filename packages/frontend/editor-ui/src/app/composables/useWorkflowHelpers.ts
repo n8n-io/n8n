@@ -60,7 +60,6 @@ import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWo
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
-	convertToWorkflowAccessors,
 } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 import type { WorkflowObjectAccessors } from '../types';
@@ -105,7 +104,7 @@ export async function resolveParameter<T = IDataObject>(
 
 	return await resolveParameterImpl(
 		parameter,
-		convertToWorkflowAccessors(workflowDocumentStore),
+		workflowDocumentStore.getSnapshot(),
 		workflowDocumentStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,

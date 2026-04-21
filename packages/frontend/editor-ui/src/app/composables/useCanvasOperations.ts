@@ -140,7 +140,6 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
-	convertToWorkflowAccessors,
 } from '@/app/stores/workflowDocument.store';
 
 type AddNodeData = Partial<INodeUi> & {
@@ -214,9 +213,7 @@ export function useCanvasOperations() {
 	const editableWorkflow = computed<IWorkflowDb>(() => workflowsStore.workflow);
 
 	const editableWorkflowObject = computed(() =>
-		workflowDocumentStore.value
-			? convertToWorkflowAccessors(workflowDocumentStore.value)
-			: undefined,
+		workflowDocumentStore.value ? workflowDocumentStore.value.getSnapshot() : undefined,
 	);
 
 	const triggerNodes = computed<INodeUi[]>(() => {

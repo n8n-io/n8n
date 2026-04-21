@@ -157,6 +157,21 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentPinData.setPinData({});
 		}
 
+		function getSnapshot(): WorkflowObjectAccessors {
+			return {
+				id: workflowId,
+				connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode.value,
+				pinData: workflowDocumentPinData.pinData.value as IPinData,
+				expression: workflowDocumentExpression.getExpressionHandler(),
+				getNode: workflowDocumentNodes.getNodeByName,
+				getParentNodes: workflowDocumentGraph.getParentNodes,
+				getNodeConnectionIndexes: workflowDocumentGraph.getNodeConnectionIndexes,
+				getParentMainInputNode: workflowDocumentGraph.getParentMainInputNode,
+				getChildNodes: workflowDocumentGraph.getChildNodes,
+				getParentNodesByDepth: workflowDocumentGraph.getParentNodesByDepth,
+			};
+		}
+
 		return {
 			workflowId,
 			workflowVersion,
@@ -181,6 +196,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
 			removeAllNodes,
+			getSnapshot,
 		};
 	})();
 }
@@ -219,21 +235,4 @@ export function disposeWorkflowDocumentStore(id: string) {
  */
 export function injectWorkflowDocumentStore() {
 	return inject(WorkflowDocumentStoreKey, null);
-}
-
-export function convertToWorkflowAccessors(
-	workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>,
-): WorkflowObjectAccessors {
-	return {
-		id: workflowDocumentStore.workflowId,
-		connectionsBySourceNode: workflowDocumentStore.connectionsBySourceNode,
-		pinData: workflowDocumentStore.pinData as IPinData,
-		expression: workflowDocumentStore.getExpressionHandler(),
-		getNode: workflowDocumentStore.getNodeByName,
-		getParentNodes: workflowDocumentStore.getParentNodes,
-		getNodeConnectionIndexes: workflowDocumentStore.getNodeConnectionIndexes,
-		getParentMainInputNode: workflowDocumentStore.getParentMainInputNode,
-		getChildNodes: workflowDocumentStore.getChildNodes,
-		getParentNodesByDepth: workflowDocumentStore.getParentNodesByDepth,
-	};
 }
