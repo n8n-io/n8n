@@ -121,19 +121,29 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		(wrapper.vm as unknown as { mode: string }).mode = 'chat';
 		await nextTick();
 
+		// Test panel mounts eagerly with chat mode; Build panel is lazy-mounted on
+		// first activation so it doesn't fire loadHistory until the user opens it.
 		const testPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]');
-		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
 		expect(testPanel.exists()).toBe(true);
-		expect(buildPanel.exists()).toBe(true);
-
-		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
-		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
+		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
+			false,
+		);
 
 		await wrapper.find('[data-test-id="radio-button-build"]').trigger('click');
 		await nextTick();
 
+		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
+		expect(buildPanel.exists()).toBe(true);
 		expect((testPanel.element as HTMLElement).style.display).toBe('none');
 		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
+
+		// Switching back keeps both mounted and only toggles v-show — proves
+		// panel state is preserved rather than torn down via v-if.
+		await wrapper.find('[data-test-id="radio-button-test"]').trigger('click');
+		await nextTick();
+
+		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
+		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
 	});
 
 	it('transitions from home to chat when a toggle segment is clicked', async () => {
