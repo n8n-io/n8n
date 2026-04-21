@@ -8,7 +8,7 @@ class PostHogConfig {
 
 	/** PostHog API host URL. */
 	@Env('N8N_DIAGNOSTICS_POSTHOG_API_HOST')
-	apiHost: string = 'https://ph.n8n.io';
+	apiHost: string = 'https://eu.i.posthog.com';
 }
 
 @Config
