@@ -1,9 +1,10 @@
 import type { InstanceAiConfig } from '@n8n/config';
-import type { SettingsRepository, User } from '@n8n/db';
+import type { SettingsRepository, User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { AiService } from '@/services/ai.service';
+import type { UserService } from '@/services/user.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -33,6 +34,8 @@ describe('InstanceAiSettingsService', () => {
 		deployment: { type: 'default' },
 	});
 	const settingsRepository = mock<SettingsRepository>();
+	const userRepository = mock<UserRepository>();
+	const userService = mock<UserService>();
 	const aiService = mock<AiService>();
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
@@ -44,6 +47,8 @@ describe('InstanceAiSettingsService', () => {
 		service = new InstanceAiSettingsService(
 			globalConfig as never,
 			settingsRepository,
+			userRepository,
+			userService,
 			aiService,
 			credentialsService,
 			credentialsFinderService,
@@ -112,11 +117,28 @@ describe('InstanceAiSettingsService', () => {
 
 		it('should allow non-proxy-managed fields when proxy is enabled', async () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
-			settingsRepository.upsert.mockResolvedValue(undefined as never);
 
 			await expect(
 				service.updateUserPreferences(user, { localGatewayDisabled: true }),
 			).resolves.toBeDefined();
+
+			expect(userService.updateSettings).toHaveBeenCalledWith('user-1', {
+				instanceAi: { localGatewayDisabled: true },
+			});
+		});
+
+		it('should merge new fields with existing instanceAi settings on update', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			const existingUser = mock<User>({
+				id: 'user-2',
+				settings: { instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5' } },
+			});
+
+			await service.updateUserPreferences(existingUser, { modelName: 'gpt-4' });
+
+			expect(userService.updateSettings).toHaveBeenCalledWith('user-2', {
+				instanceAi: { credentialId: 'cred-old', modelName: 'gpt-4' },
+			});
 		});
 	});
 
@@ -195,11 +217,13 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			it('should allow localGatewayDisabled on cloud', async () => {
-				settingsRepository.upsert.mockResolvedValue(undefined as never);
-
 				await expect(
 					service.updateUserPreferences(user, { localGatewayDisabled: true }),
 				).resolves.toBeDefined();
+
+				expect(userService.updateSettings).toHaveBeenCalledWith('user-1', {
+					instanceAi: { localGatewayDisabled: true },
+				});
 			});
 		});
 	});
