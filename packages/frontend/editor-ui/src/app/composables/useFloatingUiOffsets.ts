@@ -18,7 +18,7 @@ export function useFloatingUiOffsets() {
 	return {
 		askAiFloatingButtonBottomOffset: computed(() => `${askAiOffset.value}px`),
 		toastBottomOffset: computed(() => {
-			const logsPanelOffset = ndvStore.isNDVOpen ? 0 : logsStore.height;
+			const logsPanelOffset = ndvStore.isNDVOpen || chatPanelStore.isOpen ? 0 : logsStore.height;
 			const assistantOffset = assistantStore.isFloatingButtonShown
 				? ASSISTANT_FLOATING_BUTTON_SIZE + askAiOffset.value
 				: 0;

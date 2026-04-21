@@ -3,9 +3,11 @@ import {
 	CredentialResolver,
 	credentialResolverSchema,
 	credentialResolversSchema,
+	credentialResolverAffectedWorkflowsSchema,
 	UpdateCredentialResolverDto,
 	CredentialResolverType,
 	credentialResolverTypesSchema,
+	type CredentialResolverAffectedWorkflow,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -82,6 +84,27 @@ export class CredentialResolversController {
 			}
 			if (e instanceof CredentialResolutionError) {
 				throw new BadRequestError(e.message);
+			}
+			if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			}
+			throw e;
+		}
+	}
+
+	@Get('/:id/workflows')
+	@GlobalScope('credentialResolver:read')
+	async getAffectedWorkflows(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<CredentialResolverAffectedWorkflow[]> {
+		try {
+			const workflows = await this.service.findAffectedWorkflows(id);
+			return credentialResolverAffectedWorkflowsSchema.parse(workflows);
+		} catch (e: unknown) {
+			if (e instanceof DynamicCredentialResolverNotFoundError) {
+				throw new NotFoundError(e.message);
 			}
 			if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);

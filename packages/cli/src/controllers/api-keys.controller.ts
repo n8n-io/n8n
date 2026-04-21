@@ -1,5 +1,4 @@
 import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
-import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -11,12 +10,11 @@ import {
 	Post,
 	RestController,
 } from '@n8n/decorators';
-import { getApiKeyScopesForRole, type ApiKeyScope } from '@n8n/permissions';
+import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { isApiEnabled } from '@/public-api';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
@@ -33,7 +31,6 @@ export class ApiKeysController {
 	constructor(
 		private readonly eventService: EventService,
 		private readonly publicApiKeyService: PublicApiKeyService,
-		private readonly license: License,
 	) {}
 
 	/**
@@ -46,16 +43,11 @@ export class ApiKeysController {
 		_res: Response,
 		@Body body: CreateApiKeyRequestDto,
 	) {
-		const scopes = this.resolveScopesForUser(req.user, body.scopes);
-
-		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, scopes)) {
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, body.scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
 		}
 
-		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, {
-			...body,
-			scopes,
-		});
+		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, body);
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 
@@ -101,16 +93,11 @@ export class ApiKeysController {
 		@Param('id') apiKeyId: string,
 		@Body body: UpdateApiKeyRequestDto,
 	) {
-		const scopes = this.resolveScopesForUser(req.user, body.scopes);
-
-		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, scopes)) {
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, body.scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
 		}
 
-		await this.publicApiKeyService.updateApiKeyForUser(req.user, apiKeyId, {
-			...body,
-			scopes,
-		});
+		await this.publicApiKeyService.updateApiKeyForUser(req.user, apiKeyId, body);
 
 		return { success: true };
 	}
@@ -120,16 +107,5 @@ export class ApiKeysController {
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
 		const scopes = getApiKeyScopesForRole(req.user);
 		return scopes;
-	}
-
-	/**
-	 * Resolves the scopes to be used for an API key based on license status.
-	 * If the API Key Scopes feature is not licensed, returns all available scopes for the user's role.
-	 * Otherwise, returns the requested scopes.
-	 */
-	private resolveScopesForUser(user: AuthenticatedRequest['user'], requestedScopes: ApiKeyScope[]) {
-		return this.license.isLicensed(LICENSE_FEATURES.API_KEY_SCOPES)
-			? requestedScopes
-			: getApiKeyScopesForRole(user);
 	}
 }

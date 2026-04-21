@@ -101,6 +101,7 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
+import { isChatNode } from '@/app/utils/aiUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -300,7 +301,9 @@ const isCanvasReadOnly = computed(() => {
 });
 
 const canExecuteOnCanvas = computed(() => {
-	if (isDemoRoute.value) return false;
+	if (isDemoRoute.value) {
+		return route.query.canExecute === 'true';
+	}
 	if (editableWorkflow.value.isArchived) return false;
 	if (builderStore.streaming) return false;
 	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
@@ -403,6 +406,13 @@ const containsTriggerNodes = computed(() => triggerNodes.value.length > 0);
 const allTriggerNodesDisabled = computed(() => {
 	const disabledTriggerNodes = triggerNodes.value.filter((node) => node.disabled);
 	return disabledTriggerNodes.length === triggerNodes.value.length;
+});
+
+const isRunButtonSplit = computed(() => {
+	const selectableTriggerNodes = triggerNodes.value.filter(
+		(node) => !node.disabled && !isChatNode(node),
+	);
+	return selectableTriggerNodes.length > 1 && workflowsStore.selectedTriggerNodeName !== undefined;
 });
 
 function onTidyUp(
@@ -1666,6 +1676,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 
 	const shouldSkipPrompt =
 		toNodeViewTab === MAIN_HEADER_TABS.EXECUTIONS ||
+		toNodeViewTab === MAIN_HEADER_TABS.EVALUATION ||
 		from.name === VIEWS.TEMPLATE_IMPORT ||
 		(toNodeViewTab === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG);
 
@@ -1773,6 +1784,7 @@ onBeforeUnmount(() => {
 			:show-fallback-nodes="showFallbackNodes"
 			:event-bus="canvasEventBus"
 			:read-only="isCanvasReadOnly"
+			:can-execute="canExecuteOnCanvas"
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
 			:suppress-interaction="experimentalNdvStore.isMapperOpen"
@@ -1864,10 +1876,12 @@ onBeforeUnmount(() => {
 				<CanvasStopCurrentExecutionButton
 					v-if="isStopExecutionButtonVisible"
 					:stopping="isStoppingExecution"
+					:size="isRunButtonSplit ? 'xlarge' : 'large'"
 					@click="onStopExecution"
 				/>
 				<CanvasStopWaitingForWebhookButton
 					v-if="isStopWaitingForWebhookButtonVisible"
+					:size="isRunButtonSplit ? 'xlarge' : 'large'"
 					@click="onStopWaitingForWebhook"
 				/>
 			</div>

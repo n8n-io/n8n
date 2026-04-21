@@ -416,6 +416,11 @@ describe('useRunWorkflow({ router })', () => {
 					[parentNodeName]: createTestNode({ name: parentNodeName }),
 					[destinationNodeName]: createTestNode({ name: destinationNodeName }),
 				},
+				getNode: (name: string) => {
+					if (name === parentNodeName) return createTestNode({ name: parentNodeName });
+					if (name === destinationNodeName) return createTestNode({ name: destinationNodeName });
+					return null;
+				},
 			} as unknown as Workflow;
 
 			vi.mocked(pushConnectionStore).isConnected = true;
@@ -496,6 +501,10 @@ describe('useRunWorkflow({ router })', () => {
 				name: 'Test Workflow',
 				getParentNodes: () => [parentName],
 				nodes: { [parentName]: {} },
+				getNode: (name: string) => {
+					if (name === parentName) return {};
+					return null;
+				},
 			} as unknown as Workflow;
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				nodes: [],
@@ -1074,6 +1083,7 @@ describe('useRunWorkflow({ router })', () => {
 			const workflowMock = {
 				getParentNodes: vi.fn(),
 				nodes: {},
+				getNode: () => null,
 			} as unknown as Workflow;
 
 			const result = consolidateRunDataAndStartNodes([], null, undefined, workflowMock);
@@ -1099,6 +1109,12 @@ describe('useRunWorkflow({ router })', () => {
 					node1: { disabled: false },
 					node2: { disabled: false },
 					node3: { disabled: true },
+				},
+				getNode: (name: string) => {
+					if (name === 'node1') return { disabled: false };
+					if (name === 'node2') return { disabled: false };
+					if (name === 'node3') return { disabled: true };
+					return null;
 				},
 			} as unknown as Workflow;
 
@@ -1129,6 +1145,10 @@ describe('useRunWorkflow({ router })', () => {
 			const workflowMock = {
 				getParentNodes: vi.fn().mockReturnValue([]),
 				nodes: { node1: { disabled: false } },
+				getNode: (name: string) => {
+					if (name === 'node1') return { disabled: false };
+					return null;
+				},
 			} as unknown as Workflow;
 
 			const result = consolidateRunDataAndStartNodes(
@@ -1157,6 +1177,11 @@ describe('useRunWorkflow({ router })', () => {
 				nodes: {
 					node1: { disabled: false },
 					node2: { disabled: false },
+				},
+				getNode: (name: string) => {
+					if (name === 'node1') return { disabled: false };
+					if (name === 'node2') return { disabled: false };
+					return null;
 				},
 			} as unknown as Workflow;
 
@@ -1207,6 +1232,10 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowsStore).workflowObject = {
 				id: 'workflowId',
 				nodes: { [chatTrigger.name]: chatTrigger },
+				getNode: (name: string) => {
+					if (name === chatTrigger.name) return chatTrigger;
+					return null;
+				},
 			} as unknown as Workflow;
 			vi.mocked(workflowsStore).selectedTriggerNodeName = undefined;
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
@@ -1242,6 +1271,11 @@ describe('useRunWorkflow({ router })', () => {
 				nodes: {
 					[chatTrigger.name]: chatTrigger,
 					[manualTrigger.name]: manualTrigger,
+				},
+				getNode: (name: string) => {
+					if (name === chatTrigger.name) return chatTrigger;
+					if (name === manualTrigger.name) return manualTrigger;
+					return null;
 				},
 			} as unknown as Workflow;
 			vi.mocked(workflowsStore).selectedTriggerNodeName = undefined;

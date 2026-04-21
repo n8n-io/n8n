@@ -20,6 +20,7 @@ import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
+import { InstanceAiPage } from './InstanceAiPage';
 import { InteractionsPage } from './InteractionsPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
@@ -48,6 +49,7 @@ import { WorkflowCredentialSetupModal } from './WorkflowCredentialSetupModal';
 import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
+import { BuilderWizardComposer } from '../composables/BuilderWizardComposer';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
 import { DataTableComposer } from '../composables/DataTablesComposer';
@@ -79,6 +81,7 @@ export class n8nPage {
 	readonly chatHubWorkflowAgents: ChatHubWorkflowAgentsPage;
 	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
+	readonly instanceAi: InstanceAiPage;
 	readonly interactions: InteractionsPage;
 	readonly keycloakLogin: KeycloakLoginPage;
 	readonly mfaLogin: MfaLoginPage;
@@ -125,6 +128,7 @@ export class n8nPage {
 	readonly deleteSecretsProviderModal: DeleteSecretsProviderModal;
 
 	// Composables
+	readonly builderWizardComposer: BuilderWizardComposer;
 	readonly workflowComposer: WorkflowComposer;
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
@@ -157,6 +161,7 @@ export class n8nPage {
 		this.chatHubWorkflowAgents = new ChatHubWorkflowAgentsPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
+		this.instanceAi = new InstanceAiPage(page);
 		this.interactions = new InteractionsPage(page);
 		this.keycloakLogin = new KeycloakLoginPage(page);
 		this.mfaLogin = new MfaLoginPage(page);
@@ -202,6 +207,7 @@ export class n8nPage {
 		this.deleteSecretsProviderModal = new DeleteSecretsProviderModal(page);
 
 		// Composables
+		this.builderWizardComposer = new BuilderWizardComposer(this);
 		this.workflowComposer = new WorkflowComposer(this);
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);

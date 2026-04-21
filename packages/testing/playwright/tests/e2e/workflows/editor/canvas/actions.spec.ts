@@ -66,15 +66,6 @@ test.describe(
 			await expect(n8n.canvas.nodeConnections()).toHaveCount(0);
 		});
 
-		test('should add disconnected node if nothing is selected', async ({ n8n }) => {
-			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-			await n8n.canvas.deselectAll();
-			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript', closeNDV: true });
-
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
-			await expect(n8n.canvas.nodeConnections()).toHaveCount(0);
-		});
-
 		test('should add node between two connected nodes', async ({ n8n }) => {
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();

@@ -1,11 +1,6 @@
-import type { User, ICredentialsDb } from '@n8n/db';
-import {
-	CredentialsEntity,
-	SharedCredentials,
-	CredentialsRepository,
-	ProjectRepository,
-	SharedCredentialsRepository,
-} from '@n8n/db';
+import type { PublicApiCredentialResponse } from '@n8n/api-types';
+import type { User, ICredentialsDb, SharedCredentials } from '@n8n/db';
+import { CredentialsEntity, CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
 import {
@@ -24,11 +19,11 @@ import {
 } from '@/credentials/validation';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import type { CredentialRequest } from '@/requests';
-
-import type { IDependency, IJsonSchema } from '../../../types';
-import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+
+import { toPublicApiCredentialResponse } from './credentials.mapper';
+import type { IDependency, IJsonSchema } from '../../../types';
 
 export class CredentialsIsNotUpdatableError extends BaseError {}
 
@@ -63,7 +58,7 @@ export function buildSharedForCredential(
 		}));
 }
 
-export async function getCredential(credentialId: string): Promise<ICredentialsDb | null> {
+export async function getCredential(credentialId: string): Promise<CredentialsEntity | null> {
 	return await Container.get(CredentialsRepository).findOne({
 		where: { id: credentialId },
 		relations: ['shared', 'shared.project'],
@@ -87,57 +82,17 @@ export async function getSharedCredentials(
 	});
 }
 
-export async function createCredential(
-	properties: CredentialRequest.CredentialProperties,
-): Promise<CredentialsEntity> {
-	const newCredential = new CredentialsEntity();
-
-	Object.assign(newCredential, properties);
-
-	return newCredential;
-}
-
 /**
- * Creats a credential in the personal project of the given user.
+ * Creates a credential via the internal CredentialsService, which handles project
+ * resolution, validation, and encryption.
  */
 export async function saveCredential(
-	payload: { type: string; name: string; data: ICredentialDataDecryptedObject },
+	payload: { type: string; name: string; data: ICredentialDataDecryptedObject; projectId?: string },
 	user: User,
-): Promise<CredentialsEntity> {
-	const credential = await createCredential(payload);
-
-	const projectRepository = Container.get(ProjectRepository);
-	const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
-
-	await validateExternalSecretsPermissions({
-		user,
-		projectId: personalProject.id,
-		dataToSave: payload.data,
-	});
-
-	const encryptedData = await encryptCredential(credential);
-	Object.assign(credential, encryptedData);
-
-	const { manager: dbManager } = projectRepository;
-	const result = await dbManager.transaction(async (transactionManager) => {
-		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
-
-		savedCredential.data = credential.data;
-
-		const newSharedCredential = new SharedCredentials();
-
-		Object.assign(newSharedCredential, {
-			role: 'credential:owner',
-			credentials: savedCredential,
-			projectId: personalProject.id,
-		});
-
-		await transactionManager.save<SharedCredentials>(newSharedCredential);
-
-		return savedCredential;
-	});
-
-	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
+): Promise<PublicApiCredentialResponse> {
+	const { scopes: _scopes, ...credential } = await Container.get(
+		CredentialsService,
+	).createUnmanagedCredential({ ...payload, projectId: payload.projectId ?? undefined }, user);
 
 	const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
 		credential.id,
@@ -147,17 +102,30 @@ export async function saveCredential(
 		user,
 		credentialType: credential.type,
 		credentialId: credential.id,
+		publicApi: true,
 		projectId: project?.id,
 		projectType: project?.type,
-		publicApi: true,
 		isDynamic: credential.isResolvable ?? false,
 	});
 
-	return result;
+	const credentialForApi = {
+		id: credential.id,
+		name: credential.name,
+		type: credential.type,
+		isManaged: credential.isManaged,
+		isGlobal: credential.isGlobal,
+		isResolvable: credential.isResolvable,
+		resolvableAllowFallback: credential.resolvableAllowFallback,
+		resolverId: credential.resolverId,
+		createdAt: credential.createdAt,
+		updatedAt: credential.updatedAt,
+	};
+
+	return toPublicApiCredentialResponse(credentialForApi);
 }
 
 export async function updateCredential(
-	credentialId: string,
+	existingCredential: ICredentialsDb,
 	user: User,
 	updateData: {
 		type?: string;
@@ -167,15 +135,12 @@ export async function updateCredential(
 		isResolvable?: boolean;
 		isPartialData?: boolean;
 	},
-): Promise<ICredentialsDb | null> {
-	const existingCredential = await getCredential(credentialId);
-	if (!existingCredential) {
-		return null;
-	}
-
+): Promise<ICredentialsDb> {
 	if (existingCredential.isManaged) {
 		throw new CredentialsIsNotUpdatableError('Managed credentials cannot be updated.');
 	}
+
+	const credentialId = existingCredential.id;
 
 	// Merge the update data with existing credential
 	const credentialData: Partial<CredentialsEntity> = {};
@@ -258,7 +223,8 @@ export async function updateCredential(
 
 	await Container.get(CredentialsRepository).update(credentialId, credentialData);
 
-	return await getCredential(credentialId);
+	// credential exists since we just updated it
+	return (await getCredential(credentialId))!;
 }
 
 export async function removeCredential(

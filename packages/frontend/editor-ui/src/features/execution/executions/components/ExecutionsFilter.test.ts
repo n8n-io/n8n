@@ -12,6 +12,10 @@ import type { ExecutionFilterType } from '../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
+import type { MockInstance } from 'vitest';
+import * as restApiClient from '@n8n/rest-api-client';
+
+vi.mock('@n8n/rest-api-client');
 
 vi.mock('vue-router', () => ({
 	useRoute: () =>
@@ -50,6 +54,7 @@ const defaultFilterState: ExecutionFilterType = {
 	endDate: '',
 	metadata: [{ key: '', value: '', exactMatch: false }],
 	vote: 'all',
+	workflowVersionId: 'all',
 };
 
 const workflowDataFactory = (): IWorkflowShortResponse => ({
@@ -267,6 +272,207 @@ describe('ExecutionsFilter', () => {
 			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('Upgrade plan to filter executions by custom data');
 			expect(tooltip).toHaveTextContent('View plans');
+		});
+	});
+
+	describe('version filter', () => {
+		const workflowId = faker.string.uuid();
+
+		type ExecutionVersion = { versionId: string; name: string | null; createdAt: string };
+		const makeVersions = (count: number): ExecutionVersion[] =>
+			Array.from({ length: count }, (_, i) => ({
+				versionId: faker.string.uuid(),
+				createdAt: `2025-10-${String(10 + i).padStart(2, '0')}T10:00:00.000Z`,
+				name: i === 0 ? 'Named version' : null,
+			}));
+
+		let makeRestApiRequestSpy: MockInstance;
+
+		beforeEach(() => {
+			makeRestApiRequestSpy = vi.spyOn(restApiClient, 'makeRestApiRequest');
+		});
+
+		it('should not show version select when no workflowId is provided', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('executions-filter-button'));
+
+			expect(queryByTestId('executions-filter-version-select')).not.toBeInTheDocument();
+		});
+
+		it('should show version select when workflowId is provided and versions exist', async () => {
+			makeRestApiRequestSpy.mockResolvedValue(makeVersions(3));
+
+			const { getByTestId } = renderComponent({
+				props: { workflowId },
+			});
+
+			await userEvent.click(getByTestId('executions-filter-button'));
+			await waitFor(() => {
+				expect(getByTestId('executions-filter-version-select')).toBeInTheDocument();
+			});
+		});
+
+		it('should show disabled version select when version fetch returns empty', async () => {
+			makeRestApiRequestSpy.mockResolvedValue([]);
+
+			const { getByTestId } = renderComponent({
+				props: { workflowId },
+			});
+
+			await userEvent.click(getByTestId('executions-filter-button'));
+			await waitFor(() => {
+				expect(makeRestApiRequestSpy).toHaveBeenCalled();
+			});
+			await waitFor(() => {
+				const select = getByTestId('executions-filter-version-select');
+				expect(select).toBeInTheDocument();
+				expect(select.querySelector('.is-disabled')).toBeTruthy();
+			});
+		});
+
+		it('should emit filter with workflowVersionId when a version is selected', async () => {
+			const versions = makeVersions(2);
+			makeRestApiRequestSpy.mockResolvedValue(versions);
+
+			const { getByTestId, emitted } = renderComponent({
+				props: { workflowId },
+			});
+
+			await userEvent.click(getByTestId('executions-filter-button'));
+			await waitFor(() => {
+				expect(getByTestId('executions-filter-version-select')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('executions-filter-version-select'));
+			const options = getByTestId('executions-filter-version-select').querySelectorAll('li');
+			// First option is "Any version"
+			await userEvent.click(options[1]);
+
+			const filterChangedEvents = emitted().filterChanged;
+			expect(filterChangedEvents).toBeDefined();
+			const lastEvent = filterChangedEvents[filterChangedEvents.length - 1] as [
+				ExecutionFilterType,
+			];
+			expect(lastEvent[0].workflowVersionId).toBe(versions[0].versionId);
+		});
+
+		it('should show loading spinner while versions are being fetched', async () => {
+			const { promise, resolve } = Promise.withResolvers<ExecutionVersion[]>();
+			makeRestApiRequestSpy.mockReturnValue(promise);
+
+			const { getByTestId } = renderComponent({
+				props: { workflowId },
+			});
+
+			await userEvent.click(getByTestId('executions-filter-button'));
+
+			// While loading: select should be disabled with a spinner
+			await waitFor(() => {
+				const select = getByTestId('executions-filter-version-select');
+				expect(select).toBeInTheDocument();
+				expect(select.querySelector('.is-disabled')).toBeTruthy();
+				expect(select.querySelector('.n8n-icon')).toBeInTheDocument();
+			});
+
+			// Resolve the request
+			resolve(makeVersions(2));
+
+			// After loading: select should be enabled without spinner
+			await waitFor(() => {
+				const select = getByTestId('executions-filter-version-select');
+				expect(select.querySelector('.is-disabled')).toBeFalsy();
+			});
+		});
+
+		it('should not fetch versions until filter popover is opened', () => {
+			makeRestApiRequestSpy.mockResolvedValue(makeVersions(2));
+
+			renderComponent({
+				props: { workflowId },
+			});
+
+			expect(makeRestApiRequestSpy).not.toHaveBeenCalled();
+		});
+
+		it('should fetch versions only once across multiple popover opens after success', async () => {
+			makeRestApiRequestSpy.mockResolvedValue(makeVersions(2));
+
+			const { getByTestId } = renderComponent({
+				props: { workflowId },
+			});
+
+			// Open popover — triggers fetch
+			await userEvent.click(getByTestId('executions-filter-button'));
+			await waitFor(() => {
+				expect(makeRestApiRequestSpy).toHaveBeenCalledTimes(1);
+			});
+
+			// Close and reopen popover — should not fetch again
+			await userEvent.click(getByTestId('executions-filter-button'));
+			await userEvent.click(getByTestId('executions-filter-button'));
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should show enabled select when versions are loaded', async () => {
+			makeRestApiRequestSpy.mockResolvedValue(makeVersions(3));
+
+			const { getByTestId } = renderComponent({
+				props: { workflowId },
+			});
+
+			await userEvent.click(getByTestId('executions-filter-button'));
+			await waitFor(() => {
+				const select = getByTestId('executions-filter-version-select');
+				expect(select).toBeInTheDocument();
+				expect(select.querySelector('.is-disabled')).toBeFalsy();
+			});
+		});
+
+		it('should show disabled version select when version fetch fails', async () => {
+			makeRestApiRequestSpy.mockRejectedValue(new Error('Not found'));
+
+			const { getByTestId } = renderComponent({
+				props: { workflowId },
+			});
+
+			await userEvent.click(getByTestId('executions-filter-button'));
+			await waitFor(() => {
+				expect(makeRestApiRequestSpy).toHaveBeenCalled();
+			});
+			await waitFor(() => {
+				const select = getByTestId('executions-filter-version-select');
+				expect(select).toBeInTheDocument();
+				expect(select.querySelector('.is-disabled')).toBeTruthy();
+			});
+		});
+
+		it('should retry fetching versions after a failed attempt', async () => {
+			makeRestApiRequestSpy.mockRejectedValueOnce(new Error('Not found'));
+
+			const { getByTestId } = renderComponent({
+				props: { workflowId },
+			});
+
+			// First open — fetch fails
+			await userEvent.click(getByTestId('executions-filter-button'));
+			await waitFor(() => {
+				expect(makeRestApiRequestSpy).toHaveBeenCalledTimes(1);
+			});
+
+			// Close and reopen — should retry
+			makeRestApiRequestSpy.mockResolvedValue(makeVersions(2));
+			await userEvent.click(getByTestId('executions-filter-button'));
+			await userEvent.click(getByTestId('executions-filter-button'));
+
+			await waitFor(() => {
+				expect(makeRestApiRequestSpy).toHaveBeenCalledTimes(2);
+			});
+			await waitFor(() => {
+				const select = getByTestId('executions-filter-version-select');
+				expect(select.querySelector('.is-disabled')).toBeFalsy();
+			});
 		});
 	});
 });

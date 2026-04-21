@@ -18,6 +18,7 @@ const meta = {
 	component: N8nDialog,
 	parameters: {
 		docs: {
+			description: { component: 'A modal container for focused tasks and decisions.' },
 			source: { type: 'dynamic' },
 		},
 	},
