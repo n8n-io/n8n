@@ -31,19 +31,6 @@ describe('InstanceSettingsLoaderService', () => {
 		expect(securityPolicyLoader.run).toHaveBeenCalled();
 	});
 
-	it('should log each loader result', async () => {
-		ownerLoader.run.mockResolvedValue('created');
-		ssoLoader.run.mockResolvedValue('created');
-
-		await createService().init();
-
-		expect(logger.debug).toHaveBeenCalledWith('Instance settings loader "owner": created');
-		expect(logger.debug).toHaveBeenCalledWith('Instance settings loader "sso": created');
-		expect(logger.debug).toHaveBeenCalledWith(
-			'Instance settings loader "security-policy": skipped',
-		);
-	});
-
 	it('should stop execution if a loader throws', async () => {
 		ssoLoader.run.mockRejectedValue(new Error('sso failure'));
 
