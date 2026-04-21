@@ -943,6 +943,10 @@ export class InstanceAiService {
 
 	initGateway(userId: string, data: InstanceAiGatewayCapabilities): void {
 		this.gatewayRegistry.initGateway(userId, data);
+		this.telemetry.track('User connected to Computer Use', {
+			user_id: userId,
+			tool_groups: data.toolCategories.filter((c) => c.enabled).map((c) => c.name),
+		});
 	}
 
 	resolveGatewayRequest(
