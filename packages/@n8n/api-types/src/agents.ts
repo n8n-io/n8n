@@ -51,6 +51,9 @@ export interface AgentJsonConfig {
 		};
 		toolCallConcurrency?: number;
 		requireToolApproval?: boolean;
+		nodeTools?: {
+			enabled: boolean;
+		};
 	};
 }
 

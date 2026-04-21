@@ -68,8 +68,6 @@ export class AgentsBuilderService {
 			throw new Error(`Agent "${agentId}" not found`);
 		}
 
-		await this.agentsBuilderToolsService.initialize();
-
 		// The builder is a built-in, system-level agent — it is driven by an
 		// env-var Anthropic key and never uses project credentials. This keeps
 		// the builder usable before any user credential has been configured.
