@@ -24,14 +24,15 @@ vi.mock('@n8n/i18n', () => {
 	const i18n = {
 		baseText: (key: string, opts?: { interpolate?: Record<string, unknown> }) => {
 			if (opts?.interpolate) {
-				const { count } = opts.interpolate as { count?: number };
+				const { count, query } = opts.interpolate as { count?: number; query?: string };
 				if (key === 'agents.tools.availableTools') return `Available tools (${count})`;
 				if (key === 'agents.tools.availableWorkflows') return `Workflows (${count})`;
+				if (key === 'agents.tools.noResults.withQuery') return `No tools match “${query}”`;
 			}
 			const map: Record<string, string> = {
 				'agents.tools.title': 'Tools',
 				'agents.tools.search.placeholder': 'Search tools',
-				'agents.tools.noResults': 'No tools found',
+				'agents.tools.noResults': 'No tools available',
 				'agents.tools.connected': 'Connected',
 				'agents.tools.connect': 'Connect',
 				'agents.tools.configure': 'Configure',
@@ -167,6 +168,7 @@ describe('AgentToolsModal', () => {
 		};
 
 		workflowsListStore.fetchAllWorkflows = vi.fn().mockResolvedValue([]);
+		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([]);
 		// Default: no workflows in the list. Tests opt in by overriding `allWorkflows`.
 		Object.defineProperty(workflowsListStore, 'allWorkflows', {
 			value: [],
@@ -276,12 +278,12 @@ describe('AgentToolsModal', () => {
 		expect(queryByTestId('agent-tools-connected-list')).toBeNull();
 	});
 
-	it('shows an empty state when search matches nothing', async () => {
+	it('shows a query-aware empty state when search matches nothing', async () => {
 		const { queryByTestId, queryByText, container } = renderComponent(defaultProps());
 		await typeInSearch(container, 'zzzzz');
 
 		await waitFor(() => {
-			expect(queryByText('No tools found')).not.toBeNull();
+			expect(queryByText(/No tools match.*zzzzz/)).not.toBeNull();
 			expect(queryByTestId('agent-tools-available-list')).toBeNull();
 		});
 	});
@@ -385,14 +387,23 @@ describe('AgentToolsModal', () => {
 	});
 
 	describe('workflow tools', () => {
-		it('fetches project workflows on open when projectId is provided', () => {
+		it('fetches project workflows on open, pre-filtered to supported trigger types', () => {
 			renderComponent({
 				props: {
 					modalName: MODAL_NAME,
 					data: { tools: [], projectId: 'p-42', onConfirm: vi.fn() },
 				},
 			});
-			expect(workflowsListStore.fetchAllWorkflows).toHaveBeenCalledWith('p-42');
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith({
+				projectId: 'p-42',
+				triggerNodeTypes: expect.arrayContaining([
+					'n8n-nodes-base.executeWorkflowTrigger',
+					'@n8n/n8n-nodes-langchain.chatTrigger',
+					'n8n-nodes-base.manualTrigger',
+					'n8n-nodes-base.scheduleTrigger',
+					'n8n-nodes-base.formTrigger',
+				]),
+			});
 		});
 
 		it('renders a Workflows section with non-archived available workflows', () => {

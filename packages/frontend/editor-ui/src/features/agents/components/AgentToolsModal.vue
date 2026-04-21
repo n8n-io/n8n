@@ -17,7 +17,28 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
-import { NodeConnectionTypes, type INode, type INodeTypeDescription } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	type INode,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
+
+// Keep in sync with `SUPPORTED_TRIGGERS` in
+// `packages/cli/src/modules/agents/tools/workflow-tool-factory.ts`. Workflows
+// without one of these triggers fail backend compatibility validation on save,
+// so filter them out of the Available list up front.
+const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
+	MANUAL_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+];
 import nodePopularity from 'virtual:node-popularity-data';
 
 import AgentToolItem from './AgentToolItem.vue';
@@ -123,14 +144,22 @@ const connectedWorkflowNames = computed(
 
 onMounted(() => {
 	// Fetch on open so the Available list populates with project-scoped workflows.
-	// Failures are non-fatal: the Available list just stays workflow-free.
-	void workflowsListStore.fetchAllWorkflows(props.data.projectId).catch(() => {});
+	// Pre-filter by supported trigger types so users can't pick a workflow that
+	// would fail backend compatibility validation on save. Failures are
+	// non-fatal: the Available list just stays workflow-free.
+	void workflowsListStore
+		.searchWorkflows({
+			projectId: props.data.projectId,
+			triggerNodeTypes: SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
+		})
+		.catch(() => []);
 });
 
 /**
- * Workflows eligible to appear in "Workflows (N)": all non-archived workflows
- * the user has access to, minus any already connected. Trigger / node
- * compatibility is enforced by the backend on save — see
+ * Workflows eligible to appear in "Workflows (N)": non-archived workflows with
+ * a supported trigger (pre-filtered by the server via `triggerNodeTypes`),
+ * minus any already connected. The remaining compatibility check — incompatible
+ * body nodes like Wait / RespondToWebhook — runs on save in
  * `workflow-tool-factory.ts:validateCompatibility`.
  */
 const availableWorkflows = computed<IWorkflowDb[]>(() =>
@@ -449,9 +478,16 @@ function commit() {
 						filteredAvailableWorkflows.length === 0
 					"
 					:class="$style.emptyState"
+					data-test-id="agent-tools-empty-state"
 				>
 					<N8nText color="text-light">
-						{{ i18n.baseText('agents.tools.noResults') }}
+						{{
+							debouncedSearchQuery
+								? i18n.baseText('agents.tools.noResults.withQuery', {
+										interpolate: { query: debouncedSearchQuery },
+									})
+								: i18n.baseText('agents.tools.noResults')
+						}}
 					</N8nText>
 				</div>
 			</div>

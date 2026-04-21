@@ -158,8 +158,12 @@ function scheduleAutosave() {
 				await saveConfig();
 				saveStatus.value = 'saved';
 				telemetry.track('User saved agent settings', { agent_id: agentId.value });
-			} catch {
+			} catch (error) {
 				saveStatus.value = 'idle';
+				// Surface backend validation errors (e.g. incompatible workflow-tool
+				// triggers or body nodes) so the user isn't left wondering why their
+				// edit didn't stick.
+				showError(error, locale.baseText('agents.builder.autosave.error'));
 			} finally {
 				autosaveInFlight = null;
 			}
