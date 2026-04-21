@@ -10,6 +10,7 @@
 // ---------------------------------------------------------------------------
 
 import type { N8nClient } from '../clients/n8n-client';
+import type { EvalLogger } from '../harness/logger';
 
 // ---------------------------------------------------------------------------
 // Config types
@@ -102,6 +103,7 @@ export interface SeedResult {
 export async function seedCredentials(
 	client: N8nClient,
 	requiredTypes?: string[],
+	logger?: EvalLogger,
 ): Promise<SeedResult> {
 	const credentialIds: string[] = [];
 	const seededTypes: string[] = [];
@@ -113,7 +115,7 @@ export async function seedCredentials(
 
 		const token = process.env[config.envVar];
 		if (!token) {
-			console.log(`  Skipping ${config.name}: ${config.envVar} not set`);
+			logger?.verbose(`  Skipping ${config.name}: ${config.envVar} not set`);
 			continue;
 		}
 

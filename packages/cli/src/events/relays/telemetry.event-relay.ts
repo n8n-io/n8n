@@ -122,6 +122,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
+			'workflow-activated': (event) => this.workflowActivated(event),
+			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'server-started': async () => await this.serverStarted(),
 			'session-started': (event) => this.sessionStarted(event),
 			'instance-stopped': () => this.instanceStopped(),
@@ -692,6 +694,7 @@ export class TelemetryEventRelay extends EventRelay {
 		projectId,
 		projectType,
 		uiContext,
+		source = 'ui',
 	}: RelayEventMap['workflow-created']) {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 
@@ -704,6 +707,7 @@ export class TelemetryEventRelay extends EventRelay {
 			project_type: projectType,
 			meta: JSON.stringify(workflow.meta),
 			uiContext,
+			source,
 		});
 	}
 
@@ -735,6 +739,36 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	private workflowActivated({
+		user,
+		workflowId,
+		publicApi,
+		source = 'ui',
+	}: RelayEventMap['workflow-activated']) {
+		this.telemetry.track('User activated workflow', {
+			user_id: user.id,
+			workflow_id: workflowId,
+			public_api: publicApi,
+			source,
+		});
+	}
+
+	private workflowDeactivated({
+		user,
+		workflowId,
+		publicApi,
+		deactivatedVersionId,
+		source = 'ui',
+	}: RelayEventMap['workflow-deactivated']) {
+		this.telemetry.track('User deactivated workflow', {
+			user_id: user.id,
+			workflow_id: workflowId,
+			public_api: publicApi,
+			deactivated_version_id: deactivatedVersionId,
+			source,
+		});
+	}
+
 	private workflowSharingUpdated({
 		workflowId,
 		userIdSharer,
@@ -754,6 +788,7 @@ export class TelemetryEventRelay extends EventRelay {
 		previousWorkflow,
 		aiBuilderAssisted,
 		settingsChanged,
+		source = 'ui',
 	}: RelayEventMap['workflow-saved']) {
 		const isCloudDeployment = this.globalConfig.deployment.type === 'cloud';
 
@@ -833,6 +868,7 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_resolver_id: credentialResolverId,
 			identity_extractor_changed: identityExtractorChanged,
 			redaction_policy: redactionPolicy,
+			source,
 		});
 	}
 
