@@ -7,11 +7,9 @@ import userEvent from '@testing-library/user-event';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRouter } from 'vue-router';
-import type { Workflow } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { nextTick } from 'vue';
-import { mock } from 'vitest-mock-extended';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 
@@ -91,11 +89,6 @@ const mockWorkflow = createTestWorkflow({
 	id: 'test-workflow',
 });
 
-const mockWorkflowObject = mock<Workflow>({
-	id: mockWorkflow.id,
-	getChildNodes: () => ['Parent Node'],
-});
-
 const mockTools = [
 	{
 		name: 'Test Tool',
@@ -134,7 +127,6 @@ describe('FromAiParametersModal', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: mockWorkflow,
-					workflowObject: mockWorkflowObject,
 					workflowExecutionData: mockRunData,
 				},
 			},

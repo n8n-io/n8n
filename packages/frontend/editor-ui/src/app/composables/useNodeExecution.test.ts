@@ -46,9 +46,6 @@ const {
 		chatPartialExecutionDestinationNode: undefined as string | undefined,
 		getNodeByName: vi.fn(),
 		removeTestWebhook: vi.fn(),
-		workflowObject: {
-			getStartNode: vi.fn(),
-		},
 	},
 	mockNodeTypesStore: {
 		getNodeType: vi.fn(),
@@ -207,7 +204,6 @@ describe('useNodeExecution', () => {
 		mockWorkflowDocumentStore.checkIfNodeHasChatParent.mockReturnValue(false);
 		mockWorkflowsStore.removeTestWebhook.mockReset();
 		mockWorkflowsStore.getNodeByName.mockReset();
-		mockWorkflowsStore.workflowObject.getStartNode.mockReset();
 
 		mockNodeHelpers.getNodeInputData.mockReset().mockReturnValue([]);
 		mockWorkflowDocumentStore.getNodeByName.mockReset();
