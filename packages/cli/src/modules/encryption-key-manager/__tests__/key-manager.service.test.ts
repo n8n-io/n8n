@@ -90,6 +90,30 @@ describe('KeyManagerService', () => {
 		});
 	});
 
+	describe('bootstrapLegacyKey()', () => {
+		it('is a no-op when an active key already exists', async () => {
+			repository.findActiveByType.mockResolvedValue(makeKey());
+
+			await Container.get(KeyManagerService).bootstrapLegacyKey('legacy-value');
+
+			expect(repository.findActiveByType).toHaveBeenCalledWith('data_encryption');
+			expect(repository.insertOrIgnore).not.toHaveBeenCalled();
+		});
+
+		it('inserts the legacy CBC key when no active key exists', async () => {
+			repository.findActiveByType.mockResolvedValue(null);
+
+			await Container.get(KeyManagerService).bootstrapLegacyKey('legacy-value');
+
+			expect(repository.insertOrIgnore).toHaveBeenCalledWith({
+				type: 'data_encryption',
+				value: 'legacy-value',
+				status: 'active',
+				algorithm: 'aes-256-cbc',
+			});
+		});
+	});
+
 	describe('addKey()', () => {
 		it('inserts as inactive when setAsActive is not set', async () => {
 			const saved = makeKey({ id: 'new-key', status: 'inactive' });

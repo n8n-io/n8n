@@ -25,6 +25,8 @@ import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { WorkflowObjectAccessors } from '../types';
+import type { IPinData } from 'n8n-workflow';
 
 export {
 	getPinDataSize,
@@ -157,6 +159,21 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentPinData.setPinData({});
 		}
 
+		function getSnapshot(): WorkflowObjectAccessors {
+			return {
+				id: workflowId,
+				connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode.value,
+				pinData: workflowDocumentPinData.pinData.value as IPinData,
+				expression: workflowDocumentExpression.getExpressionHandler(),
+				getNode: workflowDocumentNodes.getNodeByName,
+				getParentNodes: workflowDocumentGraph.getParentNodes,
+				getNodeConnectionIndexes: workflowDocumentGraph.getNodeConnectionIndexes,
+				getParentMainInputNode: workflowDocumentGraph.getParentMainInputNode,
+				getChildNodes: workflowDocumentGraph.getChildNodes,
+				getParentNodesByDepth: workflowDocumentGraph.getParentNodesByDepth,
+			};
+		}
+
 		return {
 			workflowId,
 			workflowVersion,
@@ -182,6 +199,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
 			removeAllNodes,
+			getSnapshot,
 		};
 	})();
 }
