@@ -168,39 +168,10 @@ watch(
 	},
 	{ immediate: true },
 );
-
-// --- Resizable width ---
-const sidebarWidth = ref(480);
-const MIN_WIDTH = 360;
-const MAX_WIDTH = 700;
-
-function onResizeStart(event: MouseEvent) {
-	const startX = event.clientX;
-	const startWidth = sidebarWidth.value;
-
-	function onMouseMove(e: MouseEvent) {
-		const delta = startX - e.clientX;
-		sidebarWidth.value = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth + delta));
-	}
-
-	function onMouseUp() {
-		document.removeEventListener('mousemove', onMouseMove);
-		document.removeEventListener('mouseup', onMouseUp);
-	}
-
-	document.addEventListener('mousemove', onMouseMove);
-	document.addEventListener('mouseup', onMouseUp);
-}
 </script>
 
 <template>
-	<aside
-		:class="$style.sidebar"
-		:style="{ width: `${sidebarWidth}px`, minWidth: `${MIN_WIDTH}px` }"
-	>
-		<!-- Resize handle -->
-		<div :class="$style.resizeHandle" @mousedown="onResizeStart" />
-
+	<aside :class="$style.sidebar">
 		<!-- Sidebar header -->
 		<div :class="$style.header">
 			<N8nText tag="span" bold>{{ locale.baseText('agents.settings.title') }}</N8nText>
@@ -381,25 +352,12 @@ function onResizeStart(event: MouseEvent) {
 <style module>
 .sidebar {
 	position: relative;
+	width: 480px;
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
 	flex-shrink: 0;
-}
-
-.resizeHandle {
-	position: absolute;
-	top: 0;
-	left: -3px;
-	width: 6px;
-	height: 100%;
-	cursor: col-resize;
-	z-index: 5;
-}
-
-.resizeHandle:hover {
-	background-color: var(--color--primary--tint-2);
 }
 
 .header {
