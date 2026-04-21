@@ -10,10 +10,10 @@ name: 'Prepare n8n Docker (reusable)'
 # that shards download and `docker load`.
 #
 # Downstream consumers:
-#   - needs.<this-job>.outputs.distribution  → 'ghcr' | 'artifact'
-#   - needs.<this-job>.outputs.image         → e.g. ghcr.io/n8n-io/n8n:ci-12345 (ghcr mode)
-#   - needs.<this-job>.outputs.runners-image → e.g. ghcr.io/n8n-io/runners:ci-12345 (ghcr mode)
-#   - needs.<this-job>.outputs.artifact-name → e.g. n8n-docker-image-12345 (artifact mode)
+#   - needs.<this-job>.outputs.docker-ref → image ref (ghcr mode) OR artifact name (artifact mode)
+#   - needs.<this-job>.outputs.image-tag  → e.g. ci-12345 (used for GHCR cleanup)
+#
+# Downstream derives mode from the caller's fork context, not from this output.
 
 on:
   workflow_call:
@@ -44,20 +44,11 @@ on:
         default: ''
         type: string
     outputs:
-      distribution:
-        description: "Resolved distribution mode: 'ghcr' or 'artifact'."
-        value: ${{ jobs.prepare.outputs.distribution }}
-      image:
-        description: 'Fully qualified n8n image reference (ghcr mode only).'
-        value: ${{ jobs.prepare.outputs.image }}
-      runners-image:
-        description: 'Fully qualified runners image reference (ghcr mode only).'
-        value: ${{ jobs.prepare.outputs.runners-image }}
-      artifact-name:
-        description: 'Artifact name containing the image tarball (artifact mode only).'
-        value: ${{ jobs.prepare.outputs.artifact-name }}
+      docker-ref:
+        description: 'Image ref (ghcr mode) or artifact name (artifact mode).'
+        value: ${{ jobs.prepare.outputs.docker-ref }}
       image-tag:
-        description: 'Tag applied to both images.'
+        description: 'Tag applied to both images. Used by downstream GHCR cleanup.'
         value: ${{ jobs.prepare.outputs.image-tag }}
 
 jobs:
@@ -71,10 +62,8 @@ jobs:
       packages: write
       contents: read
     outputs:
-      distribution: ${{ steps.resolve.outputs.distribution }}
-      image: ${{ steps.build.outputs.image }}
-      runners-image: ${{ steps.build.outputs.runners-image }}
-      artifact-name: ${{ steps.build.outputs.artifact-name }}
+      # Coalesce: image is set in ghcr mode, artifact-name in artifact mode.
+      docker-ref: ${{ steps.build.outputs.image || steps.build.outputs.artifact-name }}
       image-tag: ${{ steps.resolve.outputs.image-tag }}
     steps:
       - name: Checkout

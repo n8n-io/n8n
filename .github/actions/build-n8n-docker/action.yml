@@ -44,9 +44,6 @@ outputs:
   image:
     description: 'Fully qualified n8n image reference (ghcr mode only; empty for artifact).'
     value: ${{ inputs.distribution == 'ghcr' && format('{0}:{1}', inputs.ghcr-image-base, inputs.image-tag) || '' }}
-  runners-image:
-    description: 'Fully qualified runners image reference (ghcr mode only; empty for artifact).'
-    value: ${{ inputs.distribution == 'ghcr' && format('{0}:{1}', inputs.ghcr-runners-image-base, inputs.image-tag) || '' }}
   artifact-name:
     description: 'Artifact name containing the image tarball (artifact mode only; empty for ghcr).'
     value: ${{ inputs.distribution == 'artifact' && inputs.artifact-name || '' }}

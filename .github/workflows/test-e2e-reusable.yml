@@ -8,7 +8,7 @@ on:
         required: false
         type: string
       test-mode:
-        description: 'Test mode: local (pnpm start from local), docker-build, or docker-pull'
+        description: 'Test mode: local, docker-build, docker-pull, or docker-artifact'
         required: false
         default: 'local'
         type: string
@@ -17,15 +17,15 @@ on:
         required: false
         default: 'pnpm --filter=n8n-playwright test:local'
         type: string
-      shards:
-        description: 'Number of parallel shards'
-        required: false
-        default: 8
-        type: number
       docker-image:
-        description: 'Docker image to use (for docker-pull mode). The runners image is derived automatically from the n8n image.'
+        description: 'Docker image to use (docker-pull mode). Ignored in docker-artifact/docker-build mode (image is loaded as n8nio/n8n:local).'
         required: false
         default: 'n8nio/n8n:nightly'
+        type: string
+      docker-artifact-name:
+        description: 'Artifact name containing the image tarball (docker-artifact mode only). Produced by build-n8n-docker.'
+        required: false
+        default: ''
         type: string
       workers:
         description: 'Number of parallel workers'
@@ -37,11 +37,6 @@ on:
         required: false
         default: 'blacksmith-2vcpu-ubuntu-2204'
         type: string
-      use-custom-orchestration:
-        description: 'Use duration-based custom orchestration instead of Playwright sharding'
-        required: false
-        default: false
-        type: boolean
       timeout-minutes:
         description: 'Job timeout in minutes'
         required: false
@@ -58,9 +53,9 @@ on:
         default: 'LRxcNt'
         type: string
       pre-generated-matrix:
-        description: 'Pre-generated shard matrix JSON (skips matrix job if provided)'
+        description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own (see test-e2e-ci-reusable.yml prepare-matrix).'
         required: false
-        default: ''
+        default: '[{"shard":1,"images":""}]'
         type: string
       n8n-env:
         description: 'JSON string of n8n env vars to inject into test containers, e.g. {"N8N_EXPRESSION_ENGINE":"vm"}'
@@ -73,35 +68,14 @@ env:
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
   # Browser cache location - must match install-browsers script
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
-  TEST_IMAGE_N8N: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
+  # docker-build + docker-artifact both produce the image locally as n8nio/n8n:local.
+  TEST_IMAGE_N8N: ${{ (inputs.test-mode == 'docker-build' || inputs.test-mode == 'docker-artifact') && 'n8nio/n8n:local' || inputs.docker-image }}
   N8N_SKIP_LICENSES: 'true'
   CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
   CURRENTS_PROJECT_ID: ${{ inputs.currents-project-id }}
 
 jobs:
-  matrix:
-    if: ${{ inputs.pre-generated-matrix == '' }}
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
-    outputs:
-      matrix: ${{ steps.generate.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ inputs.branch || github.ref }}
-          fetch-depth: 1
-
-      - name: Setup Environment
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
-
-      - name: Generate shard matrix
-        id: generate
-        run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix ${{ inputs.shards }} ${{ inputs.use-custom-orchestration && '--orchestrate' || '' }})" >> "$GITHUB_OUTPUT"
-
   test:
-    needs: matrix
-    if: ${{ !cancelled() }}
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
@@ -110,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.pre-generated-matrix || needs.matrix.outputs.matrix) }}
+        include: ${{ fromJSON(inputs.pre-generated-matrix) }}
     name: Shard ${{ matrix.shard }}
 
     steps:
@@ -141,6 +115,12 @@ jobs:
         if: ${{ inputs.test-mode == 'docker-pull' }}
         uses: ./.github/actions/docker-registry-login
 
+      - name: Load n8n image from artifact
+        if: ${{ inputs.test-mode == 'docker-artifact' }}
+        uses: ./.github/actions/load-n8n-docker
+        with:
+          artifact-name: ${{ inputs.docker-artifact-name }}
+
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
         run: npx tsx packages/testing/containers/pull-test-images.ts ${{ matrix.images }} || true
@@ -149,7 +129,7 @@ jobs:
         # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
         run: ${{ inputs.test-command }} --workers=${{ env.PLAYWRIGHT_WORKERS }} ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
         env:
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          CURRENTS_RECORD_KEY: ${{ vars.CURRENTS_RECORD_VAR }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}

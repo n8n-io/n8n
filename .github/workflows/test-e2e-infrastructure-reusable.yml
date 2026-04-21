@@ -33,7 +33,6 @@ jobs:
     with:
       test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:all --project='${{ matrix.profile }}:infrastructure' --workers=1
-      shards: 1
       runner: ${{ matrix.runner }}
       timeout-minutes: 60
     secrets: inherit

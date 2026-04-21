@@ -16,9 +16,6 @@ on:
       ENCRYPTION_KEY:
         description: 'Encryption key for n8n operations.'
         required: true
-      CURRENTS_RECORD_KEY:
-        description: 'Currents record key for uploading test results.'
-        required: true
 
 env:
   NODE_OPTIONS: --max-old-space-size=3072
@@ -44,12 +41,12 @@ jobs:
       - name: Run Workflow Tests
         run: pnpm --filter=n8n-playwright test:workflows --workers 4
         env:
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          CURRENTS_RECORD_KEY: ${{ vars.CURRENTS_RECORD_VAR }}
           CURRENTS_PROJECT_ID: 'mpLFH9'
 
       - name: Run Workflow Schema Tests
         if: ${{ inputs.compare_schemas == 'true' }}
         run: pnpm --filter=n8n-playwright test:workflows:schema
         env:
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          CURRENTS_RECORD_KEY: ${{ vars.CURRENTS_RECORD_VAR }}
           CURRENTS_PROJECT_ID: 'mpLFH9'
