@@ -114,6 +114,9 @@ export type { SqliteMemoryConfig } from './storage/sqlite-memory';
 export { PostgresMemory } from './storage/postgres-memory';
 export type { PostgresMemoryConfig } from './storage/postgres-memory';
 
+export { createModel } from './runtime/model-factory';
+export { generateTitleFromMessage } from './runtime/title-generation';
+
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
 export { BaseSandbox } from './workspace';

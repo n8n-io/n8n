@@ -47,7 +47,7 @@ import {
 	startResearchAgentTask,
 	streamAgentRun,
 	truncateToTitle,
-	generateThreadTitle,
+	generateTitleForRun,
 	patchThread,
 	type ConfirmationData,
 	type DomainAccessTracker,
@@ -2466,7 +2466,7 @@ export class InstanceAiService {
 					? firstUserMsg.content
 					: JSON.stringify(firstUserMsg.content);
 
-			const llmTitle = await generateThreadTitle(modelId, userText);
+			const llmTitle = await generateTitleForRun(modelId, userText);
 			if (!llmTitle) return;
 
 			await patchThread(memory, {

@@ -283,6 +283,135 @@ describe('InstanceAiWorkflowSetup', () => {
 		});
 	});
 
+	describe('handleContinue in wizard mode', () => {
+		it('advances to the next step without applying when more steps remain', async () => {
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [
+					{ id: 'cred-1', name: 'Slack' },
+					{ id: 'cred-2', name: 'Slack 2' },
+				]),
+				makeSetupNodeWithCredentials('githubApi', [
+					{ id: 'cred-3', name: 'GitHub' },
+					{ id: 'cred-4', name: 'GitHub 2' },
+				]),
+				makeSetupNodeWithCredentials('notionApi', [
+					{ id: 'cred-5', name: 'Notion' },
+					{ id: 'cred-6', name: 'Notion 2' },
+				]),
+			];
+
+			const { getByTestId, getByText } = await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			expect(getByText('1 of 3')).toBeTruthy();
+
+			// Select a credential on step 1 — card becomes complete and auto-advances to step 2
+			await userEvent.click(getByTestId('credential-picker'));
+			expect(getByText('2 of 3')).toBeTruthy();
+
+			// Continue is enabled because card 1 is complete; clicking it should advance to step 3
+			await userEvent.click(getByTestId('instance-ai-workflow-setup-apply-button'));
+
+			expect(getByText('3 of 3')).toBeTruthy();
+			expect(confirmSpy).not.toHaveBeenCalled();
+		});
+
+		it('applies the setup when clicking Continue on the last step', async () => {
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+			vi.spyOn(store, 'findToolCallByRequestId').mockReturnValue({
+				toolCallId: 'tc-1',
+				toolName: 'test',
+				args: {},
+				isLoading: false,
+				result: { success: true, partial: false, updatedNodes: [] },
+			});
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [
+					{ id: 'cred-1', name: 'Slack' },
+					{ id: 'cred-2', name: 'Slack 2' },
+				]),
+			];
+
+			const { getByTestId } = await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// Single step — select a credential then click Continue
+			await userEvent.click(getByTestId('credential-picker'));
+			await userEvent.click(getByTestId('instance-ai-workflow-setup-apply-button'));
+
+			expect(confirmSpy).toHaveBeenCalledWith(
+				'req-1',
+				true,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				expect.objectContaining({ action: 'apply' }),
+			);
+		});
+	});
+
+	describe('handleContinue in confirm mode (allPreResolved)', () => {
+		it('applies the setup directly without advancing', async () => {
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+			vi.spyOn(store, 'findToolCallByRequestId').mockReturnValue({
+				toolCallId: 'tc-1',
+				toolName: 'test',
+				args: {},
+				isLoading: false,
+				result: { success: true, partial: false, updatedNodes: [] },
+			});
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack' }], {
+					needsAction: false,
+				}),
+				makeSetupNodeWithCredentials('githubApi', [{ id: 'cred-2', name: 'GitHub' }], {
+					needsAction: false,
+				}),
+			];
+
+			const { getByTestId } = await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// Confirm card shows Continue button — clicking it applies everything
+			await userEvent.click(getByTestId('instance-ai-workflow-setup-apply-button'));
+
+			expect(confirmSpy).toHaveBeenCalledWith(
+				'req-1',
+				true,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				expect.objectContaining({ action: 'apply' }),
+			);
+		});
+	});
+
 	describe('handleLater in confirm mode (allPreResolved)', () => {
 		it('defers the whole setup when all items are pre-resolved', async () => {
 			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);

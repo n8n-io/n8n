@@ -250,6 +250,15 @@ export function useSetupActions(deps: {
 		}
 	}
 
+	async function handleContinue() {
+		if ((!deps.allPreResolved.value || deps.showFullWizard.value) && !deps.isNextDisabled.value) {
+			deps.goToNext();
+			return;
+		}
+
+		await handleApply();
+	}
+
 	async function handleLater() {
 		if (!deps.allPreResolved.value || deps.showFullWizard.value) {
 			const dc = deps.currentDisplayCard.value;
@@ -336,6 +345,7 @@ export function useSetupActions(deps: {
 		isApplying,
 		applyError,
 		handleApply,
+		handleContinue,
 		handleLater,
 		handleTestTrigger,
 		onCredentialSelected,
