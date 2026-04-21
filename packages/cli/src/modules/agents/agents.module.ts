@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -11,6 +12,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsService } = await import('./agents.service');
 		Container.get(AgentsService);
 
+		const { AgentExecutionService } = await import('./agent-execution.service');
+		Container.get(AgentExecutionService);
+
 		const { AgentPublishedVersionRepository } = await import(
 			'./repositories/agent-published-version.repository'
 		);
@@ -20,6 +24,20 @@ export class AgentsModule implements ModuleInterface {
 		// created on first use, so this import has negligible startup cost).
 		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime');
 		Container.get(AgentSecureRuntime);
+
+		// Populate the integration registry with supported chat platforms.
+		// Adding a new platform is adding one subclass + one register() call.
+		const { ChatIntegrationRegistry } = await import('./integrations/agent-chat-integration');
+		const { SlackIntegration } = await import('./integrations/platforms/slack-integration');
+		const { TelegramIntegration } = await import('./integrations/platforms/telegram-integration');
+		const registry = Container.get(ChatIntegrationRegistry);
+		registry.register(Container.get(SlackIntegration));
+		registry.register(Container.get(TelegramIntegration));
+
+		// Warm the node catalog so the agent runtime can attach search/execute tools
+		// synchronously on each agent reconstruction. The underlying init is idempotent.
+		const { NodeCatalogService } = await import('@/node-catalog');
+		await Container.get(NodeCatalogService).initialize();
 
 		// Register Chat integration service and reconnect active integrations
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
@@ -34,8 +52,10 @@ export class AgentsModule implements ModuleInterface {
 
 	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
 	async settings() {
+		const config = Container.get(AgentsConfig);
 		return {
 			enabled: true,
+			modules: [...config.modules],
 		};
 	}
 
@@ -45,6 +65,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity');
+		const { ExecutionThread } = await import('./entities/execution-thread.entity');
 		const { AgentPublishedVersion } = await import('./entities/agent-published-version.entity');
 
 		return [
@@ -53,6 +74,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentResourceEntity,
 			AgentThreadEntity,
 			AgentMessageEntity,
+			ExecutionThread,
 			AgentPublishedVersion,
 		];
 	}

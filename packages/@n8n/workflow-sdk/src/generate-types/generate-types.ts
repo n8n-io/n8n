@@ -717,11 +717,15 @@ function mapNestedPropertyTypeInner(
 	}
 
 	switch (prop.type) {
-		case 'string':
+		case 'string': {
+			if (prop.typeOptions?.multipleValues === true) {
+				return 'string[] | Expression<string>';
+			}
 			if (prop.builderHint?.placeholderSupported === false) {
 				return 'string | Expression<string>';
 			}
 			return 'string | Expression<string> | PlaceholderValue';
+		}
 		case 'number':
 			return 'number | Expression<number>';
 		case 'boolean':
@@ -1169,11 +1173,15 @@ function mapPropertyTypeInner(
 	}
 
 	switch (prop.type) {
-		case 'string':
+		case 'string': {
+			if (prop.typeOptions?.multipleValues === true) {
+				return 'string[] | Expression<string>';
+			}
 			if (prop.builderHint?.placeholderSupported === false) {
 				return 'string | Expression<string>';
 			}
 			return 'string | Expression<string> | PlaceholderValue';
+		}
 
 		case 'number':
 			return 'number | Expression<number>';

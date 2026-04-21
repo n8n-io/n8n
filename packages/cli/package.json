@@ -101,6 +101,7 @@
     "@azure/keyvault-secrets": "4.8.0",
     "@chat-adapter/slack": "^4.20.2",
     "@chat-adapter/state-memory": "^4.20.2",
+    "@chat-adapter/telegram": "^4.20.2",
     "@google-cloud/secret-manager": "5.6.0",
     "@modelcontextprotocol/sdk": "1.26.0",
     "@n8n/agents": "workspace:*",

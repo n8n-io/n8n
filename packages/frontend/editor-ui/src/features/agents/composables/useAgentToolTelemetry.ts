@@ -1,4 +1,5 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import type { GenericValue } from 'n8n-workflow';
 
 import type { AgentJsonToolRef } from '../types';
 
@@ -20,7 +21,7 @@ function toolTypeOf(ref: AgentJsonToolRef): ToolType {
 }
 
 /** Identifier payload — node_type for node tools, workflow name for workflow tools. */
-function identityProps(ref: AgentJsonToolRef): Record<string, unknown> {
+function identityProps(ref: AgentJsonToolRef): Record<string, GenericValue> {
 	if (ref.type === 'node') {
 		return { node_type: ref.node?.nodeType };
 	}
@@ -33,7 +34,7 @@ function identityProps(ref: AgentJsonToolRef): Record<string, unknown> {
 export function useAgentToolTelemetry(agentId?: string) {
 	const telemetry = useTelemetry();
 
-	function withAgent(props: Record<string, unknown>): Record<string, unknown> {
+	function withAgent(props: Record<string, GenericValue>): Record<string, GenericValue> {
 		return agentId ? { ...props, agent_id: agentId } : props;
 	}
 

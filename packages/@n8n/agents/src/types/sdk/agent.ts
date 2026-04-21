@@ -93,6 +93,10 @@ export type StreamChunk = ContentMetadata &
 				/** JSON Schema describing the shape of data to send when resuming. */
 				resumeSchema?: JsonSchema7Type;
 		  }
+		| {
+				type: 'working-memory-update';
+				content: string;
+		  }
 	);
 
 export interface RunOptions {
