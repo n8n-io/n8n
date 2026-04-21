@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { shallowRef } from 'vue';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
 
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
@@ -120,10 +120,6 @@ const renderNodeSettings = (runData?: IRunData) => {
 };
 
 describe('NodeSettings', () => {
-	// Regression: the NDV used to open with `openPanel = 'output'` in read-only
-	// mode when the active node had execution data, but nothing in the template
-	// handles that value — the center panel rendered with no active tab and no
-	// content. See https://linear.app/n8n/issue/INS-23.
 	it('defaults to the Parameters tab when read-only and the active node has execution data', async () => {
 		const runData: IRunData = {
 			[httpNode.name]: [
@@ -145,12 +141,23 @@ describe('NodeSettings', () => {
 		});
 	});
 
-	it('defaults to the Parameters tab when the active node has no execution data', async () => {
+	it('switches to the Settings tab when the user clicks it', async () => {
 		const { findByTestId } = renderNodeSettings();
 
 		const paramsTab = await findByTestId('tab-params');
+		const settingsTab = await findByTestId('tab-settings');
+
 		await waitFor(() => {
 			expect(paramsTab.querySelector('.tab')?.className).toContain('activeTab');
+		});
+
+		const settingsTabClickable = settingsTab.querySelector<HTMLElement>('.tab');
+		expect(settingsTabClickable).not.toBeNull();
+		await fireEvent.click(settingsTabClickable!);
+
+		await waitFor(() => {
+			expect(settingsTab.querySelector('.tab')?.className).toContain('activeTab');
+			expect(paramsTab.querySelector('.tab')?.className).not.toContain('activeTab');
 		});
 	});
 });
