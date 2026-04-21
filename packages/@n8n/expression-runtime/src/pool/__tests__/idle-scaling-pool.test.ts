@@ -367,4 +367,49 @@ describe('IdleScalingPool', () => {
 		expect(bridge).toBeDefined();
 		await pool.dispose();
 	});
+
+	it('should not clobber a concurrent scale-up when scale-down finishes', async () => {
+		const oldBridge = createMockBridge();
+		let resolveOldDispose: (() => void) | null = null;
+		vi.mocked(oldBridge.dispose).mockImplementation(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveOldDispose = resolve;
+				}),
+		);
+
+		const newBridge = createMockBridge();
+		let call = 0;
+		const factory = vi.fn().mockImplementation(async () => {
+			call++;
+			if (call === 1) return oldBridge;
+			if (call === 2) return newBridge;
+			return createMockBridge();
+		});
+
+		const pool = new IdleScalingPool(factory, 1, IDLE_TIMEOUT_MS);
+		await pool.initialize();
+		await flushMicrotasks();
+
+		// Trigger scale-down — oldBridge.dispose hangs until we resolve it
+		vi.advanceTimersByTime(IDLE_TIMEOUT_MS);
+		await flushMicrotasks();
+		expect(oldBridge.dispose).toHaveBeenCalled();
+		expect(resolveOldDispose).not.toBeNull();
+
+		// Acquire during scale-down triggers a concurrent scale-up
+		expect(() => pool.acquire()).toThrow(PoolExhaustedError);
+		await flushMicrotasks();
+
+		// Let scale-down finish — its .finally must not clobber the new inner pool
+		resolveOldDispose!();
+		await flushMicrotasks();
+		await pool.waitForReplenishment();
+
+		// New pool should still be serving
+		const bridge = pool.acquire();
+		expect(bridge).toBe(newBridge);
+
+		await pool.dispose();
+	});
 });
