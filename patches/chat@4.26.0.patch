@@ -1,0 +1,28 @@
+diff --git a/dist/chunk-OPV5U4WG.js b/dist/chunk-OPV5U4WG.js
+index ca9feb680d6de83b9c8b3e3df5cfc92418067999..152b6485265b07185243be88a8f6b7676bead120 100644
+--- a/dist/chunk-OPV5U4WG.js
++++ b/dist/chunk-OPV5U4WG.js
+@@ -280,7 +280,11 @@ var BaseFormatConverter = class {
+         parts.push(text2);
+       }
+     }
+-    return parts.join("\n");
++    // [N8N-PATCH] Separate card parts (title, subtitle, sections, fields) with
++    // blank lines — CommonMark soft breaks otherwise cause `**markers**` from
++    // adjacent parts to pair across parts, yielding nonsensical nested
++    // emphasis when the text is run through a markdown parser.
++    return parts.join("\n\n");
+   }
+   /**
+    * Convert card child element to fallback text.
+@@ -557,7 +561,9 @@ function cardToFallbackText(card) {
+       parts.push(text2);
+     }
+   }
+-  return parts.join("\n");
++  // [N8N-PATCH] Separate card parts with blank lines — single `\n` was causing
++  // adjacent `**markers**` to pair across parts when parsed as CommonMark.
++  return parts.join("\n\n");
+ }
+ function cardChildToFallbackText(child) {
+   switch (child.type) {

@@ -182,7 +182,9 @@
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
-      "assert@2.1.0": "patches/assert@2.1.0.patch"
+      "assert@2.1.0": "patches/assert@2.1.0.patch",
+      "@chat-adapter/telegram@4.26.0": "patches/@chat-adapter__telegram@4.26.0.patch",
+      "chat@4.26.0": "patches/chat@4.26.0.patch"
     }
   }
 }

@@ -418,6 +418,9 @@ overrides:
   avsc: 5.7.9
 
 patchedDependencies:
+  '@chat-adapter/telegram@4.26.0':
+    hash: 6663abcae75f19dd460f0ea24ebecdad4feaa926be54087c0c203211c6226a7a
+    path: patches/@chat-adapter__telegram@4.26.0.patch
   '@lezer/highlight':
     hash: 97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c
     path: patches/@lezer__highlight.patch
@@ -436,6 +439,9 @@ patchedDependencies:
   bull@4.16.4:
     hash: a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42
     path: patches/bull@4.16.4.patch
+  chat@4.26.0:
+    hash: b5d70f5e21b01b9706f8afced50c0e945a0bac7f916d2d85cb2155779901dc06
+    path: patches/chat@4.26.0.patch
   element-plus@2.4.3:
     hash: 3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff8c10661
     path: patches/element-plus@2.4.3.patch
@@ -2399,7 +2405,7 @@ importers:
         version: 4.26.0
       '@chat-adapter/telegram':
         specifier: ^4.26.0
-        version: 4.26.0
+        version: 4.26.0(patch_hash=6663abcae75f19dd460f0ea24ebecdad4feaa926be54087c0c203211c6226a7a)
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)
@@ -2528,7 +2534,7 @@ importers:
         version: 4.1.2
       chat:
         specifier: ^4.26.0
-        version: 4.26.0
+        version: 4.26.0(patch_hash=b5d70f5e21b01b9706f8afced50c0e945a0bac7f916d2d85cb2155779901dc06)
       class-transformer:
         specifier: 0.5.1
         version: 0.5.1
@@ -25575,7 +25581,7 @@ snapshots:
 
   '@chat-adapter/shared@4.26.0':
     dependencies:
-      chat: 4.26.0
+      chat: 4.26.0(patch_hash=b5d70f5e21b01b9706f8afced50c0e945a0bac7f916d2d85cb2155779901dc06)
     transitivePeerDependencies:
       - supports-color
 
@@ -25583,21 +25589,21 @@ snapshots:
     dependencies:
       '@chat-adapter/shared': 4.26.0
       '@slack/web-api': 7.15.0
-      chat: 4.26.0
+      chat: 4.26.0(patch_hash=b5d70f5e21b01b9706f8afced50c0e945a0bac7f916d2d85cb2155779901dc06)
     transitivePeerDependencies:
       - debug
       - supports-color
 
   '@chat-adapter/state-memory@4.26.0':
     dependencies:
-      chat: 4.26.0
+      chat: 4.26.0(patch_hash=b5d70f5e21b01b9706f8afced50c0e945a0bac7f916d2d85cb2155779901dc06)
     transitivePeerDependencies:
       - supports-color
 
-  '@chat-adapter/telegram@4.26.0':
+  '@chat-adapter/telegram@4.26.0(patch_hash=6663abcae75f19dd460f0ea24ebecdad4feaa926be54087c0c203211c6226a7a)':
     dependencies:
       '@chat-adapter/shared': 4.26.0
-      chat: 4.26.0
+      chat: 4.26.0(patch_hash=b5d70f5e21b01b9706f8afced50c0e945a0bac7f916d2d85cb2155779901dc06)
     transitivePeerDependencies:
       - supports-color
 
@@ -33967,7 +33973,7 @@ snapshots:
     dependencies:
       '@kurkle/color': 0.3.2
 
-  chat@4.26.0:
+  chat@4.26.0(patch_hash=b5d70f5e21b01b9706f8afced50c0e945a0bac7f916d2d85cb2155779901dc06):
     dependencies:
       '@workflow/serde': 4.1.0-beta.2
       mdast-util-to-string: 4.0.0

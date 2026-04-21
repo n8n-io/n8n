@@ -1,0 +1,229 @@
+diff --git a/dist/index.js b/dist/index.js
+index 98101e0668edfa6f5e57f934e4dd366338e4d272..46d8e568571efaa9cb2648480b398869c18b707a 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -119,6 +119,105 @@ import {
+   tableToAscii,
+   walkAst
+ } from "chat";
++// [N8N-PATCH] Escape literal characters for Telegram MarkdownV2. Every one
++// of `_ * [ ] ( ) ~ ` > # + - = | { } . ! \\` must be backslash-escaped when
++// it appears as a literal (not as an entity marker).
++var V2_SPECIAL_CHARS = /([_*\[\]()~`>#+\-=|{}.!\\])/g;
++function escapeV2Text(text) {
++  return String(text).replace(V2_SPECIAL_CHARS, "\\$1");
++}
++// Inside inline/block code, only backtick and backslash need escaping.
++var V2_CODE_SPECIAL = /([`\\])/g;
++function escapeV2Code(text) {
++  return String(text).replace(V2_CODE_SPECIAL, "\\$1");
++}
++// Inside link URL, only `)` and `\\` need escaping.
++var V2_LINK_URL_SPECIAL = /([)\\])/g;
++function escapeV2LinkUrl(url) {
++  return String(url).replace(V2_LINK_URL_SPECIAL, "\\$1");
++}
++
++// [N8N-PATCH] Custom mdast → MarkdownV2 serializer. The chat SDK's
++// `stringifyMarkdown` emits CommonMark (`**bold**`, `~~strike~~`, raw literal
++// text); MarkdownV2 uses single-char markers and requires escaped literals.
++function stringifyMarkdownV2(ast) {
++  return serializeV2Node(ast).replace(/\n{3,}/g, "\n\n").trim();
++}
++function serializeV2Children(children) {
++  return (children || []).map(serializeV2Node).join("");
++}
++function serializeV2Node(node) {
++  if (!node || typeof node !== "object") return "";
++  switch (node.type) {
++    case "root":
++      return serializeV2Children(node.children);
++    case "paragraph":
++      return serializeV2Children(node.children) + "\n\n";
++    case "text":
++      return escapeV2Text(node.value || "");
++    case "strong":
++      return "*" + serializeV2Children(node.children) + "*";
++    case "emphasis":
++      return "_" + serializeV2Children(node.children) + "_";
++    case "delete":
++      return "~" + serializeV2Children(node.children) + "~";
++    case "inlineCode":
++      return "`" + escapeV2Code(node.value || "") + "`";
++    case "code":
++      // Block code — preserve language hint; escape backticks/backslashes.
++      return "```" + (node.lang || "") + "\n" + escapeV2Code(node.value || "") + "\n```\n\n";
++    case "link": {
++      const inner = serializeV2Children(node.children);
++      return "[" + inner + "](" + escapeV2LinkUrl(node.url || "") + ")";
++    }
++    case "break":
++      return "\n";
++    case "list": {
++      const ordered = !!node.ordered;
++      let counter = typeof node.start === "number" ? node.start : 1;
++      const lines = [];
++      for (const item of node.children || []) {
++        if (!item || item.type !== "listItem") continue;
++        const marker = ordered ? String(counter++) + "\\. " : "• ";
++        // Serialize item children (paragraphs etc.) and prefix first line.
++        const itemText = serializeV2Children(item.children).replace(/\n+$/, "");
++        lines.push(marker + itemText.split("\n")[0]);
++        // Append any wrapped extra lines as continuation.
++        const extra = itemText.split("\n").slice(1);
++        for (const line of extra) lines.push(line);
++      }
++      return lines.join("\n") + "\n\n";
++    }
++    case "listItem":
++      // Handled by list; fall through to children as fallback.
++      return serializeV2Children(node.children);
++    case "blockquote": {
++      // MarkdownV2 supports blockquotes via `>` line prefix — one `>` per line.
++      // Our walkAst normally rewrites these to emphasis; this branch is a
++      // fallback if the walker didn't transform (shouldn't fire in practice).
++      const inner = serializeV2Children(node.children).replace(/\n+$/, "");
++      return inner
++        .split("\n")
++        .map((line) => ">" + line)
++        .join("\n") + "\n\n";
++    }
++    case "image": {
++      // MarkdownV2 has no image syntax for messages; degrade to a link.
++      const alt = escapeV2Text(node.alt || "image");
++      return "[" + alt + "](" + escapeV2LinkUrl(node.url || "") + ")";
++    }
++    case "html":
++      // mdast's `html` is raw HTML; safest is to drop it.
++      return "";
++    case "thematicBreak":
++      return "";
++    default:
++      if (Array.isArray(node.children)) return serializeV2Children(node.children);
++      if (typeof node.value === "string") return escapeV2Text(node.value);
++      return "";
++  }
++}
++
+ var TelegramFormatConverter = class extends BaseFormatConverter {
+   fromAst(ast) {
+     const transformed = walkAst(structuredClone(ast), (node) => {
+@@ -129,9 +228,34 @@ var TelegramFormatConverter = class extends BaseFormatConverter {
+           lang: void 0
+         };
+       }
++      // [N8N-PATCH] Telegram legacy Markdown has no heading syntax. Its parser
++      // interprets stray `#` characters unpredictably and the Telegram client
++      // auto-hashtags `#word` regardless of parse_mode. Convert headings into
++      // bold paragraphs so the intent survives.
++      if (node.type === "heading") {
++        return {
++          type: "paragraph",
++          children: [{ type: "strong", children: node.children || [] }]
++        };
++      }
++      // [N8N-PATCH] Thematic breaks (`---`, `***`, `___`) are not a Telegram
++      // entity; `***` in particular gets parsed as an unclosed bold-italic
++      // marker. Drop them — the stringifier emits an empty paragraph, leaving
++      // neighbouring paragraphs visibly separated by the blank line.
++      if (node.type === "thematicBreak") {
++        return {
++          type: "paragraph",
++          children: [{ type: "text", value: "" }]
++        };
++      }
++      // [N8N-PATCH] MarkdownV2 supports native blockquotes via `>` line prefix —
++      // let `stringifyMarkdownV2` handle them directly. (Previously we rewrote
++      // blockquote into nested emphasis, which could emit `__` when the first
++      // child was itself an emphasis node and V2 parsed it as underline.)
+       return node;
+     });
+-    return stringifyMarkdown(transformed).trim();
++    // [N8N-PATCH] Swapped CommonMark stringifier for a MarkdownV2-aware one.
++    return stringifyMarkdownV2(transformed);
+   }
+   toAst(text) {
+     return parseMarkdown(text);
+@@ -159,7 +283,13 @@ var TELEGRAM_MESSAGE_LIMIT = 4096;
+ var TELEGRAM_CAPTION_LIMIT = 1024;
+ var TELEGRAM_SECRET_TOKEN_HEADER = "x-telegram-bot-api-secret-token";
+ var MESSAGE_ID_PATTERN = /^([^:]+):(\d+)$/;
+-var TELEGRAM_MARKDOWN_PARSE_MODE = "Markdown";
++// [N8N-PATCH] Upgraded from legacy "Markdown" to "MarkdownV2". Paired with
++// the custom stringifyMarkdownV2 in TelegramFormatConverter.fromAst — legacy
++// chokes on CommonMark block syntax (headings, HR, tables) and on `**bold**`
++// double-asterisks, V2 is strict about escaping but supports a richer set of
++// entities (block quotes, underline, spoiler) and is what the Bot API docs
++// now recommend.
++var TELEGRAM_MARKDOWN_PARSE_MODE = "MarkdownV2";
+ var trimTrailingSlashes = (url) => {
+   let end = url.length;
+   while (end > 0 && url[end - 1] === "/") {
+@@ -598,12 +728,15 @@ var TelegramAdapter = class {
+     const card = extractCard(message);
+     const replyMarkup = card ? cardToTelegramInlineKeyboard(card) : void 0;
+     const parseMode = this.resolveParseMode(message, card);
+-    const text = this.truncateMessage(
+-      convertEmojiPlaceholders2(
+-        card ? cardToFallbackText(card) : this.formatConverter.renderPostable(message),
+-        "gchat"
+-      )
+-    );
++    // [N8N-PATCH] When a card is attached, `cardToFallbackText` emits plain
++    // CommonMark (`**bold**`, unescaped `!`, `---`, etc.). Our V2 parse mode
++    // would reject that. Run the fallback text through `fromMarkdown` so it
++    // goes through the same V2 escaping + marker conversion as regular
++    // messages (fromMarkdown → parseMarkdown → fromAst → stringifyMarkdownV2).
++    const rawText = card
++      ? this.formatConverter.fromMarkdown(cardToFallbackText(card))
++      : this.formatConverter.renderPostable(message);
++    const text = this.truncateMessage(convertEmojiPlaceholders2(rawText, "gchat"));
+     const files = extractFiles(message);
+     if (files.length > 1) {
+       throw new ValidationError2(
+@@ -664,12 +797,15 @@ var TelegramAdapter = class {
+     const card = extractCard(message);
+     const replyMarkup = card ? cardToTelegramInlineKeyboard(card) : void 0;
+     const parseMode = this.resolveParseMode(message, card);
+-    const text = this.truncateMessage(
+-      convertEmojiPlaceholders2(
+-        card ? cardToFallbackText(card) : this.formatConverter.renderPostable(message),
+-        "gchat"
+-      )
+-    );
++    // [N8N-PATCH] When a card is attached, `cardToFallbackText` emits plain
++    // CommonMark (`**bold**`, unescaped `!`, `---`, etc.). Our V2 parse mode
++    // would reject that. Run the fallback text through `fromMarkdown` so it
++    // goes through the same V2 escaping + marker conversion as regular
++    // messages (fromMarkdown → parseMarkdown → fromAst → stringifyMarkdownV2).
++    const rawText = card
++      ? this.formatConverter.fromMarkdown(cardToFallbackText(card))
++      : this.formatConverter.renderPostable(message);
++    const text = this.truncateMessage(convertEmojiPlaceholders2(rawText, "gchat"));
+     if (!text.trim()) {
+       throw new ValidationError2("telegram", "Message text cannot be empty");
+     }
+@@ -1233,7 +1369,22 @@ var TelegramAdapter = class {
+     if (text.length <= TELEGRAM_MESSAGE_LIMIT) {
+       return text;
+     }
+-    return `${text.slice(0, TELEGRAM_MESSAGE_LIMIT - 3)}...`;
++    // [N8N-PATCH] Telegram's 4096-char message limit bites agent replies hard.
++    // A blunt `slice` can land inside a link URL (`[text](url` with no `)`)
++    // or an open code fence, which then fails MarkdownV2 entity parsing.
++    // Back off to the nearest safe boundary (newline, then space) within a
++    // 512-char lookback window, so truncation never falls mid-entity.
++    const hardLimit = TELEGRAM_MESSAGE_LIMIT - 3;
++    const cutoff = hardLimit;
++    const lookbackWindow = 512;
++    const earliestBackoff = Math.max(0, cutoff - lookbackWindow);
++    let safeCut = text.lastIndexOf("\n", cutoff);
++    if (safeCut < earliestBackoff) safeCut = -1;
++    if (safeCut < 0) {
++      const spaceCut = text.lastIndexOf(" ", cutoff);
++      safeCut = spaceCut >= earliestBackoff ? spaceCut : cutoff;
++    }
++    return `${text.slice(0, safeCut).trimEnd()}\n…`;
+   }
+   truncateCaption(text) {
+     if (text.length <= TELEGRAM_CAPTION_LIMIT) {
