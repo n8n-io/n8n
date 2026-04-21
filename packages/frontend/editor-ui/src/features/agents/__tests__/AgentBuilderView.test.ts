@@ -78,10 +78,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 	});
 
 	async function renderView() {
-		// Import eagerly at call time: by the time the first test runs the
-		// module has already been compiled (transform happens outside the
-		// per-test timeout), so the first render doesn't eat the 5s budget.
-		const { default: AgentBuilderView } = AgentBuilderViewModule;
+		const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 		const wrapper = mount(AgentBuilderView, {
 			global: {
 				stubs: {
