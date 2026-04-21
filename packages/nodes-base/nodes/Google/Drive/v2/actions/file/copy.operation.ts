@@ -88,7 +88,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const options = this.getNodeParameter('options', i, {});
 
 	let name = this.getNodeParameter('name', i) as string;
-	name = name ? name : `Copy of ${file.cachedResultName}`;
+	if (!name) {
+		const originalName =
+			file.cachedResultName ??
+			((
+				await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, {
+					fields: 'name',
+					supportsAllDrives: true,
+				})
+			) as IDataObject).name as string;
+		name = `Copy of ${originalName}`;
+	}
 
 	const copyRequiresWriterPermission = options.copyRequiresWriterPermission || false;
 
