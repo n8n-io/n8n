@@ -49,6 +49,8 @@ export const createArchiveWorkflowTool = (
 		};
 
 		try {
+			await collaborationService.ensureWorkflowEditable(workflowId);
+
 			const workflow = await workflowService.archive(user, workflowId, { skipArchived: true });
 
 			if (!workflow) {

@@ -113,6 +113,8 @@ export const createUpdateWorkflowTool = (
 		};
 
 		try {
+			await collaborationService.ensureWorkflowEditable(workflowId);
+
 			// Fetch the workflow to check if it's available in MCP
 			const existingWorkflow = await getMcpWorkflow(
 				workflowId,

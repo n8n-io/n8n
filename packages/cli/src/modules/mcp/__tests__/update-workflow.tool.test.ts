@@ -124,6 +124,7 @@ describe('update-workflow MCP tool', () => {
 		});
 		nodeTypes = mockInstance(NodeTypes);
 		collaborationService = mockInstance(CollaborationService, {
+			ensureWorkflowEditable: jest.fn().mockResolvedValue(undefined),
 			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
 		});
 
@@ -188,6 +189,19 @@ describe('update-workflow MCP tool', () => {
 	});
 
 	describe('handler tests', () => {
+		test('returns error when workflow has active write lock', async () => {
+			(collaborationService.ensureWorkflowEditable as jest.Mock).mockRejectedValue(
+				new Error('Cannot modify workflow while it is being edited by a user in the editor.'),
+			);
+
+			const result = await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain('being edited by a user');
+			expect(workflowService.update).not.toHaveBeenCalled();
+		});
+
 		test('successfully updates workflow and returns expected response', async () => {
 			const result = await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
 

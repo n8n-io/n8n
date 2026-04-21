@@ -24,6 +24,7 @@ describe('publish-workflow MCP tool', () => {
 			track: jest.fn(),
 		});
 		collaborationService = mockInstance(CollaborationService, {
+			ensureWorkflowEditable: jest.fn().mockResolvedValue(undefined),
 			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
 		});
 	});
@@ -72,6 +73,33 @@ describe('publish-workflow MCP tool', () => {
 					activeVersionId: null,
 					error: expect.any(String),
 				});
+			});
+		});
+
+		describe('write lock', () => {
+			test('returns error when workflow has active write lock', async () => {
+				(collaborationService.ensureWorkflowEditable as jest.Mock).mockRejectedValue(
+					new Error('Cannot modify workflow while it is being edited by a user in the editor.'),
+				);
+
+				const tool = createPublishWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowService,
+					telemetry,
+					collaborationService,
+				);
+
+				const result = await tool.handler(
+					{ workflowId: 'wf-1', versionId: undefined },
+					{} as Parameters<typeof tool.handler>[1],
+				);
+
+				expect(result.structuredContent).toMatchObject({
+					success: false,
+					error: expect.stringContaining('being edited by a user'),
+				});
+				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 			});
 		});
 

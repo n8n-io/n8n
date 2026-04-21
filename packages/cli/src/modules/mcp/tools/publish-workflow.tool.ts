@@ -65,6 +65,8 @@ export const createPublishWorkflowTool = (
 		};
 
 		try {
+			await collaborationService.ensureWorkflowEditable(workflowId);
+
 			await getMcpWorkflow(workflowId, user, ['workflow:publish'], workflowFinderService);
 
 			const activatedWorkflow = await workflowService.activateWorkflow(user, workflowId, {

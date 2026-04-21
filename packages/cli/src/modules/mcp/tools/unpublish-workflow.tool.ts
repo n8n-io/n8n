@@ -57,6 +57,8 @@ export const createUnpublishWorkflowTool = (
 		};
 
 		try {
+			await collaborationService.ensureWorkflowEditable(workflowId);
+
 			await getMcpWorkflow(workflowId, user, ['workflow:unpublish'], workflowFinderService);
 
 			await workflowService.deactivateWorkflow(user, workflowId, {
