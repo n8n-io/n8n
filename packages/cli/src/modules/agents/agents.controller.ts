@@ -2,6 +2,7 @@ import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
+import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -16,7 +17,8 @@ import {
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
 } from './agents.dto';
-import { AgentsService, chatThreadId } from './agents.service';
+import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
@@ -68,6 +70,7 @@ export class AgentsController {
 		private readonly credentialsService: CredentialsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentRepository: AgentRepository,
+		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
 	@Post('/')
@@ -131,6 +134,54 @@ export class AgentsController {
 	async getModelCatalog() {
 		const { fetchProviderCatalog } = await import('@n8n/agents');
 		return await fetchProviderCatalog();
+	}
+
+	@Get('/threads')
+	async listThreads(
+		req: AuthenticatedRequest<
+			{ projectId: string },
+			{},
+			{},
+			{ cursor?: string; limit?: string; agentId?: string }
+		>,
+	) {
+		const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+		return await this.agentExecutionService.getThreads(
+			req.params.projectId,
+			limit,
+			req.query.cursor,
+			req.query.agentId,
+		);
+	}
+
+	@Get('/threads/:threadId')
+	async getThread(
+		req: AuthenticatedRequest<
+			{ projectId: string; threadId: string },
+			{},
+			{},
+			{ agentId?: string }
+		>,
+	) {
+		const result = await this.agentExecutionService.getThreadDetail(
+			req.params.threadId,
+			req.params.projectId,
+			req.query.agentId,
+		);
+		if (!result) {
+			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
+		}
+		return result;
+	}
+
+	@Delete('/threads/:threadId')
+	async deleteThread(req: AuthenticatedRequest<{ projectId: string; threadId: string }>) {
+		const { projectId, threadId } = req.params;
+		const deleted = await this.agentExecutionService.deleteThread(projectId, threadId);
+		if (!deleted) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		return { success: true };
 	}
 
 	@Get('/:agentId')
@@ -223,30 +274,60 @@ export class AgentsController {
 		@Body payload: AgentChatMessageDto,
 	) {
 		const { projectId } = req.params;
-		const { message } = payload;
+		const { message, sessionId } = payload;
 
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
 		const send = initSseResponse(res);
 
+		// If the client supplied a sessionId and a thread already exists under that id,
+		// the thread must belong to this (project, agent). Otherwise a caller could
+		// append messages to another user's thread. A non-existent id is fine —
+		// executeForChat will create the thread on first persisted message.
+		if (sessionId) {
+			const existing = await this.agentExecutionService.findThreadById(sessionId);
+			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
+				send({ error: 'Session not found' });
+				res.end();
+				return;
+			}
+		}
+
+		const threadId = sessionId ?? randomUUID();
+
 		try {
 			for await (const chunk of this.agentsService.executeForChat(
 				agentId,
 				message,
-				chatThreadId(agentId),
+				threadId,
 				req.user.id,
 				projectId,
 				credentialProvider,
+				'chat',
 			)) {
 				this.sendStreamChunk(chunk, send);
 			}
-			send({ done: true });
+			send({ done: true, sessionId: threadId });
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
 			send({ error: errorMessage });
 		}
 
 		res.end();
+	}
+
+	@Get('/:agentId/chat/:threadId/messages')
+	async getChatMessages(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		if (!thread || !threadBelongsTo(thread, projectId, agentId)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		return await this.agentsService.getChatMessages(threadId);
 	}
 
 	@Get('/:agentId/build/messages')
@@ -270,22 +351,22 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/chat/messages')
-	async getChatMessages(
+	async getTestChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 	): Promise<AgentPersistedMessageDto[]> {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const messages = await this.agentsService.getChatMessages(agentId, req.user.id);
+		const messages = await this.agentsService.getTestChatMessages(agentId, req.user.id);
 		return messages as unknown as AgentPersistedMessageDto[];
 	}
 
 	@Delete('/:agentId/chat/messages')
-	async clearChatMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+	async clearTestChatMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		await this.agentsService.clearChatMessages(agentId, req.user.id);
+		await this.agentsService.clearTestChatMessages(agentId, req.user.id);
 		return { ok: true };
 	}
 
@@ -457,6 +538,7 @@ export class AgentsController {
 			interface RequestWithRawBody {
 				rawBody?: Buffer;
 			}
+
 			const rawBody = (req as RequestWithRawBody).rawBody;
 			if (rawBody) {
 				requestBody = rawBody.toString('utf-8');

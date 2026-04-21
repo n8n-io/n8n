@@ -50,6 +50,9 @@ const isModeRootExecution = {
 
 	// n8n Chat hub messages
 	chat: false,
+
+	// Agent executions
+	agent: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
 type WorkflowStatisticsEvents = {
