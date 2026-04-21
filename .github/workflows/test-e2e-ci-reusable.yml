@@ -18,6 +18,16 @@ on:
         required: false
         type: string
         default: ''
+      docker-image:
+        description: 'Pre-built n8n image ref (ghcr). Required for internal PRs; ignored for forks.'
+        required: false
+        type: string
+        default: ''
+      image-tag:
+        description: 'Tag used by prepare-docker. Needed for GHCR cleanup.'
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       branch:
@@ -35,18 +45,22 @@ on:
         required: false
         type: string
         default: ''
-
-env:
-  DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
+      docker-image:
+        description: 'Pre-built n8n image ref (ghcr). Required for internal PRs; ignored for forks.'
+        required: false
+        type: string
+        default: ''
+      image-tag:
+        description: 'Tag used by prepare-docker. Needed for GHCR cleanup.'
+        required: false
+        type: string
+        default: ''
 
 jobs:
-  prepare:
-    name: 'Prepare E2E'
+  prepare-matrix:
+    name: 'Prepare Matrix'
     if: ${{ !github.event.pull_request.head.repo.fork }}
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    permissions:
-      packages: write
-      contents: read
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     outputs:
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
       skip-tests: ${{ steps.generate-matrix.outputs.skip-tests }}
@@ -57,26 +71,12 @@ jobs:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
 
-      - name: Login to GHCR
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push to GHCR
+      - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: 'pnpm build:docker'
-          enable-docker-cache: true
-        env:
-          INCLUDE_TEST_CONTROLLER: 'true'
-          IMAGE_BASE_NAME: ghcr.io/${{ github.repository }}
-          IMAGE_TAG: ci-${{ github.run_id }}
-          RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ github.repository_owner }}/runners
-          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
-          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
-          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+          # Matrix generation calls the janitor CLI (via distribute-tests.mjs),
+          # which needs packages/testing/janitor/dist/cli.js on disk.
+          build-command: 'pnpm turbo run build --filter=@n8n/playwright-janitor'
 
       - name: Get changed files for impact analysis
         if: ${{ inputs.playwright-only }}
@@ -99,14 +99,13 @@ jobs:
           echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
   sqlite-sanity:
-    needs: [prepare]
     name: 'SQLite: Sanity Check'
     if: ${{ !github.event.pull_request.head.repo.fork }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-pull
-      docker-image: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
+      docker-image: ${{ inputs.docker-image }}
       test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e tests/e2e/building-blocks/workflow-entry-points.spec.ts
       shards: 1
       runner: blacksmith-2vcpu-ubuntu-2204
@@ -118,20 +117,20 @@ jobs:
   # Only runs for internal PRs (not community/fork PRs)
   # Pulls pre-built Docker image from GHCR
   multi-main-e2e:
-    needs: [prepare]
+    needs: [prepare-matrix]
     name: 'Multi-Main: E2E'
-    if: ${{ !github.event.pull_request.head.repo.fork && needs.prepare.outputs.skip-tests != 'true' }}
+    if: ${{ !github.event.pull_request.head.repo.fork && needs.prepare-matrix.outputs.skip-tests != 'true' }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-pull
-      docker-image: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
+      docker-image: ${{ inputs.docker-image }}
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
       shards: 16
       runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
       use-custom-orchestration: true
-      pre-generated-matrix: ${{ needs.prepare.outputs.matrix }}
+      pre-generated-matrix: ${{ needs.prepare-matrix.outputs.matrix }}
       n8n-env: ${{ inputs.n8n-env }}
     secrets: inherit
 
@@ -154,8 +153,8 @@ jobs:
   # Local runner cleanup is handled by each test shard in test-e2e-reusable.yml
   cleanup-ghcr:
     name: 'Cleanup GHCR Image'
-    needs: [prepare, multi-main-e2e, sqlite-sanity]
-    if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork }}
+    needs: [multi-main-e2e, sqlite-sanity]
+    if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork && inputs.image-tag != '' }}
     runs-on: blacksmith-2vcpu-ubuntu-2204
     permissions:
       packages: write
@@ -173,4 +172,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_ORG: ${{ github.repository_owner }}
           GHCR_REPO: ${{ github.event.repository.name }}
-        run: node .github/scripts/cleanup-ghcr-images.mjs --tag ci-${{ github.run_id }}
+        run: node .github/scripts/cleanup-ghcr-images.mjs --tag ${{ inputs.image-tag }}

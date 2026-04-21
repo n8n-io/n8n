@@ -149,14 +149,42 @@ jobs:
         run: |
           pnpm -r pack --dry-run
 
+  # Builds the n8n + runners CI Docker images once and pushes to GHCR.
+  # Shared across downstream consumers (e2e-tests, and — after migration —
+  # e2e-performance, instance-ai-workflow-evals, helm).
+  # Skipped for fork PRs; forks have no GHCR push access and fall through
+  # to the community-e2e path inside test-e2e-ci-reusable.yml.
+  prepare-docker:
+    name: Prepare Docker
+    needs: install-and-build
+    if: >-
+      !github.event.pull_request.head.repo.fork &&
+      github.repository == 'n8n-io/n8n' &&
+      github.event_name != 'merge_group' &&
+      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true')
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+      distribution: ghcr
+    secrets: inherit
+
   e2e-tests:
     name: E2E Tests
-    needs: install-and-build
-    if: (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') && github.repository == 'n8n-io/n8n' && github.event_name != 'merge_group'
+    needs: [install-and-build, prepare-docker]
+    # always() so fork PRs still run (prepare-docker is skipped for forks).
+    if: >-
+      always() &&
+      needs.install-and-build.result == 'success' &&
+      (needs.prepare-docker.result == 'success' || needs.prepare-docker.result == 'skipped') &&
+      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') &&
+      github.repository == 'n8n-io/n8n' &&
+      github.event_name != 'merge_group'
     uses: ./.github/workflows/test-e2e-ci-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
       playwright-only: ${{ needs.install-and-build.outputs.e2e == 'true' && needs.install-and-build.outputs.unit == 'false' }}
+      docker-image: ${{ needs.prepare-docker.outputs.image }}
+      image-tag: ${{ needs.prepare-docker.outputs.image-tag }}
     secrets: inherit
 
   db-tests:

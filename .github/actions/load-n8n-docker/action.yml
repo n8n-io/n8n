@@ -1,0 +1,29 @@
+# Composite action for downloading a n8n docker image artifact
+# (produced by build-n8n-docker with distribution=artifact) and loading it
+# into the local docker daemon.
+#
+# After this action runs, `n8nio/n8n:local` and `n8nio/runners:local` are
+# available locally — same tags used by the docker-build path.
+
+name: 'Load n8n Docker image from artifact'
+description: 'Downloads a zstd-compressed docker image tarball from a GHA artifact and loads it into the local docker daemon.'
+
+inputs:
+  artifact-name:
+    description: 'Artifact name produced by build-n8n-docker.'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download image artifact
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: /tmp
+
+    - name: Load image into docker
+      shell: bash
+      run: |
+        zstd -d -c /tmp/n8n-image.tar.zst | docker load
+        docker image ls n8nio/n8n:local n8nio/runners:local

@@ -1,0 +1,110 @@
+# Composite action for building the n8n and runners CI test images
+# (n8nio/n8n + n8nio/runners) and distributing them to downstream jobs.
+#
+# Two distribution modes:
+#   - ghcr:     builds and pushes to GHCR. Downstream shards docker-pull.
+#   - artifact: builds, docker save + zstd, uploads as GHA artifact.
+#               Use for fork PRs that can't push to GHCR (no secrets).
+#
+# Always builds with INCLUDE_TEST_CONTROLLER=true and amd64 platform.
+# Tag applied to both n8n and runners images.
+
+name: 'Build n8n CI Docker image'
+description: 'Builds n8nio/n8n + n8nio/runners test images and makes them available to downstream jobs via GHCR or an uploaded artifact.'
+
+inputs:
+  distribution:
+    description: 'ghcr (push to registry) or artifact (docker save + upload artifact)'
+    required: true
+  image-tag:
+    description: 'Tag to apply to both n8n and runners images. Used as the GHCR tag or the artifact suffix.'
+    required: true
+  ghcr-image-base:
+    description: 'Full GHCR base for the n8n image (e.g. ghcr.io/n8n-io/n8n). Required when distribution=ghcr.'
+    required: false
+    default: ''
+  ghcr-runners-image-base:
+    description: 'Full GHCR base for the runners image (e.g. ghcr.io/n8n-io/runners). Required when distribution=ghcr.'
+    required: false
+    default: ''
+  artifact-name:
+    description: 'Artifact name to upload. Required when distribution=artifact.'
+    required: false
+    default: 'n8n-docker-image'
+  artifact-retention-days:
+    description: 'Artifact retention (days).'
+    required: false
+    default: '1'
+  build-variant:
+    description: 'standard or coverage. Coverage uses build:docker:coverage.'
+    required: false
+    default: 'standard'
+
+outputs:
+  image:
+    description: 'Fully qualified n8n image reference (ghcr mode only; empty for artifact).'
+    value: ${{ inputs.distribution == 'ghcr' && format('{0}:{1}', inputs.ghcr-image-base, inputs.image-tag) || '' }}
+  runners-image:
+    description: 'Fully qualified runners image reference (ghcr mode only; empty for artifact).'
+    value: ${{ inputs.distribution == 'ghcr' && format('{0}:{1}', inputs.ghcr-runners-image-base, inputs.image-tag) || '' }}
+  artifact-name:
+    description: 'Artifact name containing the image tarball (artifact mode only; empty for ghcr).'
+    value: ${{ inputs.distribution == 'artifact' && inputs.artifact-name || '' }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        case "${{ inputs.distribution }}" in
+          ghcr)
+            if [ -z "${{ inputs.ghcr-image-base }}" ] || [ -z "${{ inputs.ghcr-runners-image-base }}" ]; then
+              echo "::error::ghcr-image-base and ghcr-runners-image-base are required when distribution=ghcr"
+              exit 1
+            fi
+            ;;
+          artifact)
+            if [ -z "${{ inputs.artifact-name }}" ]; then
+              echo "::error::artifact-name is required when distribution=artifact"
+              exit 1
+            fi
+            ;;
+          *)
+            echo "::error::distribution must be 'ghcr' or 'artifact' (got: ${{ inputs.distribution }})"
+            exit 1
+            ;;
+        esac
+
+    - name: Login to GHCR
+      if: ${{ inputs.distribution == 'ghcr' }}
+      uses: ./.github/actions/docker-registry-login
+
+    - name: Build Docker image
+      uses: ./.github/actions/setup-nodejs
+      with:
+        build-command: ${{ inputs.build-variant == 'coverage' && 'pnpm build:docker:coverage' || 'pnpm build:docker' }}
+        enable-docker-cache: true
+      env:
+        INCLUDE_TEST_CONTROLLER: 'true'
+        # For ghcr: pushes directly via buildx --push (skips local --load).
+        # For artifact: empty → builds and loads as n8nio/n8n:local + n8nio/runners:local.
+        IMAGE_BASE_NAME: ${{ inputs.distribution == 'ghcr' && inputs.ghcr-image-base || '' }}
+        RUNNERS_IMAGE_BASE_NAME: ${{ inputs.distribution == 'ghcr' && inputs.ghcr-runners-image-base || '' }}
+        IMAGE_TAG: ${{ inputs.image-tag }}
+
+    - name: Save image tarball
+      if: ${{ inputs.distribution == 'artifact' }}
+      shell: bash
+      run: |
+        docker save n8nio/n8n:local n8nio/runners:local | zstd -T0 -3 -o /tmp/n8n-image.tar.zst
+        ls -lh /tmp/n8n-image.tar.zst
+
+    - name: Upload image artifact
+      if: ${{ inputs.distribution == 'artifact' }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: /tmp/n8n-image.tar.zst
+        retention-days: ${{ inputs.artifact-retention-days }}
+        compression-level: 0 # already zstd-compressed
