@@ -253,6 +253,13 @@ correct `turnDelta()` after suspend/resume.
 `stripOrphanedToolMessages` runs on loaded history and inside `forLlm()` so
 incomplete tool pairs do not reach the model.
 
+**Ordering note:** The in-memory list is append-only; LLM context follows array
+order. Persisted threads, however, are loaded with **`ORDER BY createdAt`** (and
+a `seq` tiebreaker in SQL backends). Every message therefore needs a
+**unique, monotonically increasing `createdAt`** while it flows through
+`AgentMessageList` so reloads and `before`-filtered fetches match the turn’s
+true sequence. See [Monotonic `createdAt`](#monotonic-createdat-for-persisted-order).
+
 ---
 
 ## Agentic loop
@@ -360,10 +367,11 @@ At end of turn, `saveToMemory()` uses `list.turnDelta()` and
 `saveMessagesToThread`. If **semantic recall** is configured with an embedder
 and `memory.saveEmbeddings`, new messages are embedded and stored.
 
-**Working memory:** when configured, the runtime parses `<working_memory>` …
-`</working_memory>` regions from assistant text, validates structured JSON if a
-schema exists, strips the tags from the visible message, and asynchronously
-persists via `memory.saveWorkingMemory`.
+**Working memory:** when configured, the runtime injects an `updateWorkingMemory`
+tool into the agent's tool set. The current state is included in the system prompt
+so the model can read it; when new information should be persisted the model calls
+the tool, which validates the input and asynchronously persists via
+`memory.saveWorkingMemory`.
 
 **Thread titles:** `titleGeneration` triggers `generateThreadTitle` (fire-and-forget)
 after a successful save when persistence and memory are present.
@@ -407,7 +415,7 @@ src/
     tool-adapter.ts               — buildToolMap, executeTool, toAiSdkTools, suspend / agent-result guards
     stream.ts                     — convertChunk, toTokenUsage
     runtime-helpers.ts            — normalizeInput, usage merge, stream error helpers, …
-    working-memory.ts             — instruction text, parse/filter for working_memory tags
+    working-memory.ts             — instruction text, updateWorkingMemory tool builder
     strip-orphaned-tool-messages.ts
     title-generation.ts
     logger.ts
@@ -449,3 +457,26 @@ The bus is shared between `Agent` and `AgentRuntime` so `on()` registrations and
 
 Signals cancel HTTP immediately in the AI SDK and compose with caller-provided
 `abortSignal` via `resetAbort`.
+
+### Monotonic `createdAt` for persisted order
+
+**Problem.** Live messages often used `Date.now()` (or no timestamp). Several
+messages added in the same millisecond (multi-part input, batched tool results,
+fast loops) produced **identical `createdAt` values**. SQL stores mitigate ties
+with a `seq` column, but ordering was still ambiguous for consumers that sort
+only by time, and **in-memory `BuiltMemory`** (`InMemoryMemory`) keyed ordering
+off the stored timestamp. Duplicate timestamps made **pagination windows** (`before`,
+`limit`) and reload order **non-deterministic** relative to insertion order —
+message history could appear to **shuffle** between turns or after resume.
+
+**Approach.** `AgentMessageList` tracks `lastCreatedAt` and assigns each **live**
+message (`input` / `response`) a `createdAt` of
+`max(hint, lastCreatedAt + 1)`, where `hint` is any existing timestamp or
+`Date.now()`. **`history` messages** keep the database timestamp exactly;
+`lastCreatedAt` advances to `max` so new live rows stay strictly later (handles
+clock skew and prior monotonic runs). **`deserialize()`** recomputes
+`lastCreatedAt` from all restored rows so suspend/resume continues the sequence.
+
+**Downstream.** `saveMessages` / Postgres / SQLite persist the message-owned
+`createdAt`, and in-memory storage uses that same value for filtering so
+`getMessages` stays aligned with `AgentMessageList`’s ordering guarantees.

@@ -27,7 +27,9 @@ export function useBackendStatus() {
 				cache: 'no-store',
 				signal: controller.signal,
 			});
-			return response.ok;
+			if (!response.ok) return false;
+			const data = (await response.json()) as { status: string };
+			return data.status === 'ok';
 		} catch {
 			return false;
 		} finally {

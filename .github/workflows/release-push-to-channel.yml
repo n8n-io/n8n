@@ -75,7 +75,7 @@ jobs:
     steps:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: 24.13.1
+          node-version: 24.14.1
 
       # Remove after https://github.com/npm/cli/issues/8547 gets resolved
       - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc

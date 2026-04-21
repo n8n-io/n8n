@@ -63,6 +63,7 @@ import { computed } from 'vue';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useChat } from '@n8n/chat/composables';
+import type { WorkflowObjectAccessors } from '../types';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
@@ -462,7 +463,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		directParentNodes: string[],
 		runData: IRunData | null,
 		pinData: IPinData | undefined,
-		workflow: Workflow,
+		workflow: WorkflowObjectAccessors,
 	): { runData: IRunData | undefined; startNodeNames: string[] } {
 		const startNodeNames = new Set<string>();
 		let newRunData: IRunData | undefined;
@@ -476,7 +477,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				const parentNodes = workflow.getParentNodes(directParentNode, NodeConnectionTypes.Main);
 
 				// Add also the enabled direct parent to be checked
-				if (workflow.nodes[directParentNode].disabled) continue;
+				if (workflow.getNode(directParentNode)?.disabled) continue;
 
 				parentNodes.push(directParentNode);
 

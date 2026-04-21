@@ -1,6 +1,7 @@
 import { Logger, parseFlatted } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import type {
 	FindManyOptions,
 	FindOneOptions,
@@ -49,6 +50,7 @@ import {
 	SharedWorkflow,
 	WorkflowEntity,
 } from '../entities';
+import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type {
 	ExecutionSummaries,
 	IExecutionBase,
@@ -158,6 +160,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 	}
@@ -881,10 +884,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
-		if (query?.accessibleWorkflowIds?.length === 0) {
-			throw new UnexpectedError('Expected accessible workflow IDs');
-		}
-
 		// Due to performance reasons, we use custom query builder with raw SQL.
 		// IMPORTANT: it produces duplicate rows for executions with multiple tags, which we need to reduce manually
 		const qb = this.toQueryBuilderWithAnnotations(query);
@@ -975,7 +974,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	private toQueryBuilder(query: ExecutionSummaries.Query) {
 		const {
-			accessibleWorkflowIds,
+			user,
+			sharingOptions,
 			status,
 			finished,
 			workflowId,
@@ -995,8 +995,23 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const qb = this.createQueryBuilder('execution')
 			.select(fields)
-			.innerJoin('execution.workflow', 'workflow')
-			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
+			.innerJoin('execution.workflow', 'workflow');
+
+		if (user && sharingOptions) {
+			// EXISTS-based access control — correlated subquery for better query plans
+			const subquery = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(
+				user,
+				sharingOptions,
+			);
+			subquery.andWhere('"sw"."workflowId" = execution."workflowId"');
+			qb.where(`EXISTS (${subquery.getQuery()})`);
+			qb.setParameters(subquery.getParameters());
+		} else if (user && hasGlobalScope(user, 'workflow:read')) {
+			// Global-scope admin without sharingOptions — no access-control filter needed
+		} else {
+			// No user or insufficient scope — deny all to prevent unscoped queries
+			qb.where('1 = 0');
+		}
 
 		if (query.kind === 'range') {
 			const { limit, firstId, lastId } = query.range;

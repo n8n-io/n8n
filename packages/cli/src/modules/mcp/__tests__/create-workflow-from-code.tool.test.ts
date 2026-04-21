@@ -9,6 +9,7 @@ import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 // Mock dynamic imports
 const mockParseAndValidate = jest.fn();
@@ -100,11 +101,15 @@ describe('create-workflow-from-code MCP tool', () => {
 	const projectRepository = mockInstance(ProjectRepository, {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-1' }),
 	});
+	const workflowFinderService = mockInstance(WorkflowFinderService, {
+		findWorkflowForUser: jest.fn().mockResolvedValue(null),
+	});
 
 	const createTool = () =>
 		createCreateWorkflowFromCodeTool(
 			user,
 			workflowCreationService,
+			workflowFinderService,
 			urlService,
 			telemetry,
 			nodeTypes,
@@ -268,6 +273,26 @@ describe('create-workflow-from-code MCP tool', () => {
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
 			expect(response.error).toBe('Invalid syntax at line 5');
+		});
+
+		test('includes SDK reference hint only for parse errors', async () => {
+			const parseError = new Error('Failed to parse generated workflow code: unexpected token');
+			parseError.name = 'WorkflowCodeParseError';
+			mockParseAndValidate.mockRejectedValue(parseError);
+
+			const result = await callHandler({ code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toContain('sdk_ref');
+		});
+
+		test('does not include SDK reference hint for non-parse errors', async () => {
+			mockParseAndValidate.mockRejectedValue(new Error('Permission denied'));
+
+			const result = await callHandler({ code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toBeUndefined();
 		});
 
 		test('tracks telemetry on success', async () => {

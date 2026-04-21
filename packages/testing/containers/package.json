@@ -32,14 +32,14 @@
   "license": "ISC",
   "devDependencies": {
     "@aws-sdk/client-secrets-manager": "3.808.0",
-    "@testcontainers/k3s": "^11.11.0",
-    "@testcontainers/kafka": "^11.11.0",
-    "@testcontainers/mysql": "^11.11.0",
-    "@testcontainers/postgresql": "^11.0.3",
-    "@testcontainers/redis": "^11.0.3",
+    "@testcontainers/k3s": "catalog:",
+    "@testcontainers/kafka": "catalog:",
+    "@testcontainers/mysql": "catalog:",
+    "@testcontainers/postgresql": "catalog:",
+    "@testcontainers/redis": "catalog:",
     "get-port": "^7.1.0",
     "mockserver-client": "^5.15.0",
     "kafkajs": "catalog:",
-    "testcontainers": "^11.11.0"
+    "testcontainers": "catalog:"
   }
 }

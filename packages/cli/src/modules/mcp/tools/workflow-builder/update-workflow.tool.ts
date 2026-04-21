@@ -1,4 +1,5 @@
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -14,7 +15,7 @@ import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { getMcpWorkflow } from '../workflow-validation.utils';
+import { getMcpWorkflow, getSdkReferenceHint } from '../workflow-validation.utils';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to update'),
@@ -55,6 +56,12 @@ const outputSchema = {
 		.optional()
 		.describe(
 			'Additional notes about the workflow update, such as any nodes that were skipped during credential auto-assignment.',
+		),
+	hint: z
+		.string()
+		.optional()
+		.describe(
+			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -119,7 +126,8 @@ export const createUpdateWorkflowTool = (
 			const handler = new ParseValidateHandler({ generatePinData: false });
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
-			const workflowJson = result.workflow;
+
+			const workflowJson = layoutWorkflowJSON(result.workflow);
 
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
@@ -128,7 +136,7 @@ export const createUpdateWorkflowTool = (
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
 				pinData: workflowJson.pinData,
-				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
+				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
 			});
 
 			resolveNodeWebhookIds(workflowUpdateData, nodeTypes);
@@ -204,7 +212,8 @@ export const createUpdateWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { error: errorMessage };
+			const hint = getSdkReferenceHint(error);
+			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

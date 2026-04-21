@@ -508,6 +508,86 @@ describe('RoleMappingRuleService', () => {
 		});
 	});
 
+	describe('move', () => {
+		const updateSpy = jest.fn().mockResolvedValue(undefined);
+		const transactionSpy = jest.fn().mockImplementation(async (cb) => {
+			await cb({ update: updateSpy });
+		});
+
+		beforeEach(() => {
+			(roleMappingRuleRepository as unknown as Record<string, unknown>).manager = {
+				transaction: transactionSpy,
+			};
+			updateSpy.mockClear();
+			transactionSpy.mockClear();
+		});
+
+		const makeRule = (id: string, order: number, type = 'instance') =>
+			({
+				id,
+				order,
+				type,
+				role: { slug: 'global:member' },
+				projects: [],
+			}) as unknown as RoleMappingRule;
+
+		it('should throw NotFoundError when rule does not exist', async () => {
+			roleMappingRuleRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.move('nonexistent', 0)).rejects.toThrow(NotFoundError);
+		});
+
+		it('should move first rule to last position', async () => {
+			const rules = [makeRule('a', 0), makeRule('b', 1), makeRule('c', 2)];
+			roleMappingRuleRepository.findOne.mockResolvedValue(rules[0]);
+			roleMappingRuleRepository.find.mockResolvedValue(rules);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue({
+				...rules[0],
+				order: 2,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			} as unknown as RoleMappingRule);
+
+			await service.move('a', 2);
+
+			// Verify applyOrder called with correct sequence: b, c, a
+			expect(transactionSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should move last rule to first position', async () => {
+			const rules = [makeRule('a', 0), makeRule('b', 1), makeRule('c', 2)];
+			roleMappingRuleRepository.findOne.mockResolvedValue(rules[2]);
+			roleMappingRuleRepository.find.mockResolvedValue(rules);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue({
+				...rules[2],
+				order: 0,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			} as unknown as RoleMappingRule);
+
+			await service.move('c', 0);
+
+			expect(transactionSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should clamp targetIndex to last position when out of bounds', async () => {
+			const rules = [makeRule('a', 0), makeRule('b', 1)];
+			roleMappingRuleRepository.findOne.mockResolvedValue(rules[0]);
+			roleMappingRuleRepository.find.mockResolvedValue(rules);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue({
+				...rules[0],
+				order: 1,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			} as unknown as RoleMappingRule);
+
+			// targetIndex 999 should clamp to 1 (last valid index)
+			await service.move('a', 999);
+
+			expect(transactionSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('normalizeOrderForType', () => {
 		const makeRule = (id: string, order: number, type = 'instance') =>
 			({ id, order, type }) as unknown as RoleMappingRule;

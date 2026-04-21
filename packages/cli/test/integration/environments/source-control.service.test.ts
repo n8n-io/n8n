@@ -33,6 +33,7 @@ import { SourceControlExportService } from '@/modules/source-control.ee/source-c
 import type { SourceControlGitService } from '@/modules/source-control.ee/source-control-git.service.ee';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlStatusService } from '@/modules/source-control.ee/source-control-status.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
@@ -438,6 +439,7 @@ describe('SourceControlService', () => {
 			sourceControlPreferencesService,
 			Container.get(SourceControlExportService),
 			Container.get(SourceControlImportService),
+			Container.get(SourceControlContextFactory),
 			Container.get(SourceControlScopedService),
 			Container.get(EventService),
 			statusService,
@@ -446,6 +448,8 @@ describe('SourceControlService', () => {
 		// Skip actual git operations
 		service.sanityCheck = async () => {};
 		statusService['resetWorkfolder'] = async () => undefined;
+		(statusService as any).gitService = gitService;
+		(gitService.getHistoricallyTrackedFiles as jest.Mock).mockResolvedValue(new Set<string>());
 
 		// Git mocking
 		gitFiles = {
