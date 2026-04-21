@@ -160,10 +160,10 @@ export function useWorkflowState() {
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
 		ws.executionWaitingForWebhook = false;
-		const workflowDocumentStore = ws.workflow.id
-			? useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflow.id))
-			: undefined;
-		documentTitle.setDocumentTitle(workflowDocumentStore?.name ?? '', 'IDLE');
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(ws.workflow.id),
+		);
+		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 		ws.workflowExecutionStartedData = undefined;
 
 		// TODO(ckolb): confirm this works across files?
@@ -196,12 +196,10 @@ export function useWorkflowState() {
 		resetAllNodesIssues();
 
 		// Reset name via document store (triggers onNameChange → updates workflowObject.name)
-		if (ws.workflow.id) {
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(ws.workflow.id),
-			);
-			workflowDocumentStore.setName('');
-		}
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(ws.workflow.id),
+		);
+		workflowDocumentStore.setName('');
 
 		setWorkflowId('');
 		// Settings are managed by workflowDocumentStore; reset the runtime Workflow instance directly
