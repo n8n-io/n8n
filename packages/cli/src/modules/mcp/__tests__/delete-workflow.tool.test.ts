@@ -1,10 +1,11 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import { User, WorkflowEntity } from '@n8n/db';
 
 import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Telemetry } from '@/telemetry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
@@ -26,13 +27,26 @@ const parseResult = (result: { content: Array<{ type: string; text?: string }> }
 
 describe('archive-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
+	let workflowFinderService: WorkflowFinderService;
 	let workflowService: WorkflowService;
 	let telemetry: Telemetry;
 	let collaborationService: CollaborationService;
 
+	const mockExistingWorkflow = Object.assign(new WorkflowEntity(), {
+		id: 'wf-1',
+		name: 'My Workflow',
+		nodes: [],
+		connections: {},
+		isArchived: false,
+		settings: { availableInMCP: true },
+	});
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 
+		workflowFinderService = mockInstance(WorkflowFinderService, {
+			findWorkflowForUser: jest.fn().mockResolvedValue(mockExistingWorkflow),
+		});
 		workflowService = mockInstance(WorkflowService);
 		telemetry = mockInstance(Telemetry, {
 			track: jest.fn(),
@@ -44,7 +58,13 @@ describe('archive-workflow MCP tool', () => {
 	});
 
 	const createTool = () =>
-		createArchiveWorkflowTool(user, workflowService, telemetry, collaborationService);
+		createArchiveWorkflowTool(
+			user,
+			workflowFinderService,
+			workflowService,
+			telemetry,
+			collaborationService,
+		);
 
 	describe('smoke tests', () => {
 		test('creates tool with correct name and destructiveHint=true', () => {
@@ -115,7 +135,7 @@ describe('archive-workflow MCP tool', () => {
 		});
 
 		test('returns error when workflow not found or no permission to archive', async () => {
-			(workflowService.archive as jest.Mock).mockResolvedValue(null);
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
 
 			const tool = createTool();
 			const result = await tool.handler({ workflowId: 'wf-missing' }, {} as never);
@@ -123,7 +143,7 @@ describe('archive-workflow MCP tool', () => {
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
 			expect(response.error).toContain('not found or');
-			expect(response.error).toContain('permission to archive');
+			expect(response.error).toContain('permission to access');
 		});
 
 		test('returns error when service throws', async () => {

@@ -76,6 +76,8 @@ describe('unpublish-workflow MCP tool', () => {
 
 		describe('write lock', () => {
 			test('returns error when workflow has active write lock', async () => {
+				const workflow = createWorkflow({ settings: { availableInMCP: true } });
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
 				(collaborationService.ensureWorkflowEditable as jest.Mock).mockRejectedValue(
 					new Error('Cannot modify workflow while it is being edited by a user in the editor.'),
 				);

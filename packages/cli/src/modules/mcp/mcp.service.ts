@@ -358,6 +358,7 @@ export class McpService {
 
 		const archiveTool = createArchiveWorkflowTool(
 			user,
+			this.workflowFinderService,
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,

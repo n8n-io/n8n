@@ -7,7 +7,10 @@ import { MCP_ARCHIVE_WORKFLOW_TOOL } from './constants';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { Telemetry } from '@/telemetry';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
+
+import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to archive'),
@@ -24,6 +27,7 @@ const outputSchema = {
  */
 export const createArchiveWorkflowTool = (
 	user: User,
+	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
 	telemetry: Telemetry,
 	collaborationService: CollaborationService,
@@ -49,6 +53,8 @@ export const createArchiveWorkflowTool = (
 		};
 
 		try {
+			await getMcpWorkflow(workflowId, user, ['workflow:delete'], workflowFinderService);
+
 			await collaborationService.ensureWorkflowEditable(workflowId);
 
 			const workflow = await workflowService.archive(user, workflowId, { skipArchived: true });

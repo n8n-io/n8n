@@ -113,8 +113,6 @@ export const createUpdateWorkflowTool = (
 		};
 
 		try {
-			await collaborationService.ensureWorkflowEditable(workflowId);
-
 			// Fetch the workflow to check if it's available in MCP
 			const existingWorkflow = await getMcpWorkflow(
 				workflowId,
@@ -122,6 +120,8 @@ export const createUpdateWorkflowTool = (
 				['workflow:update'],
 				workflowFinderService,
 			);
+
+			await collaborationService.ensureWorkflowEditable(existingWorkflow.id);
 
 			const { ParseValidateHandler, stripImportStatements } = await import(
 				'@n8n/ai-workflow-builder'
