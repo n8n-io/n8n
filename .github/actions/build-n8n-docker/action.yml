@@ -84,11 +84,14 @@ runs:
         enable-docker-cache: true
       env:
         INCLUDE_TEST_CONTROLLER: 'true'
-        # For ghcr: pushes directly via buildx --push (skips local --load).
-        # For artifact: empty → builds and loads as n8nio/n8n:local + n8nio/runners:local.
+        # ghcr: IMAGE_BASE_NAME + IMAGE_TAG → buildx --push publishes
+        #       ghcr.io/<repo>:<ci-tag> directly (skips local --load).
+        # artifact: both empty → dockerize-n8n defaults to n8nio/n8n:local +
+        #           n8nio/runners:local, which the save step below packages
+        #           into the tarball downstream shards `docker load`.
         IMAGE_BASE_NAME: ${{ inputs.distribution == 'ghcr' && inputs.ghcr-image-base || '' }}
         RUNNERS_IMAGE_BASE_NAME: ${{ inputs.distribution == 'ghcr' && inputs.ghcr-runners-image-base || '' }}
-        IMAGE_TAG: ${{ inputs.image-tag }}
+        IMAGE_TAG: ${{ inputs.distribution == 'ghcr' && inputs.image-tag || '' }}
 
     - name: Save image tarball
       if: ${{ inputs.distribution == 'artifact' }}
