@@ -484,12 +484,12 @@ const onOpenConnectionNodeCreator = (
 };
 
 const populateHiddenIssuesSet = () => {
-	if (!node.value || !workflowsStore.isNodePristine(node.value.name)) return;
+	if (!node.value || !workflowDocumentStore?.value?.isNodePristine(node.value.name)) return;
 	hiddenIssuesInputs.value.push('credentials');
 	parametersByTab.value.params.forEach((parameter) => {
 		hiddenIssuesInputs.value.push(parameter.name);
 	});
-	workflowsStore.setNodePristine(node.value.name, false);
+	workflowDocumentStore?.value?.setNodePristine(node.value.name, false);
 };
 
 const nodeSettings = computed(() =>
