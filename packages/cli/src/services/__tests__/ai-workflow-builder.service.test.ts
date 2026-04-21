@@ -21,7 +21,9 @@ import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builde
 jest.mock('@n8n/ai-workflow-builder');
 jest.mock('@n8n_io/ai-assistant-sdk');
 
-const MockedAiWorkflowBuilderService = AiWorkflowBuilderService;
+const MockedAiWorkflowBuilderService = AiWorkflowBuilderService as jest.MockedClass<
+	typeof AiWorkflowBuilderService
+>;
 const MockedAiAssistantClient = AiAssistantClient as jest.MockedClass<typeof AiAssistantClient>;
 
 describe('WorkflowBuilderService', () => {
