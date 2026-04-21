@@ -121,7 +121,7 @@ export class IdleScalingPool {
 	}
 
 	private triggerScaleDown(): void {
-		if (this.pendingScaleDown || !this.innerPool || this.disposed) return;
+		if (this.pendingScaleDown || this.pendingScaleUp || !this.innerPool || this.disposed) return;
 		this.logger?.info('[IdleScalingPool] Scaling to 0 after inactivity', {
 			idleTimeoutMs: this.idleTimeoutMs,
 		});
