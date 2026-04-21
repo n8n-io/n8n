@@ -5518,7 +5518,7 @@
 	"instanceAi.welcomeModal.toggle.enabled": "Enabled",
 	"instanceAi.welcomeModal.toggle.disabled": "Disabled",
 	"instanceAi.welcomeModal.disclaimer": "Conversations are processed by external AI providers.",
-	"instanceAi.welcomeModal.readMore": "Read more.",
+	"instanceAi.welcomeModal.readMore": "Read more",
 	"instanceAi.welcomeModal.continue": "Continue",
 	"instanceAi.welcomeModal.enable": "Enable",
 	"instanceAi.welcomeModal.skip": "Skip for now",
