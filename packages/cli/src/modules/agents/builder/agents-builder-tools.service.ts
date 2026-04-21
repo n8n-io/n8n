@@ -3,12 +3,9 @@ import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Operation } from 'fast-json-patch';
-import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { WorkflowBuilderToolsService } from '@/modules/mcp/tools/workflow-builder/workflow-builder-tools.service';
-
+import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import {
@@ -18,65 +15,19 @@ import {
 } from '../json-config/agent-json-config';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
-interface InvokableTool<TInput> {
-	invoke(input: TInput): Promise<string>;
-}
-
 export interface BuilderTools {
 	json: BuiltTool[];
 	shared: BuiltTool[];
 }
 
-/** Nodes the agent builder should never surface as selectable node tools. */
-function isExcludedNodeType(nodeId: string): boolean {
-	return isTriggerNodeType(nodeId) || isToolType(nodeId);
-}
-
 @Service()
 export class AgentsBuilderToolsService {
-	/** Lazily initialized filtered search tool — invalidated on node-type refresh. */
-	private builderSearchTool: InvokableTool<{ queries: string[] }> | undefined;
-
-	/** Result cache for the filtered search tool, keyed by sorted query list. */
-	private readonly builderSearchCache = new Map<string, string>();
-
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly workflowBuilderToolsService: WorkflowBuilderToolsService,
-		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-	) {
-		this.loadNodesAndCredentials.addPostProcessor(async () => await this.refreshNodeTypes());
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await -- registered as an async postProcessor hook
-	async refreshNodeTypes(): Promise<void> {
-		this.builderSearchTool = undefined;
-		this.builderSearchCache.clear();
-	}
-
-	async initialize(): Promise<void> {
-		await this.workflowBuilderToolsService.initialize();
-	}
-
-	private async invokeBuilderSearch(queries: string[]): Promise<string> {
-		const cacheKey = JSON.stringify([...queries].sort());
-		const cached = this.builderSearchCache.get(cacheKey);
-		if (cached) return cached;
-
-		if (!this.builderSearchTool) {
-			const { createCodeBuilderSearchTool } = await import('@n8n/ai-workflow-builder');
-			this.builderSearchTool = createCodeBuilderSearchTool(
-				this.workflowBuilderToolsService.getNodeTypeParser(),
-				{ nodeFilter: (nodeId) => !isExcludedNodeType(nodeId) },
-			);
-		}
-
-		const result = await this.builderSearchTool.invoke({ queries });
-		this.builderSearchCache.set(cacheKey, result);
-		return result;
-	}
+		private readonly agentsToolsService: AgentsToolsService,
+	) {}
 
 	getTools(
 		agentId: string,
@@ -225,18 +176,6 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
-		const listCredentialsTool = new Tool('list_credentials')
-			.description(
-				'List the credentials available to the user. Returns an array of credential names and types. ' +
-					'Call this BEFORE generating code to know which .credential() value to use.',
-			)
-			.input(z.object({}))
-			.handler(async () => {
-				const creds = await credentialProvider.list();
-				return { credentials: creds };
-			})
-			.build();
-
 		const listWorkflowsTool = new Tool('list_workflows')
 			.description(
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
@@ -284,78 +223,15 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
-		const searchNodesTool = new Tool('search_nodes')
-			.description(
-				'Search for n8n nodes by name or service. Use this to find nodes that can be added ' +
-					'as node tools. Returns node IDs, display names, versions, and descriptions. ' +
-					'After finding a node, call get_node_types to get its parameter schema.',
-			)
-			.input(
-				z.object({
-					queries: z
-						.array(z.string())
-						.min(1)
-						.describe('Search queries (e.g., ["gmail", "slack", "http"])'),
-				}),
-			)
-			.handler(async ({ queries }: { queries: string[] }) => {
-				const results = await this.invokeBuilderSearch(queries);
-				return { results };
-			})
-			.build();
-
-		const getNodeTypesTool = new Tool('get_node_types')
-			.description(
-				'Get detailed parameter schema for specific n8n nodes. Use the node IDs returned ' +
-					'by search_nodes. Returns parameter definitions needed to configure node tools. ' +
-					'You can optionally filter by resource/operation/mode.',
-			)
-			.input(
-				z.object({
-					nodeIds: z
-						.array(
-							z.union([
-								z.string(),
-								z.object({
-									nodeId: z.string(),
-									version: z.string().optional(),
-									resource: z.string().optional(),
-									operation: z.string().optional(),
-									mode: z.string().optional(),
-								}),
-							]),
-						)
-						.min(1)
-						.describe('Node IDs from search_nodes (e.g., ["n8n-nodes-base.gmail"])'),
-				}),
-			)
-			.handler(
-				async ({
-					nodeIds,
-				}: {
-					nodeIds: Array<
-						| string
-						| {
-								nodeId: string;
-								version?: string;
-								resource?: string;
-								operation?: string;
-								mode?: string;
-						  }
-					>;
-				}) => {
-					const results = await this.workflowBuilderToolsService.getNodeTypes(nodeIds);
-					return { results };
-				},
-			)
-			.build();
-
 		return [
 			buildCustomToolTool,
-			listCredentialsTool,
 			listWorkflowsTool,
-			searchNodesTool,
-			getNodeTypesTool,
+			...this.agentsToolsService.getSharedTools(
+				credentialProvider,
+				'Call this BEFORE adding a node tool so you know which credential to wire up. ' +
+					"Copy the returned { id, name } into the tool's `credentials` field, keyed by the " +
+					'credential slot name (e.g. `credentials: { gmailOAuth2: { id, name } }`).',
+			),
 		];
 	}
 }

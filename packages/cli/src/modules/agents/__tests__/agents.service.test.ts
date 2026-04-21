@@ -75,6 +75,7 @@ describe('AgentsService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
 			agentPublishedVersionRepository,
 		);
 	});

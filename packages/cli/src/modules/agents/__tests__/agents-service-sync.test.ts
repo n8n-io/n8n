@@ -68,6 +68,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock<N8NCheckpointStorage>(),
 			mock<AgentSecureRuntime>(),
 			mock<EphemeralNodeExecutor>(),
+			mock(), // AgentsToolsService
 			mock<N8nMemory>(),
 			mock<AgentExecutionService>(),
 			mock(),
