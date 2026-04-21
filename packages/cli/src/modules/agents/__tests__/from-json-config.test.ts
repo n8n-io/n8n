@@ -61,6 +61,24 @@ describe('buildFromJson()', () => {
 		expect(snap.instructions).toBe('You are a test agent.');
 	});
 
+	it('handles multi-slash model string for aggregator providers', async () => {
+		const agent = await buildFromJson(
+			makeConfig({ model: 'openrouter/amazon/nova-micro-v1' }),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const snap: AgentSnapshot = agent.snapshot;
+		// Provider is always everything before the FIRST slash.
+		expect(snap.model.provider).toBe('openrouter');
+		// Model name is everything after the first slash, including any further slashes.
+		expect(snap.model.name).toBe('amazon/nova-micro-v1');
+	});
+
 	it('handles single-part model string (no slash)', async () => {
 		const agent = await buildFromJson(
 			makeConfig({ model: 'claude-sonnet-4-5' }),
@@ -377,6 +395,27 @@ describe('AgentJsonConfigSchema', () => {
 			instructions: 'Be helpful.',
 		};
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('accepts multi-slash model format for aggregator providers', () => {
+		const config = {
+			name: 'test',
+			model: 'openrouter/amazon/nova-micro-v1',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
+	});
+
+	it('accepts deeply-nested model format', () => {
+		const config = {
+			name: 'test',
+			model: 'openrouter/openai/gpt-4o',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		const parsed = AgentJsonConfigSchema.parse(config);
+		expect(parsed.model).toBe('openrouter/openai/gpt-4o');
 	});
 
 	it('rejects empty name', () => {

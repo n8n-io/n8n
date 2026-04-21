@@ -19,6 +19,7 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	cohere: apiKeyCreds,
 	mistral: apiKeyCreds,
 	vercel: apiKeyCreds,
+	openrouter: apiKeyCreds,
 
 	'azure-openai': z.object({
 		apiKey: z.string().optional(),

@@ -31,6 +31,7 @@ export const providerCapabilities: Record<
 	mistral: {},
 	cohere: {},
 	vercel: {},
+	openrouter: {},
 	'azure-openai': {},
 	'aws-bedrock': {},
 };

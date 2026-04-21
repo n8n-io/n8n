@@ -99,6 +99,9 @@ catalogs:
     '@n8n_io/ai-assistant-sdk':
       specifier: 1.21.0
       version: 1.21.0
+    '@openrouter/ai-sdk-provider':
+      specifier: ^2.8.0
+      version: 2.8.0
     '@testcontainers/k3s':
       specifier: ^11.13.0
       version: 11.13.0
@@ -621,6 +624,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.26.0
         version: 1.26.0(zod@3.25.67)
+      '@openrouter/ai-sdk-provider':
+        specifier: 'catalog:'
+        version: 2.8.0(ai@6.0.134(zod@3.25.67))(zod@3.25.67)
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: '>=0.50.0'
         version: 0.213.0(@opentelemetry/api@1.9.0)
@@ -8440,6 +8446,13 @@ packages:
 
   '@open-draft/until@2.1.0':
     resolution: {integrity: sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg==}
+
+  '@openrouter/ai-sdk-provider@2.8.0':
+    resolution: {integrity: sha512-oDDW/0KMqz4suHVloB9sNv0YyKLGNYf1FTevXH6adDkid5dsmbbcYuiEsbIhpZSZtHa6o5AVjK1jEAfePOLxww==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      ai: ^6.0.0
+      zod: 3.25.67
 
   '@opentelemetry/api-logs@0.200.0':
     resolution: {integrity: sha512-IKJBQxh91qJ+3ssRly5hYEJ8NDHu9oY/B1PXVSCWf7zytmYO9RNLB0Ox9XQ/fJ8m6gY6Q6NtBWlmXfaXt5Uc4Q==}
@@ -28408,6 +28421,11 @@ snapshots:
       outvariant: 1.4.3
 
   '@open-draft/until@2.1.0': {}
+
+  '@openrouter/ai-sdk-provider@2.8.0(ai@6.0.134(zod@3.25.67))(zod@3.25.67)':
+    dependencies:
+      ai: 6.0.134(zod@3.25.67)
+      zod: 3.25.67
 
   '@opentelemetry/api-logs@0.200.0':
     dependencies:

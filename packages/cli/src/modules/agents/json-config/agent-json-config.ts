@@ -83,7 +83,10 @@ export const AgentJsonConfigSchema = z.object({
 	model: z
 		.string()
 		.min(1)
-		.regex(/^[a-z0-9-]+\/[a-z0-9._-]+$/i, 'Model must be "provider/model-name" format'),
+		.regex(
+			/^[a-z0-9-]+\/[a-z0-9._/-]+$/i,
+			'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
+		),
 	credential: z.string().optional(),
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),

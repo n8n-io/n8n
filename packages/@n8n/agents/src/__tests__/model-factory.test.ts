@@ -112,6 +112,17 @@ jest.mock('@ai-sdk/azure', () => ({
 		}),
 }));
 
+jest.mock('@openrouter/ai-sdk-provider', () => ({
+	createOpenRouter: (opts?: ProviderOpts) => (model: string) => ({
+		provider: 'openrouter',
+		modelId: model,
+		apiKey: opts?.apiKey,
+		baseURL: opts?.baseURL,
+		fetch: opts?.fetch,
+		specificationVersion: 'v3',
+	}),
+}));
+
 jest.mock('@ai-sdk/amazon-bedrock', () => ({
 	createAmazonBedrock:
 		(opts?: {
@@ -236,6 +247,16 @@ describe('createModel', () => {
 			expect(model.provider).toBe('vercel');
 			expect(model.modelId).toBe('gpt-4o');
 		});
+
+		it('should create model for openrouter', () => {
+			const model = createModel({
+				id: 'openrouter/openai/gpt-4o',
+				apiKey: 'or-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('openrouter');
+			expect(model.modelId).toBe('openai/gpt-4o');
+			expect(model.apiKey).toBe('or-test');
+		});
 	});
 
 	describe('azure-openai', () => {
@@ -298,12 +319,6 @@ describe('createModel', () => {
 	describe('unsupported provider', () => {
 		it('should throw for ollama', () => {
 			expect(() => createModel('ollama/llama3')).toThrow(/Unsupported provider: "ollama"/);
-		});
-
-		it('should throw for openrouter', () => {
-			expect(() => createModel('openrouter/some-model')).toThrow(
-				/Unsupported provider: "openrouter"/,
-			);
 		});
 
 		it('should include supported providers in the error message', () => {

@@ -116,6 +116,13 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			return createGateway({ ...creds, fetch })(model);
 		},
 	},
+	openrouter: {
+		build: (creds, model, fetch) => {
+			const { createOpenRouter } =
+				require('@openrouter/ai-sdk-provider') as typeof import('@openrouter/ai-sdk-provider');
+			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
+		},
+	},
 	'azure-openai': {
 		build: (creds, model, fetch) => {
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');

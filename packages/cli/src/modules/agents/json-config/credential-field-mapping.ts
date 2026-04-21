@@ -32,6 +32,8 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	mistral: (c) => ({ apiKey: c.apiKey }),
 	// VercelAiGatewayApi.credentials.ts → apiKey, url (base URL)
 	vercel: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	// OpenRouterApi.credentials.ts → apiKey, url (hidden, base URL)
+	openrouter: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 
 	// AzureOpenAiApi.credentials.ts            → apiKey, resourceName, apiVersion, endpoint
 	// AzureEntraCognitiveServicesOAuth2Api.credentials.ts → resourceName, apiVersion, endpoint

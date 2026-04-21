@@ -5551,6 +5551,7 @@
 	"agents.builder.unsavedPublish.modal.description": "This agent has changes that haven't been published.",
 	"agents.builder.unsavedPublish.modal.button.publish": "Publish and leave",
 	"agents.builder.unsavedPublish.modal.button.leave": "Leave without publishing",
+	"agents.builder.saveError": "Could not save agent settings",
 	"agents.builder.unsavedPublish.error": "Could not publish changes",
 	"agents.list.published": "Published",
 	"agents.list.noDescription": "No description",

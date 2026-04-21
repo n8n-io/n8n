@@ -38,4 +38,4 @@ for (const [chatHub, catalog] of Object.entries(CHATHUB_TO_CATALOG)) {
  * ChatHub provider IDs that the @n8n/agents runtime does not support.
  * These are filtered out in the Agents UI so users cannot select them.
  */
-export const AGENT_UNSUPPORTED_PROVIDERS = new Set<string>(['ollama', 'openRouter']);
+export const AGENT_UNSUPPORTED_PROVIDERS = new Set<string>(['ollama']);
