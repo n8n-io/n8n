@@ -365,5 +365,59 @@ describe('Test Supabase Node', () => {
 				expect(tables).toEqual([{ name: 'table', value: 'table' }]);
 			});
 		});
+
+		describe('getTableColumns', () => {
+			it('should return table columns with their types', async () => {
+				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
+					getCredentials: mockGetCredentials,
+					helpers: {
+						requestWithAuthentication: mockRequestWithAuthentication,
+					},
+				});
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
+				mockRequestWithAuthentication.mockResolvedValue({
+					definitions: {
+						users: {
+							properties: {
+								id: { type: 'integer' },
+								email: { type: 'string' },
+							},
+						},
+					},
+				});
+
+				const columns =
+					await node.methods.loadOptions.getTableColumns.call(mockLoadOptionsFunctions);
+
+				expect(columns).toEqual([
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-miscased-id
+					{ name: 'id - (integer)', value: 'id' },
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					{ name: 'email - (string)', value: 'email' },
+				]);
+			});
+
+			it('should return empty array when table definition has no properties', async () => {
+				const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
+					getCredentials: mockGetCredentials,
+					helpers: {
+						requestWithAuthentication: mockRequestWithAuthentication,
+					},
+				});
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(false); // useCustomSchema is false
+				mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('users');
+				mockRequestWithAuthentication.mockResolvedValue({
+					definitions: {
+						users: {},
+					},
+				});
+
+				const columns =
+					await node.methods.loadOptions.getTableColumns.call(mockLoadOptionsFunctions);
+
+				expect(columns).toEqual([]);
+			});
+		});
 	});
 });
