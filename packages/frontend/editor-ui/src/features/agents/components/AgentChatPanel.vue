@@ -77,6 +77,9 @@ async function onSubmit() {
 	inputText.value = '';
 
 	const fingerprint = await buildAgentConfigFingerprint(props.agentConfig, props.connectedTriggers);
+	// The raw `message` is sent intentionally — product accepts the privacy
+	// trade-off here (unlike `instructions`, which are only sent as a hash).
+	// Revisit if the privacy posture tightens.
 	agentTelemetry.trackSubmittedMessage({
 		agentId: props.agentId,
 		message: text,

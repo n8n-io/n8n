@@ -324,6 +324,41 @@ function derivePart(updates: Partial<AgentJsonConfig>): AgentConfigPart | null {
 	return null;
 }
 
+// Parts that come from text inputs emit per-keystroke, so debounce their
+// telemetry to avoid flooding RudderStack with one event per character. Discrete
+// toggles/selectors (memory, tools, credential, …) fire immediately.
+const TEXT_INPUT_EDIT_PARTS: ReadonlySet<AgentConfigPart> = new Set([
+	'instructions',
+	'description',
+	'model',
+	'name',
+]);
+
+const pendingEditedParts = new Set<AgentConfigPart>();
+let editedConfigDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function emitEditedConfigTelemetry(parts: AgentConfigPart[]) {
+	if (parts.length === 0) return;
+	void (async () => {
+		const fp = await buildAgentConfigFingerprint(localConfig.value, connectedTriggers.value);
+		for (const part of parts) {
+			agentTelemetry.trackEditedConfig({
+				agentId: agentId.value,
+				part,
+				configVersion: fp.config_version,
+				status: deriveAgentStatus(agent.value),
+			});
+		}
+	})();
+}
+
+function flushEditedConfigTelemetry() {
+	editedConfigDebounceTimer = null;
+	const parts = Array.from(pendingEditedParts);
+	pendingEditedParts.clear();
+	emitEditedConfigTelemetry(parts);
+}
+
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	Object.assign(localConfig.value, updates);
@@ -332,15 +367,17 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	const part = derivePart(updates);
 	if (!part) return;
 
-	void (async () => {
-		const fp = await buildAgentConfigFingerprint(localConfig.value, connectedTriggers.value);
-		agentTelemetry.trackEditedConfig({
-			agentId: agentId.value,
-			part,
-			configVersion: fp.config_version,
-			status: deriveAgentStatus(agent.value),
-		});
-	})();
+	if (TEXT_INPUT_EDIT_PARTS.has(part)) {
+		pendingEditedParts.add(part);
+		if (editedConfigDebounceTimer !== null) clearTimeout(editedConfigDebounceTimer);
+		editedConfigDebounceTimer = setTimeout(
+			flushEditedConfigTelemetry,
+			getDebounceTime(DEBOUNCE_TIME.TELEMETRY.TRACK),
+		);
+		return;
+	}
+
+	emitEditedConfigTelemetry([part]);
 }
 
 async function onConfigUpdated() {
