@@ -264,7 +264,7 @@ export class InstanceAiAdapterService {
 							projectId: table.projectId,
 						});
 				} catch {
-					// drop silently — inaccessible or missing
+					// inaccessible or missing
 				}
 			}),
 		);
@@ -286,7 +286,7 @@ export class InstanceAiAdapterService {
 					}
 				}
 			} catch {
-				// drop silently
+				// fallback lookup failed — leave tables empty
 			}
 		}
 

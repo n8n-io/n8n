@@ -404,7 +404,7 @@ export function extractRawRefsFromNodes(nodes: INode[]): RawExtractedRefs {
 
 		const locator = node.parameters?.dataTableId as { mode?: string; value?: unknown } | undefined;
 		if (!locator || typeof locator.value !== 'string' || locator.value === '') continue;
-		if (locator.value.includes('{')) continue; // matches WorkflowIndexService expression-skip
+		if (locator.value.includes('{')) continue;
 
 		if (locator.mode === 'name') {
 			dataTableNameRefs.add(locator.value);
