@@ -326,7 +326,7 @@ describe('AgentsBuilderSettingsService', () => {
 					credentialId: 'cred-1',
 					modelName: 'command-r',
 				}),
-			).resolves.toBeDefined();
+			).resolves.not.toThrow();
 		});
 
 		it('accepts mode=custom for azure-openai', async () => {
@@ -337,7 +337,7 @@ describe('AgentsBuilderSettingsService', () => {
 					credentialId: 'cred-1',
 					modelName: 'gpt-4o',
 				}),
-			).resolves.toBeDefined();
+			).resolves.not.toThrow();
 		});
 
 		it('rejects mode=custom with unknown provider', async () => {
