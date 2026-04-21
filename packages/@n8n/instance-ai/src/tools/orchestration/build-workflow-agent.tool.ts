@@ -50,7 +50,7 @@ import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
-import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
+import { buildCredentialSnapshot, type CredentialMap } from '../workflows/resolve-credentials';
 import {
 	createSubmitWorkflowTool,
 	type SubmitWorkflowAttempt,
@@ -136,15 +136,6 @@ export const builderRenderers: HandoffRenderers<
 	},
 	buildRequirements: (h) => (h.input.sandboxMode ? DETACHED_BUILDER_REQUIREMENTS : undefined),
 };
-
-/** Flatten a `CredentialMap` into the serializable array shape the handoff carries. */
-function toAvailableCredentials(credMap: CredentialMap): AvailableCredential[] {
-	const out: AvailableCredential[] = [];
-	for (const [type, { id, name }] of credMap) {
-		out.push({ id, name, type });
-	}
-	return out;
-}
 
 function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerType {
 	if (!attempt?.triggerNodeTypes || attempt.triggerNodeTypes.length === 0) {
@@ -286,14 +277,18 @@ export async function startBuildWorkflowAgentTask(
 	let builderTools: ToolsInput;
 	let prompt = BUILDER_AGENT_PROMPT;
 	let credMap: CredentialMap | undefined;
+	let availableCredentials: AvailableCredential[] | undefined;
 
 	// Capture a credentials snapshot once per dispatch so the builder doesn't
 	// have to call `credentials(action="list")`. Available in both sandbox and
-	// tool mode whenever `domainContext` is present.
+	// tool mode whenever `domainContext` is present. The handoff carries the
+	// full list (duplicates of the same type preserved); `credMap` is kept as
+	// a type-keyed lookup for submit-workflow's fallback resolution.
 	if (domainContext) {
-		credMap = await buildCredentialMap(domainContext.credentialService);
+		const snapshot = await buildCredentialSnapshot(domainContext.credentialService);
+		credMap = snapshot.map;
+		availableCredentials = snapshot.list;
 	}
-	const availableCredentials = credMap ? toAvailableCredentials(credMap) : undefined;
 	const credentialsSnapshotAt =
 		availableCredentials && availableCredentials.length > 0 ? new Date().toISOString() : undefined;
 

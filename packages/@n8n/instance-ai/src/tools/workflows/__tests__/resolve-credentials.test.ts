@@ -1,7 +1,11 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
-import { resolveCredentials, type CredentialMap } from '../resolve-credentials';
+import {
+	buildCredentialSnapshot,
+	resolveCredentials,
+	type CredentialMap,
+} from '../resolve-credentials';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -351,5 +355,37 @@ describe('resolveCredentials', () => {
 			// Gmail credential should be removed
 			expect(json.nodes[1].credentials).toEqual({});
 		});
+	});
+});
+
+describe('buildCredentialSnapshot', () => {
+	it('preserves duplicates of the same type in list, while map keeps one entry per type', async () => {
+		const ctx = {
+			list: jest.fn().mockResolvedValue([
+				{ id: 'cred-1', name: 'Slack A', type: 'slackApi' },
+				{ id: 'cred-2', name: 'Slack B', type: 'slackApi' },
+				{ id: 'cred-3', name: 'Gmail', type: 'gmailOAuth2Api' },
+			]),
+		};
+
+		const snapshot = await buildCredentialSnapshot(ctx);
+
+		expect(snapshot.list).toEqual([
+			{ id: 'cred-1', name: 'Slack A', type: 'slackApi' },
+			{ id: 'cred-2', name: 'Slack B', type: 'slackApi' },
+			{ id: 'cred-3', name: 'Gmail', type: 'gmailOAuth2Api' },
+		]);
+		expect(snapshot.map.size).toBe(2);
+		expect(snapshot.map.get('slackApi')).toEqual({ id: 'cred-2', name: 'Slack B' });
+		expect(snapshot.map.get('gmailOAuth2Api')).toEqual({ id: 'cred-3', name: 'Gmail' });
+	});
+
+	it('returns empty structures when listing fails', async () => {
+		const ctx = { list: jest.fn().mockRejectedValue(new Error('boom')) };
+
+		const snapshot = await buildCredentialSnapshot(ctx);
+
+		expect(snapshot.list).toEqual([]);
+		expect(snapshot.map.size).toBe(0);
 	});
 });

@@ -12,8 +12,51 @@ import type { InstanceAiContext } from '../../types';
 /**
  * Credential map passed from the orchestrator.
  * Keyed by credential type (e.g., "openAiApi", "gmailOAuth2", "slackApi").
+ * Uses last-write-wins when multiple credentials share a type — only the
+ * type-based fallback resolution in `resolveCredentials` relies on this map,
+ * and it picks an arbitrary match by design. The full list (preserving
+ * duplicates) is exposed via `buildCredentialSnapshot`.
  */
 export type CredentialMap = Map<string, { id: string; name: string }>;
+
+/** Flat credential entry — preserves duplicates of the same type. */
+export interface CredentialEntry {
+	id: string;
+	name: string;
+	type: string;
+}
+
+/**
+ * Paired credential snapshot produced from a single `credentialService.list()`
+ * call: a type-keyed map for fallback resolution AND a flat list for
+ * downstream callers (e.g. builder handoff) that must not drop credentials
+ * sharing a type.
+ */
+export interface CredentialSnapshot {
+	map: CredentialMap;
+	list: CredentialEntry[];
+}
+
+/**
+ * Build a paired credential snapshot from all available credentials.
+ * Non-fatal — returns empty structures if listing fails.
+ */
+export async function buildCredentialSnapshot(
+	credentialService: Pick<InstanceAiContext['credentialService'], 'list'>,
+): Promise<CredentialSnapshot> {
+	const map: CredentialMap = new Map();
+	const list: CredentialEntry[] = [];
+	try {
+		const allCreds = await credentialService.list();
+		for (const cred of allCreds) {
+			map.set(cred.type, { id: cred.id, name: cred.name });
+			list.push({ id: cred.id, name: cred.name, type: cred.type });
+		}
+	} catch {
+		// Non-fatal — credentials will be unresolved
+	}
+	return { map, list };
+}
 
 /**
  * Build a credential map from all available credentials.
@@ -22,15 +65,7 @@ export type CredentialMap = Map<string, { id: string; name: string }>;
 export async function buildCredentialMap(
 	credentialService: Pick<InstanceAiContext['credentialService'], 'list'>,
 ): Promise<CredentialMap> {
-	const map: CredentialMap = new Map();
-	try {
-		const allCreds = await credentialService.list();
-		for (const cred of allCreds) {
-			map.set(cred.type, { id: cred.id, name: cred.name });
-		}
-	} catch {
-		// Non-fatal — credentials will be unresolved
-	}
+	const { map } = await buildCredentialSnapshot(credentialService);
 	return map;
 }
 
