@@ -1,5 +1,5 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentStore, createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
@@ -39,7 +39,12 @@ const CANVAS_HISTORY_OPTIONS = {
 export function useWorkflowExtraction() {
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = computed(() => {
+		if (workflowsStore.workflowId) {
+			return useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
+		}
+		return null;
+	});
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
 	const router = useRouter();
@@ -49,7 +54,7 @@ export function useWorkflowExtraction() {
 	const telemetry = useTelemetry();
 
 	const adjacencyList = computed(() =>
-		buildAdjacencyList(workflowDocumentStore?.value?.connectionsBySourceNode ?? {}),
+		buildAdjacencyList(workflowDocumentStore.value?.connectionsBySourceNode ?? {}),
 	);
 
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
@@ -258,8 +263,8 @@ export function useWorkflowExtraction() {
 				...endNodeConnection,
 			},
 			settings: { executionOrder: 'v1' },
-			projectId: workflowDocumentStore?.value?.homeProject?.id,
-			parentFolderId: workflowDocumentStore?.value?.parentFolder?.id ?? undefined,
+			projectId: workflowDocumentStore.value?.homeProject?.id,
+			parentFolderId: workflowDocumentStore.value?.parentFolder?.id ?? undefined,
 		};
 	}
 
@@ -498,7 +503,7 @@ export function useWorkflowExtraction() {
 			newWorkflowName,
 			selection,
 			nodes,
-			workflowDocumentStore?.value?.connectionsBySourceNode ?? {},
+			workflowDocumentStore.value?.connectionsBySourceNode ?? {},
 			variables,
 			afterVariables,
 			startNodeName,
