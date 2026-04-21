@@ -95,9 +95,13 @@ function sendMessageFromOutside(message: string) {
 defineExpose({ sendMessageFromOutside });
 
 onMounted(() => {
-	void loadHistory();
+	// A supplied `initialMessage` means the parent just minted a fresh session
+	// and wants us to seed it with the first message — there's no thread to
+	// load yet, and hitting the history endpoint would 404.
 	if (props.initialMessage) {
 		sendMessageFromOutside(props.initialMessage);
+	} else {
+		void loadHistory();
 	}
 });
 

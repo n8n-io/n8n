@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { N8nActionDropdown, N8nIcon, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
@@ -146,17 +146,19 @@ function startChat(msg: string) {
 	// old thread.
 	if (continueSessionId.value) clearContinueSessionParam();
 	if (isBuilt.value) {
-		// Mint a fresh thread id so Test and Build panels share the same thread
-		// until the user explicitly exits via the back button.
+		// Mint a fresh thread id for the ephemeral session. Test and Build
+		// remain visually linked via `chatModeOpened` (v-show) — Build doesn't
+		// share the thread, it uses its own per-agent builder history.
 		activeChatSessionId.value = crypto.randomUUID();
 		initialPrompt.value = msg;
 		chatMode.value = 'test';
 		mode.value = 'chat';
-		// Clear once the panel has mounted and consumed the prop, so a later
-		// remount (e.g. toggling between Build/Test) doesn't replay the message.
-		void nextTick(() => {
-			initialPrompt.value = undefined;
-		});
+		// Intentionally do NOT clear initialPrompt here. The chat panel reads
+		// it in onMounted, but the <Transition mode="out-in"> animates the home
+		// view out before the chat panel mounts — clearing on nextTick wipes
+		// the prompt before onMounted runs, so the first message never gets
+		// sent. onMounted runs only once per mount (the panel's :key binds to
+		// the session id, not chatMode), so there's no replay risk on toggle.
 		telemetry.track('User started agent chat', { agent_id: agentId.value });
 		return;
 	}

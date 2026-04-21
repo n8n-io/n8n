@@ -76,7 +76,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			params.onHistoryLoaded?.(messages.value.length);
 		} catch (error) {
-			showError(error, locale.baseText('agents.chat.loadHistory.error'));
+			// Treat 404 as "no thread yet" rather than surfacing an error —
+			// covers stale continue URLs and any lingering race where the
+			// thread hasn't been persisted on the backend.
+			const status = (error as { httpStatusCode?: number } | null)?.httpStatusCode;
+			if (status === 404) {
+				params.onHistoryLoaded?.(0);
+			} else {
+				showError(error, locale.baseText('agents.chat.loadHistory.error'));
+			}
 		} finally {
 			historyLoaded.value = true;
 		}
