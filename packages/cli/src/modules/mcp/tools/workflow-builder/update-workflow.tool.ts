@@ -174,6 +174,7 @@ export const createUpdateWorkflowTool = (
 
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 				aiBuilderAssisted: true,
+				source: 'n8n-mcp',
 			});
 
 			const baseUrl = urlService.getInstanceBaseUrl();
