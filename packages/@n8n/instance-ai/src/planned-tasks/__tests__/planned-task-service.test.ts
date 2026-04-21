@@ -172,6 +172,165 @@ describe('PlannedTaskCoordinator', () => {
 			expect(result?.tasks[0].status).toBe('failed');
 			expect(result?.tasks[0].error).toBe('Build failed');
 		});
+
+		it('cancels direct dependents with a dependency-name reason', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({ id: 'a', status: 'running' }),
+						makeTaskRecord({ id: 'b', deps: ['a'], status: 'planned' }),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.markFailed('thread-1', 'a', {
+				error: 'Build failed',
+			});
+
+			const a = result?.tasks.find((t) => t.id === 'a');
+			const b = result?.tasks.find((t) => t.id === 'b');
+			expect(a?.status).toBe('failed');
+			expect(a?.error).toBe('Build failed');
+			expect(b?.status).toBe('cancelled');
+			expect(b?.error).toBe('Cancelled: dependency "a" failed');
+		});
+
+		it('cancels transitive dependents', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({ id: 'a', status: 'running' }),
+						makeTaskRecord({ id: 'b', deps: ['a'], status: 'planned' }),
+						makeTaskRecord({ id: 'c', deps: ['b'], status: 'planned' }),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.markFailed('thread-1', 'a', {});
+
+			expect(result?.tasks.find((t) => t.id === 'a')?.status).toBe('failed');
+			expect(result?.tasks.find((t) => t.id === 'b')?.status).toBe('cancelled');
+			expect(result?.tasks.find((t) => t.id === 'c')?.status).toBe('cancelled');
+		});
+
+		it('cancels dependents in a diamond graph', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({ id: 'a', status: 'running' }),
+						makeTaskRecord({ id: 'b', deps: ['a'], status: 'planned' }),
+						makeTaskRecord({ id: 'c', deps: ['a'], status: 'planned' }),
+						makeTaskRecord({ id: 'd', deps: ['b', 'c'], status: 'planned' }),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.markFailed('thread-1', 'a', {});
+
+			expect(result?.tasks.find((t) => t.id === 'a')?.status).toBe('failed');
+			expect(result?.tasks.find((t) => t.id === 'b')?.status).toBe('cancelled');
+			expect(result?.tasks.find((t) => t.id === 'c')?.status).toBe('cancelled');
+			expect(result?.tasks.find((t) => t.id === 'd')?.status).toBe('cancelled');
+		});
+
+		it('leaves independent tasks untouched', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({ id: 'a', status: 'running' }),
+						makeTaskRecord({ id: 'b', deps: ['a'], status: 'planned' }),
+						makeTaskRecord({ id: 'c', deps: [], status: 'planned' }),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.markFailed('thread-1', 'a', {});
+
+			expect(result?.tasks.find((t) => t.id === 'c')?.status).toBe('planned');
+			expect(result?.tasks.find((t) => t.id === 'c')?.error).toBeUndefined();
+		});
+
+		it('preserves already-terminal dependents', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({ id: 'a', status: 'running' }),
+						makeTaskRecord({ id: 'b', deps: ['a'], status: 'succeeded' }),
+						makeTaskRecord({ id: 'c', deps: ['a'], status: 'failed', error: 'earlier fail' }),
+						makeTaskRecord({
+							id: 'd',
+							deps: ['a'],
+							status: 'cancelled',
+							error: 'user aborted',
+						}),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.markFailed('thread-1', 'a', {});
+
+			expect(result?.tasks.find((t) => t.id === 'b')?.status).toBe('succeeded');
+			expect(result?.tasks.find((t) => t.id === 'c')?.status).toBe('failed');
+			expect(result?.tasks.find((t) => t.id === 'c')?.error).toBe('earlier fail');
+			expect(result?.tasks.find((t) => t.id === 'd')?.status).toBe('cancelled');
+			expect(result?.tasks.find((t) => t.id === 'd')?.error).toBe('user aborted');
+		});
+
+		it('is a no-op when the failed task id is not in the graph', async () => {
+			const graph = makeGraph({
+				tasks: [makeTaskRecord({ id: 'a', status: 'running' })],
+			});
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.markFailed('thread-1', 'nonexistent', {});
+
+			expect(result?.tasks.find((t) => t.id === 'a')?.status).toBe('running');
+		});
+
+		it('propagates the same finishedAt to the failed task and cancelled dependents', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({ id: 'a', status: 'running' }),
+						makeTaskRecord({ id: 'b', deps: ['a'], status: 'planned' }),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.markFailed('thread-1', 'a', {
+				finishedAt: 1_700_000_000_000,
+			});
+
+			expect(result?.tasks.find((t) => t.id === 'a')?.finishedAt).toBe(1_700_000_000_000);
+			expect(result?.tasks.find((t) => t.id === 'b')?.finishedAt).toBe(1_700_000_000_000);
+		});
+
+		it('cancels a running dependent defensively even though the scheduler guard should prevent this', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({ id: 'a', status: 'running' }),
+						makeTaskRecord({ id: 'b', deps: ['a'], status: 'running' }),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const result = await coordinator.markFailed('thread-1', 'a', {});
+
+			expect(result?.tasks.find((t) => t.id === 'b')?.status).toBe('cancelled');
+			expect(result?.tasks.find((t) => t.id === 'b')?.error).toBe(
+				'Cancelled: dependency "a" failed',
+			);
+		});
 	});
 
 	describe('markCancelled', () => {

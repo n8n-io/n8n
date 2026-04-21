@@ -1,6 +1,6 @@
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import type { IDataObject, INodeExecutionData, IPinData, Workflow } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, IPinData } from 'n8n-workflow';
 import { jsonParse, jsonStringify, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
@@ -56,16 +56,12 @@ export function usePinnedData(
 	const uiStore = useUIStore();
 	const workflowDocumentStore =
 		injectWorkflowDocumentStore() ??
-		(workflowsStore.workflowId
-			? shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)))
-			: null);
+		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)));
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const { getInputDataWithPinned } = useDataSchema();
-
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	const { isSubNodeType, isMultipleOutputsNodeType } = useNodeType({
 		node,
@@ -73,7 +69,7 @@ export function usePinnedData(
 
 	const data = computed<IDataObject[] | undefined>(() => {
 		const targetNode = unref(node);
-		if (!targetNode || !workflowDocumentStore?.value) return undefined;
+		if (!targetNode || !workflowDocumentStore.value) return undefined;
 		return pinDataToExecutionData(workflowDocumentStore.value.pinData)[targetNode.name];
 	});
 
@@ -101,9 +97,12 @@ export function usePinnedData(
 
 		if (!nodeType || (checkDataEmpty && dataToPin.length === 0)) return false;
 
-		const outputs = NodeHelpers.getNodeOutputs(workflowObject.value, targetNode, nodeType).map(
-			(output) => (typeof output === 'string' ? { type: output } : output),
-		);
+		const expression = workflowDocumentStore.value?.getExpressionHandler();
+		const outputs = expression
+			? NodeHelpers.getNodeOutputs({ expression }, targetNode, nodeType).map((output) =>
+					typeof output === 'string' ? { type: output } : output,
+				)
+			: [];
 
 		const mainOutputs = outputs.filter(
 			(output) => output.type === NodeConnectionTypes.Main && output.category !== 'error',
@@ -179,8 +178,8 @@ export function usePinnedData(
 
 		if (typeof data === 'object') data = JSON.stringify(data);
 
-		const { pinData: _pinData, ...workflowObjectWithoutPinData } = workflowObject.value;
-		const currentPinData = (workflowDocumentStore?.value?.pinData ?? {}) as IPinData;
+		const { pinData: _pinData, ...workflowObjectWithoutPinData } = workflowsStore.workflow;
+		const currentPinData = (workflowDocumentStore.value?.pinData ?? {}) as IPinData;
 		const workflowJson = jsonStringify(workflowObjectWithoutPinData, { replaceCircularRefs: true });
 
 		const newPinData = { ...currentPinData, [targetNode.name]: data };
@@ -281,14 +280,11 @@ export function usePinnedData(
 			throw new Error('Data too large');
 		}
 
-		if (workflowDocumentStore?.value) {
+		if (workflowDocumentStore.value) {
 			const nodeName = targetNode.name;
 			// Update metadata timestamp for existing pinned data
-			if (
-				(workflowDocumentStore.value.pinData[nodeName] ?? []).length > 0 &&
-				workflowsStore.nodeMetadata[nodeName]
-			) {
-				workflowsStore.nodeMetadata[nodeName].pinnedDataLastUpdatedAt = Date.now();
+			if ((workflowDocumentStore.value.pinData[nodeName] ?? []).length > 0) {
+				workflowDocumentStore.value.touchPinnedDataLastUpdatedAt(nodeName);
 			}
 			workflowDocumentStore.value.pinNodeData(nodeName, data as INodeExecutionData[]);
 			uiStore.markStateDirty();
@@ -316,11 +312,9 @@ export function usePinnedData(
 		}
 
 		onUnsetData({ source });
-		if (workflowDocumentStore?.value) {
+		if (workflowDocumentStore.value) {
 			workflowDocumentStore.value.unpinNodeData(targetNode.name);
-			if (workflowsStore.nodeMetadata[targetNode.name]) {
-				workflowsStore.nodeMetadata[targetNode.name].pinnedDataLastRemovedAt = Date.now();
-			}
+			workflowDocumentStore.value.touchPinnedDataLastRemovedAt(targetNode.name);
 			uiStore.markStateDirty();
 		}
 	}

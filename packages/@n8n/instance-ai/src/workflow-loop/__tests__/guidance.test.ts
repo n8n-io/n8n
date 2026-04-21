@@ -32,7 +32,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				summary: 'Built successfully',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).not.toContain('setup-credentials');
+			expect(result).not.toContain('credentials(action="setup")');
 			expect(result).not.toContain('mock');
 		});
 
@@ -43,7 +43,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				mockedCredentialTypes: [],
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).not.toContain('setup-credentials');
+			expect(result).not.toContain('credentials(action="setup")');
 			expect(result).toContain('Report completion');
 		});
 
@@ -54,24 +54,23 @@ describe('formatWorkflowLoopGuidance', () => {
 				mockedCredentialTypes: ['slackOAuth2Api', 'gmailOAuth2'],
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('setup-credentials');
-			expect(result).toContain('slackOAuth2Api, gmailOAuth2');
-			expect(result).toContain('finalize');
-			expect(result).toContain('apply-workflow-credentials');
+			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('Do not call');
 		});
 
-		it('should use workItemId from options when mockedCredentialTypes present', () => {
+		it('should include workflowId in workflow setup guidance when mockedCredentialTypes present', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',
 				summary: 'Done with mocks',
 				mockedCredentialTypes: ['notionApi'],
+				workflowId: 'wf-42',
 			};
-			const result = formatWorkflowLoopGuidance(action, { workItemId: 'item-42' });
-			expect(result).toContain('item-42');
-			expect(result).not.toContain('unknown');
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('wf-42');
 		});
 
-		it('should default workItemId to "unknown" when not provided and mocked credentials exist', () => {
+		it('should default workflowId to "unknown" when not provided and mocked credentials exist', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',
 				summary: 'Done with mocks',
@@ -79,6 +78,30 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('"unknown"');
+		});
+
+		it('should trigger workflow setup guidance when hasUnresolvedPlaceholders is true (no mocked credentials)', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Built with placeholders',
+				workflowId: 'wf-ph-1',
+				hasUnresolvedPlaceholders: true,
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('wf-ph-1');
+		});
+
+		it('should trigger workflow setup guidance when both mocked credentials and placeholders exist', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Built with mocks and placeholders',
+				mockedCredentialTypes: ['gmailOAuth2'],
+				hasUnresolvedPlaceholders: true,
+				workflowId: 'wf-ph-2',
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('workflows(action="setup")');
 		});
 	});
 
@@ -113,23 +136,23 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('"unknown"');
 		});
 
-		it('should mention verify-built-workflow and run-workflow', () => {
+		it('should mention verify-built-workflow and execution run action', () => {
 			const action: WorkflowLoopAction = {
 				type: 'verify',
 				workflowId: 'wf-789',
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('verify-built-workflow');
-			expect(result).toContain('run-workflow');
+			expect(result).toContain('executions(action="run")');
 		});
 
-		it('should mention debug-execution and report-verification-verdict', () => {
+		it('should mention execution debug action and report-verification-verdict', () => {
 			const action: WorkflowLoopAction = {
 				type: 'verify',
 				workflowId: 'wf-789',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('debug-execution');
+			expect(result).toContain('executions(action="debug")');
 			expect(result).toContain('report-verification-verdict');
 		});
 	});
@@ -251,14 +274,15 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(occurrences).toBeGreaterThanOrEqual(2);
 		});
 
-		it('should pass workItemId to done guidance with mocked credentials', () => {
+		it('should include workflowId in done guidance with mocked credentials', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',
 				summary: 'ok',
 				mockedCredentialTypes: ['testApi'],
+				workflowId: 'wf-xyz',
 			};
-			const result = formatWorkflowLoopGuidance(action, { workItemId: 'wi-xyz' });
-			expect(result).toContain('wi-xyz');
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('wf-xyz');
 		});
 
 		it('should not affect blocked or rebuild actions', () => {

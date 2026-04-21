@@ -25,9 +25,7 @@ const MAX_UNCONFIRMED_DISPLAY = 50;
 export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
@@ -53,7 +51,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	);
 
 	const filteredUnconfirmedNodes = computed(() => {
-		const totalWorkflowNodes = (workflowDocumentStore.value?.allNodes ?? []).length;
+		const totalWorkflowNodes = workflowDocumentStore.value.allNodes.length;
 		const availableNodes = totalWorkflowNodes - confirmedNodes.value.length;
 		if (
 			confirmedNodes.value.length > 0 &&
@@ -85,7 +83,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	}
 
 	function getNodeInfo(nodeId: string): { name: string; type: string } | null {
-		const node = (workflowDocumentStore.value?.allNodes ?? []).find((n) => n.id === nodeId);
+		const node = workflowDocumentStore.value.allNodes.find((n) => n.id === nodeId);
 		if (!node) return null;
 		return { name: node.name, type: node.type };
 	}
@@ -282,7 +280,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	);
 
 	watch(
-		() => workflowDocumentStore.value?.allNodes ?? [],
+		() => workflowDocumentStore.value.allNodes,
 		(newNodes) => {
 			const currentNodeIds = new Set(newNodes.map((n) => n.id));
 			const focusedIds = Object.keys(focusedNodesMap.value);
@@ -311,7 +309,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	);
 
 	watch(
-		() => (workflowDocumentStore.value?.allNodes ?? []).map((n) => ({ id: n.id, name: n.name })),
+		() => workflowDocumentStore.value.allNodes.map((n) => ({ id: n.id, name: n.name })),
 		(newNodeNames) => {
 			for (const { id, name } of newNodeNames) {
 				const focusedNode = focusedNodesMap.value[id];
@@ -340,9 +338,9 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 
 		return buildFocusedNodesPayload(
 			confirmedNodes.value,
-			workflowDocumentStore.value?.allNodes ?? [],
-			workflowDocumentStore.value?.connectionsByDestinationNode ?? {},
-			workflowDocumentStore.value?.connectionsBySourceNode ?? {},
+			workflowDocumentStore.value.allNodes,
+			workflowDocumentStore.value.connectionsByDestinationNode,
+			workflowDocumentStore.value.connectionsBySourceNode,
 		);
 	}
 

@@ -2764,7 +2764,7 @@ describe('Workflow Builder', () => {
 				version: 2,
 				config: { name: 'IF' },
 			});
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 			const ifBuilder = ifNode.onTrue!(nodeA).onFalse(nodeB);
 			const end = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'End' } });
 
@@ -2790,7 +2790,7 @@ describe('Workflow Builder', () => {
 					version: 2,
 					config: { name: `IF ${i}` },
 				});
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 				current = ifNode.onTrue!(current) as unknown as NodeInstance<string, string, unknown>;
 			}
 
@@ -2798,6 +2798,43 @@ describe('Workflow Builder', () => {
 			const wf = workflow('test', 'Test').add(t);
 
 			expect(() => wf.to(current)).toThrow(/Maximum branch depth/);
+		});
+	});
+
+	describe('invalid input handling', () => {
+		it('should throw descriptive TypeError when name is an array', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow('Test', [trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} })]);
+			}).toThrow(/workflow\(\) requires \(id: string, name: string\)/);
+		});
+
+		it('should throw descriptive TypeError when id is not a string', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow(123, 'Test');
+			}).toThrow(/workflow\(\) requires \(id: string, name: string\)/);
+		});
+
+		it('should throw when nodes are passed in the options argument', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			expect(() => {
+				workflow('id', 'Test', { nodes: [t] });
+			}).toThrow(/Do not pass nodes or connections here/);
+		});
+
+		it('should throw when connections are passed in the options argument', () => {
+			expect(() => {
+				workflow('id', 'Test', { connections: { 'Node 1': { main: [[]] } } });
+			}).toThrow(/use \.add\(\) and \.to\(\)/);
+		});
+
+		it('should throw when an array of nodes is passed as the options argument', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow('id', 'Test', [t]);
+			}).toThrow(/Do not pass nodes or connections here/);
 		});
 	});
 });

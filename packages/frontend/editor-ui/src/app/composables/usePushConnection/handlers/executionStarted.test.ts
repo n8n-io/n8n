@@ -2,6 +2,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { executionStarted } from './executionStarted';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
@@ -20,7 +24,7 @@ describe('executionStarted', () => {
 	}
 
 	beforeEach(() => {
-		const pinia = createTestingPinia({ stubActions: true });
+		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
@@ -43,7 +47,8 @@ describe('executionStarted', () => {
 		workflowsStore.activeExecutionId = null;
 		workflowsStore.workflowExecutionData = null;
 		workflowsStore.workflow.id = 'wf-123';
-		workflowsStore.workflow.name = 'My Workflow';
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
+		workflowDocumentStore.setName('My Workflow');
 
 		await executionStarted(makeEvent('exec-1'), mockOptions);
 

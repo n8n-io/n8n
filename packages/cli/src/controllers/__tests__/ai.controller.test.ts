@@ -598,21 +598,21 @@ describe('AiController', () => {
 		});
 	});
 
-	describe('getGatewayCredits', () => {
-		it('should return credits from aiGatewayService', async () => {
-			const credits = { creditsQuota: 10, creditsRemaining: 7 };
-			aiGatewayService.getCreditsRemaining.mockResolvedValue(credits);
+	describe('getGatewayWallet', () => {
+		it('should return wallet from aiGatewayService', async () => {
+			const walletData = { budget: 10, balance: 7 };
+			aiGatewayService.getWallet.mockResolvedValue(walletData);
 
-			const result = await controller.getGatewayCredits(request);
+			const result = await controller.getGatewayWallet(request);
 
-			expect(aiGatewayService.getCreditsRemaining).toHaveBeenCalledWith(request.user.id);
-			expect(result).toEqual(credits);
+			expect(aiGatewayService.getWallet).toHaveBeenCalledWith(request.user.id);
+			expect(result).toEqual(walletData);
 		});
 
 		it('should throw InternalServerError when aiGatewayService throws', async () => {
-			aiGatewayService.getCreditsRemaining.mockRejectedValue(new Error('Gateway unreachable'));
+			aiGatewayService.getWallet.mockRejectedValue(new Error('Gateway unreachable'));
 
-			await expect(controller.getGatewayCredits(request)).rejects.toThrow(InternalServerError);
+			await expect(controller.getGatewayWallet(request)).rejects.toThrow(InternalServerError);
 		});
 	});
 });
