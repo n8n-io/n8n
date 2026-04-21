@@ -112,6 +112,9 @@ const ResourceCenterSectionView = async () =>
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
 
+const WorkflowAuthoringChecksSettingsView = async () =>
+	await import('@/features/settings/workflowAuthoringChecks/WorkflowAuthoringChecksSettings.vue');
+
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
 const MigrationReportView = async () =>
@@ -892,6 +895,27 @@ export const routes: RouteRecordRaw[] = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
+					},
+				},
+			},
+			{
+				path: 'workflow-authoring-checks',
+				name: VIEWS.WORKFLOW_AUTHORING_CHECKS_SETTINGS,
+				component: WorkflowAuthoringChecksSettingsView,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'workflowAuthoringCheck:list',
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'workflow-authoring-checks',
+							};
+						},
 					},
 				},
 			},

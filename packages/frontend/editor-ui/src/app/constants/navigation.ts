@@ -71,6 +71,7 @@ export const enum VIEWS {
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
 	INSTANCE_REGISTRY = 'InstanceRegistryView',
+	WORKFLOW_AUTHORING_CHECKS_SETTINGS = 'WorkflowAuthoringChecksSettings',
 	RESOURCE_CENTER = 'ResourceCenter',
 	RESOURCE_CENTER_SECTION = 'ResourceCenterSection',
 }

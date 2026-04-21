@@ -175,6 +175,15 @@ export function useSettingsItems() {
 			route: { to: { name: VIEWS.COMMUNITY_NODES } },
 		});
 
+		menuItems.push({
+			id: 'settings-workflow-authoring-checks',
+			icon: 'list-checks',
+			label: i18n.baseText('settings.workflowAuthoringChecks'),
+			position: 'top',
+			available: canUserAccessRouteByName(VIEWS.WORKFLOW_AUTHORING_CHECKS_SETTINGS),
+			route: { to: { name: VIEWS.WORKFLOW_AUTHORING_CHECKS_SETTINGS } },
+		});
+
 		if (MIGRATION_REPORT_TARGET_VERSION) {
 			menuItems.push({
 				id: 'settings-migration-report',
