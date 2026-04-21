@@ -23,6 +23,12 @@ export interface CliArgs {
 	keepWorkflows: boolean;
 	/** Directory to write eval-results.json (defaults to cwd) */
 	outputDir?: string;
+	/** LangSmith dataset name (synced from JSON test cases before each run) */
+	dataset: string;
+	/** Max concurrent scenarios in evaluate(). Builds are separately limited to 4 by semaphore. */
+	concurrency: number;
+	/** LangSmith experiment name prefix (auto-generated if not set) */
+	experimentName?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -38,6 +44,9 @@ const cliArgsSchema = z.object({
 	filter: z.string().optional(),
 	keepWorkflows: z.boolean().default(false),
 	outputDir: z.string().optional(),
+	dataset: z.string().default('instance-ai-workflow-evals'),
+	concurrency: z.number().int().positive().default(99),
+	experimentName: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -57,6 +66,9 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		filter: validated.filter,
 		keepWorkflows: validated.keepWorkflows,
 		outputDir: validated.outputDir,
+		dataset: validated.dataset,
+		concurrency: validated.concurrency,
+		experimentName: validated.experimentName,
 	};
 }
 
@@ -73,6 +85,9 @@ interface RawArgs {
 	filter?: string;
 	keepWorkflows: boolean;
 	outputDir?: string;
+	dataset: string;
+	concurrency: number;
+	experimentName?: string;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -82,6 +97,9 @@ function parseRawArgs(argv: string[]): RawArgs {
 		verbose: false,
 		keepWorkflows: false,
 		outputDir: undefined,
+		dataset: 'instance-ai-workflow-evals',
+		concurrency: 99,
+		experimentName: undefined,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -123,6 +141,21 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--output-dir':
 				result.outputDir = nextArg(argv, i, '--output-dir');
+				i++;
+				break;
+
+			case '--dataset':
+				result.dataset = nextArg(argv, i, '--dataset');
+				i++;
+				break;
+
+			case '--concurrency':
+				result.concurrency = parseIntArg(argv, i, '--concurrency');
+				i++;
+				break;
+
+			case '--experiment-name':
+				result.experimentName = nextArg(argv, i, '--experiment-name');
 				i++;
 				break;
 

@@ -26,6 +26,7 @@ const checklistResultSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const MAX_VERIFY_ATTEMPTS = 2;
+const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
 
 export async function verifyChecklist(
 	checklist: ChecklistItem[],
@@ -47,13 +48,29 @@ Verify each checklist item against the artifact above.`;
 
 	const validIds = new Set(llmItems.map((i) => i.id));
 
-	for (let attempt = 0; attempt < MAX_VERIFY_ATTEMPTS; attempt++) {
+	for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt++) {
 		const agent = createEvalAgent('eval-checklist-verifier', {
 			instructions: MOCK_EXECUTION_VERIFY_PROMPT,
 			cache: true,
 		}).structuredOutput(checklistResultSchema);
 
-		const result = await agent.generate(userMessage);
+		let timer: NodeJS.Timeout | undefined;
+		let result;
+		try {
+			const timeout = new Promise<never>((_, reject) => {
+				timer = setTimeout(
+					() => reject(new Error(`verifier timed out after ${VERIFY_ATTEMPT_TIMEOUT_MS}ms`)),
+					VERIFY_ATTEMPT_TIMEOUT_MS,
+				);
+			});
+			result = await Promise.race([agent.generate(userMessage), timeout]);
+		} catch (error: unknown) {
+			const msg = error instanceof Error ? error.message : String(error);
+			console.warn(`[verifier] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} failed: ${msg}`);
+			continue;
+		} finally {
+			if (timer) clearTimeout(timer);
+		}
 
 		const parsed = result.structuredOutput as z.infer<typeof checklistResultSchema> | undefined;
 		const results: ChecklistResult[] = [];
@@ -82,7 +99,12 @@ Verify each checklist item against the artifact above.`;
 			results.sort((a, b) => a.id - b.id);
 			return results;
 		}
+
+		console.warn(
+			`[verifier] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} produced no parseable results`,
+		);
 	}
 
+	console.warn(`[verifier] exhausted ${MAX_VERIFY_ATTEMPTS} attempts, returning empty result`);
 	return [];
 }
