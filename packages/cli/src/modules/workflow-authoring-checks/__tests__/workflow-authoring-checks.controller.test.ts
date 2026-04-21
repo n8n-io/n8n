@@ -151,12 +151,40 @@ describe('WorkflowAuthoringChecksController', () => {
 					description: '',
 					defaultSeverity: 'warning',
 					configSchema: { fields: [] },
+					static: false,
 				},
 			]);
 
 			const response = controller.listTypes();
 
 			expect(response.types).toHaveLength(1);
+		});
+
+		it('filters out static types', () => {
+			const { controller, authoringChecksService } = makeController();
+			authoringChecksService.listTypes.mockReturnValue([
+				{
+					type: 'node-has-direct-parent',
+					title: 'Node has direct parent',
+					description: '',
+					defaultSeverity: 'warning',
+					configSchema: { fields: [] },
+					static: false,
+				},
+				{
+					type: 'no-dangling-nodes',
+					title: 'No dangling nodes',
+					description: '',
+					defaultSeverity: 'warning',
+					configSchema: { fields: [] },
+					static: true,
+				},
+			]);
+
+			const response = controller.listTypes();
+
+			expect(response.types).toHaveLength(1);
+			expect(response.types[0].type).toBe('node-has-direct-parent');
 		});
 	});
 
@@ -172,6 +200,7 @@ describe('WorkflowAuthoringChecksController', () => {
 					config: {},
 					enabled: true,
 					severity: 'warning',
+					static: false,
 				},
 			];
 			authoringChecksService.listInstances.mockResolvedValue(checks);
@@ -193,6 +222,7 @@ describe('WorkflowAuthoringChecksController', () => {
 				config: { childNodeType: 'a', parentNodeType: 'b' },
 				enabled: true,
 				severity: 'warning',
+				static: false,
 			};
 			authoringChecksService.createInstance.mockResolvedValue(created);
 
@@ -225,6 +255,7 @@ describe('WorkflowAuthoringChecksController', () => {
 				config: {},
 				enabled: false,
 				severity: 'blocking',
+				static: false,
 			};
 			authoringChecksService.updateInstance.mockResolvedValue(updated);
 

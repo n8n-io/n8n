@@ -37,6 +37,7 @@ export interface WorkflowCheckInstanceDto {
 	config: Record<string, unknown>;
 	enabled: boolean;
 	severity: WorkflowAuthoringCheckSeverity;
+	static: boolean;
 }
 
 export interface WorkflowCheckTypeInfoDto {
@@ -45,6 +46,7 @@ export interface WorkflowCheckTypeInfoDto {
 	description: string;
 	defaultSeverity: WorkflowAuthoringCheckSeverity;
 	configSchema: WorkflowCheckType['configSchema'];
+	static: boolean;
 }
 
 @Service()
@@ -116,6 +118,7 @@ export class WorkflowAuthoringChecksService {
 			description: t.description,
 			defaultSeverity: t.defaultSeverity,
 			configSchema: t.configSchema,
+			static: t.static ?? false,
 		}));
 	}
 
@@ -126,6 +129,9 @@ export class WorkflowAuthoringChecksService {
 
 	async createInstance(input: CreateWorkflowCheckInstanceInput): Promise<WorkflowCheckInstanceDto> {
 		const type = this.requireType(input.type);
+		if (type.static) {
+			throw new UserError('Static checks cannot be created manually.');
+		}
 		this.validateConfigOrThrow(type, input.config);
 		const created = await this.repository.createInstance({
 			name: input.name,
@@ -144,9 +150,19 @@ export class WorkflowAuthoringChecksService {
 		const existing = await this.repository.findOne({ where: { id } });
 		if (!existing) return null;
 
+		const type = this.registry.getType(existing.type);
+		if (type?.static) {
+			if (patch.name !== undefined) {
+				throw new UserError('Static checks cannot be renamed.');
+			}
+			if (patch.config !== undefined) {
+				throw new UserError('Static checks do not accept config changes.');
+			}
+		}
+
 		if (patch.config !== undefined) {
-			const type = this.requireType(existing.type);
-			this.validateConfigOrThrow(type, patch.config);
+			const existingType = this.requireType(existing.type);
+			this.validateConfigOrThrow(existingType, patch.config);
 		}
 
 		const updated = await this.repository.updateInstance(id, {
@@ -159,7 +175,29 @@ export class WorkflowAuthoringChecksService {
 	}
 
 	async deleteInstance(id: string): Promise<boolean> {
+		const existing = await this.repository.findOne({ where: { id } });
+		if (!existing) return false;
+		const type = this.registry.getType(existing.type);
+		if (type?.static) {
+			throw new UserError('Static checks cannot be deleted.');
+		}
 		return await this.repository.deleteById(id);
+	}
+
+	async ensureStaticInstances(): Promise<void> {
+		const staticTypes = this.registry.listTypes().filter((t) => t.static);
+		for (const type of staticTypes) {
+			const existing = await this.repository.findOne({ where: { id: type.type } });
+			if (existing) continue;
+			await this.repository.createWithId({
+				id: type.type,
+				name: type.title,
+				type: type.type,
+				config: {},
+				severity: type.defaultSeverity,
+				enabled: true,
+			});
+		}
 	}
 
 	private toDto(instance: WorkflowCheck): WorkflowCheckInstanceDto {
@@ -172,6 +210,7 @@ export class WorkflowAuthoringChecksService {
 			config: instance.config,
 			enabled: instance.enabled,
 			severity: instance.severity,
+			static: type?.static ?? false,
 		};
 	}
 

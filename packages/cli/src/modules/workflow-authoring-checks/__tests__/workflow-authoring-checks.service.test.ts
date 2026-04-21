@@ -54,13 +54,12 @@ const makeRepo = (instances: WorkflowCheck[] = []) =>
 				async ({ where: { id } }: { where: { id: string } }) =>
 					instances.find((i) => i.id === id) ?? null,
 			),
-		createInstance: jest
-			.fn()
-			.mockImplementation(async (input) => ({
-				id: 'new-1',
-				...input,
-				enabled: input.enabled ?? true,
-			})),
+		createInstance: jest.fn().mockImplementation(async (input) => ({
+			id: 'new-1',
+			...input,
+			enabled: input.enabled ?? true,
+		})),
+		createWithId: jest.fn().mockImplementation(async (input) => ({ ...input })),
 		updateInstance: jest.fn(),
 		deleteById: jest.fn().mockResolvedValue(true),
 	});
@@ -285,13 +284,172 @@ describe('WorkflowAuthoringChecksService', () => {
 	});
 
 	describe('deleteInstance', () => {
-		it('delegates to the repository', async () => {
+		it('delegates to the repository when the instance is not static', async () => {
 			const registry = new WorkflowCheckRegistry();
-			const repo = makeRepo();
+			registry.register(makeType({ evaluate: jest.fn() }));
+			const repo = makeRepo([makeInstance({ id: 'i-1' })]);
 			const service = new WorkflowAuthoringChecksService(registry, repo, logger);
 
 			expect(await service.deleteInstance('i-1')).toBe(true);
 			expect(repo.deleteById).toHaveBeenCalledWith('i-1');
+		});
+
+		it('returns false when the instance is missing', async () => {
+			const registry = new WorkflowCheckRegistry();
+			const repo = makeRepo([]);
+			const service = new WorkflowAuthoringChecksService(registry, repo, logger);
+
+			expect(await service.deleteInstance('i-missing')).toBe(false);
+			expect(repo.deleteById).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('static check guards', () => {
+		const staticType: WorkflowCheckType = makeType({
+			type: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+			title: 'No dangling nodes',
+			static: true,
+			evaluate: jest.fn(),
+		});
+
+		it('createInstance rejects a static type', async () => {
+			const registry = new WorkflowCheckRegistry();
+			registry.register(staticType);
+			const service = new WorkflowAuthoringChecksService(registry, makeRepo(), logger);
+
+			await expect(
+				service.createInstance({
+					name: 'x',
+					type: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+					config: {},
+					severity: 'warning',
+				}),
+			).rejects.toThrow(/Static checks cannot be created/);
+		});
+
+		it('updateInstance rejects name changes on static rows', async () => {
+			const registry = new WorkflowCheckRegistry();
+			registry.register(staticType);
+			const staticRow = makeInstance({
+				id: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+				type: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+			});
+			const service = new WorkflowAuthoringChecksService(registry, makeRepo([staticRow]), logger);
+
+			await expect(
+				service.updateInstance(WORKFLOW_CHECK_TYPES.NoDanglingNodes, { name: 'renamed' }),
+			).rejects.toThrow(/Static checks cannot be renamed/);
+		});
+
+		it('updateInstance rejects config changes on static rows', async () => {
+			const registry = new WorkflowCheckRegistry();
+			registry.register(staticType);
+			const staticRow = makeInstance({
+				id: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+				type: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+			});
+			const service = new WorkflowAuthoringChecksService(registry, makeRepo([staticRow]), logger);
+
+			await expect(
+				service.updateInstance(WORKFLOW_CHECK_TYPES.NoDanglingNodes, { config: { x: 1 } }),
+			).rejects.toThrow(/do not accept config changes/);
+		});
+
+		it('updateInstance accepts severity and enabled changes on static rows', async () => {
+			const registry = new WorkflowCheckRegistry();
+			registry.register(staticType);
+			const staticRow = makeInstance({
+				id: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+				type: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+			});
+			const repo = makeRepo([staticRow]);
+			repo.updateInstance.mockResolvedValue({
+				...staticRow,
+				severity: 'blocking',
+				enabled: false,
+			});
+			const service = new WorkflowAuthoringChecksService(registry, repo, logger);
+
+			await service.updateInstance(WORKFLOW_CHECK_TYPES.NoDanglingNodes, {
+				severity: 'blocking',
+				enabled: false,
+			});
+
+			expect(repo.updateInstance).toHaveBeenCalledWith(WORKFLOW_CHECK_TYPES.NoDanglingNodes, {
+				name: undefined,
+				config: undefined,
+				severity: 'blocking',
+				enabled: false,
+			});
+		});
+
+		it('deleteInstance rejects static rows', async () => {
+			const registry = new WorkflowCheckRegistry();
+			registry.register(staticType);
+			const staticRow = makeInstance({
+				id: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+				type: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+			});
+			const repo = makeRepo([staticRow]);
+			const service = new WorkflowAuthoringChecksService(registry, repo, logger);
+
+			await expect(service.deleteInstance(WORKFLOW_CHECK_TYPES.NoDanglingNodes)).rejects.toThrow(
+				/Static checks cannot be deleted/,
+			);
+			expect(repo.deleteById).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('ensureStaticInstances', () => {
+		const staticType: WorkflowCheckType = makeType({
+			type: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+			title: 'No dangling nodes',
+			static: true,
+			evaluate: jest.fn(),
+		});
+
+		it('creates a row for each static type that has none', async () => {
+			const registry = new WorkflowCheckRegistry();
+			registry.register(staticType);
+			const repo = makeRepo([]);
+			const service = new WorkflowAuthoringChecksService(registry, repo, logger);
+
+			await service.ensureStaticInstances();
+
+			expect(repo.createWithId).toHaveBeenCalledWith({
+				id: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+				name: 'No dangling nodes',
+				type: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+				config: {},
+				severity: 'warning',
+				enabled: true,
+			});
+		});
+
+		it('is idempotent — skips types with an existing row', async () => {
+			const registry = new WorkflowCheckRegistry();
+			registry.register(staticType);
+			const existing = makeInstance({
+				id: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+				type: WORKFLOW_CHECK_TYPES.NoDanglingNodes,
+			});
+			const repo = makeRepo([existing]);
+			const service = new WorkflowAuthoringChecksService(registry, repo, logger);
+
+			await service.ensureStaticInstances();
+
+			expect(repo.createWithId).not.toHaveBeenCalled();
+		});
+
+		it('ignores non-static types', async () => {
+			const registry = new WorkflowCheckRegistry();
+			registry.register(makeType({ evaluate: jest.fn() }));
+			const repo = makeRepo([]);
+			const service = new WorkflowAuthoringChecksService(registry, repo, logger);
+
+			await service.ensureStaticInstances();
+
+			expect(repo.createWithId).not.toHaveBeenCalled();
 		});
 	});
 });

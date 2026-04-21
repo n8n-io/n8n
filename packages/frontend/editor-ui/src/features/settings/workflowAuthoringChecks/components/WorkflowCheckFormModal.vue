@@ -41,6 +41,7 @@ const config = ref<Record<string, string>>({});
 const validationError = ref('');
 const submitting = ref(false);
 const nodeTypeFilters = ref<Record<string, string>>({});
+const isStatic = ref(false);
 
 const isEdit = computed(() => props.data.mode === 'edit');
 
@@ -109,6 +110,7 @@ onMounted(async () => {
 			typeKey.value = instance.type;
 			severity.value = instance.severity;
 			enabled.value = instance.enabled;
+			isStatic.value = instance.static;
 			const type = store.types.find((t) => t.type === instance.type);
 			if (type) initConfigForType(type, instance.config);
 		}
@@ -118,6 +120,7 @@ onMounted(async () => {
 });
 
 function validate(): boolean {
+	if (isStatic.value) return true;
 	if (!name.value.trim()) return false;
 	if (!typeKey.value) return false;
 	for (const field of typeFields.value) {
@@ -140,12 +143,17 @@ async function onSubmit() {
 
 	try {
 		if (isEdit.value && props.data.instanceId) {
-			const patch: UpdateWorkflowCheckDto = {
-				name: name.value.trim(),
-				config: config.value,
-				severity: severity.value,
-				enabled: enabled.value,
-			};
+			const patch: UpdateWorkflowCheckDto = isStatic.value
+				? {
+						severity: severity.value,
+						enabled: enabled.value,
+					}
+				: {
+						name: name.value.trim(),
+						config: config.value,
+						severity: severity.value,
+						enabled: enabled.value,
+					};
 			await store.updateInstance(props.data.instanceId, patch);
 			showMessage({
 				title: i18n.baseText('settings.workflowAuthoringChecks.modal.editTitle'),
@@ -195,7 +203,15 @@ async function onSubmit() {
 					:label="i18n.baseText('settings.workflowAuthoringChecks.modal.field.name')"
 					color="text-dark"
 				>
+					<div
+						v-if="isStatic"
+						:class="$style.staticField"
+						data-test-id="workflow-authoring-check-form-name-static"
+					>
+						{{ name }}
+					</div>
 					<N8nInput
+						v-else
 						v-model="name"
 						size="large"
 						:placeholder="
@@ -207,12 +223,12 @@ async function onSubmit() {
 				</N8nInputLabel>
 
 				<N8nInputLabel
+					v-if="!isStatic"
 					:label="i18n.baseText('settings.workflowAuthoringChecks.modal.field.type')"
 					color="text-dark"
 				>
 					<N8nSelect
 						v-model="typeKey"
-						size="large"
 						:disabled="isEdit"
 						data-test-id="workflow-authoring-check-form-type"
 					>
@@ -220,46 +236,42 @@ async function onSubmit() {
 					</N8nSelect>
 				</N8nInputLabel>
 
-				<N8nInputLabel
-					v-for="field in typeFields"
-					:key="field.name"
-					:label="field.label"
-					color="text-dark"
-				>
-					<N8nSelect
-						v-if="field.kind === 'nodeType'"
-						v-model="config[field.name]"
-						size="large"
-						filterable
-						:filter-method="(query: string) => onNodeTypeFilter(field.name, query)"
-						:placeholder="field.placeholder"
-						:data-test-id="`workflow-authoring-check-form-field-${field.name}`"
+				<template v-if="!isStatic">
+					<N8nInputLabel
+						v-for="field in typeFields"
+						:key="field.name"
+						:label="field.label"
+						color="text-dark"
 					>
-						<N8nOption
-							v-for="option in filteredNodeTypeOptions(field.name)"
-							:key="option.value"
-							:value="option.value"
-							:label="option.label"
+						<N8nSelect
+							v-if="field.kind === 'nodeType'"
+							v-model="config[field.name]"
+							filterable
+							:filter-method="(query: string) => onNodeTypeFilter(field.name, query)"
+							:placeholder="field.placeholder"
+							:data-test-id="`workflow-authoring-check-form-field-${field.name}`"
+						>
+							<N8nOption
+								v-for="option in filteredNodeTypeOptions(field.name)"
+								:key="option.value"
+								:value="option.value"
+								:label="option.label"
+							/>
+						</N8nSelect>
+						<N8nInput
+							v-else
+							v-model="config[field.name]"
+							:placeholder="field.placeholder"
+							:data-test-id="`workflow-authoring-check-form-field-${field.name}`"
 						/>
-					</N8nSelect>
-					<N8nInput
-						v-else
-						v-model="config[field.name]"
-						size="large"
-						:placeholder="field.placeholder"
-						:data-test-id="`workflow-authoring-check-form-field-${field.name}`"
-					/>
-				</N8nInputLabel>
+					</N8nInputLabel>
+				</template>
 
 				<N8nInputLabel
 					:label="i18n.baseText('settings.workflowAuthoringChecks.modal.field.severity')"
 					color="text-dark"
 				>
-					<N8nSelect
-						v-model="severity"
-						size="large"
-						data-test-id="workflow-authoring-check-form-severity"
-					>
+					<N8nSelect v-model="severity" data-test-id="workflow-authoring-check-form-severity">
 						<N8nOption
 							value="warning"
 							:label="i18n.baseText('workflowAuthoringChecks.severity.warning')"
@@ -325,6 +337,12 @@ async function onSubmit() {
 .validationError {
 	color: var(--color--text--danger);
 	font-size: var(--font-size--2xs);
+}
+
+.staticField {
+	color: var(--color--text);
+	font-size: var(--font-size--sm);
+	padding: var(--spacing--2xs) 0;
 }
 
 .footer {

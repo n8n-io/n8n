@@ -13,6 +13,10 @@ export interface CreateWorkflowCheckInput {
 	enabled?: boolean;
 }
 
+export interface CreateWorkflowCheckWithIdInput extends CreateWorkflowCheckInput {
+	id: string;
+}
+
 export interface UpdateWorkflowCheckPatch {
 	name?: string;
 	config?: Record<string, unknown>;
@@ -32,6 +36,18 @@ export class WorkflowCheckRepository extends Repository<WorkflowCheck> {
 
 	async createInstance(input: CreateWorkflowCheckInput): Promise<WorkflowCheck> {
 		const fresh = this.create({
+			name: input.name,
+			type: input.type,
+			config: input.config,
+			severity: input.severity,
+			enabled: input.enabled ?? true,
+		});
+		return await this.save(fresh);
+	}
+
+	async createWithId(input: CreateWorkflowCheckWithIdInput): Promise<WorkflowCheck> {
+		const fresh = this.create({
+			id: input.id,
 			name: input.name,
 			type: input.type,
 			config: input.config,

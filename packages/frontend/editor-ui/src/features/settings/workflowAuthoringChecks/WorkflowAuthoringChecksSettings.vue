@@ -134,13 +134,14 @@ async function onDelete(instance: WorkflowCheckDto) {
 				</div>
 				<div :class="$style.settingsContainerAction">
 					<N8nButton
-						type="tertiary"
+						variant="outline"
 						:label="i18n.baseText('settings.workflowAuthoringChecks.editAction')"
 						:data-test-id="`workflow-authoring-check-edit-${instance.id}`"
 						@click="onEdit(instance)"
 					/>
 					<N8nButton
-						type="tertiary"
+						v-if="!instance.static"
+						variant="outline"
 						:label="i18n.baseText('settings.workflowAuthoringChecks.deleteAction')"
 						:data-test-id="`workflow-authoring-check-delete-${instance.id}`"
 						@click="onDelete(instance)"

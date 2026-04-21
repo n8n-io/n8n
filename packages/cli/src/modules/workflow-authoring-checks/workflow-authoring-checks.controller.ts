@@ -89,7 +89,8 @@ export class WorkflowAuthoringChecksController {
 	@Get('/types')
 	@GlobalScope('workflowAuthoringCheck:list')
 	listTypes(): WorkflowAuthoringCheckTypesListResponse {
-		return { types: this.authoringChecksService.listTypes() };
+		const userCreatable = this.authoringChecksService.listTypes().filter((t) => !t.static);
+		return { types: userCreatable };
 	}
 
 	@Get('/')

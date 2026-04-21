@@ -17,6 +17,18 @@ const instance: WorkflowCheckDto = {
 	config: { childNodeType: 'agent', parentNodeType: 'guardrails' },
 	enabled: true,
 	severity: 'warning',
+	static: false,
+};
+
+const staticInstance: WorkflowCheckDto = {
+	id: 'no-dangling-nodes',
+	name: 'No dangling nodes',
+	type: 'no-dangling-nodes',
+	typeTitle: 'No dangling nodes',
+	config: {},
+	enabled: true,
+	severity: 'warning',
+	static: true,
 };
 
 const type: WorkflowCheckTypeDto = {
@@ -83,5 +95,19 @@ describe('WorkflowAuthoringChecksSettings', () => {
 				{ enabled: false },
 			),
 		);
+	});
+
+	it('hides the delete button for static rows', async () => {
+		vi.mocked(authoringChecksApi.listWorkflowChecks).mockResolvedValue({
+			checks: [instance, staticInstance],
+		});
+		const { findByTestId, queryByTestId } = renderSettings();
+
+		await findByTestId(`workflow-authoring-check-row-${staticInstance.id}`);
+
+		expect(queryByTestId(`workflow-authoring-check-delete-${staticInstance.id}`)).toBeNull();
+		expect(
+			await findByTestId(`workflow-authoring-check-delete-${instance.id}`),
+		).toBeInTheDocument();
 	});
 });

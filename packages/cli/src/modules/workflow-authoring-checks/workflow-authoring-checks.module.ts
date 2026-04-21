@@ -12,12 +12,16 @@ export class WorkflowAuthoringChecksModule implements ModuleInterface {
 		const { WorkflowCheckRegistry } = await import('./workflow-check-registry.service');
 		const { WorkflowAuthoringChecksService } = await import('./workflow-authoring-checks.service');
 		const { NodeHasDirectParentCheck } = await import('./checks/node-has-direct-parent.check');
+		const { NoDanglingNodesCheck } = await import('./checks/no-dangling-nodes.check');
 
-		Container.get(WorkflowCheckRegistry).register(Container.get(NodeHasDirectParentCheck));
+		const registry = Container.get(WorkflowCheckRegistry);
+		registry.register(Container.get(NodeHasDirectParentCheck));
+		registry.register(Container.get(NoDanglingNodesCheck));
 
-		Container.get(WorkflowAuthoringChecksProxy).setInner(
-			Container.get(WorkflowAuthoringChecksService),
-		);
+		const service = Container.get(WorkflowAuthoringChecksService);
+		await service.ensureStaticInstances();
+
+		Container.get(WorkflowAuthoringChecksProxy).setInner(service);
 	}
 
 	async entities() {

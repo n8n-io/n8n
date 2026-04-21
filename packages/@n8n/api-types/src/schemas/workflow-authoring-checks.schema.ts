@@ -63,6 +63,7 @@ export interface WorkflowCheckDto {
 	config: Record<string, unknown>;
 	enabled: boolean;
 	severity: WorkflowAuthoringCheckSeverity;
+	static: boolean;
 }
 
 export interface WorkflowAuthoringChecksListResponse {

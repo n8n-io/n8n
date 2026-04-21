@@ -49,6 +49,12 @@ export interface WorkflowCheckType {
 	readonly description: string;
 	readonly defaultSeverity: WorkflowAuthoringCheckSeverity;
 	readonly configSchema: WorkflowCheckConfigSchema;
+	/**
+	 * Is true when a check has no configuration options.
+	 * This means it can only be disabled/enabled, but with no configuration.
+	 * Example: Check for "no dangling nodes"
+	 */
+	readonly static?: boolean;
 	validateConfig(config: unknown): unknown;
 	evaluate(ctx: WorkflowCheckContext, config: unknown): Promise<WorkflowCheckViolation[]>;
 }

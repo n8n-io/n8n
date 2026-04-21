@@ -15,6 +15,7 @@ const enabledInstance: WorkflowCheckDto = {
 	config: { childNodeType: '@n8n/n8n-nodes-langchain.agent', parentNodeType: 'guardrails' },
 	enabled: true,
 	severity: 'warning',
+	static: false,
 };
 
 const disabledInstance: WorkflowCheckDto = {
