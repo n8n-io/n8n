@@ -190,6 +190,20 @@ describe('useWorkflowDocumentNodes', () => {
 
 			expect(deps.nodeMetadata.nodeMetadata.value).toEqual({});
 		});
+
+		it('setNodes replaces all metadata to match the new node list', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+			deps.nodeMetadata.touchParametersLastUpdatedAt('A');
+
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'C' })]);
+
+			// Metadata is reset: 'B' removed, 'A' reset to pristine, 'C' added
+			expect(deps.nodeMetadata.nodeMetadata.value).toEqual({
+				A: { pristine: true },
+				C: { pristine: true },
+			});
+		});
 	});
 
 	describe('round-trip: mutations → read', () => {

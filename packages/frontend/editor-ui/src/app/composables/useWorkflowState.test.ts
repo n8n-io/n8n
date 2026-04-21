@@ -253,47 +253,4 @@ describe('useWorkflowState', () => {
 			expect(result).toBe(false);
 		});
 	});
-
-	describe('resetParametersLastUpdatedAt', () => {
-		it('should set parametersLastUpdatedAt on existing metadata', () => {
-			const nodeName = 'Test Node';
-			workflowDocumentStore.addNode({
-				parameters: {},
-				id: 'test-node-id',
-				name: nodeName,
-				type: 'n8n-nodes-base.set',
-				position: [0, 0],
-				typeVersion: 1,
-			});
-
-			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toBeUndefined();
-
-			workflowState.resetParametersLastUpdatedAt(nodeName);
-
-			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toEqual(expect.any(Number));
-		});
-
-		it('should create metadata if it does not exist', () => {
-			const nodeName = 'New Node Without Metadata';
-			// Node metadata doesn't exist yet
-			expect(workflowDocumentStore.nodeMetadata[nodeName]).toBeUndefined();
-
-			workflowState.resetParametersLastUpdatedAt(nodeName);
-
-			expect(workflowDocumentStore.nodeMetadata[nodeName]).toBeDefined();
-			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toEqual(expect.any(Number));
-		});
-
-		it('should preserve existing metadata properties when updating', () => {
-			const nodeName = 'Node With Existing Metadata';
-			workflowDocumentStore.setAllNodeMetadata({
-				[nodeName]: { pristine: true },
-			});
-
-			workflowState.resetParametersLastUpdatedAt(nodeName);
-
-			expect(workflowDocumentStore.isNodePristine(nodeName)).toBe(true);
-			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toEqual(expect.any(Number));
-		});
-	});
 });

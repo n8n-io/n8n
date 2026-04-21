@@ -342,18 +342,6 @@ export function useWorkflowState() {
 		return updateNodeAtIndex(nodeIndex, nodeData);
 	}
 
-	/**
-	 * Reset parametersLastUpdatedAt to current timestamp for a node.
-	 * Used to mark a node as "dirty" when its parameters change.
-	 * @deprecated Use `workflowDocumentStore.touchParametersLastUpdatedAt()` instead.
-	 */
-	function resetParametersLastUpdatedAt(nodeName: string): void {
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(ws.workflow.id),
-		);
-		workflowDocumentStore.touchParametersLastUpdatedAt(nodeName);
-	}
-
 	/** @deprecated Use `workflowDocumentStore.updateNodeProperties()` instead. */
 	function updateNodeProperties(
 		this: WorkflowState,
@@ -437,7 +425,6 @@ export function useWorkflowState() {
 		updateNodeAtIndex,
 		updateNodeById,
 		updateNodeProperties,
-		resetParametersLastUpdatedAt,
 
 		// reexport
 		executingNode: workflowStateStore.executingNode,

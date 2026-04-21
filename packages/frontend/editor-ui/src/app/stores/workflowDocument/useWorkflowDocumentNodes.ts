@@ -80,6 +80,8 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function applySetNodes(nodes: INodeUi[]) {
 		workflowsStore.setNodes(nodes);
+		// setNodes replaces the full node list, so reset metadata to match
+		deps.nodeMetadata.setAllNodeMetadata({});
 		for (const node of nodes) {
 			deps.nodeMetadata.initPristineNodeMetadata(node.name);
 		}
