@@ -26,6 +26,7 @@ import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyTo
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 
@@ -37,6 +38,7 @@ const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
+const agentTelemetry = useAgentTelemetry();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 
@@ -374,6 +376,7 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 		telemetry.track('User clicked header add variable button');
 	},
 	[ACTION_TYPES.AGENT]: () => {
+		agentTelemetry.trackClickedNewAgent('button');
 		void router.push({ name: NEW_AGENT_VIEW });
 	},
 } as const;

@@ -28,6 +28,7 @@ import FavoritesSidebarCompact from './FavoritesSidebarCompact.vue';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '@/features/agents/constants';
 import { listAllAgents, deleteAgent } from '@/features/agents/composables/useAgentApi';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -54,6 +55,7 @@ const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const rootStore = useRootStore();
 const telemetry = useTelemetry();
+const agentTelemetry = useAgentTelemetry();
 const message = useMessage();
 const favoritesStore = useFavoritesStore();
 
@@ -237,6 +239,10 @@ onBeforeMount(async () => {
 	void fetchAgents();
 });
 
+function onNewAgentMenuClick() {
+	agentTelemetry.trackClickedNewAgent('dropdown');
+}
+
 onBeforeUnmount(() => {
 	sourceControlEventBus.off('pull', onSourceControlPull);
 	agentsEventBus.off('agentUpdated', fetchAgents);
@@ -310,12 +316,14 @@ onBeforeUnmount(() => {
 				</div>
 			</N8nPopover>
 			<div :class="$style.agentItems">
-				<N8nMenuItem
-					:item="newAgentItem"
-					:compact="false"
-					:active="false"
-					data-test-id="new-agent-menu-item"
-				/>
+				<div data-test-id="new-agent-menu-item-wrapper" @click="onNewAgentMenuClick">
+					<N8nMenuItem
+						:item="newAgentItem"
+						:compact="false"
+						:active="false"
+						data-test-id="new-agent-menu-item"
+					/>
+				</div>
 				<div v-for="agent in agentsList" :key="agent.id" :class="$style.agentItem">
 					<N8nMenuItem
 						:item="getAgentMenuItem(agent)"
