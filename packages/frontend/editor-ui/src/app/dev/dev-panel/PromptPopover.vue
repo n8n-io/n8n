@@ -125,6 +125,7 @@ watch(
 .dev-panel-popover {
 	position: fixed;
 	z-index: 2147483646;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	background: var(--background--surface);
 	border: var(--border);
 	border-radius: var(--radius--lg);
