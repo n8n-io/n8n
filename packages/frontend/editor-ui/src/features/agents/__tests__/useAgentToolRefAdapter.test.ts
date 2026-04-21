@@ -1,11 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
+import type { IWorkflowDb } from '@/Interface';
 import {
 	isToolMissingCredentials,
 	nodeTypeToNewToolRef,
+	toBaseNodeType,
 	toolRefToNode,
 	updateToolRefFromNode,
+	updateWorkflowToolRef,
+	workflowToNewToolRef,
 } from '../composables/useAgentToolRefAdapter';
 import type { AgentJsonToolRef } from '../types';
 
@@ -66,6 +70,18 @@ describe('useAgentToolRefAdapter', () => {
 			expect(toolRefToNode(ref)?.name).toBe('n8n-nodes-base.slack');
 		});
 
+		it('forwards the stored nodeType unchanged so the form resolves the right variant', () => {
+			// The stored name is the Tool-variant (`slackTool`) which carries the AI
+			// codex. Rewriting it to the base here would break the $fromAI override
+			// button, so toolRefToNode must pass the name through as-is.
+			const ref: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Slack',
+				node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1 },
+			};
+			expect(toolRefToNode(ref)?.type).toBe('n8n-nodes-base.slackTool');
+		});
+
 		it('converts strict credentials to INodeCredentials', () => {
 			const ref: AgentJsonToolRef = {
 				type: 'node',
@@ -103,6 +119,81 @@ describe('useAgentToolRefAdapter', () => {
 			const ref = nodeTypeToNewToolRef(makeNodeType());
 			expect(ref.node?.nodeParameters).toEqual({});
 			expect(ref.inputSchema).toEqual({ type: 'object', properties: {} });
+		});
+
+		it('persists the Tool-variant nodeType so the form gets the AI codex needed for $fromAI', () => {
+			// Tool-variant descriptions carry the `AI/Tools` codex that powers the
+			// "Let the model define this parameter" override button. Stripping the
+			// suffix would route the form to the base description (no codex) and
+			// break that feature — so we store the variant name as-is.
+			const ref = nodeTypeToNewToolRef(
+				makeNodeType({
+					name: 'n8n-nodes-base.slackTool',
+					displayName: 'Slack Tool',
+				}),
+			);
+			expect(ref.node?.nodeType).toBe('n8n-nodes-base.slackTool');
+			// Display label still drops the " Tool" suffix so the sidebar reads "Slack".
+			expect(ref.name).toBe('Slack');
+		});
+
+		it('leaves native tool names untouched (no suffix to handle)', () => {
+			const ref = nodeTypeToNewToolRef(
+				makeNodeType({ name: 'toolWikipedia', displayName: 'Wikipedia' }),
+			);
+			expect(ref.node?.nodeType).toBe('toolWikipedia');
+			expect(ref.name).toBe('Wikipedia');
+		});
+
+		it('seeds a {input: string} schema for native tool nodes (no resource/operation, AiTool output)', () => {
+			// Matches the LangChain Tool base-class schema shape so the LLM has a
+			// slot to pass the query text (e.g. "Valencia" for toolWikipedia).
+			const ref = nodeTypeToNewToolRef(
+				makeNodeType({
+					name: 'toolWikipedia',
+					displayName: 'Wikipedia',
+					description: 'Search Wikipedia',
+					// outputs is not part of the default makeNodeType above, set it here:
+					outputs: ['ai_tool'],
+					properties: [],
+				} as Partial<INodeTypeDescription>),
+			);
+			const schema = ref.inputSchema as {
+				type: string;
+				properties: Record<string, { type: string; description?: string }>;
+				required?: string[];
+			};
+			expect(schema.type).toBe('object');
+			expect(schema.properties.input.type).toBe('string');
+			expect(schema.required).toEqual(['input']);
+		});
+
+		it('keeps an empty schema for non-native (resource/operation) tool nodes', () => {
+			const ref = nodeTypeToNewToolRef(
+				makeNodeType({
+					name: 'n8n-nodes-base.slackTool',
+					displayName: 'Slack Tool',
+					outputs: ['ai_tool'],
+					properties: [
+						{ displayName: 'Resource', name: 'resource', type: 'options', default: 'channel' },
+					] as INodeTypeDescription['properties'],
+				} as Partial<INodeTypeDescription>),
+			);
+			expect(ref.inputSchema).toEqual({ type: 'object', properties: {} });
+		});
+	});
+
+	describe('toBaseNodeType()', () => {
+		it('strips a trailing "Tool" suffix', () => {
+			expect(toBaseNodeType('n8n-nodes-base.slackTool')).toBe('n8n-nodes-base.slack');
+		});
+
+		it('returns the name unchanged when there is no suffix', () => {
+			expect(toBaseNodeType('n8n-nodes-base.slack')).toBe('n8n-nodes-base.slack');
+		});
+
+		it('does not strip an internal "Tool" that is not a suffix', () => {
+			expect(toBaseNodeType('n8n-nodes-base.toolCalculator')).toBe('n8n-nodes-base.toolCalculator');
 		});
 	});
 
@@ -244,6 +335,76 @@ describe('useAgentToolRefAdapter', () => {
 
 		it('returns false when the node type cannot be resolved', () => {
 			expect(isToolMissingCredentials(ref(), null)).toBe(false);
+		});
+	});
+
+	describe('workflowToNewToolRef()', () => {
+		function makeWorkflow(overrides: Partial<IWorkflowDb> = {}): IWorkflowDb {
+			return {
+				id: 'wf-1',
+				name: 'My workflow',
+				description: 'Ship a daily summary',
+				active: false,
+				isArchived: false,
+				createdAt: '2026-01-01T00:00:00Z',
+				updatedAt: '2026-01-02T00:00:00Z',
+				versionId: 'v-1',
+				activeVersionId: null,
+				...overrides,
+			} as IWorkflowDb;
+		}
+
+		it('persists the workflow name on `ref.workflow` — the backend looks it up by name', () => {
+			// See cli/src/modules/agents/tools/workflow-tool-factory.ts:506 — the
+			// backend queries `workflowRepository.findOne({ where: { name } })`.
+			const ref = workflowToNewToolRef(makeWorkflow({ name: 'Notify Sales' }));
+			expect(ref).toStrictEqual({
+				type: 'workflow',
+				workflow: 'Notify Sales',
+				name: 'Notify Sales',
+				description: 'Ship a daily summary',
+				allOutputs: false,
+			});
+		});
+
+		it('defaults description to empty when the workflow has none', () => {
+			const ref = workflowToNewToolRef(makeWorkflow({ description: null }));
+			expect(ref.description).toBe('');
+		});
+	});
+
+	describe('updateWorkflowToolRef()', () => {
+		it('merges edited fields into the ref, preserving type and workflow id', () => {
+			const original: AgentJsonToolRef = {
+				type: 'workflow',
+				workflow: 'Notify Sales',
+				name: 'Notify Sales',
+				description: 'old',
+				allOutputs: false,
+			};
+			const updated = updateWorkflowToolRef(original, {
+				name: 'Ping Sales',
+				description: 'new',
+				allOutputs: true,
+			});
+			expect(updated).toStrictEqual({
+				type: 'workflow',
+				workflow: 'Notify Sales',
+				name: 'Ping Sales',
+				description: 'new',
+				allOutputs: true,
+			});
+		});
+
+		it('is a no-op for non-workflow refs', () => {
+			const nodeRef: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Slack',
+				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1 },
+			};
+			expect(
+				updateWorkflowToolRef(nodeRef, { name: 'x', description: 'y', allOutputs: true }),
+			).toBe(nodeRef);
 		});
 	});
 });

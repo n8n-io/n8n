@@ -137,6 +137,7 @@ function openToolsModal() {
 		name: AGENT_TOOLS_MODAL_KEY,
 		data: {
 			tools: (props.config?.tools ?? []) as AgentJsonToolRef[],
+			projectId: props.projectId,
 			onConfirm: (tools: AgentJsonToolRef[]) => {
 				emit('update:config', { tools });
 			},

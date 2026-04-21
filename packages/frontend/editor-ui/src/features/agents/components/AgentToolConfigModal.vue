@@ -1,29 +1,38 @@
 <script setup lang="ts">
 /**
- * Configure a single node-type tool on an agent.
+ * Configure a single tool (node or workflow) on an agent.
  *
- * Takes an `AgentJsonToolRef` (the persisted shape from `@n8n/api-types`),
- * converts it to an `INode` via `toolRefToNode`, and hands the node to the
- * shared `NodeToolSettingsContent` (same form Chat Hub uses). On Save, the
- * edited node is merged back into the ref via `updateToolRefFromNode` so
- * round-trip fields like `inputSchema` and `description` are preserved.
+ * Takes an `AgentJsonToolRef` (the persisted shape from `@n8n/api-types`) and
+ * renders the appropriate form:
+ *   - `type: 'node'`   → shared `NodeToolSettingsContent` (NDV-style param form)
+ *   - `type: 'workflow'` → small `WorkflowToolConfigContent` (description +
+ *                          allOutputs toggle)
  *
- * Outer tabs: Configure (the shared form) and Permissions (stubbed — the
- * scope/permissions registry is deferred per AGENT-26 spec). The tab slot is
- * reserved now to avoid UI churn when the Permissions feature lands.
+ * On Save, edits are merged back into the ref:
+ *   - Node tools round-trip via `updateToolRefFromNode` so fields the form
+ *     doesn't know about (`inputSchema`, etc.) are preserved.
+ *   - Workflow tools round-trip via `updateWorkflowToolRef`.
+ *
+ * Outer tabs: Configure (the per-type form) and Permissions (stubbed — the
+ * scope/permissions registry is deferred per AGENT-26 spec).
  */
 import { computed, ref } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
+import WorkflowToolConfigContent from './WorkflowToolConfigContent.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nButton, N8nInlineTextEdit, N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInlineTextEdit, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ITab } from '@/Interface';
 import type { INode } from 'n8n-workflow';
 
 import type { AgentJsonToolRef } from '../types';
-import { toolRefToNode, updateToolRefFromNode } from '../composables/useAgentToolRefAdapter';
+import {
+	toolRefToNode,
+	updateToolRefFromNode,
+	updateWorkflowToolRef,
+} from '../composables/useAgentToolRefAdapter';
 
 const props = defineProps<{
 	modalName: string;
@@ -37,12 +46,22 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 
-const contentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
+const isWorkflowTool = computed(() => props.data.toolRef.type === 'workflow');
+
+const nodeContentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
+const workflowContentRef = ref<InstanceType<typeof WorkflowToolConfigContent> | null>(null);
 const isValid = ref(false);
 
-/** Derive an INode view of the ref once. Memoized by toolRef identity. */
-const initialNode = computed<INode | null>(() => toolRefToNode(props.data.toolRef));
-const nodeName = ref(initialNode.value?.name ?? '');
+/** Derive an INode view of a node-type ref once. Null for workflow refs. */
+const initialNode = computed<INode | null>(() =>
+	isWorkflowTool.value ? null : toolRefToNode(props.data.toolRef),
+);
+const initialName = computed(() => props.data.toolRef.name ?? initialNode.value?.name ?? '');
+const nodeName = ref(initialName.value);
+
+/** Gate the modal render — for node tools we need a resolvable node; workflow
+ *  tools always render since their data is self-contained in the ref. */
+const canRender = computed(() => isWorkflowTool.value || initialNode.value !== null);
 
 type ConfigTab = 'configure' | 'permissions';
 const activeTab = ref<ConfigTab>('configure');
@@ -57,10 +76,21 @@ function closeDialog() {
 }
 
 function handleConfirm() {
-	const currentNode = contentRef.value?.node;
-	if (!currentNode) {
+	if (isWorkflowTool.value) {
+		const wc = workflowContentRef.value;
+		if (!wc) return;
+		const updatedRef = updateWorkflowToolRef(props.data.toolRef, {
+			name: wc.name,
+			description: wc.description,
+			allOutputs: wc.allOutputs,
+		});
+		props.data.onConfirm(updatedRef);
+		closeDialog();
 		return;
 	}
+
+	const currentNode = nodeContentRef.value?.node;
+	if (!currentNode) return;
 	const updatedRef = updateToolRefFromNode(props.data.toolRef, currentNode);
 	props.data.onConfirm(updatedRef);
 	closeDialog();
@@ -71,7 +101,11 @@ function handleCancel() {
 }
 
 function handleChangeName(name: string) {
-	contentRef.value?.handleChangeName(name);
+	if (isWorkflowTool.value) {
+		workflowContentRef.value?.handleChangeName(name);
+	} else {
+		nodeContentRef.value?.handleChangeName(name);
+	}
 }
 
 function handleValidUpdate(valid: boolean) {
@@ -84,15 +118,21 @@ function handleNodeNameUpdate(name: string) {
 </script>
 
 <template>
-	<Modal v-if="initialNode" :name="modalName" width="780px" data-test-id="agent-tool-config-modal">
+	<Modal v-if="canRender" :name="modalName" width="780px" data-test-id="agent-tool-config-modal">
 		<template #header>
 			<div :class="$style.header">
 				<NodeIcon
-					v-if="contentRef?.nodeTypeDescription"
-					:node-type="contentRef.nodeTypeDescription"
+					v-if="!isWorkflowTool && nodeContentRef?.nodeTypeDescription"
+					:node-type="nodeContentRef.nodeTypeDescription"
 					:size="24"
 					:circle="true"
 					:class="$style.icon"
+				/>
+				<N8nIcon
+					v-else-if="isWorkflowTool"
+					icon="workflow"
+					:size="20"
+					:class="$style.workflowHeaderIcon"
 				/>
 				<N8nInlineTextEdit
 					:model-value="nodeName"
@@ -112,8 +152,16 @@ function handleNodeNameUpdate(name: string) {
 				/>
 
 				<div v-show="activeTab === 'configure'" :class="$style.configureTab">
+					<WorkflowToolConfigContent
+						v-if="isWorkflowTool"
+						ref="workflowContentRef"
+						:initial-ref="data.toolRef"
+						@update:valid="handleValidUpdate"
+						@update:node-name="handleNodeNameUpdate"
+					/>
 					<NodeToolSettingsContent
-						ref="contentRef"
+						v-else-if="initialNode"
+						ref="nodeContentRef"
 						:initial-node="initialNode"
 						:existing-tool-names="data.existingToolNames"
 						@update:valid="handleValidUpdate"
@@ -161,6 +209,12 @@ function handleNodeNameUpdate(name: string) {
 .icon {
 	flex-shrink: 0;
 	flex-grow: 0;
+}
+
+.workflowHeaderIcon {
+	flex-shrink: 0;
+	flex-grow: 0;
+	color: var(--color--primary);
 }
 
 .title {

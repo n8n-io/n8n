@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { DEBOUNCE_TIME, getDebounceTime, MODAL_CONFIRM } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
-import { N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nIcon, N8nInput, N8nText, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { NodeConnectionTypes, type INode, type INodeTypeDescription } from 'n8n-workflow';
@@ -13,18 +14,22 @@ import nodePopularity from 'virtual:node-popularity-data';
 
 import AgentToolItem from './AgentToolItem.vue';
 
+import type { IWorkflowDb } from '@/Interface';
 import type { AgentJsonToolRef } from '../types';
 import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	isToolMissingCredentials,
 	nodeTypeToNewToolRef,
 	toolRefToNode,
+	workflowToNewToolRef,
 } from '../composables/useAgentToolRefAdapter';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		tools: AgentJsonToolRef[];
+		/** Optional — when present, the Available list will include workflows scoped to this project. */
+		projectId?: string;
 		onConfirm: (tools: AgentJsonToolRef[]) => void;
 	};
 }>();
@@ -33,6 +38,7 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const message = useMessage();
+const workflowsListStore = useWorkflowsListStore();
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 
@@ -91,6 +97,36 @@ const connectedToolNodeTypes = computed(
 		),
 );
 
+/** Workflow names already connected — used to hide them from the Available list. */
+const connectedWorkflowNames = computed(
+	() =>
+		new Set(
+			workingTools.value
+				.filter((t) => t.type === 'workflow' && t.workflow)
+				.map((t) => t.workflow as string),
+		),
+);
+
+// --- Workflow catalog -------------------------------------------------------
+
+onMounted(() => {
+	// Fetch on open so the Available list populates with project-scoped workflows.
+	// Failures are non-fatal: the Available list just stays workflow-free.
+	void workflowsListStore.fetchAllWorkflows(props.data.projectId).catch(() => {});
+});
+
+/**
+ * Workflows eligible to appear in "Workflows (N)": all non-archived workflows
+ * the user has access to, minus any already connected. Trigger / node
+ * compatibility is enforced by the backend on save — see
+ * `workflow-tool-factory.ts:validateCompatibility`.
+ */
+const availableWorkflows = computed<IWorkflowDb[]>(() =>
+	workflowsListStore.allWorkflows.filter(
+		(wf) => !wf.isArchived && !connectedWorkflowNames.value.has(wf.name),
+	),
+);
+
 /** Configured tools annotated with their node-type description (for the icon + fallback name). */
 interface ConfiguredToolView {
 	ref: AgentJsonToolRef;
@@ -142,12 +178,41 @@ const filteredAvailableTools = computed(() => {
 	);
 });
 
+const filteredAvailableWorkflows = computed(() => {
+	if (!debouncedSearchQuery.value) return availableWorkflows.value;
+	const query = debouncedSearchQuery.value.toLowerCase();
+	return availableWorkflows.value.filter(
+		(wf) =>
+			wf.name.toLowerCase().includes(query) || (wf.description ?? '').toLowerCase().includes(query),
+	);
+});
+
 // --- Actions ---------------------------------------------------------------
 
+function openConfigForNewRef(newRef: AgentJsonToolRef) {
+	// Connect → open the config panel first. The ref only enters workingTools
+	// once the user hits Save, so a cancelled config leaves the list untouched.
+	const existingToolNames = workingTools.value.filter((t) => t.name).map((t) => t.name as string);
+
+	uiStore.openModalWithData({
+		name: AGENT_TOOL_CONFIG_MODAL_KEY,
+		data: {
+			toolRef: newRef,
+			existingToolNames,
+			onConfirm: (savedRef: AgentJsonToolRef) => {
+				workingTools.value = [...workingTools.value, savedRef];
+				commit();
+			},
+		},
+	});
+}
+
 function handleAddTool(nodeType: INodeTypeDescription) {
-	const newRef = nodeTypeToNewToolRef(nodeType);
-	workingTools.value = [...workingTools.value, newRef];
-	commit();
+	openConfigForNewRef(nodeTypeToNewToolRef(nodeType));
+}
+
+function handleAddWorkflow(workflow: IWorkflowDb) {
+	openConfigForNewRef(workflowToNewToolRef(workflow));
 }
 
 async function handleRemoveTool(toolRef: AgentJsonToolRef) {
@@ -250,8 +315,52 @@ function commit() {
 					</div>
 				</div>
 
+				<div v-if="filteredAvailableWorkflows.length > 0" :class="$style.section">
+					<N8nHeading size="small" color="text-light" tag="h3">
+						{{
+							i18n.baseText('agents.tools.availableWorkflows', {
+								interpolate: { count: filteredAvailableWorkflows.length },
+							})
+						}}
+					</N8nHeading>
+					<div :class="$style.toolsList" data-test-id="agent-tools-available-workflows-list">
+						<div
+							v-for="workflow in filteredAvailableWorkflows"
+							:key="workflow.id"
+							:class="$style.workflowRow"
+							data-test-id="agent-tools-available-workflow-row"
+						>
+							<div :class="$style.workflowLabel">
+								<div :class="$style.workflowIconWrapper">
+									<N8nIcon icon="workflow" :size="20" :class="$style.workflowIcon" />
+								</div>
+								<div :class="$style.workflowTextWrapper">
+									<N8nText size="small" color="text-dark" :class="$style.workflowName">
+										{{ workflow.name }}
+									</N8nText>
+									<N8nText
+										v-if="workflow.description"
+										size="small"
+										color="text-light"
+										:class="$style.workflowDescription"
+									>
+										{{ workflow.description }}
+									</N8nText>
+								</div>
+							</div>
+							<N8nButton variant="subtle" size="small" @click="handleAddWorkflow(workflow)">
+								{{ i18n.baseText('agents.tools.connect') }}
+							</N8nButton>
+						</div>
+					</div>
+				</div>
+
 				<div
-					v-if="filteredConfiguredTools.length === 0 && filteredAvailableTools.length === 0"
+					v-if="
+						filteredConfiguredTools.length === 0 &&
+						filteredAvailableTools.length === 0 &&
+						filteredAvailableWorkflows.length === 0
+					"
 					:class="$style.emptyState"
 				>
 					<N8nText color="text-light">
@@ -295,6 +404,53 @@ function commit() {
 .toolsList {
 	display: flex;
 	flex-direction: column;
+}
+
+.workflowRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm) 0;
+}
+
+.workflowLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	min-width: 0;
+	flex: 1;
+}
+
+.workflowIconWrapper {
+	flex-shrink: 0;
+	width: 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.workflowIcon {
+	color: var(--color--primary);
+}
+
+.workflowTextWrapper {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.workflowName {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.workflowDescription {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .emptyState {

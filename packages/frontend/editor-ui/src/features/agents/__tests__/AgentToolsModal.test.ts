@@ -4,11 +4,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { fireEvent, waitFor } from '@testing-library/vue';
 
 import AgentToolsModal from '../components/AgentToolsModal.vue';
 import type { AgentJsonToolRef } from '../types';
+import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('virtual:node-popularity-data', () => ({
 	default: [
@@ -24,6 +26,7 @@ vi.mock('@n8n/i18n', () => {
 			if (opts?.interpolate) {
 				const { count } = opts.interpolate as { count?: number };
 				if (key === 'agents.tools.availableTools') return `Available tools (${count})`;
+				if (key === 'agents.tools.availableWorkflows') return `Workflows (${count})`;
 			}
 			const map: Record<string, string> = {
 				'agents.tools.title': 'Tools',
@@ -124,9 +127,25 @@ const renderComponent = createComponentRenderer(AgentToolsModal, {
 	},
 });
 
+function makeWorkflow(overrides: Partial<IWorkflowDb> = {}): IWorkflowDb {
+	return {
+		id: 'wf-1',
+		name: 'Daily sales digest',
+		description: 'Ship a summary to #sales every morning',
+		active: true,
+		isArchived: false,
+		createdAt: '2026-01-01T00:00:00Z',
+		updatedAt: '2026-01-02T00:00:00Z',
+		versionId: 'v-1',
+		activeVersionId: null,
+		...overrides,
+	} as IWorkflowDb;
+}
+
 describe('AgentToolsModal', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -134,6 +153,7 @@ describe('AgentToolsModal', () => {
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		uiStore = mockedStore(useUIStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 
 		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
 			if (name === SLACK.name) return SLACK;
@@ -146,10 +166,24 @@ describe('AgentToolsModal', () => {
 			[NodeConnectionTypes.AiTool]: [SLACK.name, GMAIL.name, GITHUB.name, NODE_WITH_INPUTS.name],
 		};
 
+		workflowsListStore.fetchAllWorkflows = vi.fn().mockResolvedValue([]);
+		// Default: no workflows in the list. Tests opt in by overriding `allWorkflows`.
+		Object.defineProperty(workflowsListStore, 'allWorkflows', {
+			value: [],
+			configurable: true,
+		});
+
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
 		uiStore.openModalWithData = vi.fn();
 	});
+
+	function seedWorkflows(workflows: IWorkflowDb[]) {
+		Object.defineProperty(workflowsListStore, 'allWorkflows', {
+			value: workflows,
+			configurable: true,
+		});
+	}
 
 	function defaultProps(tools: AgentJsonToolRef[] = [], onConfirm = vi.fn()) {
 		return {
@@ -252,7 +286,7 @@ describe('AgentToolsModal', () => {
 		});
 	});
 
-	it('calls onConfirm with a new tool ref when Add is clicked on an available node', async () => {
+	it('opens the config modal (not the list commit) when Connect is clicked on an available node', async () => {
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderComponent(defaultProps([], onConfirm));
 
@@ -261,10 +295,45 @@ describe('AgentToolsModal', () => {
 		expect(addButton).not.toBeNull();
 		await fireEvent.click(addButton!);
 
+		// Connect no longer commits directly — it opens the config modal and waits
+		// for the user to Save (onConfirm fires only after the config modal saves).
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+		expect(payload.name).toBe('agentToolConfigModal');
+		expect(payload.data.toolRef).toMatchObject({
+			type: 'node',
+			node: { nodeType: SLACK.name },
+		});
+		expect(typeof payload.data.onConfirm).toBe('function');
+	});
+
+	it('appends the configured tool to workingTools once the config modal saves', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId } = renderComponent(defaultProps([], onConfirm));
+
+		const available = getByTestId('agent-tools-available-list');
+		await fireEvent.click(available.querySelector('button')!);
+
+		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+		const configuredRef: AgentJsonToolRef = {
+			type: 'node',
+			name: 'Slack',
+			description: 'Send a message to Slack',
+			node: {
+				nodeType: SLACK.name,
+				nodeTypeVersion: 1,
+				nodeParameters: { resource: 'message' },
+				credentials: { slackApi: { id: 'c-1', name: 'Prod Slack' } },
+			},
+			inputSchema: { type: 'object', properties: {} },
+		};
+		payload.data.onConfirm(configuredRef);
+
 		expect(onConfirm).toHaveBeenCalledTimes(1);
 		const [tools] = onConfirm.mock.calls[0];
 		expect(tools).toHaveLength(1);
-		expect(tools[0]).toMatchObject({ type: 'node', node: { nodeType: SLACK.name } });
+		expect(tools[0]).toStrictEqual(configuredRef);
 	});
 
 	it('shows the available tools count in the section heading', () => {
@@ -313,5 +382,113 @@ describe('AgentToolsModal', () => {
 		const [committed] = onConfirm.mock.calls[onConfirm.mock.calls.length - 1];
 		expect(committed).toHaveLength(1);
 		expect(committed[0].name).toBe('Slack renamed');
+	});
+
+	describe('workflow tools', () => {
+		it('fetches project workflows on open when projectId is provided', () => {
+			renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [], projectId: 'p-42', onConfirm: vi.fn() },
+				},
+			});
+			expect(workflowsListStore.fetchAllWorkflows).toHaveBeenCalledWith('p-42');
+		});
+
+		it('renders a Workflows section with non-archived available workflows', () => {
+			seedWorkflows([
+				makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' }),
+				makeWorkflow({ id: 'wf-archived', name: 'Old archived', isArchived: true }),
+			]);
+
+			const { getByTestId, queryByText, getAllByTestId } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [], projectId: 'p-42', onConfirm: vi.fn() },
+				},
+			});
+
+			const list = getByTestId('agent-tools-available-workflows-list');
+			const rows = getAllByTestId('agent-tools-available-workflow-row');
+			expect(rows).toHaveLength(1);
+			expect(list.textContent).toContain('Daily sales digest');
+			// Archived workflows are excluded.
+			expect(queryByText('Old archived')).toBeNull();
+		});
+
+		it('hides workflows that are already connected', () => {
+			seedWorkflows([makeWorkflow({ id: 'wf-1', name: 'Already connected' })]);
+			const existing: AgentJsonToolRef = {
+				type: 'workflow',
+				workflow: 'Already connected',
+				name: 'Already connected',
+			};
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [existing], projectId: 'p-42', onConfirm: vi.fn() },
+				},
+			});
+
+			expect(queryByTestId('agent-tools-available-workflows-list')).toBeNull();
+		});
+
+		it('opens the config modal with a workflow ref when Connect is clicked on a workflow row', async () => {
+			seedWorkflows([
+				makeWorkflow({ id: 'wf-1', name: 'Daily sales digest', description: 'Summary' }),
+			]);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [], projectId: 'p-42', onConfirm: vi.fn() },
+				},
+			});
+
+			const row = getByTestId('agent-tools-available-workflow-row');
+			await fireEvent.click(row.querySelector('button')!);
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+			expect(payload.name).toBe('agentToolConfigModal');
+			expect(payload.data.toolRef).toMatchObject({
+				type: 'workflow',
+				workflow: 'Daily sales digest',
+				name: 'Daily sales digest',
+				description: 'Summary',
+				allOutputs: false,
+			});
+		});
+
+		it('appends the configured workflow ref to workingTools on save', async () => {
+			seedWorkflows([makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' })]);
+			const onConfirm = vi.fn();
+
+			const { getByTestId } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [], projectId: 'p-42', onConfirm },
+				},
+			});
+
+			const row = getByTestId('agent-tools-available-workflow-row');
+			await fireEvent.click(row.querySelector('button')!);
+
+			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+			const savedRef: AgentJsonToolRef = {
+				type: 'workflow',
+				workflow: 'Daily sales digest',
+				name: 'Sales summary',
+				description: 'LLM-facing description',
+				allOutputs: true,
+			};
+			payload.data.onConfirm(savedRef);
+
+			expect(onConfirm).toHaveBeenCalledTimes(1);
+			const [tools] = onConfirm.mock.calls[0];
+			expect(tools).toHaveLength(1);
+			expect(tools[0]).toStrictEqual(savedRef);
+		});
 	});
 });
