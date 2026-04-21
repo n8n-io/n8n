@@ -124,5 +124,88 @@ test.describe(
 			// With project features enabled, unauthorized access returns 403 (Forbidden)
 			expect(response.status()).toBe(403);
 		});
+
+		// N8N-9926: Regression test - Member users cannot see other users in share modal
+		test('should allow member users to see other users in personal workflow share modal', async ({
+			n8n,
+			api,
+		}) => {
+			// Create two member users
+			const member1 = await api.publicApi.createUser({
+				email: `member1-${nanoid()}@test.com`,
+				firstName: 'Member',
+				lastName: 'One',
+				role: 'global:member',
+			});
+
+			const member2 = await api.publicApi.createUser({
+				email: `member2-${nanoid()}@test.com`,
+				firstName: 'Member',
+				lastName: 'Two',
+				role: 'global:member',
+			});
+
+			// Log in as member1 and create a personal workflow
+			const member1N8n = await n8n.start.withUser(member1);
+			await member1N8n.navigate.toWorkflow('new');
+			const workflowName = `Member1 Workflow ${nanoid()}`;
+			await member1N8n.canvas.setWorkflowName(workflowName);
+			await member1N8n.canvas.addNode('Manual Trigger');
+
+			// Open share modal
+			await member1N8n.canvas.openShareModal();
+
+			// Click the users select dropdown to open it
+			await member1N8n.workflowSharingModal.getUsersSelect().click();
+
+			// Member2's personal project should be visible in the dropdown
+			// Personal projects show "FirstName LastName (Personal space)"
+			const member2Name = `${member2.firstName} ${member2.lastName}`;
+			const dropdown = member1N8n.page.locator('.el-select-dropdown__item');
+
+			// This assertion should pass but will fail due to N8N-9926
+			// GET /rest/projects returns only projects the caller owns/is a member of,
+			// so member2's personal project is not returned to member1
+			await expect(dropdown.filter({ hasText: member2Name })).toBeVisible();
+		});
+
+		// N8N-9926: Control test - Admins should still see all users (not affected by regression)
+		test('should allow admin users to see all users in personal workflow share modal', async ({
+			n8n,
+			api,
+		}) => {
+			// Create an admin and a member user
+			const admin = await api.publicApi.createUser({
+				email: `admin-${nanoid()}@test.com`,
+				firstName: 'Admin',
+				lastName: 'User',
+				role: 'global:admin',
+			});
+
+			const member = await api.publicApi.createUser({
+				email: `member-${nanoid()}@test.com`,
+				firstName: 'Test',
+				lastName: 'Member',
+				role: 'global:member',
+			});
+
+			// Log in as admin and create a personal workflow
+			const adminN8n = await n8n.start.withUser(admin);
+			await adminN8n.navigate.toWorkflow('new');
+			const workflowName = `Admin Workflow ${nanoid()}`;
+			await adminN8n.canvas.setWorkflowName(workflowName);
+			await adminN8n.canvas.addNode('Manual Trigger');
+
+			// Open share modal
+			await adminN8n.canvas.openShareModal();
+
+			// Click the users select dropdown to open it
+			await adminN8n.workflowSharingModal.getUsersSelect().click();
+
+			// Member's personal project should be visible for admins (this should pass)
+			const memberName = `${member.firstName} ${member.lastName}`;
+			const dropdown = adminN8n.page.locator('.el-select-dropdown__item');
+			await expect(dropdown.filter({ hasText: memberName })).toBeVisible();
+		});
 	},
 );
