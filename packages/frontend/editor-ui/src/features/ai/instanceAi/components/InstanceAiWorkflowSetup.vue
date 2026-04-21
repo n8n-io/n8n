@@ -574,7 +574,8 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						:class="$style.loading"
 					/>
 					<N8nIcon
-						v-else-if="getCredTestIcon(currentCard) === 'check'"
+						v-else-if="getCredTestIcon(currentCard) === 'check' && !cardHasParamWork(currentCard)"
+						data-test-id="instance-ai-workflow-setup-cred-check"
 						icon="check"
 						size="small"
 						:class="$style.success"
