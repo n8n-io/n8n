@@ -23,7 +23,8 @@
       "require": "./dist/index.js",
       "import": "./src/index.ts",
       "types": "./dist/index.d.ts"
-    }
+    },
+    "./evaluations": "./evaluations/index.ts"
   },
   "dependencies": {
     "@daytonaio/sdk": "0.149.0",

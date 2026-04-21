@@ -179,11 +179,11 @@ describe('nodes tool', () => {
 	});
 
 	describe('type-definition action', () => {
-		it('should return a Zod-derived error when nodeIds is missing', async () => {
-			// The discriminated union is flattened for Anthropic, so `nodeIds`
+		it('should return a Zod-derived error when nodeTypes is missing', async () => {
+			// The discriminated union is flattened for Anthropic, so `nodeTypes`
 			// becomes optional at the top-level schema. The handler re-validates
 			// against the variant schema so missing fields return a structured
-			// error instead of crashing downstream on input.nodeIds.map.
+			// error instead of crashing downstream on input.nodeTypes.map.
 			const context = createMockContext();
 			const tool = createNodesTool(context, 'full');
 
@@ -191,22 +191,22 @@ describe('nodes tool', () => {
 
 			expect(result).toMatchObject({
 				definitions: [],
-				error: expect.stringContaining('nodeIds'),
+				error: expect.stringContaining('nodeTypes'),
 			});
 		});
 
-		it('should return a Zod-derived error when nodeIds is empty', async () => {
+		it('should return a Zod-derived error when nodeTypes is empty', async () => {
 			const context = createMockContext();
 			const tool = createNodesTool(context, 'full');
 
 			const result = await tool.execute!(
-				{ action: 'type-definition', nodeIds: [] } as never,
+				{ action: 'type-definition', nodeTypes: [] } as never,
 				{} as never,
 			);
 
 			expect(result).toMatchObject({
 				definitions: [],
-				error: expect.stringContaining('nodeIds'),
+				error: expect.stringContaining('nodeTypes'),
 			});
 		});
 	});

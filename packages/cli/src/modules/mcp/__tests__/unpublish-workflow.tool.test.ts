@@ -99,7 +99,9 @@ describe('unpublish-workflow MCP tool', () => {
 					workflowId: 'wf-1',
 				});
 
-				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1');
+				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
+					source: 'n8n-mcp',
+				});
 
 				expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
 			});

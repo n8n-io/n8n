@@ -38,6 +38,7 @@ describe('LmChatAlibabaCloud', () => {
 		ctx.getCredentials = jest.fn().mockResolvedValue({
 			apiKey: 'test-dashscope-key',
 			region: 'ap-southeast-1',
+			url: 'https://dashscope-intl.aliyuncs.com',
 		});
 		ctx.getNode = jest.fn().mockReturnValue(nodeDef);
 		ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
@@ -199,6 +200,7 @@ describe('LmChatAlibabaCloud', () => {
 			ctx.getCredentials = jest.fn().mockResolvedValue({
 				apiKey: 'test-key',
 				region: 'us-east-1',
+				url: 'https://dashscope-us.aliyuncs.com',
 			});
 
 			await node.supplyData.call(ctx, 0);
@@ -218,6 +220,7 @@ describe('LmChatAlibabaCloud', () => {
 				apiKey: 'test-key',
 				region: 'eu-central-1',
 				workspaceId: 'ws-abc123',
+				url: 'https://ws-abc123.eu-central-1.maas.aliyuncs.com',
 			});
 
 			await node.supplyData.call(ctx, 0);
@@ -236,6 +239,7 @@ describe('LmChatAlibabaCloud', () => {
 			ctx.getCredentials = jest.fn().mockResolvedValue({
 				apiKey: 'test-key',
 				region: 'cn-beijing',
+				url: 'https://dashscope.aliyuncs.com',
 			});
 
 			await node.supplyData.call(ctx, 0);
@@ -254,6 +258,7 @@ describe('LmChatAlibabaCloud', () => {
 			ctx.getCredentials = jest.fn().mockResolvedValue({
 				apiKey: 'test-key',
 				region: 'cn-hongkong',
+				url: 'https://cn-hongkong.dashscope.aliyuncs.com',
 			});
 
 			await node.supplyData.call(ctx, 0);
@@ -267,11 +272,31 @@ describe('LmChatAlibabaCloud', () => {
 			);
 		});
 
+		it('should use gateway URL when provided via credentials', async () => {
+			const ctx = setupMockContext();
+			ctx.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'gateway-jwt-token',
+				url: 'https://gateway.example.com/v1/gateway/alibaba',
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					apiKey: 'gateway-jwt-token',
+					configuration: expect.objectContaining({
+						baseURL: 'https://gateway.example.com/v1/gateway/alibaba/compatible-mode/v1',
+					}),
+				}),
+			);
+		});
+
 		it('should throw when eu-central-1 is selected without workspaceId', async () => {
 			const ctx = setupMockContext();
 			ctx.getCredentials = jest.fn().mockResolvedValue({
 				apiKey: 'test-key',
 				region: 'eu-central-1',
+				url: 'https://undefined.eu-central-1.maas.aliyuncs.com',
 			});
 
 			await expect(node.supplyData.call(ctx, 0)).rejects.toThrow('Workspace ID');

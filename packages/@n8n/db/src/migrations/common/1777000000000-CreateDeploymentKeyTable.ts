@@ -8,7 +8,6 @@ export class CreateDeploymentKeyTable1777000000000 implements ReversibleMigratio
 			column('value').text.notNull,
 			column('algorithm').varchar(20),
 			column('status').varchar(20).notNull,
-			column('deprecatedAt').timestamp(),
 		).withTimestamps;
 
 		await createIndex(
