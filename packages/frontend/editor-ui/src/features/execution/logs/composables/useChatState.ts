@@ -49,9 +49,7 @@ export function useChatState(
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const workflowState = injectWorkflowState();
 	const rootStore = useRootStore();
@@ -72,7 +70,7 @@ export function useChatState(
 
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const chatTriggerNode = computed(
-		() => (workflowDocumentStore.value?.allNodes ?? []).find(isChatNode) ?? null,
+		() => workflowDocumentStore.value.allNodes.find(isChatNode) ?? null,
 	);
 
 	// Resolve the effective value for an options sub-parameter: returns the
