@@ -81,6 +81,7 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIntegrationCredential(
 				'telegram',
 				'cred-1',
+				'project-1',
 				'agent-self',
 			);
 
@@ -97,6 +98,7 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIntegrationCredential(
 				'telegram',
 				'cred-1',
+				'project-1',
 				'agent-self',
 			);
 
@@ -114,6 +116,7 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIntegrationCredential(
 				'telegram',
 				'cred-1',
+				'project-1',
 				'agent-self',
 			);
 
@@ -131,6 +134,7 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIntegrationCredential(
 				'telegram',
 				'cred-1',
+				'project-1',
 				'agent-self',
 			);
 
@@ -149,10 +153,24 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIntegrationCredential(
 				'telegram',
 				'cred-shared',
+				'project-1',
 				'agent-self',
 			);
 
 			expect(result.map((a) => a.id)).toEqual(['agent-tg']);
+		});
+
+		it('scopes the find() query to the given projectId', async () => {
+			const findSpy = jest.spyOn(repository, 'find').mockResolvedValue([]);
+
+			await repository.findByIntegrationCredential(
+				'telegram',
+				'cred-1',
+				'project-xyz',
+				'agent-self',
+			);
+
+			expect(findSpy).toHaveBeenCalledWith({ where: { projectId: 'project-xyz' } });
 		});
 	});
 });

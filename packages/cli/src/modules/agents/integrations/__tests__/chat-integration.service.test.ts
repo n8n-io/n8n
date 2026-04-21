@@ -72,6 +72,7 @@ describe('ChatIntegrationService — Telegram credential conflict detection', ()
 		expect(agentRepository.findByIntegrationCredential).toHaveBeenCalledWith(
 			'telegram',
 			'cred-1',
+			'proj-1',
 			'agent-1',
 		);
 	});

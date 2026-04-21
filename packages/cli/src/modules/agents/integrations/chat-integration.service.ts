@@ -370,6 +370,7 @@ export class ChatIntegrationService {
 		const others = await this.agentRepository.findByIntegrationCredential(
 			'telegram',
 			credentialId,
+			projectId,
 			agentId,
 		);
 		if (others.length > 0) {
