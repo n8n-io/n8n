@@ -223,7 +223,7 @@ export async function searchFolders(
 		response = await microsoftApiRequest.call(this, 'GET', '/mailFolders', undefined, qs);
 	}
 
-	let folders = await getSubfolders.call(this, response.value as IDataObject[]);
+	let folders = await getSubfolders.call(this, response.value as IDataObject[], true);
 
 	if (filter) {
 		filter = filter.toLowerCase();

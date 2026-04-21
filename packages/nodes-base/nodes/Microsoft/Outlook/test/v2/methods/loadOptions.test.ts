@@ -126,7 +126,7 @@ describe('MicrosoftOutlookV2 - loadOptions methods', () => {
 				'/mailFolders',
 				{},
 			);
-			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse);
+			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse, true);
 			expect(result).toEqual([
 				{ name: 'Inbox', value: 'folder1' },
 				{ name: 'Sent Items', value: 'folder2' },
