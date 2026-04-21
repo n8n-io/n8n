@@ -8,6 +8,7 @@ import type {
 } from '../types';
 import { DEFAULT_BRIDGE_CONFIG } from '../types/bridge';
 import { IsolateError } from '@n8n/errors';
+import { IdleScalingPool } from '../pool/idle-scaling-pool';
 import { IsolatePool, PoolDisposedError, PoolExhaustedError } from '../pool/isolate-pool';
 import { LruCache } from './lru-cache';
 
@@ -23,7 +24,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	// Cache hit rate in production: ~99.9% (same expressions repeat within a workflow)
 	private codeCache: LruCache<string, string>;
 
-	private pool: IsolatePool;
+	private pool: IsolatePool | IdleScalingPool;
 
 	private bridgesByCaller = new WeakMap<object, RuntimeBridge>();
 
@@ -40,17 +41,23 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 			await bridge.initialize();
 			return bridge;
 		};
-		this.pool = new IsolatePool(
-			this.createBridge,
-			config.poolSize ?? 1,
-			config.idleTimeoutMs,
-			(error) => {
-				logger.error('[IsolatePool] Failed to replenish bridge', { error });
-				config.observability?.metrics.counter('expression.pool.replenish_failed', 1);
-			},
-			logger,
-			config.observability,
-		);
+
+		const onReplenishFailed = (error: unknown) => {
+			logger.error('[IsolatePool] Failed to replenish bridge', { error });
+			config.observability?.metrics.counter('expression.pool.replenish_failed', 1);
+		};
+
+		this.pool =
+			config.idleTimeoutMs !== undefined
+				? new IdleScalingPool(
+						this.createBridge,
+						config.poolSize ?? 1,
+						config.idleTimeoutMs,
+						onReplenishFailed,
+						logger,
+						config.observability,
+					)
+				: new IsolatePool(this.createBridge, config.poolSize ?? 1, onReplenishFailed, logger);
 	}
 
 	async initialize(): Promise<void> {

@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { vi } from 'vitest';
 import type { ObservabilityProvider, RuntimeBridge } from '../types';
 
@@ -8,6 +9,26 @@ export function createMockBridge(): RuntimeBridge {
 		dispose: vi.fn().mockResolvedValue(undefined),
 		isDisposed: vi.fn().mockReturnValue(false),
 	};
+}
+
+export async function flushMicrotasks(): Promise<void> {
+	for (let i = 0; i < 10; i++) {
+		await Promise.resolve();
+	}
+}
+
+export function createDeferredBridgeFactory(): {
+	factory: Mock<() => Promise<RuntimeBridge>>;
+	pendingResolvers: Array<(bridge: RuntimeBridge) => void>;
+} {
+	const pendingResolvers: Array<(bridge: RuntimeBridge) => void> = [];
+	const factory = vi.fn<() => Promise<RuntimeBridge>>().mockImplementation(
+		() =>
+			new Promise<RuntimeBridge>((resolve) => {
+				pendingResolvers.push(resolve);
+			}),
+	);
+	return { factory, pendingResolvers };
 }
 
 export function createMockObservability(): ObservabilityProvider {
