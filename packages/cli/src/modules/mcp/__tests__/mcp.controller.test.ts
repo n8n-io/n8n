@@ -20,9 +20,10 @@ import { McpController, type FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
 
+const mockHandleRequest = jest.fn().mockResolvedValue(undefined);
 jest.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
 	const StreamableHTTPServerTransport = jest.fn().mockImplementation((_opts) => ({
-		handleRequest: jest.fn().mockResolvedValue(undefined),
+		handleRequest: mockHandleRequest,
 		close: jest.fn().mockResolvedValue(undefined),
 	}));
 	return { StreamableHTTPServerTransport };
@@ -85,5 +86,27 @@ describe('McpController', () => {
 		expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.end).toHaveBeenCalled();
+	});
+
+	describe('GET /http', () => {
+		test('returns 403 if MCP access is disabled', async () => {
+			(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(false);
+			const res = createRes();
+			await controller.handleGet(createReq(), res);
+			expect(res.status).toHaveBeenCalledWith(403);
+			expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
+		});
+
+		test('delegates to transport.handleRequest', async () => {
+			(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
+			(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
+				connect: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
+			});
+			const req = createReq();
+			const res = createRes();
+			await controller.handleGet(req, res);
+			expect(mockHandleRequest).toHaveBeenCalledWith(req, res, undefined);
+		});
 	});
 });
