@@ -165,7 +165,7 @@ const {
 	isPartial,
 	isApplying,
 	applyError,
-	handleApply,
+	handleContinue,
 	handleLater,
 	handleTestTrigger,
 	onCredentialSelected,
@@ -527,7 +527,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							data-test-id="instance-ai-workflow-setup-apply-button"
-							@click="handleApply"
+							@click="handleContinue"
 						/>
 					</div>
 				</ConfirmationFooter>
@@ -742,7 +742,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 							:disabled="!anyCardComplete"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							data-test-id="instance-ai-workflow-setup-apply-button"
-							@click="handleApply"
+							@click="handleContinue"
 						/>
 					</div>
 				</ConfirmationFooter>
@@ -991,7 +991,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 							:disabled="!anyCardComplete"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							data-test-id="instance-ai-workflow-setup-apply-button"
-							@click="handleApply"
+							@click="handleContinue"
 						/>
 					</div>
 				</ConfirmationFooter>

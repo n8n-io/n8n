@@ -58,7 +58,7 @@ const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 
 const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(data.id ?? '')),
+	useWorkflowDocumentStore(createWorkflowDocumentId(data.id)),
 );
 const workflowListEntry = computed(() => workflowsListStore.workflowsById[data.id]);
 const workflowId = computed(() => data.id);
@@ -75,7 +75,8 @@ const workflowScopes = computed(
 	() => workflowListEntry.value?.scopes ?? workflowDocumentStore.value.scopes,
 );
 const workflowSharedWithProjects = computed(
-	() => workflowListEntry.value?.sharedWithProjects ?? workflowsStore.workflow.sharedWithProjects,
+	() =>
+		workflowDocumentStore.value?.sharedWithProjects ?? workflowListEntry.value?.sharedWithProjects,
 );
 const loading = ref(true);
 const isDirty = ref(false);
@@ -200,6 +201,9 @@ const onSave = async () => {
 			workflowId,
 			sharedWithProjects: sharedWithProjects.value,
 		});
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).setSharedWithProjects(
+			sharedWithProjects.value,
+		);
 
 		toast.showMessage({
 			title: i18n.baseText('workflows.shareModal.onSave.success.title'),

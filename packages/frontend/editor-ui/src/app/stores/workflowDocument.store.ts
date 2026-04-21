@@ -4,6 +4,7 @@ import { inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
+import { useWorkflowDocumentSharedWithProjects } from './workflowDocument/useWorkflowDocumentSharedWithProjects';
 import { useWorkflowDocumentChecksum } from './workflowDocument/useWorkflowDocumentChecksum';
 import { useWorkflowDocumentDescription } from './workflowDocument/useWorkflowDocumentDescription';
 import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
@@ -135,6 +136,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentName = useWorkflowDocumentName();
 		const workflowDocumentActive = useWorkflowDocumentActive();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
+		const workflowDocumentSharedWithProjects = useWorkflowDocumentSharedWithProjects();
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
 		const workflowDocumentDescription = useWorkflowDocumentDescription();
 		const workflowDocumentMeta = useWorkflowDocumentMeta();
@@ -218,12 +220,28 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			});
 		}
 
+		function getSnapshot(): WorkflowObjectAccessors {
+			return {
+				id: workflowId,
+				connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode.value,
+				pinData: workflowDocumentPinData.pinData.value as IPinData,
+				expression: workflowDocumentExpression.getExpressionHandler(),
+				getNode: workflowDocumentNodes.getNodeByName,
+				getParentNodes: workflowDocumentGraph.getParentNodes,
+				getNodeConnectionIndexes: workflowDocumentGraph.getNodeConnectionIndexes,
+				getParentMainInputNode: workflowDocumentGraph.getParentMainInputNode,
+				getChildNodes: workflowDocumentGraph.getChildNodes,
+				getParentNodesByDepth: workflowDocumentGraph.getParentNodesByDepth,
+			};
+		}
+
 		return {
 			workflowId,
 			workflowVersion,
 			...workflowDocumentName,
 			...workflowDocumentActive,
 			...workflowDocumentHomeProject,
+			...workflowDocumentSharedWithProjects,
 			...workflowDocumentChecksum,
 			...workflowDocumentDescription,
 			...workflowDocumentIsArchived,
@@ -243,6 +261,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentExpression,
 			removeAllNodes,
 			setWorkflow,
+			getSnapshot,
 		};
 	})();
 }
@@ -281,21 +300,4 @@ export function disposeWorkflowDocumentStore(id: string) {
  */
 export function injectWorkflowDocumentStore() {
 	return inject(WorkflowDocumentStoreKey, null);
-}
-
-export function convertToWorkflowAccessors(
-	workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>,
-): WorkflowObjectAccessors {
-	return {
-		id: workflowDocumentStore.workflowId,
-		connectionsBySourceNode: workflowDocumentStore.connectionsBySourceNode,
-		pinData: workflowDocumentStore.pinData as IPinData,
-		expression: workflowDocumentStore.getExpressionHandler(),
-		getNode: workflowDocumentStore.getNodeByName,
-		getParentNodes: workflowDocumentStore.getParentNodes,
-		getNodeConnectionIndexes: workflowDocumentStore.getNodeConnectionIndexes,
-		getParentMainInputNode: workflowDocumentStore.getParentMainInputNode,
-		getChildNodes: workflowDocumentStore.getChildNodes,
-		getParentNodesByDepth: workflowDocumentStore.getParentNodesByDepth,
-	};
 }

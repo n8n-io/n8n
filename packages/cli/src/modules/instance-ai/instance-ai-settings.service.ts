@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import type { InstanceAiConfig } from '@n8n/config';
+import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -88,6 +88,8 @@ interface PersistedUserPreferences {
 export class InstanceAiSettingsService {
 	private readonly config: InstanceAiConfig;
 
+	private readonly deploymentConfig: DeploymentConfig;
+
 	/** Whether n8n Agent is enabled for this instance. */
 	private enabled = true;
 
@@ -114,6 +116,12 @@ export class InstanceAiSettingsService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 	) {
 		this.config = globalConfig.instanceAi;
+		this.deploymentConfig = globalConfig.deployment;
+	}
+
+	/** Whether this instance is running on the cloud platform. */
+	private get isCloud(): boolean {
+		return this.deploymentConfig.type === 'cloud';
 	}
 
 	/** Whether the AI service proxy is active (model, search, sandbox managed externally). */
@@ -160,8 +168,18 @@ export class InstanceAiSettingsService {
 	async updateAdminSettings(
 		update: InstanceAiAdminSettingsUpdateRequest,
 	): Promise<InstanceAiAdminSettingsResponse> {
-		if (this.aiService.isProxyEnabled()) {
-			this.rejectProxyManagedFields(update, InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS);
+		if (this.isCloud) {
+			this.rejectManagedFields(
+				update,
+				InstanceAiSettingsService.CLOUD_MANAGED_ADMIN_FIELDS,
+				'cloud',
+			);
+		} else if (this.aiService.isProxyEnabled()) {
+			this.rejectManagedFields(
+				update,
+				InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS,
+				'proxy',
+			);
 		}
 		const c = this.config;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
@@ -216,8 +234,7 @@ export class InstanceAiSettingsService {
 			credentialType,
 			credentialName,
 			modelName: prefs.modelName || this.extractModelName(this.config.model),
-			localGatewayDisabled:
-				this.config.localGatewayDisabled || (prefs.localGatewayDisabled ?? false),
+			localGatewayDisabled: prefs.localGatewayDisabled ?? false,
 		};
 	}
 
@@ -225,10 +242,17 @@ export class InstanceAiSettingsService {
 		user: User,
 		update: InstanceAiUserPreferencesUpdateRequest,
 	): Promise<InstanceAiUserPreferencesResponse> {
-		if (this.aiService.isProxyEnabled()) {
-			this.rejectProxyManagedFields(
+		if (this.isCloud) {
+			this.rejectManagedFields(
+				update,
+				InstanceAiSettingsService.CLOUD_MANAGED_PREFERENCE_FIELDS,
+				'cloud',
+			);
+		} else if (this.aiService.isProxyEnabled()) {
+			this.rejectManagedFields(
 				update,
 				InstanceAiSettingsService.PROXY_MANAGED_PREFERENCE_FIELDS,
+				'proxy',
 			);
 		}
 		const prefs = await this.loadUserPreferences(user.id);
@@ -367,9 +391,10 @@ export class InstanceAiSettingsService {
 	}
 
 	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
-	isLocalGatewayDisabledForUser(userId: string): boolean {
+	async isLocalGatewayDisabledForUser(userId: string): Promise<boolean> {
+		if (!this.enabled) return true;
 		if (this.config.localGatewayDisabled) return true;
-		const prefs = this.userPreferences.get(userId);
+		const prefs = await this.loadUserPreferences(userId);
 		return prefs?.localGatewayDisabled ?? false;
 	}
 
@@ -455,14 +480,33 @@ export class InstanceAiSettingsService {
 		'modelName',
 	];
 
-	private rejectProxyManagedFields(
-		update: Record<string, unknown>,
+	/** Admin fields managed by the cloud platform — superset of proxy-managed fields. */
+	private static readonly CLOUD_MANAGED_ADMIN_FIELDS: readonly string[] = [
+		...InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS,
+		'n8nSandboxCredentialId',
+		'lastMessages',
+		'embedderModel',
+		'semanticRecallTopK',
+		'subAgentMaxSteps',
+		'browserMcp',
+		'mcpServers',
+	];
+
+	/** User preference fields managed by the cloud platform. */
+	private static readonly CLOUD_MANAGED_PREFERENCE_FIELDS: readonly string[] = [
+		...InstanceAiSettingsService.PROXY_MANAGED_PREFERENCE_FIELDS,
+	];
+
+	private rejectManagedFields(
+		update: object,
 		managedFields: readonly string[],
+		label: string,
 	): void {
-		const present = managedFields.filter((key) => key in update && update[key] !== undefined);
+		const record = update as Record<string, unknown>;
+		const present = managedFields.filter((key) => key in record && record[key] !== undefined);
 		if (present.length > 0) {
 			throw new UnprocessableRequestError(
-				`Cannot update proxy-managed fields: ${present.join(', ')}`,
+				`Cannot update ${label}-managed fields: ${present.join(', ')}`,
 			);
 		}
 	}

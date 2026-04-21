@@ -4,7 +4,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
-	convertToWorkflowAccessors,
 } from '@/app/stores/workflowDocument.store';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import { computed, type ComputedRef } from 'vue';
@@ -54,7 +53,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 		return {
 			localResolve: true,
 			envVars: environmentsStore.variablesAsObject,
-			workflow: convertToWorkflowAccessors(workflowDocumentStore.value),
+			workflow: workflowDocumentStore.value.getSnapshot(),
 			execution,
 			nodeName,
 			additionalKeys: {},

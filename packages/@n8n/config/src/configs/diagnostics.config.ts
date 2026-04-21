@@ -4,11 +4,11 @@ import { Config, Env, Nested } from '../decorators';
 class PostHogConfig {
 	/** PostHog project API key for product analytics. */
 	@Env('N8N_DIAGNOSTICS_POSTHOG_API_KEY')
-	apiKey: string = 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo';
+	apiKey: string = 'phc_kMstNfAgBcBkWSh6KdsgN09heqqNe5VNmalHP1Ni9Q4';
 
 	/** PostHog API host URL. */
 	@Env('N8N_DIAGNOSTICS_POSTHOG_API_HOST')
-	apiHost: string = 'https://us.i.posthog.com';
+	apiHost: string = 'https://ph.n8n.io';
 }
 
 @Config

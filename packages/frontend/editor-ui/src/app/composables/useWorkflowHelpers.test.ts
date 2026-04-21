@@ -6,7 +6,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
@@ -33,6 +32,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsEEStore } from '../stores/workflows.ee.store';
 
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -230,14 +230,9 @@ describe('useWorkflowHelpers', () => {
 			});
 			const addWorkflowSpy = vi.spyOn(workflowsListStore, 'addWorkflow');
 			const setWorkflowIdSpy = vi.spyOn(workflowsStore, 'setWorkflowId');
-			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
 
-			await initState(workflowData);
-
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowData.id),
-			);
+			const { workflowDocumentStore } = await initState(workflowData);
 
 			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
 			expect(setWorkflowIdSpy).toHaveBeenCalledWith('1');
@@ -249,10 +244,8 @@ describe('useWorkflowHelpers', () => {
 				name: null,
 				description: null,
 			});
-			expect(setWorkflowSharedWithSpy).toHaveBeenCalledWith({
-				workflowId: '1',
-				sharedWithProjects: [],
-			});
+			// sharedWithProjects is now managed by workflowDocumentStore
+			expect(workflowDocumentStore.setSharedWithProjects).toHaveBeenCalledWith([]);
 			// Tags are now managed by workflowDocumentStore
 			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
 		});
@@ -269,11 +262,11 @@ describe('useWorkflowHelpers', () => {
 				scopes: [],
 				tags: [],
 			});
-			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 
-			await initState(workflowData);
+			const { workflowDocumentStore } = await initState(workflowData);
 
-			expect(setWorkflowSharedWithSpy).not.toHaveBeenCalled();
+			// When sharedWithProjects is undefined, it defaults to empty array
+			expect(workflowDocumentStore.setSharedWithProjects).toHaveBeenCalledWith([]);
 		});
 
 		it('should handle missing `tags` gracefully', async () => {

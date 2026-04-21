@@ -250,10 +250,10 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 
 	const activeNodeName = activeNode.name;
 
-	const workflowObject = useWorkflowDocumentStore(
+	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
-	const nonMainChildren = workflowObject.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
+	const nonMainChildren = workflowDocumentStore.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
 
 	// This is a tool node, look for the nearest node with main connections
 	if (nonMainChildren.length > 0) {
@@ -265,10 +265,10 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 
 export function getPreviousNodes(nodeName: string) {
 	const workflowsStore = useWorkflowsStore();
-	const workflowObject = useWorkflowDocumentStore(
+	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
-	return workflowObject
+	return workflowDocumentStore
 		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)
 		.filter((name) => name !== nodeName);

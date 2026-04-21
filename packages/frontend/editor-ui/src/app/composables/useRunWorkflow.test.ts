@@ -44,8 +44,8 @@ import {
 } from '../constants';
 import type { WorkflowObjectAccessors } from '../types';
 
-const { mockDocumentStore } = vi.hoisted(() => ({
-	mockDocumentStore: {
+const { mockDocumentStore } = vi.hoisted(() => {
+	const store = {
 		workflowId: '123',
 		name: 'Test Workflow',
 		allNodes: [] as unknown[],
@@ -59,20 +59,22 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 		pinData: {} as Record<string, unknown>,
 		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
-	},
-}));
-
-vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: () => mockDocumentStore,
-	createWorkflowDocumentId: (id: string) => `${id}@latest`,
-	convertToWorkflowAccessors: (store: typeof mockDocumentStore) => ({
+		getSnapshot: vi.fn(),
+	};
+	store.getSnapshot.mockReturnValue({
 		id: store.workflowId,
 		getNode: store.getNodeByName,
 		getParentNodes: store.getParentNodes,
 		getChildNodes: store.getChildNodes,
 		connectionsBySourceNode: store.connectionsBySourceNode,
 		pinData: store.pinData,
-	}),
+	});
+	return { mockDocumentStore: store };
+});
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: () => mockDocumentStore,
+	createWorkflowDocumentId: (id: string) => `${id}@latest`,
 }));
 
 vi.mock('@/app/stores/workflows.store', () => {
