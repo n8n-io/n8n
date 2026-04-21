@@ -12,7 +12,13 @@ jest.mock('openid-client', () => ({
 import type { OidcConfigDto, ProvisioningConfigDto } from '@n8n/api-types';
 import { createTeamProject, getProjectRoleForUser, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } from '@n8n/db';
+import {
+	type User,
+	UserRepository,
+	RoleRepository,
+	RoleMappingRuleRepository,
+	AuthIdentityRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import type * as mocked_oidc_client from 'openid-client';
@@ -1078,6 +1084,108 @@ describe('OIDC service', () => {
 				'mock-access-token-userinfo-error',
 				'mock-subject-userinfo-error',
 			);
+		});
+
+		// IAM-562: OIDC account takeover via email-based linking without email_verified check
+		describe('email_verified security (IAM-562)', () => {
+			it('should reject linking OIDC identity to existing user when email_verified is false', async () => {
+				// Create a victim user (e.g., instance owner)
+				const victimUser = await createUser({
+					email: 'owner@company.com',
+					role: 'global:owner',
+				});
+
+				const state = oidcService.generateState();
+				const nonce = oidcService.generateNonce();
+				const callbackUrl = new URL(
+					`http://localhost:5678/rest/sso/oidc/callback?code=attacker-code&state=${state.plaintext}`,
+				);
+
+				// Attacker registers at OIDC provider with victim's email (unverified)
+				const mockTokens: mocked_oidc_client.TokenEndpointResponse &
+					mocked_oidc_client.TokenEndpointResponseHelpers = {
+					access_token: 'attacker-access-token',
+					id_token: 'attacker-id-token',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'attacker-oidc-id', // Different OIDC subject
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
+					mocked_oidc_client.TokenEndpointResponseHelpers;
+
+				authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+
+				// OIDC provider returns victim's email with email_verified: false
+				fetchUserInfoMock.mockResolvedValueOnce({
+					email: 'owner@company.com', // Same email as victim
+					email_verified: false, // Attacker hasn't verified the email
+					given_name: 'Attacker',
+					family_name: 'User',
+				});
+
+				// Should throw error instead of linking attacker's OIDC identity to victim's account
+				await expect(
+					oidcService.loginUser(callbackUrl, state.signed, nonce.signed),
+				).rejects.toThrow(/email.*verified|unverified email/i);
+			});
+
+			it('should reject linking when email_verified is explicitly false and user exists', async () => {
+				// Create victim user
+				const victimUser = await createUser({
+					email: 'admin@company.com',
+					role: 'global:admin',
+				});
+
+				const state = oidcService.generateState();
+				const nonce = oidcService.generateNonce();
+				const callbackUrl = new URL(
+					`http://localhost:5678/rest/sso/oidc/callback?code=code123&state=${state.plaintext}`,
+				);
+
+				const mockTokens: mocked_oidc_client.TokenEndpointResponse &
+					mocked_oidc_client.TokenEndpointResponseHelpers = {
+					access_token: 'token',
+					id_token: 'id-token',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'different-oidc-subject',
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
+					mocked_oidc_client.TokenEndpointResponseHelpers;
+
+				authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+
+				fetchUserInfoMock.mockResolvedValueOnce({
+					email: 'admin@company.com',
+					email_verified: false,
+				});
+
+				// Verify the attacker identity is NOT linked to victim's account
+				await expect(
+					oidcService.loginUser(callbackUrl, state.signed, nonce.signed),
+				).rejects.toThrow();
+
+				// Confirm no auth identity was created for the victim user
+				const authIdentityRepo = Container.get(AuthIdentityRepository);
+				const identities = await authIdentityRepo.find({
+					where: { userId: victimUser.id, providerType: 'oidc' },
+				});
+				expect(identities).toHaveLength(0);
+			});
 		});
 	});
 
