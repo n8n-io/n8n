@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { N8nButton, N8nInput } from '@n8n/design-system';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -16,7 +17,6 @@ const emit = defineEmits<{
 }>();
 
 const prompt = ref(props.initialPrompt);
-const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
 const anchorRect = ref<DOMRect>(props.anchor.getBoundingClientRect());
 
@@ -61,6 +61,13 @@ function handleKeyDown(event: KeyboardEvent) {
 	}
 }
 
+function handleFocus(event: FocusEvent) {
+	const target = event.target as HTMLTextAreaElement | null;
+	if (!target) return;
+	const end = target.value.length;
+	target.setSelectionRange(end, end);
+}
+
 function handleAdd() {
 	const text = prompt.value.trim();
 	if (!text) return;
@@ -68,13 +75,6 @@ function handleAdd() {
 }
 
 onMounted(() => {
-	void nextTick(() => {
-		const textarea = textareaRef.value;
-		if (!textarea) return;
-		textarea.focus();
-		const end = textarea.value.length;
-		textarea.setSelectionRange(end, end);
-	});
 	window.addEventListener('resize', updateAnchorRect);
 	window.addEventListener('scroll', updateAnchorRect, true);
 });
@@ -91,35 +91,32 @@ watch(
 </script>
 
 <template>
-	<div
-		class="dev-panel-popover"
-		:style="popoverStyle"
-		role="dialog"
-		aria-label="AI prompt"
-		@keydown="handleKeyDown"
-	>
-		<textarea
-			ref="textareaRef"
+	<div class="dev-panel-popover" :style="popoverStyle" role="dialog" aria-label="AI prompt">
+		<N8nInput
 			v-model="prompt"
-			class="dev-panel-textarea"
+			type="textarea"
+			size="small"
+			autofocus
+			:rows="4"
 			:placeholder="
 				isEditing
 					? 'Edit the annotation. ⌘↵ to save, Esc to cancel.'
 					: 'Describe the change. ⌘↵ to add, Esc to cancel.'
 			"
-			rows="4"
+			@keydown="handleKeyDown"
+			@focus="handleFocus"
 		/>
 		<div class="dev-panel-actions">
-			<button type="button" class="dev-panel-button" @click="emit('cancel')">Cancel</button>
-			<button
-				type="button"
-				class="dev-panel-button dev-panel-button--primary"
+			<N8nButton variant="outline" size="small" @click="emit('cancel')"> Cancel </N8nButton>
+			<N8nButton
+				variant="solid"
+				size="small"
 				:disabled="!prompt.trim()"
 				:title="isEditing ? 'Save changes (⌘↵)' : 'Add to annotations list (⌘↵)'"
 				@click="handleAdd"
 			>
 				{{ isEditing ? 'Save' : 'Add' }}
-			</button>
+			</N8nButton>
 		</div>
 	</div>
 </template>
@@ -131,7 +128,7 @@ watch(
 	background: var(--background--surface);
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	box-shadow: 0 10px 30px color-mix(in srgb, var(--color--text) 18%, transparent);
+	box-shadow: 0 10px 30px var(--color--black-alpha-300);
 	padding: var(--spacing--xs);
 	font-family: var(--font-family);
 	font-size: var(--font-size--sm);
@@ -141,57 +138,9 @@ watch(
 	gap: var(--spacing--2xs);
 }
 
-.dev-panel-textarea {
-	width: 100%;
-	resize: vertical;
-	padding: var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	background: var(--background--surface--hover);
-	color: var(--color--text--shade-1);
-	font-family: inherit;
-	font-size: inherit;
-	line-height: var(--line-height--md);
-}
-
-.dev-panel-textarea:focus {
-	outline: 2px solid var(--color--primary);
-	outline-offset: -2px;
-}
-
 .dev-panel-actions {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--3xs);
-}
-
-.dev-panel-button {
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	background: var(--color--background--light-2);
-	color: var(--color--text);
-	cursor: pointer;
-	font-family: inherit;
-	font-size: var(--font-size--xs);
-}
-
-.dev-panel-button:hover:not(:disabled) {
-	background: var(--color--background--light-3);
-}
-
-.dev-panel-button:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
-.dev-panel-button--primary {
-	background: var(--color--primary);
-	border-color: var(--color--primary);
-	color: var(--color--background);
-}
-
-.dev-panel-button--primary:hover:not(:disabled) {
-	background: var(--color--primary--shade-1);
 }
 </style>

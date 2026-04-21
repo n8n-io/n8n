@@ -38,7 +38,9 @@ const { isPicking, hoveredElement, selectedElement, dragRect, start, stop, clear
 const visible = ref(loadVisibility());
 const annotations = shallowRef<TrackedAnnotation[]>([]);
 const pendingMulti = shallowRef<Element[]>([]);
-const toast = ref<{ kind: 'info' | 'error'; message: string } | null>(null);
+const toast = ref<{ kind: 'error'; message: string } | null>(null);
+const justCopied = ref(false);
+let copiedResetTimer: ReturnType<typeof setTimeout> | null = null;
 const rectVersion = ref(0);
 const expanded = ref(false);
 const editingId = ref<string | null>(null);
@@ -259,8 +261,8 @@ watch(annotations, (current) => {
 	saveAnnotations(currentPath.value, serializable);
 });
 
-function showToast(kind: 'info' | 'error', message: string) {
-	toast.value = { kind, message };
+function showErrorToast(message: string) {
+	toast.value = { kind: 'error', message };
 	setTimeout(() => {
 		toast.value = null;
 	}, 3000);
@@ -386,11 +388,15 @@ async function copyAllAnnotations() {
 	});
 	try {
 		await navigator.clipboard.writeText(text);
-		const n = annotations.value.length;
-		showToast('info', `Copied ${n} annotation${n === 1 ? '' : 's'} to clipboard`);
+		justCopied.value = true;
+		if (copiedResetTimer) clearTimeout(copiedResetTimer);
+		copiedResetTimer = setTimeout(() => {
+			justCopied.value = false;
+			copiedResetTimer = null;
+		}, 1500);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Copy failed';
-		showToast('error', message);
+		showErrorToast(message);
 	}
 }
 </script>
@@ -459,7 +465,7 @@ async function copyAllAnnotations() {
 			@cancel="handleCancel"
 		/>
 
-		<div v-if="toast" class="dev-panel-toast" :class="`dev-panel-toast--${toast.kind}`">
+		<div v-if="toast" class="dev-panel-toast dev-panel-toast--error">
 			{{ toast.message }}
 		</div>
 
@@ -520,23 +526,47 @@ async function copyAllAnnotations() {
 				<button
 					type="button"
 					class="dev-panel-toolbar-button"
+					:class="{ 'dev-panel-toolbar-button--success': justCopied }"
 					:disabled="!hasAnnotations"
-					title="Copy all annotations as markdown"
+					:title="justCopied ? 'Copied!' : 'Copy all annotations as markdown'"
 					@click="copyAllAnnotations"
 				>
-					<svg
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-					>
-						<rect x="9" y="9" width="11" height="11" rx="2" />
-						<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-					</svg>
-					<span v-if="hasAnnotations" class="dev-panel-toolbar-badge">{{ annotationCount }}</span>
+					<Transition name="dev-panel-icon-swap" mode="out-in">
+						<svg
+							v-if="justCopied"
+							key="check"
+							class="dev-panel-toolbar-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="3"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<polyline points="5 12 10 17 19 7" />
+						</svg>
+						<svg
+							v-else
+							key="copy"
+							class="dev-panel-toolbar-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<rect x="9" y="9" width="11" height="11" rx="2" />
+							<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+						</svg>
+					</Transition>
+					<Transition name="dev-panel-badge-fade">
+						<span v-if="hasAnnotations && !justCopied" class="dev-panel-toolbar-badge">
+							{{ annotationCount }}
+						</span>
+					</Transition>
 				</button>
 				<button
 					type="button"
@@ -640,7 +670,7 @@ async function copyAllAnnotations() {
 	font-weight: var(--font-weight--bold);
 	font-family: inherit;
 	line-height: 1;
-	box-shadow: 0 2px 6px color-mix(in srgb, var(--color--text) 30%, transparent);
+	box-shadow: 0 2px 6px var(--color--black-alpha-400);
 	border: 2px solid var(--color--background);
 	cursor: pointer;
 	user-select: none;
@@ -676,13 +706,7 @@ async function copyAllAnnotations() {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	border-radius: var(--radius);
 	font-size: var(--font-size--xs);
-	box-shadow: 0 4px 16px color-mix(in srgb, var(--color--text) 20%, transparent);
-}
-
-.dev-panel-toast--info {
-	background: var(--color--success--tint-2);
-	color: var(--color--success--shade-1);
-	border: var(--border-width) var(--border-style) var(--color--success);
+	box-shadow: 0 4px 16px var(--color--black-alpha-300);
 }
 
 .dev-panel-toast--error {
@@ -707,14 +731,14 @@ async function copyAllAnnotations() {
 	width: 48px;
 	height: 48px;
 	border-radius: 50%;
-	background: var(--color--text--shade-1);
-	color: var(--color--background);
+	background: var(--color--neutral-900);
+	color: var(--color--neutral-50);
 	border: none;
 	cursor: pointer;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	box-shadow: 0 6px 20px color-mix(in srgb, var(--color--text) 30%, transparent);
+	box-shadow: 0 6px 20px var(--color--black-alpha-400);
 	transition: transform 120ms ease;
 }
 
@@ -736,14 +760,14 @@ async function copyAllAnnotations() {
 	padding: 0 6px;
 	border-radius: 11px;
 	background: var(--color--blue-500);
-	color: var(--color--background);
+	color: var(--color--neutral-50);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	line-height: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: 2px solid var(--color--text--shade-1);
+	border: 2px solid var(--color--neutral-900);
 	box-sizing: border-box;
 }
 
@@ -752,9 +776,9 @@ async function copyAllAnnotations() {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs);
-	background: var(--color--text--shade-1);
+	background: var(--color--neutral-900);
 	border-radius: 999px;
-	box-shadow: 0 6px 20px color-mix(in srgb, var(--color--text) 30%, transparent);
+	box-shadow: 0 6px 20px var(--color--black-alpha-400);
 }
 
 .dev-panel-toolbar-button {
@@ -763,12 +787,15 @@ async function copyAllAnnotations() {
 	height: 36px;
 	border-radius: 50%;
 	background: transparent;
-	color: var(--color--background);
+	color: var(--color--neutral-50);
 	border: none;
 	cursor: pointer;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	transition:
+		background-color 180ms ease,
+		color 180ms ease;
 }
 
 .dev-panel-toolbar-button svg {
@@ -776,8 +803,42 @@ async function copyAllAnnotations() {
 	height: 18px;
 }
 
+.dev-panel-toolbar-icon {
+	transform-origin: center;
+}
+
+.dev-panel-icon-swap-enter-active,
+.dev-panel-icon-swap-leave-active {
+	transition:
+		opacity 160ms ease,
+		transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dev-panel-icon-swap-enter-from {
+	opacity: 0;
+	transform: scale(0.5) rotate(-15deg);
+}
+
+.dev-panel-icon-swap-leave-to {
+	opacity: 0;
+	transform: scale(0.5) rotate(15deg);
+}
+
+.dev-panel-badge-fade-enter-active,
+.dev-panel-badge-fade-leave-active {
+	transition:
+		opacity 160ms ease,
+		transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dev-panel-badge-fade-enter-from,
+.dev-panel-badge-fade-leave-to {
+	opacity: 0;
+	transform: scale(0.6);
+}
+
 .dev-panel-toolbar-button:hover:not(:disabled) {
-	background: color-mix(in srgb, var(--color--background) 10%, transparent);
+	background: color-mix(in srgb, var(--color--neutral-50) 10%, transparent);
 }
 
 .dev-panel-toolbar-button:disabled {
@@ -793,30 +854,36 @@ async function copyAllAnnotations() {
 	background: var(--color--blue-600);
 }
 
+.dev-panel-toolbar-button--success,
+.dev-panel-toolbar-button--success:hover:not(:disabled) {
+	background: var(--color--success);
+	color: var(--color--neutral-50);
+}
+
 .dev-panel-toolbar-badge {
 	position: absolute;
-	top: 0;
-	right: 0;
-	min-width: 16px;
-	height: 16px;
-	padding: 0 4px;
-	border-radius: 8px;
+	top: -2px;
+	right: -2px;
+	min-width: 20px;
+	height: 20px;
+	padding: 0 5px;
+	border-radius: 10px;
 	background: var(--color--blue-500);
-	color: var(--color--background);
+	color: var(--color--neutral-50);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	line-height: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: 2px solid var(--color--text--shade-1);
+	border: 2px solid var(--color--neutral-900);
 	box-sizing: border-box;
 }
 
 .dev-panel-toolbar-divider {
 	width: 1px;
 	height: 20px;
-	background: color-mix(in srgb, var(--color--background) 20%, transparent);
+	background: color-mix(in srgb, var(--color--neutral-50) 20%, transparent);
 	margin: 0 var(--spacing--5xs);
 }
 </style>
