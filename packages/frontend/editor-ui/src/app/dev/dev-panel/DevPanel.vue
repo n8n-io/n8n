@@ -600,8 +600,8 @@ async function copyAllAnnotations() {
 .dev-panel-hover-overlay {
 	position: fixed;
 	pointer-events: none;
-	background: color-mix(in srgb, var(--color--primary) 15%, transparent);
-	border: 2px solid var(--color--primary);
+	background: color-mix(in srgb, var(--color--blue-500) 15%, transparent);
+	border: 2px solid var(--color--blue-500);
 	border-radius: var(--radius--sm);
 	transition: all 40ms linear;
 }
@@ -735,7 +735,7 @@ async function copyAllAnnotations() {
 	height: 22px;
 	padding: 0 6px;
 	border-radius: 11px;
-	background: var(--color--primary);
+	background: var(--color--blue-500);
 	color: var(--color--background);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
@@ -801,7 +801,7 @@ async function copyAllAnnotations() {
 	height: 16px;
 	padding: 0 4px;
 	border-radius: 8px;
-	background: var(--color--primary);
+	background: var(--color--blue-500);
 	color: var(--color--background);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
