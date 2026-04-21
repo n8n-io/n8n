@@ -262,12 +262,11 @@ export function validateSoqlOperator(operation: string): string {
  */
 export function validateSoqlObjectName(objectName: string): string {
 	// Salesforce object names: alphanumeric, underscore
-	// Can end with: __c (custom), __x (external), __e (platform event), __b (big object),
-	// __mdt (custom metadata), __Share (sharing), __History (history), __Feed (feed), __ChangeEvent (change events)
 	// Can have namespace prefix like Namespace__ObjectName__c
 	// Standard objects: Account, Contact, Lead, etc.
-	const validObjectPattern =
-		/^[A-Za-z][A-Za-z0-9_]*(?:__[A-Za-z][A-Za-z0-9_]*)?(?:__(?:c|r|x|e|b|mdt|Share|History|Feed|ChangeEvent|Tag|kav))?$/;
+	// Suffixes (__c, __mdt, __Share, __ChangeEvent, etc.) are validated as English letters only,
+	// consistent with validateSoqlFieldName, to stay future-proof without enumerating every suffix.
+	const validObjectPattern = /^[A-Za-z][A-Za-z0-9_]*(?:__[A-Za-z][A-Za-z0-9_]*)*$/;
 
 	if (!validObjectPattern.test(objectName)) {
 		throw new Error(`Invalid SOQL object name: ${objectName}`);
@@ -341,6 +340,7 @@ export function getValue(value: any): string | number | boolean {
 	}
 
 	if (typeof value === 'string') {
+		value = value.trim();
 		// Check for Salesforce date literals (e.g., TODAY, LAST_N_DAYS:7)
 		const upperValue = value.toUpperCase();
 		if (SALESFORCE_DATE_LITERALS.has(upperValue)) {
