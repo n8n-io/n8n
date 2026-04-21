@@ -141,6 +141,30 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('workflow-preview-iframe');
 	}
 
+	getPreviewRunWorkflowButton(): Locator {
+		return this.getPreviewIframe().getByTestId('execute-workflow-button');
+	}
+
+	getPreviewNodeByName(nodeName: string): Locator {
+		return this.getPreviewIframe().locator(
+			`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`,
+		);
+	}
+
+	getPreviewExecuteNodeButton(nodeName: string): Locator {
+		return this.getPreviewNodeByName(nodeName).getByRole('button', { name: 'Execute step' });
+	}
+
+	getPreviewNodeSuccessIndicator(nodeName: string): Locator {
+		return this.getPreviewNodeByName(nodeName).locator(
+			'[data-test-id="canvas-node-status-success"]',
+		);
+	}
+
+	getPreviewNdvOutputPanel(): Locator {
+		return this.getPreviewIframe().getByTestId('output-panel');
+	}
+
 	// ── Artifacts ─────────────────────────────────────────────────────
 
 	getArtifactCards(): Locator {

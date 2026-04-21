@@ -16,6 +16,7 @@ import type { ComputedRef, Ref } from 'vue';
 import { computed, ref, toValue, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLogsStore } from '@/app/stores/logs.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
 import { type INode, type INodeParameters, NodeHelpers } from 'n8n-workflow';
 import { isChatNode } from '@/app/utils/aiUtils';
@@ -58,6 +59,7 @@ export function useChatState(
 	const router = useRouter();
 	const nodeHelpers = useNodeHelpers();
 	const nodeTypesStore = useNodeTypesStore();
+	const pushConnectionStore = usePushConnectionStore();
 	const { runWorkflow } = useRunWorkflow({ router });
 
 	const webhookRegistered = ref(false);
@@ -176,6 +178,30 @@ export function useChatState(
 		isRegistering.value = true;
 
 		try {
+			// Wait for the push connection — webhook registration and execution
+			// events require it. In preview iframes the WebSocket handshake may
+			// still be in progress when the first message is sent.
+			if (!pushConnectionStore.isConnected) {
+				await new Promise<void>((resolve, reject) => {
+					let stop = () => {};
+					const timeout = setTimeout(() => {
+						stop();
+						reject(new Error('Push connection timeout'));
+					}, 10_000);
+					stop = watch(
+						() => pushConnectionStore.isConnected,
+						(connected) => {
+							if (connected) {
+								clearTimeout(timeout);
+								stop();
+								resolve();
+							}
+						},
+						{ immediate: true },
+					);
+				});
+			}
+
 			// Clear any existing execution to allow fresh webhook registration
 			workflowState.setWorkflowExecutionData(null);
 			workflowState.setActiveExecutionId(undefined);
@@ -197,7 +223,11 @@ export function useChatState(
 				workflowsStore.chatPartialExecutionDestinationNode = null;
 			}
 
-			await runWorkflow(runWorkflowOptions);
+			const response = await runWorkflow(runWorkflowOptions);
+
+			if (!response) {
+				throw new Error('Failed to register chat webhook');
+			}
 
 			webhookRegistered.value = true;
 		} finally {

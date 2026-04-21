@@ -73,7 +73,7 @@ function goToSettings() {
 	void router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
 }
 
-documentTitle.set('n8n Agent');
+documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
 // --- Execution tracking via push events ---
 const executionTracking = useExecutionPushEvents();
