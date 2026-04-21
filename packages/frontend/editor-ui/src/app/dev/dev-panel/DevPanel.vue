@@ -600,8 +600,8 @@ async function copyAllAnnotations() {
 .dev-panel-hover-overlay {
 	position: fixed;
 	pointer-events: none;
-	background: rgb(37 99 235 / 15%);
-	border: 2px solid #2563eb;
+	background: color-mix(in srgb, var(--color--primary) 15%, transparent);
+	border: 2px solid var(--color--primary);
 	border-radius: var(--radius--sm);
 	transition: all 40ms linear;
 }
@@ -609,8 +609,8 @@ async function copyAllAnnotations() {
 .dev-panel-pending-outline {
 	position: fixed;
 	pointer-events: none;
-	background: rgb(37 99 235 / 12%);
-	border: 2px dashed #2563eb;
+	background: color-mix(in srgb, var(--color--primary) 12%, transparent);
+	border: 2px dashed var(--color--primary);
 	border-radius: var(--radius--sm);
 	z-index: 2147483643;
 }
@@ -618,8 +618,8 @@ async function copyAllAnnotations() {
 .dev-panel-drag-rect {
 	position: fixed;
 	pointer-events: none;
-	background: rgb(34 197 94 / 15%);
-	border: 1px solid #22c55e;
+	background: color-mix(in srgb, var(--color--success) 15%, transparent);
+	border: 1px solid var(--color--success);
 	border-radius: var(--radius--sm);
 	z-index: 2147483645;
 }
@@ -631,8 +631,8 @@ async function copyAllAnnotations() {
 	height: 22px;
 	padding: 0;
 	border-radius: 50%;
-	background: #2563eb;
-	color: #fff;
+	background: var(--color--primary);
+	color: var(--color--background);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -640,8 +640,8 @@ async function copyAllAnnotations() {
 	font-weight: var(--font-weight--bold);
 	font-family: inherit;
 	line-height: 1;
-	box-shadow: 0 2px 6px rgb(0 0 0 / 30%);
-	border: 2px solid #fff;
+	box-shadow: 0 2px 6px color-mix(in srgb, var(--color--text) 30%, transparent);
+	border: 2px solid var(--color--background);
 	cursor: pointer;
 	user-select: none;
 	transition: transform 80ms ease;
@@ -652,7 +652,7 @@ async function copyAllAnnotations() {
 }
 
 .dev-panel-marker--multi {
-	background: #10b981;
+	background: var(--color--success);
 }
 
 .dev-panel-marker-pen {
@@ -676,7 +676,7 @@ async function copyAllAnnotations() {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	border-radius: var(--radius);
 	font-size: var(--font-size--xs);
-	box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
+	box-shadow: 0 4px 16px color-mix(in srgb, var(--color--text) 20%, transparent);
 }
 
 .dev-panel-toast--info {
@@ -707,14 +707,14 @@ async function copyAllAnnotations() {
 	width: 48px;
 	height: 48px;
 	border-radius: 50%;
-	background: #1a1a1a;
-	color: #fff;
+	background: var(--color--text);
+	color: var(--color--background);
 	border: none;
 	cursor: pointer;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	box-shadow: 0 6px 20px rgb(0 0 0 / 30%);
+	box-shadow: 0 6px 20px color-mix(in srgb, var(--color--text) 30%, transparent);
 	transition: transform 120ms ease;
 }
 
@@ -735,15 +735,15 @@ async function copyAllAnnotations() {
 	height: 22px;
 	padding: 0 6px;
 	border-radius: 11px;
-	background: #2563eb;
-	color: #fff;
+	background: var(--color--primary);
+	color: var(--color--background);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	line-height: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: 2px solid #1a1a1a;
+	border: 2px solid var(--color--text);
 	box-sizing: border-box;
 }
 
@@ -752,9 +752,9 @@ async function copyAllAnnotations() {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs);
-	background: #1a1a1a;
+	background: var(--color--text);
 	border-radius: 999px;
-	box-shadow: 0 6px 20px rgb(0 0 0 / 30%);
+	box-shadow: 0 6px 20px color-mix(in srgb, var(--color--text) 30%, transparent);
 }
 
 .dev-panel-toolbar-button {
@@ -763,7 +763,7 @@ async function copyAllAnnotations() {
 	height: 36px;
 	border-radius: 50%;
 	background: transparent;
-	color: #fff;
+	color: var(--color--background);
 	border: none;
 	cursor: pointer;
 	display: flex;
@@ -777,7 +777,7 @@ async function copyAllAnnotations() {
 }
 
 .dev-panel-toolbar-button:hover:not(:disabled) {
-	background: rgb(255 255 255 / 10%);
+	background: color-mix(in srgb, var(--color--background) 10%, transparent);
 }
 
 .dev-panel-toolbar-button:disabled {
@@ -786,11 +786,11 @@ async function copyAllAnnotations() {
 }
 
 .dev-panel-toolbar-button--active {
-	background: #2563eb;
+	background: var(--color--primary);
 }
 
 .dev-panel-toolbar-button--active:hover:not(:disabled) {
-	background: #1d4ed8;
+	background: var(--color--primary--shade-1);
 }
 
 .dev-panel-toolbar-badge {
@@ -801,22 +801,22 @@ async function copyAllAnnotations() {
 	height: 16px;
 	padding: 0 4px;
 	border-radius: 8px;
-	background: #2563eb;
-	color: #fff;
+	background: var(--color--primary);
+	color: var(--color--background);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	line-height: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: 2px solid #1a1a1a;
+	border: 2px solid var(--color--text);
 	box-sizing: border-box;
 }
 
 .dev-panel-toolbar-divider {
 	width: 1px;
 	height: 20px;
-	background: rgb(255 255 255 / 20%);
+	background: color-mix(in srgb, var(--color--background) 20%, transparent);
 	margin: 0 var(--spacing--5xs);
 }
 </style>
