@@ -24,7 +24,7 @@ describe('publish-workflow MCP tool', () => {
 			track: jest.fn(),
 		});
 		collaborationService = mockInstance(CollaborationService, {
-			broadcastWorkflowUpdate: jest.fn(),
+			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
 		});
 	});
 

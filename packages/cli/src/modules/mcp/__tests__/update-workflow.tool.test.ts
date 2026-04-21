@@ -124,7 +124,7 @@ describe('update-workflow MCP tool', () => {
 		});
 		nodeTypes = mockInstance(NodeTypes);
 		collaborationService = mockInstance(CollaborationService, {
-			broadcastWorkflowUpdate: jest.fn(),
+			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
 		});
 
 		mockParseAndValidate.mockImplementation(async () => ({

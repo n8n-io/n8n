@@ -72,7 +72,7 @@ export const createPublishWorkflowTool = (
 				source: 'n8n-mcp',
 			});
 
-			await collaborationService.broadcastWorkflowUpdate(workflowId, user.id);
+			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
 			const output: PublishWorkflowOutput = {
 				success: true,

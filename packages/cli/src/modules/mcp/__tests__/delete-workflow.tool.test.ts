@@ -38,7 +38,7 @@ describe('archive-workflow MCP tool', () => {
 			track: jest.fn(),
 		});
 		collaborationService = mockInstance(CollaborationService, {
-			broadcastWorkflowUpdate: jest.fn(),
+			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
 		});
 	});
 
@@ -80,6 +80,23 @@ describe('archive-workflow MCP tool', () => {
 			expect(result.isError).toBeUndefined();
 
 			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
+		});
+
+		test('succeeds even when broadcastWorkflowUpdate rejects', async () => {
+			(workflowService.archive as jest.Mock).mockResolvedValue({
+				id: 'wf-1',
+				name: 'My Workflow',
+			});
+			(collaborationService.broadcastWorkflowUpdate as jest.Mock).mockRejectedValue(
+				new Error('Cache unavailable'),
+			);
+
+			const tool = createTool();
+			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
+
+			const response = parseResult(result);
+			expect(response.archived).toBe(true);
+			expect(result.isError).toBeUndefined();
 		});
 
 		test('returns error when workflow not found or no permission to archive', async () => {

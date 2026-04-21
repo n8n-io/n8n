@@ -179,7 +179,7 @@ export const createUpdateWorkflowTool = (
 				source: 'n8n-mcp',
 			});
 
-			await collaborationService.broadcastWorkflowUpdate(workflowId, user.id);
+			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;

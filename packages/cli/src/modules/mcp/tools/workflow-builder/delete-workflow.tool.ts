@@ -55,7 +55,7 @@ export const createArchiveWorkflowTool = (
 				throw new Error("Workflow not found or you don't have permission to archive it.");
 			}
 
-			await collaborationService.broadcastWorkflowUpdate(workflowId, user.id);
+			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
 			telemetryPayload.results = {
 				success: true,
