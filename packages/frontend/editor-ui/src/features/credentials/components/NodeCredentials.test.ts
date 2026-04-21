@@ -867,6 +867,233 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	describe('Gemini model defaults watcher', () => {
+		const googleGeminiApiCredType: ICredentialType = {
+			name: 'googleGeminiApi',
+			displayName: 'Google Gemini API',
+			properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+		};
+
+		function createGeminiNode(overrides: Partial<INodeUi> = {}): INodeUi {
+			return {
+				parameters: {
+					resource: 'text',
+					operation: 'message',
+					modelId: { mode: 'list', value: '' },
+				},
+				type: '@n8n/n8n-nodes-langchain.googleGemini',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'gemini-node-id',
+				name: 'Google Gemini',
+				credentials: {
+					googleGeminiApi: { id: 'cred-gemini', name: 'Gemini Key' },
+				},
+				...overrides,
+			};
+		}
+
+		function setupGeminiStores() {
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				googleGeminiApi: googleGeminiApiCredType,
+			};
+			credentialsStore.state.credentials = {
+				'cred-gemini': createCredential({
+					id: 'cred-gemini',
+					name: 'Gemini Key',
+					type: 'googleGeminiApi',
+				}),
+			};
+		}
+
+		it('should emit credentialSelected with default model when resource/operation changes to text:message', async () => {
+			setupGeminiStores();
+
+			const initialNode = createGeminiNode({
+				parameters: {
+					resource: 'image',
+					operation: 'generate',
+					modelId: { mode: 'list', value: '' },
+				},
+			});
+			ndvStore.activeNode = initialNode;
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					node: initialNode,
+					overrideCredType: 'googleGeminiApi',
+					readonly: false,
+					showAll: false,
+					hideIssues: false,
+				},
+				global: {
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+					},
+				},
+			});
+
+			const updatedNode = createGeminiNode({
+				parameters: {
+					resource: 'text',
+					operation: 'message',
+					modelId: { mode: 'list', value: '' },
+				},
+			});
+			await rerender({ node: updatedNode });
+
+			const events = emitted('credentialSelected');
+			expect(events).toBeTruthy();
+			const lastPayload = (events[events.length - 1] as unknown[])[0] as {
+				name: string;
+				properties: { parameters: Record<string, unknown> };
+			};
+			expect(lastPayload.name).toBe('Google Gemini');
+			expect(lastPayload.properties.parameters.modelId).toEqual({
+				mode: 'list',
+				value: 'models/gemini-3-flash-preview',
+			});
+		});
+
+		it('should emit credentialSelected with default model when resource/operation changes to image:generate', async () => {
+			setupGeminiStores();
+
+			const initialNode = createGeminiNode({
+				parameters: {
+					resource: 'text',
+					operation: 'message',
+					modelId: { mode: 'list', value: '' },
+				},
+			});
+			ndvStore.activeNode = initialNode;
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					node: initialNode,
+					overrideCredType: 'googleGeminiApi',
+					readonly: false,
+					showAll: false,
+					hideIssues: false,
+				},
+				global: {
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+					},
+				},
+			});
+
+			const updatedNode = createGeminiNode({
+				parameters: {
+					resource: 'image',
+					operation: 'generate',
+					modelId: { mode: 'list', value: '' },
+				},
+			});
+			await rerender({ node: updatedNode });
+
+			const events = emitted('credentialSelected');
+			expect(events).toBeTruthy();
+			const lastPayload = (events[events.length - 1] as unknown[])[0] as {
+				name: string;
+				properties: { parameters: Record<string, unknown> };
+			};
+			expect(lastPayload.name).toBe('Google Gemini');
+			expect(lastPayload.properties.parameters.modelId).toEqual({
+				mode: 'list',
+				value: 'models/gemini-3.1-flash-image-preview',
+			});
+		});
+
+		it('should not emit when node type is not Google Gemini', async () => {
+			setupGeminiStores();
+
+			const initialNode: INodeUi = {
+				...openAiNode,
+				parameters: { ...openAiNode.parameters, resource: 'text', operation: 'message' },
+			};
+			ndvStore.activeNode = initialNode;
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					node: initialNode,
+					overrideCredType: 'openAiApi',
+					readonly: false,
+					showAll: false,
+					hideIssues: false,
+				},
+				global: {
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+					},
+				},
+			});
+
+			const updatedNode: INodeUi = {
+				...initialNode,
+				parameters: { ...initialNode.parameters, resource: 'image', operation: 'generate' },
+			};
+			await rerender({ node: updatedNode });
+
+			const events = emitted('credentialSelected');
+			if (events) {
+				for (const event of events) {
+					const payload = (event as unknown[])[0] as {
+						properties: { parameters?: Record<string, unknown> };
+					};
+					expect(payload.properties.parameters?.modelId).toBeUndefined();
+				}
+			}
+		});
+
+		it('should not emit when resource/operation has no matching default', async () => {
+			setupGeminiStores();
+
+			const initialNode = createGeminiNode({
+				parameters: {
+					resource: 'text',
+					operation: 'message',
+					modelId: { mode: 'list', value: '' },
+				},
+			});
+			ndvStore.activeNode = initialNode;
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					node: initialNode,
+					overrideCredType: 'googleGeminiApi',
+					readonly: false,
+					showAll: false,
+					hideIssues: false,
+				},
+				global: {
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+					},
+				},
+			});
+
+			const updatedNode = createGeminiNode({
+				parameters: {
+					resource: 'audio',
+					operation: 'transcribe',
+					modelId: { mode: 'list', value: '' },
+				},
+			});
+			await rerender({ node: updatedNode });
+
+			const events = emitted('credentialSelected');
+			if (events) {
+				for (const event of events) {
+					const payload = (event as unknown[])[0] as {
+						properties: { parameters?: Record<string, unknown> };
+					};
+					expect(payload.properties.parameters?.modelId).toBeUndefined();
+				}
+			}
+		});
+	});
+
 	describe('AI Gateway toggle (onAiGatewaySelector)', () => {
 		const googlePalmApiCredType: ICredentialType = {
 			name: 'googlePalmApi',
