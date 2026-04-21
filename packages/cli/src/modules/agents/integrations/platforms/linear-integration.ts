@@ -1,0 +1,128 @@
+import { Logger } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
+
+import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
+import { loadLinearAdapter } from '../esm-loader';
+
+/**
+ * Linear platform integration.
+ *
+ * Linear issues are the threads and issue comments are the messages. The
+ * Vercel Chat SDK's Linear adapter renders `rich_interaction` cards into
+ * issue-comment markdown — action buttons become bold text (non-interactive),
+ * images become markdown images, sections and dividers are preserved.
+ *
+ * Select / radio_select aren't rendered by the adapter, so this integration
+ * omits them from `supportedComponents` — the agent won't generate components
+ * the adapter can't render.
+ *
+ * Mention detection in the Chat SDK is a literal string match on
+ * `@<adapter.userName>` in the comment body. The adapter defaults `userName` to
+ * `'linear-bot'`, which nobody types in Linear's UI, so `createAdapter`
+ * eagerly fetches the bot user's Linear display name via GraphQL and passes
+ * it in — that way `@Eugene`-style mentions fire `onNewMention` as expected.
+ */
+@Service()
+export class LinearIntegration extends AgentChatIntegration {
+	readonly type = 'linear';
+
+	readonly credentialTypes = ['linearApi', 'linearOAuth2Api'];
+
+	readonly supportedComponents = ['section', 'button', 'divider', 'image', 'fields'];
+
+	readonly description =
+		'Post rich content as a comment on a Linear issue. Available: markdown sections, ' +
+		'buttons (rendered as bold text — non-interactive on Linear), dividers, images, ' +
+		'key-value fields. Users reply by commenting on the issue, which the agent receives ' +
+		'as a new message in the thread.';
+
+	constructor(private readonly logger: Logger) {
+		super();
+	}
+
+	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
+		const apiKey = this.extractApiToken(ctx.credential);
+		const webhookSecret = this.extractSigningSecret(ctx.credential);
+		const userName = await this.fetchDisplayName(apiKey);
+		const { createLinearAdapter } = await loadLinearAdapter();
+		// Default mode is 'comments' — simpler setup, supports edit/delete.
+		// Agent-sessions mode can be opted into later via a credential flag.
+		return createLinearAdapter({
+			apiKey,
+			webhookSecret,
+			...(userName ? { userName } : {}),
+		});
+	}
+
+	/**
+	 * - `linearApi` stores the token as `apiKey`.
+	 * - `linearOAuth2Api` stores the token inside `oauthTokenData.access_token`.
+	 */
+	private extractApiToken(credential: Record<string, unknown>): string {
+		let token: string | undefined;
+
+		if (typeof credential.apiKey === 'string' && credential.apiKey) {
+			token = credential.apiKey;
+		}
+
+		if (!token) {
+			const tokenData = credential.oauthTokenData as Record<string, unknown> | undefined;
+			const oauthToken = tokenData?.access_token ?? tokenData?.accessToken;
+			if (typeof oauthToken === 'string' && oauthToken) {
+				token = oauthToken;
+			}
+		}
+
+		if (!token) {
+			throw new Error(
+				'Could not extract an API token from the Linear credential. ' +
+					'Please ensure the credential has a valid API key (linearApi) ' +
+					'or completed OAuth flow (linearOAuth2Api).',
+			);
+		}
+
+		return token;
+	}
+
+	private extractSigningSecret(credential: Record<string, unknown>): string {
+		const secret = credential.signingSecret;
+		if (typeof secret === 'string' && secret) {
+			return secret;
+		}
+
+		throw new Error(
+			'The Linear credential is missing a signing secret, which is required for ' +
+				'agent integrations. Edit the credential and add the signing secret from ' +
+				'your Linear webhook configuration (Settings → API → Webhooks → Signing secret).',
+		);
+	}
+
+	/**
+	 * Try bare and Bearer Authorization headers so the same helper works for both
+	 * linearApi (personal key — bare) and linearOAuth2Api (access token — Bearer).
+	 * Returns undefined on any failure; the adapter falls back to its default
+	 * `linear-bot` name and users can still set LINEAR_BOT_USERNAME as an override.
+	 */
+	private async fetchDisplayName(apiKey: string): Promise<string | undefined> {
+		for (const authHeader of [apiKey, `Bearer ${apiKey}`]) {
+			try {
+				const resp = await fetch('https://api.linear.app/graphql', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+					body: JSON.stringify({ query: '{ viewer { displayName } }' }),
+				});
+				if (!resp.ok) continue;
+				const json = (await resp.json()) as {
+					data?: { viewer?: { displayName?: string } };
+				};
+				const displayName = json.data?.viewer?.displayName;
+				if (displayName) return displayName;
+			} catch (error) {
+				this.logger.debug(
+					`[LinearIntegration] viewer lookup failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+		return undefined;
+	}
+}
