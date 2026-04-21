@@ -155,6 +155,93 @@ describe('AgentChatBridge — committable-text streaming for Telegram', () => {
 	});
 });
 
+describe('AgentChatBridge — committable-text streaming edge cases', () => {
+	it('does not call thread.post at all when the stream has no text chunks', async () => {
+		const { posts } = await runConsumeStream([], 'telegram');
+		expect(posts).toEqual([]);
+	});
+
+	it('passes reasoning deltas (wrapped in underscores) through the committable filter', async () => {
+		const { allText } = await runConsumeStream(
+			[{ type: 'reasoning-delta', delta: 'thinking' }] as StreamChunk[],
+			'telegram',
+		);
+
+		// Reasoning deltas are wrapped with underscores (`_thinking_`). The
+		// fake renderer's committable logic only holds back unclosed `**`, so
+		// balanced `_..._` flows through unchanged.
+		expect(allText[0]).toBe('_thinking_');
+	});
+
+	it('flushes committable tail when the stream ends on a `message` chunk', async () => {
+		const { posts } = await runConsumeStream(
+			[
+				{ type: 'text-delta', delta: 'hi **bold' },
+				{ type: 'message', message: { content: [] } } as unknown as StreamChunk,
+			] as StreamChunk[],
+			'telegram',
+		);
+
+		// First segment's finish() should close the unclosed `**`.
+		expect(posts[0].join('')).toBe('hi **bold**');
+	});
+
+	it('flushes committable tail when the stream ends on an `error` chunk', async () => {
+		const { posts } = await runConsumeStream(
+			[
+				{ type: 'text-delta', delta: 'hi **bold' },
+				{ type: 'error', error: new Error('boom') } as unknown as StreamChunk,
+			] as StreamChunk[],
+			'telegram',
+		);
+
+		expect(posts[0].join('')).toBe('hi **bold**');
+	});
+
+	it('does not create a second streaming post if suspension has no following text', async () => {
+		const { posts } = await runConsumeStream(
+			[
+				{ type: 'text-delta', delta: 'only **seg' },
+				{
+					type: 'tool-call-suspended',
+					runId: 'r',
+					toolCallId: 'tc',
+					toolName: 'noop',
+				} as unknown as StreamChunk,
+			] as StreamChunk[],
+			'telegram',
+		);
+
+		// Exactly one streaming post — the second segment never started.
+		expect(posts).toHaveLength(1);
+		expect(posts[0].join('')).toBe('only **seg**');
+	});
+
+	it('resets the renderer between segments (yieldedLength state is per-segment)', async () => {
+		const { posts } = await runConsumeStream(
+			[
+				{ type: 'text-delta', delta: 'seg1' },
+				{
+					type: 'tool-call-suspended',
+					runId: 'r',
+					toolCallId: 'tc',
+					toolName: 'noop',
+				} as unknown as StreamChunk,
+				{ type: 'text-delta', delta: 'seg2' },
+			] as StreamChunk[],
+			'telegram',
+		);
+
+		// If renderer state leaked across segments, the second segment would
+		// see "seg1seg2" accumulated and yield only "seg2" — which is also
+		// correct by coincidence. The stronger invariant: each segment's post
+		// contains exactly its own content.
+		expect(posts).toHaveLength(2);
+		expect(posts[0].join('')).toBe('seg1');
+		expect(posts[1].join('')).toBe('seg2');
+	});
+});
+
 describe('AgentChatBridge — Slack (native streaming) yields raw deltas', () => {
 	it('passes deltas through untouched, no committable filter', async () => {
 		const { posts } = await runConsumeStream(
@@ -167,5 +254,14 @@ describe('AgentChatBridge — Slack (native streaming) yields raw deltas', () =>
 
 		expect(posts).toHaveLength(1);
 		expect(posts[0]).toEqual(['hello ', '**bold']);
+	});
+
+	it('passes reasoning deltas raw (no committable filter, wrapped in `_`)', async () => {
+		const { posts } = await runConsumeStream(
+			[{ type: 'reasoning-delta', delta: 'hmm' }] as StreamChunk[],
+			'slack',
+		);
+
+		expect(posts[0]).toEqual(['_hmm_']);
 	});
 });
