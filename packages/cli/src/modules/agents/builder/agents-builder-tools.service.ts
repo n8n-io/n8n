@@ -228,7 +228,9 @@ export class AgentsBuilderToolsService {
 			listWorkflowsTool,
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,
-				'Call this BEFORE generating code to know which .credential() value to use.',
+				'Call this BEFORE adding a node tool so you know which credential to wire up. ' +
+					"Copy the returned { id, name } into the tool's `credentials` field, keyed by the " +
+					'credential slot name (e.g. `credentials: { gmailOAuth2: { id, name } }`).',
 			),
 		];
 	}
