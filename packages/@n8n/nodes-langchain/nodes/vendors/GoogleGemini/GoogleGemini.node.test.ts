@@ -731,7 +731,7 @@ describe('GoogleGemini Node', () => {
 				);
 			});
 
-			it('should skip undefined parts when parsing tool calls', async () => {
+			it('should handle undefined entries in parts array', async () => {
 				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
 					switch (parameter) {
 						case 'modelId':
