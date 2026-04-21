@@ -23,6 +23,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
 		restUrl: 'http://localhost:5678/api/v1',
 		pushRef: 'test-push-ref',
+		ensureUniquePushRef: vi.fn().mockResolvedValue('test-push-ref'),
 	}),
 }));
 
@@ -33,6 +34,11 @@ vi.mock('./settings.store', () => ({
 }));
 
 describe('usePushConnectionStore', () => {
+	const flushConnect = async () => {
+		await Promise.resolve();
+		await Promise.resolve();
+	};
+
 	beforeEach(() => {
 		vi.useFakeTimers();
 	});
@@ -90,11 +96,12 @@ describe('usePushConnectionStore', () => {
 	});
 
 	describe('connection handling', () => {
-		test('should connect and disconnect with debounce', () => {
+		test('should connect and disconnect with debounce', async () => {
 			const { store, mockWebSocketClient } = createTestInitialState();
 
 			store.pushConnect();
 			expect(store.isConnectionRequested).toBe(true);
+			await flushConnect();
 			expect(mockWebSocketClient.connect).toHaveBeenCalled();
 
 			// Wait for the connect intent to expire (500ms debounce window)
@@ -111,12 +118,13 @@ describe('usePushConnectionStore', () => {
 			expect(mockWebSocketClient.disconnect).toHaveBeenCalled();
 		});
 
-		test('should not disconnect if connect is called within debounce window (new view mounts before old unmounts)', () => {
+		test('should not disconnect if connect is called within debounce window (new view mounts before old unmounts)', async () => {
 			const { store, mockWebSocketClient } = createTestInitialState();
 
 			// Initial connect
 			store.pushConnect();
 			expect(store.isConnectionRequested).toBe(true);
+			await flushConnect();
 			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(1);
 
 			// Simulate route transition: disconnect called but connect follows quickly
@@ -127,11 +135,12 @@ describe('usePushConnectionStore', () => {
 			expect(store.isConnectionRequested).toBe(true);
 		});
 
-		test('should not disconnect if connect is called during disconnect debounce window', () => {
+		test('should not disconnect if connect is called during disconnect debounce window', async () => {
 			const { store, mockWebSocketClient } = createTestInitialState();
 
 			// Initial connect
 			store.pushConnect();
+			await flushConnect();
 			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(1);
 
 			// Wait for connect intent to expire
@@ -144,6 +153,7 @@ describe('usePushConnectionStore', () => {
 			// Before disconnect completes, connect is called again
 			vi.advanceTimersByTime(250);
 			store.pushConnect();
+			await flushConnect();
 			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(2);
 
 			// Wait for what would have been the disconnect timeout

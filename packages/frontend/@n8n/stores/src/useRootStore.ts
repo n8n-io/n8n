@@ -6,6 +6,19 @@ import { STORES } from './constants';
 import { getConfigFromMetaTag } from './metaTagConfig';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
+const CLIENT_ID_STORAGE_KEY = 'n8n-client-id';
+const PUSH_REF_CHANNEL_NAME = 'n8n-push-ref-sync';
+const PUSH_REF_CHECK_TIMEOUT = 100;
+
+type PushRefChannelMessage =
+	| {
+			type: 'push-ref-check';
+			pushRef: string;
+	  }
+	| {
+			type: 'push-ref-taken';
+			pushRef: string;
+	  };
 
 export type RootStoreState = {
 	baseUrl: string;
@@ -35,15 +48,45 @@ export type RootStoreState = {
 };
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
+	const generateClientId = (): string => randomString(10).toLowerCase();
+
+	const getPushRefChannel = (() => {
+		let channel: BroadcastChannel | null = null;
+
+		return () => {
+			if (typeof BroadcastChannel === 'undefined') {
+				return null;
+			}
+
+			channel ??= new BroadcastChannel(PUSH_REF_CHANNEL_NAME);
+			return channel;
+		};
+	})();
+
+	const isPushRefChannelMessage = (value: unknown): value is PushRefChannelMessage => {
+		if (typeof value !== 'object' || value === null) {
+			return false;
+		}
+
+		if (!('type' in value) || !('pushRef' in value)) {
+			return false;
+		}
+
+		return (
+			(value.type === 'push-ref-check' || value.type === 'push-ref-taken') &&
+			typeof value.pushRef === 'string'
+		);
+	};
+
 	// Generate or retrieve client ID from sessionStorage
 	const getClientId = (): string => {
-		const storageKey = 'n8n-client-id';
-		const existingId = sessionStorage.getItem(storageKey);
+		const existingId = sessionStorage.getItem(CLIENT_ID_STORAGE_KEY);
 		if (existingId) {
 			return existingId;
 		}
-		const newId = randomString(10).toLowerCase();
-		sessionStorage.setItem(storageKey, newId);
+
+		const newId = generateClientId();
+		sessionStorage.setItem(CLIENT_ID_STORAGE_KEY, newId);
 		return newId;
 	};
 
@@ -71,6 +114,31 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		instanceId: '',
 		binaryDataMode: 'default',
 	});
+
+	const setPushRef = (value: string) => {
+		sessionStorage.setItem(CLIENT_ID_STORAGE_KEY, value);
+		state.value.pushRef = value;
+	};
+
+	const channel = getPushRefChannel();
+
+	channel?.addEventListener('message', (event: MessageEvent<unknown>) => {
+		if (!isPushRefChannelMessage(event.data)) {
+			return;
+		}
+
+		if (event.data.type !== 'push-ref-check' || event.data.pushRef !== state.value.pushRef) {
+			return;
+		}
+
+		channel.postMessage({
+			type: 'push-ref-taken',
+			pushRef: state.value.pushRef,
+		} satisfies PushRefChannelMessage);
+	});
+
+	let hasUniquePushRef = false;
+	let uniquePushRefPromise: Promise<string> | null = null;
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
@@ -212,8 +280,55 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.binaryDataMode = value;
 	};
 
-	const setPushRef = (value: string) => {
-		state.value.pushRef = value;
+	const ensureUniquePushRef = async () => {
+		if (hasUniquePushRef) {
+			return state.value.pushRef;
+		}
+
+		if (uniquePushRefPromise) {
+			return await uniquePushRefPromise;
+		}
+
+		const currentChannel = getPushRefChannel();
+		if (!currentChannel) {
+			hasUniquePushRef = true;
+			return state.value.pushRef;
+		}
+
+		uniquePushRefPromise = new Promise<string>((resolve) => {
+			const currentPushRef = state.value.pushRef;
+			let isPushRefTaken = false;
+
+			const onMessage = (event: MessageEvent<unknown>) => {
+				if (!isPushRefChannelMessage(event.data)) {
+					return;
+				}
+
+				if (event.data.type === 'push-ref-taken' && event.data.pushRef === currentPushRef) {
+					isPushRefTaken = true;
+				}
+			};
+
+			currentChannel.addEventListener('message', onMessage);
+			currentChannel.postMessage({
+				type: 'push-ref-check',
+				pushRef: currentPushRef,
+			} satisfies PushRefChannelMessage);
+
+			window.setTimeout(() => {
+				currentChannel.removeEventListener('message', onMessage);
+
+				if (isPushRefTaken) {
+					setPushRef(generateClientId());
+				}
+
+				hasUniquePushRef = true;
+				uniquePushRefPromise = null;
+				resolve(state.value.pushRef);
+			}, PUSH_REF_CHECK_TIMEOUT);
+		});
+
+		return await uniquePushRefPromise;
 	};
 
 	// #endregion
@@ -260,5 +375,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setDefaultLocale,
 		setBinaryDataMode,
 		setPushRef,
+		ensureUniquePushRef,
 	};
 });
