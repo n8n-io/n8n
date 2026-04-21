@@ -46,9 +46,6 @@ export abstract class AgentChatIntegration {
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */
 	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
-	/** Optional hook run BEFORE `chat.shutdown()`. Errors here are logged, not thrown. */
-	onBeforeDisconnect?(ctx: AgentChatIntegrationContext): Promise<void>;
-
 	/**
 	 * Optional per-platform component normalization (applied before toCard).
 	 * Convert unsupported types into close-enough equivalents — e.g. Telegram
