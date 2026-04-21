@@ -16,14 +16,14 @@ const properties: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'Speech 2.8 HD',
-				value: 'speech-2.8-hd',
-				description: 'Latest HD model with ultra-realistic quality and sound tags',
+				name: 'Speech 02 HD',
+				value: 'speech-02-hd',
+				description: 'Superior rhythm and stability with outstanding quality',
 			},
 			{
-				name: 'Speech 2.8 Turbo',
-				value: 'speech-2.8-turbo',
-				description: 'Latest Turbo model with seamless speed and natural flow',
+				name: 'Speech 02 Turbo',
+				value: 'speech-02-turbo',
+				description: 'Enhanced multilingual capabilities and performance',
 			},
 			{
 				name: 'Speech 2.6 HD',
@@ -36,14 +36,14 @@ const properties: INodeProperties[] = [
 				description: 'Turbo model with support for 40 languages',
 			},
 			{
-				name: 'Speech 02 HD',
-				value: 'speech-02-hd',
-				description: 'Superior rhythm and stability with outstanding quality',
+				name: 'Speech 2.8 HD',
+				value: 'speech-2.8-hd',
+				description: 'Latest HD model with ultra-realistic quality and sound tags',
 			},
 			{
-				name: 'Speech 02 Turbo',
-				value: 'speech-02-turbo',
-				description: 'Enhanced multilingual capabilities and performance',
+				name: 'Speech 2.8 Turbo',
+				value: 'speech-2.8-turbo',
+				description: 'Latest Turbo model with seamless speed and natural flow',
 			},
 		],
 		default: 'speech-2.8-hd',
@@ -67,8 +67,9 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		default: 'English_Graceful_Lady',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 		description:
-			'The ID of the voice to use. Browse available voices at <a href="https://platform.minimax.io/faq/system-voice-id">System Voice ID List</a>.',
+			'Voice ID to use for speech synthesis. Browse available voices in the <a href="https://platform.minimax.io/faq/system-voice-id">MiniMax documentation</a>.',
 		placeholder: 'e.g. English_Graceful_Lady',
 	},
 	{
@@ -121,8 +122,8 @@ const properties: INodeProperties[] = [
 				name: 'languageBoost',
 				type: 'options',
 				options: [
-					{ name: 'Auto Detect', value: 'auto' },
 					{ name: 'Arabic', value: 'Arabic' },
+					{ name: 'Auto Detect', value: 'auto' },
 					{ name: 'Chinese', value: 'Chinese' },
 					{ name: 'English', value: 'English' },
 					{ name: 'French', value: 'French' },

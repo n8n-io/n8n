@@ -16,19 +16,9 @@ const properties: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'MiniMax-Hailuo-2.3',
-				value: 'MiniMax-Hailuo-2.3',
-				description: 'Latest model with enhanced realism',
-			},
-			{
-				name: 'MiniMax-Hailuo-2.3-Fast',
-				value: 'MiniMax-Hailuo-2.3-Fast',
-				description: 'Faster image-to-video model for value and efficiency',
-			},
-			{
-				name: 'MiniMax-Hailuo-02',
-				value: 'MiniMax-Hailuo-02',
-				description: 'Model supporting higher resolution and longer duration',
+				name: 'I2V-01',
+				value: 'I2V-01',
+				description: 'Standard image-to-video model',
 			},
 			{
 				name: 'I2V-01-Director',
@@ -41,9 +31,19 @@ const properties: INodeProperties[] = [
 				description: 'Image-to-video live model',
 			},
 			{
-				name: 'I2V-01',
-				value: 'I2V-01',
-				description: 'Standard image-to-video model',
+				name: 'MiniMax-Hailuo-02',
+				value: 'MiniMax-Hailuo-02',
+				description: 'Model supporting higher resolution and longer duration',
+			},
+			{
+				name: 'MiniMax-Hailuo-2.3',
+				value: 'MiniMax-Hailuo-2.3',
+				description: 'Latest model with enhanced realism',
+			},
+			{
+				name: 'MiniMax-Hailuo-2.3-Fast',
+				value: 'MiniMax-Hailuo-2.3-Fast',
+				description: 'Faster image-to-video model for value and efficiency',
 			},
 		],
 		default: 'MiniMax-Hailuo-2.3',
