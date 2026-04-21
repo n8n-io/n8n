@@ -5,10 +5,15 @@ import { Container, Service } from '@n8n/di';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { UrlService } from '@/services/url.service';
 
 import { AgentChatBridge } from './agent-chat-bridge';
+import {
+	ChatIntegrationRegistry,
+	type AgentChatIntegrationContext,
+} from './agent-chat-integration';
 import { ComponentMapper } from './component-mapper';
-import { loadChatSdk, loadMemoryState, loadSlackAdapter } from './esm-loader';
+import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -54,6 +59,8 @@ export class ChatIntegrationService {
 		private readonly agentRepository: AgentRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly urlService: UrlService,
+		private readonly integrationRegistry: ChatIntegrationRegistry,
 	) {}
 
 	private connectionKey(agentId: string, type: string, credentialId: string): string {
@@ -80,6 +87,8 @@ export class ChatIntegrationService {
 			await this.disconnectOne(key);
 		}
 
+		const integration = this.integrationRegistry.require(integrationType);
+
 		const user = await this.resolveUser(userId);
 
 		// Create credential provider scoped to this agent's project
@@ -88,8 +97,15 @@ export class ChatIntegrationService {
 		// Decrypt the integration credential to get platform tokens
 		const decryptedData = await this.decryptCredential(credentialId, user);
 
-		// Create platform-specific adapter
-		const adapter = await this.createAdapter(integrationType, decryptedData);
+		const ctx: AgentChatIntegrationContext = {
+			agentId,
+			projectId,
+			credential: decryptedData,
+			webhookUrlFor: (platform) => this.buildWebhookUrl(agentId, projectId, platform),
+		};
+
+		// Delegate adapter construction to the platform implementation.
+		const adapter = await integration.createAdapter(ctx);
 
 		// Dynamic imports — chat packages are ESM-only, use loader to bypass CJS transform
 		const { Chat } = await loadChatSdk();
@@ -120,10 +136,27 @@ export class ChatIntegrationService {
 			this.logger,
 			userId,
 			projectId,
+			integrationType,
 		);
 
 		// Initialize the Chat instance (connects adapters, state adapter, etc.)
 		await chat.initialize();
+
+		// Post-initialize hooks (e.g. Telegram setWebhook) run AFTER chat is live.
+		// If one throws we must shut the chat down, otherwise adapters/timers leak.
+		if (integration.onAfterConnect) {
+			try {
+				await integration.onAfterConnect(ctx);
+			} catch (error) {
+				await chat.shutdown().catch((shutdownError: unknown) => {
+					this.logger.warn(
+						`[ChatIntegrationService] Shutdown after failed onAfterConnect threw: ${shutdownError instanceof Error ? shutdownError.message : String(shutdownError)}`,
+					);
+				});
+				bridge.dispose();
+				throw error;
+			}
+		}
 
 		// The `chat` variable is returned by `new Chat(...)` from the ESM-only
 		// package. Its runtime shape matches our local `ChatInstance` interface.
@@ -271,6 +304,8 @@ export class ChatIntegrationService {
 			);
 		}
 
+		conn.bridge.dispose();
+
 		this.connections.delete(key);
 		this.logger.info(`[ChatIntegrationService] Disconnected: ${key}`);
 	}
@@ -302,69 +337,10 @@ export class ChatIntegrationService {
 		return decrypted as Record<string, unknown>;
 	}
 
-	/**
-	 * Extract the bot token from a decrypted Slack credential.
-	 *
-	 * - `slackApi` stores the token as `accessToken`.
-	 * - `slackOAuth2Api` stores the token inside `oauthTokenData.access_token`.
-	 */
-	private extractSlackBotToken(credential: Record<string, unknown>): string {
-		// slackApi credential
-		let token: string | undefined;
-
-		if (typeof credential.accessToken === 'string' && credential.accessToken) {
-			token = credential.accessToken;
-		}
-
-		// slackOAuth2Api credential — token lives in the nested oauthTokenData object
-		if (!token) {
-			const tokenData = credential.oauthTokenData as Record<string, unknown> | undefined;
-			const oauthToken = tokenData?.access_token ?? tokenData?.accessToken;
-			if (typeof oauthToken === 'string' && oauthToken) {
-				token = oauthToken;
-			}
-		}
-
-		if (!token) {
-			throw new Error(
-				'Could not extract a bot token from the Slack credential. ' +
-					'Please ensure the credential has a valid access token.',
-			);
-		}
-
-		if (!token.startsWith('xoxb-')) {
-			const prefix = token.split('-')[0] ?? 'unknown';
-			throw new Error(
-				`The Slack credential contains a "${prefix}-" token, but agent integrations require a Bot User OAuth Token ("xoxb-"). ` +
-					'You can find this in your Slack app under OAuth & Permissions → Bot User OAuth Token.',
-			);
-		}
-
-		return token;
-	}
-
-	private extractSlackSigningSecret(credential: Record<string, unknown>): string {
-		const secret = credential.signatureSecret;
-		if (typeof secret === 'string' && secret) {
-			return secret;
-		}
-
-		throw new Error(
-			'The Slack credential is missing a signing secret, which is required for agent integrations. ' +
-				'Edit the credential and add your Slack app\'s "Signing Secret" (found under Basic Information in the Slack API dashboard).',
-		);
-	}
-
-	private async createAdapter(type: string, credential: Record<string, unknown>): Promise<unknown> {
-		switch (type) {
-			case 'slack': {
-				const botToken = this.extractSlackBotToken(credential);
-				const signingSecret = this.extractSlackSigningSecret(credential);
-				const { createSlackAdapter } = await loadSlackAdapter();
-				return createSlackAdapter({ botToken, signingSecret });
-			}
-			default:
-				throw new Error(`Unsupported integration type: ${type}`);
-		}
+	private buildWebhookUrl(agentId: string, projectId: string, platform: string): string {
+		// getWebhookBaseUrl returns the URL with a trailing slash, honours the
+		// WEBHOOK_URL env var used by n8n's other webhook triggers.
+		const base = this.urlService.getWebhookBaseUrl();
+		return `${base}rest/projects/${projectId}/agents/v2/${agentId}/webhooks/${platform}`;
 	}
 }

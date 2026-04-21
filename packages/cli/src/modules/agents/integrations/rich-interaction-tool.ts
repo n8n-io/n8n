@@ -1,5 +1,20 @@
 import { Tool } from '@n8n/agents';
+import { Container } from '@n8n/di';
 import { z } from 'zod';
+
+import { ChatIntegrationRegistry } from './agent-chat-integration';
+
+// Conservative default — works on every platform that supports buttons.
+// Used when the tool is constructed without a platform hint.
+const DEFAULT_SUPPORTED_COMPONENTS = ['section', 'button', 'divider', 'fields'];
+const DEFAULT_DESCRIPTION =
+	'Present rich interactive UI to the user in chat. Available: buttons, ' +
+	'text sections, dividers, key-value fields. For choices, use one button per option. ' +
+	"The user's response (button click) is returned to you.";
+
+// ---------------------------------------------------------------------------
+// Shared schemas
+// ---------------------------------------------------------------------------
 
 const selectOptionSchema = z.object({
 	label: z.string().describe('Display text'),
@@ -10,28 +25,6 @@ const selectOptionSchema = z.object({
 const fieldPairSchema = z.object({
 	label: z.string().describe('Field label'),
 	value: z.string().describe('Field value'),
-});
-
-const componentSchema = z.object({
-	type: z
-		.enum(['section', 'button', 'select', 'radio_select', 'divider', 'image', 'fields'])
-		.describe('Component type'),
-	text: z.string().optional().describe('Text content (supports markdown)'),
-	label: z.string().optional().describe('Display label'),
-	value: z.string().optional().describe('Value returned on interaction'),
-	style: z.enum(['primary', 'danger']).optional().describe('Button style'),
-	url: z.string().optional().describe('Image URL'),
-	alt: z.string().optional().describe('Image alt text'),
-	id: z.string().optional().describe('Unique ID for select/radio_select'),
-	placeholder: z.string().optional().describe('Placeholder text'),
-	options: z.array(selectOptionSchema).optional().describe('Options for select/radio_select'),
-	fields: z.array(fieldPairSchema).optional().describe('Key-value pairs for fields component'),
-});
-
-const inputSchema = z.object({
-	title: z.string().optional().describe('Card title / header text'),
-	message: z.string().optional().describe('Subtitle or description text'),
-	components: z.array(componentSchema).describe('Card components to render'),
 });
 
 const resumeSchema = z.discriminatedUnion('type', [
@@ -46,19 +39,59 @@ const resumeSchema = z.discriminatedUnion('type', [
 	}),
 ]);
 
-// The suspend payload uses the same shape as the input — the full card
-// definition is forwarded to the chat integration so it can render it.
-const suspendSchema = inputSchema;
+// ---------------------------------------------------------------------------
+// Tool factory
+// ---------------------------------------------------------------------------
 
-export function createRichInteractionTool() {
+function buildComponentSchema(supportedComponents: string[]) {
+	const types = supportedComponents as [string, ...string[]];
+	const hasSelects =
+		supportedComponents.includes('select') || supportedComponents.includes('radio_select');
+	const hasImage = supportedComponents.includes('image');
+
+	const shape: Record<string, z.ZodTypeAny> = {
+		type: z.enum(types).describe('Component type'),
+		text: z.string().optional().describe('Text content (supports markdown)'),
+		label: z.string().optional().describe('Display label'),
+		value: z.string().optional().describe('Value returned on interaction'),
+		style: z.enum(['primary', 'danger']).optional().describe('Button style'),
+		fields: z.array(fieldPairSchema).optional().describe('Key-value pairs for fields component'),
+	};
+
+	if (hasSelects) {
+		shape.id = z.string().optional().describe('Unique ID for select/radio_select');
+		shape.placeholder = z.string().optional().describe('Placeholder text');
+		shape.options = z
+			.array(selectOptionSchema)
+			.optional()
+			.describe('Options for select/radio_select');
+	}
+
+	if (hasImage) {
+		shape.url = z.string().optional().describe('Image URL');
+		shape.alt = z.string().optional().describe('Image alt text');
+	}
+
+	return z.object(shape);
+}
+
+export function createRichInteractionTool(platform?: string) {
+	const integration = platform ? Container.get(ChatIntegrationRegistry).get(platform) : undefined;
+	const supportedComponents = integration?.supportedComponents ?? DEFAULT_SUPPORTED_COMPONENTS;
+	const description = integration?.description ?? DEFAULT_DESCRIPTION;
+	const componentSchema = buildComponentSchema(supportedComponents);
+
+	const inputSchema = z.object({
+		title: z.string().optional().describe('Card title / header text'),
+		message: z.string().optional().describe('Subtitle or description text'),
+		components: z.array(componentSchema).describe('Card components to render'),
+	});
+
+	// The suspend payload uses the same shape as the input
+	const suspendSchema = inputSchema;
+
 	return new Tool('rich_interaction')
-		.description(
-			'Present rich interactive UI to the user in chat. Use this to show ' +
-				'buttons for choices, dropdown selects, radio buttons, or information ' +
-				"cards with formatted content. The user's response (button click or " +
-				'selection) is returned to you. Only works in chat integrations ' +
-				'(Slack, Discord, Teams, etc.).',
-		)
+		.description(description)
 		.input(inputSchema)
 		.suspend(suspendSchema)
 		.resume(
