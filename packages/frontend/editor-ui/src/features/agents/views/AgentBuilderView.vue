@@ -11,8 +11,15 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM, MODAL_CANCEL, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
-import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
+import {
+	getAgent,
+	updateAgent,
+	deleteAgent,
+	publishAgent,
+	getIntegrationStatus,
+} from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
+import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { PROJECT_AGENTS, AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentSessionsStore } from '../agentSessions.store';
@@ -87,6 +94,7 @@ const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle');
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
+const connectedTriggers = ref<string[]>([]);
 
 /**
  * An agent is considered "built" once it has instructions configured.
@@ -104,6 +112,31 @@ watch(
 	},
 	{ immediate: true },
 );
+
+/**
+ * Eagerly fetch connected trigger types so telemetry fingerprints are accurate
+ * even if the user never opens the Triggers section of the settings sidebar.
+ * Keep the hardcoded list in sync with AgentIntegrationsPanel.integrationConfigs.
+ */
+async function loadInitialConnectedTriggers() {
+	// Keep in sync with AgentIntegrationsPanel.integrationConfigs
+	const knownTriggerTypes = ['slack', 'telegram'];
+	try {
+		const result = await getIntegrationStatus(
+			rootStore.restApiContext,
+			projectId.value,
+			agentId.value,
+		);
+		const connected = (result.integrations ?? [])
+			.map((i) => i.type)
+			.filter((t) => knownTriggerTypes.includes(t))
+			.sort();
+		connectedTriggers.value = connected;
+	} catch {
+		// Non-fatal — leave connectedTriggers as-is; the sidebar emit will
+		// correct the value once the user expands the Triggers section.
+	}
+}
 
 async function fetchAgent() {
 	const data = await getAgent(rootStore.restApiContext, projectId.value, agentId.value);
@@ -382,6 +415,7 @@ async function initialize() {
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
 	void sessionsStore.fetchThreads(projectId.value, agentId.value);
+	void loadInitialConnectedTriggers();
 
 	// Always land on the home screen. Users enter chat mode by sending a
 	// message, picking a recent session, clicking the Test/Build toggle, or
@@ -546,6 +580,9 @@ function onContinueLoaded(count: number) {
 							:continue-session-id="effectiveSessionId"
 							:session-title="sessionTitle"
 							:session-emoji="sessionEmoji"
+							:agent-config="localConfig"
+							:agent-status="deriveAgentStatus(agent)"
+							:connected-triggers="connectedTriggers"
 							@config-updated="onConfigUpdated"
 							@continue-loaded="onContinueLoaded"
 							@back="onBackFromChat"
@@ -557,6 +594,9 @@ function onContinueLoaded(count: number) {
 							:agent-id="agentId"
 							mode="inline"
 							endpoint="build"
+							:agent-config="localConfig"
+							:agent-status="deriveAgentStatus(agent)"
+							:connected-triggers="connectedTriggers"
 							@config-updated="onConfigUpdated"
 							@update:streaming="onBuildChatStreamingChange"
 							@back="onBackFromChat"
@@ -582,6 +622,7 @@ function onContinueLoaded(count: number) {
 			@update:config="onConfigFieldUpdate"
 			@published="onPublished"
 			@unpublished="onUnpublished"
+			@update:connected-triggers="(list: string[]) => (connectedTriggers = list)"
 		/>
 	</div>
 </template>

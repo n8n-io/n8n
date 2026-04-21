@@ -50,6 +50,7 @@ const emit = defineEmits<{
 	'update:config': [changes: Partial<AgentJsonConfig>];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
+	'update:connected-triggers': [triggers: string[]];
 }>();
 
 // --- Model & credential state (reusing ChatHub infrastructure) ---
@@ -290,6 +291,9 @@ watch(
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
+							@update:connected-triggers="
+								(list: string[]) => emit('update:connected-triggers', list)
+							"
 						/>
 					</div>
 				</div>

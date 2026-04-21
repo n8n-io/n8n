@@ -19,6 +19,10 @@ const props = defineProps<{
 	agentName: string;
 }>();
 
+const emit = defineEmits<{
+	'update:connected-triggers': [triggers: string[]];
+}>();
+
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 
@@ -163,6 +167,13 @@ async function copyManifest() {
 	}, 2000);
 }
 
+function emitConnectedTriggers() {
+	const triggers = Object.keys(statuses.value)
+		.filter((t) => statuses.value[t] === 'connected')
+		.sort();
+	emit('update:connected-triggers', triggers);
+}
+
 async function fetchStatus() {
 	try {
 		const result = await getIntegrationStatus(
@@ -184,6 +195,7 @@ async function fetchStatus() {
 			connectedCredentials.value[config.type] = '';
 		}
 	}
+	emitConnectedTriggers();
 }
 
 async function fetchCredentials() {

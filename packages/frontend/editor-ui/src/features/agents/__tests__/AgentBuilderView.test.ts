@@ -41,6 +41,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	updateAgent: vi.fn(),
 	deleteAgent: vi.fn(),
 	publishAgent: vi.fn(),
+	getIntegrationStatus: vi.fn().mockResolvedValue({ status: 'ok', integrations: [] }),
 }));
 
 vi.mock('../composables/useAgentConfig', () => ({
@@ -91,7 +92,16 @@ describe('AgentBuilderView — chat mode toggle', () => {
 					AgentChatPanel: {
 						name: 'AgentChatPanel',
 						template: '<div data-testid="chat-panel-stub" :data-endpoint="endpoint" />',
-						props: ['endpoint', 'projectId', 'agentId', 'mode', 'initialMessage'],
+						props: [
+							'endpoint',
+							'projectId',
+							'agentId',
+							'mode',
+							'initialMessage',
+							'agentConfig',
+							'agentStatus',
+							'connectedTriggers',
+						],
 					},
 					AgentHomeContent: { template: '<div data-testid="home-stub" />' },
 					AgentBuilderProgress: { template: '<div data-testid="progress-stub" />' },
