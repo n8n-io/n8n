@@ -142,7 +142,17 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 		isConnectionRequested.value = true;
 		isConnecting.value = true;
-		client.value.connect();
+		void rootStore
+			.ensureUniquePushRef()
+			.catch(() => undefined)
+			.then(() => {
+				if (!isConnectionRequested.value) {
+					isConnecting.value = false;
+					return;
+				}
+
+				client.value.connect();
+			});
 	};
 
 	const pushDisconnect = () => {
