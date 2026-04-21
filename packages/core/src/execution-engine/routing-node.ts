@@ -1001,7 +1001,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
-					{ $value: optionValue, $version: node.typeVersion },
+					{ ...additionalKeys, $value: optionValue, $version: node.typeVersion },
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -1025,7 +1025,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
-						{ $version: node.typeVersion },
+						{ ...additionalKeys, $version: node.typeVersion },
 					);
 
 					this.mergeOptions(returnData, tempOptions);

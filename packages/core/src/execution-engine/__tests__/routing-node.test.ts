@@ -2108,6 +2108,75 @@ describe('RoutingNode', () => {
 					],
 				],
 			},
+			{
+				description:
+					'options parameter with routing.request.url on selected option resolves $execution.id via $parameter',
+				input: {
+					node: {
+						parameters: {
+							operation: 'get',
+							executionId: '={{ $execution.id }}',
+						},
+					},
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+						},
+						properties: [
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								noDataExpression: true,
+								default: 'get',
+								options: [
+									{
+										name: 'Get',
+										value: 'get',
+										routing: {
+											request: {
+												method: 'GET',
+												url: '=/executions/{{ $parameter.executionId }}',
+											},
+										},
+									},
+								],
+							},
+							{
+								displayName: 'Execution ID',
+								name: 'executionId',
+								type: 'string',
+								default: '',
+								displayOptions: {
+									show: {
+										operation: ['get'],
+									},
+								},
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/executions/test-exec-123',
+									method: 'GET',
+									headers: {},
+									qs: {},
+									body: {},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
 		];
 
 		const baseNode: INode = {
