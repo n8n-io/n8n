@@ -203,6 +203,7 @@ export class InstanceAiAdapterService {
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
+			logger: this.logger,
 		};
 	}
 
@@ -326,6 +327,7 @@ export class InstanceAiAdapterService {
 					versionId: options?.versionId,
 					name: options?.name,
 					description: options?.description,
+					source: 'n8n-ai',
 				});
 				if (!wf.activeVersionId) {
 					throw new Error(`Workflow ${workflowId} was not activated — no active version set`);
@@ -342,7 +344,9 @@ export class InstanceAiAdapterService {
 			},
 
 			async unpublish(workflowId: string) {
-				await workflowService.deactivateWorkflow(user, workflowId);
+				await workflowService.deactivateWorkflow(user, workflowId, {
+					source: 'n8n-ai',
+				});
 			},
 
 			async getAsWorkflowJSON(workflowId: string) {
@@ -411,7 +415,9 @@ export class InstanceAiAdapterService {
 					updateData = await enterpriseWorkflowService.preventTampering(updateData, saved.id, user);
 				}
 
-				const updated = await workflowService.update(user, updateData, saved.id);
+				const updated = await workflowService.update(user, updateData, saved.id, {
+					source: 'n8n-ai',
+				});
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
@@ -462,7 +468,9 @@ export class InstanceAiAdapterService {
 					);
 				}
 
-				const updated = await workflowService.update(user, updateData, workflowId);
+				const updated = await workflowService.update(user, updateData, workflowId, {
+					source: 'n8n-ai',
+				});
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
@@ -539,7 +547,9 @@ export class InstanceAiAdapterService {
 					connections: version.connections,
 				} as Partial<WorkflowEntity>);
 
-				await workflowService.update(user, updateData, workflowId);
+				await workflowService.update(user, updateData, workflowId, {
+					source: 'n8n-ai',
+				});
 			},
 
 			...(this.license.isLicensed('feat:namedVersions')
@@ -1689,7 +1699,7 @@ export class InstanceAiAdapterService {
 				return filteredIssues;
 			},
 
-			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, existingCredentials) => {
+			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, _existingCredentials) => {
 				const nodes = await getNodes();
 				const desc = findNodeByVersion(nodes, nodeType, typeVersion);
 				if (!desc) return [];
@@ -1765,13 +1775,6 @@ export class InstanceAiAdapterService {
 					parameters.nodeCredentialType
 				) {
 					credentialTypes.add(parameters.nodeCredentialType as string);
-				}
-
-				// 4. Already-assigned credentials
-				if (existingCredentials) {
-					for (const credType of Object.keys(existingCredentials)) {
-						credentialTypes.add(credType);
-					}
 				}
 
 				return Array.from(credentialTypes);
@@ -1965,6 +1968,7 @@ export class InstanceAiAdapterService {
 							}
 							await workflowService.update(user, workflow, workflowId, {
 								parentFolderId: folderId,
+								source: 'n8n-ai',
 							});
 						},
 					}
@@ -2001,7 +2005,7 @@ export class InstanceAiAdapterService {
 					}
 				}
 
-				await workflowService.update(user, workflow, workflowId, { tagIds });
+				await workflowService.update(user, workflow, workflowId, { tagIds, source: 'n8n-ai' });
 				return tagNames;
 			},
 
