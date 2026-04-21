@@ -14,7 +14,7 @@ async function setLatestForMonorepoPackages() {
 		if (res.ok) {
 			console.log(`Set ${versionName} as latest`);
 		} else {
-			console.warn(`Update failed for ${versionName}: ${res.out}`);
+			console.warn(`Update failed for ${versionName}`);
 		}
 	}
 }
