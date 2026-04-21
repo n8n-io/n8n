@@ -91,7 +91,7 @@ jobs:
         run: >-
           pnpm eval:instance-ai
           --base-url http://localhost:5678
-          --concurrency 2
+          --concurrency 4
           --verbose
           ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
         env:
