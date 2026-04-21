@@ -3,11 +3,9 @@ export const TRACER_NAME = 'n8n-expression-runtime';
 export const METRIC_PREFIX = 'n8n_';
 
 export const ATTRIBUTE = {
-	EXPRESSION_TEXT: 'expression.text',
 	EXPRESSION_ENGINE: 'expression.engine',
 	EXPRESSION_DURATION_MS: 'expression.duration_ms',
 	EXPRESSION_OUTCOME: 'expression.outcome',
-	EXPRESSION_DATA_NODE_COUNT: 'expression.data.node_count',
 	EXPRESSION_ERROR_TYPE: 'expression.error.type',
 } as const;
 
