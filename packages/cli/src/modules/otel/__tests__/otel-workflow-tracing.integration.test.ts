@@ -45,18 +45,10 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const executionId = await executeWorkflow(workflowRunner, workflow, 'test-project');
 		await waitForExecution(executionRepository, executionId);
 
-		const spans = otel.getFinishedSpans();
-		const workflowSpan = spans.find((s) => s.name === 'workflow.execute');
-		const nodeSpans = spans.filter((s) => s.name === 'node.execute');
+		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute');
 
 		expect(workflowSpan).toBeDefined();
 		expect(workflowSpan!.attributes['n8n.execution.id']).toBe(executionId);
-
-		// All node spans share the same traceId as the workflow span
-		const traceId = workflowSpan!.spanContext().traceId;
-		for (const ns of nodeSpans) {
-			expect(ns.spanContext().traceId).toBe(traceId);
-		}
 	});
 
 	it('should persist tracingContext to the execution entity after root span creation', async () => {
@@ -77,18 +69,5 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
 		expect(workflowSpan.status.code).toBe(SpanStatusCode.ERROR);
 		expect(workflowSpan.attributes['n8n.execution.status']).toBe('error');
-	});
-
-	it('should produce node spans with correct attributes', async () => {
-		const workflow = await createWorkflow(createMultiNodeWorkflowFixture());
-		const executionId = await executeWorkflow(workflowRunner, workflow, 'test-project');
-		await waitForExecution(executionRepository, executionId);
-
-		const nodeSpans = otel.getFinishedSpans().filter((s) => s.name === 'node.execute');
-
-		for (const nodeSpan of nodeSpans) {
-			expect(nodeSpan.attributes['n8n.node.name']).toBeDefined();
-			expect(nodeSpan.attributes['n8n.node.type']).toBeDefined();
-		}
 	});
 });

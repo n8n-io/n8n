@@ -7,46 +7,43 @@ import {
 	ATTR_EXCEPTION_TYPE,
 	ATTR_EXCEPTION_STACKTRACE,
 } from '@opentelemetry/semantic-conventions';
-import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
+import type { ExecutionStatus } from 'n8n-workflow';
 
 import { ATTR } from './otel.constants';
 import { OtelConfig } from './otel.config';
 import type { TracingContext } from './tracing-context';
+import type {
+	StartWorkflowParams,
+	EndWorkflowParams,
+	StartNodeParams,
+	EndNodeParams,
+} from './execution-level-tracer.types';
 
 const TRACER_NAME = 'n8n-workflow';
-const EVICTION_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
-const SPAN_TTL_MS = 90 * 60 * 1000; // 90 minutes
+const EVICTION_INTERVAL_MS = 10 * 60 * 1000;
+const SPAN_TTL_MS = 90 * 60 * 1000;
+function isError(status: ExecutionStatus): boolean {
+	return status === 'error' || status === 'crashed';
+}
 
 type TrackedSpan = { span: Span; createdAt: number };
 
 @Service()
 export class ExecutionLevelTracer {
-	private readonly workflowSpans = new Map<string, TrackedSpan>();
-
-	private readonly nodeSpans = new Map<string, TrackedSpan>();
+	private readonly activeWorkflowSpans = new Map<string, TrackedSpan>();
+	private readonly activeNodeSpans = new Map<string, TrackedSpan>();
+	private readonly tracer = trace.getTracer(TRACER_NAME);
 
 	private evictionTimer: ReturnType<typeof setInterval> | undefined;
-
-	private readonly tracer = trace.getTracer(TRACER_NAME);
 
 	constructor(
 		private readonly config: OtelConfig,
 		private readonly logger: Logger,
 	) {}
 
-	// -- Workflow span lifecycle --
-
-	startWorkflow(params: {
-		executionId: string;
-		tracingContext?: TracingContext;
-		workflow: { id: string; name: string; versionId?: string; nodeCount: number };
-	}): TracingContext | undefined {
+	startWorkflow(params: StartWorkflowParams): TracingContext | undefined {
 		try {
-			// Webhook: use inbound traceparent as parent. Everything else: root span.
-			const parentCtx = params.tracingContext
-				? propagation.extract(context.active(), params.tracingContext)
-				: context.active();
-
+			const parentCtx = this.findParentContext(params.tracingContext);
 			const span = this.tracer.startSpan(
 				'workflow.execute',
 				{
@@ -61,13 +58,8 @@ export class ExecutionLevelTracer {
 				parentCtx,
 			);
 
-			this.workflowSpans.set(params.executionId, { span, createdAt: Date.now() });
-
-			const headers: Record<string, string> = {};
-			propagation.inject(trace.setSpan(context.active(), span), headers);
-			return headers.traceparent
-				? { traceparent: headers.traceparent, tracestate: headers.tracestate }
-				: undefined;
+			this.activeWorkflowSpans.set(params.executionId, { span, createdAt: Date.now() });
+			return toTracingParentContext(span);
 		} catch (error) {
 			this.logger.error('Failed to start workflow span', {
 				executionId: params.executionId,
@@ -77,43 +69,27 @@ export class ExecutionLevelTracer {
 		}
 	}
 
-	endWorkflow(params: {
-		executionId: string;
-		status: ExecutionStatus;
-		mode: WorkflowExecuteMode;
-		error?: unknown;
-		isRetry: boolean;
-		retryOf?: string;
-	}): void {
+	endWorkflow(params: EndWorkflowParams): void {
 		try {
-			const tracked = this.workflowSpans.get(params.executionId);
+			const tracked = this.activeWorkflowSpans.get(params.executionId);
 			if (!tracked) return;
 
 			const { span } = tracked;
-
-			const attributes: Record<string, string | boolean> = {
+			span.setAttributes({
 				[ATTR.EXECUTION_MODE]: params.mode,
 				[ATTR.EXECUTION_STATUS]: params.status,
 				[ATTR.EXECUTION_IS_RETRY]: params.isRetry,
-			};
-			if (params.retryOf) {
-				attributes[ATTR.EXECUTION_RETRY_OF] = params.retryOf;
-			}
-			span.setAttributes(attributes);
+				...(params.retryOf ? { [ATTR.EXECUTION_RETRY_OF]: params.retryOf } : {}),
+			});
 
-			if (['error', 'crashed'].includes(params.status)) {
-				span.setStatus({ code: SpanStatusCode.ERROR });
-
-				if (params.error) {
-					span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, getErrorType(params.error));
-				}
-			} else {
-				span.setStatus({ code: SpanStatusCode.OK });
+			span.setStatus({ code: isError(params.status) ? SpanStatusCode.ERROR : SpanStatusCode.OK });
+			if (isError(params.status) && params.error) {
+				span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, getErrorType(params.error));
 			}
 
 			this.endDanglingNodeSpans(params.executionId);
 			span.end();
-			this.workflowSpans.delete(params.executionId);
+			this.activeWorkflowSpans.delete(params.executionId);
 		} catch (error) {
 			this.logger.error('Failed to end workflow span', {
 				executionId: params.executionId,
@@ -122,20 +98,11 @@ export class ExecutionLevelTracer {
 		}
 	}
 
-	// -- Node span lifecycle --
-
-	startNode(params: {
-		executionId: string;
-		node: { id: string; name: string; type: string; typeVersion: number };
-	}): void {
+	startNode(params: StartNodeParams): void {
 		try {
 			if (!this.config.includeNodeSpans) return;
 
-			const workflowTracked = this.workflowSpans.get(params.executionId);
-			const parentCtx = workflowTracked
-				? trace.setSpan(context.active(), workflowTracked.span)
-				: context.active();
-
+			const parentCtx = this.resolveWorkflowSpanContext(params.executionId);
 			const span = this.tracer.startSpan(
 				'node.execute',
 				{
@@ -149,7 +116,7 @@ export class ExecutionLevelTracer {
 				parentCtx,
 			);
 
-			this.nodeSpans.set(`${params.executionId}:${params.node.name}`, {
+			this.activeNodeSpans.set(nodeSpanKey(params.executionId, params.node.name), {
 				span,
 				createdAt: Date.now(),
 			});
@@ -162,31 +129,16 @@ export class ExecutionLevelTracer {
 		}
 	}
 
-	endNode(params: {
-		executionId: string;
-		nodeName: string;
-		inputItemCount: number;
-		outputItemCount: number;
-		error?: { message: string; constructor: { name: string }; stack?: string };
-		customAttributes?: Record<string, string>;
-	}): void {
+	endNode(params: EndNodeParams): void {
 		try {
 			if (!this.config.includeNodeSpans) return;
 
-			const key = `${params.executionId}:${params.nodeName}`;
-			const tracked = this.nodeSpans.get(key);
+			const key = nodeSpanKey(params.executionId, params.nodeName);
+			const tracked = this.activeNodeSpans.get(key);
 			if (!tracked) return;
 
 			const { span } = tracked;
-
-			span.setAttribute(ATTR.NODE_ITEMS_INPUT, params.inputItemCount);
-			span.setAttribute(ATTR.NODE_ITEMS_OUTPUT, params.outputItemCount);
-
-			if (params.customAttributes) {
-				for (const [attrKey, value] of Object.entries(params.customAttributes)) {
-					span.setAttribute(`n8n.node.custom.${attrKey}`, value);
-				}
-			}
+			span.setAttributes(buildNodeEndAttributes(params));
 
 			if (params.error) {
 				span.setStatus({ code: SpanStatusCode.ERROR });
@@ -200,7 +152,7 @@ export class ExecutionLevelTracer {
 			}
 
 			span.end();
-			this.nodeSpans.delete(key);
+			this.activeNodeSpans.delete(key);
 		} catch (error) {
 			this.logger.error('Failed to end node span', {
 				executionId: params.executionId,
@@ -210,8 +162,6 @@ export class ExecutionLevelTracer {
 		}
 	}
 
-	// -- Outbound trace injection --
-
 	injectTraceHeaders(
 		executionId: string,
 		nodeName: string | undefined,
@@ -220,15 +170,10 @@ export class ExecutionLevelTracer {
 		try {
 			if (!this.config.injectOutbound) return;
 
-			// Look up the most specific active span: node → workflow → no-op
-			const span =
-				(nodeName ? this.nodeSpans.get(`${executionId}:${nodeName}`)?.span : undefined) ??
-				this.workflowSpans.get(executionId)?.span;
-
+			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
-			const spanCtx = trace.setSpan(context.active(), span);
-			propagation.inject(spanCtx, headers);
+			propagation.inject(trace.setSpan(context.active(), span), headers);
 		} catch (error) {
 			this.logger.error('Failed to inject trace headers', {
 				executionId,
@@ -236,19 +181,6 @@ export class ExecutionLevelTracer {
 			});
 		}
 	}
-
-	// -- Cleanup --
-
-	cleanup(executionId: string): void {
-		this.workflowSpans.delete(executionId);
-		for (const key of this.nodeSpans.keys()) {
-			if (key.startsWith(`${executionId}:`)) {
-				this.nodeSpans.delete(key);
-			}
-		}
-	}
-
-	// -- Eviction --
 
 	startEvictionTimer(): void {
 		this.evictionTimer = setInterval(() => this.evictStaleSpans(), EVICTION_INTERVAL_MS);
@@ -262,60 +194,96 @@ export class ExecutionLevelTracer {
 		}
 	}
 
+	private findParentContext(tracingContext?: TracingContext) {
+		return tracingContext
+			? propagation.extract(context.active(), tracingContext)
+			: context.active();
+	}
+
+	private resolveWorkflowSpanContext(executionId: string) {
+		const tracked = this.activeWorkflowSpans.get(executionId);
+		return tracked ? trace.setSpan(context.active(), tracked.span) : context.active();
+	}
+
+	private findMostSpecificSpan(executionId: string, nodeName?: string): Span | undefined {
+		return (
+			(nodeName ? this.activeNodeSpans.get(nodeSpanKey(executionId, nodeName))?.span : undefined) ??
+			this.activeWorkflowSpans.get(executionId)?.span
+		);
+	}
+
 	private evictStaleSpans(): void {
 		const now = Date.now();
 
-		for (const [key, tracked] of this.workflowSpans) {
+		for (const [key, tracked] of this.activeWorkflowSpans) {
 			if (now - tracked.createdAt > SPAN_TTL_MS) {
-				tracked.span.setStatus({ code: SpanStatusCode.ERROR });
-				tracked.span.end();
-				this.workflowSpans.delete(key);
+				terminateSpan(tracked.span, 'evicted');
+				this.activeWorkflowSpans.delete(key);
 			}
 		}
 
-		for (const [key, tracked] of this.nodeSpans) {
+		for (const [key, tracked] of this.activeNodeSpans) {
 			if (now - tracked.createdAt > SPAN_TTL_MS) {
-				tracked.span.setAttribute(ATTR.NODE_TERMINATION_REASON, 'evicted');
-				tracked.span.setStatus({ code: SpanStatusCode.ERROR });
-				tracked.span.end();
-				this.nodeSpans.delete(key);
+				terminateSpan(tracked.span, 'evicted');
+				this.activeNodeSpans.delete(key);
 			}
 		}
 	}
 
 	private endDanglingNodeSpans(executionId: string): void {
-		for (const [key, tracked] of this.nodeSpans) {
-			if (key.startsWith(`${executionId}:`)) {
-				tracked.span.setAttribute(ATTR.NODE_TERMINATION_REASON, 'workflow_cancelled');
-				tracked.span.setStatus({ code: SpanStatusCode.ERROR });
-				tracked.span.end();
-				this.nodeSpans.delete(key);
+		const prefix = `${executionId}:`;
+		for (const [key, tracked] of this.activeNodeSpans) {
+			if (key.startsWith(prefix)) {
+				terminateSpan(tracked.span, 'workflow_cancelled');
+				this.activeNodeSpans.delete(key);
 			}
 		}
 	}
 }
 
-function getErrorType(error: unknown): string {
-	if (!isRecord(error)) return 'UnknownError';
+function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number> {
+	const attrs: Record<string, string | number> = {
+		[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
+		[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
+	};
 
-	const errorName = error.name;
-	if (typeof errorName === 'string' && errorName.trim() !== '') return errorName;
-
-	const constructor = error.constructor;
-	if (typeof constructor !== 'function') return 'UnknownError';
-
-	const constructorName = constructor.name;
-	if (
-		typeof constructorName === 'string' &&
-		constructorName.trim() !== '' &&
-		constructorName !== 'Object'
-	) {
-		return constructorName;
+	if (params.customAttributes) {
+		for (const [key, value] of Object.entries(params.customAttributes)) {
+			attrs[`n8n.node.custom.${key}`] = value;
+		}
 	}
 
-	return 'UnknownError';
+	return attrs;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
+function toTracingParentContext(span: Span): TracingContext | undefined {
+	const carrier: Record<string, string> = {};
+	propagation.inject(trace.setSpan(context.active(), span), carrier);
+	return carrier.traceparent
+		? { traceparent: carrier.traceparent, tracestate: carrier.tracestate }
+		: undefined;
+}
+
+function nodeSpanKey(executionId: string, nodeName: string): string {
+	return `${executionId}:${nodeName}`;
+}
+
+function terminateSpan(span: Span, reason: string): void {
+	span.setAttribute(ATTR.NODE_TERMINATION_REASON, reason);
+	span.setStatus({ code: SpanStatusCode.ERROR });
+	span.end();
+}
+
+function getErrorType(error: unknown): string {
+	if (typeof error !== 'object' || error === null) return 'UnknownError';
+
+	const record = error as Record<string, unknown>;
+
+	const name = record.name;
+	if (typeof name === 'string' && name.trim() !== '') return name;
+
+	const ctor = record.constructor;
+	if (typeof ctor === 'function' && ctor.name && ctor.name !== 'Object') return ctor.name;
+
+	return 'UnknownError';
 }

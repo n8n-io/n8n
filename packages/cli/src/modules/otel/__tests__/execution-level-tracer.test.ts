@@ -427,25 +427,4 @@ describe('ExecutionLevelTracer', () => {
 			});
 		});
 	});
-
-	describe('cleanup', () => {
-		it('should remove all spans for an execution', () => {
-			tracer.startWorkflow({
-				executionId: 'exec-14',
-				tracingContext: inboundTracingContext,
-				workflow: defaultWorkflow,
-			});
-			tracer.startNode({
-				executionId: 'exec-14',
-				node: { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 },
-			});
-
-			tracer.cleanup('exec-14');
-
-			// After cleanup, injectTraceHeaders should no-op (no spans found)
-			const headers: Record<string, string> = {};
-			tracer.injectTraceHeaders('exec-14', 'Node1', headers);
-			expect(headers.traceparent).toBeUndefined();
-		});
-	});
 });
