@@ -24,7 +24,7 @@ export class TelegramIntegration extends Integration {
 	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
 
 	readonly description =
-		'Present rich interactive UI in Telegram. Available: buttons, text sections, ' +
+		'Use this tool when you need to present rich interactive UI in Telegram. Available: buttons, text sections, ' +
 		'dividers, key-value fields. For multiple choices, use one button per option. ' +
 		"The user's response (button click) is returned to you.";
 

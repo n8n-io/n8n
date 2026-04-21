@@ -4,10 +4,10 @@ import z from 'zod';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
+import type { NodeCatalogService } from '@/node-catalog';
 import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_GET_NODE_TYPES_TOOL } from './constants';
-import type { WorkflowBuilderToolsService } from './workflow-builder-tools.service';
 
 const nodeIdWithDiscriminators = z.object({
 	nodeId: z.string().describe('The node type ID (e.g. "n8n-nodes-base.gmail")'),
@@ -46,7 +46,7 @@ type NodeRequest =
  */
 export const createGetWorkflowNodeTypesTool = (
 	user: User,
-	workflowBuilderToolsService: WorkflowBuilderToolsService,
+	nodeCatalogService: NodeCatalogService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName,
@@ -71,7 +71,7 @@ export const createGetWorkflowNodeTypesTool = (
 		};
 
 		try {
-			const result = await workflowBuilderToolsService.getNodeTypes(nodeIds);
+			const result = await nodeCatalogService.getNodeTypes(nodeIds);
 
 			telemetryPayload.results = { success: true, data: { nodeIdCount: nodeIds.length } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
