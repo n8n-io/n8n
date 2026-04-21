@@ -577,7 +577,7 @@ describe('SettingsSso View', () => {
 	});
 
 	describe('Env-managed readonly mode', () => {
-		it('should hide save and test buttons when SAML is managed by env', async () => {
+		it('should hide save button but keep test button when SAML is managed by env', async () => {
 			ssoStore.isEnterpriseSamlEnabled = true;
 			ssoStore.isEnterpriseOidcEnabled = true;
 			ssoStore.ssoManagedByEnv = true;
@@ -588,7 +588,7 @@ describe('SettingsSso View', () => {
 
 			await waitFor(() => {
 				expect(queryByTestId('sso-save')).not.toBeInTheDocument();
-				expect(queryByTestId('sso-test')).not.toBeInTheDocument();
+				expect(queryByTestId('sso-test')).toBeInTheDocument();
 			});
 		});
 	});
