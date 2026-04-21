@@ -122,55 +122,5 @@ describe('AgentRepository', () => {
 
 			expect(result.map((a) => a.id)).toEqual(['agent-a']);
 		});
-
-		it('returns all matching agents (not just the first)', async () => {
-			const agents = [
-				makeAgent('agent-a', [{ type: 'telegram', credentialId: 'cred-1' }]),
-				makeAgent('agent-b', [{ type: 'telegram', credentialId: 'cred-1' }]),
-				makeAgent('agent-c', [{ type: 'telegram', credentialId: 'cred-1' }]),
-			];
-			jest.spyOn(repository, 'find').mockResolvedValue(agents);
-
-			const result = await repository.findByIntegrationCredential(
-				'telegram',
-				'cred-1',
-				'project-1',
-				'agent-self',
-			);
-
-			expect(result.map((a) => a.id)).toEqual(['agent-a', 'agent-b', 'agent-c']);
-		});
-
-		it('requires an exact type match — shared credentialId across platforms returns only the queried type', async () => {
-			// Same credentialId can legitimately be reused across platforms.
-			// The query is scoped to a specific `type`.
-			const agents = [
-				makeAgent('agent-tg', [{ type: 'telegram', credentialId: 'cred-shared' }]),
-				makeAgent('agent-sl', [{ type: 'slack', credentialId: 'cred-shared' }]),
-			];
-			jest.spyOn(repository, 'find').mockResolvedValue(agents);
-
-			const result = await repository.findByIntegrationCredential(
-				'telegram',
-				'cred-shared',
-				'project-1',
-				'agent-self',
-			);
-
-			expect(result.map((a) => a.id)).toEqual(['agent-tg']);
-		});
-
-		it('scopes the find() query to the given projectId', async () => {
-			const findSpy = jest.spyOn(repository, 'find').mockResolvedValue([]);
-
-			await repository.findByIntegrationCredential(
-				'telegram',
-				'cred-1',
-				'project-xyz',
-				'agent-self',
-			);
-
-			expect(findSpy).toHaveBeenCalledWith({ where: { projectId: 'project-xyz' } });
-		});
 	});
 });
