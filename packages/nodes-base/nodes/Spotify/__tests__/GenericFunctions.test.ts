@@ -31,7 +31,6 @@ describe('Spotify -> GenericFunctions', () => {
 			{
 				method,
 				headers: {
-					'User-Agent': 'n8n',
 					'Content-Type': 'text/plain',
 					Accept: ' application/json',
 				},

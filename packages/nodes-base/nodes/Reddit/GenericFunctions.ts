@@ -24,9 +24,6 @@ export async function redditApiRequest(
 	qs.api_type = 'json';
 
 	const options: IRequestOptions = {
-		headers: {
-			'user-agent': 'n8n',
-		},
 		method,
 		uri: authRequired
 			? `https://oauth.reddit.com/${endpoint}`

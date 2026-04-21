@@ -248,7 +248,6 @@ export class Odoo implements INodeType {
 
 					const options: IRequestOptions = {
 						headers: {
-							'User-Agent': 'n8n',
 							Connection: 'keep-alive',
 							Accept: '*/*',
 							'Content-Type': 'application/json',

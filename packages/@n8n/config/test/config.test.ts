@@ -471,6 +471,10 @@ describe('GlobalConfig', () => {
 			allowedHostnames: [],
 			dnsCacheMaxSize: 1024 * 1024,
 		},
+		httpRequest: {
+			enforceGlobalUserAgent: false,
+			globalUserAgentValue: '',
+		},
 		redis: {
 			prefix: 'n8n',
 		},
@@ -542,6 +546,8 @@ describe('GlobalConfig', () => {
 			N8N_DYNAMIC_BANNERS_ENDPOINT: 'https://localhost:5678/api/banners',
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 			N8N_PASSWORD_MIN_LENGTH: '12',
+			N8N_ENFORCE_GLOBAL_USER_AGENT: 'true',
+			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -584,6 +590,10 @@ describe('GlobalConfig', () => {
 				password: {
 					minLength: 12,
 				},
+			},
+			httpRequest: {
+				enforceGlobalUserAgent: true,
+				globalUserAgentValue: 'AcmeCorp/1.0',
 			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
