@@ -521,7 +521,6 @@ function handleStop() {
 										v-for="message in store.messages"
 										:key="message.id"
 										:message="message"
-										:class="$style.message"
 									/>
 								</TransitionGroup>
 								<InstanceAiConfirmationPanel />
@@ -769,10 +768,6 @@ function handleStop() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-}
-
-.message {
-	// width: 90%;
 }
 
 .scrollButtonContainer {
