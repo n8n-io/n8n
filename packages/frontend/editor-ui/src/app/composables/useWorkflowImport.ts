@@ -31,7 +31,6 @@ export function useWorkflowImport(
 
 		const { workflowDocumentStore } = await initializeWorkspace({
 			...workflowData,
-			id: isDemoRoute.value ? 'demo' : workflowData.id,
 			nodes: getNodesWithNormalizedPosition<INodeUi>(workflowData.nodes),
 		} as IWorkflowDb);
 

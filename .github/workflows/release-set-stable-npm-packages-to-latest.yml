@@ -1,0 +1,35 @@
+name: 'Release: Set stable npm packages to latest'
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  promote-github-releases:
+    name: Promote current stable releases as latest
+    runs-on: ubuntu-slim
+    environment: release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: refs/tags/stable
+          fetch-depth: 1
+
+      - name: Setup NodeJS
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
+      # Remove after https://github.com/npm/cli/issues/8547 gets resolved
+      - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Set npm packages to latest
+        run: node ./.github/scripts/set-latest-for-monorepo-packages.mjs
