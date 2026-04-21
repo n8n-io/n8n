@@ -1296,19 +1296,6 @@ importers:
         specifier: 3.25.67
         version: 3.25.67
 
-  packages/@n8n/dev-panel-channel:
-    dependencies:
-      '@modelcontextprotocol/sdk':
-        specifier: 1.26.0
-        version: 1.26.0(zod@3.25.67)
-    devDependencies:
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      tsx:
-        specifier: 'catalog:'
-        version: 4.19.3
-
   packages/@n8n/di:
     dependencies:
       reflect-metadata:
