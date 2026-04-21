@@ -7,6 +7,7 @@ import type { RichSuspendPayload } from '../types';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper } from './component-mapper';
+import { loadChatSdk } from './esm-loader';
 
 /**
  * Subset of `AgentsService` consumed by the bridge.
@@ -81,6 +82,31 @@ interface ChatActionEvent {
 type TextYieldFn = (text: string) => void;
 /** Callback that signals the end of the streaming iterable. */
 type TextEndFn = () => void;
+
+/**
+ * Platforms whose adapter has a native `stream()` method (Block Kit / similar)
+ * and can tolerate raw deltas. Everything else goes through the chat SDK's
+ * `StreamingMarkdownRenderer` filter that only emits "committable" prefixes
+ * (unclosed inline markers like `**`, `` ` ``, `[` are held back), so
+ * Telegram's strict Markdown parser never sees unbalanced entities — not
+ * mid-stream, and not in the chat SDK's raw-accumulated final edit.
+ */
+const NATIVE_STREAMING_PLATFORMS = new Set(['slack']);
+
+/**
+ * Minimal structural type of the chat SDK's `StreamingMarkdownRenderer`.
+ * Defined locally because the `chat` package is ESM-only and we can't import
+ * its types at module level.
+ */
+interface StreamingMarkdownRendererShape {
+	push(chunk: string): void;
+	getCommittableText(): string;
+	finish(): string;
+}
+interface ChatSdkWithRenderer {
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- mirrors the chat SDK's exported class name
+	StreamingMarkdownRenderer: new () => StreamingMarkdownRendererShape;
+}
 
 /**
  * Bridges Chat SDK events to the agent execution pipeline.
@@ -241,6 +267,18 @@ export class AgentChatBridge {
 		stream: AsyncGenerator<StreamChunk>,
 		thread: ChatThread,
 	): Promise<void> {
+		// Use the chat SDK's StreamingMarkdownRenderer for platforms whose hosts
+		// (e.g. Telegram) reject unbalanced inline markers. It emits only
+		// "committable" prefixes — unclosed **, *, ~~, `, [ are held back until
+		// a closing marker arrives, then released. `finish()` flushes at stream
+		// end. The chat SDK's final edit uses the SAME underlying bytes, so by
+		// yielding only balanced prefixes we guarantee that final edit (which
+		// otherwise would send raw-accumulated text) is always balanced as well.
+		const useCommittableFilter = !NATIVE_STREAMING_PLATFORMS.has(this.integrationType);
+		const rendererCtor = useCommittableFilter
+			? ((await loadChatSdk()) as unknown as ChatSdkWithRenderer).StreamingMarkdownRenderer
+			: null;
+
 		// Controller for the text stream iterable that Chat SDK consumes.
 		// These are reassigned inside `createTextIterable()` (called transitively
 		// by `ensureStreamingPost()`). TypeScript cannot track mutations through
@@ -251,6 +289,9 @@ export class AgentChatBridge {
 			end: null,
 		};
 		let streamingPost: Promise<unknown> | null = null;
+		// Per-segment renderer state.
+		let renderer: StreamingMarkdownRendererShape | null = null;
+		let yieldedLength = 0;
 
 		const createTextIterable = (): AsyncIterable<string> => {
 			const queue: string[] = [];
@@ -296,6 +337,8 @@ export class AgentChatBridge {
 		};
 
 		const startStreamingPost = () => {
+			renderer = rendererCtor ? new rendererCtor() : null;
+			yieldedLength = 0;
 			const iterable = createTextIterable();
 			streamingPost = thread.post(iterable).catch((postError: unknown) => {
 				this.logger.error('[AgentChatBridge] Streaming post failed', {
@@ -304,7 +347,31 @@ export class AgentChatBridge {
 			});
 		};
 
+		const pushText = (text: string) => {
+			if (renderer) {
+				renderer.push(text);
+				const safe = renderer.getCommittableText();
+				if (safe.length > yieldedLength) {
+					textStream.yield?.(safe.slice(yieldedLength));
+					yieldedLength = safe.length;
+				}
+			} else {
+				textStream.yield?.(text);
+			}
+		};
+
 		const endStreamingPost = async () => {
+			// Flush any held-back tail so the final chat-SDK edit gets balanced
+			// markdown. `finish()` returns remended text with any still-open
+			// markers closed — its length is always >= last committable length.
+			if (renderer) {
+				const final = renderer.finish();
+				if (final.length > yieldedLength && textStream.yield) {
+					textStream.yield(final.slice(yieldedLength));
+					yieldedLength = final.length;
+				}
+				renderer = null;
+			}
 			if (textStream.end) {
 				textStream.end();
 				textStream.end = null;
@@ -324,15 +391,13 @@ export class AgentChatBridge {
 		for await (const chunk of stream) {
 			switch (chunk.type) {
 				case 'text-delta': {
-					const { delta } = chunk;
 					ensureStreamingPost();
-					textStream.yield?.(delta);
+					pushText(chunk.delta);
 					break;
 				}
 				case 'reasoning-delta': {
-					const { delta } = chunk;
 					ensureStreamingPost();
-					textStream.yield?.(`_${delta}_`);
+					pushText(`_${chunk.delta}_`);
 					break;
 				}
 				case 'tool-call-suspended':
