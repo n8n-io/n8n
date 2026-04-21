@@ -23,10 +23,14 @@ function scrollToBottom(): void {
 	});
 }
 
+// `immediate: true` covers the initial mount: when the list is conditionally
+// rendered with messages already loaded, the length never transitions, so
+// without immediate the first scrollToBottom never fires and the user lands
+// at the top of a long history.
 watch(
 	() => [props.messages.length, props.messagingState],
 	() => scrollToBottom(),
-	{ flush: 'post' },
+	{ flush: 'post', immediate: true },
 );
 
 // Scroll when content within the last message grows (streaming text).

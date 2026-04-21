@@ -193,17 +193,19 @@ function onBuildChatStreamingChange(streaming: boolean) {
 function setChatMode(next: ChatMode) {
 	if (chatMode.value === next) return;
 	chatMode.value = next;
-	// The home screen is Test's "new chat" view, so clicking Test from home
-	// keeps the user on home (they'll enter chat by sending a message, picking
-	// a recent session, or following a continue URL). Build has no equivalent
-	// landing page, so clicking Build drops straight into the builder panel —
-	// minting a fresh session if we don't already have one.
+
+	// Build uses per-agent history, no session id required — clicking Build
+	// drops straight into the builder panel. Test, by contrast, needs an
+	// active session: home is its landing page, so clicking Test without a
+	// session either stays on home or kicks back to home from a session-less
+	// chat mode (e.g. they were in Build with no session).
 	if (next === 'build' && mode.value !== 'chat') {
-		if (!effectiveSessionId.value) {
-			activeChatSessionId.value = crypto.randomUUID();
-		}
 		mode.value = 'chat';
+	} else if (next === 'test' && mode.value === 'chat' && !effectiveSessionId.value) {
+		mode.value = 'home';
+		chatModeOpened.value = { test: false, build: false };
 	}
+
 	telemetry.track('User switched agent chat mode', {
 		agent_id: agentId.value,
 		mode: next,
@@ -518,21 +520,18 @@ function onContinueLoaded(count: number) {
 						@update:streaming="onBuildStreamingChange"
 						@done="onBuildDone"
 					/>
-					<div
-						v-else-if="mode === 'chat' && effectiveSessionId"
-						:key="`chat-${effectiveSessionId}`"
-						:class="$style.chatHost"
-					>
+					<div v-else-if="mode === 'chat'" key="chat" :class="$style.chatHost">
 						<!--
 							v-if on `chatModeOpened` lazy-mounts each panel the first time
 							its tab is activated; v-show then preserves state (messages,
 							input, scroll) without re-firing loadHistory on every toggle.
-							Both panels are bound to the same effective session id so
-							switching Test↔Build keeps the conversation in sync.
+							Test additionally requires an active session id — Build is
+							per-agent and needs no session.
 						-->
 						<AgentChatPanel
-							v-if="chatModeOpened.test"
+							v-if="chatModeOpened.test && effectiveSessionId"
 							v-show="chatMode === 'test'"
+							:key="`test-${effectiveSessionId}`"
 							:project-id="projectId"
 							:agent-id="agentId"
 							mode="inline"
@@ -552,9 +551,6 @@ function onContinueLoaded(count: number) {
 							:agent-id="agentId"
 							mode="inline"
 							endpoint="build"
-							:continue-session-id="effectiveSessionId"
-							:session-title="sessionTitle"
-							:session-emoji="sessionEmoji"
 							@config-updated="onConfigUpdated"
 							@update:streaming="onBuildChatStreamingChange"
 							@back="onBackFromChat"
