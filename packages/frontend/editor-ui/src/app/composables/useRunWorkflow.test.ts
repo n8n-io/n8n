@@ -59,6 +59,9 @@ const { mockDocumentStore } = vi.hoisted(() => {
 		pinData: {} as Record<string, unknown>,
 		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+		getParametersLastUpdate: vi.fn(),
+		getPinnedDataLastUpdate: vi.fn(),
+		getPinnedDataLastRemovedAt: vi.fn(),
 		getSnapshot: vi.fn(),
 	};
 	store.getSnapshot.mockReturnValue({
@@ -112,9 +115,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 				name === 'Test node' ? { name: 'Test node', id: 'Test id' } : undefined,
 			),
 		getExecution: vi.fn(),
-		getParametersLastUpdate: vi.fn(),
-		getPinnedDataLastUpdate: vi.fn(),
-		getPinnedDataLastRemovedAt: vi.fn(),
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
 		private: {
@@ -529,7 +529,7 @@ describe('useRunWorkflow({ router })', () => {
 			} as IExecuteData);
 
 			mockDocumentStore.checkIfNodeHasChatParent.mockReturnValue(false);
-			vi.mocked(workflowsStore).getParametersLastUpdate.mockImplementation((name: string) => {
+			mockDocumentStore.getParametersLastUpdate.mockImplementation((name: string) => {
 				if (name === executeName) return 2;
 				return undefined;
 			});

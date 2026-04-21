@@ -27,6 +27,7 @@ import { useWorkflowDocumentGraph } from './workflowDocument/useWorkflowDocument
 import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDocumentExpression';
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
+import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -74,6 +75,7 @@ type ExpressionReturn = ReturnType<typeof useWorkflowDocumentExpression>;
 type MetaReturn = ReturnType<typeof useWorkflowDocumentMeta>;
 type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
+type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -90,6 +92,12 @@ void (0 as unknown as [
 	AssertNoOverlap<MetaReturn, ConnectionsReturn>,
 	AssertNoOverlap<PinDataReturn, NodesReturn>,
 	AssertNoOverlap<SettingsReturn, NodesReturn>,
+	AssertNoOverlap<NodeMetadataReturn, NodesReturn>,
+	AssertNoOverlap<NodeMetadataReturn, ConnectionsReturn>,
+	AssertNoOverlap<NodeMetadataReturn, GraphReturn>,
+	AssertNoOverlap<NodeMetadataReturn, PinDataReturn>,
+	AssertNoOverlap<NodeMetadataReturn, MetaReturn>,
+	AssertNoOverlap<NodeMetadataReturn, SettingsReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -150,8 +158,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentUsedCredentials = useWorkflowDocumentUsedCredentials();
 		const workflowDocumentVersionData = useWorkflowDocumentVersionData();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
+		const workflowDocumentNodeMetadata = useWorkflowDocumentNodeMetadata();
 		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
+			nodeMetadata: workflowDocumentNodeMetadata,
 			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
@@ -259,6 +269,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentConnections,
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
+			...workflowDocumentNodeMetadata,
 			removeAllNodes,
 			setWorkflow,
 			getSnapshot,

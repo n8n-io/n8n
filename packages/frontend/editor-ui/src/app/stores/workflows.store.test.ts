@@ -1470,7 +1470,10 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.workflow.id = 'test-workflow-id';
 
-			workflowsStore.workflow.nodes.push({
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			workflowDocumentStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
 				name: nodeName,
@@ -1478,11 +1481,7 @@ describe('useWorkflowsStore', () => {
 				position: [680, 180],
 				typeVersion: 3.4,
 			});
-			workflowsStore.nodeMetadata[nodeName] = { pristine: true };
 
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflow.id),
-			);
 			workflowDocumentStore.setPinData({
 				[nodeName]: [
 					{
@@ -1516,8 +1515,8 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.renameNodeSelectedAndExecution({ old: nodeName, new: newName });
 
-			expect(workflowsStore.nodeMetadata[nodeName]).not.toBeDefined();
-			expect(workflowsStore.nodeMetadata[newName]).toEqual({ pristine: true });
+			expect(workflowDocumentStore.nodeMetadata[nodeName]).not.toBeDefined();
+			expect(workflowDocumentStore.nodeMetadata[newName]).toEqual({});
 			expect(
 				workflowsStore.workflowExecutionData?.data?.resultData.runData[nodeName],
 			).not.toBeDefined();
@@ -1565,7 +1564,6 @@ describe('useWorkflowsStore', () => {
 
 		beforeEach(() => {
 			workflowsStore.workflow.nodes = [n0, n1];
-			workflowsStore.nodeMetadata = { n0: { pristine: true }, n1: { pristine: true } };
 			getNodeType.mockImplementation(() => mockNodeTypeDescription({ group: ['trigger'] }));
 		});
 
