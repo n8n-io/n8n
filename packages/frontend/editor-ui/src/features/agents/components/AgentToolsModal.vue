@@ -6,7 +6,15 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { DEBOUNCE_TIME, getDebounceTime, MODAL_CONFIRM } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
-import { N8nHeading, N8nIcon, N8nInput, N8nText, N8nButton } from '@n8n/design-system';
+import {
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	N8nInput,
+	N8nText,
+	N8nTooltip,
+	N8nButton,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { NodeConnectionTypes, type INode, type INodeTypeDescription } from 'n8n-workflow';
@@ -356,24 +364,19 @@ function commit() {
 								</div>
 							</div>
 							<div :class="$style.workflowActions">
-								<button
-									type="button"
-									:class="$style.workflowActionBtn"
-									:title="i18n.baseText('agents.tools.configure')"
-									data-test-id="agent-tools-connected-workflow-configure"
-									@click="handleConfigureTool(wf.ref)"
-								>
-									<N8nIcon icon="settings" :size="16" />
-								</button>
-								<button
-									type="button"
-									:class="$style.workflowActionBtn"
-									:title="i18n.baseText('agents.tools.remove')"
-									data-test-id="agent-tools-connected-workflow-remove"
-									@click="handleRemoveTool(wf.ref)"
-								>
-									<N8nIcon icon="trash-2" :size="16" />
-								</button>
+								<div :class="$style.connectedBadge">
+									<N8nIcon icon="check" :size="14" />
+									<span>{{ i18n.baseText('agents.tools.connected') }}</span>
+								</div>
+								<N8nTooltip :content="i18n.baseText('agents.tools.configure')">
+									<N8nIconButton
+										icon="settings"
+										variant="ghost"
+										text
+										data-test-id="agent-tools-connected-workflow-configure"
+										@click="handleConfigureTool(wf.ref)"
+									/>
+								</N8nTooltip>
 							</div>
 						</div>
 					</div>
@@ -540,26 +543,17 @@ function commit() {
 .workflowActions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 	flex-shrink: 0;
 }
 
-.workflowActionBtn {
+.connectedBadge {
 	display: inline-flex;
 	align-items: center;
-	justify-content: center;
-	width: 28px;
-	height: 28px;
-	border: none;
-	background: none;
-	cursor: pointer;
+	gap: var(--spacing--4xs);
 	color: var(--color--text--tint-1);
-	border-radius: var(--radius);
-
-	&:hover {
-		background-color: var(--color--foreground--tint-1);
-		color: var(--color--text);
-	}
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--md);
 }
 
 .emptyState {

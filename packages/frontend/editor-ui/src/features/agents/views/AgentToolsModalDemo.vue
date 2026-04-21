@@ -112,8 +112,10 @@ const FIXTURES: INodeTypeDescription[] = [
 	}),
 ];
 
-// Three starting tools: two with valid creds + one (Gmail) missing creds
-// to exercise the "Add credentials" warning chip.
+// Starting tools exercise every Connected-section state:
+// - Salesforce/Slack: node tools with valid creds
+// - Gmail: node tool missing creds → "Add credentials" warning chip
+// - Daily digest: workflow tool with description (renders in Connected section)
 const STARTING_TOOLS: AgentJsonToolRef[] = [
 	{
 		type: 'node',
@@ -141,6 +143,13 @@ const STARTING_TOOLS: AgentJsonToolRef[] = [
 			nodeTypeVersion: 1,
 			// credentials intentionally omitted
 		},
+	},
+	{
+		type: 'workflow',
+		workflow: 'Daily digest',
+		name: 'Daily digest',
+		description: 'Summarise yesterday and post to Slack',
+		allOutputs: false,
 	},
 ];
 
