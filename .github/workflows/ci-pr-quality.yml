@@ -1,7 +1,7 @@
 name: 'CI: PR Quality Checks'
 
 on:
-  pull_request_target:
+  pull_request:
     types:
       - opened
       - edited
@@ -47,7 +47,8 @@ jobs:
     # Checks that the author has acknowledged the ownership of their code
     # by checking the checkbox in the PR summary.
     if: |
-      github.event_name == 'pull_request_target' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
       !contains(github.event.pull_request.title, '(backport to')
     runs-on: ubuntu-latest
@@ -75,7 +76,8 @@ jobs:
     # Checks that the PR size doesn't exceed the limit (currently 1000 lines)
     # Allows for override via '/size-limit-override' comment
     if: |
-      github.event_name == 'pull_request_target' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
       !contains(github.event.pull_request.title, '(backport to')
     runs-on: ubuntu-latest
