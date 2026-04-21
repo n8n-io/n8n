@@ -91,7 +91,13 @@ watch(
 </script>
 
 <template>
-	<div class="dev-panel-popover" :style="popoverStyle" role="dialog" aria-label="AI prompt">
+	<div
+		class="dev-panel-popover"
+		:style="popoverStyle"
+		role="dialog"
+		aria-label="AI prompt"
+		@keydown="handleKeyDown"
+	>
 		<N8nInput
 			v-model="prompt"
 			type="textarea"
@@ -103,7 +109,6 @@ watch(
 					? 'Edit the annotation. ⌘↵ to save, Esc to cancel.'
 					: 'Describe the change. ⌘↵ to add, Esc to cancel.'
 			"
-			@keydown="handleKeyDown"
 			@focus="handleFocus"
 		/>
 		<div class="dev-panel-actions">
