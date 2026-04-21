@@ -436,6 +436,12 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 		case 'assignmentCollection':
 			return 'assignmentCollectionValueSchema';
 
+		case 'fixedCollection':
+			return generateFixedCollectionZodSchema(prop);
+
+		case 'collection':
+			return generateCollectionZodSchema(prop);
+
 		case 'hidden':
 			return 'z.unknown()';
 
