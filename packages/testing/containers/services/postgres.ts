@@ -25,7 +25,7 @@ export const postgres: Service<PostgresResult> = {
 			.withDatabase('n8n_db')
 			.withUsername('n8n_user')
 			.withPassword('test_password')
-			.withStartupTimeout(30000)
+			.withStartupTimeout(40000)
 			.withLabels({
 				'com.docker.compose.project': projectName,
 				'com.docker.compose.service': HOSTNAME,
