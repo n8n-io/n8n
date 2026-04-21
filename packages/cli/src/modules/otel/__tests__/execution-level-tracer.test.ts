@@ -5,7 +5,6 @@ import { SpanStatusCode } from '@opentelemetry/api';
 import { OtelTestProvider } from './support/otel-test-provider';
 import { ExecutionLevelTracer } from '../execution-level-tracer';
 import { OtelConfig } from '../otel.config';
-import { TraceContextService } from '../tracing-context';
 
 describe('ExecutionLevelTracer', () => {
 	let otel: OtelTestProvider;
@@ -118,6 +117,41 @@ describe('ExecutionLevelTracer', () => {
 			const span = otel.getFinishedSpans()[0];
 			// The span inherits the traceId from the inbound traceparent
 			expect(span.spanContext().traceId).toBe('0af7651916cd43dd8448eb211c80319c');
+		});
+
+		it('should return a valid traceparent from startWorkflow', () => {
+			const result = tracer.startWorkflow({
+				executionId: 'exec-return',
+				workflow: defaultWorkflow,
+			});
+
+			expect(result).toBeDefined();
+			expect(result!.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/);
+
+			tracer.endWorkflow({
+				executionId: 'exec-return',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+		});
+
+		it('should return traceparent preserving inbound traceId', () => {
+			const result = tracer.startWorkflow({
+				executionId: 'exec-preserve',
+				tracingContext: { traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01' },
+				workflow: defaultWorkflow,
+			});
+
+			expect(result).toBeDefined();
+			expect(result!.traceparent).toMatch(/^00-0af7651916cd43dd8448eb211c80319c-/);
+
+			tracer.endWorkflow({
+				executionId: 'exec-preserve',
+				status: 'success',
+				mode: 'webhook',
+				isRetry: false,
+			});
 		});
 	});
 

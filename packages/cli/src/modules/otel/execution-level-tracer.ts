@@ -40,7 +40,7 @@ export class ExecutionLevelTracer {
 		executionId: string;
 		tracingContext?: TracingContext;
 		workflow: { id: string; name: string; versionId?: string; nodeCount: number };
-	}): void {
+	}): TracingContext | undefined {
 		try {
 			// Webhook: use inbound traceparent as parent. Everything else: root span.
 			const parentCtx = params.tracingContext
@@ -62,28 +62,19 @@ export class ExecutionLevelTracer {
 			);
 
 			this.workflowSpans.set(params.executionId, { span, createdAt: Date.now() });
+
+			const headers: Record<string, string> = {};
+			propagation.inject(trace.setSpan(context.active(), span), headers);
+			return headers.traceparent
+				? { traceparent: headers.traceparent, tracestate: headers.tracestate }
+				: undefined;
 		} catch (error) {
 			this.logger.error('Failed to start workflow span', {
 				executionId: params.executionId,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			return undefined;
 		}
-	}
-
-	/**
-	 * Get the traceparent for the workflow span (after creation).
-	 * Used to persist the actual traceId for root spans (non-webhook executions).
-	 */
-	getWorkflowTraceparent(executionId: string): TracingContext | undefined {
-		const tracked = this.workflowSpans.get(executionId);
-		if (!tracked) return undefined;
-
-		const headers: Record<string, string> = {};
-		propagation.inject(trace.setSpan(context.active(), tracked.span), headers);
-
-		return headers.traceparent
-			? { traceparent: headers.traceparent, tracestate: headers.tracestate }
-			: undefined;
 	}
 
 	endWorkflow(params: {
