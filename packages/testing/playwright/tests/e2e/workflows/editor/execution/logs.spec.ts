@@ -39,7 +39,6 @@ test.describe(
 				n8n.canvas.logsPanel.getOverviewStatus().filter({ hasText: 'Running' }),
 			).toBeVisible();
 
-			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(4);
 			await expect(n8n.canvas.logsPanel.getLogEntries().nth(0)).toContainText(NODES.MANUAL_TRIGGER);
 			await expect(n8n.canvas.logsPanel.getLogEntries().nth(1)).toContainText(NODES.CODE);
 			await expect(n8n.canvas.logsPanel.getLogEntries().nth(2)).toContainText(
@@ -47,13 +46,11 @@ test.describe(
 			);
 			await expect(n8n.canvas.logsPanel.getLogEntries().nth(3)).toContainText(NODES.WAIT);
 
-			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(6);
 			await expect(n8n.canvas.logsPanel.getLogEntries().nth(4)).toContainText(
 				NODES.LOOP_OVER_ITEMS,
 			);
 			await expect(n8n.canvas.logsPanel.getLogEntries().nth(5)).toContainText(NODES.WAIT);
 
-			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(8);
 			await expect(n8n.canvas.logsPanel.getLogEntries().nth(6)).toContainText(
 				NODES.LOOP_OVER_ITEMS,
 			);

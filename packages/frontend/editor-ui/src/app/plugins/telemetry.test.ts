@@ -38,7 +38,7 @@ describe('telemetry', () => {
 				}),
 			);
 
-			telemetry.identify(userId, instanceId);
+			telemetry.identify({ instanceId, userId });
 			expect(identifyFunction).toHaveBeenCalledTimes(1);
 			expect(identifyFunction).toHaveBeenCalledWith(
 				`${instanceId}#${userId}`,
@@ -62,7 +62,7 @@ describe('telemetry', () => {
 				}),
 			);
 
-			telemetry.identify(userId, instanceId, versionCli);
+			telemetry.identify({ instanceId, userId, versionCli });
 			expect(identifyFunction).toHaveBeenCalledTimes(1);
 			expect(identifyFunction).toHaveBeenCalledWith(
 				`${instanceId}#${userId}`,
@@ -90,7 +90,7 @@ describe('telemetry', () => {
 				}),
 			);
 
-			telemetry.identify(userId, instanceId, versionCli, projectId);
+			telemetry.identify({ instanceId, userId, versionCli, projectId });
 			expect(identifyFunction).toHaveBeenCalledTimes(1);
 			expect(identifyFunction).toHaveBeenCalledWith(
 				`${instanceId}#${userId}#${projectId}`,
@@ -121,7 +121,7 @@ describe('telemetry', () => {
 				}),
 			);
 
-			telemetry.identify(userId, instanceId, versionCli);
+			telemetry.identify({ instanceId, userId, versionCli });
 			expect(identifyFunction).toHaveBeenCalledTimes(1);
 			expect(identifyFunction).toHaveBeenCalledWith(
 				`${instanceId}#${userId}`,
@@ -153,7 +153,7 @@ describe('telemetry', () => {
 				}),
 			);
 
-			telemetry.identify(userId, instanceId, versionCli);
+			telemetry.identify({ instanceId, userId, versionCli });
 			expect(identifyFunction).toHaveBeenCalledTimes(1);
 			expect(identifyFunction).toHaveBeenCalledWith(
 				`${instanceId}#${userId}`,
@@ -179,7 +179,7 @@ describe('telemetry', () => {
 				}),
 			);
 
-			telemetry.identify(instanceId);
+			telemetry.identify({ instanceId });
 			expect(resetFunction).toHaveBeenCalledTimes(1);
 		});
 	});

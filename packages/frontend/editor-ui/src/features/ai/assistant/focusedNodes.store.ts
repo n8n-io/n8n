@@ -341,8 +341,8 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 		return buildFocusedNodesPayload(
 			confirmedNodes.value,
 			workflowDocumentStore.value?.allNodes ?? [],
-			workflowsStore.connectionsByDestinationNode,
-			workflowsStore.connectionsBySourceNode,
+			workflowDocumentStore.value?.connectionsByDestinationNode ?? {},
+			workflowDocumentStore.value?.connectionsBySourceNode ?? {},
 		);
 	}
 

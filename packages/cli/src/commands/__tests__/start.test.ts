@@ -2,12 +2,15 @@
 import '@/zod-alias-support';
 
 import { mockInstance } from '@n8n/backend-test-utils';
-import { AuthRolesService, DbConnection } from '@n8n/db';
+import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
+import { BinaryDataConfig } from 'n8n-core';
+
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { JwtService } from '@/services/jwt.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { DeprecationService } from '@/deprecation/deprecation.service';
@@ -31,6 +34,10 @@ import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
+
+const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
+deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
+deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 
 const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 loadNodesAndCredentials.init.mockResolvedValue(undefined);
@@ -118,6 +125,15 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(CommunityPackagesConfig, mockInstance(CommunityPackagesConfig));
 		Container.set(CommunityPackagesService, communityPackagesService);
 		Container.set(TaskRunnerModule, taskRunnerModule);
+		Container.set(DeploymentKeyRepository, deploymentKeyRepository);
+		Container.set(
+			JwtService,
+			mockInstance(JwtService, { initialize: jest.fn().mockResolvedValue(undefined) }),
+		);
+		Container.set(
+			BinaryDataConfig,
+			mockInstance(BinaryDataConfig, { initialize: jest.fn().mockResolvedValue(undefined) }),
+		);
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing
@@ -147,6 +163,8 @@ describe('Start - AuthRolesService initialization', () => {
 		start.initDataDeduplicationService = jest.fn().mockResolvedValue(undefined);
 		start.initExternalHooks = jest.fn().mockResolvedValue(undefined);
 		start.initWorkflowHistory = jest.fn();
+		// @ts-expect-error - Accessing private method for testing
+		start.initInstanceSettingsLoader = jest.fn().mockResolvedValue(undefined);
 		start.cleanupTestRunner = jest.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing private method for testing
 		start.generateStaticAssets = jest.fn().mockResolvedValue(undefined);
@@ -227,6 +245,26 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('init - instance settings loader initialization', () => {
+		it('should initialize instance settings loader when instanceType is main', async () => {
+			setupInstanceSettings('main', false, false);
+
+			await start.init();
+
+			// @ts-expect-error - Accessing private method for testing
+			expect(start.initInstanceSettingsLoader).toHaveBeenCalledTimes(1);
+		});
+
+		it('should NOT initialize instance settings loader when instanceType is not main', async () => {
+			setupInstanceSettings('worker', false, false);
+
+			await start.init();
+
+			// @ts-expect-error - Accessing private method for testing
+			expect(start.initInstanceSettingsLoader).not.toHaveBeenCalled();
 		});
 	});
 

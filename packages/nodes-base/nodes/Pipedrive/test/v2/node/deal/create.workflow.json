@@ -1,0 +1,104 @@
+{
+	"name": "Pipedrive v2 deal create test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "aa111111-bb22-cc33-dd44-ee5555555555",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "deal",
+				"operation": "create",
+				"title": "Test Deal",
+				"associateWith": "organization",
+				"org_id": 7,
+				"additionalFields": {
+					"person_id": 10,
+					"value": 5000,
+					"currency": "USD",
+					"status": "open"
+				}
+			},
+			"id": "bb222222-cc33-dd44-ee55-ff6666666666",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "cc333333-dd44-ee55-ff66-aa7777777777",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 8,
+					"title": "Test Deal",
+					"creator_user_id": 25455458,
+					"value": 5000.0,
+					"person_id": 10,
+					"org_id": 7,
+					"stage_id": 6,
+					"currency": "USD",
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": null,
+					"status": "open",
+					"probability": null,
+					"lost_reason": null,
+					"visible_to": 3,
+					"close_time": null,
+					"pipeline_id": 2,
+					"won_time": null,
+					"lost_time": null,
+					"stage_change_time": null,
+					"local_won_date": null,
+					"local_lost_date": null,
+					"local_close_date": null,
+					"expected_close_date": null,
+					"custom_fields": {
+						"test_string": null,
+						"test_enum": null,
+						"test_multi": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"is_deleted": false,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"acv": null,
+					"arr": null,
+					"mrr": null,
+					"is_archived": false,
+					"archive_time": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}

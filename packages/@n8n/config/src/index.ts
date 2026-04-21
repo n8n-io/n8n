@@ -19,6 +19,8 @@ import { ExpressionEngineConfig } from './configs/expression-engine.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
+import { InstanceAiConfig } from './configs/instance-ai.config';
+import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
@@ -35,7 +37,6 @@ import { SsoConfig } from './configs/sso.config';
 import { SsrfProtectionConfig } from './configs/ssrf-protection.config';
 import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
-import { TokenExchangeConfig } from './configs/token-exchange.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
 import { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
@@ -47,6 +48,7 @@ export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
+export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 export { sampleRateSchema } from './configs/sentry.config';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
@@ -68,7 +70,7 @@ export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
-export { TokenExchangeConfig } from './configs/token-exchange.config';
+export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
 
@@ -198,9 +200,6 @@ export class GlobalConfig {
 	sso: SsoConfig;
 
 	@Nested
-	tokenExchange: TokenExchangeConfig;
-
-	@Nested
 	ssrfProtection: SsrfProtectionConfig;
 
 	/** Default locale for the UI. */
@@ -251,5 +250,11 @@ export class GlobalConfig {
 	chatHub: ChatHubConfig;
 
 	@Nested
+	instanceAi: InstanceAiConfig;
+
+	@Nested
 	expressionEngine: ExpressionEngineConfig;
+
+	@Nested
+	instanceSettingsLoader: InstanceSettingsLoaderConfig;
 }
