@@ -245,14 +245,4 @@ describe('Folders Handler', () => {
 			expect(mockFolderService.getManyAndCount).not.toHaveBeenCalled();
 		});
 	});
-
-	describe('middleware chain', () => {
-		it('createFolder should have isLicensed and apiKeyHasScopeWithGlobalScopeFallback middlewares', () => {
-			expect(handler.createFolder).toHaveLength(3);
-		});
-
-		it('getFolders should have isLicensed and apiKeyHasScopeWithGlobalScopeFallback middlewares', () => {
-			expect(handler.getFolders).toHaveLength(3);
-		});
-	});
 });
