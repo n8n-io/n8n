@@ -42,8 +42,11 @@ export class IdleScalingPool {
 
 	async release(bridge: RuntimeBridge): Promise<void> {
 		if (this.innerPool && !this.disposed) {
+			// Pool is live: delegate so the inner pool disposes and replenishes.
 			await this.innerPool.release(bridge);
 		} else if (!bridge.isDisposed()) {
+			// Pool is idle, disposed, or the bridge came from cold-start fallback:
+			// no pool to delegate to, just dispose to free the V8 isolate.
 			await bridge.dispose();
 		}
 	}
