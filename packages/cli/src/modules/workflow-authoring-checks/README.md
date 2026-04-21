@@ -15,18 +15,18 @@ activated or explicitly previewed from the editor.
 ```mermaid
 flowchart TD
     A[User clicks Publish] --> B[WorkflowService activates workflow]
-    B --> C[WorkflowAuthoringChecksProxy.runAll]
-    C --> D{Module loaded?}
-    D -->|No| OK([Activate workflow])
-    D -->|Yes| E[Service loads enabled instances]
-    E --> F[For each instance:<br/>validate config, evaluate]
-    F --> G{Any violations?}
+    B --> C[Proxy runAll]
+    C --> D{Module loaded}
+    D -->|No| OK[Activate workflow]
+    D -->|Yes| E[Load enabled instances]
+    E --> F[Validate config and evaluate each]
+    F --> G{Any violations}
     G -->|No| OK
-    G -->|Yes| H{Any blocking<br/>violations?}
-    H -->|Yes| BLOCK([HTTP 422<br/>WorkflowAuthoringChecksFailedError<br/>activation refused])
-    H -->|No — only warnings| I{skipAuthoringChecks<br/>Warnings = true?}
-    I -->|No| WARN([HTTP 422<br/>Retry with<br/>skipAuthoringChecksWarnings=true])
-    I -->|Yes — 'publish anyway'| OK
+    G -->|Yes| H{Any blocking}
+    H -->|Yes| BLOCK[HTTP 422 activation refused]
+    H -->|No, only warnings| I{skipAuthoringChecksWarnings true}
+    I -->|No| WARN[HTTP 422 retry with skip flag]
+    I -->|Yes| OK
 ```
 
 ## Check types vs. check instances
