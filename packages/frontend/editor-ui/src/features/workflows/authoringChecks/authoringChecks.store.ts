@@ -1,39 +1,49 @@
-import type { WorkflowAuthoringCheckSeverity, WorkflowCheckConfigDto } from '@n8n/api-types';
+import type {
+	CreateWorkflowCheckDto,
+	UpdateWorkflowCheckDto,
+	WorkflowCheckDto,
+	WorkflowCheckTypeDto,
+} from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
 import {
-	listWorkflowAuthoringChecks,
-	updateWorkflowAuthoringCheckConfig,
+	createWorkflowCheck,
+	deleteWorkflowCheck,
+	listWorkflowCheckTypes,
+	listWorkflowChecks,
+	updateWorkflowCheck,
 } from '@/features/workflows/authoringChecks/authoringChecks.api';
 
 export const useWorkflowAuthoringChecksStore = defineStore(STORES.WORKFLOW_AUTHORING_CHECKS, () => {
 	const rootStore = useRootStore();
 
-	const checks = ref<WorkflowCheckConfigDto[]>([]);
+	const instances = ref<WorkflowCheckDto[]>([]);
+	const types = ref<WorkflowCheckTypeDto[]>([]);
 	const isLoading = ref(false);
 	const hasFetched = ref(false);
+	const hasFetchedTypes = ref(false);
 	const inflight = ref<Promise<void> | null>(null);
 
-	const hasWorkflowChecksEnabled = computed(() => checks.value.some((c) => c.enabled));
+	const hasWorkflowChecksEnabled = computed(() => instances.value.some((i) => i.enabled));
 
-	async function fetchChecks() {
+	async function fetchInstances() {
 		isLoading.value = true;
 		try {
-			const response = await listWorkflowAuthoringChecks(rootStore.restApiContext);
-			checks.value = response.checks;
+			const response = await listWorkflowChecks(rootStore.restApiContext);
+			instances.value = response.checks;
 			hasFetched.value = true;
 		} finally {
 			isLoading.value = false;
 		}
 	}
 
-	async function ensureChecksLoaded() {
+	async function ensureInstancesLoaded() {
 		if (hasFetched.value) return;
 		if (!inflight.value) {
-			inflight.value = fetchChecks().finally(() => {
+			inflight.value = fetchInstances().finally(() => {
 				inflight.value = null;
 			});
 		}
@@ -44,31 +54,48 @@ export const useWorkflowAuthoringChecksStore = defineStore(STORES.WORKFLOW_AUTHO
 		}
 	}
 
-	async function updateCheck(
-		checkId: string,
-		patch: {
-			enabled?: boolean;
-			severityOverride?: WorkflowAuthoringCheckSeverity | null;
-		},
-	) {
-		const updated = await updateWorkflowAuthoringCheckConfig(
-			rootStore.restApiContext,
-			checkId,
-			patch,
-		);
-		const index = checks.value.findIndex((c) => c.checkId === checkId);
+	async function fetchTypes() {
+		const response = await listWorkflowCheckTypes(rootStore.restApiContext);
+		types.value = response.types;
+		hasFetchedTypes.value = true;
+	}
+
+	async function ensureTypesLoaded() {
+		if (hasFetchedTypes.value) return;
+		await fetchTypes();
+	}
+
+	async function createInstance(payload: CreateWorkflowCheckDto) {
+		const created = await createWorkflowCheck(rootStore.restApiContext, payload);
+		instances.value = [...instances.value, created];
+		return created;
+	}
+
+	async function updateInstance(id: string, patch: UpdateWorkflowCheckDto) {
+		const updated = await updateWorkflowCheck(rootStore.restApiContext, id, patch);
+		const index = instances.value.findIndex((i) => i.id === id);
 		if (index !== -1) {
-			checks.value.splice(index, 1, updated);
+			instances.value.splice(index, 1, updated);
 		}
 		return updated;
 	}
 
+	async function deleteInstance(id: string) {
+		await deleteWorkflowCheck(rootStore.restApiContext, id);
+		instances.value = instances.value.filter((i) => i.id !== id);
+	}
+
 	return {
-		checks,
+		instances,
+		types,
 		isLoading,
 		hasWorkflowChecksEnabled,
-		fetchChecks,
-		ensureChecksLoaded,
-		updateCheck,
+		fetchInstances,
+		ensureInstancesLoaded,
+		fetchTypes,
+		ensureTypesLoaded,
+		createInstance,
+		updateInstance,
+		deleteInstance,
 	};
 });

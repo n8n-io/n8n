@@ -1,31 +1,66 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { mapConnectionsByDestination } from 'n8n-workflow';
+import { UserError, mapConnectionsByDestination } from 'n8n-workflow';
 
-import { WorkflowCheckConfigRepository } from './database/repositories/workflow-check-config.repository';
+import { WorkflowCheckRepository } from './database/repositories/workflow-check.repository';
+import type { WorkflowCheck } from './database/entities/workflow-check.entity';
+import type { WorkflowCheckTypeKey } from './workflow-authoring-checks.constants';
 import type {
 	RunWorkflowAuthoringChecksInput,
-	WorkflowCheck,
+	WorkflowAuthoringCheckSeverity,
 	WorkflowCheckContext,
 	WorkflowCheckResult,
+	WorkflowCheckType,
 } from './workflow-authoring-checks.types';
 import { WorkflowCheckRegistry } from './workflow-check-registry.service';
+
+export interface CreateWorkflowCheckInstanceInput {
+	name: string;
+	type: string;
+	config: Record<string, unknown>;
+	severity: WorkflowAuthoringCheckSeverity;
+	enabled?: boolean;
+}
+
+export interface UpdateWorkflowCheckInstanceInput {
+	name?: string;
+	config?: Record<string, unknown>;
+	severity?: WorkflowAuthoringCheckSeverity;
+	enabled?: boolean;
+}
+
+export interface WorkflowCheckInstanceDto {
+	id: string;
+	name: string;
+	type: string;
+	typeTitle: string;
+	config: Record<string, unknown>;
+	enabled: boolean;
+	severity: WorkflowAuthoringCheckSeverity;
+}
+
+export interface WorkflowCheckTypeInfoDto {
+	type: string;
+	title: string;
+	description: string;
+	defaultSeverity: WorkflowAuthoringCheckSeverity;
+	configSchema: WorkflowCheckType['configSchema'];
+}
 
 @Service()
 export class WorkflowAuthoringChecksService {
 	constructor(
 		private readonly registry: WorkflowCheckRegistry,
-		private readonly configRepository: WorkflowCheckConfigRepository,
+		private readonly repository: WorkflowCheckRepository,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('workflow-authoring-checks');
 	}
 
 	async runAll(input: RunWorkflowAuthoringChecksInput): Promise<WorkflowCheckResult[]> {
-		const checks = this.registry.list();
-		if (checks.length === 0) return [];
-
-		const configs = await this.configRepository.findAllById();
+		const instances = await this.repository.findAllOrdered();
+		const enabled = instances.filter((i) => i.enabled);
+		if (enabled.length === 0) return [];
 
 		const ctx: WorkflowCheckContext = {
 			workflowId: input.workflowId,
@@ -38,17 +73,35 @@ export class WorkflowAuthoringChecksService {
 
 		const results: WorkflowCheckResult[] = [];
 
-		for (const check of checks) {
-			const config = configs.get(check.id);
-			if (config && !config.enabled) continue;
+		for (const instance of enabled) {
+			const type = this.registry.getType(instance.type);
+			if (!type) {
+				this.logger.warn('Skipping workflow check with unknown type', {
+					instanceId: instance.id,
+					type: instance.type,
+				});
+				continue;
+			}
 
-			const violations = await check.evaluate(ctx);
+			try {
+				type.validateConfig(instance.config);
+			} catch (error) {
+				this.logger.warn('Skipping workflow check with invalid config', {
+					instanceId: instance.id,
+					type: instance.type,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				continue;
+			}
+
+			const violations = await type.evaluate(ctx, instance.config);
 			if (violations.length === 0) continue;
 
 			results.push({
-				checkId: check.id,
-				title: check.title,
-				severity: config?.severityOverride ?? check.defaultSeverity,
+				checkInstanceId: instance.id,
+				type: instance.type,
+				name: instance.name,
+				severity: instance.severity,
 				violations,
 			});
 		}
@@ -56,46 +109,87 @@ export class WorkflowAuthoringChecksService {
 		return results;
 	}
 
-	async listChecksWithConfig() {
-		const checks = this.registry.list();
-		const configs = await this.configRepository.findAllById();
-		return checks.map((check) => this.toConfigDto(check, configs.get(check.id)));
+	listTypes(): WorkflowCheckTypeInfoDto[] {
+		return this.registry.listTypes().map((t) => ({
+			type: t.type,
+			title: t.title,
+			description: t.description,
+			defaultSeverity: t.defaultSeverity,
+			configSchema: t.configSchema,
+		}));
 	}
 
-	async getCheck(checkId: string) {
-		const check = this.registry.get(checkId);
-		if (!check) return null;
-		const config = await this.configRepository.findOne({ where: { checkId } });
-		return this.toConfigDto(check, config);
+	async listInstances(): Promise<WorkflowCheckInstanceDto[]> {
+		const instances = await this.repository.findAllOrdered();
+		return instances.map((i) => this.toDto(i));
 	}
 
-	async updateConfig(
-		checkId: string,
-		patch: { enabled?: boolean; severityOverride?: 'warning' | 'blocking' | null },
-	) {
-		const check = this.registry.get(checkId);
-		if (!check) return null;
-		const updated = await this.configRepository.upsertConfig(checkId, patch);
-		return this.toConfigDto(check, updated);
+	async createInstance(input: CreateWorkflowCheckInstanceInput): Promise<WorkflowCheckInstanceDto> {
+		const type = this.requireType(input.type);
+		this.validateConfigOrThrow(type, input.config);
+		const created = await this.repository.createInstance({
+			name: input.name,
+			type: type.type,
+			config: input.config,
+			severity: input.severity,
+			enabled: input.enabled,
+		});
+		return this.toDto(created);
 	}
 
-	private toConfigDto(
-		check: WorkflowCheck,
-		config:
-			| { enabled: boolean; severityOverride: 'warning' | 'blocking' | null }
-			| null
-			| undefined,
-	) {
-		const severityOverride = config?.severityOverride ?? null;
-		const enabled = config?.enabled ?? true;
+	async updateInstance(
+		id: string,
+		patch: UpdateWorkflowCheckInstanceInput,
+	): Promise<WorkflowCheckInstanceDto | null> {
+		const existing = await this.repository.findOne({ where: { id } });
+		if (!existing) return null;
+
+		if (patch.config !== undefined) {
+			const type = this.requireType(existing.type);
+			this.validateConfigOrThrow(type, patch.config);
+		}
+
+		const updated = await this.repository.updateInstance(id, {
+			name: patch.name,
+			config: patch.config,
+			severity: patch.severity,
+			enabled: patch.enabled,
+		});
+		return updated ? this.toDto(updated) : null;
+	}
+
+	async deleteInstance(id: string): Promise<boolean> {
+		return await this.repository.deleteById(id);
+	}
+
+	private toDto(instance: WorkflowCheck): WorkflowCheckInstanceDto {
+		const type = this.registry.getType(instance.type);
 		return {
-			checkId: check.id,
-			title: check.title,
-			description: check.description,
-			defaultSeverity: check.defaultSeverity,
-			severityOverride,
-			effectiveSeverity: severityOverride ?? check.defaultSeverity,
-			enabled,
+			id: instance.id,
+			name: instance.name,
+			type: instance.type,
+			typeTitle: type?.title ?? instance.type,
+			config: instance.config,
+			enabled: instance.enabled,
+			severity: instance.severity,
 		};
+	}
+
+	private requireType(typeKey: string): WorkflowCheckType {
+		const type = this.registry.getType(typeKey as WorkflowCheckTypeKey);
+		if (!type) {
+			throw new UserError(`Unknown workflow check type: ${typeKey}`);
+		}
+		return type;
+	}
+
+	private validateConfigOrThrow(type: WorkflowCheckType, config: unknown): unknown {
+		try {
+			return type.validateConfig(config);
+		} catch (error) {
+			if (error instanceof UserError) throw error;
+			const message = error instanceof Error ? error.message : String(error);
+			throw new UserError(`Invalid config for check type "${type.type}": ${message}`);
+		}
 	}
 }

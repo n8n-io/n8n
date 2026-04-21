@@ -26,7 +26,13 @@ describe('WorkflowAuthoringChecksProxy', () => {
 
 	it('delegates to the inner implementation when set', async () => {
 		const results: WorkflowCheckResult[] = [
-			{ checkId: 'c', title: 't', severity: 'warning', violations: [{ message: 'm' }] },
+			{
+				checkInstanceId: 'c',
+				type: 'node-has-direct-parent',
+				name: 'Rule',
+				severity: 'warning',
+				violations: [{ message: 'm' }],
+			},
 		];
 		const inner = mock<WorkflowAuthoringChecks>();
 		inner.runAll.mockResolvedValue(results);

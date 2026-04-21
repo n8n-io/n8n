@@ -56,8 +56,16 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'List Workflow Authoring Checks',
 		description: 'Allows listing workflow authoring check configuration.',
 	},
+	'workflowAuthoringCheck:create': {
+		displayName: 'Create Workflow Authoring Checks',
+		description: 'Allows creating workflow authoring check instances.',
+	},
 	'workflowAuthoringCheck:update': {
 		displayName: 'Update Workflow Authoring Checks',
 		description: 'Allows updating workflow authoring check configuration.',
+	},
+	'workflowAuthoringCheck:delete': {
+		displayName: 'Delete Workflow Authoring Checks',
+		description: 'Allows deleting workflow authoring check instances.',
 	},
 };

@@ -1,20 +1,24 @@
 import type {
+	WorkflowAuthoringCheckTypesListResponse,
 	WorkflowAuthoringChecksListResponse,
 	WorkflowAuthoringChecksPreviewResponse,
-	WorkflowCheckConfigDto,
+	WorkflowCheckDto,
 	WorkflowCheckResult,
 } from '@n8n/api-types';
 import {
-	UpdateWorkflowCheckConfigDto,
+	CreateWorkflowCheckDto,
+	UpdateWorkflowCheckDto,
 	WorkflowAuthoringChecksPreviewQueryDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
+	Delete,
 	Get,
 	GlobalScope,
 	Param,
 	Patch,
+	Post,
 	ProjectScope,
 	Query,
 	RestController,
@@ -82,31 +86,67 @@ export class WorkflowAuthoringChecksController {
 		return { results, summary: summarize(results) };
 	}
 
+	@Get('/types')
+	@GlobalScope('workflowAuthoringCheck:list')
+	listTypes(): WorkflowAuthoringCheckTypesListResponse {
+		return { types: this.authoringChecksService.listTypes() };
+	}
+
 	@Get('/')
 	@GlobalScope('workflowAuthoringCheck:list')
 	async list(): Promise<WorkflowAuthoringChecksListResponse> {
-		const checks = await this.authoringChecksService.listChecksWithConfig();
+		const checks = await this.authoringChecksService.listInstances();
 		return { checks };
 	}
 
-	@Patch('/:checkId')
-	@GlobalScope('workflowAuthoringCheck:update')
-	async updateConfig(
+	@Post('/')
+	@GlobalScope('workflowAuthoringCheck:create')
+	async create(
 		_req: AuthenticatedRequest,
 		_res: unknown,
-		@Param('checkId') checkId: string,
-		@Body body: UpdateWorkflowCheckConfigDto,
-	): Promise<WorkflowCheckConfigDto> {
-		const updated = await this.authoringChecksService.updateConfig(checkId, {
+		@Body body: CreateWorkflowCheckDto,
+	): Promise<WorkflowCheckDto> {
+		return await this.authoringChecksService.createInstance({
+			name: body.name,
+			type: body.type,
+			config: body.config,
+			severity: body.severity,
 			enabled: body.enabled,
-			severityOverride: body.severityOverride,
 		});
+	}
 
+	@Patch('/:id')
+	@GlobalScope('workflowAuthoringCheck:update')
+	async update(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('id') id: string,
+		@Body body: UpdateWorkflowCheckDto,
+	): Promise<WorkflowCheckDto> {
+		const updated = await this.authoringChecksService.updateInstance(id, {
+			name: body.name,
+			config: body.config,
+			severity: body.severity,
+			enabled: body.enabled,
+		});
 		if (!updated) {
-			throw new NotFoundError(`Workflow check "${checkId}" is not registered.`);
+			throw new NotFoundError(`Workflow check "${id}" not found.`);
 		}
-
 		return updated;
+	}
+
+	@Delete('/:id')
+	@GlobalScope('workflowAuthoringCheck:delete')
+	async delete(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('id') id: string,
+	): Promise<{ success: true }> {
+		const ok = await this.authoringChecksService.deleteInstance(id);
+		if (!ok) {
+			throw new NotFoundError(`Workflow check "${id}" not found.`);
+		}
+		return { success: true };
 	}
 }
 

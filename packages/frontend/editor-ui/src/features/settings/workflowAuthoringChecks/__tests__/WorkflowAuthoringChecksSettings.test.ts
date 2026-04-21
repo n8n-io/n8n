@@ -1,4 +1,4 @@
-import type { WorkflowCheckConfigDto } from '@n8n/api-types';
+import type { WorkflowCheckDto, WorkflowCheckTypeDto } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
@@ -9,14 +9,27 @@ import * as authoringChecksApi from '@/features/workflows/authoringChecks/author
 
 vi.mock('@/features/workflows/authoringChecks/authoringChecks.api');
 
-const guardrailCheck: WorkflowCheckConfigDto = {
-	checkId: 'ai-agent-requires-guardrail',
-	title: 'AI Agent requires Guardrails',
-	description: 'Every AI Agent needs a Guardrails node.',
-	defaultSeverity: 'warning',
-	severityOverride: null,
-	effectiveSeverity: 'warning',
+const instance: WorkflowCheckDto = {
+	id: 'instance-1',
+	name: 'AI Agents must use Guardrails',
+	type: 'node-has-direct-parent',
+	typeTitle: 'Node has direct parent',
+	config: { childNodeType: 'agent', parentNodeType: 'guardrails' },
 	enabled: true,
+	severity: 'warning',
+};
+
+const type: WorkflowCheckTypeDto = {
+	type: 'node-has-direct-parent',
+	title: 'Node has direct parent',
+	description: 'Ensures a node has a specific parent',
+	defaultSeverity: 'warning',
+	configSchema: {
+		fields: [
+			{ name: 'childNodeType', label: 'Child', kind: 'nodeType', required: true },
+			{ name: 'parentNodeType', label: 'Parent', kind: 'nodeType', required: true },
+		],
+	},
 };
 
 function renderSettings() {
@@ -28,57 +41,45 @@ function renderSettings() {
 describe('WorkflowAuthoringChecksSettings', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.mocked(authoringChecksApi.listWorkflowAuthoringChecks).mockResolvedValue({
-			checks: [guardrailCheck],
-		});
-		vi.mocked(authoringChecksApi.updateWorkflowAuthoringCheckConfig).mockImplementation(
-			async (_ctx, checkId, patch) => ({
-				...guardrailCheck,
-				checkId,
-				enabled: patch.enabled ?? guardrailCheck.enabled,
-				severityOverride:
-					patch.severityOverride === undefined
-						? guardrailCheck.severityOverride
-						: patch.severityOverride,
-				effectiveSeverity:
-					(patch.severityOverride === undefined
-						? guardrailCheck.severityOverride
-						: patch.severityOverride) ?? guardrailCheck.defaultSeverity,
+		vi.mocked(authoringChecksApi.listWorkflowChecks).mockResolvedValue({ checks: [instance] });
+		vi.mocked(authoringChecksApi.listWorkflowCheckTypes).mockResolvedValue({ types: [type] });
+		vi.mocked(authoringChecksApi.updateWorkflowCheck).mockImplementation(
+			async (_ctx, id, patch) => ({
+				...instance,
+				id,
+				enabled: patch.enabled ?? instance.enabled,
+				severity: patch.severity ?? instance.severity,
+				name: patch.name ?? instance.name,
 			}),
 		);
 	});
 
-	it('fetches checks on mount and renders one row per check', async () => {
+	it('fetches instances on mount and renders one row per instance', async () => {
 		const { findByText, findByTestId } = renderSettings();
 
-		expect(await findByText('AI Agent requires Guardrails')).toBeVisible();
-		expect(await findByText('Every AI Agent needs a Guardrails node.')).toBeVisible();
-		expect(
-			await findByTestId('workflow-authoring-check-row-ai-agent-requires-guardrail'),
-		).toBeInTheDocument();
-		expect(authoringChecksApi.listWorkflowAuthoringChecks).toHaveBeenCalled();
+		expect(await findByText('AI Agents must use Guardrails')).toBeVisible();
+		expect(await findByTestId('workflow-authoring-check-row-instance-1')).toBeInTheDocument();
+		expect(authoringChecksApi.listWorkflowChecks).toHaveBeenCalled();
+		expect(authoringChecksApi.listWorkflowCheckTypes).toHaveBeenCalled();
 	});
 
-	it('renders the empty state when no checks are registered', async () => {
-		vi.mocked(authoringChecksApi.listWorkflowAuthoringChecks).mockResolvedValue({ checks: [] });
+	it('renders the empty state when no instances are configured', async () => {
+		vi.mocked(authoringChecksApi.listWorkflowChecks).mockResolvedValue({ checks: [] });
 		const { getByTestId } = renderSettings();
 
 		await waitFor(() => expect(getByTestId('workflow-authoring-checks-empty-state')).toBeVisible());
-		await waitFor(() => expect(authoringChecksApi.listWorkflowAuthoringChecks).toHaveBeenCalled());
 	});
 
 	it('calls the update API when the enabled toggle is flipped', async () => {
 		const { findByTestId } = renderSettings();
 
-		const toggle = await findByTestId(
-			'workflow-authoring-check-toggle-ai-agent-requires-guardrail',
-		);
+		const toggle = await findByTestId('workflow-authoring-check-toggle-instance-1');
 		await userEvent.click(toggle);
 
 		await waitFor(() =>
-			expect(authoringChecksApi.updateWorkflowAuthoringCheckConfig).toHaveBeenCalledWith(
+			expect(authoringChecksApi.updateWorkflowCheck).toHaveBeenCalledWith(
 				expect.anything(),
-				'ai-agent-requires-guardrail',
+				'instance-1',
 				{ enabled: false },
 			),
 		);

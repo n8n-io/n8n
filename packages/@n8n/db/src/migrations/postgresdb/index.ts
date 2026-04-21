@@ -163,6 +163,7 @@ import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-Cre
 import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
 import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
 import { CreateWorkflowCheckConfigTable1778000000000 } from '../common/1778000000000-CreateWorkflowCheckConfigTable';
+import { ReplaceWorkflowCheckConfigWithWorkflowCheck1778500000000 } from '../common/1778500000000-ReplaceWorkflowCheckConfigWithWorkflowCheck';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -331,4 +332,5 @@ export const postgresMigrations: Migration[] = [
 	CreateFavoritesTable1776150756000,
 	CreateDeploymentKeyTable1777000000000,
 	CreateWorkflowCheckConfigTable1778000000000,
+	ReplaceWorkflowCheckConfigWithWorkflowCheck1778500000000,
 ];

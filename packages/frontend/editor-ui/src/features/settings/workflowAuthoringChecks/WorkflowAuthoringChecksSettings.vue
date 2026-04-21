@@ -1,23 +1,29 @@
 <script setup lang="ts">
-import type { WorkflowAuthoringCheckSeverity, WorkflowCheckConfigDto } from '@n8n/api-types';
-import { N8nHeading, N8nSelect, N8nOption, N8nText } from '@n8n/design-system';
+import type { WorkflowAuthoringCheckSeverity, WorkflowCheckDto } from '@n8n/api-types';
+import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ElSwitch } from 'element-plus';
 import { storeToRefs } from 'pinia';
 import { onMounted } from 'vue';
 
+import { MODAL_CONFIRM } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
+import { WORKFLOW_AUTHORING_CHECK_FORM_MODAL_KEY } from '@/features/workflows/authoringChecks/authoringChecks.constants';
 import { useWorkflowAuthoringChecksStore } from '@/features/workflows/authoringChecks/authoringChecks.store';
 
 const store = useWorkflowAuthoringChecksStore();
-const { checks, isLoading } = storeToRefs(store);
-const { fetchChecks, updateCheck } = store;
+const { instances, isLoading } = storeToRefs(store);
+const { fetchInstances, fetchTypes, updateInstance, deleteInstance } = store;
 const i18n = useI18n();
-const { showError } = useToast();
+const { showError, showMessage } = useToast();
+const { confirm } = useMessage();
+const uiStore = useUIStore();
 
 onMounted(async () => {
 	try {
-		await fetchChecks();
+		await Promise.all([fetchInstances(), fetchTypes()]);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.workflowAuthoringChecks.fetchError'));
 	}
@@ -29,47 +35,81 @@ function severityLabel(severity: WorkflowAuthoringCheckSeverity) {
 		: i18n.baseText('workflowAuthoringChecks.severity.warning');
 }
 
-async function onToggleEnabled(check: WorkflowCheckConfigDto, value: string | number | boolean) {
+async function onToggleEnabled(instance: WorkflowCheckDto, value: string | number | boolean) {
 	const enabled = typeof value === 'boolean' ? value : Boolean(value);
 	try {
-		await updateCheck(check.checkId, { enabled });
+		await updateInstance(instance.id, { enabled });
 	} catch (error) {
 		showError(error, i18n.baseText('settings.workflowAuthoringChecks.updateError'));
 	}
 }
 
-async function onSeverityChange(
-	check: WorkflowCheckConfigDto,
-	value: WorkflowAuthoringCheckSeverity | 'default',
-) {
-	const severityOverride = value === 'default' ? null : value;
+function onCreate() {
+	uiStore.openModalWithData({
+		name: WORKFLOW_AUTHORING_CHECK_FORM_MODAL_KEY,
+		data: { mode: 'create' },
+	});
+}
+
+function onEdit(instance: WorkflowCheckDto) {
+	uiStore.openModalWithData({
+		name: WORKFLOW_AUTHORING_CHECK_FORM_MODAL_KEY,
+		data: { mode: 'edit', instanceId: instance.id },
+	});
+}
+
+async function onDelete(instance: WorkflowCheckDto) {
+	const confirmed = await confirm(
+		i18n.baseText('settings.workflowAuthoringChecks.deleteConfirm.message', {
+			interpolate: { name: instance.name },
+		}),
+		i18n.baseText('settings.workflowAuthoringChecks.deleteConfirm.title'),
+		{
+			confirmButtonText: i18n.baseText('settings.workflowAuthoringChecks.deleteConfirm.confirm'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+
+	if (confirmed !== MODAL_CONFIRM) return;
+
 	try {
-		await updateCheck(check.checkId, { severityOverride });
+		await deleteInstance(instance.id);
+		showMessage({
+			title: i18n.baseText('settings.workflowAuthoringChecks.deleteAction'),
+			type: 'success',
+		});
 	} catch (error) {
-		showError(error, i18n.baseText('settings.workflowAuthoringChecks.updateError'));
+		showError(error, i18n.baseText('settings.workflowAuthoringChecks.deleteError'));
 	}
 }
 </script>
 
 <template>
 	<div class="pb-3xl" data-test-id="workflow-authoring-checks-settings">
-		<div :class="$style.headerTitle">
-			<N8nHeading tag="h1" size="2xlarge">
-				{{ i18n.baseText('settings.workflowAuthoringChecks.title') }}
-			</N8nHeading>
-			<N8nText color="text-base" size="medium">
-				{{ i18n.baseText('settings.workflowAuthoringChecks.description') }}
-			</N8nText>
+		<div :class="$style.headerBar">
+			<div :class="$style.headerTitle">
+				<N8nHeading tag="h1" size="2xlarge">
+					{{ i18n.baseText('settings.workflowAuthoringChecks.title') }}
+				</N8nHeading>
+				<N8nText color="text-base" size="medium">
+					{{ i18n.baseText('settings.workflowAuthoringChecks.description') }}
+				</N8nText>
+			</div>
+			<N8nButton
+				data-test-id="workflow-authoring-checks-create-button"
+				:label="i18n.baseText('settings.workflowAuthoringChecks.createButton')"
+				@click="onCreate"
+			/>
 		</div>
 
-		<div v-if="isLoading && checks.length === 0" :class="$style.emptyState">
+		<div v-if="isLoading && instances.length === 0" :class="$style.emptyState">
 			<N8nText color="text-light">
 				{{ i18n.baseText('settings.workflowAuthoringChecks.loading') }}
 			</N8nText>
 		</div>
 
 		<div
-			v-else-if="checks.length === 0"
+			v-else-if="instances.length === 0"
 			:class="$style.emptyState"
 			data-test-id="workflow-authoring-checks-empty-state"
 		>
@@ -79,59 +119,37 @@ async function onSeverityChange(
 		</div>
 
 		<div
-			v-for="check in checks"
+			v-for="instance in instances"
 			v-else
-			:key="check.checkId"
+			:key="instance.id"
 			:class="$style.settingsSection"
-			:data-test-id="`workflow-authoring-check-row-${check.checkId}`"
+			:data-test-id="`workflow-authoring-check-row-${instance.id}`"
 		>
 			<div :class="$style.settingsContainer">
 				<div :class="$style.settingsContainerInfo">
-					<N8nText :bold="true">{{ check.title }}</N8nText>
-					<N8nText v-if="check.description" size="small" color="text-light">
-						{{ check.description }}
-					</N8nText>
+					<N8nText :bold="true">{{ instance.name }}</N8nText>
 					<N8nText size="small" color="text-light">
-						{{
-							i18n.baseText('settings.workflowAuthoringChecks.defaultSeverity', {
-								interpolate: { severity: severityLabel(check.defaultSeverity) },
-							})
-						}}
+						{{ instance.typeTitle }} · {{ severityLabel(instance.severity) }}
 					</N8nText>
 				</div>
 				<div :class="$style.settingsContainerAction">
-					<N8nSelect
-						:model-value="check.severityOverride ?? 'default'"
-						size="small"
-						:class="$style.severitySelect"
-						:data-test-id="`workflow-authoring-check-severity-${check.checkId}`"
-						:disabled="!check.enabled"
-						@update:model-value="
-							(value: WorkflowAuthoringCheckSeverity | 'default') => onSeverityChange(check, value)
-						"
-					>
-						<N8nOption
-							value="default"
-							:label="
-								i18n.baseText('settings.workflowAuthoringChecks.severity.useDefault', {
-									interpolate: { severity: severityLabel(check.defaultSeverity) },
-								})
-							"
-						/>
-						<N8nOption
-							value="warning"
-							:label="i18n.baseText('workflowAuthoringChecks.severity.warning')"
-						/>
-						<N8nOption
-							value="blocking"
-							:label="i18n.baseText('workflowAuthoringChecks.severity.blocking')"
-						/>
-					</N8nSelect>
+					<N8nButton
+						type="tertiary"
+						:label="i18n.baseText('settings.workflowAuthoringChecks.editAction')"
+						:data-test-id="`workflow-authoring-check-edit-${instance.id}`"
+						@click="onEdit(instance)"
+					/>
+					<N8nButton
+						type="tertiary"
+						:label="i18n.baseText('settings.workflowAuthoringChecks.deleteAction')"
+						:data-test-id="`workflow-authoring-check-delete-${instance.id}`"
+						@click="onDelete(instance)"
+					/>
 					<ElSwitch
-						:model-value="check.enabled"
+						:model-value="instance.enabled"
 						size="large"
-						:data-test-id="`workflow-authoring-check-toggle-${check.checkId}`"
-						@update:model-value="(value) => onToggleEnabled(check, value)"
+						:data-test-id="`workflow-authoring-check-toggle-${instance.id}`"
+						@update:model-value="(value) => onToggleEnabled(instance, value)"
 					/>
 				</div>
 			</div>
@@ -140,11 +158,20 @@ async function onSeverityChange(
 </template>
 
 <style module>
+.headerBar {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	margin-bottom: var(--spacing--xl);
+}
+
 .headerTitle {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--xl);
+	flex: 1;
+	min-width: 0;
 }
 
 .settingsSection {
@@ -180,10 +207,6 @@ async function onSeverityChange(
 	align-items: center;
 	gap: var(--spacing--sm);
 	flex-shrink: 0;
-}
-
-.severitySelect {
-	width: 240px;
 }
 
 .emptyState {

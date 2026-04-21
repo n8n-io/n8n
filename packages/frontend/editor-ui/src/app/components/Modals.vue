@@ -111,7 +111,11 @@ import WorkflowTagsManager from '@/features/shared/tags/components/TagsManager/W
 import WhatsNewModal from '@/app/components/WhatsNewModal.vue';
 import WorkflowActivationConflictingWebhookModal from '@/app/components/WorkflowActivationConflictingWebhookModal.vue';
 import WorkflowAuthoringChecksModal from '@/features/workflows/authoringChecks/components/WorkflowAuthoringChecksModal.vue';
-import { WORKFLOW_AUTHORING_CHECKS_MODAL_KEY } from '@/features/workflows/authoringChecks/authoringChecks.constants';
+import WorkflowCheckFormModal from '@/features/settings/workflowAuthoringChecks/components/WorkflowCheckFormModal.vue';
+import {
+	WORKFLOW_AUTHORING_CHECKS_MODAL_KEY,
+	WORKFLOW_AUTHORING_CHECK_FORM_MODAL_KEY,
+} from '@/features/workflows/authoringChecks/authoringChecks.constants';
 import WorkflowExtractionNameModal from '@/app/components/WorkflowExtractionNameModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionRestoreModal.vue';
 import WorkflowHistoryVersionUnpublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue';
@@ -423,6 +427,12 @@ import InstanceAiCredentialSetupModal, {
 		<ModalRoot :name="WORKFLOW_AUTHORING_CHECKS_MODAL_KEY">
 			<template #default="{ data }">
 				<WorkflowAuthoringChecksModal :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_AUTHORING_CHECK_FORM_MODAL_KEY">
+			<template #default="{ data }">
+				<WorkflowCheckFormModal :data="data" />
 			</template>
 		</ModalRoot>
 

@@ -173,7 +173,7 @@ const onPublishButtonClick = async () => {
 		}
 	}
 
-	await authoringChecksStore.ensureChecksLoaded();
+	await authoringChecksStore.ensureInstancesLoaded();
 
 	if (!authoringChecksStore.hasWorkflowChecksEnabled) {
 		uiStore.openModalWithData({

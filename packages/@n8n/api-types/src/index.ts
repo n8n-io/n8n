@@ -112,15 +112,23 @@ export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
 
 export {
 	WORKFLOW_AUTHORING_CHECK_SEVERITIES,
+	WORKFLOW_CHECK_CONFIG_FIELD_KINDS,
 	workflowCheckViolationSchema,
 	workflowCheckResultSchema,
+	workflowCheckConfigFieldSchema,
+	workflowCheckConfigSchemaSchema,
 	type WorkflowAuthoringCheckSeverity,
 	type WorkflowCheckViolation,
 	type WorkflowCheckResult,
+	type WorkflowCheckConfigFieldKind,
+	type WorkflowCheckConfigField,
+	type WorkflowCheckConfigSchema,
 	type WorkflowAuthoringChecksSummary,
 	type WorkflowAuthoringChecksPreviewResponse,
-	type WorkflowCheckConfigDto,
+	type WorkflowCheckTypeDto,
+	type WorkflowCheckDto,
 	type WorkflowAuthoringChecksListResponse,
+	type WorkflowAuthoringCheckTypesListResponse,
 } from './schemas/workflow-authoring-checks.schema';
 
 export type { BannerName } from './schemas/banner-name.schema';

@@ -1,24 +1,25 @@
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { WorkflowCheck } from './workflow-authoring-checks.types';
+import type { WorkflowCheckTypeKey } from './workflow-authoring-checks.constants';
+import type { WorkflowCheckType } from './workflow-authoring-checks.types';
 
 @Service()
 export class WorkflowCheckRegistry {
-	private readonly checks = new Map<string, WorkflowCheck>();
+	private readonly types = new Map<WorkflowCheckTypeKey, WorkflowCheckType>();
 
-	register(check: WorkflowCheck) {
-		if (this.checks.has(check.id)) {
-			throw new UnexpectedError(`Duplicate workflow check id: ${check.id}`);
+	register(type: WorkflowCheckType) {
+		if (this.types.has(type.type)) {
+			throw new UnexpectedError(`Duplicate workflow check type: ${type.type}`);
 		}
-		this.checks.set(check.id, check);
+		this.types.set(type.type, type);
 	}
 
-	get(id: string): WorkflowCheck | undefined {
-		return this.checks.get(id);
+	getType(typeKey: WorkflowCheckTypeKey): WorkflowCheckType | undefined {
+		return this.types.get(typeKey);
 	}
 
-	list(): WorkflowCheck[] {
-		return [...this.checks.values()];
+	listTypes(): WorkflowCheckType[] {
+		return [...this.types.values()];
 	}
 }

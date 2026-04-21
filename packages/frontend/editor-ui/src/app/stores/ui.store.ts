@@ -63,7 +63,10 @@ import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
-import { WORKFLOW_AUTHORING_CHECKS_MODAL_KEY } from '@/features/workflows/authoringChecks/authoringChecks.constants';
+import {
+	WORKFLOW_AUTHORING_CHECKS_MODAL_KEY,
+	WORKFLOW_AUTHORING_CHECK_FORM_MODAL_KEY,
+} from '@/features/workflows/authoringChecks/authoringChecks.constants';
 import type { WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
@@ -250,6 +253,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			data: {
 				results: [],
 				onConfirm: undefined,
+			},
+		},
+		[WORKFLOW_AUTHORING_CHECK_FORM_MODAL_KEY]: {
+			open: false,
+			data: {
+				mode: 'create',
+				instanceId: undefined,
 			},
 		},
 		[FROM_AI_PARAMETERS_MODAL_KEY]: {

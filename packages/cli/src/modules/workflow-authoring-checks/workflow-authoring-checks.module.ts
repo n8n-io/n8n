@@ -11,11 +11,9 @@ export class WorkflowAuthoringChecksModule implements ModuleInterface {
 
 		const { WorkflowCheckRegistry } = await import('./workflow-check-registry.service');
 		const { WorkflowAuthoringChecksService } = await import('./workflow-authoring-checks.service');
-		const { AiAgentRequiresGuardrailCheck } = await import(
-			'./checks/ai-agent-requires-guardrail.check'
-		);
+		const { NodeHasDirectParentCheck } = await import('./checks/node-has-direct-parent.check');
 
-		Container.get(WorkflowCheckRegistry).register(Container.get(AiAgentRequiresGuardrailCheck));
+		Container.get(WorkflowCheckRegistry).register(Container.get(NodeHasDirectParentCheck));
 
 		Container.get(WorkflowAuthoringChecksProxy).setInner(
 			Container.get(WorkflowAuthoringChecksService),
@@ -23,9 +21,7 @@ export class WorkflowAuthoringChecksModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { WorkflowCheckConfig } = await import(
-			'./database/entities/workflow-check-config.entity'
-		);
-		return [WorkflowCheckConfig] as never;
+		const { WorkflowCheck } = await import('./database/entities/workflow-check.entity');
+		return [WorkflowCheck] as never;
 	}
 }

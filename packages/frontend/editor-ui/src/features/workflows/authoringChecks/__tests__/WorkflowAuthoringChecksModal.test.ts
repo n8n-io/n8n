@@ -40,8 +40,9 @@ function renderWithResults(results: WorkflowCheckResult[], onConfirm?: () => voi
 }
 
 const warningResult: WorkflowCheckResult = {
-	checkId: 'ai-agent-requires-guardrail',
-	title: 'AI Agent requires Guardrails',
+	checkInstanceId: 'ai-agent-requires-guardrail',
+	type: 'node-has-direct-parent',
+	name: 'AI Agent requires Guardrails',
 	severity: 'warning',
 	violations: [
 		{ message: 'Agent "Agent 1" has no Guardrails node connected.', nodeIds: ['node-a'] },
@@ -49,8 +50,9 @@ const warningResult: WorkflowCheckResult = {
 };
 
 const blockingResult: WorkflowCheckResult = {
-	checkId: 'some-blocking-check',
-	title: 'Blocking issue',
+	checkInstanceId: 'some-blocking-check',
+	type: 'node-has-direct-parent',
+	name: 'Blocking issue',
 	severity: 'blocking',
 	violations: [{ message: 'Something is very wrong.' }],
 };
@@ -117,8 +119,9 @@ describe('WorkflowAuthoringChecksModal', () => {
 
 	it('renders one item per result with all violation messages listed', async () => {
 		const result: WorkflowCheckResult = {
-			checkId: 'multi-violation',
-			title: 'Multi violation',
+			checkInstanceId: 'multi-violation',
+			type: 'node-has-direct-parent',
+			name: 'Multi violation',
 			severity: 'warning',
 			violations: [{ message: 'First problem.' }, { message: 'Second problem.' }],
 		};

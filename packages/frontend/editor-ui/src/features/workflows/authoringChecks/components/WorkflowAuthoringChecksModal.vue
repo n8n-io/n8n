@@ -63,12 +63,12 @@ function confirm() {
 				<ul :class="$style.list">
 					<li
 						v-for="result in data.results"
-						:key="result.checkId"
+						:key="result.checkInstanceId"
 						:class="$style.item"
-						:data-test-id="`workflow-authoring-check-${result.checkId}`"
+						:data-test-id="`workflow-authoring-check-${result.checkInstanceId}`"
 					>
 						<div :class="$style.itemHeader">
-							<N8nHeading tag="h4" size="small">{{ result.title }}</N8nHeading>
+							<N8nHeading tag="h4" size="small">{{ result.name }}</N8nHeading>
 							<span
 								:class="[
 									$style.severity,

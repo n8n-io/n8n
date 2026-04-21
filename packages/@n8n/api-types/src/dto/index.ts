@@ -102,7 +102,8 @@ export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.d
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { WorkflowAuthoringChecksPreviewQueryDto } from './workflow-authoring-checks/preview-query.dto';
-export { UpdateWorkflowCheckConfigDto } from './workflow-authoring-checks/update-config.dto';
+export { CreateWorkflowCheckDto } from './workflow-authoring-checks/create-workflow-check.dto';
+export { UpdateWorkflowCheckDto } from './workflow-authoring-checks/update-workflow-check.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';

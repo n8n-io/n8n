@@ -1,8 +1,10 @@
 import type {
+	CreateWorkflowCheckDto,
+	UpdateWorkflowCheckDto,
+	WorkflowAuthoringCheckTypesListResponse,
 	WorkflowAuthoringChecksListResponse,
 	WorkflowAuthoringChecksPreviewResponse,
-	WorkflowAuthoringCheckSeverity,
-	WorkflowCheckConfigDto,
+	WorkflowCheckDto,
 } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -20,7 +22,7 @@ export async function previewWorkflowAuthoringChecks(
 	);
 }
 
-export async function listWorkflowAuthoringChecks(
+export async function listWorkflowChecks(
 	context: IRestApiContext,
 ): Promise<WorkflowAuthoringChecksListResponse> {
 	return await makeRestApiRequest<WorkflowAuthoringChecksListResponse>(
@@ -30,18 +32,45 @@ export async function listWorkflowAuthoringChecks(
 	);
 }
 
-export async function updateWorkflowAuthoringCheckConfig(
+export async function listWorkflowCheckTypes(
 	context: IRestApiContext,
-	checkId: string,
-	patch: {
-		enabled?: boolean;
-		severityOverride?: WorkflowAuthoringCheckSeverity | null;
-	},
-): Promise<WorkflowCheckConfigDto> {
-	return await makeRestApiRequest<WorkflowCheckConfigDto>(
+): Promise<WorkflowAuthoringCheckTypesListResponse> {
+	return await makeRestApiRequest<WorkflowAuthoringCheckTypesListResponse>(
+		context,
+		'GET',
+		'/workflow-authoring-checks/types',
+	);
+}
+
+export async function createWorkflowCheck(
+	context: IRestApiContext,
+	body: CreateWorkflowCheckDto,
+): Promise<WorkflowCheckDto> {
+	return await makeRestApiRequest<WorkflowCheckDto>(
+		context,
+		'POST',
+		'/workflow-authoring-checks',
+		body as unknown as Record<string, unknown>,
+	);
+}
+
+export async function updateWorkflowCheck(
+	context: IRestApiContext,
+	id: string,
+	patch: UpdateWorkflowCheckDto,
+): Promise<WorkflowCheckDto> {
+	return await makeRestApiRequest<WorkflowCheckDto>(
 		context,
 		'PATCH',
-		`/workflow-authoring-checks/${encodeURIComponent(checkId)}`,
-		patch,
+		`/workflow-authoring-checks/${encodeURIComponent(id)}`,
+		patch as unknown as Record<string, unknown>,
+	);
+}
+
+export async function deleteWorkflowCheck(context: IRestApiContext, id: string): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/workflow-authoring-checks/${encodeURIComponent(id)}`,
 	);
 }

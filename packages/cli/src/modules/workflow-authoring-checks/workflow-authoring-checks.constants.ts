@@ -1,6 +1,5 @@
-export const WORKFLOW_AUTHORING_CHECK_IDS = {
-	AiAgentRequiresGuardrail: 'ai-agent-requires-guardrail',
+export const WORKFLOW_CHECK_TYPES = {
+	NodeHasDirectParent: 'node-has-direct-parent',
 } as const;
 
-export type WorkflowAuthoringCheckId =
-	(typeof WORKFLOW_AUTHORING_CHECK_IDS)[keyof typeof WORKFLOW_AUTHORING_CHECK_IDS];
+export type WorkflowCheckTypeKey = (typeof WORKFLOW_CHECK_TYPES)[keyof typeof WORKFLOW_CHECK_TYPES];
