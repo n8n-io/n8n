@@ -2445,6 +2445,9 @@ importers:
       '@chat-adapter/state-memory':
         specifier: ^4.20.2
         version: 4.23.0
+      '@chat-adapter/telegram':
+        specifier: ^4.20.2
+        version: 4.23.0
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)
@@ -6385,6 +6388,9 @@ packages:
 
   '@chat-adapter/state-memory@4.23.0':
     resolution: {integrity: sha512-IlAVV4MGpjdassiI4haNAzWdFl66xFAfqM5DnWAGZdndkQj0LNMigcxhOgyS++yQUUWWvT1yRKwCswenCvxWVw==}
+
+  '@chat-adapter/telegram@4.23.0':
+    resolution: {integrity: sha512-9ntCc+LlwSrb5Y3OFFamAt0eyA+c8V0S5XbA5O12DyPFMmCbe7ibQfbZv9qwYKgxvyBLgPG2RfwYp1ocrDs1/A==}
 
   '@chromatic-com/storybook@4.1.3':
     resolution: {integrity: sha512-hc0HO9GAV9pxqDE6fTVOV5KeLpTiCfV8Jrpk5ogKLiIgeq2C+NPjpt74YnrZTjiK8E19fYcMP+2WY9ZtX7zHmw==}
@@ -25761,6 +25767,13 @@ snapshots:
 
   '@chat-adapter/state-memory@4.23.0':
     dependencies:
+      chat: 4.23.0
+    transitivePeerDependencies:
+      - supports-color
+
+  '@chat-adapter/telegram@4.23.0':
+    dependencies:
+      '@chat-adapter/shared': 4.23.0
       chat: 4.23.0
     transitivePeerDependencies:
       - supports-color

@@ -31,10 +31,11 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
-import { AgentJsonConfigSchema } from './json-config/agent-json-config';
+import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
 import type {
 	AgentJsonConfig,
 	AgentJsonMemoryConfig,
@@ -48,6 +49,21 @@ import {
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
+
+interface InjectRuntimeDependenciesParams {
+	agent: agents.Agent;
+	agentId: string;
+	projectId: string;
+	credentialProvider: CredentialProvider;
+	nodeToolsEnabled: boolean;
+	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
+	integrationType?: string;
+}
+
+/** Derive a stable thread ID for the test-chat of a given agent. */
+export function chatThreadId(agentId: string): string {
+	return `test-${agentId}`;
+}
 
 export interface ExecuteAgentData {
 	response: string;
@@ -69,9 +85,12 @@ export class AgentsService {
 		{ agent: agents.Agent; agentId: string; userId?: string }
 	>(30 * Time.minutes.toMilliseconds);
 
-	/** Cache key for draft/builder executions. */
-	private runtimeKey(agentId: string, userId?: string): string {
-		return userId ? `${agentId}:${userId}` : agentId;
+	/** Build a cache key that includes the user and platform so different contexts get isolated runtimes. */
+	private runtimeKey(agentId: string, userId?: string, integrationType?: string): string {
+		const parts = [agentId];
+		if (userId) parts.push(userId);
+		if (integrationType) parts.push(integrationType);
+		return parts.join(':');
 	}
 
 	/** Remove all cached draft runtimes for an agent (all users). */
@@ -111,6 +130,7 @@ export class AgentsService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
+		private readonly agentsToolsService: AgentsToolsService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 	) {}
@@ -276,6 +296,19 @@ export class AgentsService {
 
 		this.clearRuntimes(agentId);
 
+		// Remove the test-chat thread + its messages so deleting an agent
+		// doesn't leave orphaned rows in agents_threads / agents_messages.
+		// Swallow errors — the agent is already gone; best-effort cleanup.
+		// Log at warn level so orphaned rows are observable in production.
+		try {
+			await this.clearAllChatMessages(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to clear test chat on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
+
 		this.logger.debug('Deleted SDK agent', { agentId, projectId });
 
 		return true;
@@ -354,12 +387,18 @@ export class AgentsService {
 	 * Inject platform-level tools and storage into an agent instance.
 	 * Workflow and node tools are resolved earlier via `makeToolResolver()` inside
 	 * `fromSchema()`, so this method only handles host-side singletons.
+	 *
+	 * `nodeToolsEnabled` comes from the agent's `config.nodeTools.enabled` flag
+	 * (opt-in, defaults to false) — see {@link isNodeToolsEnabled}.
 	 */
-	private async injectRuntimeDependencies(agent: agents.Agent, agentId: string): Promise<void> {
+	private async injectRuntimeDependencies(params: InjectRuntimeDependenciesParams): Promise<void> {
+		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
+			params;
+
 		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
 		try {
 			const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
-			agent.tool(createRichInteractionTool());
+			agent.tool(createRichInteractionTool(integrationType));
 		} catch (toolError) {
 			this.logger.warn('Failed to inject rich_interaction tool', {
 				agentId,
@@ -367,10 +406,28 @@ export class AgentsService {
 			});
 		}
 
+		if (nodeToolsEnabled) {
+			this.attachNodeToolChain(agent, credentialProvider, projectId);
+		}
+
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage);
 		}
+	}
+
+	/**
+	 * Attaches the built-in node tool chain (search_nodes, get_node_types,
+	 * list_credentials, run_node_tool) so the agent can discover and execute
+	 * n8n nodes on demand. Sourced from {@link AgentsToolsService}, which in
+	 * turn delegates to `NodeCatalogService`.
+	 */
+	private attachNodeToolChain(
+		agent: agents.Agent,
+		credentialProvider: CredentialProvider,
+		projectId: string,
+	): void {
+		agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
 	}
 
 	/**
@@ -431,8 +488,9 @@ export class AgentsService {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		integrationType?: string,
 	): AsyncGenerator<StreamChunk> {
-		const key = this.runtimeKey(agentId, userId);
+		const key = this.runtimeKey(agentId, userId, integrationType);
 		let runtime = this.runtimes.get(key);
 		if (!runtime) {
 			// Scope the lookup to the project so an agent from a different project
@@ -444,6 +502,7 @@ export class AgentsService {
 				agentEntity,
 				credentialProvider,
 				userId,
+				integrationType,
 			);
 
 			// Cache the runtime for subsequent calls
@@ -453,6 +512,31 @@ export class AgentsService {
 		}
 
 		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId);
+	}
+
+	/**
+	 * Return persisted test-chat messages for an agent scoped to the current
+	 * user. The test-chat thread is shared across users (keyed on agentId) but
+	 * each message is tagged with the originating user's id as resourceId, so
+	 * we filter here to give every user their own private conversation view.
+	 */
+	async getChatMessages(agentId: string, userId: string) {
+		return await this.n8nMemory.getMessages(chatThreadId(agentId), { resourceId: userId });
+	}
+
+	/**
+	 * Clear the current user's test-chat messages for an agent. The thread row
+	 * stays so other users' histories on the same thread are preserved.
+	 */
+	async clearChatMessages(agentId: string, userId: string) {
+		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId), userId);
+	}
+
+	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
+	async clearAllChatMessages(agentId: string) {
+		const threadId = chatThreadId(agentId);
+		await this.n8nMemory.deleteMessagesByThread(threadId);
+		await this.n8nMemory.deleteThread(threadId);
 	}
 
 	/**
@@ -468,6 +552,7 @@ export class AgentsService {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		integrationType?: string,
 	): AsyncGenerator<StreamChunk> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
@@ -477,16 +562,26 @@ export class AgentsService {
 			throw new NotFoundError(`Agent ${agentId} is not published`);
 		}
 
-		// Always reconstruct from the published snapshot — no caching.
-		// Integration traffic must always run the published version, never a cached draft.
-		const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
-		const agentInstance = await this.reconstructFromConfig(
-			publishedAgentData,
-			credentialProvider,
-			userId,
-		);
+		// Reconstruct from the published snapshot and cache the runtime so that
+		// a follow-up `resumeForChat` (HITL button click) can find it via
+		// `findRuntimeForAgent`. Integration traffic only ever runs the published
+		// version — drafts stay in their own cache under different keys.
+		const key = this.runtimeKey(agentId, userId, integrationType);
+		let runtime = this.runtimes.get(key);
+		if (!runtime) {
+			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
+			const agentInstance = await this.reconstructFromConfig(
+				publishedAgentData,
+				credentialProvider,
+				userId,
+				integrationType,
+			);
+			this.runtimes.set(key, { agent: agentInstance, agentId, userId });
+			runtime = this.runtimes.get(key);
+			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
+		}
 
-		yield* this.streamChatResponse(agentInstance, agentId, message, threadId, userId);
+		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId);
 	}
 
 	/**
@@ -864,6 +959,7 @@ export class AgentsService {
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		userId?: string,
+		integrationType?: string,
 	): Promise<agents.Agent> {
 		const config = agentEntity.schema;
 		if (!config) {
@@ -895,7 +991,14 @@ export class AgentsService {
 			memoryFactory: this.getMemoryFactory(),
 		});
 
-		await this.injectRuntimeDependencies(reconstructed, agentEntity.id);
+		await this.injectRuntimeDependencies({
+			agent: reconstructed,
+			agentId: agentEntity.id,
+			projectId: agentEntity.projectId,
+			credentialProvider,
+			nodeToolsEnabled: isNodeToolsEnabled(config.config),
+			integrationType,
+		});
 
 		return reconstructed;
 	}

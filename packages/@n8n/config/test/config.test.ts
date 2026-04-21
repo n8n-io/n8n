@@ -518,6 +518,7 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
+			modules: [],
 		},
 	} satisfies GlobalConfigShape;
 

@@ -964,6 +964,206 @@ describe('generateSingleVersionSchemaFile', () => {
 	});
 });
 
+describe('collection sub-fields with typeOptions.multipleValues', () => {
+	const baseNodeProps = {
+		group: ['transform'] as string[],
+		inputs: ['main'] as string[],
+		outputs: ['main'] as string[],
+	};
+
+	it('generates z.array(stringOrExpression) for a string sub-field with multipleValues: true', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'additionalFields',
+					displayName: 'Additional Fields',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'attendees',
+							displayName: 'Attendees',
+							type: 'string',
+							default: '',
+							typeOptions: { multipleValues: true },
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('z.array(stringOrExpression)');
+		// Should NOT just be a plain stringOrExpression for attendees
+		expect(code).not.toMatch(/attendees:\s*stringOrExpression[^)]/);
+	});
+
+	it('generates stringOrExpression (no array) for a string sub-field without multipleValues', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'additionalFields',
+					displayName: 'Additional Fields',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'description',
+							displayName: 'Description',
+							type: 'string',
+							default: '',
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('description: stringOrExpression');
+		expect(code).not.toContain('z.array(stringOrExpression)');
+	});
+
+	it('generates z.array(numberOrExpression) for a number sub-field with multipleValues: true', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'config',
+					displayName: 'Config',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'ports',
+							displayName: 'Ports',
+							type: 'number',
+							default: 0,
+							typeOptions: { multipleValues: true },
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('z.array(numberOrExpression)');
+	});
+
+	it('generates z.array(...) for an options sub-field with multipleValues: true', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'additionalFields',
+					displayName: 'Additional Fields',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'labels',
+							displayName: 'Labels',
+							type: 'options',
+							default: '',
+							typeOptions: { multipleValues: true },
+							options: [
+								{ name: 'Personal', value: 'personal' },
+								{ name: 'Work', value: 'work' },
+							],
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('z.array(');
+	});
+
+	it('generates z.array(z.string()) for a string sub-field with multipleValues: true and noDataExpression: true', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'additionalFields',
+					displayName: 'Additional Fields',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'attendees',
+							displayName: 'Attendees',
+							type: 'string',
+							default: '',
+							noDataExpression: true,
+							typeOptions: { multipleValues: true },
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('z.array(z.string())');
+		// Should not use stringOrExpression inside the array (the bug)
+		expect(code).not.toContain('z.array(stringOrExpression)');
+	});
+
+	it('generates z.array(z.number()) for a number sub-field with multipleValues: true and noDataExpression: true', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'config',
+					displayName: 'Config',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							name: 'ports',
+							displayName: 'Ports',
+							type: 'number',
+							default: 0,
+							noDataExpression: true,
+							typeOptions: { multipleValues: true },
+						} as NodeProperty,
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('z.array(z.number())');
+		// Should not use numberOrExpression inside the array (the bug)
+		expect(code).not.toContain('z.array(numberOrExpression)');
+	});
+});
+
 describe('generateSubnodeConfigSchemaCode', () => {
 	it('generates static schema when AI inputs have no displayOptions', () => {
 		const aiInputTypes = [

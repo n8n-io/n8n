@@ -102,6 +102,11 @@ export const AgentJsonConfigSchema = z.object({
 			thinking: ThinkingConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(20).optional(),
 			requireToolApproval: z.boolean().optional(),
+			nodeTools: z
+				.object({
+					enabled: z.boolean(),
+				})
+				.optional(),
 		})
 		.optional(),
 });
@@ -137,4 +142,15 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 		expected: 'expected' in issue ? String(issue.expected) : undefined,
 		received: 'received' in issue ? String(issue.received) : undefined,
 	}));
+}
+
+/**
+ * Returns whether the built-in node tool chain (search_nodes, get_node_types,
+ * list_credentials, run_node_tool) should be attached to an agent runtime.
+ *
+ * Absent or partial config defaults to disabled — only an explicit
+ * `nodeTools: { enabled: true }` opts an agent in.
+ */
+export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
+	return config?.nodeTools?.enabled === true;
 }

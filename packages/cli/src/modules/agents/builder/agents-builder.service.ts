@@ -42,10 +42,7 @@ export class AgentsBuilderService {
 	 */
 	async clearBuilderMessages(agentId: string) {
 		const threadId = builderThreadId(agentId);
-		const messages = await this.n8nMemory.getMessages(threadId);
-		if (messages.length > 0) {
-			await this.n8nMemory.deleteMessages(messages.map((m) => m.id));
-		}
+		await this.n8nMemory.deleteMessagesByThread(threadId);
 		await this.n8nMemory.deleteThread(threadId);
 	}
 
@@ -61,8 +58,6 @@ export class AgentsBuilderService {
 		if (!agent) {
 			throw new Error(`Agent "${agentId}" not found`);
 		}
-
-		await this.agentsBuilderToolsService.initialize();
 
 		// The builder is a built-in, system-level agent — it is driven by an
 		// env-var Anthropic key and never uses project credentials. This keeps

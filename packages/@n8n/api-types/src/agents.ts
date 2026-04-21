@@ -51,6 +51,9 @@ export interface AgentJsonConfig {
 		};
 		toolCallConcurrency?: number;
 		requireToolApproval?: boolean;
+		nodeTools?: {
+			enabled: boolean;
+		};
 	};
 }
 
@@ -67,4 +70,34 @@ export interface AgentPublishedVersionDto {
 	provider: string | null;
 	credentialId: string | null;
 	publishedById: string | null;
+}
+
+/**
+ * A single part inside a persisted chat/builder message. Mirrors the content
+ * parts emitted by the agents SDK; known `type` values are enumerated for
+ * autocomplete but the field is left open because new SDK versions may
+ * introduce additional kinds.
+ */
+export interface AgentPersistedMessageContentPart {
+	type: 'text' | 'reasoning' | 'tool-call' | 'tool-result' | (string & {});
+	text?: string;
+	toolName?: string;
+	toolCallId?: string;
+	input?: unknown;
+	result?: unknown;
+}
+
+/**
+ * Persisted chat/builder message shape returned by
+ * `GET /projects/:projectId/agents/v2/:agentId/chat/messages` and
+ * `GET /projects/:projectId/agents/v2/:agentId/build/messages`. The UI
+ * converts these into its own display-oriented representation.
+ *
+ * Distinct from the request-body `AgentChatMessageDto` (a single outbound
+ * message) — this is the history shape, one entry per persisted turn.
+ */
+export interface AgentPersistedMessageDto {
+	id: string;
+	role: 'user' | 'assistant' | 'tool' | (string & {});
+	content: AgentPersistedMessageContentPart[];
 }
