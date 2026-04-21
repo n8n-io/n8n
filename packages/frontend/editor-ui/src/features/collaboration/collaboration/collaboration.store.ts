@@ -288,7 +288,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	// Updates are not sent to the writer's own tab,
 	// so there should be no risk of overwriting local changes.
 	async function handleWorkflowUpdate() {
-		if (!collaboratingWorkflowId.value) {
+		if (isCurrentTabWriter.value || !collaboratingWorkflowId.value) {
 			return;
 		}
 

@@ -122,14 +122,6 @@ describe('SSEPush', () => {
 			expect(connection2.res.write).toHaveBeenCalledWith(`data: ${expectedMsg}\n\n`);
 			expect(connection2.res.flush).toHaveBeenCalled();
 		});
-
-		it('excludes connection matching excludePushRef when sending to users', () => {
-			ssePush.sendToUsers(pushMessage, [userId], pushRef);
-
-			expect(connection.res.write).not.toHaveBeenCalledWith(`data: ${expectedMsg}\n\n`);
-			expect(connection2.res.write).toHaveBeenCalledWith(`data: ${expectedMsg}\n\n`);
-			expect(connection2.res.flush).toHaveBeenCalled();
-		});
 	});
 
 	it('pings all connections', () => {
