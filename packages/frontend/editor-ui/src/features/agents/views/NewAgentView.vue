@@ -8,6 +8,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
 import { createAgent } from '../composables/useAgentApi';
 import { AGENT_BUILDER_VIEW } from '../constants';
 import { useAgentBuilderSettingsStore } from '../agentBuilderSettings.store';
@@ -19,6 +20,7 @@ const rootStore = useRootStore();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const { showError } = useToast();
 const builderSettingsStore = useAgentBuilderSettingsStore();
 
 const projectId = computed(() => projectsStore.personalProject?.id ?? '');
@@ -31,7 +33,9 @@ const isCreating = ref(false);
 onMounted(() => {
 	// Refresh the readiness signal so the empty-state CTA reflects the latest
 	// admin configuration. Never blocks the rest of the view.
-	void builderSettingsStore.fetchStatus().catch(() => {});
+	void builderSettingsStore.fetchStatus().catch((error: unknown) => {
+		showError(error, locale.baseText('settings.agentBuilder.loadError'));
+	});
 });
 
 interface SuggestionTemplate {

@@ -147,17 +147,13 @@ export class AgentsBuilderSettingsService {
 	 * must be one the agents runtime can actually map a credential for —
 	 * something the api-types schema deliberately doesn't encode.
 	 */
-	async updateAdminSettings(
-		payload: AgentBuilderAdminSettingsUpdateRequest,
-	): Promise<AgentBuilderAdminSettingsResponse & { settings: AgentBuilderAdminSettings }> {
+	async updateAdminSettings(payload: AgentBuilderAdminSettingsUpdateRequest): Promise<void> {
 		if (payload.mode === 'custom' && !isSupportedAgentProvider(payload.provider)) {
 			throw new UnprocessableRequestError(
 				`Unsupported provider "${payload.provider}". Supported: ${SUPPORTED_AGENT_PROVIDERS.join(', ')}`,
 			);
 		}
 		await this.persist(payload);
-		// Caller re-reads via getAdminSettings to compute `isConfigured` (depends on user RBAC).
-		return { settings: payload, isConfigured: false };
 	}
 
 	/**
@@ -233,7 +229,7 @@ export class AgentsBuilderSettingsService {
 	 */
 	private async resolveProxyModel(user: User): Promise<ModelConfig> {
 		const client = await this.aiService.getClient();
-		const baseURL = client.getApiProxyBaseUrl() + '/anthropic/v1';
+		const baseURL = client.getApiProxyBaseUrl().replace(/\/$/, '') + '/anthropic/v1';
 
 		const tokenManager = new ProxyTokenManager(async () => {
 			return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
@@ -241,13 +237,7 @@ export class AgentsBuilderSettingsService {
 
 		const httpProxyFetch = getProxyFetch();
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const { createAnthropic } = require('@ai-sdk/anthropic') as {
-			createAnthropic: (opts: {
-				apiKey?: string;
-				baseURL?: string;
-				fetch?: typeof globalThis.fetch;
-			}) => (model: string) => unknown;
-		};
+		const { createAnthropic } = require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
 
 		const provider = createAnthropic({
 			baseURL,

@@ -38,7 +38,7 @@ export class AgentsBuilderSettingsController {
 		// pattern as `CreateDestinationDto` in the log-streaming module.)
 		const parseResult = AgentBuilderAdminSettingsUpdateDto.safeParse(req.body);
 		if (!parseResult.success) {
-			throw new BadRequestError(parseResult.error.errors[0].message);
+			throw new BadRequestError(parseResult.error.errors[0]?.message ?? 'Invalid request body');
 		}
 		await this.settingsService.updateAdminSettings(parseResult.data);
 		return await this.settingsService.getAdminSettings(req.user);

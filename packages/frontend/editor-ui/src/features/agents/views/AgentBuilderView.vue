@@ -315,7 +315,9 @@ async function initialize() {
 
 	// Refresh builder readiness so the empty-state CTA reflects the latest
 	// admin configuration. Never blocks the rest of the load.
-	void builderSettingsStore.fetchStatus().catch(() => {});
+	void builderSettingsStore.fetchStatus().catch((error: unknown) => {
+		showError(error, locale.baseText('settings.agentBuilder.loadError'));
+	});
 
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
