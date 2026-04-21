@@ -770,7 +770,12 @@ export async function analyzeWorkflow(
 				req.credentialType !== undefined ||
 				req.isTrigger ||
 				(req.parameterIssues && Object.keys(req.parameterIssues).length > 0),
-		);
+		)
+		// Hide cards the user has nothing to do on: credentials already set and
+		// tested, no parameter issues, not a trigger awaiting testing. Trigger
+		// steps are always kept — triggers require user testing regardless of
+		// credential state.
+		.filter((req) => !!req.needsAction || (req.isTrigger && !!req.isTestable));
 
 	sortByExecutionOrder(
 		setupRequests,
