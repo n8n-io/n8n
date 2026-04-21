@@ -206,7 +206,13 @@ export class MessageEventBusLogWriter {
 		if (logFileName && existsSync(logFileName)) {
 			try {
 				const stream = createReadStream(logFileName);
-				stream.on('error', () => {}); // absorb errors after destroy()
+				stream.on('error', (error) => {
+					if ((error as NodeJS.ErrnoException).code !== 'ERR_STREAM_DESTROYED') {
+						this.logger.error(`Error reading logged messages from file: ${logFileName}`, {
+							error,
+						});
+					}
+				});
 				const rl = readline.createInterface({
 					input: stream,
 					crlfDelay: Infinity,

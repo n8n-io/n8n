@@ -17,13 +17,9 @@ class LogWriterConfig {
 	logBaseName: string = 'n8nEventLog';
 
 	/**
-	 * Maximum number of messages kept in memory while parsing a single event log file
-	 * during startup recovery. If exceeded, parsing of that file is aborted to avoid
-	 * OOM on instances with legacy oversized logs containing unconfirmed messages.
-	 * The working set is the count of concurrently unconfirmed messages at a given
-	 * point during streaming (confirms prune it as they arrive), so healthy workloads
-	 * stay in the tens-to-hundreds range. The default leaves ~10-100x headroom and
-	 * caps parse-time heap at ~40MB.
+	 * Safety tripwire: per-file cap on concurrently unconfirmed messages held in memory
+	 * during startup log parsing. Aborts the file if exceeded, to prevent OOM on legacy
+	 * logs with many orphaned messages. Tune up if healthy workloads hit false positives.
 	 */
 	@Env('N8N_EVENTBUS_LOGWRITER_MAXMESSAGESPERPARSE')
 	maxMessagesPerParse: number = 10_000;
