@@ -77,6 +77,19 @@ describe('useStorage', () => {
 		expect(localStorage.getItem(key)).toBeNull();
 	});
 
+	it('should fall back when localStorage setItem throws (private-browsing mode)', () => {
+		const throwingStorage: Storage = {
+			...localStorageMock,
+			setItem: vi.fn(() => {
+				throw new DOMException('QuotaExceededError');
+			}),
+		};
+		vi.stubGlobal('localStorage', throwingStorage);
+
+		const data = useStorage('test-key');
+		expect(data.value).toBeNull();
+	});
+
 	it('should fall back when localStorage access throws', () => {
 		const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
 

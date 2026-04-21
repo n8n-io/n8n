@@ -19,15 +19,26 @@ function getSafeStorage(): Storage {
 	}
 
 	if (
-		storage &&
-		typeof storage.getItem === 'function' &&
-		typeof storage.setItem === 'function' &&
-		typeof storage.removeItem === 'function'
+		!storage ||
+		typeof storage.getItem !== 'function' ||
+		typeof storage.setItem !== 'function' ||
+		typeof storage.removeItem !== 'function'
 	) {
-		return storage;
+		return fallbackStorage;
 	}
 
-	return fallbackStorage;
+	// In private-browsing mode (Safari, Firefox) localStorage exists and has
+	// the right methods, but setItem throws QuotaExceededError. Probe once so
+	// callers never see a storage that appears valid but throws on write.
+	try {
+		const probe = '__n8n_storage_probe__';
+		storage.setItem(probe, '1');
+		storage.removeItem(probe);
+	} catch {
+		return fallbackStorage;
+	}
+
+	return storage;
 }
 
 export function useStorage(key: string): Ref<string | null> {
