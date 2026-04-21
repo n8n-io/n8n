@@ -859,6 +859,9 @@ export interface OrchestrationContext {
 	/** Summaries of currently running background tasks in this thread.
 	 *  Used to give sub-agents thread-state awareness (what else is happening). */
 	getRunningTaskSummaries?: () => Array<{ taskId: string; role: string; goal?: string }>;
+	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Propagated to sub-agents
+	 *  so they can resolve "now" consistently with the orchestrator. */
+	timeZone?: string;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────
