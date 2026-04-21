@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 
+import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import { loadSlackAdapter } from '../esm-loader';
-import { Integration, type IntegrationContext } from '../integration';
 
 /**
  * Slack platform integration.
@@ -11,7 +11,7 @@ import { Integration, type IntegrationContext } from '../integration';
  * is required.
  */
 @Service()
-export class SlackIntegration extends Integration {
+export class SlackIntegration extends AgentChatIntegration {
 	readonly type = 'slack';
 
 	readonly credentialTypes = ['slackApi', 'slackOAuth2Api'];
@@ -31,7 +31,7 @@ export class SlackIntegration extends Integration {
 		'dropdown selects, radio buttons, images, or formatted content cards. ' +
 		"The user's response (button click or selection) is returned to you.";
 
-	async createAdapter(ctx: IntegrationContext): Promise<unknown> {
+	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
 		const signingSecret = this.extractSigningSecret(ctx.credential);
 		const { createSlackAdapter } = await loadSlackAdapter();

@@ -2,8 +2,8 @@ import { Service } from '@n8n/di';
 
 import type { SuspendComponent } from './component-mapper';
 
-/** Per-connection context handed to Integration hooks. */
-export interface IntegrationContext {
+/** Per-connection context handed to AgentChatIntegration hooks. */
+export interface AgentChatIntegrationContext {
 	agentId: string;
 	projectId: string;
 	credential: Record<string, unknown>;
@@ -20,7 +20,7 @@ export interface IntegrationContext {
  *
  * The concrete subclasses live under `./platforms/`.
  */
-export abstract class Integration {
+export abstract class AgentChatIntegration {
 	/** Platform identifier (`'slack'`, `'telegram'`, …). */
 	abstract readonly type: string;
 
@@ -41,13 +41,13 @@ export abstract class Integration {
 	readonly needsShortCallbackData: boolean = false;
 
 	/** Build the Chat SDK adapter for this platform. */
-	abstract createAdapter(ctx: IntegrationContext): Promise<unknown>;
+	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
 
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */
-	onAfterConnect?(ctx: IntegrationContext): Promise<void>;
+	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/** Optional hook run BEFORE `chat.shutdown()`. Errors here are logged, not thrown. */
-	onBeforeDisconnect?(ctx: IntegrationContext): Promise<void>;
+	onBeforeDisconnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/**
 	 * Optional per-platform component normalization (applied before toCard).
@@ -58,31 +58,31 @@ export abstract class Integration {
 }
 
 /**
- * Singleton registry of Integration implementations.
+ * Singleton registry of AgentChatIntegration implementations.
  *
  * Platforms register themselves during module init (`agents.module.ts`).
  * Consumers (ChatIntegrationService, ComponentMapper, createRichInteractionTool,
  * AgentChatBridge) look up integrations by type.
  */
 @Service()
-export class AgentIntegrationRegistry {
-	private readonly integrations = new Map<string, Integration>();
+export class ChatIntegrationRegistry {
+	private readonly integrations = new Map<string, AgentChatIntegration>();
 
-	register(integration: Integration): void {
+	register(integration: AgentChatIntegration): void {
 		this.integrations.set(integration.type, integration);
 	}
 
-	get(type: string): Integration | undefined {
+	get(type: string): AgentChatIntegration | undefined {
 		return this.integrations.get(type);
 	}
 
-	require(type: string): Integration {
+	require(type: string): AgentChatIntegration {
 		const integration = this.integrations.get(type);
 		if (!integration) throw new Error(`Unknown integration type: ${type}`);
 		return integration;
 	}
 
-	list(): Integration[] {
+	list(): AgentChatIntegration[] {
 		return [...this.integrations.values()];
 	}
 }

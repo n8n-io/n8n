@@ -3,9 +3,9 @@ import { Service } from '@n8n/di';
 
 import { UrlService } from '@/services/url.service';
 
+import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
 import { loadTelegramAdapter } from '../esm-loader';
-import { Integration, type IntegrationContext } from '../integration';
 
 /**
  * Telegram platform integration.
@@ -16,7 +16,7 @@ import { Integration, type IntegrationContext } from '../integration';
  * `WEBHOOK_URL` is configured, otherwise it falls back to polling for local dev.
  */
 @Service()
-export class TelegramIntegration extends Integration {
+export class TelegramIntegration extends AgentChatIntegration {
 	readonly type = 'telegram';
 
 	readonly credentialTypes = ['telegramApi'];
@@ -37,14 +37,14 @@ export class TelegramIntegration extends Integration {
 		super();
 	}
 
-	async createAdapter(ctx: IntegrationContext): Promise<unknown> {
+	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
 		const mode = this.getMode();
 		const { createTelegramAdapter } = await loadTelegramAdapter();
 		return createTelegramAdapter({ botToken, mode });
 	}
 
-	async onAfterConnect(ctx: IntegrationContext): Promise<void> {
+	async onAfterConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		if (this.getMode() !== 'webhook') return;
 		const botToken = this.extractBotToken(ctx.credential);
 		const webhookUrl = ctx.webhookUrlFor('telegram');

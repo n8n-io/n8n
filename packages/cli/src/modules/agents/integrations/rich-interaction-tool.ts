@@ -2,7 +2,7 @@ import { Tool } from '@n8n/agents';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
-import { AgentIntegrationRegistry } from './integration';
+import { ChatIntegrationRegistry } from './agent-chat-integration';
 
 // Conservative default — works on every platform that supports buttons.
 // Used when the tool is constructed without a platform hint.
@@ -76,7 +76,7 @@ function buildComponentSchema(supportedComponents: string[]) {
 }
 
 export function createRichInteractionTool(platform?: string) {
-	const integration = platform ? Container.get(AgentIntegrationRegistry).get(platform) : undefined;
+	const integration = platform ? Container.get(ChatIntegrationRegistry).get(platform) : undefined;
 	const supportedComponents = integration?.supportedComponents ?? DEFAULT_SUPPORTED_COMPONENTS;
 	const description = integration?.description ?? DEFAULT_DESCRIPTION;
 	const componentSchema = buildComponentSchema(supportedComponents);

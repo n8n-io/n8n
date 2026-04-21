@@ -8,9 +8,12 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { UrlService } from '@/services/url.service';
 
 import { AgentChatBridge } from './agent-chat-bridge';
+import {
+	ChatIntegrationRegistry,
+	type AgentChatIntegrationContext,
+} from './agent-chat-integration';
 import { ComponentMapper } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
-import { AgentIntegrationRegistry, type IntegrationContext } from './integration';
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -57,7 +60,7 @@ export class ChatIntegrationService {
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly urlService: UrlService,
-		private readonly integrationRegistry: AgentIntegrationRegistry,
+		private readonly integrationRegistry: ChatIntegrationRegistry,
 	) {}
 
 	private connectionKey(agentId: string, type: string, credentialId: string): string {
@@ -94,7 +97,7 @@ export class ChatIntegrationService {
 		// Decrypt the integration credential to get platform tokens
 		const decryptedData = await this.decryptCredential(credentialId, user);
 
-		const ctx: IntegrationContext = {
+		const ctx: AgentChatIntegrationContext = {
 			agentId,
 			projectId,
 			credential: decryptedData,

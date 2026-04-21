@@ -24,10 +24,10 @@ export class AgentsModule implements ModuleInterface {
 
 		// Populate the integration registry with supported chat platforms.
 		// Adding a new platform is adding one subclass + one register() call.
-		const { AgentIntegrationRegistry } = await import('./integrations/integration');
+		const { ChatIntegrationRegistry } = await import('./integrations/agent-chat-integration');
 		const { SlackIntegration } = await import('./integrations/platforms/slack-integration');
 		const { TelegramIntegration } = await import('./integrations/platforms/telegram-integration');
-		const registry = Container.get(AgentIntegrationRegistry);
+		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 

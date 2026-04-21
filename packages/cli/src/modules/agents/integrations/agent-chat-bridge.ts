@@ -4,9 +4,9 @@ import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
+import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper } from './component-mapper';
-import { AgentIntegrationRegistry } from './integration';
 
 /**
  * Subset of `AgentsService` consumed by the bridge.
@@ -113,7 +113,7 @@ export class AgentChatBridge {
 		private readonly n8nProjectId: string,
 		private readonly integrationType: string,
 	) {
-		const integration = Container.get(AgentIntegrationRegistry).get(integrationType);
+		const integration = Container.get(ChatIntegrationRegistry).get(integrationType);
 		if (integration?.needsShortCallbackData) {
 			this.callbackStore = new CallbackStore();
 		}
