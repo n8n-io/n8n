@@ -128,14 +128,14 @@ watch(
 .dev-panel-popover {
 	position: fixed;
 	z-index: 2147483646;
-	background: var(--color--background);
+	background: var(--background--surface);
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	box-shadow: 0 10px 30px rgb(0 0 0 / 18%);
+	box-shadow: 0 10px 30px color-mix(in srgb, var(--color--text) 18%, transparent);
 	padding: var(--spacing--xs);
 	font-family: var(--font-family);
 	font-size: var(--font-size--sm);
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
@@ -147,8 +147,8 @@ watch(
 	padding: var(--spacing--2xs);
 	border: var(--border);
 	border-radius: var(--radius);
-	background: var(--color--background--light-3);
-	color: var(--color--text);
+	background: var(--background--surface--hover);
+	color: var(--color--text--shade-1);
 	font-family: inherit;
 	font-size: inherit;
 	line-height: var(--line-height--md);
