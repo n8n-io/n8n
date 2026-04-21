@@ -73,6 +73,15 @@ const ICON_ZOD_SCHEMA =
 	"z.object({ type: z.union([z.literal('icon'), z.literal('emoji')]), value: z.string() })";
 
 /**
+ * Runtime shape for `type: 'workflowSelector'` properties.
+ * The UI hardcodes two modes (see useWorkflowResourceLocatorModes.ts): `list` and `id`.
+ * Stored as an `INodeParameterResourceLocator` object, or as an `={{...}}` expression
+ * string when the user enters an expression.
+ */
+const WORKFLOW_SELECTOR_ZOD_SCHEMA =
+	"z.union([z.object({ __rl: z.literal(true), mode: z.union([z.literal('list'), z.literal('id')]), value: z.union([z.string(), z.number()]), cachedResultName: z.string().optional(), cachedResultUrl: z.string().optional() }), expressionSchema])";
+
+/**
  * TypeScript reserved words that need quoting
  */
 const RESERVED_WORDS = new Set([
@@ -469,6 +478,9 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 		case 'icon':
 			return ICON_ZOD_SCHEMA;
 
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
+
 		case 'hidden':
 			return 'z.unknown()';
 
@@ -700,6 +712,9 @@ function mapPropertyToZodSchemaInner(prop: NodeProperty): string {
 
 		case 'icon':
 			return ICON_ZOD_SCHEMA;
+
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
 
 		case 'credentialsSelect':
 			return 'stringOrExpression';

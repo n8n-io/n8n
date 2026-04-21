@@ -1584,3 +1584,49 @@ describe('mapPropertyToZodSchema for data-carrying button and icon types', () =>
 		expect(schema).toContain('value: z.string()');
 	});
 });
+
+describe('mapPropertyToZodSchema for workflowSelector', () => {
+	it('emits a resource-locator-shaped union with list/id modes for a top-level property', () => {
+		const prop = {
+			name: 'workflowId',
+			displayName: 'Workflow',
+			type: 'workflowSelector',
+			default: '',
+			required: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
+		expect(schema).toContain('value: z.union([z.string(), z.number()])');
+		expect(schema).toContain('cachedResultName: z.string().optional()');
+		expect(schema).toContain('expressionSchema');
+	});
+
+	it('emits the same schema for a workflowSelector nested inside a collection', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'workflowId',
+					displayName: 'Workflow',
+					type: 'workflowSelector',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
+	});
+});

@@ -70,6 +70,14 @@ const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credential
  */
 const ICON_TS_TYPE = "{ type: 'icon' | 'emoji'; value: string }";
 
+/**
+ * Runtime shape for `type: 'workflowSelector'` properties.
+ * The UI hardcodes two modes (see useWorkflowResourceLocatorModes.ts): `list` and `id`.
+ * Stored as an INodeParameterResourceLocator, or as an Expression string.
+ */
+const WORKFLOW_SELECTOR_TS_TYPE =
+	"{ __rl: true; mode: 'list' | 'id'; value: string | number; cachedResultName?: string; cachedResultUrl?: string } | Expression<string>";
+
 const ASSIGNMENT_TYPE_JSDOC = `/**
  * Assignment type determines how the value is interpreted.
  * - string: Direct string value or expression evaluating to string
@@ -805,6 +813,8 @@ function mapNestedPropertyTypeInner(
 			return 'string | Expression<string>';
 		case 'icon':
 			return ICON_TS_TYPE;
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_TS_TYPE;
 		case 'credentialsSelect':
 			// credentialsSelect is a string value (credential type name)
 			return 'string | Expression<string>';
@@ -1328,6 +1338,9 @@ function mapPropertyTypeInner(
 
 		case 'icon':
 			return ICON_TS_TYPE;
+
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_TS_TYPE;
 
 		case 'credentialsSelect':
 			// credentialsSelect is a string value (credential type name)
