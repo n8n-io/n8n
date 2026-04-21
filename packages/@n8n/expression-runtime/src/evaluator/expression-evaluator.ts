@@ -22,12 +22,14 @@ function recordOutcome(
 	error?: unknown,
 ): void {
 	const durationMs = performance.now() - start;
-	observability.metrics.histogram(EVALUATION_DURATION_METRIC, durationMs);
+	const errorType = error !== undefined ? classifyExpressionError(error) : undefined;
+	observability.metrics.histogram(EVALUATION_DURATION_METRIC, durationMs, {
+		status,
+		type: errorType ?? '',
+	});
 	observability.metrics.counter('expression.evaluations', 1, { status });
-	if (error !== undefined) {
-		observability.metrics.counter('expression.errors', 1, {
-			type: classifyExpressionError(error),
-		});
+	if (errorType) {
+		observability.metrics.counter('expression.errors', 1, { type: errorType });
 	}
 }
 

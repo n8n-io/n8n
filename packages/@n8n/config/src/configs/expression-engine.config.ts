@@ -47,6 +47,6 @@ export class ExpressionEngineConfig {
 	slowEvaluationThresholdMs: number = 50;
 
 	/** Head-based sampling rate (0.0–1.0) for healthy-path spans. Slow and erroring expressions always emit. */
-	@Env('N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE')
+	@Env('N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE', z.number({ coerce: true }).min(0).max(1))
 	tracesSampleRate: number = 0.0;
 }

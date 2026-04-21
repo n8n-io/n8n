@@ -20,11 +20,11 @@ export function normalizeAttributes(attributes?: Record<string, unknown>): Attri
 }
 
 export function normalizeAttributeValue(value: unknown): Attributes[string] | undefined {
+	if (value === undefined || value === null) return undefined;
 	if (typeof value === 'string')
 		return value.length > MAX_EXPRESSION_TEXT_LENGTH
 			? value.slice(0, MAX_EXPRESSION_TEXT_LENGTH)
 			: value;
 	if (typeof value === 'number' || typeof value === 'boolean') return value;
-	if (value === null) return undefined;
 	return String(value);
 }

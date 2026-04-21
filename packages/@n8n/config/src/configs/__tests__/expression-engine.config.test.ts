@@ -93,5 +93,15 @@ describe('ExpressionEngineConfig', () => {
 			});
 			expect(Container.get(ExpressionEngineConfig).tracesSampleRate).toBe(0.25);
 		});
+
+		test('N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE falls back to default on out-of-range value', () => {
+			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+			jest.replaceProperty(process, 'env', {
+				N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE: '1.5',
+			});
+			expect(Container.get(ExpressionEngineConfig).tracesSampleRate).toBe(0);
+			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
 	});
 });
