@@ -37,6 +37,7 @@ type EndpointGroup =
 	| 'debug'
 	| 'project'
 	| 'role'
+	| 'roleMappingRule'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
@@ -60,7 +61,8 @@ type ModuleName =
 	| 'log-streaming'
 	| 'ldap'
 	| 'redaction'
-	| 'source-control';
+	| 'source-control'
+	| 'token-exchange';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

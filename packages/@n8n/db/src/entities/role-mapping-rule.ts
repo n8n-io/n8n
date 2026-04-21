@@ -7,6 +7,7 @@ import {
 	ManyToMany,
 	ManyToOne,
 	type Relation,
+	Unique,
 } from '@n8n/typeorm';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
@@ -15,7 +16,7 @@ import { Role } from './role';
 
 @Entity()
 @Index(['role'])
-@Index(['type', 'order'])
+@Unique(['type', 'order'])
 export class RoleMappingRule extends WithTimestampsAndStringId {
 	@Column({ type: 'text' })
 	expression: string;

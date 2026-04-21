@@ -54,7 +54,6 @@ import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
@@ -63,6 +62,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
+import type { WorkflowObjectAccessors } from '../types';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -117,7 +117,7 @@ export async function resolveParameter<T = IDataObject>(
 // TODO: move to separate file
 function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	workflowObject: Workflow,
+	workflowObject: WorkflowObjectAccessors,
 	connections: IConnections,
 	envVars: Record<string, string | boolean | number>,
 	ndvActiveNode: INodeUi | null,
@@ -330,34 +330,6 @@ export async function resolveRequiredParameters(
 	return Object.fromEntries(resolvedEntries);
 }
 
-function getConnectedNodes(
-	direction: 'upstream' | 'downstream',
-	workflow: Workflow,
-	nodeName: string,
-): string[] {
-	let checkNodes: string[];
-	if (direction === 'downstream') {
-		checkNodes = workflow.getChildNodes(nodeName);
-	} else if (direction === 'upstream') {
-		checkNodes = workflow.getParentNodes(nodeName);
-	} else {
-		throw new Error(`The direction "${direction}" is not supported!`);
-	}
-
-	// Find also all nodes which are connected to the child nodes via a non-main input
-	let connectedNodes: string[] = [];
-	checkNodes.forEach((checkNode) => {
-		connectedNodes = [
-			...connectedNodes,
-			checkNode,
-			...workflow.getParentNodes(checkNode, 'ALL_NON_MAIN'),
-		];
-	});
-
-	// Remove duplicates
-	return [...new Set(connectedNodes)];
-}
-
 function getNodeTypes(): INodeTypes {
 	return useWorkflowsStore().getNodeTypes();
 }
@@ -532,7 +504,6 @@ export function useWorkflowHelpers() {
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowState = injectWorkflowState();
-	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
 	const projectsStore = useProjectsStore();
@@ -610,14 +581,14 @@ export function useWorkflowHelpers() {
 		const connections = deepCopy(workflowConnections);
 
 		const data: WorkflowData = {
-			name: workflowsStore.workflowName,
+			name: workflowDocumentStore.name,
 			nodes,
 			pinData: workflowDocumentStore.getPinDataSnapshot(),
 			connections,
 			active: workflowDocumentStore.active,
 			settings: workflowDocumentStore.settings,
 			tags: [...workflowDocumentStore.tags],
-			versionId: workflowsStore.workflow.versionId,
+			versionId: workflowDocumentStore.versionId,
 			meta: workflowDocumentStore.meta,
 		};
 
@@ -866,10 +837,11 @@ export function useWorkflowHelpers() {
 	) {
 		let data: WorkflowDataUpdate = {};
 
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		const isCurrentWorkflow = workflowId === workflowsStore.workflowId;
 		if (isCurrentWorkflow) {
 			data = partialData
-				? { versionId: workflowsStore.workflowVersionId }
+				? { versionId: workflowDocumentStore.versionId }
 				: await getWorkflowDataToSave();
 		} else {
 			const { versionId } = await workflowsListStore.fetchWorkflow(workflowId);
@@ -889,17 +861,15 @@ export function useWorkflowHelpers() {
 			uiStore.markStateClean();
 		}
 
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
-			docStore.setActiveState({
+			workflowDocumentStore.setActiveState({
 				activeVersionId: workflow.activeVersion.versionId,
 				activeVersion: workflow.activeVersion,
 			});
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
-			docStore.setActiveState({
+			workflowDocumentStore.setActiveState({
 				activeVersionId: null,
 				activeVersion: null,
 			});
@@ -966,12 +936,13 @@ export function useWorkflowHelpers() {
 
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
 		const workflow = workflowsListStore.getWorkflowById(workflowId);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		// Check if workflow is new (not saved) or belongs to personal project
 		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || !workflow?.id) {
 			return 'owner';
 		} else if (
-			workflow?.sharedWithProjects?.some(
+			workflowDocumentStore.sharedWithProjects?.some(
 				(project) => project.id === projectsStore.personalProject?.id,
 			)
 		) {
@@ -984,13 +955,12 @@ export function useWorkflowHelpers() {
 	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
 		const ws = overrideWorkflowState ?? workflowState;
 		workflowsListStore.addWorkflow(workflowData);
-		workflowsStore.setDescription(workflowData.description);
 		ws.setWorkflowId(workflowData.id);
-		ws.setWorkflowName({
-			newName: workflowData.name,
-			setStateDirty: uiStore.stateIsDirty,
-		});
-		workflowsStore.setWorkflowVersionData({
+		const initializedWorkflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowData.id),
+		);
+
+		initializedWorkflowDocumentStore.setVersionData({
 			versionId: workflowData.versionId,
 			name: null,
 			description: null,
@@ -1003,40 +973,39 @@ export function useWorkflowHelpers() {
 		// Fetch current version details if versionId exists
 		if (workflowData.versionId) {
 			try {
-				const versionData = await workflowHistoryApi.getWorkflowVersion(
+				const fetchedVersionData = await workflowHistoryApi.getWorkflowVersion(
 					rootStore.restApiContext,
 					workflowData.id,
 					workflowData.versionId,
 				);
-				workflowsStore.setWorkflowVersionData({
-					versionId: versionData.versionId,
-					name: versionData.name,
-					description: versionData.description,
+				initializedWorkflowDocumentStore.setVersionData({
+					versionId: fetchedVersionData.versionId,
+					name: fetchedVersionData.name,
+					description: fetchedVersionData.description,
 				});
 			} catch {
 				// Do nothing
 			}
 		}
 
-		if (workflowData.sharedWithProjects) {
-			workflowsEEStore.setWorkflowSharedWith({
-				workflowId: workflowData.id,
-				sharedWithProjects: workflowData.sharedWithProjects,
-			});
-		}
-
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = convertWorkflowTagsToIds(tags);
-
-		const initializedWorkflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowData.id),
-		);
 
 		// Sync document store settings → workflowObject (runtime Workflow instance)
 		initializedWorkflowDocumentStore.onSettingsChange(({ payload }) => {
 			workflowsStore.workflowObject.setSettings(payload.settings);
 		});
+		initializedWorkflowDocumentStore.onNameChange(({ payload }) => {
+			workflowsStore.workflowObject.name = payload.name;
+			workflowsListStore.updateWorkflowInCache(workflowData.id, { name: payload.name });
+		});
 
+		// Sync document store versionId → workflow ref (for IWorkflowDb compatibility)
+		initializedWorkflowDocumentStore.onVersionDataChange(({ payload }) => {
+			workflowsStore.workflow.versionId = payload.versionId;
+		});
+
+		initializedWorkflowDocumentStore.setName(workflowData.name);
 		initializedWorkflowDocumentStore.setTags(tagIds);
 		initializedWorkflowDocumentStore.setActiveState({
 			activeVersionId: workflowData.activeVersionId,
@@ -1055,6 +1024,8 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.setMeta(workflowData.meta);
 		initializedWorkflowDocumentStore.setParentFolder(workflowData.parentFolder ?? null);
 		initializedWorkflowDocumentStore.setScopes(workflowData.scopes ?? []);
+		initializedWorkflowDocumentStore.setSharedWithProjects(workflowData.sharedWithProjects ?? []);
+		initializedWorkflowDocumentStore.setDescription(workflowData.description);
 		tagsStore.upsertTags(tags);
 
 		return { workflowDocumentStore: initializedWorkflowDocumentStore };
@@ -1127,7 +1098,6 @@ export function useWorkflowHelpers() {
 	return {
 		resolveParameter,
 		resolveRequiredParameters,
-		getConnectedNodes,
 		getNodeTypes,
 		connectionInputData,
 		executeData,
