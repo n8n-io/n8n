@@ -28,6 +28,7 @@ import {
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import {
 	renderHandoff,
+	type AvailableCredential,
 	type BuilderHandoffInput,
 	type HandoffRenderers,
 	type SubAgentHandoff,
@@ -119,10 +120,31 @@ function renderBuilderTask(input: BuilderHandoffInput): string {
 	return lines.join('\n');
 }
 
-const builderRenderers: HandoffRenderers<Extract<SubAgentHandoff, { kind: 'build-workflow' }>> = {
+export const builderRenderers: HandoffRenderers<
+	Extract<SubAgentHandoff, { kind: 'build-workflow' }>
+> = {
 	buildTaskBlock: (h) => renderBuilderTask(h.input),
+	buildArtifacts: (h) => {
+		const creds = h.input.availableCredentials;
+		if (!creds || creds.length === 0) return undefined;
+		return {
+			availableCredentials: creds,
+			...(h.input.credentialsSnapshotAt
+				? { credentialsSnapshotAt: h.input.credentialsSnapshotAt }
+				: {}),
+		};
+	},
 	buildRequirements: (h) => (h.input.sandboxMode ? DETACHED_BUILDER_REQUIREMENTS : undefined),
 };
+
+/** Flatten a `CredentialMap` into the serializable array shape the handoff carries. */
+function toAvailableCredentials(credMap: CredentialMap): AvailableCredential[] {
+	const out: AvailableCredential[] = [];
+	for (const [type, { id, name }] of credMap) {
+		out.push({ id, name, type });
+	}
+	return out;
+}
 
 function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerType {
 	if (!attempt?.triggerNodeTypes || attempt.triggerNodeTypes.length === 0) {
@@ -265,9 +287,17 @@ export async function startBuildWorkflowAgentTask(
 	let prompt = BUILDER_AGENT_PROMPT;
 	let credMap: CredentialMap | undefined;
 
-	if (useSandbox) {
+	// Capture a credentials snapshot once per dispatch so the builder doesn't
+	// have to call `credentials(action="list")`. Available in both sandbox and
+	// tool mode whenever `domainContext` is present.
+	if (domainContext) {
 		credMap = await buildCredentialMap(domainContext.credentialService);
+	}
+	const availableCredentials = credMap ? toAvailableCredentials(credMap) : undefined;
+	const credentialsSnapshotAt =
+		availableCredentials && availableCredentials.length > 0 ? new Date().toISOString() : undefined;
 
+	if (useSandbox) {
 		const toolNames = [
 			'nodes',
 			'workflows',
@@ -339,6 +369,9 @@ export async function startBuildWorkflowAgentTask(
 		workItemId,
 		sandboxMode: useSandbox,
 		conversationContext: input.conversationContext,
+		...(availableCredentials && availableCredentials.length > 0
+			? { availableCredentials, credentialsSnapshotAt }
+			: {}),
 	};
 	const handoff: Extract<SubAgentHandoff, { kind: 'build-workflow' }> = {
 		taskKey: `build:${workflowId ?? 'new'}`,

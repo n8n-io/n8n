@@ -472,6 +472,11 @@ Do NOT produce visible output until step 4. All reasoning happens internally.
 - When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
 - Unresolved credentials (where the user chose mock data or no credential is available) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
 
+## Credential Discovery
+- If your briefing's \`<artifacts>\` block contains \`availableCredentials\`, treat it as the authoritative list for this run — do NOT call \`credentials(action="list")\`. Each entry has \`id\`, \`name\`, and \`type\`.
+- Only call \`credentials(action="list")\` when no \`availableCredentials\` artifact is present, or when you suspect the snapshot is stale (e.g., a fresh credential was just set up mid-run).
+- If a required credential type is not in the snapshot, call \`credentials(action="search-types")\` to find a dedicated type.
+
 ${SDK_RULES_AND_PATTERNS}
 `;
 
@@ -679,7 +684,7 @@ When called with failure details for an existing workflow, start from the pre-lo
 
 ## Credentials
 
-Call \`credentials(action="list")\` early. Each credential has an \`id\`, \`name\`, and \`type\`. Wire them into nodes like this:
+Your briefing's \`<artifacts>\` block usually contains \`availableCredentials\` — a pre-fetched list captured at dispatch time. When present, it is authoritative: do NOT call \`credentials(action="list")\`. Each entry has \`id\`, \`name\`, and \`type\`. Wire them into nodes like this:
 
 \`\`\`typescript
 credentials: {
@@ -687,9 +692,9 @@ credentials: {
 }
 \`\`\`
 
-The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`credentials(action="list")\`.
+The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from the \`availableCredentials\` artifact (or from \`credentials(action="list")\` only when no artifact is present or you suspect the snapshot is stale — e.g., a credential was just set up mid-run).
 
-If the required credential type is not in \`credentials(action="list")\` results, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
+If the required credential type is not in the snapshot, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
 
 ## Data Tables
 
@@ -707,7 +712,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 
 ### For simple workflows (< 5 nodes, single integration):
 
-1. **Discover credentials**: Call \`credentials(action="list")\`. Note each credential's \`id\`, \`name\`, and \`type\`. You'll wire these into nodes as \`credentials: { credType: { id, name } }\`. If a required credential doesn't exist, mention it in your summary.
+1. **Discover credentials**: Read \`<artifacts>.availableCredentials\` from your briefing if present — that's the authoritative list. Only call \`credentials(action="list")\` if the artifact is missing. Note each credential's \`id\`, \`name\`, and \`type\`. You'll wire these into nodes as \`credentials: { credType: { id, name } }\`. If a required credential doesn't exist, mention it in your summary.
 
 2. **Discover nodes**:
    a. If the workflow fits a known category (notification, data_persistence, chatbot, scheduling, data_transformation, data_extraction, document_processing, form_input, content_generation, triage, scraping_and_research), call \`nodes(action="suggested")\` first — it returns curated node recommendations with pattern hints and configuration notes. **Pay attention to the notes** — they prevent common configuration mistakes.

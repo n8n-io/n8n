@@ -29,6 +29,13 @@ const credentialFieldSchema = z.object({
 	description: z.string().optional(),
 });
 
+const availableCredentialSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	type: z.string(),
+});
+export type AvailableCredential = z.infer<typeof availableCredentialSchema>;
+
 const recentMessageSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	text: z.string(),
@@ -66,6 +73,14 @@ export const builderHandoffInputSchema = z.object({
 	workItemId: z.string(),
 	sandboxMode: z.boolean(),
 	conversationContext: z.string().optional(),
+	/**
+	 * Snapshot of credentials available at dispatch time so the builder can skip
+	 * its own `credentials(action="list")` call. Omit when the snapshot is
+	 * unavailable (service error) — the builder will fall back to listing itself.
+	 */
+	availableCredentials: z.array(availableCredentialSchema).optional(),
+	/** ISO timestamp of when `availableCredentials` was captured. Guides stale-snapshot refresh. */
+	credentialsSnapshotAt: z.string().optional(),
 });
 export type BuilderHandoffInput = z.infer<typeof builderHandoffInputSchema>;
 
