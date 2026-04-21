@@ -10,7 +10,7 @@ import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { CustomToolEntry } from '../agent.types';
-import { AGENT_TOOLS_MODAL_KEY } from '../constants';
+import { AGENT_TOOLS_MODAL_KEY, AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import { CHATHUB_TO_CATALOG, CATALOG_TO_CHATHUB } from '../provider-mapping';
 import AgentPublishButton from './AgentPublishButton.vue';
 import AgentToolsPanel from './AgentToolsPanel.vue';
@@ -139,6 +139,25 @@ function openToolsModal() {
 			tools: (props.config?.tools ?? []) as AgentJsonToolRef[],
 			onConfirm: (tools: AgentJsonToolRef[]) => {
 				emit('update:config', { tools });
+			},
+		},
+	});
+}
+
+function openToolConfigModal(toolRef: AgentJsonToolRef) {
+	const currentTools = (props.config?.tools ?? []) as AgentJsonToolRef[];
+	const existingToolNames = currentTools
+		.filter((t) => t !== toolRef && t.name)
+		.map((t) => t.name as string);
+
+	uiStore.openModalWithData({
+		name: AGENT_TOOL_CONFIG_MODAL_KEY,
+		data: {
+			toolRef,
+			existingToolNames,
+			onConfirm: (updatedRef: AgentJsonToolRef) => {
+				const updatedTools = currentTools.map((t) => (t === toolRef ? updatedRef : t));
+				emit('update:config', { tools: updatedTools });
 			},
 		},
 	});
@@ -312,6 +331,7 @@ function onResizeStart(event: MouseEvent) {
 						:config="config"
 						:agent-tools="agentTools"
 						@update:config="(changes) => emit('update:config', changes)"
+						@configure="openToolConfigModal"
 					/>
 				</div>
 			</div>

@@ -3,6 +3,7 @@ import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
+	AGENT_TOOL_CONFIG_MODAL_KEY,
 	NEW_AGENT_VIEW,
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
@@ -15,6 +16,8 @@ const NewAgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/NewAgentView.vue');
 const AgentToolsModalDemo = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentToolsModalDemo.vue');
+const AgentToolsPanelDemo = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentToolsPanelDemo.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',
@@ -29,6 +32,18 @@ export const AgentsModule: FrontendModuleDescription = {
 				open: false,
 				data: {
 					tools: [],
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_TOOL_CONFIG_MODAL_KEY,
+			component: async () => await import('./components/AgentToolConfigModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					toolRef: null,
+					existingToolNames: [],
 					onConfirm: () => {},
 				},
 			},
@@ -78,6 +93,12 @@ export const AgentsModule: FrontendModuleDescription = {
 						name: 'AgentToolsModalDemo',
 						path: '/ui-demo/agent-tools-modal',
 						component: AgentToolsModalDemo,
+						meta: { layout: 'auth' as const },
+					},
+					{
+						name: 'AgentToolsPanelDemo',
+						path: '/ui-demo/agent-tools-sidebar',
+						component: AgentToolsPanelDemo,
 						meta: { layout: 'auth' as const },
 					},
 				]

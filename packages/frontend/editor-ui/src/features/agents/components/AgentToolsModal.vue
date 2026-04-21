@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { DEBOUNCE_TIME, getDebounceTime, MODAL_CONFIRM } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
@@ -13,6 +14,7 @@ import nodePopularity from 'virtual:node-popularity-data';
 import AgentToolItem from './AgentToolItem.vue';
 
 import type { AgentJsonToolRef } from '../types';
+import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	isToolMissingCredentials,
 	nodeTypeToNewToolRef,
@@ -29,6 +31,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
 const message = useMessage();
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
@@ -162,10 +165,23 @@ async function handleRemoveTool(toolRef: AgentJsonToolRef) {
 	commit();
 }
 
-function handleConfigureTool() {
-	// Phase 3 — the service-scoped config panel is not built yet.
-	// Intentionally a no-op so the gear icon is visible in Figma fidelity
-	// but doesn't crash. Tracked in the AGENT-26 spec.
+function handleConfigureTool(toolRef: AgentJsonToolRef) {
+	// Node name collision check feeds the shared form's uniqueness logic.
+	const existingToolNames = workingTools.value
+		.filter((t) => t !== toolRef && t.name)
+		.map((t) => t.name as string);
+
+	uiStore.openModalWithData({
+		name: AGENT_TOOL_CONFIG_MODAL_KEY,
+		data: {
+			toolRef,
+			existingToolNames,
+			onConfirm: (updatedRef: AgentJsonToolRef) => {
+				workingTools.value = workingTools.value.map((t) => (t === toolRef ? updatedRef : t));
+				commit();
+			},
+		},
+	});
 }
 
 function commit() {
@@ -209,7 +225,7 @@ function commit() {
 							:configured-node="tool.node"
 							:missing-credentials="tool.missingCredentials"
 							mode="configured"
-							@configure="handleConfigureTool"
+							@configure="handleConfigureTool(tool.ref)"
 							@remove="handleRemoveTool(tool.ref)"
 						/>
 					</div>

@@ -148,6 +148,7 @@ describe('AgentToolsModal', () => {
 
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
+		uiStore.openModalWithData = vi.fn();
 	});
 
 	function defaultProps(tools: AgentJsonToolRef[] = [], onConfirm = vi.fn()) {
@@ -270,5 +271,47 @@ describe('AgentToolsModal', () => {
 		const { getByTestId } = renderComponent(defaultProps());
 		const wrapper = getByTestId('agent-tools-list');
 		expect(wrapper.textContent).toContain('Available tools (3)');
+	});
+
+	it('opens the config modal with the clicked tool ref when the gear is clicked', async () => {
+		const tool = toolRef(SLACK.name);
+		const { getByTestId } = renderComponent(defaultProps([tool]));
+
+		const connectedList = getByTestId('agent-tools-connected-list');
+		const gearButton = connectedList.querySelector(
+			'button[aria-label], button',
+		) as HTMLButtonElement | null;
+		expect(gearButton).not.toBeNull();
+		await fireEvent.click(gearButton!);
+
+		expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+		expect(payload.name).toBe('agentToolConfigModal');
+		// Vue's reactivity wraps array items in a proxy, so compare by value.
+		expect(payload.data.toolRef).toStrictEqual(tool);
+		expect(payload.data.existingToolNames).toEqual([]);
+		expect(typeof payload.data.onConfirm).toBe('function');
+	});
+
+	it('round-trips config edits back into workingTools via the onConfirm callback', async () => {
+		const onConfirm = vi.fn();
+		const tool = toolRef(SLACK.name);
+		const { getByTestId } = renderComponent(defaultProps([tool], onConfirm));
+
+		const connectedList = getByTestId('agent-tools-connected-list');
+		const gearButton = connectedList.querySelector('button') as HTMLButtonElement | null;
+		await fireEvent.click(gearButton!);
+
+		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+		const editedRef: AgentJsonToolRef = {
+			...tool,
+			name: 'Slack renamed',
+		};
+		payload.data.onConfirm(editedRef);
+
+		expect(onConfirm).toHaveBeenCalled();
+		const [committed] = onConfirm.mock.calls[onConfirm.mock.calls.length - 1];
+		expect(committed).toHaveLength(1);
+		expect(committed[0].name).toBe('Slack renamed');
 	});
 });

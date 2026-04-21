@@ -6,7 +6,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import ToolSettingsContent from './ToolSettingsContent.vue';
+import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
 
@@ -116,7 +116,7 @@ function createMockNode(overrides: Partial<INode> = {}): INode {
 	};
 }
 
-const renderComponent = createComponentRenderer(ToolSettingsContent, {
+const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 	global: {
 		stubs: {
 			ParameterInputList: {
@@ -131,7 +131,7 @@ const renderComponent = createComponentRenderer(ToolSettingsContent, {
 	},
 });
 
-describe('ToolSettingsContent', () => {
+describe('NodeToolSettingsContent', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
