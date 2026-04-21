@@ -236,8 +236,7 @@ export class AgentsBuilderSettingsService {
 		});
 
 		const httpProxyFetch = getProxyFetch();
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const { createAnthropic } = require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
+		const { createAnthropic } = await import('@ai-sdk/anthropic');
 
 		const provider = createAnthropic({
 			baseURL,
