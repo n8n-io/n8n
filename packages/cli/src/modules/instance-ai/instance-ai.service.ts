@@ -2457,14 +2457,14 @@ export class InstanceAiService {
 			// Skip if thread already has an LLM-refined title
 			if (thread.metadata?.titleRefined) return;
 
-			// Get first user message
+			// Concat all recalled user messages so retries after a trivial first message
+			// (e.g. "hey") have enough signal to produce a good title.
 			const result = await memory.recall({ threadId, resourceId: userId, perPage: 5 });
-			const firstUserMsg = result.messages.find((m) => m.role === 'user');
-			if (!firstUserMsg) return;
-			const userText =
-				typeof firstUserMsg.content === 'string'
-					? firstUserMsg.content
-					: JSON.stringify(firstUserMsg.content);
+			const userTexts = result.messages
+				.filter((m) => m.role === 'user')
+				.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)));
+			if (userTexts.length === 0) return;
+			const userText = userTexts.join('\n');
 
 			const llmTitle = await generateTitleForRun(modelId, userText);
 			if (!llmTitle) return;
