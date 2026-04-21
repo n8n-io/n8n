@@ -7,11 +7,70 @@ severities:
 - `warning` — the user may still publish ("publish anyway").
 - `blocking` — the user must resolve the violation before publishing.
 
-Checks are registered globally per instance. Each check's effective severity
-and enabled state can be overridden by an instance admin at runtime.
-
 "Publish" means activation; the check pipeline runs whenever a workflow is
 activated or explicitly previewed from the editor.
+
+## Publish flow
+
+```mermaid
+flowchart TD
+    A[User clicks Publish] --> B[WorkflowService activates workflow]
+    B --> C[WorkflowAuthoringChecksProxy.runAll]
+    C --> D{Module loaded?}
+    D -->|No| OK([Activate workflow])
+    D -->|Yes| E[Service loads enabled instances]
+    E --> F[For each instance:<br/>validate config, evaluate]
+    F --> G{Any violations?}
+    G -->|No| OK
+    G -->|Yes| H{Any blocking<br/>violations?}
+    H -->|Yes| BLOCK([HTTP 422<br/>WorkflowAuthoringChecksFailedError<br/>activation refused])
+    H -->|No — only warnings| I{skipAuthoringChecks<br/>Warnings = true?}
+    I -->|No| WARN([HTTP 422<br/>Retry with<br/>skipAuthoringChecksWarnings=true])
+    I -->|Yes — 'publish anyway'| OK
+```
+
+## Check types vs. check instances
+
+The module separates **what a check does** from **how it is configured**:
+
+- **Check type** (`WorkflowCheckType`) — the behaviour. Registered in the
+  in-memory registry at boot. Declares a `type` key, a title/description, a
+  `defaultSeverity`, a `configSchema` that the UI turns into a form, and the
+  `evaluate(ctx, config)` function.
+- **Check instance** (`WorkflowCheck` entity) — a persisted row that binds a
+  type to a concrete `config`, `severity`, `enabled` flag, and
+  user-facing `name`. Only instances run against workflows.
+
+A type can have any number of instances. For example, the
+`node-has-direct-parent` type can be instantiated as "Agent must have a
+Guardrail parent" and "HTTP Request must have a Set parent" — two rows, same
+type, different `config`.
+
+### Static vs. non-static checks
+
+The `static` flag on a type controls whether users can create, rename,
+reconfigure, or delete its instances.
+
+| Aspect                   | Non-static type                                                 | Static type (`static: true`)                        |
+| ------------------------ | --------------------------------------------------------------- | --------------------------------------------------- |
+| `configSchema.fields`    | One or more fields (e.g. `childNodeType`, `parentNodeType`)     | Empty (`{ fields: [] }`)                            |
+| Instances per type       | Zero or many; each with its own config and name                 | Exactly one, auto-seeded at startup                 |
+| Created via              | `POST /workflow-authoring-checks` (user)                        | `ensureStaticInstances()` on module `init`          |
+| Instance `id`            | Generated UUID                                                  | Equals the type key (stable, predictable)           |
+| Allowed mutations        | `name`, `config`, `severity`, `enabled`                         | `severity`, `enabled` only                          |
+| Deletable                | Yes                                                             | No — `deleteInstance` throws `UserError`            |
+| Exposed in `GET /types`  | Yes (listed as user-creatable)                                  | No (filtered out — creating instances is forbidden) |
+
+Currently registered types:
+
+- `node-has-direct-parent` — non-static. Requires every enabled node of the
+  configured `childNodeType` to have an enabled node of `parentNodeType`
+  connected directly to its main input.
+- `no-dangling-nodes` — static. Requires every enabled non-trigger node to be
+  reachable from an enabled trigger, following main connections as well as
+  sub-node wiring (language models, tools, memory, etc.).
+
+Both types live under [checks/](checks/).
 
 ## Module layout
 
@@ -19,15 +78,16 @@ activated or explicitly previewed from the editor.
 workflow-authoring-checks/
 ├── workflow-authoring-checks.module.ts      // @BackendModule entry point
 ├── workflow-authoring-checks.controller.ts  // REST endpoints
-├── workflow-authoring-checks.service.ts     // Orchestrates checks + config
-├── workflow-check-registry.service.ts       // In-memory check registry
-├── workflow-authoring-checks.types.ts       // WorkflowCheck / result types
-├── workflow-authoring-checks.constants.ts   // Check IDs
+├── workflow-authoring-checks.service.ts     // Orchestrates types + instances
+├── workflow-check-registry.service.ts       // In-memory type registry
+├── workflow-authoring-checks.types.ts       // Runtime types (context, result, type interface)
+├── workflow-authoring-checks.constants.ts   // WORKFLOW_CHECK_TYPES keys
 ├── checks/
-│   └── ai-agent-requires-guardrail.check.ts
+│   ├── node-has-direct-parent.check.ts
+│   └── no-dangling-nodes.check.ts
 ├── database/
-│   ├── entities/workflow-check-config.entity.ts
-│   └── repositories/workflow-check-config.repository.ts
+│   ├── entities/workflow-check.entity.ts
+│   └── repositories/workflow-check.repository.ts
 └── __tests__/
 ```
 
@@ -36,31 +96,40 @@ workflow-authoring-checks/
 `WorkflowAuthoringChecksModule.init()` runs on startup and:
 
 1. Loads the controller (so its routes are registered).
-2. Instantiates the registry and each check via the DI container.
-3. Registers every check with the `WorkflowCheckRegistry`.
-4. Wires `WorkflowAuthoringChecksService` into
-   `WorkflowAuthoringChecksProxy` (`packages/cli/src/workflows/`), the
-   null-safe facade used by the activation pipeline.
+2. Instantiates the registry and each check type via the DI container.
+3. Registers every type with the `WorkflowCheckRegistry`.
+4. Calls `service.ensureStaticInstances()` — creates a row for every static
+   type that does not yet have one. The row's `id` is set to the type key.
+5. Wires `WorkflowAuthoringChecksService` into
+   `WorkflowAuthoringChecksProxy` ([authoring-checks-proxy.service.ts](../../workflows/authoring-checks-proxy.service.ts)),
+   the null-safe facade used by the activation pipeline.
 
-`entities()` exports the `WorkflowCheckConfig` TypeORM entity so the module's
-migration (`CreateWorkflowCheckConfigTable1778000000000`) and entity metadata
-are picked up by the main DB connection.
+`entities()` exports the `WorkflowCheck` TypeORM entity so the module's
+migrations and entity metadata are picked up by the main DB connection.
 
 ## Core concepts
 
-### `WorkflowCheck`
+### `WorkflowCheckType`
 
-Each check implements:
+Each type implements:
 
 ```ts
-interface WorkflowCheck {
-  readonly id: string;
-  readonly defaultSeverity: 'warning' | 'blocking';
+interface WorkflowCheckType {
+  readonly type: WorkflowCheckTypeKey;
   readonly title: string;
   readonly description: string;
-  evaluate(ctx: WorkflowCheckContext): Promise<WorkflowCheckViolation[]>;
+  readonly defaultSeverity: 'warning' | 'blocking';
+  readonly configSchema: WorkflowCheckConfigSchema;
+  readonly static?: boolean;
+  validateConfig(config: unknown): unknown;
+  evaluate(ctx: WorkflowCheckContext, config: unknown): Promise<WorkflowCheckViolation[]>;
 }
 ```
+
+`configSchema.fields[]` describes the form the admin UI renders; each field
+has a `kind` of `nodeType` or `string`. `validateConfig` is called before
+every `evaluate` call and also before any persisted mutation; it must throw
+on bad input.
 
 `WorkflowCheckContext` gives the check the raw workflow plus a
 destination-indexed connection map (`connectionsByDestination`) so parent
@@ -68,35 +137,51 @@ lookups via `getParentNodes` are cheap.
 
 ### `WorkflowCheckRegistry`
 
-In-memory `Map<id, check>`. Rejects duplicate IDs. Checks register
+In-memory `Map<typeKey, type>`. Rejects duplicate type keys. Types register
 themselves in `WorkflowAuthoringChecksModule.init()`; third-party modules
-can register additional checks the same way.
+can register additional types the same way.
 
 ### `WorkflowAuthoringChecksService`
 
-- `runAll(input)` — loads stored configs once, iterates the registry,
-  skips disabled checks, applies `severityOverride`, and returns only
-  checks that produced violations.
-- `listChecksWithConfig()` — every registered check merged with its stored
-  config, used by the admin list endpoint.
-- `updateConfig(checkId, patch)` — upserts the row for that check and
-  returns the merged DTO. Unknown check IDs return `null` (the controller
-  translates this to 404).
+- `runAll(input)` — loads every instance, filters to enabled ones, looks up
+  each instance's type in the registry, validates the stored config, and
+  runs `evaluate`. Instances whose type is unknown or whose config fails
+  validation are skipped with a warning log. Returns only instances that
+  produced violations.
+- `listTypes()` — every registered type as a DTO.
+- `listInstances()` — every persisted instance as a DTO (joined with its
+  type's title).
+- `createInstance(input)` — validates config, persists a new row. Refuses
+  instances of static types.
+- `updateInstance(id, patch)` — partial update. For static types, rejects
+  changes to `name` or `config`; `severity` and `enabled` are always
+  allowed.
+- `deleteInstance(id)` — refuses to delete static instances.
+- `ensureStaticInstances()` — called once on module init to seed rows for
+  every static type that does not yet have one.
 
-### `WorkflowCheckConfig`
+### `WorkflowCheck` entity
 
-Persisted per-check override:
+Persisted instance:
 
-| Column             | Type              | Notes                           |
-| ------------------ | ----------------- | ------------------------------- |
-| `checkId`          | `varchar(255)` PK | Matches `WorkflowCheck.id`      |
-| `enabled`          | `boolean`         | Default `true`                  |
-| `severityOverride` | `varchar(32)`     | `warning`/`blocking` or `null`  |
-| `createdAt`        | timestamp         | From `WithTimestamps`           |
-| `updatedAt`        | timestamp         | From `WithTimestamps`           |
+| Column      | Type              | Notes                                                |
+| ----------- | ----------------- | ---------------------------------------------------- |
+| `id`        | `varchar(36)` PK  | UUID for user-created; equals `type` for static      |
+| `name`      | `varchar(128)`    | Human label shown in list UI and violation results   |
+| `type`      | `varchar(64)`     | Matches a `WorkflowCheckType.type` key               |
+| `config`    | `json`            | Type-specific config; validated by the type          |
+| `enabled`   | `boolean`         | Default `true`                                       |
+| `severity`  | `varchar(32)`     | `warning` or `blocking`                              |
+| `createdAt` | timestamp         | From `WithTimestampsAndStringId`                     |
+| `updatedAt` | timestamp         | From `WithTimestampsAndStringId`                     |
 
-A missing row is treated as "enabled, default severity" — no bootstrap rows
-are needed.
+Two migrations back the schema:
+
+- `1778000000000-CreateWorkflowCheckConfigTable` — legacy
+  `workflow_check_config` table (enabled + severity override only).
+- `1778500000000-ReplaceWorkflowCheckConfigWithWorkflowCheck` — drops the
+  legacy table and creates the current `workflow_check` table with
+  `name`/`type`/`config` columns to support multiple named instances.
 
 ### Activation integration
 
@@ -134,51 +219,93 @@ Returns the checks that would fire for a workflow draft.
   ```
   `summary` is computed by `summarize(results)` in the controller.
 
+### `GET /types`
+
+Lists every registered **user-creatable** check type (static types are
+filtered out). Used by the admin UI to populate the "Add check" form.
+
+- **Scope:** `@GlobalScope('workflowAuthoringCheck:list')`
+- **Response:** `WorkflowAuthoringCheckTypesListResponse`
+  ```ts
+  { types: WorkflowCheckTypeDto[] }
+  ```
+
 ### `GET /`
 
-Lists every registered check merged with its stored config. Used by the
-instance admin UI.
+Lists every persisted check instance (static + non-static).
 
 - **Scope:** `@GlobalScope('workflowAuthoringCheck:list')`
 - **Response:** `WorkflowAuthoringChecksListResponse`
   ```ts
-  { checks: WorkflowCheckConfigDto[] }
+  { checks: WorkflowCheckDto[] }
   ```
+  Each DTO carries a `static: boolean` so the UI can hide delete/rename
+  controls for static instances.
 
-### `PATCH /:checkId`
+### `POST /`
 
-Updates the stored config for a check.
+Creates a new instance of a non-static type.
+
+- **Scope:** `@GlobalScope('workflowAuthoringCheck:create')`
+- **Body:** `CreateWorkflowCheckDto` — `name`, `type`, `config`, `severity`,
+  optional `enabled`.
+- **Response:** the created `WorkflowCheckDto`.
+- Rejects (via `UserError`) if `type` is unknown, is static, or if `config`
+  fails the type's `validateConfig`.
+
+### `PATCH /:id`
+
+Updates an existing instance.
 
 - **Scope:** `@GlobalScope('workflowAuthoringCheck:update')`
-- **Body:** `UpdateWorkflowCheckConfigDto`
-  - `enabled?: boolean`
-  - `severityOverride?: 'warning' | 'blocking' | null`
-- **Response:** the merged `WorkflowCheckConfigDto`.
-- **404** when `checkId` is not registered.
+- **Body:** `UpdateWorkflowCheckDto` — all fields optional: `name`,
+  `config`, `severity`, `enabled`.
+- **Response:** the merged `WorkflowCheckDto`.
+- **404** when `id` is not found.
+- For **static** instances, `name` and `config` cannot be changed; the
+  service throws `UserError` if they are provided.
 
-## Adding a new check
+### `DELETE /:id`
 
-1. Add the ID to `WORKFLOW_AUTHORING_CHECK_IDS` in
-   `workflow-authoring-checks.constants.ts`.
-2. Create a class under `checks/` that implements `WorkflowCheck` and is
-   decorated with `@Service()`.
+Deletes a non-static instance.
+
+- **Scope:** `@GlobalScope('workflowAuthoringCheck:delete')`
+- **Response:** `{ success: true }`.
+- **404** when `id` is not found.
+- Rejects static instances with `UserError`.
+
+## Adding a new check type
+
+1. Add the type key to `WORKFLOW_CHECK_TYPES` in
+   [workflow-authoring-checks.constants.ts](workflow-authoring-checks.constants.ts).
+2. Create a class under [checks/](checks/) that implements `WorkflowCheckType`
+   and is decorated with `@Service()`. Decide whether it is static:
+   - **Non-static:** declare a non-empty `configSchema.fields` and implement
+     a strict `validateConfig` that returns a typed config.
+   - **Static:** set `readonly static = true`, use an empty `configSchema`,
+     and have `validateConfig` return `{}`.
 3. Register it in `WorkflowAuthoringChecksModule.init()`:
    ```ts
    registry.register(Container.get(YourCheck));
    ```
-4. Add unit tests under `__tests__/`.
+4. Add unit tests under [\_\_tests\_\_/](__tests__/).
 
-No DB migration is required — config rows are created lazily by
-`updateConfig`.
+No DB migration is required — for non-static types, instance rows are
+created by `createInstance`; for static types they are seeded by
+`ensureStaticInstances` on the next boot.
 
 ## Tests
 
-Backend test files live in `__tests__/`:
+Backend test files live in [\_\_tests\_\_/](__tests__/):
 
 - `workflow-authoring-checks.service.test.ts` — registry skip-empty,
-  disabled-skip, severity override, and list/update DTO shape.
+  disabled-skip, unknown-type and invalid-config skips, static-instance
+  guards, create/update/delete DTO shape, static seeding.
 - `workflow-authoring-checks.controller.test.ts` — preview (draft vs.
-  history, version-not-found → 404, summary), list, updateConfig.
-- `ai-agent-requires-guardrail.check.test.ts` — single-check behaviour.
+  history, version-not-found → 404, summary), list, types, create, update,
+  delete.
+- `no-dangling-nodes.check.test.ts` — static check behaviour including
+  sub-node reachability.
+- `node-has-direct-parent.check.test.ts` — configured-type check behaviour.
 
 Run with `pnpm --filter n8n test workflow-authoring-checks`.
