@@ -46,6 +46,7 @@ describe('permissions', () => {
 			breakingChanges: {},
 			apiKey: {},
 			credentialResolver: {},
+			instanceAi: {},
 			roleMappingRule: {},
 		});
 	});
@@ -170,6 +171,7 @@ describe('permissions', () => {
 				manage: true,
 			},
 			credentialResolver: {},
+			instanceAi: {},
 			roleMappingRule: {},
 		};
 

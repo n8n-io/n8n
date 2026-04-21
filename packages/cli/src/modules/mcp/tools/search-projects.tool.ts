@@ -3,6 +3,7 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { createLimitSchema } from './schemas';
 
 import type { Telemetry } from '@/telemetry';
 
@@ -16,13 +17,7 @@ const inputSchema = {
 		.describe(
 			"Filter by project type. 'team' for shared team projects, 'personal' for personal projects.",
 		),
-	limit: z
-		.number()
-		.int()
-		.positive()
-		.max(MAX_RESULTS)
-		.optional()
-		.describe(`Limit the number of results (max ${MAX_RESULTS})`),
+	limit: createLimitSchema(MAX_RESULTS),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {

@@ -48,4 +48,8 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Unshare Credential',
 		description: 'Allows removing credential shares.',
 	},
+	'insights:read': {
+		displayName: 'Read Insights',
+		description: 'Allows reading insights data.',
+	},
 };

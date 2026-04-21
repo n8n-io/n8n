@@ -7,6 +7,8 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { InsightsModule } from '@/features/execution/insights/module.descriptor';
 import { MCPModule } from '@/features/ai/mcpAccess/module.descriptor';
 import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
+import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
+import { INSTANCE_AI_SETTINGS_VIEW } from '@/features/ai/instanceAi/constants';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
 
@@ -18,6 +20,7 @@ const modules: FrontendModuleDescription[] = [
 	DataTableModule,
 	MCPModule,
 	ChatModule,
+	InstanceAiModule,
 ];
 
 /**
@@ -71,7 +74,23 @@ const checkModuleAvailability = (options: any) => {
 	if (!options?.to?.meta?.moduleName || typeof options.to.meta.moduleName !== 'string') {
 		return true;
 	}
-	return useSettingsStore().isModuleActive(options.to.meta.moduleName);
+	const settingsStore = useSettingsStore();
+	if (!settingsStore.isModuleActive(options.to.meta.moduleName)) {
+		return false;
+	}
+
+	// Settings route is always accessible even when the admin toggle is off;
+	// other instance-ai routes are disabled.
+	if (options.to.meta.moduleName === 'instance-ai') {
+		const routeName = options.to.name;
+		if (routeName !== INSTANCE_AI_SETTINGS_VIEW) {
+			const enabled = settingsStore.moduleSettings['instance-ai']?.enabled;
+			if (enabled === false) {
+				return false;
+			}
+		}
+	}
+	return true;
 };
 
 /**

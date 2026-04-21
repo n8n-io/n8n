@@ -7,6 +7,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import type { OidcInstanceSettingsLoader } from '@/instance-settings-loader/loaders/oidc.instance-settings-loader';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 
@@ -18,7 +19,15 @@ const oidcService = mock<OidcService>();
 const urlService = mock<UrlService>();
 const globalConfig = mock<GlobalConfig>();
 const logger = mock<Logger>();
-const controller = new OidcController(oidcService, authService, urlService, globalConfig, logger);
+const oidcSettingsLoader = mock<OidcInstanceSettingsLoader>();
+const controller = new OidcController(
+	oidcService,
+	authService,
+	urlService,
+	globalConfig,
+	logger,
+	oidcSettingsLoader,
+);
 
 const user = mock<User>({
 	id: '456',

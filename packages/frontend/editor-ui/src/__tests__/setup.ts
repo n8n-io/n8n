@@ -412,4 +412,4 @@ Object.defineProperty(window, 'speechSynthesis', {
 	},
 });
 
-loadLanguage('en', englishBaseText as LocaleMessages);
+loadLanguage('en', englishBaseText as unknown as LocaleMessages);

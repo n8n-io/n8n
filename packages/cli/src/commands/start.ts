@@ -1,13 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { AuthRolesService, ExecutionRepository, SettingsRepository } from '@n8n/db';
+import {
+	AuthRolesService,
+	DeploymentKeyRepository,
+	ExecutionRepository,
+	SettingsRepository,
+} from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
+import { BinaryDataConfig } from 'n8n-core';
 import { jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
@@ -27,6 +33,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
+import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { UrlService } from '@/services/url.service';
@@ -224,6 +231,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
+		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
+
 		await this.initLicense();
 
 		if (isMultiMainEnabled) {
@@ -239,6 +250,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// serializes concurrent callers to prevent duplicate-key crashes.
 		if (this.instanceSettings.instanceType === 'main') {
 			await Container.get(AuthRolesService).init();
+			this.logger.debug('Auth roles service init complete');
+
+			await this.initInstanceSettingsLoader();
+			this.logger.debug('Instance settings loader init complete');
 		}
 
 		Container.get(WaitTracker).init();
@@ -281,6 +296,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	private async initInstanceSettingsLoader(): Promise<void> {
+		const { InstanceSettingsLoaderService } = await import(
+			'@/instance-settings-loader/instance-settings-loader.service'
+		);
+		await Container.get(InstanceSettingsLoaderService).init();
 	}
 
 	async initOrchestration() {

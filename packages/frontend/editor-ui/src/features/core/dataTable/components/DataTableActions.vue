@@ -17,6 +17,7 @@ import { computed } from 'vue';
 
 import { N8nActionToggle } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import DownloadDataTableModal from './DownloadDataTableModal.vue';
 import ImportCsvModal from './ImportCsvModal.vue';
 type Props = {
@@ -42,6 +43,7 @@ const emit = defineEmits<{
 
 const dataTableStore = useDataTableStore();
 const uiStore = useUIStore();
+const favoritesStore = useFavoritesStore();
 
 const i18n = useI18n();
 const message = useMessage();
@@ -61,6 +63,13 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 		{
 			label: i18n.baseText('dataTable.download.csv'),
 			value: DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV,
+			disabled: false,
+		},
+		{
+			label: favoritesStore.isFavorite(props.dataTable.id, 'dataTable')
+				? i18n.baseText('favorites.remove')
+				: i18n.baseText('favorites.add'),
+			value: DATA_TABLE_CARD_ACTIONS.FAVORITE,
 			disabled: false,
 		},
 		{
@@ -96,6 +105,10 @@ const onAction = async (action: string) => {
 		}
 		case DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV: {
 			uiStore.openModal(downloadModalKey.value);
+			break;
+		}
+		case DATA_TABLE_CARD_ACTIONS.FAVORITE: {
+			await favoritesStore.toggleFavorite(props.dataTable.id, 'dataTable');
 			break;
 		}
 		case DATA_TABLE_CARD_ACTIONS.DELETE: {

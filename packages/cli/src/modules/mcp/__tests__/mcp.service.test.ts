@@ -17,6 +17,7 @@ import { WorkflowBuilderToolsService } from '../tools/workflow-builder/workflow-
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -69,6 +70,7 @@ describe('McpService', () => {
 			mockInstance(SharedWorkflowRepository),
 			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
+			mockInstance(DataTableProxyService),
 		);
 	});
 
@@ -107,6 +109,7 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -310,6 +313,7 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
 			);
 
 			const server = await service.getServer(user);
@@ -350,6 +354,7 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
 			);
 
 			const server = await service.getServer(user);

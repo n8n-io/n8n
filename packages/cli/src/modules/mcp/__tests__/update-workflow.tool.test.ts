@@ -248,7 +248,7 @@ describe('update-workflow MCP tool', () => {
 				user,
 				expect.any(WorkflowEntity),
 				'custom-wf-id',
-				{ aiBuilderAssisted: true },
+				{ aiBuilderAssisted: true, source: 'n8n-mcp' },
 			);
 		});
 
@@ -270,6 +270,26 @@ describe('update-workflow MCP tool', () => {
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
 			expect(response.error).toBe('Invalid syntax at line 5');
+		});
+
+		test('includes SDK reference hint only for parse errors', async () => {
+			const parseError = new Error('Failed to parse generated workflow code: unexpected token');
+			parseError.name = 'WorkflowCodeParseError';
+			mockParseAndValidate.mockRejectedValue(parseError);
+
+			const result = await callHandler({ workflowId: 'wf-1', code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toContain('sdk_ref');
+		});
+
+		test('does not include SDK reference hint for non-parse errors', async () => {
+			mockParseAndValidate.mockRejectedValue(new Error('Service unavailable'));
+
+			const result = await callHandler({ workflowId: 'wf-1', code: 'bad code' });
+
+			const response = parseResult(result);
+			expect(response.hint).toBeUndefined();
 		});
 
 		test('tracks telemetry on success', async () => {

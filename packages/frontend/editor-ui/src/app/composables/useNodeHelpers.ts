@@ -51,6 +51,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import type { WorkflowObjectAccessors } from '../types';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -520,6 +521,8 @@ export function useNodeHelpers() {
 			} else {
 				// If they are set check if the value is valid
 				selectedCredentials = node.credentials[credentialTypeDescription.name];
+				// Gateway-managed credentials have no real DB record — treat as properly configured
+				if (selectedCredentials.__aiGatewayManaged) continue;
 				if (typeof selectedCredentials === 'string') {
 					selectedCredentials = {
 						id: null,
@@ -773,7 +776,7 @@ export function useNodeHelpers() {
 	function getNodeSubtitle(
 		data: INode,
 		nodeType: INodeTypeDescription,
-		workflow: Workflow,
+		workflow: WorkflowObjectAccessors,
 	): string | undefined {
 		if (!data) {
 			return undefined;
@@ -964,7 +967,7 @@ export function useNodeHelpers() {
 	}
 
 	function getNodeHints(
-		workflow: Workflow,
+		workflow: WorkflowObjectAccessors,
 		node: INode,
 		nodeTypeData: INodeTypeDescription,
 		nodeInputData?: {
