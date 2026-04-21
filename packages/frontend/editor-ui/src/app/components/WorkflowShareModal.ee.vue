@@ -58,7 +58,7 @@ const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 
 const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(data.id ?? '')),
+	useWorkflowDocumentStore(createWorkflowDocumentId(data.id)),
 );
 const workflowListEntry = computed(() => workflowsListStore.workflowsById[data.id]);
 const workflowId = computed(() => data.id);
