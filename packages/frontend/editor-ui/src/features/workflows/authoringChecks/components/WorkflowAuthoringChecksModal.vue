@@ -162,8 +162,8 @@ function confirm() {
 }
 
 .violations {
-	list-style: disc inside;
-	padding-left: var(--spacing--2xs);
+	list-style: disc outside;
+	padding-left: var(--spacing--sm);
 	margin: 0;
 	display: flex;
 	flex-direction: column;
