@@ -239,7 +239,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: undefined },
+				{ projectId: undefined, source: 'n8n-mcp' },
 			);
 		});
 
@@ -249,7 +249,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: 'custom-project-id' },
+				{ projectId: 'custom-project-id', source: 'n8n-mcp' },
 			);
 		});
 
