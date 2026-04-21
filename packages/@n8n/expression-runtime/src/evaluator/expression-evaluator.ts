@@ -9,6 +9,7 @@ import type {
 import { DEFAULT_BRIDGE_CONFIG } from '../types/bridge';
 import { IsolateError } from '@n8n/errors';
 import { IdleScalingPool } from '../pool/idle-scaling-pool';
+import type { IPool } from '../pool/isolate-pool';
 import { IsolatePool, PoolDisposedError, PoolExhaustedError } from '../pool/isolate-pool';
 import { LruCache } from './lru-cache';
 
@@ -24,7 +25,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	// Cache hit rate in production: ~99.9% (same expressions repeat within a workflow)
 	private codeCache: LruCache<string, string>;
 
-	private pool: IsolatePool | IdleScalingPool;
+	private pool: IPool;
 
 	private bridgesByCaller = new WeakMap<object, RuntimeBridge>();
 

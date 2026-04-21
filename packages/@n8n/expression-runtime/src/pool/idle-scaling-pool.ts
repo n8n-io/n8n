@@ -1,5 +1,6 @@
 import type { ObservabilityProvider, RuntimeBridge } from '../types';
 import type { Logger } from '../types/bridge';
+import type { IPool } from './isolate-pool';
 import { IsolatePool, PoolDisposedError, PoolExhaustedError } from './isolate-pool';
 
 /**
@@ -7,7 +8,7 @@ import { IsolatePool, PoolDisposedError, PoolExhaustedError } from './isolate-po
  * recreating it on the next acquire. The inner pool either fully exists or
  * does not; callers never observe a partial state.
  */
-export class IdleScalingPool {
+export class IdleScalingPool implements IPool {
 	private innerPool: IsolatePool | null = null;
 	private pendingScaleUp: Promise<void> | null = null;
 	private pendingScaleDown: Promise<void> | null = null;
