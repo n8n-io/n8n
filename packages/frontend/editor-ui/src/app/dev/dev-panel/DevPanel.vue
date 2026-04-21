@@ -368,8 +368,8 @@ function handleCancel() {
 
 function startEditing(annotation: TrackedAnnotation) {
 	stop();
-	pendingMulti.value = [];
 	editingId.value = annotation.id;
+	pendingMulti.value = annotation.elements.length > 1 ? [...annotation.elements] : [];
 	selectedElement.value = annotation.elements[0] ?? null;
 }
 
@@ -803,7 +803,7 @@ async function copyAllAnnotations() {
 	border-radius: 8px;
 	background: #2563eb;
 	color: #fff;
-	font-size: 10px;
+	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	line-height: 1;
 	display: flex;

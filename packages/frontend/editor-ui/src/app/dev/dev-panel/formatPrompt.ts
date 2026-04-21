@@ -34,6 +34,16 @@ function buildMultiSummary(contexts: ElementContext[]): string {
 	return `${contexts.length} elements: ${head}${extra}`;
 }
 
+function formatContextMeta(context: ElementContext, indent = ''): string[] {
+	const lines: string[] = [];
+	if (context.domPath) lines.push(`${indent}**Location:** ${context.domPath}`);
+	const source = formatSource(context);
+	if (source) lines.push(`${indent}**Source:** ${source}`);
+	if (context.component) lines.push(`${indent}**Vue:** <${context.component}>`);
+	if (context.testid) lines.push(`${indent}**Test ID:** ${context.testid}`);
+	return lines;
+}
+
 function formatAnnotation(annotation: Annotation, index: number): string[] {
 	const { contexts, prompt } = annotation;
 	const isMulti = contexts.length > 1;
@@ -42,16 +52,17 @@ function formatAnnotation(annotation: Annotation, index: number): string[] {
 	const lines: string[] = [`### ${index + 1}. ${summary}`];
 
 	if (isMulti) {
-		lines.push('**Location:** multi-select');
-	} else if (primary?.domPath) {
-		lines.push(`**Location:** ${primary.domPath}`);
+		contexts.forEach((context, i) => {
+			lines.push(`- Element ${i + 1}: ${context.summary ?? 'element'}`);
+			for (const metaLine of formatContextMeta(context, '  - ')) {
+				lines.push(metaLine);
+			}
+		});
+	} else if (primary) {
+		for (const metaLine of formatContextMeta(primary)) {
+			lines.push(metaLine);
+		}
 	}
-
-	const source = primary ? formatSource(primary) : undefined;
-	if (source) lines.push(`**Source:** ${source}`);
-
-	if (primary?.component) lines.push(`**Vue:** <${primary.component}>`);
-	if (primary?.testid) lines.push(`**Test ID:** ${primary.testid}`);
 
 	lines.push(`**Feedback:** ${prompt.trim()}`);
 	return lines;

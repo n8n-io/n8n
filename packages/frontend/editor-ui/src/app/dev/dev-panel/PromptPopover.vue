@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -77,6 +77,11 @@ onMounted(() => {
 	});
 	window.addEventListener('resize', updateAnchorRect);
 	window.addEventListener('scroll', updateAnchorRect, true);
+});
+
+onUnmounted(() => {
+	window.removeEventListener('resize', updateAnchorRect);
+	window.removeEventListener('scroll', updateAnchorRect, true);
 });
 
 watch(
