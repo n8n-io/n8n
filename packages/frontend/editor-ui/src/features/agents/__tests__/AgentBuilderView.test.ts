@@ -116,24 +116,45 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect(buildRadio?.attributes('aria-checked')).toBe('false');
 	});
 
-	it('mounts both Test and Build panels and toggles their visibility via v-show', async () => {
+	it('lazy-mounts each chat panel on first activation and toggles visibility via v-show afterwards', async () => {
+		// Entering chat mode with the default `test` tab should only mount the
+		// test panel — the build panel stays unmounted until the user clicks
+		// Build, so we don't fire a second loadHistory() for a tab the user
+		// may never open.
 		const wrapper = await renderView();
 		(wrapper.vm as unknown as { mode: string }).mode = 'chat';
 		await nextTick();
 
 		const testPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]');
-		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
 		expect(testPanel.exists()).toBe(true);
-		expect(buildPanel.exists()).toBe(true);
-
+		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
+			false,
+		);
 		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
-		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
 
+		// Clicking Build mounts the build panel for the first time; test is now
+		// hidden via v-show but still mounted so its state is preserved.
 		await wrapper.find('[data-test-id="radio-button-build"]').trigger('click');
 		await nextTick();
 
+		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
+		expect(buildPanel.exists()).toBe(true);
 		expect((testPanel.element as HTMLElement).style.display).toBe('none');
 		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
+
+		// Switching back to Test should not unmount Build — both panels stay
+		// mounted once opened so neither re-runs loadHistory on toggle.
+		await wrapper.find('[data-test-id="radio-button-test"]').trigger('click');
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]').exists()).toBe(
+			true,
+		);
+		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
+			true,
+		);
+		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
+		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
 	});
 
 	it('transitions from home to chat when a toggle segment is clicked', async () => {
