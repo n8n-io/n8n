@@ -120,26 +120,6 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 		});
 });
 
-/** Node types already connected as tools on this agent (rendered in the top section). */
-const connectedToolNodeTypes = computed(
-	() =>
-		new Set(
-			workingTools.value
-				.filter((t) => t.type === 'node' && t.node?.nodeType)
-				.map((t) => t.node!.nodeType),
-		),
-);
-
-/** Workflow names already connected — used to hide them from the Available list. */
-const connectedWorkflowNames = computed(
-	() =>
-		new Set(
-			workingTools.value
-				.filter((t) => t.type === 'workflow' && t.workflow)
-				.map((t) => t.workflow as string),
-		),
-);
-
 // --- Workflow catalog -------------------------------------------------------
 
 onMounted(() => {
@@ -157,15 +137,14 @@ onMounted(() => {
 
 /**
  * Workflows eligible to appear in "Workflows (N)": non-archived workflows with
- * a supported trigger (pre-filtered by the server via `triggerNodeTypes`),
- * minus any already connected. The remaining compatibility check — incompatible
- * body nodes like Wait / RespondToWebhook — runs on save in
+ * a supported trigger (pre-filtered by the server via `triggerNodeTypes`).
+ * Already-connected workflows remain listed — users can add the same workflow
+ * twice with different descriptions / input schemas. Body-node incompatibility
+ * (Wait / RespondToWebhook) is still enforced on save in
  * `workflow-tool-factory.ts:validateCompatibility`.
  */
 const availableWorkflows = computed<IWorkflowDb[]>(() =>
-	workflowsListStore.allWorkflows.filter(
-		(wf) => !wf.isArchived && !connectedWorkflowNames.value.has(wf.name),
-	),
+	workflowsListStore.allWorkflows.filter((wf) => !wf.isArchived),
 );
 
 /** Configured tools annotated with their node-type description (for the icon + fallback name). */
@@ -233,13 +212,12 @@ const filteredConfiguredWorkflows = computed(() => {
 });
 
 const filteredAvailableTools = computed(() => {
-	// Hide node types the user has already connected.
-	const filtered = availableToolTypes.value.filter(
-		(nt) => !connectedToolNodeTypes.value.has(nt.name),
-	);
-	if (!debouncedSearchQuery.value) return filtered;
+	// Duplicates allowed: already-connected node types stay listed so users can
+	// add a 2nd Slack / Gmail / etc. with a different name + config. The config
+	// modal enforces tool-name uniqueness via `existingToolNames`.
+	if (!debouncedSearchQuery.value) return availableToolTypes.value;
 	const query = debouncedSearchQuery.value.toLowerCase();
-	return filtered.filter(
+	return availableToolTypes.value.filter(
 		(nt) =>
 			nt.displayName.toLowerCase().includes(query) || nt.description?.toLowerCase().includes(query),
 	);

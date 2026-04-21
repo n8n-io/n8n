@@ -256,10 +256,12 @@ describe('AgentToolsModal', () => {
 		expect(queryByTestId('agent-tool-add-credentials-chip')).toBeNull();
 	});
 
-	it('hides already-connected node types from the Available list', () => {
+	it('keeps already-connected node types listed under Available (duplicates allowed)', () => {
+		// Users can add a 2nd Slack tool with a different name + credentials.
+		// The config modal enforces tool-name uniqueness on save.
 		const { getByTestId } = renderComponent(defaultProps([toolRef(SLACK.name)]));
 		const available = getByTestId('agent-tools-available-list');
-		expect(available.textContent).not.toContain('Slack');
+		expect(available.textContent).toContain('Slack');
 		expect(available.textContent).toContain('Gmail');
 	});
 
@@ -427,22 +429,27 @@ describe('AgentToolsModal', () => {
 			expect(queryByText('Old archived')).toBeNull();
 		});
 
-		it('hides workflows that are already connected', () => {
-			seedWorkflows([makeWorkflow({ id: 'wf-1', name: 'Already connected' })]);
+		it('keeps already-connected workflows listed under Available (duplicates allowed)', () => {
+			seedWorkflows([makeWorkflow({ id: 'wf-1', name: 'Daily digest' })]);
 			const existing: AgentJsonToolRef = {
 				type: 'workflow',
-				workflow: 'Already connected',
-				name: 'Already connected',
+				workflow: 'Daily digest',
+				name: 'Daily digest',
 			};
 
-			const { queryByTestId } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: {
 					modalName: MODAL_NAME,
 					data: { tools: [existing], projectId: 'p-42', onConfirm: vi.fn() },
 				},
 			});
 
-			expect(queryByTestId('agent-tools-available-workflows-list')).toBeNull();
+			// Users can add the same workflow twice with different descriptions or
+			// input schemas — the config modal enforces tool-name uniqueness.
+			expect(getByTestId('agent-tools-available-workflows-list')).toBeTruthy();
+			expect(getByTestId('agent-tools-available-workflows-list').textContent).toContain(
+				'Daily digest',
+			);
 		});
 
 		it('opens the config modal with a workflow ref when Connect is clicked on a workflow row', async () => {
