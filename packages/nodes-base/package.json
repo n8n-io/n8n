@@ -932,6 +932,7 @@
     "lossless-json": "1.0.5",
     "luxon": "catalog:",
     "mailparser": "3.9.3",
+    "postal-mime": "2.7.3",
     "mime-types": "catalog:",
     "minifaker": "1.34.1",
     "moment-timezone": "0.5.48",

@@ -27,6 +27,12 @@ import type {
 	MessageListResponse,
 } from './types';
 
+/** Max messages to fetch per poll. Matches the Gmail API default (current implicit limit). */
+const MAX_MESSAGES_PER_POLL = 100;
+
+/** Process messages in batches to cap peak memory. */
+const MESSAGES_BATCH_SIZE = 20;
+
 export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gmail Trigger',
@@ -283,30 +289,35 @@ export class GmailTrigger implements INodeType {
 		}
 		const startDate = nodeStaticData.lastTimeChecked ?? +now;
 
+		const mode = this.getMode();
+
 		const options = this.getNodeParameter('options', {}) as GmailTriggerOptions;
 		const filters = this.getNodeParameter('filters', {}) as GmailTriggerFilters;
 
 		let responseData: INodeExecutionData[] = [];
-		const allFetchedMessages: Message[] = [];
+		// Store only id + date fields needed for lastTimeChecked/possibleDuplicates to avoid retaining raw payloads
+		const allFetchedMessages: Array<Pick<Message, 'id' | 'internalDate' | 'date' | 'headers'>> = [];
 
 		try {
 			const qs: IDataObject = {};
 			const allFilters: GmailTriggerFilters = { ...filters, receivedAfter: startDate };
 
-			if (this.getMode() === 'manual') {
+			if (mode === 'manual') {
 				qs.maxResults = 1;
 				delete allFilters.receivedAfter;
+			} else {
+				qs.maxResults = MAX_MESSAGES_PER_POLL;
 			}
 
 			Object.assign(qs, prepareQuery.call(this, allFilters, 0), options);
 
-			const messagesResponse: MessageListResponse = await googleApiRequest.call(
+			const messagesResponse = (await googleApiRequest.call(
 				this,
 				'GET',
 				'/gmail/v1/users/me/messages',
 				{},
 				qs,
-			);
+			)) as MessageListResponse;
 
 			const messages = messagesResponse.messages ?? [];
 
@@ -332,38 +343,45 @@ export class GmailTrigger implements INodeType {
 
 			delete qs.includeDrafts;
 
-			for (const message of messages) {
-				const fullMessage = (await googleApiRequest.call(
-					this,
-					'GET',
-					`/gmail/v1/users/me/messages/${message.id}`,
-					{},
-					qs,
-				)) as Message;
+			for (let offset = 0; offset < messages.length; offset += MESSAGES_BATCH_SIZE) {
+				const batch = messages.slice(offset, offset + MESSAGES_BATCH_SIZE);
+				for (const message of batch) {
+					const fullMessage = (await googleApiRequest.call(
+						this,
+						'GET',
+						`/gmail/v1/users/me/messages/${message.id}`,
+						{},
+						qs,
+					)) as Message;
+					allFetchedMessages.push({
+						id: fullMessage.id,
+						internalDate: fullMessage.internalDate,
+						date: fullMessage.date,
+						headers: fullMessage.headers,
+					});
 
-				allFetchedMessages.push(fullMessage);
-
-				if (!includeDrafts) {
-					if (fullMessage.labelIds?.includes('DRAFT')) {
+					if (!includeDrafts) {
+						if (fullMessage.labelIds?.includes('DRAFT')) {
+							continue;
+						}
+					}
+					if (
+						node.typeVersion > 1.2 &&
+						fullMessage.labelIds?.includes('SENT') &&
+						!fullMessage.labelIds?.includes('INBOX')
+					) {
 						continue;
 					}
-				}
-				if (
-					node.typeVersion > 1.2 &&
-					fullMessage.labelIds?.includes('SENT') &&
-					!fullMessage.labelIds?.includes('INBOX')
-				) {
-					continue;
-				}
 
-				if (!simple) {
-					const dataPropertyNameDownload =
-						options.dataPropertyAttachmentsPrefixName || 'attachment_';
+					if (!simple) {
+						const dataPropertyNameDownload =
+							options.dataPropertyAttachmentsPrefixName ?? 'attachment_';
 
-					const parsed = await parseRawEmail.call(this, fullMessage, dataPropertyNameDownload);
-					responseData.push(parsed);
-				} else {
-					responseData.push({ json: fullMessage });
+						const parsed = await parseRawEmail.call(this, fullMessage, dataPropertyNameDownload);
+						responseData.push(parsed);
+					} else {
+						responseData.push({ json: fullMessage });
+					}
 				}
 			}
 
@@ -375,13 +393,19 @@ export class GmailTrigger implements INodeType {
 					),
 				);
 			}
-		} catch (error) {
+		} catch (error: unknown) {
 			if (this.getMode() === 'manual' || !nodeStaticData.lastTimeChecked) {
 				throw error;
 			}
 			const workflow = this.getWorkflow();
+			const errMessage =
+				error instanceof Error
+					? error.message
+					: typeof (error as { description?: string })?.description === 'string'
+						? (error as { description: string }).description
+						: String(error);
 			this.logger.error(
-				`There was a problem in '${node.name}' node in workflow '${workflow.id}': '${error.description}'`,
+				`There was a problem in '${node.name}' node in workflow '${workflow.id}': '${errMessage}'`,
 				{
 					node: node.name,
 					workflowId: workflow.id,
@@ -396,7 +420,8 @@ export class GmailTrigger implements INodeType {
 
 		const emailsWithInvalidDate = new Set<string>();
 
-		const getEmailDateAsSeconds = (email: Message): number => {
+		type MessageDateInfo = Pick<Message, 'id' | 'internalDate' | 'date' | 'headers'>;
+		const getEmailDateAsSeconds = (email: MessageDateInfo): number => {
 			let date;
 
 			if (email.internalDate) {
