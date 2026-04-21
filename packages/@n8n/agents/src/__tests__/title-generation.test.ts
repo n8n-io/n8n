@@ -31,15 +31,15 @@ describe('generateTitleFromMessage', () => {
 		expect(mockGenerateText).not.toHaveBeenCalled();
 	});
 
-	it('returns the message itself for trivial greetings without calling the LLM', async () => {
+	it('returns null for trivial greetings without calling the LLM', async () => {
 		const result = await generateTitleFromMessage(fakeModel, 'hey');
-		expect(result).toBe('hey');
+		expect(result).toBeNull();
 		expect(mockGenerateText).not.toHaveBeenCalled();
 	});
 
-	it('skips the LLM for short multi-word messages', async () => {
+	it('returns null for short multi-word messages without calling the LLM', async () => {
 		const result = await generateTitleFromMessage(fakeModel, 'hi there');
-		expect(result).toBe('hi there');
+		expect(result).toBeNull();
 		expect(mockGenerateText).not.toHaveBeenCalled();
 	});
 

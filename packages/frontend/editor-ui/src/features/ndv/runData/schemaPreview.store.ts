@@ -24,9 +24,7 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	function getSchemaPreviewKey({
@@ -62,7 +60,7 @@ export const useSchemaPreviewStore = defineStore('schemaPreview', () => {
 			return;
 		}
 
-		const node = workflowDocumentStore.value?.getNodeByName(pushEvent.nodeName) ?? null;
+		const node = workflowDocumentStore.value.getNodeByName(pushEvent.nodeName) ?? null;
 
 		if (!node) return;
 

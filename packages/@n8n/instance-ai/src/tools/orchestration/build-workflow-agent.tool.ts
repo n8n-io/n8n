@@ -44,10 +44,8 @@ import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
-import {
-	createSubmitWorkflowTool,
-	type SubmitWorkflowAttempt,
-} from '../workflows/submit-workflow.tool';
+import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
+import { type SubmitWorkflowAttempt } from '../workflows/submit-workflow.tool';
 
 /** Trigger types that cannot be test-fired programmatically (need an external request). */
 const UNTESTABLE_TRIGGERS = new Set([
@@ -363,11 +361,12 @@ export async function startBuildWorkflowAgentTask(
 						}
 
 						const mainWorkflowPath = `${root}/src/workflow.ts`;
-						builderTools['submit-workflow'] = createSubmitWorkflowTool(
-							domainContext,
+						builderTools['submit-workflow'] = createIdentityEnforcedSubmitWorkflowTool({
+							context: domainContext,
 							workspace,
-							credMap,
-							async (attempt) => {
+							credentialMap: credMap,
+							root,
+							onAttempt: async (attempt) => {
 								submitAttempts.set(attempt.filePath, attempt);
 								submitAttemptHistory.push(attempt);
 								if (attempt.filePath !== mainWorkflowPath || !context.workflowTaskService) {
@@ -385,7 +384,7 @@ export async function startBuildWorkflowAgentTask(
 									),
 								);
 							},
-						);
+						});
 
 						const tracedBuilderTools = traceSubAgentTools(
 							context,

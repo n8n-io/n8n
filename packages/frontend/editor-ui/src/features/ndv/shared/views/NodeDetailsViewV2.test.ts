@@ -43,7 +43,6 @@ const setupStore = (nodes: Array<ReturnType<typeof createTestNode>>) => {
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
-	workflowsStore.workflowObject = createTestWorkflowObject(workflow);
 	workflowsStore.nodeMetadata = nodes.reduce(
 		(acc, node) => ({ ...acc, [node.name]: { pristine: true } }),
 		{},
@@ -52,7 +51,7 @@ const setupStore = (nodes: Array<ReturnType<typeof createTestNode>>) => {
 	return {
 		pinia,
 		workflow,
-		workflowObject: workflowsStore.workflowObject as Workflow,
+		workflowObject: createTestWorkflowObject(workflow),
 	};
 };
 
