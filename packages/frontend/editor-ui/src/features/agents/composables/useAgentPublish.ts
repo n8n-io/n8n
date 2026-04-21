@@ -5,7 +5,9 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { publishAgent, unpublishAgent } from './useAgentApi';
-import type { AgentResource } from '../types';
+import { useAgentTelemetry } from './useAgentTelemetry';
+import { buildAgentConfigFingerprint } from './agentTelemetry.utils';
+import type { AgentResource, AgentJsonConfig } from '../types';
 
 /**
  * Shared publish/unpublish flow used by the builder header button and the list card.
@@ -17,14 +19,21 @@ export function useAgentPublish() {
 	const locale = useI18n();
 	const { showMessage, showError } = useToast();
 	const message = useMessage();
+	const agentTelemetry = useAgentTelemetry();
 
 	const publishing = ref(false);
 
-	async function publish(projectId: string, agentId: string): Promise<AgentResource | null> {
+	async function publish(
+		projectId: string,
+		agentId: string,
+		context: { config: AgentJsonConfig | null; connectedTriggers: string[] },
+	): Promise<AgentResource | null> {
 		if (publishing.value) return null;
 		publishing.value = true;
 		try {
 			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
+			const fp = await buildAgentConfigFingerprint(context.config, context.connectedTriggers);
+			agentTelemetry.trackPublishedAgent({ agentId, configVersion: fp.config_version });
 			showMessage({ title: locale.baseText('agents.publish.toast.published'), type: 'success' });
 			return updated;
 		} catch (error) {
@@ -51,6 +60,7 @@ export function useAgentPublish() {
 		publishing.value = true;
 		try {
 			const updated = await unpublishAgent(rootStore.restApiContext, projectId, agentId);
+			agentTelemetry.trackUnpublishedAgent({ agentId });
 			showMessage({ title: locale.baseText('agents.publish.toast.unpublished'), type: 'success' });
 			return updated;
 		} catch (error) {

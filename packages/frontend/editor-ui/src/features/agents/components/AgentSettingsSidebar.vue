@@ -44,6 +44,7 @@ const props = defineProps<{
 	saveStatus: 'idle' | 'saving' | 'saved';
 	building?: boolean;
 	codeOnly?: boolean;
+	connectedTriggers?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -228,6 +229,8 @@ watch(
 					:project-id="projectId"
 					:agent-id="agentId"
 					:is-saving="saveStatus === 'saving'"
+					:config="config"
+					:connected-triggers="connectedTriggers ?? []"
 					@published="(a) => emit('published', a)"
 					@unpublished="(a) => emit('unpublished', a)"
 				/>

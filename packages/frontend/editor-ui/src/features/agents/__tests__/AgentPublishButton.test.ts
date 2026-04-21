@@ -2,12 +2,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
-import type { AgentResource } from '../types';
+import type { AgentResource, AgentJsonConfig } from '../types';
 import type { AgentPublishedVersion } from '../agent.types';
 
 vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: vi.fn(),
 	unpublishAgent: vi.fn(),
+}));
+
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackPublishedAgent: vi.fn(),
+		trackUnpublishedAgent: vi.fn(),
+	}),
+}));
+
+vi.mock('../composables/agentTelemetry.utils', () => ({
+	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({ config_version: 'v-test' }),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -84,6 +95,8 @@ interface RenderProps {
 	agent?: AgentResource | null;
 	projectId?: string;
 	agentId?: string;
+	config?: AgentJsonConfig | null;
+	connectedTriggers?: string[];
 }
 
 describe('AgentPublishButton', () => {
@@ -94,6 +107,8 @@ describe('AgentPublishButton', () => {
 				agent: createAgent(),
 				projectId: 'project-1',
 				agentId: 'agent-1',
+				config: null,
+				connectedTriggers: [],
 				...props,
 			},
 			global: { stubs: STUBS },

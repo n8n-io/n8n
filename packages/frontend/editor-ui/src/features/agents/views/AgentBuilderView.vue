@@ -619,6 +619,7 @@ function onContinueLoaded(count: number) {
 			:save-status="saveStatus"
 			:building="isBuilding || isBuildChatStreaming"
 			:code-only="mode === 'chat' && chatMode === 'build'"
+			:connected-triggers="connectedTriggers"
 			@update:config="onConfigFieldUpdate"
 			@published="onPublished"
 			@unpublished="onUnpublished"
