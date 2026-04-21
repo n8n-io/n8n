@@ -6,8 +6,8 @@ import { Container } from '@n8n/di';
 import { SsoInstanceSettingsLoader } from '@/instance-settings-loader/loaders/sso.instance-settings-loader';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
 import { OIDC_PREFERENCES_DB_KEY } from '@/modules/sso-oidc/constants';
-import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
 import { SAML_PREFERENCES_DB_KEY } from '@/modules/sso-saml/constants';
+import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -17,7 +17,7 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-describe('SsoInstanceSettingsLoader → OidcService roundtrip', () => {
+describe('SsoInstanceSettingsLoader → SamlService roundtrip', () => {
 	let originalConfig: Record<string, unknown>;
 
 	beforeEach(() => {
@@ -27,43 +27,54 @@ describe('SsoInstanceSettingsLoader → OidcService roundtrip', () => {
 	});
 
 	afterEach(async () => {
-		// Restore original config
 		const globalConfig = Container.get(GlobalConfig);
 		Object.assign(globalConfig.instanceSettingsLoader, originalConfig);
 
-		// Clean up DB rows
 		const settingsRepository = Container.get(SettingsRepository);
 		await settingsRepository.delete({ key: OIDC_PREFERENCES_DB_KEY });
 		await settingsRepository.delete({ key: SAML_PREFERENCES_DB_KEY });
 		await settingsRepository.delete({ key: PROVISIONING_PREFERENCES_DB_KEY });
 	});
 
-	it('should write config that OidcService reads back with correct values', async () => {
+	it('should write config that SamlService reads back with correct values', async () => {
 		const globalConfig = Container.get(GlobalConfig);
 		Object.assign(globalConfig.instanceSettingsLoader, {
 			ssoManagedByEnv: true,
-			oidcClientId: 'my-client-id',
-			oidcClientSecret: 'my-actual-secret',
-			oidcDiscoveryEndpoint: 'https://idp.example.com/.well-known/openid-configuration',
-			oidcLoginEnabled: true,
-			oidcPrompt: 'consent',
-			oidcAcrValues: 'mfa, phrh',
+			samlMetadata: '<xml>metadata</xml>',
+			samlMetadataUrl: '',
+			samlLoginEnabled: true,
 			ssoUserRoleProvisioning: 'instance_and_project_roles',
 		});
 
 		const loader = Container.get(SsoInstanceSettingsLoader);
 		await loader.run();
 
-		const oidcService = Container.get(OidcService);
-		const config = await oidcService.loadConfig(true);
+		const samlService = Container.get(SamlService);
+		const prefs = await samlService.loadFromDbAndApplySamlPreferences(false);
 
-		expect(config.clientId).toBe('my-client-id');
-		expect(config.clientSecret).toBe('my-actual-secret');
-		expect(config.discoveryEndpoint.toString()).toBe(
-			'https://idp.example.com/.well-known/openid-configuration',
-		);
-		expect(config.loginEnabled).toBe(true);
-		expect(config.prompt).toBe('consent');
-		expect(config.authenticationContextClassReference).toEqual(['mfa', 'phrh']);
+		expect(prefs).toBeDefined();
+		expect(prefs!.metadata).toBe('<xml>metadata</xml>');
+		expect(prefs!.metadataUrl).toBeUndefined();
+		expect(prefs!.loginEnabled).toBe(true);
+	});
+
+	it('should persist metadataUrl when used instead of metadata', async () => {
+		const globalConfig = Container.get(GlobalConfig);
+		Object.assign(globalConfig.instanceSettingsLoader, {
+			ssoManagedByEnv: true,
+			samlMetadata: '',
+			samlMetadataUrl: 'https://idp.example.com/metadata',
+			samlLoginEnabled: true,
+			ssoUserRoleProvisioning: 'disabled',
+		});
+
+		const loader = Container.get(SsoInstanceSettingsLoader);
+		await loader.run();
+
+		const samlService = Container.get(SamlService);
+		const prefs = await samlService.loadFromDbAndApplySamlPreferences(false);
+
+		expect(prefs!.metadataUrl).toBe('https://idp.example.com/metadata');
+		expect(prefs!.metadata).toBeUndefined();
 	});
 });

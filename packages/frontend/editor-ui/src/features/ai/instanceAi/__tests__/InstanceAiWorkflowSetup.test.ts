@@ -10,6 +10,7 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -635,6 +636,131 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			// Card with backend-tested credential and unchanged selection should show complete
 			expect(getByTestId('instance-ai-workflow-setup-step-check')).toBeTruthy();
+		});
+	});
+
+	describe('node parameter defaults hydration on mount', () => {
+		it('fills hidden node-type parameter defaults into fetched workflow nodes before setWorkflow', async () => {
+			const nodeName = 'Google Sheets Trigger';
+			vi.mocked(fetchWorkflowApi).mockResolvedValueOnce({
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'node-1',
+						name: nodeName,
+						type: 'n8n-nodes-base.googleSheetsTrigger',
+						typeVersion: 1,
+						parameters: {
+							documentId: { __rl: true, mode: 'list', value: '' },
+							event: 'rowAdded',
+						},
+						position: [0, 0],
+					},
+				],
+				connections: {},
+				active: false,
+				versionId: 'v1',
+				createdAt: '',
+				updatedAt: '',
+			} as unknown as Awaited<ReturnType<typeof fetchWorkflowApi>>);
+
+			const nodeTypesStore = useNodeTypesStore();
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => ({
+				name: 'n8n-nodes-base.googleSheetsTrigger',
+				displayName: 'Google Sheets Trigger',
+				group: ['trigger'],
+				version: 1,
+				defaults: {},
+				inputs: [],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'hidden',
+						default: 'triggerOAuth2',
+					},
+					{
+						displayName: 'Event',
+						name: 'event',
+						type: 'options',
+						options: [{ name: 'Row Added', value: 'rowAdded' }],
+						default: 'rowAdded',
+					},
+				],
+			}));
+
+			const workflowsStore = useWorkflowsStore();
+			const setWorkflowSpy = vi.spyOn(workflowsStore, 'setWorkflow');
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack Cred' }]),
+			];
+
+			await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			expect(setWorkflowSpy).toHaveBeenCalled();
+			const firstCall = setWorkflowSpy.mock.calls[0][0];
+			expect(firstCall.nodes[0].parameters).toEqual(
+				expect.objectContaining({
+					authentication: 'triggerOAuth2',
+					event: 'rowAdded',
+				}),
+			);
+		});
+
+		it('skips default hydration for nodes whose node type is unknown', async () => {
+			vi.mocked(fetchWorkflowApi).mockResolvedValueOnce({
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Unknown',
+						type: 'custom.unknown',
+						typeVersion: 1,
+						parameters: { foo: 'bar' },
+						position: [0, 0],
+					},
+				],
+				connections: {},
+				active: false,
+				versionId: 'v1',
+				createdAt: '',
+				updatedAt: '',
+			} as unknown as Awaited<ReturnType<typeof fetchWorkflowApi>>);
+
+			const nodeTypesStore = useNodeTypesStore();
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => null);
+
+			const workflowsStore = useWorkflowsStore();
+			const setWorkflowSpy = vi.spyOn(workflowsStore, 'setWorkflow');
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack Cred' }]),
+			];
+
+			await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			const firstCall = setWorkflowSpy.mock.calls[0][0];
+			expect(firstCall.nodes[0].parameters).toEqual({ foo: 'bar' });
 		});
 	});
 
