@@ -148,6 +148,7 @@ describe('MiniMax Operations', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
+						modelId: 'image-01',
 						prompt: 'A sunset over mountains',
 						aspectRatio: '16:9',
 						numberOfImages: 1,
@@ -184,6 +185,7 @@ describe('MiniMax Operations', () => {
 			deepMock.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
+						modelId: 'image-01',
 						prompt: 'A sunset',
 						aspectRatio: '1:1',
 						numberOfImages: 1,

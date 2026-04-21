@@ -251,24 +251,15 @@ export async function execute(
 	};
 
 	if (downloadAudio) {
-		let binaryBuffer: Buffer;
-		let mimeType: string;
+		const audioResponse = await this.helpers.httpRequest({
+			method: 'GET',
+			url: audioData,
+			encoding: 'arraybuffer',
+			returnFullResponse: true,
+		});
 
-		if (audioData.startsWith('http')) {
-			const audioResponse = await this.helpers.httpRequest({
-				method: 'GET',
-				url: audioData,
-				encoding: 'arraybuffer',
-				returnFullResponse: true,
-			});
-
-			mimeType = (audioResponse.headers?.['content-type'] as string) || `audio/${audioFormat}`;
-			binaryBuffer = Buffer.from(audioResponse.body as ArrayBuffer);
-		} else {
-			binaryBuffer = Buffer.from(audioData, 'hex');
-			mimeType = `audio/${audioFormat}`;
-		}
-
+		const mimeType = (audioResponse.headers?.['content-type'] as string) || `audio/${audioFormat}`;
+		const binaryBuffer = Buffer.from(audioResponse.body as ArrayBuffer);
 		const fileName = `speech.${audioFormat}`;
 		const binaryData = await this.helpers.prepareBinaryData(binaryBuffer, fileName, mimeType);
 

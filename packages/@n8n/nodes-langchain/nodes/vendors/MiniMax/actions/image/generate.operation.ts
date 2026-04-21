@@ -11,6 +11,20 @@ import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
+		displayName: 'Model',
+		name: 'modelId',
+		type: 'options',
+		options: [
+			{
+				name: 'Image-01',
+				value: 'image-01',
+				description: 'High-quality image generation with fine-grained details',
+			},
+		],
+		default: 'image-01',
+		description: 'The model to use for image generation',
+	},
+	{
 		displayName: 'Prompt',
 		name: 'prompt',
 		type: 'string',
@@ -94,6 +108,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+	const model = this.getNodeParameter('modelId', i) as string;
 	const prompt = this.getNodeParameter('prompt', i) as string;
 	const aspectRatio = this.getNodeParameter('aspectRatio', i) as string;
 	const numberOfImages = this.getNodeParameter('numberOfImages', i, 1) as number;
@@ -104,7 +119,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 
 	const body: IDataObject = {
-		model: 'image-01',
+		model,
 		prompt,
 		aspect_ratio: aspectRatio,
 		n: numberOfImages,
@@ -115,7 +130,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.prompt_optimizer = options.promptOptimizer;
 	}
 
-	if (options.seed !== undefined && options.seed !== 0) {
+	if (options.seed !== undefined) {
 		body.seed = options.seed;
 	}
 
