@@ -3,12 +3,15 @@ import type { WorkflowAuthoringCheckSeverity, WorkflowCheckConfigDto } from '@n8
 import { N8nHeading, N8nSelect, N8nOption, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ElSwitch } from 'element-plus';
+import { storeToRefs } from 'pinia';
 import { onMounted } from 'vue';
 
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowAuthoringChecks } from '@/features/settings/workflowAuthoringChecks/useWorkflowAuthoringChecks';
+import { useWorkflowAuthoringChecksStore } from '@/features/workflows/authoringChecks/authoringChecks.store';
 
-const { checks, isLoading, fetchChecks, updateCheck } = useWorkflowAuthoringChecks();
+const store = useWorkflowAuthoringChecksStore();
+const { checks, isLoading } = storeToRefs(store);
+const { fetchChecks, updateCheck } = store;
 const i18n = useI18n();
 const { showError } = useToast();
 

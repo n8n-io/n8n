@@ -4,6 +4,7 @@ import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -184,8 +185,14 @@ export function useWorkflowActivate() {
 	const publishWorkflow = async (
 		workflowId: string,
 		versionId: string,
-		options?: { name?: string; description?: string },
+		options?: { name?: string; description?: string; skipAuthoringChecks?: boolean },
 	) => {
+		const { skipAuthoringChecks, ...publishOptions } = options ?? {};
+
+		if (skipAuthoringChecks) {
+			return await performPublish(workflowId, versionId, publishOptions, true);
+		}
+
 		updatingWorkflowActivation.value = true;
 		let preview;
 		try {
@@ -209,14 +216,54 @@ export function useWorkflowActivate() {
 					onConfirm: hasBlocking
 						? undefined
 						: () => {
-								void performPublish(workflowId, versionId, options, true);
+								void performPublish(workflowId, versionId, publishOptions, true);
 							},
 				} as unknown as Record<string, unknown>,
 			});
 			return { success: false, errorHandled: true };
 		}
 
-		return await performPublish(workflowId, versionId, options, false);
+		return await performPublish(workflowId, versionId, publishOptions, false);
+	};
+
+	const runAuthoringChecksAndOpenPublishModal = async (workflowId: string, versionId: string) => {
+		updatingWorkflowActivation.value = true;
+		let preview;
+		try {
+			preview = await previewWorkflowAuthoringChecks(
+				rootStore.restApiContext,
+				workflowId,
+				versionId,
+			);
+		} catch {
+			// Preview is best-effort; server still enforces blocking/warning checks on activate
+		} finally {
+			updatingWorkflowActivation.value = false;
+		}
+
+		if (preview && preview.results.length > 0) {
+			const hasBlocking = preview.results.some((r) => r.severity === 'blocking');
+			uiStore.openModalWithData({
+				name: WORKFLOW_AUTHORING_CHECKS_MODAL_KEY,
+				data: {
+					results: preview.results,
+					onConfirm: hasBlocking
+						? undefined
+						: () => {
+								uiStore.openModalWithData({
+									name: WORKFLOW_PUBLISH_MODAL_KEY,
+									data: { skipAuthoringChecks: true },
+								});
+							},
+				} as unknown as Record<string, unknown>,
+			});
+			return;
+		}
+
+		uiStore.openModalWithData({
+			name: WORKFLOW_PUBLISH_MODAL_KEY,
+			data: {},
+		});
 	};
 
 	const unpublishWorkflowFromHistory = async (workflowId: string) => {
@@ -268,6 +315,7 @@ export function useWorkflowActivate() {
 	return {
 		updatingWorkflowActivation,
 		publishWorkflow,
+		runAuthoringChecksAndOpenPublishModal,
 		unpublishWorkflowFromHistory,
 	};
 }

@@ -31,6 +31,13 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 
+const props = defineProps<{
+	modalName?: string;
+	data?: {
+		skipAuthoringChecks?: boolean;
+	};
+}>();
+
 const modalBus = createEventBus();
 const i18n = useI18n();
 
@@ -198,6 +205,7 @@ async function handlePublish() {
 		{
 			name: versionName.value,
 			description: description.value,
+			skipAuthoringChecks: props.data?.skipAuthoringChecks,
 		},
 	);
 

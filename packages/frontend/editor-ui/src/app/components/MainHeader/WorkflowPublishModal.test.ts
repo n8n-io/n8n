@@ -219,4 +219,52 @@ describe('WorkflowPublishModal', () => {
 			});
 		});
 	});
+
+	describe('skipAuthoringChecks forwarding', () => {
+		it('should forward skipAuthoringChecks: true to publishWorkflow when set on modal data', async () => {
+			mockPublishWorkflow.mockReset().mockResolvedValue({
+				success: true,
+				errorHandled: false,
+			});
+
+			const { getByTestId } = renderComponent({
+				props: { data: { skipAuthoringChecks: true } },
+			});
+
+			const versionInput = getByTestId('workflow-publish-version-name-input');
+			await userEvent.type(versionInput, 'v1.0.0');
+
+			await userEvent.click(getByTestId('workflow-publish-button'));
+
+			await waitFor(() => {
+				expect(mockPublishWorkflow).toHaveBeenCalledWith(
+					'workflow-1',
+					expect.any(String),
+					expect.objectContaining({ skipAuthoringChecks: true }),
+				);
+			});
+		});
+
+		it('should not set skipAuthoringChecks when modal data is empty', async () => {
+			mockPublishWorkflow.mockReset().mockResolvedValue({
+				success: true,
+				errorHandled: false,
+			});
+
+			const { getByTestId } = renderComponent();
+
+			const versionInput = getByTestId('workflow-publish-version-name-input');
+			await userEvent.type(versionInput, 'v1.0.0');
+
+			await userEvent.click(getByTestId('workflow-publish-button'));
+
+			await waitFor(() => {
+				expect(mockPublishWorkflow).toHaveBeenCalledWith(
+					'workflow-1',
+					expect.any(String),
+					expect.objectContaining({ skipAuthoringChecks: undefined }),
+				);
+			});
+		});
+	});
 });

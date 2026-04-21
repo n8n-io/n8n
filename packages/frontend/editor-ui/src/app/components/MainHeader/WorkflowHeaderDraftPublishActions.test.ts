@@ -10,8 +10,9 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { WORKFLOW_PUBLISH_MODAL_KEY, EnterpriseEditionFeature } from '@/app/constants';
+import { EnterpriseEditionFeature, WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
+import { useWorkflowAuthoringChecksStore } from '@/features/workflows/authoringChecks/authoringChecks.store';
 import type { INodeUi } from '@/Interface';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
@@ -40,6 +41,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 const mockSaveCurrentWorkflow = vi.fn().mockResolvedValue(true);
 const mockUnpublishWorkflowFromHistory = vi.fn().mockResolvedValue(true);
+const mockRunAuthoringChecksAndOpenPublishModal = vi.fn().mockResolvedValue(undefined);
 const mockShowMessage = vi.fn();
 
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
@@ -51,6 +53,7 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 vi.mock('@/app/composables/useWorkflowActivate', () => ({
 	useWorkflowActivate: () => ({
 		unpublishWorkflowFromHistory: mockUnpublishWorkflowFromHistory,
+		runAuthoringChecksAndOpenPublishModal: mockRunAuthoringChecksAndOpenPublishModal,
 	}),
 }));
 
@@ -128,6 +131,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	let uiStore: MockedStore<typeof useUIStore>;
 	let collaborationStore: MockedStore<typeof useCollaborationStore>;
 	let projectsStore: MockedStore<typeof useProjectsStore>;
+	let authoringChecksStore: MockedStore<typeof useWorkflowAuthoringChecksStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
 	const setupEnabledPublishButton = (overrides = {}) => {
@@ -136,11 +140,28 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		Object.assign(workflowsStore, overrides);
 	};
 
+	const enableAuthoringChecks = () => {
+		authoringChecksStore.checks = [
+			{
+				checkId: 'check-1',
+				title: 'Check',
+				description: '',
+				defaultSeverity: 'warning',
+				severityOverride: null,
+				effectiveSeverity: 'warning',
+				enabled: true,
+			},
+		];
+	};
+
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		uiStore = mockedStore(useUIStore);
 		collaborationStore = mockedStore(useCollaborationStore);
 		projectsStore = mockedStore(useProjectsStore);
+		authoringChecksStore = mockedStore(useWorkflowAuthoringChecksStore);
+		authoringChecksStore.checks = [];
+		authoringChecksStore.ensureChecksLoaded = vi.fn().mockResolvedValue(undefined);
 
 		workflowsStore.workflow = {
 			id: '1',
@@ -165,6 +186,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
+		mockRunAuthoringChecksAndOpenPublishModal.mockClear();
+		mockRunAuthoringChecksAndOpenPublishModal.mockResolvedValue(undefined);
 	});
 
 	afterEach(() => {
@@ -336,8 +359,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	});
 
 	describe('Publish button behavior', () => {
-		it('should open publish modal when clicked and workflow is saved', async () => {
-			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+		it('should open publish modal directly when no checks are enabled', async () => {
 			uiStore.markStateClean();
 			setupEnabledPublishButton({
 				workflow: {
@@ -355,14 +377,38 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 
 			expect(mockSaveCurrentWorkflow).not.toHaveBeenCalled();
-			expect(openModalSpy).toHaveBeenCalledWith({
+			expect(authoringChecksStore.ensureChecksLoaded).toHaveBeenCalled();
+			expect(mockRunAuthoringChecksAndOpenPublishModal).not.toHaveBeenCalled();
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: WORKFLOW_PUBLISH_MODAL_KEY,
 				data: {},
 			});
 		});
 
+		it('should run authoring checks when clicked and at least one check is enabled', async () => {
+			uiStore.markStateClean();
+			setupEnabledPublishButton({
+				workflow: {
+					...workflowsStore.workflow,
+					versionId: 'version-1',
+				},
+			});
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-2',
+				activeVersion: createMockActiveVersion('version-2'),
+			});
+			enableAuthoringChecks();
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
+
+			expect(mockSaveCurrentWorkflow).not.toHaveBeenCalled();
+			expect(authoringChecksStore.ensureChecksLoaded).toHaveBeenCalled();
+			expect(mockRunAuthoringChecksAndOpenPublishModal).toHaveBeenCalledWith('1', 'version-1');
+		});
+
 		it('should save workflow first when dirty then open publish modal', async () => {
-			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 			uiStore.markStateDirty();
 			setupEnabledPublishButton();
 
@@ -371,10 +417,24 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 
 			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, true);
-			expect(openModalSpy).toHaveBeenCalledWith({
+			expect(mockRunAuthoringChecksAndOpenPublishModal).not.toHaveBeenCalled();
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: WORKFLOW_PUBLISH_MODAL_KEY,
 				data: {},
 			});
+		});
+
+		it('should save workflow first when dirty then run authoring checks when checks are enabled', async () => {
+			uiStore.markStateDirty();
+			setupEnabledPublishButton();
+			enableAuthoringChecks();
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
+
+			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, true);
+			expect(mockRunAuthoringChecksAndOpenPublishModal).toHaveBeenCalledWith('1', 'version-1');
 		});
 
 		it('should have publish button disabled when isNewWorkflow is true', async () => {
@@ -393,7 +453,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should not open publish modal if save fails', async () => {
-			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 			uiStore.markStateDirty();
 			mockSaveCurrentWorkflow.mockResolvedValue(false);
 			setupEnabledPublishButton();
@@ -403,7 +462,9 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 
 			expect(mockSaveCurrentWorkflow).toHaveBeenCalled();
-			expect(openModalSpy).not.toHaveBeenCalled();
+			expect(authoringChecksStore.ensureChecksLoaded).not.toHaveBeenCalled();
+			expect(mockRunAuthoringChecksAndOpenPublishModal).not.toHaveBeenCalled();
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 		});
 
 		it('should be visible but disabled when user lacks workflow:publish permission', () => {

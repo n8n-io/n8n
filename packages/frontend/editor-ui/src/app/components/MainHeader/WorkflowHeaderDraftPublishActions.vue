@@ -6,9 +6,9 @@ import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import {
-	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_PUBLISH_MODAL_KEY,
 	AutoSaveState,
 	EnterpriseEditionFeature,
 } from '@/app/constants';
@@ -38,6 +38,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { useWorkflowAuthoringChecksStore } from '@/features/workflows/authoringChecks/authoringChecks.store';
 import { useToast } from '@/app/composables/useToast';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
@@ -76,6 +77,7 @@ const toast = useToast();
 const saveStore = useWorkflowSaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 const workflowActivate = useWorkflowActivate();
+const authoringChecksStore = useWorkflowAuthoringChecksStore();
 
 const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],
@@ -171,10 +173,20 @@ const onPublishButtonClick = async () => {
 		}
 	}
 
-	uiStore.openModalWithData({
-		name: WORKFLOW_PUBLISH_MODAL_KEY,
-		data: {},
-	});
+	await authoringChecksStore.ensureChecksLoaded();
+
+	if (!authoringChecksStore.hasWorkflowChecksEnabled) {
+		uiStore.openModalWithData({
+			name: WORKFLOW_PUBLISH_MODAL_KEY,
+			data: {},
+		});
+		return;
+	}
+
+	await workflowActivate.runAuthoringChecksAndOpenPublishModal(
+		props.id,
+		workflowDocumentStore.value?.versionId ?? '',
+	);
 };
 
 const publishButtonConfig = computed(() => {

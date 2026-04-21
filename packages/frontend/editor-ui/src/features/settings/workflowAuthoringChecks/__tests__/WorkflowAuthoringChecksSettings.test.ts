@@ -21,7 +21,7 @@ const guardrailCheck: WorkflowCheckConfigDto = {
 
 function renderSettings() {
 	return renderComponent(WorkflowAuthoringChecksSettings, {
-		pinia: createTestingPinia(),
+		pinia: createTestingPinia({ stubActions: false }),
 	});
 }
 
