@@ -337,9 +337,9 @@ async function initialize() {
 	await fetchConfig(projectId.value, agentId.value);
 	void sessionsStore.fetchThreads(projectId.value, agentId.value);
 
-	if (config.value?.instructions?.trim()) {
-		mode.value = 'chat';
-	}
+	// Always land on the home screen. Users enter chat mode by sending a
+	// message, picking a recent session, clicking the Test/Build toggle, or
+	// via a `continueSessionId` URL param — each of which sets `mode` explicitly.
 
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {

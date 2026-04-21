@@ -10,7 +10,14 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nTableBase,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const i18n = useI18n();
@@ -83,6 +90,12 @@ function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(1)}s`;
 }
 
+// Test-chat threads are keyed `test-${agentId}` (see chatThreadId() in
+// agents.service.ts). Production chat sessions use random UUIDs.
+function isTestChat(threadId: string): boolean {
+	return threadId.startsWith('test-');
+}
+
 function onRowClick(thread: { id: string; agentId: string }) {
 	void router.push({
 		name: AGENT_SESSION_DETAIL_VIEW,
@@ -110,6 +123,7 @@ async function loadMore() {
 						<th>{{ i18n.baseText('agentSessions.duration') }}</th>
 						<th>{{ i18n.baseText('agentSessions.tokenUsage') }}</th>
 						<th>{{ i18n.baseText('agentSessions.sessionId') }}</th>
+						<th style="width: 40px"></th>
 						<th style="width: 50px"></th>
 					</tr>
 				</thead>
@@ -126,24 +140,40 @@ async function loadMore() {
 						<td>{{ formatDuration(thread.totalDuration) }}</td>
 						<td>{{ formatTokens(thread.totalPromptTokens + thread.totalCompletionTokens) }}</td>
 						<td>{{ thread.sessionNumber }}</td>
+						<td :class="$style.modeCell">
+							<N8nTooltip
+								v-if="isTestChat(thread.id)"
+								:content="i18n.baseText('agentSessions.testChat')"
+								placement="top"
+							>
+								<N8nIcon icon="flask-conical" />
+							</N8nTooltip>
+						</td>
 						<td @click.stop>
 							<N8nActionDropdown
 								:items="deleteActions"
-								activator-icon="ellipsis"
 								data-test-id="agent-session-actions"
 								@select="onAction($event, thread.id)"
-							/>
+							>
+								<template #activator>
+									<N8nIconButton
+										variant="subtle"
+										icon="ellipsis-vertical"
+										:aria-label="i18n.baseText('agentSessions.actions')"
+									/>
+								</template>
+							</N8nActionDropdown>
 						</td>
 					</tr>
 					<template v-if="sessionsStore.loading && !sessionsStore.threads.length">
 						<tr v-for="item in 5" :key="item">
-							<td v-for="col in 6" :key="col">
+							<td v-for="col in 7" :key="col">
 								<ElSkeletonItem />
 							</td>
 						</tr>
 					</template>
 					<tr>
-						<td colspan="6" style="text-align: center">
+						<td colspan="7" style="text-align: center">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
 								<span data-test-id="agent-sessions-empty">
 									{{ i18n.baseText('agentSessions.empty') }}
@@ -188,5 +218,10 @@ async function loadMore() {
 	&:hover {
 		background-color: var(--color--foreground--tint-2);
 	}
+}
+
+.modeCell {
+	color: var(--color--text--tint-1);
+	text-align: center;
 }
 </style>

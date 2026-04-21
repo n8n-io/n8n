@@ -1305,6 +1305,8 @@
 	"agentSessions.sessionName": "Session",
 	"agentSessions.lastMessage": "Last Message",
 	"agentSessions.tokenUsage": "Token Usage",
+	"agentSessions.testChat": "Test chat",
+	"agentSessions.actions": "Actions",
 	"agentSessions.empty": "No agent sessions",
 	"agentSessions.loadMore": "Load more",
 	"agentSessions.loadedAll": "No more sessions to fetch",
