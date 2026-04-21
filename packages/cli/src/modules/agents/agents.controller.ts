@@ -1,4 +1,3 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
@@ -10,6 +9,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentStreamEmitter, type SseSend } from './agents-stream-emitter';
 import {
 	AgentChatMessageDto,
 	AgentIntegrationDto,
@@ -26,29 +26,9 @@ import { AgentRepository } from './repositories/agent.repository';
 type FlushableResponse = Response & { flush?: () => void };
 
 /**
- * Extract SSE-sendable events from AgentMessage content parts.
- * Returns an array of event objects suitable for `send()`.
- */
-function extractMessageEvents(message: AgentMessage): Array<Record<string, unknown>> {
-	if (!('content' in message) || !Array.isArray(message.content)) return [];
-
-	const events: Array<Record<string, unknown>> = [];
-	for (const part of message.content) {
-		if (part.type === 'text' && 'text' in part) {
-			events.push({ text: part.text });
-		} else if (part.type === 'tool-call' && 'toolName' in part) {
-			events.push({ toolCall: { tool: part.toolName, input: part.input } });
-		} else if (part.type === 'tool-result' && 'toolName' in part) {
-			events.push({ toolResult: { tool: part.toolName, output: part.result } });
-		}
-	}
-	return events;
-}
-
-/**
  * Set up SSE headers and return a send helper for streaming responses.
  */
-function initSseResponse(res: FlushableResponse): (data: Record<string, unknown>) => void {
+function initSseResponse(res: FlushableResponse): SseSend {
 	res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 	res.setHeader('Cache-Control', 'no-cache');
 	res.setHeader('Connection', 'keep-alive');
@@ -279,6 +259,7 @@ export class AgentsController {
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
 		const send = initSseResponse(res);
+		const emitter = new AgentStreamEmitter(send);
 
 		// If the client supplied a sessionId and a thread already exists under that id,
 		// the thread must belong to this (project, agent). Otherwise a caller could
@@ -305,7 +286,7 @@ export class AgentsController {
 				credentialProvider,
 				'chat',
 			)) {
-				this.sendStreamChunk(chunk, send);
+				emitter.handleChunk(chunk);
 			}
 			send({ done: true, sessionId: threadId });
 		} catch (error) {
@@ -383,6 +364,7 @@ export class AgentsController {
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
 		const send = initSseResponse(res);
+		const emitter = new AgentStreamEmitter(send);
 
 		try {
 			// Track streaming tool call input for set_code eager input streaming
@@ -395,33 +377,32 @@ export class AgentsController {
 				credentialProvider,
 				req.user.id,
 			)) {
+				// Builder-specific side-effects on top of the default emitter:
+				//   - mirror tool argument deltas as `toolCodeDelta` for the live code editor
+				//   - map `toolResult` → `configUpdated` / `toolUpdated` signals
 				if (chunk.type === 'tool-call-delta') {
-					// Track which tool is streaming
 					if (chunk.name) {
 						streamingToolName = chunk.name;
 					}
-					// Stream tool code deltas for build_custom_tool
 					if (streamingToolName === 'build_custom_tool' && chunk.argumentsDelta) {
 						send({ toolCodeDelta: chunk.argumentsDelta });
 					}
-				} else if (chunk.type === 'message' && 'message' in chunk) {
-					const events = extractMessageEvents(chunk.message);
-					for (const event of events) {
-						send(event);
-						if ('toolResult' in event) {
-							const toolResult = event.toolResult as { tool?: string };
-							if (toolResult.tool === 'write_config' || toolResult.tool === 'patch_config') {
-								send({ configUpdated: true });
-								streamingToolName = undefined;
-							}
-							if (toolResult.tool === 'build_custom_tool') {
-								send({ toolUpdated: true });
-								streamingToolName = undefined;
-							}
+				}
+
+				const emitted = emitter.handleChunk(chunk);
+
+				for (const event of emitted) {
+					if ('toolResult' in event) {
+						const toolResult = event.toolResult as { tool?: string };
+						if (toolResult.tool === 'write_config' || toolResult.tool === 'patch_config') {
+							send({ configUpdated: true });
+							streamingToolName = undefined;
+						}
+						if (toolResult.tool === 'build_custom_tool') {
+							send({ toolUpdated: true });
+							streamingToolName = undefined;
 						}
 					}
-				} else {
-					this.sendStreamChunk(chunk, send);
 				}
 			}
 
@@ -588,36 +569,5 @@ export class AgentsController {
 		});
 		const body = await webResponse.text();
 		res.send(body);
-	}
-
-	// ---------------------------------------------------------------------------
-	// Private helpers
-	// ---------------------------------------------------------------------------
-
-	/**
-	 * Map a single StreamChunk to an SSE event and send it.
-	 * Handles text-delta, reasoning-delta, message, and error chunk types.
-	 */
-	private sendStreamChunk(chunk: StreamChunk, send: (data: Record<string, unknown>) => void): void {
-		switch (chunk.type) {
-			case 'text-delta':
-				if (chunk.delta) send({ text: chunk.delta });
-				break;
-			case 'reasoning-delta':
-				if (chunk.delta) send({ thinking: chunk.delta });
-				break;
-			case 'message':
-				for (const event of extractMessageEvents(chunk.message)) {
-					send(event);
-				}
-				break;
-			case 'error': {
-				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
-				send({ error: errMsg });
-				break;
-			}
-			default:
-				break;
-		}
 	}
 }

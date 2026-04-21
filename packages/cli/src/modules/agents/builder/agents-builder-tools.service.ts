@@ -176,6 +176,95 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const testCustomToolTool = new Tool('test_custom_tool')
+			.description(
+				'Run a previously built custom tool against a set of test cases in the sandbox. ' +
+					'Use this right after build_custom_tool to validate behaviour before handing off. ' +
+					'Each case has a name, the input object to pass to the handler, and optionally an ' +
+					'expected output for automatic comparison (deep equality via JSON). If `expected` ' +
+					'is omitted, the actual output is returned as-is. Returns ' +
+					'{ ok, passed, failed, cases: [{ name, status, output, expected?, error? }] }.',
+			)
+			.input(
+				z.object({
+					id: z
+						.string()
+						.min(1)
+						.describe('ID of a custom tool already registered via build_custom_tool'),
+					cases: z
+						.array(
+							z.object({
+								name: z.string().min(1).describe('Human-readable case name'),
+								input: z.unknown().describe('Input object passed to the handler'),
+								expected: z
+									.unknown()
+									.optional()
+									.describe('Optional expected output for automatic equality check'),
+							}),
+						)
+						.min(1),
+				}),
+			)
+			.handler(
+				async ({
+					id,
+					cases,
+				}: {
+					id: string;
+					cases: Array<{ name: string; input: unknown; expected?: unknown }>;
+				}) => {
+					const agent = await this.agentsService.findById(agentId, projectId);
+					if (!agent) {
+						return { ok: false, errors: [{ message: 'Agent not found' }] };
+					}
+					const entry = agent.tools?.[id] as { code?: string } | undefined;
+					if (!entry?.code) {
+						return {
+							ok: false,
+							errors: [
+								{ message: `No custom tool with id "${id}". Call build_custom_tool first.` },
+							],
+						};
+					}
+
+					const results: Array<{
+						name: string;
+						status: 'pass' | 'fail' | 'error';
+						output?: unknown;
+						expected?: unknown;
+						error?: string;
+					}> = [];
+
+					for (const c of cases) {
+						try {
+							const output = await this.secureRuntime.executeToolInIsolate(entry.code, c.input, {});
+							if (c.expected === undefined) {
+								results.push({ name: c.name, status: 'pass', output });
+								continue;
+							}
+							const match = JSON.stringify(output) === JSON.stringify(c.expected);
+							results.push({
+								name: c.name,
+								status: match ? 'pass' : 'fail',
+								output,
+								expected: c.expected,
+							});
+						} catch (e) {
+							results.push({
+								name: c.name,
+								status: 'error',
+								error: e instanceof Error ? e.message : String(e),
+							});
+						}
+					}
+
+					const passed = results.filter((r) => r.status === 'pass').length;
+					const failed = results.length - passed;
+					return { ok: failed === 0, passed, failed, cases: results };
+				},
+			)
+			.build();
+
 		const listWorkflowsTool = new Tool('list_workflows')
 			.description(
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
@@ -225,6 +314,7 @@ export class AgentsBuilderToolsService {
 
 		return [
 			buildCustomToolTool,
+			testCustomToolTool,
 			listWorkflowsTool,
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,

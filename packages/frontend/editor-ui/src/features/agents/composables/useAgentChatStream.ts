@@ -203,16 +203,49 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						if (assistantMsg.content && !assistantMsg.content.endsWith('\n')) {
 							assistantMsg.content += '\n';
 						}
-						const tc = data.toolCall as { tool: string; input?: unknown };
+						const tc = data.toolCall as {
+							tool: string;
+							toolCallId?: string;
+							input?: unknown;
+						};
 						assistantMsg.toolCalls = assistantMsg.toolCalls ?? [];
-						assistantMsg.toolCalls.push({ tool: tc.tool, input: tc.input });
+						const already = tc.toolCallId
+							? assistantMsg.toolCalls.find((t: ToolCall) => t.toolCallId === tc.toolCallId)
+							: undefined;
+						if (already) {
+							if (tc.input !== undefined) already.input = tc.input;
+						} else {
+							assistantMsg.toolCalls.push({
+								tool: tc.tool,
+								toolCallId: tc.toolCallId,
+								input: tc.input,
+							});
+						}
+					}
+
+					if (data.toolCallInput && typeof data.toolCallInput === 'object') {
+						const tci = data.toolCallInput as { toolCallId?: string; input?: unknown };
+						if (tci.toolCallId) {
+							const existing = assistantMsg.toolCalls?.find(
+								(t: ToolCall) => t.toolCallId === tci.toolCallId,
+							);
+							if (existing) existing.input = tci.input;
+						}
 					}
 
 					if (data.toolResult && typeof data.toolResult === 'object') {
-						const tr = data.toolResult as { tool: string; output?: unknown };
-						const existing = assistantMsg.toolCalls?.find(
-							(t: ToolCall) => t.tool === tr.tool && t.output === undefined,
-						);
+						const tr = data.toolResult as {
+							tool: string;
+							toolCallId?: string;
+							output?: unknown;
+						};
+						const existing =
+							(tr.toolCallId
+								? assistantMsg.toolCalls?.find((t: ToolCall) => t.toolCallId === tr.toolCallId)
+								: undefined) ??
+							assistantMsg.toolCalls?.find(
+								(t: ToolCall) => t.tool === tr.tool && t.output === undefined,
+							);
 						if (existing) {
 							existing.output = tr.output;
 						}
