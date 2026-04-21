@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
@@ -17,16 +17,27 @@ const displayGroups = computed(() => buildDisplayGroups(props.messages));
 
 function scrollToBottom(): void {
 	void nextTick(() => {
-		if (scrollRef.value) {
-			scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
-		}
+		// Double rAF — async children (markdown, highlighters) can grow content
+		// after the first frame, so we measure on the second one.
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				if (scrollRef.value) {
+					scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
+				}
+			});
+		});
 	});
 }
 
-// `immediate: true` covers the initial mount: when the list is conditionally
-// rendered with messages already loaded, the length never transitions, so
-// without immediate the first scrollToBottom never fires and the user lands
-// at the top of a long history.
+// Snap to the bottom on initial render with a preloaded history. Two hooks on
+// purpose: `immediate: true` on the watch fires before the DOM paints (right
+// after setup), and `onMounted` covers cases where the post-flush scroll
+// measured an incomplete height because async content (markdown, highlighters)
+// was still expanding.
+onMounted(() => {
+	if (props.messages.length > 0) scrollToBottom();
+});
+
 watch(
 	() => [props.messages.length, props.messagingState],
 	() => scrollToBottom(),

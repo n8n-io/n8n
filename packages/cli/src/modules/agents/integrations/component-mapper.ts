@@ -1,9 +1,12 @@
+import { Container } from '@n8n/di';
+
+import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { loadChatSdk } from './esm-loader';
 
 /**
  * Component type from agent SDK suspend/toMessage payloads.
  */
-interface SuspendComponent {
+export interface SuspendComponent {
 	type: string;
 	text?: string;
 	label?: string;
@@ -41,7 +44,7 @@ interface ComponentRenderContext {
 	toolCallId: string;
 	children: unknown[];
 	buttons: unknown[];
-	makeButton: (label: string, rawValue: string, style?: string) => unknown;
+	makeButton: (label: string, rawValue: string, style?: string) => Promise<unknown>;
 }
 
 /**
@@ -53,10 +56,6 @@ interface ComponentRenderContext {
 export class ComponentMapper {
 	/**
 	 * Convert a suspend payload to a Chat SDK Card.
-	 * Encodes `runId:toolCallId` in button IDs for the resume flow.
-	 */
-	/**
-	 * Convert a suspend payload to a Chat SDK Card.
 	 *
 	 * Button values are JSON-encoded as the full resume payload that
 	 * matches the tool's resume schema. This way the action handler
@@ -64,29 +63,56 @@ export class ComponentMapper {
 	 *
 	 * @param resumeSchema - JSON Schema from the tool's `.resume()` definition.
 	 *   Used to wrap raw button values into the expected shape.
+	 * @param platform - Integration type (e.g. 'slack', 'telegram') for component normalization.
 	 */
 	async toCard(
 		payload: SuspendPayload,
 		runId: string,
 		toolCallId: string,
 		resumeSchema?: unknown,
+		shortenCallback?: (actionId: string, value: string) => Promise<{ id: string; value: string }>,
+		platform?: string,
 	): Promise<unknown> {
 		const sdk = await loadChatSdk();
+
+		// Delegate per-platform normalization to the Integration implementation.
+		const integration = platform ? Container.get(ChatIntegrationRegistry).get(platform) : undefined;
+		const components = integration?.normalizeComponents?.(payload.components) ?? payload.components;
 
 		const children: unknown[] = [];
 		const buttons: unknown[] = [];
 		const buttonIndex = { value: 0 };
 
-		const makeButton = (label: string, rawValue: string, style?: string) =>
-			sdk.Button({
-				id: `resume:${runId}:${toolCallId}:${buttonIndex.value++}`,
+		const makeButton = async (label: string, rawValue: string, style?: string) => {
+			let id = `resume:${runId}:${toolCallId}:${buttonIndex.value++}`;
+			let value = JSON.stringify(this.wrapValueForSchema(rawValue, resumeSchema));
+
+			// For platforms with short callback limits (e.g. Telegram 64 bytes),
+			// replace the full id/value with a short lookup key.
+			if (shortenCallback) {
+				const shortened = await shortenCallback(id, value);
+				id = shortened.id;
+				value = shortened.value;
+			}
+
+			return sdk.Button({
+				id,
 				label,
 				style: style === 'danger' ? 'danger' : 'primary',
-				value: JSON.stringify(this.wrapValueForSchema(rawValue, resumeSchema)),
+				value,
 			});
+		};
 
-		for (const component of payload.components) {
-			this.appendComponent({ component, sdk, runId, toolCallId, children, buttons, makeButton });
+		for (const component of components) {
+			await this.appendComponent({
+				component,
+				sdk,
+				runId,
+				toolCallId,
+				children,
+				buttons,
+				makeButton,
+			});
 		}
 
 		if (buttons.length > 0) {
@@ -100,16 +126,16 @@ export class ComponentMapper {
 	}
 
 	/** Dispatch a single component to its dedicated handler. */
-	private appendComponent(ctx: ComponentRenderContext): void {
+	private async appendComponent(ctx: ComponentRenderContext): Promise<void> {
 		const { component, children, buttons, makeButton } = ctx;
 		switch (component.type) {
 			case 'button':
 				buttons.push(
-					makeButton(component.label ?? 'Action', component.value ?? '', component.style),
+					await makeButton(component.label ?? 'Action', component.value ?? '', component.style),
 				);
 				return;
 			case 'section':
-				this.appendSection(ctx);
+				await this.appendSection(ctx);
 				return;
 			case 'divider':
 				children.push(ctx.sdk.Divider());
@@ -135,7 +161,12 @@ export class ComponentMapper {
 		}
 	}
 
-	private appendSection({ component, sdk, children, makeButton }: ComponentRenderContext): void {
+	private async appendSection({
+		component,
+		sdk,
+		children,
+		makeButton,
+	}: ComponentRenderContext): Promise<void> {
 		if (component.text) {
 			children.push(sdk.Section([sdk.CardText(component.text)] as never));
 		}
@@ -145,7 +176,7 @@ export class ComponentMapper {
 		if (component.button) {
 			children.push(
 				sdk.Actions([
-					makeButton(component.button.label, component.button.value, component.button.style),
+					await makeButton(component.button.label, component.button.value, component.button.style),
 				] as never),
 			);
 		}

@@ -58,6 +58,8 @@ interface InjectRuntimeDependenciesParams {
 	projectId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
+	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
+	integrationType?: string;
 }
 
 /** Derive a stable thread ID for the test-chat of a given agent. */
@@ -92,9 +94,12 @@ export class AgentsService {
 	 */
 	private readonly pendingUserMessages = new Map<string, string>();
 
-	/** Cache key for draft/builder executions. Includes user so different users get isolated runtimes. */
-	private runtimeKey(agentId: string, userId?: string): string {
-		return userId ? `${agentId}:${userId}` : agentId;
+	/** Build a cache key that includes the user and integration type so different contexts get isolated runtimes. */
+	private runtimeKey(agentId: string, userId?: string, integrationType?: string): string {
+		const parts = [agentId];
+		if (userId) parts.push(userId);
+		if (integrationType) parts.push(integrationType);
+		return parts.join(':');
 	}
 
 	/** Remove all cached draft runtimes for an agent (all users). */
@@ -402,12 +407,13 @@ export class AgentsService {
 	 * (opt-in, defaults to false) — see {@link isNodeToolsEnabled}.
 	 */
 	private async injectRuntimeDependencies(params: InjectRuntimeDependenciesParams): Promise<void> {
-		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled } = params;
+		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
+			params;
 
 		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
 		try {
 			const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
-			agent.tool(createRichInteractionTool());
+			agent.tool(createRichInteractionTool(integrationType));
 		} catch (toolError) {
 			this.logger.warn('Failed to inject rich_interaction tool', {
 				agentId,
@@ -530,9 +536,9 @@ export class AgentsService {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
-		source?: string,
+		integrationType?: string,
 	): AsyncGenerator<StreamChunk> {
-		const key = this.runtimeKey(agentId, userId);
+		const key = this.runtimeKey(agentId, userId, integrationType);
 		let runtime = this.runtimes.get(key);
 		if (!runtime) {
 			// Scope the lookup to the project so an agent from a different project
@@ -544,6 +550,7 @@ export class AgentsService {
 				agentEntity,
 				credentialProvider,
 				userId,
+				integrationType,
 			);
 
 			// Cache the runtime for subsequent calls
@@ -559,7 +566,7 @@ export class AgentsService {
 			threadId,
 			userId,
 			projectId,
-			source,
+			integrationType,
 		);
 	}
 
@@ -601,7 +608,7 @@ export class AgentsService {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
-		source?: string,
+		integrationType?: string,
 	): AsyncGenerator<StreamChunk> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
@@ -611,23 +618,33 @@ export class AgentsService {
 			throw new NotFoundError(`Agent ${agentId} is not published`);
 		}
 
-		// Always reconstruct from the published snapshot — no caching.
-		// Integration traffic must always run the published version, never a cached draft.
-		const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
-		const agentInstance = await this.reconstructFromConfig(
-			publishedAgentData,
-			credentialProvider,
-			userId,
-		);
+		// Reconstruct from the published snapshot and cache the runtime so that
+		// a follow-up `resumeForChat` (HITL button click) can find it via
+		// `findRuntimeForAgent`. Integration traffic only ever runs the published
+		// version — drafts stay in their own cache under different keys.
+		const key = this.runtimeKey(agentId, userId, integrationType);
+		let runtime = this.runtimes.get(key);
+		if (!runtime) {
+			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
+			const agentInstance = await this.reconstructFromConfig(
+				publishedAgentData,
+				credentialProvider,
+				userId,
+				integrationType,
+			);
+			this.runtimes.set(key, { agent: agentInstance, agentId, userId });
+			runtime = this.runtimes.get(key);
+			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
+		}
 
 		yield* this.streamChatResponse(
-			agentInstance,
+			runtime.agent,
 			agentId,
 			message,
 			threadId,
 			userId,
 			projectId,
-			source,
+			integrationType,
 		);
 	}
 
@@ -1040,6 +1057,7 @@ export class AgentsService {
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		userId?: string,
+		integrationType?: string,
 	): Promise<agents.Agent> {
 		const config = agentEntity.schema;
 		if (!config) {
@@ -1077,6 +1095,7 @@ export class AgentsService {
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			nodeToolsEnabled: isNodeToolsEnabled(config.config),
+			integrationType,
 		});
 
 		return reconstructed;
