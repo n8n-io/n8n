@@ -418,6 +418,36 @@ describe('AgentJsonConfigSchema', () => {
 		expect(parsed.model).toBe('openrouter/openai/gpt-4o');
 	});
 
+	it('rejects model with consecutive slashes', () => {
+		const config = {
+			name: 'test',
+			model: 'openrouter//nova-micro-v1',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('rejects model with trailing slash', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5/',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('rejects model with leading slash in model segment', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic//claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
 	it('rejects empty name', () => {
 		const config = {
 			name: '',
