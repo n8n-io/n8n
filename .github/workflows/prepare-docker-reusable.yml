@@ -1,28 +1,26 @@
 name: 'Prepare n8n Docker (reusable)'
 
 # Reusable workflow that builds the n8n + runners CI test images once and
-# distributes them to downstream jobs. Resolves GHCR vs artifact based on
-# whether the caller is running on an internal or fork PR.
+# distributes them to downstream jobs.
 #
-# Both paths run on the same (Blacksmith) runner. The split is about GHCR
-# write access: fork-triggered workflows have `packages: write` silently
-# downgraded to read, so they fall back to uploading a tarball artifact
-# that shards download and `docker load`.
+# Community mode (fork PRs or caller opt-in) uses artifact distribution.
+# Internal mode pushes to GHCR. The split is about GHCR write access:
+# fork-triggered workflows have `packages: write` silently downgraded to
+# read, so they fall back to uploading a tarball artifact that shards
+# download and `docker load`. Both modes run on the same Blacksmith runner.
 #
 # Downstream consumers:
-#   - needs.<this-job>.outputs.docker-ref → image ref (ghcr mode) OR artifact name (artifact mode)
+#   - needs.<this-job>.outputs.docker-ref → image ref (internal) OR artifact name (community)
 #   - needs.<this-job>.outputs.image-tag  → e.g. ci-12345 (used for GHCR cleanup)
-#
-# Downstream derives mode from the caller's fork context, not from this output.
 
 on:
   workflow_call:
     inputs:
-      distribution:
-        description: "'ghcr', 'artifact', or 'auto' (default: ghcr for internal, artifact for forks)"
+      community-mode:
+        description: 'true to produce an artifact (fork PRs / community contributors), false to push to GHCR (internal).'
         required: false
-        default: 'auto'
-        type: string
+        default: false
+        type: boolean
       image-tag:
         description: 'Tag applied to both n8n and runners images. Defaults to ci-<run_id>.'
         required: false
@@ -34,7 +32,7 @@ on:
         default: 'standard'
         type: string
       runner:
-        description: 'Runner for the build (forks and internal use the same runner).'
+        description: 'Runner for the build (community and internal use the same runner).'
         required: false
         default: 'blacksmith-4vcpu-ubuntu-2204'
         type: string
@@ -45,7 +43,7 @@ on:
         type: string
     outputs:
       docker-ref:
-        description: 'Image ref (ghcr mode) or artifact name (artifact mode).'
+        description: 'Image ref (internal) or artifact name (community).'
         value: ${{ jobs.prepare.outputs.docker-ref }}
       image-tag:
         description: 'Tag applied to both images. Used by downstream GHCR cleanup.'
@@ -72,38 +70,25 @@ jobs:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
 
-      - name: Resolve distribution & tag
+      - name: Resolve tag
         id: resolve
         shell: bash
         env:
-          REQUESTED: ${{ inputs.distribution }}
-          IS_FORK: ${{ github.event.pull_request.head.repo.fork }}
           RUN_ID: ${{ github.run_id }}
           INPUT_TAG: ${{ inputs.image-tag }}
         run: |
-          if [ "$REQUESTED" = "auto" ]; then
-            if [ "$IS_FORK" = "true" ]; then
-              echo "distribution=artifact" >> "$GITHUB_OUTPUT"
-            else
-              echo "distribution=ghcr" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "distribution=$REQUESTED" >> "$GITHUB_OUTPUT"
-          fi
-
           if [ -n "$INPUT_TAG" ]; then
             echo "image-tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
           else
             echo "image-tag=ci-$RUN_ID" >> "$GITHUB_OUTPUT"
           fi
-
           echo "artifact-name=n8n-docker-image-$RUN_ID" >> "$GITHUB_OUTPUT"
 
       - name: Build and distribute image
         id: build
         uses: ./.github/actions/build-n8n-docker
         with:
-          distribution: ${{ steps.resolve.outputs.distribution }}
+          distribution: ${{ inputs.community-mode && 'artifact' || 'ghcr' }}
           image-tag: ${{ steps.resolve.outputs.image-tag }}
           ghcr-image-base: ghcr.io/${{ github.repository }}
           ghcr-runners-image-base: ghcr.io/${{ github.repository_owner }}/runners

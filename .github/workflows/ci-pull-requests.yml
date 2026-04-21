@@ -3,6 +3,13 @@ name: 'CI: Pull Requests (Build, Test, Lint)'
 on:
   pull_request:
   merge_group:
+  workflow_dispatch:
+    inputs:
+      force-community-mode:
+        description: 'Force the community (artifact) path, for testing the fork flow against the base repo.'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
@@ -159,11 +166,14 @@ jobs:
     if: >-
       github.repository == 'n8n-io/n8n' &&
       github.event_name != 'merge_group' &&
-      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true')
+      (needs.install-and-build.outputs.ci == 'true'
+        || needs.install-and-build.outputs.e2e == 'true'
+        || needs.install-and-build.outputs.e2e_performance == 'true')
     uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
-      distribution: auto
+      # Community mode for fork PRs or when manually dispatched with the override.
+      community-mode: ${{ github.event.pull_request.head.repo.fork == true || inputs.force-community-mode == true }}
     secrets: inherit
 
   e2e-tests:
@@ -178,6 +188,7 @@ jobs:
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
       playwright-only: ${{ needs.install-and-build.outputs.e2e == 'true' && needs.install-and-build.outputs.unit == 'false' }}
+      community-mode: ${{ github.event.pull_request.head.repo.fork == true || inputs.force-community-mode == true }}
       docker-ref: ${{ needs.prepare-docker.outputs.docker-ref }}
       image-tag: ${{ needs.prepare-docker.outputs.image-tag }}
     secrets: inherit
@@ -200,12 +211,18 @@ jobs:
 
   e2e-performance:
     name: E2E Performance
-    needs: install-and-build
+    needs: [install-and-build, prepare-docker]
+    # Performance is internal-only (needs license secrets). Skipped in community mode.
     if: >-
+      needs.prepare-docker.result == 'success' &&
       (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e_performance == 'true') &&
       github.event_name == 'pull_request' &&
-      github.repository == 'n8n-io/n8n'
+      github.repository == 'n8n-io/n8n' &&
+      !github.event.pull_request.head.repo.fork &&
+      !inputs.force-community-mode
     uses: ./.github/workflows/test-e2e-performance-reusable.yml
+    with:
+      docker-ref: ${{ needs.prepare-docker.outputs.docker-ref }}
     secrets: inherit
 
   security-checks:

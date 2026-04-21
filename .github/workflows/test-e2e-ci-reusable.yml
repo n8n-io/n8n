@@ -18,10 +18,14 @@ on:
         required: false
         type: string
         default: ''
-      # GHCR image ref for internal PRs, artifact name for fork PRs.
-      # The workflow infers which from the fork context.
+      community-mode:
+        description: 'true routes to the community (fork) path: sqlite-only, load image from artifact, skip license-dependent tests.'
+        required: false
+        type: boolean
+        default: false
+      # GHCR image ref in internal mode, artifact name in community mode.
       docker-ref:
-        description: 'Image ref (internal) or artifact name (fork) produced by prepare-docker.'
+        description: 'Image ref (internal) or artifact name (community) produced by prepare-docker.'
         required: false
         type: string
         default: ''
@@ -47,8 +51,13 @@ on:
         required: false
         type: string
         default: ''
+      community-mode:
+        description: 'true routes to the community (fork) path: sqlite-only, load image from artifact, skip license-dependent tests.'
+        required: false
+        type: boolean
+        default: false
       docker-ref:
-        description: 'Image ref (internal) or artifact name (fork) produced by prepare-docker.'
+        description: 'Image ref (internal) or artifact name (community) produced by prepare-docker.'
         required: false
         type: string
         default: ''
@@ -102,7 +111,7 @@ jobs:
   # Internal-only 1-spec fail-fast sanity check on sqlite.
   sqlite-sanity:
     name: 'SQLite: Sanity Check'
-    if: ${{ !github.event.pull_request.head.repo.fork }}
+    if: ${{ !inputs.community-mode }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
@@ -114,11 +123,11 @@ jobs:
       n8n-env: ${{ inputs.n8n-env }}
 
   # Internal-only full run: postgres + redis + caddy + 2 mains + 1 worker.
-  # Requires enterprise license secrets so cannot run on fork PRs.
+  # Requires enterprise license secrets so cannot run in community mode.
   multi-main-e2e:
     needs: [prepare-matrix]
     name: 'Multi-Main: E2E'
-    if: ${{ !github.event.pull_request.head.repo.fork && needs.prepare-matrix.outputs.skip-tests != 'true' }}
+    if: ${{ !inputs.community-mode && needs.prepare-matrix.outputs.skip-tests != 'true' }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
@@ -131,13 +140,13 @@ jobs:
       n8n-env: ${{ inputs.n8n-env }}
     secrets: inherit
 
-  # Fork-only full run on sqlite (no enterprise license needed).
-  # Excludes @licensed tests since fork PRs have no license secrets.
+  # Community-mode full run on sqlite (no enterprise license needed).
+  # Excludes @licensed tests since community contributors have no license secrets.
   # Loads image from the artifact produced by prepare-docker.
-  fork-sqlite-e2e:
+  community-sqlite-e2e:
     needs: [prepare-matrix]
-    name: 'SQLite: E2E (fork)'
-    if: ${{ github.event.pull_request.head.repo.fork && needs.prepare-matrix.outputs.skip-tests != 'true' }}
+    name: 'SQLite: E2E (community)'
+    if: ${{ inputs.community-mode && needs.prepare-matrix.outputs.skip-tests != 'true' }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
@@ -151,12 +160,12 @@ jobs:
       upload-failure-artifacts: true
 
   # Cleanup ephemeral Docker image from GHCR after tests complete.
-  # Skipped for fork PRs (no GHCR push happened, so nothing to clean).
+  # Skipped in community mode (no GHCR push happened, nothing to clean).
   # Local runner cleanup is handled by each test shard in test-e2e-reusable.yml
   cleanup-ghcr:
     name: 'Cleanup GHCR Image'
     needs: [sqlite-sanity, multi-main-e2e]
-    if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork && inputs.image-tag != '' }}
+    if: ${{ !failure() && !cancelled() && !inputs.community-mode && inputs.image-tag != '' }}
     runs-on: blacksmith-2vcpu-ubuntu-2204
     permissions:
       packages: write
