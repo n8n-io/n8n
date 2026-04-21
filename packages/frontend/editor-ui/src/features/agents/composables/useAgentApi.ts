@@ -1,3 +1,4 @@
+import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -203,8 +204,8 @@ export const getBuilderMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<unknown[]> => {
-	return await makeRestApiRequest<unknown[]>(
+): Promise<AgentPersistedMessageDto[]> => {
+	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
@@ -233,6 +234,30 @@ export const getChatMessages = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
+	);
+};
+
+export const getTestChatMessages = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentPersistedMessageDto[]> => {
+	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
+export const clearTestChatMessages = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
 	);
 };
 

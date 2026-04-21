@@ -62,6 +62,8 @@ const baseTextFn = (key: string) => {
 		'agents.settings.tools': 'Tools',
 		'agents.settings.advanced': 'Advanced',
 		'agents.settings.code': 'Code',
+		'agents.settings.configJson': 'config.json',
+		'agents.settings.customTools': 'Custom tools',
 	};
 	return map[key] ?? key;
 };
@@ -123,7 +125,8 @@ describe('AgentSettingsSidebar', () => {
 					AgentToolsPanel: { template: '<div data-testid="tools-panel-stub" />' },
 					AgentMemoryPanel: { template: '<div data-testid="memory-panel-stub" />' },
 					AgentIntegrationsPanel: { template: '<div data-testid="integrations-panel-stub" />' },
-					AgentCodeEditor: { template: '<div data-testid="code-editor-stub" />' },
+					AgentConfigJsonEditor: { template: '<div data-testid="config-json-stub" />' },
+					AgentCustomToolsList: { template: '<div data-testid="custom-tools-stub" />' },
 					// Stubbed so the test doesn't need Pinia — the real AgentPublishButton
 					// pulls in useRootStore via useAgentPublish.
 					AgentPublishButton: { template: '<div data-testid="publish-button-stub" />' },
@@ -148,14 +151,21 @@ describe('AgentSettingsSidebar', () => {
 		expect(wrapper.text()).toContain('Settings');
 	}, 15_000);
 
-	it('renders all sections (Model, Instructions, Triggers, Tools, Advanced, Code)', async () => {
+	it('renders non-code sections by default', async () => {
 		const wrapper = await renderComponent();
 		expect(wrapper.text()).toContain('Model');
 		expect(wrapper.text()).toContain('Instructions');
 		expect(wrapper.text()).toContain('Triggers');
 		expect(wrapper.text()).toContain('Tools');
 		expect(wrapper.text()).toContain('Advanced');
-		expect(wrapper.text()).toContain('Code');
+		expect(wrapper.text()).not.toContain('config.json');
+	});
+
+	it('renders only code sections when codeOnly is true', async () => {
+		const wrapper = await renderComponent({ codeOnly: true });
+		expect(wrapper.text()).toContain('config.json');
+		expect(wrapper.text()).not.toContain('Model');
+		expect(wrapper.text()).not.toContain('Instructions');
 	});
 
 	it('renders the publish button', async () => {
@@ -193,26 +203,31 @@ describe('AgentSettingsSidebar', () => {
 		expect(wrapper.find('[data-testid="tools-panel-stub"]').exists()).toBe(true);
 	});
 
-	it('expands Code section when clicked', async () => {
-		const wrapper = await renderComponent();
-		expect(wrapper.find('[data-testid="code-editor-stub"]').exists()).toBe(false);
+	it('expands config.json section when clicked', async () => {
+		const wrapper = await renderComponent({ codeOnly: true });
+		// codeOnly auto-expands the configJson section, so collapse it first.
+		const header = wrapper.findAll('button').find((b) => b.text().includes('config.json'));
+		await header?.trigger('click');
+		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(false);
 
-		const codeHeader = wrapper.findAll('button').find((b) => b.text().includes('Code'));
-		await codeHeader?.trigger('click');
-		expect(wrapper.find('[data-testid="code-editor-stub"]').exists()).toBe(true);
+		await header?.trigger('click');
+		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(true);
 	});
 
-	it('auto-expands Code section when building prop becomes true', async () => {
-		const wrapper = await renderComponent({ building: false });
-		expect(wrapper.find('[data-testid="code-editor-stub"]').exists()).toBe(false);
+	it('auto-expands config.json section when building prop becomes true', async () => {
+		const wrapper = await renderComponent({ codeOnly: true, building: false });
+		// In codeOnly mode, the codeOnly watcher already expands configJson; collapse first.
+		const header = wrapper.findAll('button').find((b) => b.text().includes('config.json'));
+		await header?.trigger('click');
+		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(false);
 
 		await wrapper.setProps({ building: true });
-		expect(wrapper.find('[data-testid="code-editor-stub"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(true);
 	});
 
-	it('auto-expands Code section when mounted with building already true', async () => {
-		const wrapper = await renderComponent({ building: true });
-		expect(wrapper.find('[data-testid="code-editor-stub"]').exists()).toBe(true);
+	it('auto-expands config.json section when mounted with building already true', async () => {
+		const wrapper = await renderComponent({ codeOnly: true, building: true });
+		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(true);
 	});
 
 	it('expands Triggers section to show integrations panel', async () => {

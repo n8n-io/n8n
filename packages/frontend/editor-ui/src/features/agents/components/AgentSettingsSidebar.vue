@@ -15,7 +15,10 @@ import AgentPublishButton from './AgentPublishButton.vue';
 import AgentToolsPanel from './AgentToolsPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentIntegrationsPanel from './AgentIntegrationsPanel.vue';
-import AgentCodeEditor from './AgentCodeEditor.vue';
+import AgentConfigJsonEditor from './AgentConfigJsonEditor.vue';
+import AgentCustomToolsList from './AgentCustomToolsList.vue';
+
+const toolCount = computed(() => Object.keys(props.agentTools).length);
 
 const locale = useI18n();
 const usersStore = useUsersStore();
@@ -31,6 +34,7 @@ const props = defineProps<{
 	agent: AgentResource | null;
 	saveStatus: 'idle' | 'saving' | 'saved';
 	building?: boolean;
+	codeOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -134,19 +138,32 @@ const expandedSections = ref<Record<string, boolean>>({
 	triggers: false,
 	tools: false,
 	advanced: false,
-	code: false,
+	configJson: false,
+	customTools: false,
 });
 
 function toggleSection(section: string) {
 	expandedSections.value[section] = !expandedSections.value[section];
 }
 
-// Auto-expand code section when building starts
+// Auto-expand the config editor while the builder is actively writing to it.
 watch(
 	() => props.building,
 	(building) => {
 		if (building) {
-			expandedSections.value.code = true;
+			expandedSections.value.configJson = true;
+		}
+	},
+	{ immediate: true },
+);
+
+// When the sidebar is in code-only mode (builder chat active), auto-expand the
+// config editor so it's visible without an extra click.
+watch(
+	() => props.codeOnly,
+	(codeOnly) => {
+		if (codeOnly) {
+			expandedSections.value.configJson = true;
 		}
 	},
 	{ immediate: true },
@@ -210,133 +227,153 @@ function onResizeStart(event: MouseEvent) {
 		</div>
 
 		<div :class="$style.body">
-			<!-- Model section -->
-			<div :class="[$style.staticSection, $style.modelSection]">
-				<div :class="$style.sectionLabel">
-					<N8nText tag="span" bold size="small">{{
-						locale.baseText('agents.settings.model')
-					}}</N8nText>
+			<template v-if="!codeOnly">
+				<!-- Model section -->
+				<div :class="[$style.staticSection, $style.modelSection]">
+					<div :class="$style.sectionLabel">
+						<N8nText tag="span" bold size="small">{{
+							locale.baseText('agents.settings.model')
+						}}</N8nText>
+					</div>
+					<ModelSelector
+						:selected-agent="selectedAgent"
+						:include-custom-agents="false"
+						:credentials="credentialsByProvider"
+						:agents="chatStore.agents"
+						:is-loading="false"
+						:warn-missing-credentials="true"
+						horizontal
+						@change="onModelChange"
+						@select-credential="onSelectCredential"
+					/>
 				</div>
-				<ModelSelector
-					:selected-agent="selectedAgent"
-					:include-custom-agents="false"
-					:credentials="credentialsByProvider"
-					:agents="chatStore.agents"
-					:is-loading="false"
-					:warn-missing-credentials="true"
-					horizontal
-					@change="onModelChange"
-					@select-credential="onSelectCredential"
-				/>
-			</div>
 
-			<!-- Instructions section -->
-			<div :class="$style.staticSection">
-				<div :class="$style.sectionLabel">
-					<N8nText tag="span" bold size="small">{{
-						locale.baseText('agents.settings.instructions')
-					}}</N8nText>
+				<!-- Instructions section -->
+				<div :class="$style.staticSection">
+					<div :class="$style.sectionLabel">
+						<N8nText tag="span" bold size="small">{{
+							locale.baseText('agents.settings.instructions')
+						}}</N8nText>
+					</div>
+					<N8nInput
+						:model-value="instructions"
+						type="textarea"
+						:rows="6"
+						:placeholder="locale.baseText('agents.settings.instructions.placeholder')"
+						data-testid="agent-instructions-input"
+						@update:model-value="onInstructionsChange"
+					/>
 				</div>
-				<N8nInput
-					:model-value="instructions"
-					type="textarea"
-					:rows="6"
-					:placeholder="locale.baseText('agents.settings.instructions.placeholder')"
-					data-testid="agent-instructions-input"
-					@update:model-value="onInstructionsChange"
-				/>
-			</div>
 
-			<!-- Triggers (collapsible) -->
-			<div :class="$style.section">
-				<button :class="$style.sectionHeader" @click="toggleSection('triggers')">
-					<div :class="$style.sectionHeaderLeft">
-						<N8nIcon
-							:icon="expandedSections.triggers ? 'chevron-down' : 'chevron-right'"
-							:size="16"
+				<!-- Triggers (collapsible) -->
+				<div :class="$style.section">
+					<button :class="$style.sectionHeader" @click="toggleSection('triggers')">
+						<div :class="$style.sectionHeaderLeft">
+							<N8nIcon
+								:icon="expandedSections.triggers ? 'chevron-down' : 'chevron-right'"
+								:size="16"
+							/>
+							<N8nText tag="span" bold size="small">{{
+								locale.baseText('agents.settings.triggers')
+							}}</N8nText>
+						</div>
+					</button>
+					<div v-if="expandedSections.triggers" :class="$style.sectionContent">
+						<AgentIntegrationsPanel
+							:project-id="projectId"
+							:agent-id="agentId"
+							:agent-name="agentName"
 						/>
-						<N8nText tag="span" bold size="small">{{
-							locale.baseText('agents.settings.triggers')
-						}}</N8nText>
 					</div>
-					<span role="button" tabindex="0" :class="$style.addBtn" @click.stop @keydown.enter.stop>
-						<N8nIcon icon="plus" :size="16" />
-					</span>
-				</button>
-				<div v-if="expandedSections.triggers" :class="$style.sectionContent">
-					<AgentIntegrationsPanel
-						:project-id="projectId"
-						:agent-id="agentId"
-						:agent-name="agentName"
-					/>
 				</div>
-			</div>
 
-			<!-- Tools (collapsible) -->
-			<div :class="$style.section">
-				<button :class="$style.sectionHeader" @click="toggleSection('tools')">
-					<div :class="$style.sectionHeaderLeft">
-						<N8nIcon :icon="expandedSections.tools ? 'chevron-down' : 'chevron-right'" :size="16" />
-						<N8nText tag="span" bold size="small">{{
-							locale.baseText('agents.settings.tools')
-						}}</N8nText>
-					</div>
-					<span role="button" tabindex="0" :class="$style.addBtn" @click.stop @keydown.enter.stop>
-						<N8nIcon icon="plus" :size="16" />
-					</span>
-				</button>
-				<div v-if="expandedSections.tools" :class="$style.sectionContent">
-					<AgentToolsPanel
-						:config="config"
-						:agent-tools="agentTools"
-						@update:config="(changes) => emit('update:config', changes)"
-					/>
-				</div>
-			</div>
-
-			<!-- Advanced (collapsible) -->
-			<div :class="$style.section">
-				<button :class="$style.sectionHeader" @click="toggleSection('advanced')">
-					<div :class="$style.sectionHeaderLeft">
-						<N8nIcon
-							:icon="expandedSections.advanced ? 'chevron-down' : 'chevron-right'"
-							:size="16"
+				<!-- Tools (collapsible) -->
+				<div :class="$style.section">
+					<button :class="$style.sectionHeader" @click="toggleSection('tools')">
+						<div :class="$style.sectionHeaderLeft">
+							<N8nIcon
+								:icon="expandedSections.tools ? 'chevron-down' : 'chevron-right'"
+								:size="16"
+							/>
+							<N8nText tag="span" bold size="small">{{
+								locale.baseText('agents.settings.tools')
+							}}</N8nText>
+						</div>
+					</button>
+					<div v-if="expandedSections.tools" :class="$style.sectionContent">
+						<AgentToolsPanel
+							:config="config"
+							:agent-tools="agentTools"
+							@update:config="(changes) => emit('update:config', changes)"
 						/>
-						<N8nText tag="span" bold size="small">{{
-							locale.baseText('agents.settings.advanced')
-						}}</N8nText>
 					</div>
-					<span role="button" tabindex="0" :class="$style.addBtn" @click.stop @keydown.enter.stop>
-						<N8nIcon icon="plus" :size="16" />
-					</span>
-				</button>
-				<div v-if="expandedSections.advanced" :class="$style.sectionContent">
-					<AgentMemoryPanel
-						:config="config"
-						@update:config="(changes) => emit('update:config', changes)"
-					/>
 				</div>
-			</div>
 
-			<!-- Config JSON (collapsed by default) -->
-			<div :class="$style.section">
-				<button :class="$style.sectionHeader" @click="toggleSection('code')">
-					<div :class="$style.sectionHeaderLeft">
-						<N8nIcon :icon="expandedSections.code ? 'chevron-down' : 'chevron-right'" :size="16" />
-						<N8nText tag="span" bold size="small">{{
-							locale.baseText('agents.settings.code')
-						}}</N8nText>
-						<N8nIcon v-if="building" icon="spinner" :size="14" spin />
+				<!-- Advanced (collapsible) -->
+				<div :class="$style.section">
+					<button :class="$style.sectionHeader" @click="toggleSection('advanced')">
+						<div :class="$style.sectionHeaderLeft">
+							<N8nIcon
+								:icon="expandedSections.advanced ? 'chevron-down' : 'chevron-right'"
+								:size="16"
+							/>
+							<N8nText tag="span" bold size="small">{{
+								locale.baseText('agents.settings.advanced')
+							}}</N8nText>
+						</div>
+					</button>
+					<div v-if="expandedSections.advanced" :class="$style.sectionContent">
+						<AgentMemoryPanel
+							:config="config"
+							@update:config="(changes) => emit('update:config', changes)"
+						/>
 					</div>
-				</button>
-				<div v-if="expandedSections.code" :class="$style.codeSection">
-					<AgentCodeEditor
-						:config="config"
-						:agent-tools="agentTools"
-						@update:config="(newConfig) => emit('update:config', newConfig)"
-					/>
 				</div>
-			</div>
+			</template>
+
+			<template v-if="codeOnly">
+				<!-- Config JSON (collapsible top-level section) -->
+				<div :class="$style.section">
+					<button :class="$style.sectionHeader" @click="toggleSection('configJson')">
+						<div :class="$style.sectionHeaderLeft">
+							<N8nIcon
+								:icon="expandedSections.configJson ? 'chevron-down' : 'chevron-right'"
+								:size="16"
+							/>
+							<N8nText tag="span" bold size="small">{{
+								locale.baseText('agents.settings.configJson')
+							}}</N8nText>
+							<N8nIcon v-if="building" icon="spinner" :size="14" spin />
+						</div>
+					</button>
+					<div v-if="expandedSections.configJson" :class="$style.codeSection">
+						<AgentConfigJsonEditor
+							:config="config"
+							:read-only="building"
+							@update:config="(newConfig) => emit('update:config', newConfig)"
+						/>
+					</div>
+				</div>
+
+				<!-- Custom tools (collapsible top-level section; only shown if there are any) -->
+				<div v-if="toolCount > 0" :class="$style.section">
+					<button :class="$style.sectionHeader" @click="toggleSection('customTools')">
+						<div :class="$style.sectionHeaderLeft">
+							<N8nIcon
+								:icon="expandedSections.customTools ? 'chevron-down' : 'chevron-right'"
+								:size="16"
+							/>
+							<N8nText tag="span" bold size="small">{{
+								locale.baseText('agents.settings.customTools')
+							}}</N8nText>
+							<span :class="$style.countBadge">{{ toolCount }}</span>
+						</div>
+					</button>
+					<div v-if="expandedSections.customTools" :class="$style.codeSection">
+						<AgentCustomToolsList :agent-tools="agentTools" />
+					</div>
+				</div>
+			</template>
 		</div>
 	</aside>
 </template>
@@ -413,6 +450,10 @@ function onResizeStart(event: MouseEvent) {
 	border-top: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
+.body > *:first-child {
+	border-top: none;
+}
+
 .sectionHeader {
 	display: flex;
 	align-items: center;
@@ -435,30 +476,22 @@ function onResizeStart(event: MouseEvent) {
 	gap: var(--spacing--2xs);
 }
 
-.addBtn {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 28px;
-	height: 28px;
-	border: none;
-	background: none;
-	cursor: pointer;
-	color: var(--color--text--tint-1);
-	border-radius: var(--radius);
-}
-
-.addBtn:hover {
-	background-color: var(--color--foreground--tint-1);
-	color: var(--color--text);
-}
-
 .sectionContent {
 	padding: 0 var(--spacing--sm) var(--spacing--sm);
 }
 
 .codeSection {
-	height: 400px;
-	min-height: 300px;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.countBadge {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	background-color: var(--color--foreground--tint-1);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius--sm);
+	margin-left: var(--spacing--3xs);
 }
 </style>

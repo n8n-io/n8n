@@ -1,4 +1,5 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
 import { randomUUID } from 'crypto';
@@ -330,11 +331,14 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/build/messages')
-	async getBuilderMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+	async getBuilderMessages(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentPersistedMessageDto[]> {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		return await this.agentsBuilderService.getBuilderMessages(agentId);
+		const messages = await this.agentsBuilderService.getBuilderMessages(agentId);
+		return messages as unknown as AgentPersistedMessageDto[];
 	}
 
 	@Delete('/:agentId/build/messages')
@@ -343,6 +347,28 @@ export class AgentsController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		await this.agentsBuilderService.clearBuilderMessages(agentId);
+		return { ok: true };
+	}
+
+	@Get('/:agentId/chat/messages')
+	async getTestChatMessages(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentPersistedMessageDto[]> {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const messages = await this.agentsService.getTestChatMessages(agentId, req.user.id);
+		return messages as unknown as AgentPersistedMessageDto[];
+	}
+
+	@Delete('/:agentId/chat/messages')
+	async clearTestChatMessages(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	) {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		await this.agentsService.clearTestChatMessages(agentId, req.user.id);
 		return { ok: true };
 	}
 
