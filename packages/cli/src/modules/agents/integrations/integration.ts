@@ -65,7 +65,7 @@ export abstract class Integration {
  * AgentChatBridge) look up integrations by type.
  */
 @Service()
-export class IntegrationRegistry {
+export class AgentIntegrationRegistry {
 	private readonly integrations = new Map<string, Integration>();
 
 	register(integration: Integration): void {

@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 
 import { loadChatSdk } from './esm-loader';
-import { IntegrationRegistry } from './integration';
+import { AgentIntegrationRegistry } from './integration';
 
 /**
  * Component type from agent SDK suspend/toMessage payloads.
@@ -76,7 +76,9 @@ export class ComponentMapper {
 		const sdk = await loadChatSdk();
 
 		// Delegate per-platform normalization to the Integration implementation.
-		const integration = platform ? Container.get(IntegrationRegistry).get(platform) : undefined;
+		const integration = platform
+			? Container.get(AgentIntegrationRegistry).get(platform)
+			: undefined;
 		const components = integration?.normalizeComponents?.(payload.components) ?? payload.components;
 
 		const children: unknown[] = [];

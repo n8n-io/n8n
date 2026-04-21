@@ -10,7 +10,7 @@ import { UrlService } from '@/services/url.service';
 import { AgentChatBridge } from './agent-chat-bridge';
 import { ComponentMapper } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
-import { IntegrationRegistry, type IntegrationContext } from './integration';
+import { AgentIntegrationRegistry, type IntegrationContext } from './integration';
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -57,7 +57,7 @@ export class ChatIntegrationService {
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly urlService: UrlService,
-		private readonly integrationRegistry: IntegrationRegistry,
+		private readonly integrationRegistry: AgentIntegrationRegistry,
 	) {}
 
 	private connectionKey(agentId: string, type: string, credentialId: string): string {

@@ -6,7 +6,7 @@ import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper } from './component-mapper';
-import { IntegrationRegistry } from './integration';
+import { AgentIntegrationRegistry } from './integration';
 
 /**
  * Subset of `AgentsService` consumed by the bridge.
@@ -113,7 +113,7 @@ export class AgentChatBridge {
 		private readonly n8nProjectId: string,
 		private readonly integrationType: string,
 	) {
-		const integration = Container.get(IntegrationRegistry).get(integrationType);
+		const integration = Container.get(AgentIntegrationRegistry).get(integrationType);
 		if (integration?.needsShortCallbackData) {
 			this.callbackStore = new CallbackStore();
 		}
