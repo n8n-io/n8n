@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WorkflowAuthoringCheckSeverity, WorkflowCheckDto } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nButton, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ElSwitch } from 'element-plus';
 import { storeToRefs } from 'pinia';
@@ -33,6 +33,22 @@ function severityLabel(severity: WorkflowAuthoringCheckSeverity) {
 	return severity === 'blocking'
 		? i18n.baseText('workflowAuthoringChecks.severity.blocking')
 		: i18n.baseText('workflowAuthoringChecks.severity.warning');
+}
+
+function getActions(instance: WorkflowCheckDto) {
+	const actions = [
+		{
+			value: 'edit',
+			label: i18n.baseText('settings.workflowAuthoringChecks.editAction'),
+		},
+	];
+	if (!instance.static) {
+		actions.push({
+			value: 'delete',
+			label: i18n.baseText('settings.workflowAuthoringChecks.deleteAction'),
+		});
+	}
+	return actions;
 }
 
 async function onToggleEnabled(instance: WorkflowCheckDto, value: string | number | boolean) {
@@ -82,6 +98,14 @@ async function onDelete(instance: WorkflowCheckDto) {
 		showError(error, i18n.baseText('settings.workflowAuthoringChecks.deleteError'));
 	}
 }
+
+async function onAction(instance: WorkflowCheckDto, action: string) {
+	if (action === 'edit') {
+		onEdit(instance);
+	} else if (action === 'delete') {
+		await onDelete(instance);
+	}
+}
 </script>
 
 <template>
@@ -118,43 +142,39 @@ async function onDelete(instance: WorkflowCheckDto) {
 			</N8nText>
 		</div>
 
-		<div
+		<N8nCard
 			v-for="instance in instances"
 			v-else
 			:key="instance.id"
-			:class="$style.settingsSection"
+			hoverable
+			:class="$style.card"
 			:data-test-id="`workflow-authoring-check-row-${instance.id}`"
+			@click="onEdit(instance)"
 		>
-			<div :class="$style.settingsContainer">
-				<div :class="$style.settingsContainerInfo">
-					<N8nText :bold="true">{{ instance.name }}</N8nText>
+			<div :class="$style.cardBody">
+				<div :class="$style.cardContent">
+					<N8nText bold>{{ instance.name }}</N8nText>
 					<N8nText size="small" color="text-light">
 						{{ instance.typeTitle }} · {{ severityLabel(instance.severity) }}
 					</N8nText>
 				</div>
-				<div :class="$style.settingsContainerAction">
-					<N8nButton
-						variant="outline"
-						:label="i18n.baseText('settings.workflowAuthoringChecks.editAction')"
-						:data-test-id="`workflow-authoring-check-edit-${instance.id}`"
-						@click="onEdit(instance)"
-					/>
-					<N8nButton
-						v-if="!instance.static"
-						variant="outline"
-						:label="i18n.baseText('settings.workflowAuthoringChecks.deleteAction')"
-						:data-test-id="`workflow-authoring-check-delete-${instance.id}`"
-						@click="onDelete(instance)"
-					/>
+				<div :class="$style.cardActions" @click.stop>
 					<ElSwitch
 						:model-value="instance.enabled"
 						size="large"
 						:data-test-id="`workflow-authoring-check-toggle-${instance.id}`"
 						@update:model-value="(value) => onToggleEnabled(instance, value)"
 					/>
+					<N8nActionToggle
+						class="ml-s"
+						theme="dark"
+						:actions="getActions(instance)"
+						:popper-class="`workflow-authoring-check-actions-${instance.id}`"
+						@action="(action) => onAction(instance, action)"
+					/>
 				</div>
 			</div>
-		</div>
+		</N8nCard>
 	</div>
 </template>
 
@@ -175,39 +195,32 @@ async function onDelete(instance: WorkflowCheckDto) {
 	min-width: 0;
 }
 
-.settingsSection {
-	border-radius: var(--radius);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	margin-bottom: var(--spacing--sm);
+.card {
+	position: relative;
+	margin-bottom: var(--spacing--2xs);
 }
 
-.settingsContainer {
+.cardBody {
 	display: flex;
+	flex-direction: row;
 	align-items: center;
-	padding-left: var(--spacing--sm);
-	justify-content: space-between;
-	flex-shrink: 0;
-	gap: var(--spacing--sm);
+	width: 100%;
 }
 
-.settingsContainerInfo {
+.cardContent {
 	display: flex;
-	padding: var(--spacing--sm) 0;
 	flex-direction: column;
-	justify-content: center;
-	align-items: flex-start;
+	flex-grow: 1;
 	gap: var(--spacing--5xs);
-	flex: 1;
 	min-width: 0;
 }
 
-.settingsContainerAction {
+.cardActions {
 	display: flex;
-	padding: var(--spacing--sm);
-	justify-content: flex-end;
+	flex-direction: row;
 	align-items: center;
+	margin-left: var(--spacing--sm);
 	gap: var(--spacing--sm);
-	flex-shrink: 0;
 }
 
 .emptyState {

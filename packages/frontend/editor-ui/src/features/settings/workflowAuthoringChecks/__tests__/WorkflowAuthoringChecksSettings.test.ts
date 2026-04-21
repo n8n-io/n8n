@@ -1,7 +1,7 @@
 import type { WorkflowCheckDto, WorkflowCheckTypeDto } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 
 import { renderComponent } from '@/__tests__/render';
 import WorkflowAuthoringChecksSettings from '@/features/settings/workflowAuthoringChecks/WorkflowAuthoringChecksSettings.vue';
@@ -97,17 +97,42 @@ describe('WorkflowAuthoringChecksSettings', () => {
 		);
 	});
 
-	it('hides the delete button for static rows', async () => {
+	it('hides the delete action in the dropdown for static rows', async () => {
 		vi.mocked(authoringChecksApi.listWorkflowChecks).mockResolvedValue({
 			checks: [instance, staticInstance],
 		});
-		const { findByTestId, queryByTestId } = renderSettings();
+		const { findByTestId } = renderSettings();
 
-		await findByTestId(`workflow-authoring-check-row-${staticInstance.id}`);
+		const staticRow = await findByTestId(`workflow-authoring-check-row-${staticInstance.id}`);
+		await userEvent.click(within(staticRow).getByTestId('action-toggle'));
 
-		expect(queryByTestId(`workflow-authoring-check-delete-${staticInstance.id}`)).toBeNull();
-		expect(
-			await findByTestId(`workflow-authoring-check-delete-${instance.id}`),
-		).toBeInTheDocument();
+		const staticPopper = await waitFor(() => {
+			const popper = document.querySelector<HTMLElement>(
+				`.workflow-authoring-check-actions-${staticInstance.id}`,
+			);
+			if (!popper || !within(popper).queryByTestId('action-edit')) {
+				throw new Error('static popper not open yet');
+			}
+			return popper;
+		});
+
+		expect(within(staticPopper).queryByTestId('action-edit')).not.toBeNull();
+		expect(within(staticPopper).queryByTestId('action-delete')).toBeNull();
+
+		const nonStaticRow = await findByTestId(`workflow-authoring-check-row-${instance.id}`);
+		await userEvent.click(within(nonStaticRow).getByTestId('action-toggle'));
+
+		const nonStaticPopper = await waitFor(() => {
+			const popper = document.querySelector<HTMLElement>(
+				`.workflow-authoring-check-actions-${instance.id}`,
+			);
+			if (!popper || !within(popper).queryByTestId('action-edit')) {
+				throw new Error('non-static popper not open yet');
+			}
+			return popper;
+		});
+
+		expect(within(nonStaticPopper).queryByTestId('action-edit')).not.toBeNull();
+		expect(within(nonStaticPopper).queryByTestId('action-delete')).not.toBeNull();
 	});
 });
