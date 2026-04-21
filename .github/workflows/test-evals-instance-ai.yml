@@ -92,6 +92,7 @@ jobs:
           pnpm eval:instance-ai
           --base-url http://localhost:5678
           --verbose
+          --runs 5
           ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
         env:
           N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
