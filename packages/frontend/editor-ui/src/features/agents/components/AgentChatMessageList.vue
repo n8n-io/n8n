@@ -29,6 +29,11 @@ function scrollToBottom(): void {
 	});
 }
 
+// Snap to the bottom on initial render with a preloaded history. Two hooks on
+// purpose: `immediate: true` on the watch fires before the DOM paints (right
+// after setup), and `onMounted` covers cases where the post-flush scroll
+// measured an incomplete height because async content (markdown, highlighters)
+// was still expanding.
 onMounted(() => {
 	if (props.messages.length > 0) scrollToBottom();
 });
@@ -36,7 +41,7 @@ onMounted(() => {
 watch(
 	() => [props.messages.length, props.messagingState],
 	() => scrollToBottom(),
-	{ flush: 'post' },
+	{ flush: 'post', immediate: true },
 );
 
 // Scroll when content within the last message grows (streaming text).

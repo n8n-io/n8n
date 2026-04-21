@@ -6,17 +6,27 @@ import {
 	getBuilderMessages,
 	clearBuilderMessages,
 	getChatMessages,
-	clearChatMessages,
+	getTestChatMessages,
+	clearTestChatMessages,
 } from './useAgentApi';
+import type { AgentPersistedMessageDto } from '@n8n/api-types';
+
 import { convertDbMessages, type ChatMessage, type ToolCall } from './agentChatMessages';
 
 export interface UseAgentChatStreamParams {
 	projectId: Ref<string>;
 	agentId: Ref<string>;
 	endpoint: Ref<'build' | 'chat'>;
+	/**
+	 * When provided, chat mode runs in session-continuation: history is fetched
+	 * per-thread and the id is propagated to the backend so further messages
+	 * extend the same session.
+	 */
+	continueSessionId?: Ref<string | undefined>;
 	onCodeUpdated?: () => void;
 	onCodeDelta?: (delta: string) => void;
 	onConfigUpdated?: () => void;
+	onHistoryLoaded?: (count: number) => void;
 }
 
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
@@ -38,18 +48,43 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function loadHistory(): Promise<void> {
 		if (historyLoaded.value) return;
-		const fetchMessages = params.endpoint.value === 'build' ? getBuilderMessages : getChatMessages;
+		const continueId = params.continueSessionId?.value;
 		try {
-			const dbMessages = await fetchMessages(
-				rootStore.restApiContext,
-				params.projectId.value,
-				params.agentId.value,
-			);
+			let dbMessages: AgentPersistedMessageDto[];
+			if (params.endpoint.value === 'build') {
+				dbMessages = await getBuilderMessages(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+				);
+			} else if (continueId) {
+				dbMessages = await getChatMessages(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+					continueId,
+				);
+			} else {
+				dbMessages = await getTestChatMessages(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+				);
+			}
 			if (dbMessages.length > 0) {
 				messages.value = convertDbMessages(dbMessages);
 			}
+			params.onHistoryLoaded?.(messages.value.length);
 		} catch (error) {
-			showError(error, locale.baseText('agents.chat.loadHistory.error'));
+			// Treat 404 as "no thread yet" rather than surfacing an error —
+			// covers stale continue URLs and any lingering race where the
+			// thread hasn't been persisted on the backend.
+			const status = (error as { httpStatusCode?: number } | null)?.httpStatusCode;
+			if (status === 404) {
+				params.onHistoryLoaded?.(0);
+			} else {
+				showError(error, locale.baseText('agents.chat.loadHistory.error'));
+			}
 		} finally {
 			historyLoaded.value = true;
 		}
@@ -57,7 +92,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function clearHistory(): Promise<void> {
 		const clearRemote =
-			params.endpoint.value === 'build' ? clearBuilderMessages : clearChatMessages;
+			params.endpoint.value === 'build' ? clearBuilderMessages : clearTestChatMessages;
 		try {
 			await clearRemote(rootStore.restApiContext, params.projectId.value, params.agentId.value);
 			messages.value = [];
@@ -93,6 +128,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			const { baseUrl } = rootStore.restApiContext;
 			const browserId = localStorage.getItem('n8n-browserId') ?? '';
 			const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}`;
+			const body: Record<string, unknown> = { message };
+			if (endpoint === 'chat' && params.continueSessionId?.value) {
+				body.sessionId = params.continueSessionId.value;
+			}
 			const response = await fetch(url, {
 				method: 'POST',
 				headers: {
@@ -100,7 +139,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					'browser-id': browserId,
 				},
 				credentials: 'include',
-				body: JSON.stringify({ message }),
+				body: JSON.stringify(body),
 				signal: controller.signal,
 			});
 
