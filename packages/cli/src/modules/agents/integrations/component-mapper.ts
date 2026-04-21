@@ -1,9 +1,12 @@
+import { Container } from '@n8n/di';
+
 import { loadChatSdk } from './esm-loader';
+import { IntegrationRegistry } from './integration';
 
 /**
  * Component type from agent SDK suspend/toMessage payloads.
  */
-interface SuspendComponent {
+export interface SuspendComponent {
 	type: string;
 	text?: string;
 	label?: string;
@@ -52,40 +55,6 @@ interface ComponentRenderContext {
  */
 export class ComponentMapper {
 	/**
-	 * Normalize components for platforms that don't support certain types.
-	 * Converts select/radio_select → individual buttons, image → text link.
-	 */
-	private normalizeForPlatform(
-		components: SuspendComponent[],
-		platform?: string,
-	): SuspendComponent[] {
-		// Slack supports everything — no normalization needed
-		if (!platform || platform === 'slack') return components;
-
-		const normalized: SuspendComponent[] = [];
-		for (const c of components) {
-			switch (c.type) {
-				case 'select':
-				case 'radio_select':
-					// Convert select options to individual buttons
-					for (const opt of c.options ?? []) {
-						normalized.push({ type: 'button', label: opt.label, value: opt.value });
-					}
-					break;
-				case 'image':
-					// Convert image to a section with a markdown link
-					if (c.url) {
-						normalized.push({ type: 'section', text: `[${c.altText ?? 'Image'}](${c.url})` });
-					}
-					break;
-				default:
-					normalized.push(c);
-			}
-		}
-		return normalized;
-	}
-
-	/**
 	 * Convert a suspend payload to a Chat SDK Card.
 	 *
 	 * Button values are JSON-encoded as the full resume payload that
@@ -106,8 +75,9 @@ export class ComponentMapper {
 	): Promise<unknown> {
 		const sdk = await loadChatSdk();
 
-		// Normalize unsupported components for the target platform
-		const components = this.normalizeForPlatform(payload.components, platform);
+		// Delegate per-platform normalization to the Integration implementation.
+		const integration = platform ? Container.get(IntegrationRegistry).get(platform) : undefined;
+		const components = integration?.normalizeComponents?.(payload.components) ?? payload.components;
 
 		const children: unknown[] = [];
 		const buttons: unknown[] = [];

@@ -1,48 +1,16 @@
 import { Tool } from '@n8n/agents';
+import { Container } from '@n8n/di';
 import { z } from 'zod';
 
-// ---------------------------------------------------------------------------
-// Platform capabilities
-// ---------------------------------------------------------------------------
+import { IntegrationRegistry } from './integration';
 
-interface PlatformCapabilities {
-	supportedComponents: string[];
-	description: string;
-}
-
-const PLATFORM_CAPABILITIES: Record<string, PlatformCapabilities> = {
-	slack: {
-		supportedComponents: [
-			'section',
-			'button',
-			'select',
-			'radio_select',
-			'divider',
-			'image',
-			'fields',
-		],
-		description:
-			'Present rich interactive UI to the user in Slack. Use buttons, ' +
-			'dropdown selects, radio buttons, images, or formatted content cards. ' +
-			"The user's response (button click or selection) is returned to you.",
-	},
-	telegram: {
-		supportedComponents: ['section', 'button', 'divider', 'fields'],
-		description:
-			'Present rich interactive UI in Telegram. Available: buttons, text sections, ' +
-			'dividers, key-value fields. For multiple choices, use one button per option. ' +
-			"The user's response (button click) is returned to you.",
-	},
-};
-
-// Conservative default — works on all platforms that support buttons
-const DEFAULT_CAPABILITIES: PlatformCapabilities = {
-	supportedComponents: ['section', 'button', 'divider', 'fields'],
-	description:
-		'Present rich interactive UI to the user in chat. Available: buttons, ' +
-		'text sections, dividers, key-value fields. For choices, use one button per option. ' +
-		"The user's response (button click) is returned to you.",
-};
+// Conservative default — works on every platform that supports buttons.
+// Used when the tool is constructed without a platform hint.
+const DEFAULT_SUPPORTED_COMPONENTS = ['section', 'button', 'divider', 'fields'];
+const DEFAULT_DESCRIPTION =
+	'Present rich interactive UI to the user in chat. Available: buttons, ' +
+	'text sections, dividers, key-value fields. For choices, use one button per option. ' +
+	"The user's response (button click) is returned to you.";
 
 // ---------------------------------------------------------------------------
 // Shared schemas
@@ -108,8 +76,10 @@ function buildComponentSchema(supportedComponents: string[]) {
 }
 
 export function createRichInteractionTool(platform?: string) {
-	const caps = PLATFORM_CAPABILITIES[platform ?? ''] ?? DEFAULT_CAPABILITIES;
-	const componentSchema = buildComponentSchema(caps.supportedComponents);
+	const integration = platform ? Container.get(IntegrationRegistry).get(platform) : undefined;
+	const supportedComponents = integration?.supportedComponents ?? DEFAULT_SUPPORTED_COMPONENTS;
+	const description = integration?.description ?? DEFAULT_DESCRIPTION;
+	const componentSchema = buildComponentSchema(supportedComponents);
 
 	const inputSchema = z.object({
 		title: z.string().optional().describe('Card title / header text'),
@@ -121,7 +91,7 @@ export function createRichInteractionTool(platform?: string) {
 	const suspendSchema = inputSchema;
 
 	return new Tool('rich_interaction')
-		.description(caps.description)
+		.description(description)
 		.input(inputSchema)
 		.suspend(suspendSchema)
 		.resume(

@@ -21,6 +21,15 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime');
 		Container.get(AgentSecureRuntime);
 
+		// Populate the integration registry with supported chat platforms.
+		// Adding a new platform is adding one subclass + one register() call.
+		const { IntegrationRegistry } = await import('./integrations/integration');
+		const { SlackIntegration } = await import('./integrations/platforms/slack-integration');
+		const { TelegramIntegration } = await import('./integrations/platforms/telegram-integration');
+		const registry = Container.get(IntegrationRegistry);
+		registry.register(Container.get(SlackIntegration));
+		registry.register(Container.get(TelegramIntegration));
+
 		// Register Chat integration service and reconnect active integrations
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 		const chatService = Container.get(ChatIntegrationService);

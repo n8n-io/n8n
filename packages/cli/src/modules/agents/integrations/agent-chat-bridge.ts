@@ -1,10 +1,12 @@
 import type { AgentMessage, CredentialProvider, StreamChunk } from '@n8n/agents';
+import { Container } from '@n8n/di';
 import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper } from './component-mapper';
+import { IntegrationRegistry } from './integration';
 
 /**
  * Subset of `AgentsService` consumed by the bridge.
@@ -100,9 +102,6 @@ export class AgentChatBridge {
 	/** Store for shortening callback data on platforms with size limits (Telegram) */
 	private readonly callbackStore?: CallbackStore;
 
-	/** Platforms where callback data must be shortened */
-	private static readonly SHORT_CALLBACK_PLATFORMS = new Set(['telegram']);
-
 	constructor(
 		private readonly bot: ChatBot,
 		private readonly agentId: string,
@@ -114,7 +113,8 @@ export class AgentChatBridge {
 		private readonly n8nProjectId: string,
 		private readonly integrationType: string,
 	) {
-		if (AgentChatBridge.SHORT_CALLBACK_PLATFORMS.has(integrationType)) {
+		const integration = Container.get(IntegrationRegistry).get(integrationType);
+		if (integration?.needsShortCallbackData) {
 			this.callbackStore = new CallbackStore();
 		}
 		this.registerHandlers();
