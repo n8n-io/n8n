@@ -22,6 +22,7 @@ import type { AgentResource, AgentJsonConfig } from '../types';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
+	toolIdentifiersFromConfig,
 } from '../composables/agentTelemetry.utils';
 import { useAgentTelemetry, type AgentConfigPart } from '../composables/useAgentTelemetry';
 import { PROJECT_AGENTS, AGENT_SESSION_DETAIL_VIEW } from '../constants';
@@ -100,6 +101,7 @@ const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle');
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
+const previousTools = ref<string[]>([]);
 
 /**
  * An agent is considered "built" once it has instructions configured.
@@ -343,6 +345,18 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 
 async function onConfigUpdated() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
+
+	const current = toolIdentifiersFromConfig(config.value);
+	const added = current.filter((t) => !previousTools.value.includes(t));
+	for (const toolAdded of added) {
+		agentTelemetry.trackAddedTools({
+			agentId: agentId.value,
+			toolAdded,
+			tools: current,
+			status: deriveAgentStatus(agent.value),
+		});
+	}
+	previousTools.value = current;
 }
 
 const headerActions = [{ id: 'delete', label: 'Delete agent' }];
@@ -443,6 +457,7 @@ async function initialize() {
 
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
+	previousTools.value = toolIdentifiersFromConfig(config.value);
 	void sessionsStore.fetchThreads(projectId.value, agentId.value);
 	void loadInitialConnectedTriggers();
 
