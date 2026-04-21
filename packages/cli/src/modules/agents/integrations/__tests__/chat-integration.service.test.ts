@@ -142,4 +142,52 @@ describe('ChatIntegrationService — Telegram credential conflict detection', ()
 
 		expect(fetchSpy).not.toHaveBeenCalled();
 	});
+
+	it('names the first conflicting agent when multiple agents share the credential', async () => {
+		agentRepository.findByIntegrationCredential.mockResolvedValue([
+			makeAgent('agent-a', 'Alpha', [{ type: 'telegram', credentialId: 'cred-1' }]),
+			makeAgent('agent-b', 'Beta', [{ type: 'telegram', credentialId: 'cred-1' }]),
+		]);
+
+		await expect(
+			asPrivate(service).ensureTelegramCredentialAvailable('agent-1', 'cred-1', 'proj-1', {
+				accessToken: 'bot-token',
+			}),
+		).rejects.toThrow(
+			new ConflictError('Telegram credential is already connected to agent "Alpha"'),
+		);
+	});
+
+	it('fails open when getWebhookInfo returns a non-2xx response', async () => {
+		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+		fetchSpy.mockResolvedValue(new Response('Internal Server Error', { status: 500 }));
+
+		await expect(
+			asPrivate(service).ensureTelegramCredentialAvailable('agent-1', 'cred-1', 'proj-1', {
+				accessToken: 'bot-token',
+			}),
+		).resolves.toBeUndefined();
+	});
+
+	it('fails open when getWebhookInfo returns malformed JSON', async () => {
+		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+		fetchSpy.mockResolvedValue(new Response('not json', { status: 200 }));
+
+		await expect(
+			asPrivate(service).ensureTelegramCredentialAvailable('agent-1', 'cred-1', 'proj-1', {
+				accessToken: 'bot-token',
+			}),
+		).resolves.toBeUndefined();
+	});
+
+	it('does not probe Telegram when the credential payload lacks an accessToken', async () => {
+		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+
+		await asPrivate(service).ensureTelegramCredentialAvailable('agent-1', 'cred-1', 'proj-1', {
+			// no accessToken — Telegram probe should be skipped, no conflict raised
+			other: 'data',
+		});
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
 });
