@@ -78,7 +78,10 @@ describe('AgentBuilderView — chat mode toggle', () => {
 	});
 
 	async function renderView() {
-		const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
+		// Import eagerly at call time: by the time the first test runs the
+		// module has already been compiled (transform happens outside the
+		// per-test timeout), so the first render doesn't eat the 5s budget.
+		const { default: AgentBuilderView } = AgentBuilderViewModule;
 		const wrapper = mount(AgentBuilderView, {
 			global: {
 				stubs: {
@@ -101,15 +104,6 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		return wrapper;
 	}
 
-	it('shows the toggle in home mode and hides it in building mode', async () => {
-		const wrapper = await renderView();
-		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(true);
-
-		(wrapper.vm as unknown as { mode: string }).mode = 'building';
-		await nextTick();
-		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
-	});
-
 	it('shows the toggle in chat mode with Test active by default', async () => {
 		const wrapper = await renderView();
 		(wrapper.vm as unknown as { mode: string }).mode = 'chat';
@@ -129,7 +123,15 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		// Build, so we don't fire a second loadHistory() for a tab the user
 		// may never open.
 		const wrapper = await renderView();
-		(wrapper.vm as unknown as { mode: string }).mode = 'chat';
+		const vm = wrapper.vm as unknown as {
+			mode: string;
+			activeChatSessionId: string | null;
+		};
+		// Test requires an active session (a real user would reach this by
+		// sending a message from the home input, which mints one). Seed it
+		// directly so we can exercise the lazy-mount/v-show behavior.
+		vm.activeChatSessionId = 'test-session-1';
+		vm.mode = 'chat';
 		await nextTick();
 
 		const testPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]');

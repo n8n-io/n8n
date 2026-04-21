@@ -182,6 +182,9 @@ function onBackFromChat() {
 	chatModeOpened.value = { test: false, build: false };
 	chatMode.value = 'test';
 	mode.value = 'home';
+	// Refresh so the recent-sessions list on the home screen picks up any
+	// threads the just-ended chat created on the backend.
+	void sessionsStore.fetchThreads(projectId.value, agentId.value);
 }
 
 function onBuildStreamingChange(streaming: boolean) {

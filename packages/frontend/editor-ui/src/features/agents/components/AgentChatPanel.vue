@@ -41,44 +41,28 @@ const emit = defineEmits<{
 
 const locale = useI18n();
 
-// The sub-header title reflects which of the three chat states we're in:
-//   - Builder          → "Builder"
-//   - New/ephemeral chat → "New chat"
-//   - Continue chat    → persisted session title
-const displayTitle = computed(() => {
-	if (props.sessionTitle) return props.sessionTitle;
-	if (props.endpoint === 'build') return locale.baseText('agents.chat.builderTitle');
-	return locale.baseText('agents.chat.newChat');
-});
+// Sub-header title for chat sessions — the persisted session title if one
+// exists, otherwise "New chat" for freshly-started ephemeral sessions.
+// (Builder has no sub-header, so no builder branch here.)
+const displayTitle = computed(() => props.sessionTitle ?? locale.baseText('agents.chat.newChat'));
 
 const inputText = ref('');
 
-const {
-	messages,
-	isStreaming,
-	messagingState,
-	loadHistory,
-	clearHistory,
-	sendMessage,
-	stopGenerating,
-} = useAgentChatStream({
-	projectId: toRef(props, 'projectId'),
-	agentId: toRef(props, 'agentId'),
-	endpoint: toRef(props, 'endpoint'),
-	continueSessionId: toRef(props, 'continueSessionId'),
-	onCodeUpdated: () => emit('codeUpdated'),
-	onCodeDelta: (d) => emit('codeDelta', d),
-	onConfigUpdated: () => emit('configUpdated'),
-	onHistoryLoaded: (count) => {
-		if (props.continueSessionId) emit('continue-loaded', count);
-	},
-});
+const { messages, isStreaming, messagingState, loadHistory, sendMessage, stopGenerating } =
+	useAgentChatStream({
+		projectId: toRef(props, 'projectId'),
+		agentId: toRef(props, 'agentId'),
+		endpoint: toRef(props, 'endpoint'),
+		continueSessionId: toRef(props, 'continueSessionId'),
+		onCodeUpdated: () => emit('codeUpdated'),
+		onCodeDelta: (d) => emit('codeDelta', d),
+		onConfigUpdated: () => emit('configUpdated'),
+		onHistoryLoaded: (count) => {
+			if (props.continueSessionId) emit('continue-loaded', count);
+		},
+	});
 
 watch(isStreaming, (v) => emit('update:streaming', v));
-
-async function onClearHistory() {
-	await clearHistory();
-}
 
 async function onSubmit() {
 	const text = inputText.value.trim();
@@ -115,7 +99,9 @@ onBeforeUnmount(() => {
 
 <template>
 	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
-		<div :class="$style.subHeader">
+		<!-- Builder intentionally has no sub-header: it's one persistent per-agent
+			 conversation with no "session" to label or exit back from. -->
+		<div v-if="endpoint !== 'build'" :class="$style.subHeader">
 			<button
 				:class="$style.backBtn"
 				:title="locale.baseText('agents.chat.back')"
@@ -124,22 +110,8 @@ onBeforeUnmount(() => {
 				<N8nIcon icon="arrow-left" :size="14" />
 			</button>
 			<span v-if="sessionEmoji" :class="$style.sessionEmoji">{{ sessionEmoji }}</span>
-			<N8nIcon
-				v-else
-				:class="$style.sessionIcon"
-				:icon="endpoint === 'build' ? 'wand-sparkles' : 'message-square'"
-				:size="14"
-			/>
+			<N8nIcon v-else :class="$style.sessionIcon" icon="message-square" :size="14" />
 			<span :class="$style.sessionTitle">{{ displayTitle }}</span>
-			<button
-				v-if="endpoint === 'build' && messages.length > 0"
-				:class="$style.clearBtn"
-				:title="locale.baseText('agents.chat.clearHistory')"
-				data-testid="chat-clear"
-				@click="onClearHistory"
-			>
-				<N8nIcon icon="trash-2" :size="14" />
-			</button>
 		</div>
 
 		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :endpoint="endpoint" />
@@ -177,34 +149,6 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
-}
-
-.topBar {
-	position: absolute;
-	top: 0;
-	right: 0;
-	z-index: 1;
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	padding: var(--spacing--2xs) var(--spacing--sm);
-}
-
-.clearBtn {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border: none;
-	background: none;
-	cursor: pointer;
-	color: var(--color--text--tint-2);
-	padding: var(--spacing--4xs);
-	border-radius: var(--radius);
-}
-
-.clearBtn:hover {
-	background-color: var(--color--foreground--tint-1);
-	color: var(--color--danger);
 }
 
 .subHeader {
