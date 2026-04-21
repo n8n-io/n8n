@@ -249,9 +249,9 @@ export class SalesforceTrigger implements INodeType {
 
 			try {
 				if (this.getMode() === 'manual') {
-					qs.q = getQuery(options, triggerResource, false, 1);
+					qs.q = getQuery(options, triggerResource, false, 1, 1);
 				} else {
-					qs.q = getQuery(options, triggerResource, true);
+					qs.q = getQuery(options, triggerResource, true, 0, 1);
 				}
 				responseData = await salesforceApiRequestAllItems.call(
 					this,
