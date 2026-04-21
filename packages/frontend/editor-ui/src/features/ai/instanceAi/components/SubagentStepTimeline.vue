@@ -30,7 +30,7 @@ const CODE_BLOCK_PATTERN = /```/;
 const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
 
 interface TimelineStep {
-	type: 'tool-call' | 'text' | 'done';
+	type: 'tool-call' | 'text';
 	icon: IconName;
 	label: string;
 	isLoading: boolean;
@@ -97,15 +97,6 @@ const steps = computed((): TimelineStep[] => {
 			});
 		}
 		// Skip 'child' entries — parent AgentTimeline handles child cards
-	}
-
-	if (props.agentNode.status === 'completed') {
-		result.push({
-			type: 'done',
-			icon: 'circle-check',
-			label: i18n.baseText('instanceAi.stepTimeline.done'),
-			isLoading: false,
-		});
 	}
 
 	return result;
