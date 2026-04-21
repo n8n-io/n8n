@@ -707,7 +707,7 @@ async function copyAllAnnotations() {
 	width: 48px;
 	height: 48px;
 	border-radius: 50%;
-	background: var(--color--text);
+	background: var(--color--text--shade-1);
 	color: var(--color--background);
 	border: none;
 	cursor: pointer;
@@ -743,7 +743,7 @@ async function copyAllAnnotations() {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: 2px solid var(--color--text);
+	border: 2px solid var(--color--text--shade-1);
 	box-sizing: border-box;
 }
 
@@ -752,7 +752,7 @@ async function copyAllAnnotations() {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs);
-	background: var(--color--text);
+	background: var(--color--text--shade-1);
 	border-radius: 999px;
 	box-shadow: 0 6px 20px color-mix(in srgb, var(--color--text) 30%, transparent);
 }
@@ -809,7 +809,7 @@ async function copyAllAnnotations() {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: 2px solid var(--color--text);
+	border: 2px solid var(--color--text--shade-1);
 	box-sizing: border-box;
 }
 
