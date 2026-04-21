@@ -7,7 +7,7 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
-import { createRunExecutionData, type IPinData } from 'n8n-workflow';
+import { createRunExecutionData } from 'n8n-workflow';
 
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -17,21 +17,6 @@ describe('useWorkflowState', () => {
 
 		workflowsStore = useWorkflowsStore();
 		workflowState = useWorkflowState();
-	});
-
-	describe('setWorkflowName()', () => {
-		it('should set the workflow name correctly', () => {
-			workflowState.setWorkflowName({
-				newName: 'New Workflow Name',
-				setStateDirty: false,
-			});
-			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
-		});
-
-		it('should propagate name to workflowObject for pre-exec expressions', () => {
-			workflowState.setWorkflowName({ newName: 'WF Title', setStateDirty: false });
-			expect(workflowsStore.workflowObject.name).toBe('WF Title');
-		});
 	});
 
 	describe('markExecutionAsStopped', () => {
@@ -214,31 +199,6 @@ describe('useWorkflowState', () => {
 		it('should throw error if out of bounds', () => {
 			workflowsStore.workflow.nodes = [];
 			expect(() => workflowState.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
-		});
-	});
-
-	describe('pinned data', () => {
-		it('sets workflow pin data', () => {
-			workflowsStore.workflow.pinData = undefined;
-			const data: IPinData = {
-				TestNode: [{ json: { test: true } }],
-				TestNode1: [{ json: { test: false } }],
-			};
-			workflowState.setWorkflowPinData(data);
-			expect(workflowsStore.workflow.pinData).toEqual(data);
-		});
-
-		it('sets workflow pin data, adding json keys', () => {
-			workflowsStore.workflow.pinData = undefined;
-			const data = {
-				TestNode: [{ test: true }],
-				TestNode1: [{ test: false }],
-			};
-			workflowState.setWorkflowPinData(data as unknown as IPinData);
-			expect(workflowsStore.workflow.pinData).toEqual({
-				TestNode: [{ json: { test: true } }],
-				TestNode1: [{ json: { test: false } }],
-			});
 		});
 	});
 

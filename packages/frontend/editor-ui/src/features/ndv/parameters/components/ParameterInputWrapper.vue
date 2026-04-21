@@ -44,6 +44,7 @@ type Props = {
 	label?: IParameterLabel;
 	eventBus?: EventBus;
 	canBeOverridden?: boolean;
+	hideLabel?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -187,6 +188,7 @@ defineExpose({
 				:documentation-url="documentationUrl"
 				:error-highlight="errorHighlight"
 				:is-for-credential="isForCredential"
+				:hide-label="hideLabel"
 				:event-source="eventSource"
 				:expression-evaluated="resolvedExpression"
 				:additional-expression-data="resolvedAdditionalExpressionData"

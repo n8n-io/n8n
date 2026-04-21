@@ -1,39 +1,144 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { DynamicStructuredTool, StructuredTool, Tool } from '@langchain/core/tools';
 import type {
+	AINodeConnectionType,
+	ChatNodeMessageWithButtons,
 	CloseFunction,
+	GenericValue,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
+	INodeInputConfiguration,
+	INodeType,
 	IRunExecutionData,
+	ISupplyDataFunctions,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
-	Workflow,
-	WorkflowExecuteMode,
-	SupplyData,
-	AINodeConnectionType,
-	IDataObject,
-	ISupplyDataFunctions,
-	INodeType,
-	INode,
-	INodeInputConfiguration,
 	NodeConnectionType,
 	NodeOutput,
-	GenericValue,
+	SupplyData,
+	Workflow,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	ApplicationError,
+	ExecutionBaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
-	ExecutionBaseError,
-	ApplicationError,
 	UserError,
 	sleepWithAbort,
+	isHitlToolType,
 } from 'n8n-workflow';
+import z, { ZodType } from 'zod';
 
-import { createNodeAsTool } from './create-node-as-tool';
+import { StructuredToolkit, type SupplyDataToolResponse } from './ai-tool-types';
+import { createNodeAsTool, getSchema } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import-x/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
 import { isEngineRequest } from '../../requests-response';
+
+/**
+ * Normalize a value to an array.
+ */
+function ensureArray<T>(value: T | T[] | undefined): T[] {
+	if (value === undefined) return [];
+	return Array.isArray(value) ? value : [value];
+}
+
+export function createHitlToolkit(
+	connectedToolsOrToolkits: SupplyDataToolResponse[] | SupplyDataToolResponse | undefined,
+	hitlNode: INode,
+) {
+	const connectedTools = ensureArray(connectedToolsOrToolkits).flatMap((toolOrToolkit) => {
+		if (toolOrToolkit instanceof StructuredToolkit) {
+			return toolOrToolkit.tools;
+		}
+		return toolOrToolkit;
+	});
+
+	// toolParameters and tool are filled programmatically in createEngineRequests, don't need to be in the schema
+	const hitlNodeSchema = getSchema(hitlNode).omit({ toolParameters: true, tool: true });
+	// Wrap each tool: sourceNodeName routes to HITL node, gatedToolNodeName is the tool to execute after approval
+	const gatedTools = connectedTools.map((tool) => {
+		let schema = tool.schema;
+		if (tool.schema instanceof ZodType) {
+			schema = z.object({
+				toolParameters: tool.schema.describe('Input parameters for the tool'),
+				hitlParameters: hitlNodeSchema.describe('Parameters for the Human-in-the-Loop layer'),
+			});
+		}
+
+		return new DynamicStructuredTool({
+			name: tool.name,
+			description: tool.description,
+			schema,
+			func: async () => await Promise.resolve(''),
+			metadata: {
+				sourceNodeName: hitlNode.name,
+				gatedToolNodeName: tool.metadata?.sourceNodeName as string | undefined,
+				originalSchema: tool.schema,
+			},
+		});
+	});
+
+	const toolkit = new StructuredToolkit(gatedTools);
+	return toolkit;
+}
+
+/**
+ * Create supplyData for an HITL tool node.
+ *
+ * Agent sees gated tools directly but with sourceNodeName pointing to the HITL node.
+ *
+ * Flow:
+ * 1. Agent calls gated tool → EngineRequest routes to HITL node
+ * 2. HITL executes sendAndWait → waiting state
+ * 3. User approves/denies via webhook
+ * 4. If approved: new EngineRequest executes gated tool → result to Agent
+ * 5. If denied: denial message → Agent knows not to retry
+ */
+export async function createHitlToolSupplyData(
+	hitlNode: INode,
+	workflow: Workflow,
+	runExecutionData: IRunExecutionData,
+	parentRunIndex: number,
+	connectionInputData: INodeExecutionData[],
+	parentInputData: ITaskDataConnections,
+	additionalData: IWorkflowExecuteAdditionalData,
+	executeData: IExecuteData,
+	mode: WorkflowExecuteMode,
+	closeFunctions: CloseFunction[],
+	itemIndex: number,
+	abortSignal?: AbortSignal,
+	parentNode?: INode,
+): Promise<SupplyData> {
+	const context = new SupplyDataContext(
+		workflow,
+		hitlNode,
+		additionalData,
+		mode,
+		runExecutionData,
+		parentRunIndex,
+		connectionInputData,
+		parentInputData,
+		NodeConnectionTypes.AiTool,
+		executeData,
+		closeFunctions,
+		abortSignal,
+		parentNode,
+	);
+
+	const connectedToolsOrToolkits = (await context.getInputConnectionData(
+		NodeConnectionTypes.AiTool,
+		itemIndex,
+	)) as SupplyDataToolResponse[] | SupplyDataToolResponse | undefined;
+
+	const toolkit = createHitlToolkit(connectedToolsOrToolkits, hitlNode);
+	return { response: toolkit };
+}
 
 function getNextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {
 	return runExecutionData.resultData.runData[nodeName]?.length ?? 0;
@@ -75,6 +180,7 @@ function mapResult(result?: NodeOutput) {
 		| Array<IDataObject | GenericValue | GenericValue[] | IDataObject[]>
 		| undefined;
 	let nodeHasMixedJsonAndBinaryData = false;
+	let sendMessage: ChatNodeMessageWithButtons | string | undefined = undefined;
 
 	if (result === undefined) {
 		response = undefined;
@@ -88,9 +194,15 @@ function mapResult(result?: NodeOutput) {
 			nodeHasMixedJsonAndBinaryData = true;
 		}
 		response = result?.[0]?.flatMap((item) => item.json);
+
+		// Chat node always returns single item with sendMessage property
+		// alongside json, this is used to send a bot message to the chat
+		if (result?.[0]?.[0]?.sendMessage) {
+			sendMessage = result?.[0]?.[0]?.sendMessage;
+		}
 	}
 
-	return { response, nodeHasMixedJsonAndBinaryData };
+	return { response, nodeHasMixedJsonAndBinaryData, sendMessage };
 }
 
 export function makeHandleToolInvocation(
@@ -151,7 +263,7 @@ export function makeHandleToolInvocation(
 				// Execute the sub-node with the proxied context
 				const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
 
-				const { response, nodeHasMixedJsonAndBinaryData } = mapResult(result);
+				const { response, nodeHasMixedJsonAndBinaryData, sendMessage } = mapResult(result);
 
 				// If the node returned some binary data, but also useful data we just log a warning instead of overriding the result
 				if (nodeHasMixedJsonAndBinaryData) {
@@ -162,7 +274,7 @@ export function makeHandleToolInvocation(
 
 				// Add output data to the context
 				context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, [
-					[{ json: { response } }],
+					[{ json: { response }, sendMessage }],
 				]);
 
 				// Return the stringified results
@@ -237,6 +349,22 @@ function validateInputConfiguration(
 	}
 }
 
+// Extends metadata for tools and toolkits to include the source node name that is used for HITL routing
+export function extendResponseMetadata(response: unknown, connectedNode: INode) {
+	// Ensure sourceNodeName is set for proper routing
+	if (response instanceof StructuredTool || response instanceof Tool) {
+		response.metadata ??= {};
+		response.metadata.sourceNodeName = connectedNode.name;
+	}
+
+	if (response instanceof StructuredToolkit) {
+		for (const tool of response.tools) {
+			tool.metadata ??= {};
+			tool.metadata.sourceNodeName = connectedNode.name;
+		}
+	}
+}
+
 export async function getInputConnectionData(
 	this: ExecuteContext | WebhookContext | SupplyDataContext,
 	workflow: Workflow,
@@ -289,6 +417,28 @@ export async function getInputConnectionData(
 
 	const nodes: SupplyData[] = [];
 	for (const connectedNode of connectedNodes) {
+		// Check if this is an HITL (Human-in-the-Loop) tool node
+		// HITL tools need special handling to create the middleware tool
+		if (isHitlToolType(connectedNode?.type)) {
+			const supplyData = await createHitlToolSupplyData(
+				connectedNode,
+				workflow,
+				runExecutionData,
+				parentRunIndex,
+				connectionInputData,
+				parentInputData,
+				additionalData,
+				executeData,
+				mode,
+				closeFunctions,
+				itemIndex,
+				abortSignal,
+				parentNode,
+			);
+			nodes.push(supplyData);
+			continue;
+		}
+
 		const connectedNodeType = workflow.nodeTypes.getByNameAndVersion(
 			connectedNode.type,
 			connectedNode.typeVersion,
@@ -332,6 +482,10 @@ export async function getInputConnectionData(
 			const context = contextFactory(parentRunIndex, parentInputData);
 			try {
 				const supplyData = await connectedNodeType.supplyData.call(context, itemIndex);
+				const response = supplyData.response;
+
+				extendResponseMetadata(response, connectedNode);
+
 				if (supplyData.closeFunction) {
 					closeFunctions.push(supplyData.closeFunction);
 				}

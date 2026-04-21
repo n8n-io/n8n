@@ -4,8 +4,8 @@ import {
 	UpdateProjectDto,
 	AddUsersToProjectDto,
 	ChangeUserRoleInProject,
+	ListProjectsQueryDto,
 } from '@n8n/api-types';
-import type { Project } from '@n8n/db';
 import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import {
 	Get,
@@ -27,8 +27,10 @@ import { In, Not } from '@n8n/typeorm';
 import { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectRequest } from '@/requests';
 import {
 	ProjectService,
@@ -44,11 +46,28 @@ export class ProjectController {
 		private readonly projectRepository: ProjectRepository,
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
+		private readonly provisioningService: ProvisioningService,
 	) {}
 
 	@Get('/')
-	async getAllProjects(req: AuthenticatedRequest): Promise<Project[]> {
-		return await this.projectsService.getAccessibleProjects(req.user);
+	async getAllProjects(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Query payload: ListProjectsQueryDto,
+	) {
+		const [data, count] = await this.projectsService.getAccessibleProjectsAndCount(
+			req.user,
+			payload,
+		);
+
+		// When pagination params are provided, return { count, data } envelope
+		// with role and scopes enriched per project.
+		// Otherwise return a bare array for backward compatibility with existing callers.
+		if (payload.take !== undefined || payload.skip !== undefined) {
+			const enriched = await this.projectsService.addUserScopes(req.user, data);
+			return res.json({ count, data: enriched });
+		}
+		return data;
 	}
 
 	@Get('/count')
@@ -277,9 +296,14 @@ export class ProjectController {
 		@Param('userId') userId: string,
 		@Body body: ChangeUserRoleInProject,
 	) {
+		if (await this.provisioningService.isProjectRoleManaged()) {
+			throw new ForbiddenError(
+				'Project roles are managed automatically and cannot be changed manually',
+			);
+		}
+
 		try {
 			await this.projectsService.changeUserRoleInProject(projectId, userId, body.role);
-			await this.projectsService.clearCredentialCanUseExternalSecretsCache(projectId);
 			const relations = await this.projectsService.getProjectRelations(projectId);
 			this.eventService.emit('team-project-updated', {
 				userId: req.user.id,
@@ -305,7 +329,6 @@ export class ProjectController {
 		@Param('userId') userId: string,
 	) {
 		await this.projectsService.deleteUserFromProject(projectId, userId);
-		await this.projectsService.clearCredentialCanUseExternalSecretsCache(projectId);
 		const relations = await this.projectsService.getProjectRelations(projectId);
 		this.eventService.emit('team-project-updated', {
 			userId: req.user.id,

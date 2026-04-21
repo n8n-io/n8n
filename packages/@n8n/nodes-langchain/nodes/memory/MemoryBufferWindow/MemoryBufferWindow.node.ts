@@ -9,8 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	sessionIdOption,
@@ -76,7 +75,7 @@ export class MemoryBufferWindow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Simple Memory',
 		name: 'memoryBufferWindow',
-		icon: 'fa:database',
+		icon: 'node:simple-memory',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
@@ -97,6 +96,10 @@ export class MemoryBufferWindow implements INodeType {
 					},
 				],
 			},
+		},
+		builderHint: {
+			message:
+				'Reuse with multiple agents in the same workflow by connecting to multiple agent nodes so agents have a shared context.',
 		},
 
 		inputs: [],

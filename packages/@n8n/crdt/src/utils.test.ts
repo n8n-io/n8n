@@ -1,6 +1,6 @@
 import { CRDTEngine, createCRDTProvider } from './index';
 import type { CRDTArray, CRDTDoc, CRDTMap } from './types';
-import { seedValueDeep, toJSON } from './utils';
+import { seedValueDeep, toJSON, getNestedValue, setNestedValue } from './utils';
 
 describe('Utils', () => {
 	let doc: CRDTDoc;
@@ -283,6 +283,187 @@ describe('Utils', () => {
 			const result = toJSON(attached);
 
 			expect(result).toEqual(original);
+		});
+	});
+
+	describe('getNestedValue', () => {
+		it('should get a value at a shallow path', () => {
+			const root = doc.getMap<string>('test');
+			root.set('name', 'Alice');
+
+			expect(getNestedValue(root, ['name'])).toBe('Alice');
+		});
+
+		it('should get a value at a deep path', () => {
+			const root = doc.getMap('test');
+			const seeded = seedValueDeep(doc, {
+				user: {
+					profile: {
+						name: 'Bob',
+					},
+				},
+			});
+			root.set('data', seeded as CRDTMap);
+			const data = root.get('data') as CRDTMap;
+
+			expect(getNestedValue(data, ['user', 'profile', 'name'])).toBe('Bob');
+		});
+
+		it('should return undefined for non-existent path', () => {
+			const root = doc.getMap<string>('test');
+			root.set('name', 'Alice');
+
+			expect(getNestedValue(root, ['nonexistent'])).toBeUndefined();
+			expect(getNestedValue(root, ['name', 'nested'])).toBeUndefined();
+		});
+
+		it('should handle empty path', () => {
+			const root = doc.getMap<string>('test');
+			root.set('name', 'Alice');
+
+			expect(getNestedValue(root, [])).toBe(root);
+		});
+
+		it('should work with plain objects', () => {
+			const obj = { user: { name: 'Charlie' } };
+
+			expect(getNestedValue(obj, ['user', 'name'])).toBe('Charlie');
+		});
+
+		it('should work with plain arrays', () => {
+			const obj = { items: ['a', 'b', 'c'] };
+
+			expect(getNestedValue(obj, ['items', '1'])).toBe('b');
+		});
+
+		it('should return undefined for null/undefined in path', () => {
+			const root = doc.getMap('test');
+			root.set('nullValue', null);
+
+			expect(getNestedValue(root, ['nullValue', 'nested'])).toBeUndefined();
+		});
+
+		it('should handle CRDTArray indices', () => {
+			const root = doc.getMap('test');
+			const items = doc.createArray<string>();
+			items.push('first', 'second', 'third');
+			root.set('items', items);
+
+			expect(getNestedValue(root, ['items', '1'])).toBe('second');
+		});
+	});
+
+	describe('setNestedValue', () => {
+		it('should set a value at a shallow path', () => {
+			const root = doc.getMap('test');
+
+			setNestedValue(doc, root, ['name'], 'Alice');
+
+			expect(root.get('name')).toBe('Alice');
+		});
+
+		it('should set a value at a deep path, creating intermediate maps', () => {
+			const root = doc.getMap('test');
+
+			setNestedValue(doc, root, ['user', 'profile', 'name'], 'Bob');
+
+			const user = root.get('user') as CRDTMap;
+			expect(user).toBeDefined();
+
+			const profile = user.get('profile') as CRDTMap;
+			expect(profile).toBeDefined();
+
+			expect(profile.get('name')).toBe('Bob');
+		});
+
+		it('should overwrite existing values', () => {
+			const root = doc.getMap('test');
+			root.set('name', 'Old');
+
+			setNestedValue(doc, root, ['name'], 'New');
+
+			expect(root.get('name')).toBe('New');
+		});
+
+		it('should deep-seed objects when setting', () => {
+			const root = doc.getMap('test');
+
+			setNestedValue(doc, root, ['config'], { theme: 'dark', fontSize: 14 });
+
+			const config = root.get('config') as CRDTMap;
+			expect(config.get('theme')).toBe('dark');
+			expect(config.get('fontSize')).toBe(14);
+		});
+
+		it('should deep-seed arrays when setting', () => {
+			const root = doc.getMap('test');
+
+			setNestedValue(doc, root, ['items'], [1, 2, 3]);
+
+			const items = root.get('items') as CRDTArray<number>;
+			expect(items.length).toBe(3);
+			expect(items.get(0)).toBe(1);
+			expect(items.get(1)).toBe(2);
+			expect(items.get(2)).toBe(3);
+		});
+
+		it('should do nothing for empty path', () => {
+			const root = doc.getMap('test');
+
+			setNestedValue(doc, root, [], 'value');
+
+			expect([...root.keys()].length).toBe(0);
+		});
+
+		it('should navigate through existing maps', () => {
+			const root = doc.getMap('test');
+			const user = doc.createMap<string>();
+			user.set('existing', 'value');
+			root.set('user', user);
+
+			setNestedValue(doc, root, ['user', 'name'], 'Alice');
+
+			const updatedUser = root.get('user') as CRDTMap<string>;
+			expect(updatedUser.get('existing')).toBe('value');
+			expect(updatedUser.get('name')).toBe('Alice');
+		});
+
+		it('should stop if path encounters a non-map value', () => {
+			const root = doc.getMap('test');
+			root.set('primitive', 'string');
+
+			// This should silently fail since 'primitive' is not a map
+			setNestedValue(doc, root, ['primitive', 'nested'], 'value');
+
+			// The primitive should remain unchanged
+			expect(root.get('primitive')).toBe('string');
+		});
+	});
+
+	describe('getNestedValue and setNestedValue roundtrip', () => {
+		it('should get what was set', () => {
+			const root = doc.getMap('test');
+
+			setNestedValue(doc, root, ['a', 'b', 'c'], 'deep value');
+
+			expect(getNestedValue(root, ['a', 'b', 'c'])).toBe('deep value');
+		});
+
+		it('should work with complex nested structures', () => {
+			const root = doc.getMap('test');
+
+			setNestedValue(doc, root, ['workflow', 'nodes', 'node1'], {
+				id: 'node1',
+				type: 'trigger',
+				params: { interval: 60 },
+			});
+
+			const node = getNestedValue(root, ['workflow', 'nodes', 'node1']) as CRDTMap;
+			expect(toJSON(node)).toEqual({
+				id: 'node1',
+				type: 'trigger',
+				params: { interval: 60 },
+			});
 		});
 	});
 });

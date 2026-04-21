@@ -5,12 +5,20 @@ import type { SuggestedActionsProps } from './SuggestedActions.vue';
 import N8nSuggestedActions from './SuggestedActions.vue';
 
 export default {
-	title: 'Modules/SuggestedActions',
+	title: 'Core/SuggestedActions',
 	component: N8nSuggestedActions,
 	argTypes: {
 		open: {
 			control: 'boolean',
 			description: 'Controls whether the popover is open',
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A list of suggested next actions with optional metadata and controls.',
+			},
 		},
 	},
 };

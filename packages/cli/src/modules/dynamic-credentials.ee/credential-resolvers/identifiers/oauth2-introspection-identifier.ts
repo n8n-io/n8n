@@ -20,8 +20,8 @@ const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour
 export const OAuth2IntrospectionOptionsSchema = z.object({
 	...OAuth2OptionsSchema.shape,
 	validation: z.literal('oauth2-introspection'),
-	clientId: z.string(),
-	clientSecret: z.string(),
+	clientId: z.string().trim().min(1, 'Client ID is required'),
+	clientSecret: z.string().trim().min(1, 'Client Secret is required'),
 });
 
 type OAuth2IntrospectionOptions = z.infer<typeof OAuth2IntrospectionOptionsSchema>;
@@ -69,7 +69,21 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 
 	async validateOptions(identifierOptions: Record<string, unknown>): Promise<void> {
 		const options = this.parseOptions(identifierOptions);
-		const metadata = await this.fetchMetadata(options, true);
+		let metadata;
+		try {
+			metadata = await this.fetchMetadata(options, true);
+		} catch (error) {
+			if (error instanceof IdentifierValidationError) {
+				throw error;
+			}
+			this.logger.error(`Failed to reach OAuth2 metadata URL ${options.metadataUri}`, {
+				error,
+			});
+			throw new IdentifierValidationError(
+				`Could not reach metadata URL: ${error instanceof Error ? error.message : String(error)}`,
+				{ cause: error },
+			);
+		}
 		if (!metadata.introspection_endpoint) {
 			this.logger.error('Metadata does not contain an introspection endpoint');
 			throw new IdentifierValidationError('Metadata does not contain an introspection endpoint');

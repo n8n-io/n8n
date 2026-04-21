@@ -2,6 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { DataSource, QueryFailedError, Repository } from '@n8n/typeorm';
+import assert from 'node:assert';
 
 import {
 	ProjectRelation,
@@ -106,22 +107,9 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				)) as Array<{ count: string | number }>;
 
 				return Number(queryResult[0].count) === 1 ? 'insert' : 'update';
-			} else {
-				const queryResult = (await this.query(
-					`INSERT INTO ${escapedTableName} (count, rootCount, name, workflowId, workflowName, latestEvent)
-					VALUES (1, ?, ?, ?, ?, NOW())
-					ON DUPLICATE KEY
-					UPDATE
-						count = count + 1,
-						rootCount = rootCount + ?,
-						workflowName = VALUES(workflowName),
-						latestEvent = NOW();`,
-					[rootCountIncrement, eventName, workflowId, workflowName ?? null, rootCountIncrement],
-				)) as { affectedRows: number };
-
-				// MySQL returns 2 affected rows on update
-				return queryResult.affectedRows === 1 ? 'insert' : 'update';
 			}
+
+			assert.fail('Unknown database type');
 		} catch (error) {
 			console.log('error', error);
 			if (error instanceof QueryFailedError) return 'failed';

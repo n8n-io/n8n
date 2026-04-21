@@ -6,7 +6,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
-import { nanoid } from 'nanoid';
+import { generateNanoId } from '@n8n/utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -23,6 +23,7 @@ import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const ChangePasswordView = async () =>
@@ -74,10 +75,24 @@ const SignoutView = async () => await import('@/features/core/auth/views/Signout
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
 	await import('@/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue');
-const SettingsExternalSecrets = async () =>
-	await import('@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue');
+const SettingsExternalSecrets = async () => {
+	const settingsStore = useSettingsStore();
+	const moduleConfig = settingsStore.moduleSettings['external-secrets'];
+
+	if (moduleConfig?.multipleConnections || moduleConfig?.forProjects) {
+		return await import(
+			'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue'
+		);
+	}
+
+	return await import(
+		'@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue'
+	);
+};
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
+const SettingsInstanceRegistryView = async () =>
+	await import('@/features/settings/instanceRegistry/views/SettingsInstanceRegistryView.vue');
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
@@ -87,10 +102,17 @@ const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
+const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
+const SettingsAiGatewayView = async () =>
+	await import('@/features/ai/gateway/views/SettingsAiGatewayView.vue');
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
 const ResourceCenterSectionView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterSectionView.vue');
+const SecuritySettingsView = async () =>
+	await import('@/features/settings/security/SecuritySettings.vue');
+
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
 const MigrationReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRules.vue');
@@ -359,9 +381,9 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 		beforeEnter: (to) => {
-			// Generate a unique workflow ID using nanoid and redirect to it
+			// Generate a unique workflow ID using 16-character nanoid and redirect to it
 			// Preserve existing query params (e.g., templateId, projectId) and add new=true
-			const newWorkflowId = nanoid();
+			const newWorkflowId = generateNanoId();
 			return {
 				name: VIEWS.WORKFLOW,
 				params: { name: newWorkflowId },
@@ -540,6 +562,12 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'migration-report',
 				component: RouterView,
+				beforeEnter: () => {
+					if (!MIGRATION_REPORT_TARGET_VERSION) {
+						return { name: VIEWS.HOMEPAGE };
+					}
+					return true;
+				},
 				children: [
 					{
 						path: '',
@@ -587,6 +615,27 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'security',
+				name: VIEWS.SECURITY_SETTINGS,
+				component: SecuritySettingsView,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['securitySettings:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'users',
 				name: VIEWS.USERS_SETTINGS,
 				component: SettingsUsersView,
@@ -608,15 +657,72 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
-				path: 'resolvers',
-				name: VIEWS.RESOLVERS,
-				component: SettingsResolversView,
+				path: 'ai',
+				name: VIEWS.AI_SETTINGS,
+				component: SettingsAIView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'aiAssistant:manage',
+						},
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isAiAssistantEnabled || settingsStore.isAskAiEnabled;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'assistant',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'n8n-connect',
+				name: VIEWS.AI_GATEWAY_SETTINGS,
+				component: SettingsAiGatewayView,
 				meta: {
 					middleware: ['authenticated', 'custom'],
 					middlewareOptions: {
 						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('DYNAMIC_CREDENTIALS');
+							const settingsStore = useSettingsStore();
+							return settingsStore.isAiGatewayEnabled;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'n8n-connect',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'resolvers',
+				name: VIEWS.RESOLVERS,
+				component: SettingsResolversView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: [
+								'credentialResolver:read',
+								'credentialResolver:list',
+								'credentialResolver:create',
+								'credentialResolver:update',
+								'credentialResolver:delete',
+							],
+							options: { mode: 'allOf' },
+						},
+						custom: () => {
+							const { isEnabled } = useDynamicCredentials();
+							return isEnabled.value;
 						},
 					},
 					telemetry: {
@@ -624,6 +730,28 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'resolvers',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'project-roles/view/:roleSlug',
+				name: VIEWS.PROJECT_ROLE_VIEW,
+				component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+				props: true,
+				meta: {
+					middleware: ['authenticated', 'enterprise'],
+					middlewareOptions: {
+						enterprise: {
+							feature: EnterpriseEditionFeature.CustomRoles,
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'project-roles',
 							};
 						},
 					},
@@ -764,6 +892,31 @@ export const routes: RouteRecordRaw[] = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
+					},
+				},
+			},
+			{
+				path: 'instance-registry',
+				name: VIEWS.INSTANCE_REGISTRY,
+				component: SettingsInstanceRegistryView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'orchestration:read',
+						},
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('INSTANCE_REGISTRY');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'instance-registry',
+							};
+						},
 					},
 				},
 			},

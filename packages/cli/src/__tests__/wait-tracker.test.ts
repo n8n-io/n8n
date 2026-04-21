@@ -159,7 +159,6 @@ describe('WaitTracker', () => {
 
 			await waitTracker.startExecution(execution.id);
 
-			// Verify startedAt is passed to workflowRunner.run()
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({
 					startedAt: originalStartedAt,
@@ -205,6 +204,7 @@ describe('WaitTracker', () => {
 							lastNodeExecuted: finalNodeName,
 						},
 					}),
+					storedAt: 'db',
 				};
 
 				executionRepository.findSingleExecution
@@ -340,6 +340,7 @@ describe('WaitTracker', () => {
 					startedAt: new Date(),
 					mode: 'manual',
 					workflowId: 'parent_workflow_id',
+					storedAt: 'db',
 					data: createRunExecutionData({ executionData: { nodeExecutionStack: [executeData] } }),
 				};
 
@@ -371,6 +372,7 @@ describe('WaitTracker', () => {
 							lastNodeExecuted: finalNodeName,
 						},
 					}),
+					storedAt: 'db',
 				};
 
 				// Setup ExecutionRepository and ActiveExecutions
@@ -455,6 +457,7 @@ describe('WaitTracker', () => {
 					stoppedAt: new Date(),
 					mode: 'manual',
 					workflowId: 'parent_workflow_id',
+					storedAt: 'db',
 					data: createRunExecutionData(),
 				};
 

@@ -40,8 +40,10 @@ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
+import {
+	getParameterTypeOption,
+	type ParameterOptionsOverrides,
+} from '@/features/ndv/shared/ndv.utils';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { captureException } from '@sentry/vue';
 import { throttledWatch } from '@vueuse/core';
@@ -58,6 +60,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollection/FixedCollectionParameter.vue'),
 );
@@ -82,6 +85,8 @@ type Props = {
 	removeFirstParameterMargin?: boolean;
 	removeLastParameterMargin?: boolean;
 	newlyAddedParameters?: Set<string>;
+	optionsOverrides?: ParameterOptionsOverrides;
+	layout?: 'inline';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -97,7 +102,7 @@ const emit = defineEmits<{
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const message = useMessage();
 const nodeSettingsParameters = useNodeSettingsParameters();
@@ -164,21 +169,27 @@ let previousParameterNames: string[] = [];
 
 throttledWatch(
 	[() => props.parameters, () => props.nodeValues, node],
-	() => {
+	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
 		for (const parameter of props.parameters) {
 			const parameterPath = getPath(parameter.name);
 			// Pre-calculate disabled state
 			if (parameter.disabledOptions) {
-				disabledMap[parameterPath] = shouldDisplayNodeParameter(parameter, 'disabledOptions');
+				disabledMap[parameterPath] = await shouldDisplayNodeParameter(parameter, 'disabledOptions');
 			}
 		}
 
 		// Filter parameters that should be displayed
-		const parameters = props.parameters.filter((parameter: INodeProperties) =>
-			shouldDisplayNodeParameter(parameter),
+		const displayChecks = await Promise.all(
+			props.parameters.map(async (parameter: INodeProperties) => ({
+				parameter,
+				shouldDisplay: await shouldDisplayNodeParameter(parameter),
+			})),
 		);
+		const parameters = displayChecks
+			.filter((check) => check.shouldDisplay)
+			.map((check) => check.parameter);
 
 		// Apply node-specific parameter transformations
 		let filteredParameters: INodeProperties[];
@@ -199,26 +210,29 @@ throttledWatch(
 		// Compute all parameter data for template usage
 		// Note: `value` is intentionally NOT included to prevent re-renders when values change
 		// Values are fetched via getParameterValue() in the template instead
-		parameterItems.value = filteredParameters.map((parameter) => {
-			const parameterPath = getPath(parameter.name);
-			const isMultipleValues = multipleValues(parameter);
-			const isDisabled = disabledMap[parameterPath] ?? false;
-			const showOptions = shouldShowOptions(parameter);
-			const dependentParametersValues = getDependentParametersValues(parameter);
-			const issues = getParameterIssues(parameter);
-			const calloutVisible = parameter.type === 'callout' ? isCalloutVisible(parameter) : false;
+		const items = await Promise.all(
+			filteredParameters.map(async (parameter) => {
+				const parameterPath = getPath(parameter.name);
+				const isMultipleValues = multipleValues(parameter);
+				const isDisabled = disabledMap[parameterPath] ?? false;
+				const showOptions = shouldShowOptions(parameter);
+				const dependentParametersValues = await getDependentParametersValues(parameter);
+				const issues = getParameterIssues(parameter);
+				const calloutVisible = parameter.type === 'callout' ? isCalloutVisible(parameter) : false;
 
-			return {
-				parameter,
-				path: parameterPath,
-				isMultipleValues,
-				isDisabled,
-				showOptions,
-				dependentParametersValues,
-				issues,
-				isCalloutVisible: calloutVisible,
-			};
-		});
+				return {
+					parameter,
+					path: parameterPath,
+					isMultipleValues,
+					isDisabled,
+					showOptions,
+					dependentParametersValues,
+					issues,
+					isCalloutVisible: calloutVisible,
+				};
+			}),
+		);
+		parameterItems.value = items;
 
 		// Get new parameter names
 		const newParameterNames = parameterItems.value.map((paramData) => paramData.parameter.name);
@@ -240,6 +254,20 @@ throttledWatch(
 	},
 	{ throttle: 200, immediate: true },
 );
+
+// When the active node changes (e.g. via floating node navigation arrows),
+// immediately nullify dependentParametersValues in the cached items.
+// The throttledWatch above will recompute them asynchronously, but until then
+// the ResourceMapper component would see stale dep values from the previous node.
+// By setting them to null, the ResourceMapper's dependency watcher sees a
+// null → correctValue transition which is naturally ignored (oldValue !== null guard),
+// preventing it from incorrectly clearing the new node's field values.
+watch(node, () => {
+	parameterItems.value = parameterItems.value.map((item) => ({
+		...item,
+		dependentParametersValues: null,
+	}));
+});
 
 const credentialsParameterIndex = computed(() => {
 	return parameterItems.value.findIndex((paramData) => paramData.parameter.type === 'credentials');
@@ -276,11 +304,10 @@ const indexToShowSlotAt = computed(() => {
 });
 
 function updateFormTriggerParameters(parameters: INodeProperties[], triggerName: string) {
-	const workflowObject = workflowsStore.workflowObject;
-	const connectedNodes = workflowObject.getChildNodes(triggerName);
+	const connectedNodes = workflowDocumentStore?.value?.getChildNodes(triggerName);
 
-	const hasFormPage = connectedNodes.some((nodeName) => {
-		const _node = workflowObject.getNode(nodeName);
+	const hasFormPage = connectedNodes?.some((nodeName) => {
+		const _node = workflowDocumentStore?.value?.getNodeByName(nodeName);
 		return _node && _node.type === FORM_NODE_TYPE;
 	});
 
@@ -321,18 +348,17 @@ function updateFormTriggerParameters(parameters: INodeProperties[], triggerName:
 }
 
 function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflowObject = workflowsStore.workflowObject;
-	const parentNodes = workflowObject.getParentNodes(nodeName);
+	const parentNodes = workflowDocumentStore?.value?.getParentNodes(nodeName);
 
-	const formTriggerName = parentNodes.find(
-		(_node) => workflowObject.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
+	const formTriggerName = parentNodes?.find(
+		(_node) => workflowDocumentStore?.value?.getNodeByName(_node)?.type === FORM_TRIGGER_NODE_TYPE,
 	);
 	if (!formTriggerName) return parameters;
 
-	const connectedNodes = workflowObject.getChildNodes(formTriggerName);
+	const connectedNodes = workflowDocumentStore?.value?.getChildNodes(formTriggerName);
 
-	const hasFormPage = connectedNodes.some((_nodeName) => {
-		const _node = workflowObject.getNode(_nodeName);
+	const hasFormPage = connectedNodes?.some((_nodeName) => {
+		const _node = workflowDocumentStore?.value?.getNodeByName(_nodeName);
 		return _node && _node.type === FORM_NODE_TYPE;
 	});
 
@@ -360,11 +386,10 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 }
 
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflowObject = workflowsStore.workflowObject;
-	const parentNodes = workflowObject.getParentNodes(nodeName);
+	const parentNodes = workflowDocumentStore?.value?.getParentNodes(nodeName) ?? [];
 
 	const formTriggerName = parentNodes.find(
-		(_node) => workflowObject.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
+		(_node) => workflowDocumentStore?.value?.getNodeByName(_node)?.type === FORM_TRIGGER_NODE_TYPE,
 	);
 
 	if (formTriggerName) return parameters.filter((parameter) => parameter.name !== 'triggerNotice');
@@ -409,11 +434,11 @@ function deleteOption(optionName: string): void {
 	emit('valueChanged', parameterData);
 }
 
-function shouldDisplayNodeParameter(
+async function shouldDisplayNodeParameter(
 	parameter: INodeProperties,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
-): boolean {
-	return nodeSettingsParameters.shouldDisplayNodeParameter(
+): Promise<boolean> {
+	return await nodeSettingsParameters.shouldDisplayNodeParameter(
 		props.nodeValues,
 		node.value,
 		parameter,
@@ -451,7 +476,7 @@ function shouldShowOptions(parameter: INodeProperties): boolean {
 	return parameter.type !== 'resourceMapper';
 }
 
-function getDependentParametersValues(parameter: INodeProperties): string | null {
+async function getDependentParametersValues(parameter: INodeProperties): Promise<string | null> {
 	const loadOptionsDependsOn = getParameterTypeOption(parameter, 'loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
@@ -461,7 +486,7 @@ function getDependentParametersValues(parameter: INodeProperties): string | null
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = ndvStore.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
@@ -530,6 +555,11 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 
 	await dismissCallout(parameter.name);
+
+	const item = parameterItems.value.find((i) => i.parameter.name === parameter.name);
+	if (item) {
+		item.isCalloutVisible = false;
+	}
 }
 
 const parameterRefItems = ref<Map<string, HTMLElement>>(new Map());
@@ -555,7 +585,7 @@ watch(
 </script>
 
 <template>
-	<div class="parameter-input-list-wrapper">
+	<div :class="['parameter-input-list-wrapper', { [$style.inlineLayout]: layout === 'inline' }]">
 		<div
 			v-for="(item, index) in parameterItems"
 			:key="item.parameter.name"
@@ -751,14 +781,13 @@ watch(
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
 				<N8nIconButton
+					variant="ghost"
 					v-if="
 						hideDelete !== true &&
 						!isReadOnly &&
 						!item.parameter.isNodeSetting &&
 						!isCollectionOverhaulEnabled
 					"
-					type="tertiary"
-					text
 					size="small"
 					icon="trash-2"
 					class="icon-button"
@@ -768,6 +797,7 @@ watch(
 			</div>
 			<ResourceMapper
 				v-else-if="item.parameter.type === 'resourceMapper'"
+				:key="node?.name"
 				:parameter="item.parameter"
 				:node="node"
 				:path="item.path"
@@ -802,14 +832,13 @@ watch(
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
 				<N8nIconButton
+					variant="ghost"
 					v-if="
 						hideDelete !== true &&
 						!isReadOnly &&
 						!item.parameter.isNodeSetting &&
 						!isCollectionOverhaulEnabled
 					"
-					type="tertiary"
-					text
 					size="small"
 					icon="trash-2"
 					class="icon-button"
@@ -822,9 +851,10 @@ watch(
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
 					:value="getParameterValue(item.parameter.name)"
 					:display-options="item.showOptions"
+					:options-overrides="optionsOverrides"
 					:path="item.path"
 					:is-read-only="isReadOnly || item.isDisabled"
-					:hide-label="false"
+					:hide-label="layout === 'inline'"
 					:node-values="nodeValues"
 					:show-delete="
 						!isReadOnly &&
@@ -927,6 +957,25 @@ watch(
 	> :global(.parameter-item),
 	> :global(.multi-parameter) {
 		margin-bottom: 0;
+	}
+}
+
+.inlineLayout {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+
+	.parameterContainer {
+		flex: 1;
+		min-width: 0;
+
+		&:first-child {
+			flex: 0 0 auto;
+		}
+	}
+
+	:global(.parameter-item) {
+		margin: 0;
 	}
 }
 </style>

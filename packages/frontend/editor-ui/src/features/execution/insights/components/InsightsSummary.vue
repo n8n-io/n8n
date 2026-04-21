@@ -201,6 +201,12 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			&:first-child {
 				border-left: 0;
 			}
+
+			> span {
+				display: flex;
+				width: 100%;
+				height: 100%;
+			}
 		}
 
 		a {

@@ -97,8 +97,8 @@ function handleSwitchView(value: 'overview' | 'details') {
 					:content="locale.baseText('logs.overview.header.actions.clearExecution.tooltip')"
 				>
 					<N8nButton
-						size="mini"
-						type="secondary"
+						variant="subtle"
+						size="xsmall"
 						icon="trash-2"
 						icon-size="medium"
 						data-test-id="clear-execution-data-button"

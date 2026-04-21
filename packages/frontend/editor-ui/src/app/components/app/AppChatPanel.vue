@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useProvideWorkflowId } from '@/app/composables/useProvideWorkflowId';
 import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
 
 const props = defineProps<{
 	layoutRef: Element | null;
 }>();
 
+useProvideWorkflowId();
+
 const chatPanelStore = useChatPanelStore();
+const chatHubPanelStore = useChatHubPanelStore();
 const uiStore = useUIStore();
 
 const chatPanelWidth = computed(() => chatPanelStore.width);
@@ -31,7 +36,9 @@ onBeforeUnmount(() => {
 });
 
 // As chat panel width changes, recalculate the total width regularly
+// Skip when chatHub is open since it floats over the canvas
 watch(chatPanelWidth, async () => {
+	if (chatHubPanelStore.isOpen) return;
 	await updateGridWidth();
 });
 </script>

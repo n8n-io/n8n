@@ -11,8 +11,11 @@ import {
 	type IPinData,
 	type IRun,
 	type IWorkflowBase,
+	type IWorkflowDataProxyAdditionalKeys,
 	type WorkflowExecuteMode,
 	type WorkflowSettingsBinaryMode,
+	type INodeType,
+	type INodeTypes,
 } from '../src/interfaces';
 import { BINARY_MODE_COMBINED } from '../src/constants';
 import {
@@ -40,6 +43,7 @@ const getProxyFromFixture = (
 		throwOnMissingExecutionData: boolean;
 		connectionType?: NodeConnectionType;
 		runIndex?: number;
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 	},
 ) => {
 	const taskData = run?.data.resultData.runData[activeNode]?.[opts?.runIndex ?? 0];
@@ -86,7 +90,7 @@ const getProxyFromFixture = (
 		lastNodeConnectionInputData ?? [],
 		{},
 		mode ?? 'integrated',
-		{},
+		opts?.additionalKeys ?? {},
 		executeData,
 	);
 
@@ -257,6 +261,7 @@ describe('WorkflowDataProxy', () => {
 			mode: 'manual',
 			startedAt: new Date(),
 			status: 'success',
+			storedAt: 'db',
 		});
 
 		describe('Default behavior (no binaryMode or separate mode)', () => {
@@ -1048,6 +1053,99 @@ describe('WorkflowDataProxy', () => {
 		});
 	});
 
+	describe('$tool', () => {
+		const fixture = loadFixture('from_ai_tool_alias');
+		const getToolProxy = (runIndex = 0, additionalKeys?: IWorkflowDataProxyAdditionalKeys) =>
+			getProxyFromFixture(fixture.workflow, fixture.run, 'Google Sheets1', 'manual', {
+				connectionType: NodeConnectionTypes.AiTool,
+				throwOnMissingExecutionData: false,
+				runIndex,
+				additionalKeys,
+			});
+
+		test('Returns object with name and parameters when execution data exists', () => {
+			const proxy = getToolProxy();
+			const toolValue = proxy.$tool;
+			// $tool should now return an object with name and parameters
+			expect(toolValue).toBeDefined();
+			expect(typeof toolValue).toBe('object');
+			expect(toolValue).toHaveProperty('name');
+			expect(toolValue).toHaveProperty('parameters');
+		});
+
+		test('Works consistently across different items', () => {
+			const proxy0 = getToolProxy(0);
+			const proxy1 = getToolProxy(1);
+			// Both should return objects
+			expect(typeof proxy0.$tool).toBe('object');
+			expect(typeof proxy1.$tool).toBe('object');
+		});
+
+		test('Falls back to additionalKeys when no execution data exists', () => {
+			// Create a workflow with no execution data at all (empty connectionInputData)
+			const workflowWithoutResultData: IWorkflowBase = {
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'aiNode',
+						name: 'AI Node',
+						type: 'n8n-nodes-base.aiAgent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const dataProxy = new WorkflowDataProxy(
+				new Workflow({
+					id: '123',
+					name: 'test workflow',
+					nodes: workflowWithoutResultData.nodes,
+					connections: workflowWithoutResultData.connections,
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				}),
+				null, // No run execution data
+				0,
+				0,
+				'AI Node',
+				[], // Empty connectionInputData - this triggers no_execution_data error
+				{},
+				'manual',
+				{ $tool: { name: 'fallback-tool', parameters: 'fallback-params' } }, // Fallback value
+				undefined,
+			);
+
+			const proxy = dataProxy.getDataProxy();
+
+			// Should return the fallback value since there's no execution data
+			expect(proxy.$tool).toEqual({ name: 'fallback-tool', parameters: 'fallback-params' });
+		});
+
+		test('Uses execution data when available, ignoring fallback', () => {
+			// When execution data exists, it should use that instead of fallback
+			const proxy = getToolProxy(0, {
+				$tool: { name: 'fallback-tool', parameters: 'fallback-params' },
+			});
+			// Should use the actual value from execution data
+			// The fallback should be ignored when execution data is available
+			const toolValue = proxy.$tool;
+			// Should return an object with name and parameters from execution data
+			expect(toolValue).toBeDefined();
+			expect(typeof toolValue).toBe('object');
+			expect(toolValue).toHaveProperty('name');
+			expect(toolValue).toHaveProperty('parameters');
+		});
+	});
+
 	describe('$rawParameter', () => {
 		const fixture = loadFixture('rawParameter');
 		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Execute Workflow', 'manual', {
@@ -1074,6 +1172,7 @@ describe('WorkflowDataProxy', () => {
 					mode: 'manual',
 					startedAt: new Date(),
 					status: 'success',
+					storedAt: 'db',
 				},
 				'Execute Workflow',
 				'manual',
@@ -1402,6 +1501,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Send a text message');
@@ -1464,6 +1564,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Process Data');
@@ -1522,6 +1623,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'End Node');
@@ -1609,6 +1711,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Real Node');
@@ -1648,6 +1751,297 @@ describe('WorkflowDataProxy', () => {
 
 			expect(error).toBeDefined();
 			expect(error).toBeInstanceOf(ExpressionError);
+		});
+	});
+
+	describe('buildAgentToolInfo', () => {
+		it('should return basic info when nodeType is null', () => {
+			const mockWorkflowWithNullNodeType = new Workflow({
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Node1',
+						type: 'n8n-nodes-base.unknownNode',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes: {
+					getByNameAndVersion: () => undefined as unknown as INodeType,
+				} as unknown as INodeTypes,
+				settings: {},
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				mockWorkflowWithNullNodeType,
+				null,
+				0,
+				0,
+				'Node1',
+				[],
+				{},
+				'integrated',
+				{},
+			);
+
+			const node: INode = {
+				id: 'node1',
+				name: 'Node1',
+				type: 'n8n-nodes-base.unknownNode',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const result = (dataProxy as any).buildAgentToolInfo(node);
+
+			expect(result).toEqual({
+				name: 'Node1',
+				type: 'n8n-nodes-base.unknownNode',
+			});
+		});
+
+		it('should return full info when nodeType is valid', () => {
+			const mockWorkflow = new Workflow({
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Node1',
+						type: 'n8n-nodes-base.testNode',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes: Helpers.NodeTypes(),
+				settings: {},
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				mockWorkflow,
+				null,
+				0,
+				0,
+				'Node1',
+				[],
+				{},
+				'integrated',
+				{},
+			);
+
+			const node: INode = {
+				id: 'node1',
+				name: 'Node1',
+				type: 'n8n-nodes-base.testNode',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const result = (dataProxy as any).buildAgentToolInfo(node);
+
+			expect(result).toHaveProperty('name');
+			expect(result).toHaveProperty('type');
+			expect(result.name).toBe('Node1');
+		});
+
+		it('should handle undefined nodeType gracefully', () => {
+			const mockWorkflowWithUndefinedNodeType = new Workflow({
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Node1',
+						type: 'n8n-nodes-base.missingNode',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes: {
+					getByNameAndVersion: () => undefined as unknown as INodeType,
+				} as unknown as INodeTypes,
+				settings: {},
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				mockWorkflowWithUndefinedNodeType,
+				null,
+				0,
+				0,
+				'Node1',
+				[],
+				{},
+				'integrated',
+				{},
+			);
+
+			const node: INode = {
+				id: 'node1',
+				name: 'Node1',
+				type: 'n8n-nodes-base.missingNode',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const result = (dataProxy as any).buildAgentToolInfo(node);
+
+			expect(result).toEqual({
+				name: 'Node1',
+				type: 'n8n-nodes-base.missingNode',
+			});
+			expect(result).not.toHaveProperty('displayName');
+			expect(result).not.toHaveProperty('params');
+		});
+	});
+
+	describe('Partial execution: $() referencing executed node from unexecuted active node', () => {
+		// Scenario: Reference → Edit → NoOp → Edit Fields
+		// Only Reference and Edit have been executed (partial execution).
+		// Edit Fields (active, unexecuted) uses $('Edit').item.json.test
+		// "Edit" has data in runData, so the expression should resolve.
+		const workflowData: IWorkflowBase = {
+			id: '123',
+			name: 'partial execution test',
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Reference',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [256, 16] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'node2',
+					name: 'Edit',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [544, 16] as [number, number],
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: 'e8d2af0b-147a-4b0d-a106-5ed5a5b753e4',
+									name: 'test',
+									value: '={{ 1111 }}',
+									type: 'string',
+								},
+							],
+						},
+						options: {},
+					},
+				},
+				{
+					id: 'node3',
+					name: 'NoOp',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [832, 32] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'node4',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [1136, 0] as [number, number],
+					parameters: {},
+				},
+			],
+			connections: {
+				Reference: {
+					main: [[{ node: 'Edit', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				Edit: {
+					main: [[{ node: 'NoOp', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				NoOp: {
+					main: [[{ node: 'Edit Fields', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			active: false,
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		};
+
+		// Exact run data from a real partial execution (only Reference and Edit ran)
+		const run: IRun = {
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						Reference: [
+							{
+								startTime: 1774006769741,
+								executionTime: 1,
+								executionIndex: 0,
+								executionStatus: 'success',
+								source: [],
+								data: {
+									main: [[{ json: {}, pairedItem: { item: 0 } }]],
+								},
+							},
+						],
+						Edit: [
+							{
+								startTime: 1774006769743,
+								executionTime: 8,
+								executionIndex: 1,
+								executionStatus: 'success',
+								source: [
+									{
+										previousNode: 'Reference',
+										previousNodeOutput: 0,
+										previousNodeRun: 0,
+									},
+								],
+								data: {
+									main: [[{ json: { test: '1111' }, pairedItem: { item: 0 } }]],
+								},
+							},
+						],
+						// NoOp and Edit Fields have NOT been executed
+					},
+				},
+			}),
+			mode: 'manual',
+			startedAt: new Date(),
+			status: 'success',
+			storedAt: 'db',
+		};
+
+		test('$("Edit").first() should return data when referenced node was executed', () => {
+			const proxy = getProxyFromFixture(workflowData, run, 'Edit Fields', 'manual');
+			expect(proxy.$('Edit').first().json.test).toBe('1111');
+		});
+
+		test('$("Edit").isExecuted should return true', () => {
+			const proxy = getProxyFromFixture(workflowData, run, 'Edit Fields', 'manual');
+			expect(proxy.$('Edit').isExecuted).toBe(true);
+		});
+
+		test('$("Edit").item.json.test should resolve when the referenced node was executed', () => {
+			// .item uses paired item resolution which requires connectionInputData
+			// (the active node's input). In a partial execution the active node hasn't
+			// run so connectionInputData is empty, but the referenced node "Edit" has
+			// data in runData. The fix falls back to reading from runData directly.
+			const proxy = getProxyFromFixture(workflowData, run, 'Edit Fields', 'manual');
+			expect(proxy.$('Edit').item.json.test).toBe('1111');
 		});
 	});
 });

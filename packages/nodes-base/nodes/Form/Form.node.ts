@@ -8,19 +8,14 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 import {
-	Node,
-	updateDisplayOptions,
-	NodeOperationError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
-	tryToParseJsonToFormFields,
+	Node,
 	NodeConnectionTypes,
+	NodeOperationError,
+	updateDisplayOptions,
 } from 'n8n-workflow';
 
-import { cssVariables } from './cssVariables';
-import { renderFormCompletion } from './utils/formCompletionUtils';
-import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
-import { prepareFormReturnItem, resolveRawData } from './utils/utils';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import {
@@ -29,6 +24,10 @@ import {
 	formFieldsDynamic,
 	formTitle,
 } from '../Form/common.descriptions';
+import { cssVariables } from './cssVariables';
+import { renderFormCompletion } from './utils/formCompletionUtils';
+import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
+import { parseFormFields, prepareFormReturnItem } from './utils/utils';
 
 const waitTimeProperties: INodeProperties[] = [
 	{
@@ -281,7 +280,8 @@ export class Form extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'n8n Form',
 		name: 'form',
-		icon: 'file:form.svg',
+		icon: 'node:form-trigger',
+		iconColor: 'teal',
 		group: ['input'],
 		// since trigger and node are sharing descriptions and logic we need to sync the versions
 		// and keep them aligned in both nodes
@@ -289,6 +289,14 @@ export class Form extends Node {
 		description: 'Generate webforms in n8n and pass their responses to the workflow',
 		defaults: {
 			name: 'Form',
+		},
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.formTrigger',
+					relationHint: 'Creates additional pages/steps after the trigger',
+				},
+			],
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -358,20 +366,17 @@ export class Form extends Node {
 
 		let fields: FormFieldsParameter = [];
 		if (defineForm === 'json') {
-			try {
-				const jsonOutput = context.getNodeParameter('jsonOutput', '', {
-					rawExpressions: true,
-				}) as string;
-
-				fields = tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
-			} catch (error) {
-				throw new NodeOperationError(context.getNode(), error.message, {
-					description: error.message,
-					type: mode === 'test' ? 'manual-form-test' : undefined,
-				});
-			}
+			fields = parseFormFields(context, {
+				defineForm: 'json',
+				fieldsParameterName: 'jsonOutput',
+				mode,
+			});
 		} else {
-			fields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+			fields = parseFormFields(context, {
+				defineForm: 'fields',
+				fieldsParameterName: 'formFields.values',
+				mode,
+			});
 		}
 
 		const method = context.getRequestObject().method;
@@ -434,6 +439,11 @@ export class Form extends Node {
 		}
 
 		const waitTill = configureWaitTillDate(context, 'root');
+
+		// Add signed resumeFormUrl to metadata for frontend to use when opening form popup
+		const resumeFormUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0) as string;
+		context.setMetadata({ resumeFormUrl });
+
 		await context.putExecutionToWait(waitTill);
 
 		context.sendResponse({

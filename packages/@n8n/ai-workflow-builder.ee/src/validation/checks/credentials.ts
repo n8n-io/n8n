@@ -1,3 +1,5 @@
+import { isExpression } from 'n8n-workflow';
+
 import type { SimpleWorkflow } from '@/types';
 
 import type { ProgrammaticViolation } from '../types';
@@ -40,14 +42,6 @@ function isCredentialFieldName(name: string): boolean {
  */
 function isSensitiveHeader(headerName: string): boolean {
 	return SENSITIVE_HEADERS.has(headerName.toLowerCase());
-}
-
-/**
- * Checks if a value looks like it's an expression (not hardcoded)
- */
-function isExpression(value: unknown): boolean {
-	if (typeof value !== 'string') return false;
-	return value.startsWith('={{') || value.startsWith('=');
 }
 
 interface HeaderParameter {

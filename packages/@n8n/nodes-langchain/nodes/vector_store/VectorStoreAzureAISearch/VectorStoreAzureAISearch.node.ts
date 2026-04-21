@@ -14,7 +14,7 @@ import {
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+import { createVectorStoreNode } from '@n8n/ai-utilities';
 
 // User agent for usage tracking
 const USER_AGENT_PREFIX = 'n8n-azure-ai-search';
@@ -412,6 +412,9 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 	retrieveFields,
 	loadFields: retrieveFields,
 	insertFields,
+	async beforeInsert(context, _embeddings, itemIndex) {
+		await clearAzureSearchIndex(context, itemIndex);
+	},
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const vectorStore = await getAzureAISearchClient(context, embeddings, itemIndex);
 
@@ -465,9 +468,6 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		try {
-			// Clear the index if requested (delete and recreate)
-			await clearAzureSearchIndex(context, itemIndex);
-
 			const metadataKeysToInsertRaw = getOptionValue<string>(
 				'metadataKeysToInsert',
 				context,

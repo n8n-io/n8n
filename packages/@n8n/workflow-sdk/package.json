@@ -1,0 +1,108 @@
+{
+  "name": "@n8n/workflow-sdk",
+  "version": "0.10.0",
+  "description": "TypeScript SDK for programmatically creating n8n workflows",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json",
+    "./scripts/generate-types": {
+      "types": "./src/generate-types/generate-types.ts",
+      "default": "./src/generate-types/generate-types.ts"
+    },
+    "./dist/generate-types/generate-types": {
+      "default": "./dist/generate-types/generate-types.js"
+    },
+    "./dist/generate-types/generate-node-defs-cli": {
+      "default": "./dist/generate-types/generate-node-defs-cli.js"
+    },
+    "./prompts/sdk-reference": {
+      "types": "./dist/prompts/sdk-reference/index.d.ts",
+      "default": "./dist/prompts/sdk-reference/index.js"
+    },
+    "./prompts/node-guidance/parameter-guides": {
+      "types": "./dist/prompts/node-guidance/parameter-guides/index.d.ts",
+      "default": "./dist/prompts/node-guidance/parameter-guides/index.js"
+    },
+    "./prompts/node-guidance/node-tips": {
+      "types": "./dist/prompts/node-guidance/node-tips/index.d.ts",
+      "default": "./dist/prompts/node-guidance/node-tips/index.js"
+    },
+    "./prompts/node-guidance/node-recommendations": {
+      "types": "./dist/prompts/node-guidance/node-recommendations/index.d.ts",
+      "default": "./dist/prompts/node-guidance/node-recommendations/index.js"
+    },
+    "./prompts/best-practices": {
+      "types": "./dist/prompts/best-practices/index.d.ts",
+      "default": "./dist/prompts/best-practices/index.js"
+    },
+    "./prompts/node-selection": {
+      "types": "./dist/prompts/node-selection/index.d.ts",
+      "default": "./dist/prompts/node-selection/index.js"
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "pretest": "npx tsx scripts/extract-workflows.ts",
+    "extract-workflows": "npx tsx scripts/extract-workflows.ts",
+    "test": "jest",
+    "test:unit": "jest",
+    "test:dev": "jest --watch",
+    "generate-types": "npx tsx src/generate-types/generate-types.ts",
+    "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
+    "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
+    "json-to-code": "npx tsx src/cli/index.ts json-to-code",
+    "code-to-json": "npx tsx src/cli/index.ts code-to-json"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "prompts/sdk-reference": [
+        "./dist/prompts/sdk-reference/index.d.ts"
+      ],
+      "prompts/node-guidance/parameter-guides": [
+        "./dist/prompts/node-guidance/parameter-guides/index.d.ts"
+      ],
+      "prompts/node-guidance/node-tips": [
+        "./dist/prompts/node-guidance/node-tips/index.d.ts"
+      ],
+      "prompts/node-guidance/node-recommendations": [
+        "./dist/prompts/node-guidance/node-recommendations/index.d.ts"
+      ],
+      "prompts/best-practices": [
+        "./dist/prompts/best-practices/index.d.ts"
+      ],
+      "prompts/node-selection": [
+        "./dist/prompts/node-selection/index.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/adm-zip": "^0.5.7",
+    "@types/estree": "^1.0.8",
+    "adm-zip": "^0.5.16"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^1.1.4",
+    "acorn": "8.14.0",
+    "n8n-workflow": "workspace:*",
+    "uuid": "catalog:",
+    "zod": "catalog:"
+  }
+}

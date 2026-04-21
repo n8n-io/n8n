@@ -9,9 +9,6 @@ import {
 	getOwnerOnlyApiKeyScopes,
 	type ApiKeyScope,
 } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
-
-import type { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
@@ -20,7 +17,6 @@ import * as utils from './shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
-const license = mock<License>();
 
 beforeAll(() => {
 	publicApiKeyService = Container.get(PublicApiKeyService);
@@ -391,7 +387,6 @@ describe('Member', () => {
 
 	test("POST /api-keys should create an api key with scopes allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
-		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
 		const newApiKeyResponse = await testServer
 			.authAgentFor(member)
@@ -424,7 +419,6 @@ describe('Member', () => {
 
 	test("POST /api-keys should fail to create api key with scopes not allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
-		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
 		const notAllowedScope = getOwnerOnlyApiKeyScopes()[0];
 

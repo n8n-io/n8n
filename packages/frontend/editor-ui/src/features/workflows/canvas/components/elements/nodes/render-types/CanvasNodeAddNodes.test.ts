@@ -121,7 +121,9 @@ describe('CanvasNodeAddNodes', () => {
 
 		it('should track user click', async () => {
 			settingsStore.settings.templates = { enabled: true, host: '' };
-			recommendedTemplatesStore.isFeatureEnabled = vi.fn(() => false);
+			Object.defineProperty(recommendedTemplatesStore, 'isFeatureEnabled', {
+				get: vi.fn(() => false),
+			});
 
 			const { getByTestId } = renderComponent({
 				global: {
@@ -159,7 +161,9 @@ describe('CanvasNodeAddNodes', () => {
 
 		it('should open window to template repository when no custom host and feature disabled', async () => {
 			settingsStore.settings.templates = { enabled: true, host: '' };
-			recommendedTemplatesStore.isFeatureEnabled = vi.fn(() => false);
+			Object.defineProperty(recommendedTemplatesStore, 'isFeatureEnabled', {
+				get: vi.fn(() => false),
+			});
 			Object.defineProperty(templatesStore, 'hasCustomTemplatesHost', {
 				get: vi.fn(() => false),
 			});

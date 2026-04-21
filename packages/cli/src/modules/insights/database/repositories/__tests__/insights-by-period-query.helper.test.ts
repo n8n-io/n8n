@@ -21,8 +21,6 @@ describe('getDateRangesCommonTableExpressionQuery', () => {
 	describe.each([
 		['sqlite', 'SQLite'],
 		['postgresdb', 'PostgreSQL'],
-		['mysqldb', 'MySQL'],
-		['mariadb', 'MariaDB'],
 	])('%s', (dbType: DatabaseConfig['type']) => {
 		describe('hour periodicity (1 day - startDate == endDate)', () => {
 			test('last 24 hours (endDate is today)', () => {

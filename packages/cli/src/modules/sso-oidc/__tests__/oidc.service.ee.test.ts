@@ -2,7 +2,7 @@ import type { OidcConfigDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { AuthIdentityRepository, SettingsRepository, UserRepository } from '@n8n/db';
+import type { AuthIdentityRepository, SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
@@ -500,7 +500,14 @@ describe('OidcService', () => {
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
-			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(user, { sub: 'valid-subject' });
+			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(
+				user,
+				{ sub: 'valid-subject' },
+				{
+					email_verified: true,
+					email: 'john.doe@test.com',
+				},
+			);
 		});
 
 		it('should return a user if the user exists but the auth identity does not', async () => {
@@ -530,7 +537,14 @@ describe('OidcService', () => {
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
-			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(user, { sub: 'valid-subject' });
+			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(
+				user,
+				{ sub: 'valid-subject' },
+				{
+					email_verified: true,
+					email: 'john.doe@test.com',
+				},
+			);
 		});
 
 		it('should create a new user if the user does not exist', async () => {
@@ -561,6 +575,66 @@ describe('OidcService', () => {
 			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
+		});
+	});
+
+	describe('applySsoProvisioning', () => {
+		const claims = { sub: 'user-123', n8n_instance_role: 'global:member' };
+		const userInfo = { email: 'test@example.com', email_verified: true };
+		const user = mock<User>({ id: 'user-id' });
+
+		beforeEach(() => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => claims,
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			jest.spyOn(client, 'fetchUserInfo').mockResolvedValue(userInfo as any);
+		});
+
+		it('calls provisionExpressionMappedRolesForUser when expression mapping is enabled', async () => {
+			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(true);
+			provisioningService.provisionExpressionMappedRolesForUser = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			authIdentityRepository.findOne = jest.fn().mockResolvedValue({ user });
+
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+			await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+
+			expect(provisioningService.provisionExpressionMappedRolesForUser).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ $provider: 'oidc' }),
+			);
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+			expect(provisioningService.provisionProjectRolesForUser).not.toHaveBeenCalled();
+		});
+
+		it('falls through to direct-claim provisioning when expression mapping is disabled', async () => {
+			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(false);
+			provisioningService.getConfig = jest.fn().mockResolvedValue({
+				scopesInstanceRoleClaimName: 'n8n_instance_role',
+				scopesProjectsRolesClaimName: 'n8n_projects',
+			});
+			provisioningService.provisionInstanceRoleForUser = jest.fn().mockResolvedValue(undefined);
+			authIdentityRepository.findOne = jest.fn().mockResolvedValue({ user });
+
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+			await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+
+			expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
+				user,
+				'global:member',
+			);
+			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
 		});
 	});
 
@@ -607,7 +681,9 @@ describe('OidcService', () => {
 			const clientId = 'test-client';
 			const clientSecret = 'test-secret';
 
-			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+			const discoverySpy = jest.spyOn(client, 'discovery').mockResolvedValue({
+				serverMetadata: () => ({ issuer: 'https://example.com' }),
+			} as unknown as client.Configuration);
 
 			// Call the private method directly using type assertion
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
@@ -619,6 +695,7 @@ describe('OidcService', () => {
 
 			// Verify EnvHttpProxyAgent was instantiated
 			expect(EnvHttpProxyAgent).toHaveBeenCalled();
+			discoverySpy.mockRestore();
 		});
 
 		it('should not instantiate EnvHttpProxyAgent when no proxy env vars are set', async () => {
@@ -631,7 +708,9 @@ describe('OidcService', () => {
 			const clientId = 'test-client';
 			const clientSecret = 'test-secret';
 
-			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+			const discoverySpy = jest.spyOn(client, 'discovery').mockResolvedValue({
+				serverMetadata: () => ({ issuer: 'https://example.com' }),
+			} as unknown as client.Configuration);
 
 			// Call the private method directly
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
@@ -643,6 +722,258 @@ describe('OidcService', () => {
 
 			// Should not instantiate EnvHttpProxyAgent when no proxy is configured
 			expect(EnvHttpProxyAgent).not.toHaveBeenCalled();
+			discoverySpy.mockRestore();
 		});
+
+		it.each([
+			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
+			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
+			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
+		])(
+			'should call discovery with customFetch option when $envVar is configured',
+			async ({ envVar, value }) => {
+				process.env[envVar] = value;
+
+				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+				const clientId = 'test-client';
+				const clientSecret = 'test-secret';
+
+				global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+
+				const discoverySpy = jest.spyOn(client, 'discovery').mockResolvedValue({
+					serverMetadata: () => ({ issuer: 'https://example.com' }),
+				} as unknown as client.Configuration);
+
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+				await (oidcService as any).createProxyAwareConfiguration(
+					discoveryUrl,
+					clientId,
+					clientSecret,
+				);
+
+				expect(discoverySpy).toHaveBeenCalledWith(
+					discoveryUrl,
+					clientId,
+					clientSecret,
+					undefined,
+					expect.objectContaining({
+						[client.customFetch]: expect.any(Function),
+					}),
+				);
+
+				discoverySpy.mockRestore();
+			},
+		);
+
+		it('should call discovery without customFetch option when no proxy is configured', async () => {
+			delete process.env.HTTP_PROXY;
+			delete process.env.HTTPS_PROXY;
+			delete process.env.ALL_PROXY;
+
+			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+			const clientId = 'test-client';
+			const clientSecret = 'test-secret';
+
+			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+
+			const discoverySpy = jest.spyOn(client, 'discovery').mockResolvedValue({
+				serverMetadata: () => ({ issuer: 'https://example.com' }),
+			} as unknown as client.Configuration);
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			await (oidcService as any).createProxyAwareConfiguration(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+			);
+
+			// Should be called with only 3 arguments (no options object)
+			expect(discoverySpy).toHaveBeenCalledWith(discoveryUrl, clientId, clientSecret);
+
+			discoverySpy.mockRestore();
+		});
+
+		it.each([
+			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
+			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
+			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
+		])(
+			'should set customFetch on returned configuration when $envVar is configured',
+			async ({ envVar, value }) => {
+				process.env[envVar] = value;
+
+				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+				const clientId = 'test-client';
+				const clientSecret = 'test-secret';
+
+				global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+
+				const mockConfiguration = {
+					serverMetadata: () => ({ issuer: 'https://example.com' }),
+				} as unknown as client.Configuration;
+
+				jest.spyOn(client, 'discovery').mockResolvedValue(mockConfiguration);
+
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+				const result = await (oidcService as any).createProxyAwareConfiguration(
+					discoveryUrl,
+					clientId,
+					clientSecret,
+				);
+
+				// Verify customFetch was set on the configuration
+				expect(result[client.customFetch]).toBeDefined();
+				expect(typeof result[client.customFetch]).toBe('function');
+			},
+		);
+
+		it('should not set customFetch on returned configuration when no proxy is configured', async () => {
+			delete process.env.HTTP_PROXY;
+			delete process.env.HTTPS_PROXY;
+			delete process.env.ALL_PROXY;
+
+			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+			const clientId = 'test-client';
+			const clientSecret = 'test-secret';
+
+			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+
+			const mockConfiguration = {
+				serverMetadata: () => ({ issuer: 'https://example.com' }),
+			} as unknown as client.Configuration;
+
+			jest.spyOn(client, 'discovery').mockResolvedValue(mockConfiguration);
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			const result = await (oidcService as any).createProxyAwareConfiguration(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+			);
+
+			// customFetch should not have been set on the configuration
+			expect(result[client.customFetch]).toBeUndefined();
+		});
+
+		it.each([
+			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
+			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
+			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
+		])(
+			'should use proxy agent dispatcher in customFetch when $envVar is configured',
+			async ({ envVar, value }) => {
+				process.env[envVar] = value;
+
+				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+				const clientId = 'test-client';
+				const clientSecret = 'test-secret';
+
+				const mockProxyAgent = { type: 'proxy-agent' };
+				(EnvHttpProxyAgent as unknown as jest.Mock).mockImplementation(() => mockProxyAgent);
+
+				const fetchSpy = jest.fn().mockResolvedValue(createMockResponse());
+				global.fetch = fetchSpy;
+
+				const mockConfiguration = {
+					serverMetadata: () => ({ issuer: 'https://example.com' }),
+				} as unknown as client.Configuration;
+
+				jest.spyOn(client, 'discovery').mockResolvedValue(mockConfiguration);
+
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+				const result = await (oidcService as any).createProxyAwareConfiguration(
+					discoveryUrl,
+					clientId,
+					clientSecret,
+				);
+
+				// Get the customFetch function and call it
+				const customFetch = result[client.customFetch];
+				const testUrl = 'https://example.com/test';
+				const testOptions = { method: 'GET' };
+
+				await customFetch(testUrl, testOptions);
+
+				// Verify fetch was called with dispatcher option
+				expect(fetchSpy).toHaveBeenCalledWith(testUrl, {
+					...testOptions,
+					dispatcher: mockProxyAgent,
+				});
+			},
+		);
+
+		it('should handle multiple proxy env vars with priority (first match)', async () => {
+			// Set multiple proxy variables - any of them should trigger proxy mode
+			process.env.HTTP_PROXY = 'http://http-proxy.example.com:8080';
+			process.env.HTTPS_PROXY = 'https://https-proxy.example.com:8443';
+
+			const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+			const clientId = 'test-client';
+			const clientSecret = 'test-secret';
+
+			const discoverySpy = jest.spyOn(client, 'discovery').mockResolvedValue({
+				serverMetadata: () => ({ issuer: 'https://example.com' }),
+			} as unknown as client.Configuration);
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			await (oidcService as any).createProxyAwareConfiguration(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+			);
+
+			// EnvHttpProxyAgent should be instantiated once regardless of how many proxy vars are set
+			expect(EnvHttpProxyAgent).toHaveBeenCalledTimes(1);
+			discoverySpy.mockRestore();
+		});
+
+		it.each([
+			{ envVar: 'HTTP_PROXY', value: 'http://proxy.example.com:8080' },
+			{ envVar: 'HTTPS_PROXY', value: 'https://proxy.example.com:8443' },
+			{ envVar: 'ALL_PROXY', value: 'http://all-proxy.example.com:8888' },
+		])(
+			'should pass through fetch options correctly when $envVar is configured',
+			async ({ envVar, value }) => {
+				process.env[envVar] = value;
+
+				const discoveryUrl = new URL('https://example.com/.well-known/openid-configuration');
+				const clientId = 'test-client';
+				const clientSecret = 'test-secret';
+
+				const mockProxyAgent = { type: 'proxy-agent' };
+				(EnvHttpProxyAgent as unknown as jest.Mock).mockImplementation(() => mockProxyAgent);
+
+				const fetchSpy = jest.fn().mockResolvedValue(createMockResponse());
+				global.fetch = fetchSpy;
+
+				const mockConfiguration = {} as client.Configuration;
+				jest.spyOn(client, 'discovery').mockResolvedValue(mockConfiguration);
+
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+				const result = await (oidcService as any).createProxyAwareConfiguration(
+					discoveryUrl,
+					clientId,
+					clientSecret,
+				);
+
+				const customFetch = result[client.customFetch];
+				const testUrl = 'https://example.com/token';
+				const testOptions = {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+					body: 'grant_type=authorization_code&code=test',
+				};
+
+				await customFetch(testUrl, testOptions);
+
+				// Verify all original options are preserved and dispatcher is added
+				expect(fetchSpy).toHaveBeenCalledWith(testUrl, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+					body: 'grant_type=authorization_code&code=test',
+					dispatcher: mockProxyAgent,
+				});
+			},
+		);
 	});
 });

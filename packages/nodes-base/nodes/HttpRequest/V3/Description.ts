@@ -206,6 +206,10 @@ export const mainProperties: INodeProperties[] = [
 			{
 				name: 'parameters',
 				displayName: 'Query Parameter',
+				builderHint: {
+					message: `NEVER put static authentication values (API keys, tokens, PATs) in queryParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "httpQueryAuth", and add credentials: { httpQueryAuth:
+ newCredential("Name") }. Only use queryParameters for non-auth values. Dynamic values from previous nodes via expr() are acceptable.`,
+				},
 				values: [
 					{
 						displayName: 'Name',
@@ -293,6 +297,10 @@ export const mainProperties: INodeProperties[] = [
 			{
 				name: 'parameters',
 				displayName: 'Header',
+				builderHint: {
+					message: `NEVER put static authentication values (API keys, tokens, PATs) in headerParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "httpHeaderAuth", and add credentials: { httpHeaderAuth:
+ newCredential("Name") }. Only use headerParameters for non-auth headers like Content-Type or Accept. Dynamic values from previous nodes via expr() are acceptable.`,
+				},
 				values: [
 					{
 						displayName: 'Name',
@@ -394,6 +402,10 @@ export const mainProperties: INodeProperties[] = [
 		displayName: 'Body Parameters',
 		name: 'bodyParameters',
 		type: 'fixedCollection',
+		builderHint: {
+			message: `NEVER put static authentication values (API keys, tokens, PATs) in bodyParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "customAuth", and add credentials: { customAuth:
+ newCredential("Name") }. Only use bodyParameters for non-auth values. Dynamic values from previous nodes via expr() are acceptable.`,
+		},
 		displayOptions: {
 			show: {
 				sendBody: [true],
@@ -444,6 +456,10 @@ export const mainProperties: INodeProperties[] = [
 		displayName: 'JSON',
 		name: 'jsonBody',
 		type: 'json',
+		builderHint: {
+			message: `NEVER put static authentication values (API keys, tokens, PATs) in bodyParameters. It's insecure to store credentials directly in parameters. Instead set authentication to "genericCredentialType", genericAuthType to "customAuth", and add credentials: { customAuth:
+ newCredential("Name") }. Only use bodyParameters for non-auth values. Dynamic values from previous nodes via expr() are acceptable.`,
+		},
 		displayOptions: {
 			show: {
 				sendBody: [true],

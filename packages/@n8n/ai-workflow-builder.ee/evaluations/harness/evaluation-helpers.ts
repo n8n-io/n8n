@@ -2,7 +2,8 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import { getLangchainCallbacks } from 'langsmith/langchain';
 import { v4 as uuid } from 'uuid';
 
-import type { LlmCallLimiter } from './harness-types';
+import type { Evaluator, EvaluationContext, Feedback, LlmCallLimiter } from './harness-types';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../support/constants';
 
@@ -22,6 +23,26 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	for await (const _ of gen) {
 		/* consume all */
 	}
+}
+
+/**
+ * Consume an async generator of StreamOutput, collecting AgentMessageChunk text.
+ * Returns the concatenated text from all message chunks.
+ */
+export async function collectAgentTextResponse<
+	T extends { messages?: Array<{ type: string; text?: string }> },
+>(gen: AsyncGenerator<T>): Promise<string> {
+	const textParts: string[] = [];
+	for await (const output of gen) {
+		if (output.messages) {
+			for (const chunk of output.messages) {
+				if (chunk.type === 'message' && chunk.text) {
+					textParts.push(chunk.text);
+				}
+			}
+		}
+	}
+	return textParts.join('');
 }
 
 export async function runWithOptionalLimiter<T>(
@@ -66,17 +87,152 @@ export interface GetChatPayloadOptions {
 	message: string;
 	workflowId: string;
 	featureFlags?: BuilderFeatureFlags;
+	/** Full workflowContext from dataset (overrides default empty context) */
+	workflowContext?: ChatPayload['workflowContext'];
+	/** Builder mode from dataset */
+	mode?: 'build' | 'plan';
 }
 
 export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
-	const { evalType, message, workflowId, featureFlags } = options;
+	const { evalType, message, workflowId, featureFlags, workflowContext, mode } = options;
+
+	// Always use the eval runId as currentWorkflow.id so getState() can find the thread.
+	// When workflowContext is provided from a dataset, override its currentWorkflow.id.
+	const resolvedContext = workflowContext
+		? {
+				...workflowContext,
+				currentWorkflow: {
+					nodes: [],
+					connections: {},
+					...((workflowContext.currentWorkflow as Record<string, unknown>) ?? {}),
+					id: workflowId,
+				},
+			}
+		: { currentWorkflow: { id: workflowId, nodes: [], connections: {} } };
 
 	return {
 		id: `${evalType}-${uuid()}`,
 		featureFlags: featureFlags ?? DEFAULTS.FEATURE_FLAGS,
 		message,
-		workflowContext: {
-			currentWorkflow: { id: workflowId, nodes: [], connections: {} },
-		},
+		workflowContext: resolvedContext,
+		...(mode ? { mode } : {}),
 	};
+}
+
+/**
+ * Coordination log entry for subgraph timing extraction.
+ * Matches the CoordinationLogEntry type from src/types/coordination.ts
+ */
+interface CoordinationLogEntry {
+	phase: 'discovery' | 'builder' | 'assistant' | 'state_management' | 'responder' | 'planner';
+	status: 'completed' | 'in_progress' | 'error';
+	timestamp: number;
+}
+
+/**
+ * Subgraph metrics extracted from coordination log.
+ */
+export interface ExtractedSubgraphMetrics {
+	discoveryDurationMs?: number;
+	builderDurationMs?: number;
+	responderDurationMs?: number;
+	nodeCount?: number;
+}
+
+/**
+ * Calculate duration for a specific phase from coordination log entries.
+ * Looks for the first 'in_progress' and terminal ('completed' or 'error') status for the phase.
+ */
+function calculatePhaseDuration(
+	coordinationLog: CoordinationLogEntry[],
+	phase: 'discovery' | 'builder' | 'responder',
+): number | undefined {
+	const phaseEntries = coordinationLog.filter((entry) => entry.phase === phase);
+	if (phaseEntries.length === 0) return undefined;
+
+	const inProgress = phaseEntries.find((e) => e.status === 'in_progress');
+	// Accept either 'completed' or 'error' as the terminal status
+	const terminal = phaseEntries.find((e) => e.status === 'completed' || e.status === 'error');
+
+	if (inProgress && terminal) {
+		return terminal.timestamp - inProgress.timestamp;
+	}
+
+	// If no in_progress entry, try to calculate from first to last entry
+	if (phaseEntries.length >= 2) {
+		const sorted = [...phaseEntries].sort((a, b) => a.timestamp - b.timestamp);
+		return sorted[sorted.length - 1].timestamp - sorted[0].timestamp;
+	}
+
+	return undefined;
+}
+
+/**
+ * Extract subgraph metrics from coordination log and workflow.
+ */
+export function extractSubgraphMetrics(
+	coordinationLog: CoordinationLogEntry[] | undefined,
+	nodeCount: number | undefined,
+): ExtractedSubgraphMetrics {
+	const metrics: ExtractedSubgraphMetrics = {};
+
+	// Include node count
+	if (nodeCount !== undefined) {
+		metrics.nodeCount = nodeCount;
+	}
+
+	// Extract timing from coordination log
+	if (coordinationLog && coordinationLog.length > 0) {
+		const discoveryDuration = calculatePhaseDuration(coordinationLog, 'discovery');
+		const builderDuration = calculatePhaseDuration(coordinationLog, 'builder');
+		const responderDuration = calculatePhaseDuration(coordinationLog, 'responder');
+
+		if (discoveryDuration !== undefined) {
+			metrics.discoveryDurationMs = discoveryDuration;
+		}
+		if (builderDuration !== undefined) {
+			metrics.builderDurationMs = builderDuration;
+		}
+		if (responderDuration !== undefined) {
+			metrics.responderDurationMs = responderDuration;
+		}
+	}
+
+	return metrics;
+}
+
+/**
+ * Run all evaluators on a workflow + context pair, with per-evaluator timeouts.
+ * Returns flattened feedback; errors are captured as feedback items.
+ */
+export async function runEvaluatorsOnExample(
+	evaluators: Array<Evaluator<EvaluationContext>>,
+	workflow: SimpleWorkflow,
+	context: EvaluationContext,
+	timeoutMs?: number,
+): Promise<Feedback[]> {
+	return (
+		await Promise.all(
+			evaluators.map(async (evaluator): Promise<Feedback[]> => {
+				try {
+					return await withTimeout({
+						promise: evaluator.evaluate(workflow, context),
+						timeoutMs,
+						label: `evaluator:${evaluator.name}`,
+					});
+				} catch (error) {
+					const msg = error instanceof Error ? error.message : String(error);
+					return [
+						{
+							evaluator: evaluator.name,
+							metric: 'error',
+							score: 0,
+							kind: 'score' as const,
+							comment: msg,
+						},
+					];
+				}
+			}),
+		)
+	).flat();
 }

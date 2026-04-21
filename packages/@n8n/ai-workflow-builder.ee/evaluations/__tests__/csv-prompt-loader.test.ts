@@ -142,4 +142,33 @@ describe('csv-prompt-loader', () => {
 			'No valid prompts found in the provided CSV file',
 		);
 	});
+
+	it('should parse annotations column as JSON into context', () => {
+		const csvPath = writeTempCsv(
+			'annotations.csv',
+			'id,prompt,annotations\nann-1,"Create a workflow","{""code_necessary"":true}"\n',
+		);
+
+		const testCases = loadTestCasesFromCsv(csvPath);
+		expect(testCases).toEqual([
+			{
+				id: 'ann-1',
+				prompt: 'Create a workflow',
+				context: { annotations: { code_necessary: true } },
+			},
+		]);
+	});
+
+	it('should skip invalid JSON in annotations column with warning', () => {
+		const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+		const csvPath = writeTempCsv(
+			'bad-annotations.csv',
+			'id,prompt,annotations\nbad-1,"Create a workflow","not-json"\n',
+		);
+
+		const testCases = loadTestCasesFromCsv(csvPath);
+		expect(testCases).toEqual([{ id: 'bad-1', prompt: 'Create a workflow', context: {} }]);
+		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('invalid JSON'));
+		warnSpy.mockRestore();
+	});
 });

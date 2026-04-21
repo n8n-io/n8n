@@ -4,10 +4,16 @@ import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
+import {
+	CredentialDependency,
+	type CredentialDependencyType,
+} from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
+import { DeploymentKey } from './deployment-key';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
+import type { ExecutionDataStorageLocation } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
@@ -15,8 +21,12 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
+import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
+import { RoleMappingRule } from './role-mapping-rule';
 import { Scope } from './scope';
+import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
@@ -30,6 +40,7 @@ import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowPublishHistory } from './workflow-publish-history';
+import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
@@ -42,12 +53,17 @@ export {
 	BinaryDataFile,
 	SourceTypeSchema,
 	type SourceType,
+	type ExecutionDataStorageLocation,
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
+	CredentialDependency,
+	type CredentialDependencyType,
+	DeploymentKey,
 	Folder,
 	Project,
 	ProjectRelation,
+	RoleMappingRule,
 	Role,
 	Scope,
 	SharedCredentials,
@@ -61,6 +77,7 @@ export {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
@@ -70,6 +87,9 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ProjectSecretsProviderAccess,
+	type SecretsProviderAccessRole,
+	SecretsProviderConnection,
 };
 
 export const entities = {
@@ -82,9 +102,12 @@ export const entities = {
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
+	CredentialDependency,
+	DeploymentKey,
 	Folder,
 	Project,
 	ProjectRelation,
+	RoleMappingRule,
 	Scope,
 	SharedCredentials,
 	SharedWorkflow,
@@ -97,6 +120,7 @@ export const entities = {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
@@ -107,4 +131,6 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	ProjectSecretsProviderAccess,
+	SecretsProviderConnection,
 };

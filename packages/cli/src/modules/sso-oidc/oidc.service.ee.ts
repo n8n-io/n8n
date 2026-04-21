@@ -15,12 +15,13 @@ import { Container, Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
-import * as client from 'openid-client';
+import type * as openidClientTypes from 'openid-client';
 import { EnvHttpProxyAgent } from 'undici';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
@@ -59,6 +60,9 @@ const DEFAULT_OIDC_RUNTIME_CONFIG: OidcRuntimeConfig = {
 export class OidcService {
 	private oidcConfig: OidcRuntimeConfig = DEFAULT_OIDC_RUNTIME_CONFIG;
 
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	private openidClient: typeof import('openid-client');
+
 	constructor(
 		private readonly settingsRepository: SettingsRepository,
 		private readonly authIdentityRepository: AuthIdentityRepository,
@@ -76,6 +80,15 @@ export class OidcService {
 		this.oidcConfig = await this.loadConfig(true);
 		this.logger.debug(`OIDC login is ${this.oidcConfig.loginEnabled ? 'enabled' : 'disabled'}.`);
 		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
+		if (this.oidcConfig.loginEnabled) {
+			await this.loadOpenIdClient();
+		}
+	}
+
+	private async loadOpenIdClient() {
+		if (!this.openidClient) {
+			this.openidClient = await import('openid-client');
+		}
 	}
 
 	getCallbackUrl(): string {
@@ -90,19 +103,25 @@ export class OidcService {
 		};
 	}
 
-	generateState() {
+	generateState(testMode = false) {
 		const state = `n8n_state:${randomUUID()}`;
+		const payload: Record<string, unknown> = { state };
+		if (testMode) {
+			payload.testMode = true;
+		}
 		return {
-			signed: this.jwtService.sign({ state }, { expiresIn: '15m' }),
+			signed: this.jwtService.sign(payload, { expiresIn: '15m' }),
 			plaintext: state,
 		};
 	}
 
-	verifyState(signedState: string) {
+	verifyState(signedState: string): { state: string; testMode?: boolean } {
 		let state: string;
+		let testMode: boolean | undefined;
 		try {
 			const decodedState = this.jwtService.verify(signedState);
 			state = decodedState?.state;
+			testMode = decodedState?.testMode;
 		} catch (error) {
 			this.logger.error('Failed to verify state', { error });
 			throw new BadRequestError('Invalid state');
@@ -128,7 +147,7 @@ export class OidcService {
 			this.logger.error('Provided state is not formatted correctly');
 			throw new BadRequestError('Invalid state');
 		}
-		return state;
+		return { state, testMode };
 	}
 
 	generateNonce() {
@@ -173,6 +192,7 @@ export class OidcService {
 	}
 
 	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
 		const state = this.generateState();
@@ -191,7 +211,7 @@ export class OidcService {
 			? `openid email profile ${provisioningConfig.scopesName}`
 			: 'openid email profile';
 
-		const authorizationURL = client.buildAuthorizationUrl(configuration, {
+		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
 			response_type: 'code',
 			scope,
@@ -207,14 +227,15 @@ export class OidcService {
 	}
 
 	async loginUser(callbackUrl: URL, storedState: string, storedNonce: string): Promise<User> {
+		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
-		const expectedState = this.verifyState(storedState);
+		const { state: expectedState } = this.verifyState(storedState);
 		const expectedNonce = this.verifyNonce(storedNonce);
 
 		let tokens;
 		try {
-			tokens = await client.authorizationCodeGrant(configuration, callbackUrl, {
+			tokens = await this.openidClient.authorizationCodeGrant(configuration, callbackUrl, {
 				expectedState,
 				expectedNonce,
 			});
@@ -237,7 +258,11 @@ export class OidcService {
 
 		let userInfo;
 		try {
-			userInfo = await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
+			userInfo = await this.openidClient.fetchUserInfo(
+				configuration,
+				tokens.access_token,
+				claims.sub,
+			);
 		} catch (error) {
 			this.logger.error('Failed to fetch user info', { error });
 			throw new BadRequestError('Invalid token');
@@ -261,7 +286,11 @@ export class OidcService {
 		});
 
 		if (openidUser) {
-			await this.applySsoProvisioning(openidUser.user, claims);
+			await this.applySsoProvisioning(
+				openidUser.user,
+				claims as Record<string, unknown>,
+				userInfo as Record<string, unknown>,
+			);
 
 			return openidUser.user;
 		}
@@ -283,13 +312,17 @@ export class OidcService {
 			});
 
 			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(foundUser, claims);
+			await this.applySsoProvisioning(
+				foundUser,
+				claims as Record<string, unknown>,
+				userInfo as Record<string, unknown>,
+			);
 
 			return foundUser;
 		}
 
-		return await this.userRepository.manager.transaction(async (trx) => {
-			const { user } = await this.userRepository.createUserWithProject(
+		const user = await this.userRepository.manager.transaction(async (trx) => {
+			const { user: newUser } = await this.userRepository.createUserWithProject(
 				{
 					firstName: userInfo.given_name,
 					lastName: userInfo.family_name,
@@ -305,17 +338,128 @@ export class OidcService {
 				trx.create(AuthIdentity, {
 					providerId: claims.sub,
 					providerType: 'oidc',
-					userId: user.id,
+					userId: newUser.id,
 				}),
 			);
 
-			await this.applySsoProvisioning(user, claims);
-
-			return user;
+			return newUser;
 		});
+
+		await this.applySsoProvisioning(
+			user,
+			claims as Record<string, unknown>,
+			userInfo as Record<string, unknown>,
+		);
+
+		return user;
 	}
 
-	private async applySsoProvisioning(user: User, claims: any) {
+	async generateTestLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+		await this.loadOpenIdClient();
+		const config = await this.loadConfig(true);
+
+		const configuration = await this.createProxyAwareConfiguration(
+			config.discoveryEndpoint,
+			config.clientId,
+			config.clientSecret,
+		);
+
+		const state = this.generateState(true);
+		const nonce = this.generateNonce();
+
+		const provisioningConfig = await this.provisioningService.getConfig();
+		const provisioningEnabled =
+			provisioningConfig.scopesProvisionInstanceRole ||
+			provisioningConfig.scopesProvisionProjectRoles;
+
+		const scope = provisioningEnabled
+			? `openid email profile ${provisioningConfig.scopesName}`
+			: 'openid email profile';
+
+		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
+			redirect_uri: this.getCallbackUrl(),
+			response_type: 'code',
+			scope,
+			prompt: config.prompt,
+			state: state.plaintext,
+			nonce: nonce.plaintext,
+			...(config.authenticationContextClassReference.length > 0 && {
+				acr_values: config.authenticationContextClassReference.join(' '),
+			}),
+		});
+
+		return { url: authorizationURL, state: state.signed, nonce: nonce.signed };
+	}
+
+	async processTestCallback(
+		callbackUrl: URL,
+		storedState: string,
+		storedNonce: string,
+	): Promise<{ claims: Record<string, unknown>; userInfo: Record<string, unknown> }> {
+		await this.loadOpenIdClient();
+		const config = await this.loadConfig(true);
+
+		const configuration = await this.createProxyAwareConfiguration(
+			config.discoveryEndpoint,
+			config.clientId,
+			config.clientSecret,
+		);
+
+		const { state: expectedState } = this.verifyState(storedState);
+		const expectedNonce = this.verifyNonce(storedNonce);
+
+		let tokens;
+		try {
+			tokens = await this.openidClient.authorizationCodeGrant(configuration, callbackUrl, {
+				expectedState,
+				expectedNonce,
+			});
+		} catch (error) {
+			this.logger.error('Failed to exchange authorization code for tokens', { error });
+			throw new BadRequestError('Invalid authorization code');
+		}
+
+		let claims;
+		try {
+			claims = tokens.claims();
+		} catch (error) {
+			this.logger.error('Failed to extract claims from tokens', { error });
+			throw new BadRequestError('Invalid token');
+		}
+
+		if (!claims) {
+			throw new ForbiddenError('No claims found in the OIDC token');
+		}
+
+		let userInfo;
+		try {
+			userInfo = await this.openidClient.fetchUserInfo(
+				configuration,
+				tokens.access_token,
+				claims.sub,
+			);
+		} catch (error) {
+			this.logger.error('Failed to fetch user info', { error });
+			throw new BadRequestError('Invalid token');
+		}
+
+		return {
+			claims: { ...claims },
+			userInfo: { ...userInfo },
+		};
+	}
+
+	private async applySsoProvisioning(
+		user: User,
+		claims: Record<string, unknown>,
+		userInfo: Record<string, unknown>,
+	) {
+		if (await this.provisioningService.isExpressionMappingEnabled()) {
+			const context = buildOidcClaimsContext(claims, userInfo);
+			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			return;
+		}
+
 		const provisioningConfig = await this.provisioningService.getConfig();
 		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
@@ -493,7 +637,7 @@ export class OidcService {
 
 	private cachedOidcConfiguration:
 		| ({
-				configuration: Promise<client.Configuration>;
+				configuration: Promise<openidClientTypes.Configuration>;
 				validTill: Date;
 		  } & OidcRuntimeConfig)
 		| undefined;
@@ -506,8 +650,8 @@ export class OidcService {
 		discoveryUrl: URL,
 		clientId: string,
 		clientSecret: string,
-	): Promise<client.Configuration> {
-		const configuration = await client.discovery(discoveryUrl, clientId, clientSecret);
+	): Promise<openidClientTypes.Configuration> {
+		await this.loadOpenIdClient();
 
 		// Check if proxy environment variables are set
 		const hasProxyConfig =
@@ -523,22 +667,35 @@ export class OidcService {
 
 			// Create a proxy agent that automatically reads from environment variables
 			const proxyAgent = new EnvHttpProxyAgent();
-
-			// Configure customFetch to use the proxy agent
-			configuration[client.customFetch] = async (...args) => {
-				const [url, options] = args;
+			const proxyFetch: openidClientTypes.CustomFetch = async (url, options) => {
 				return await fetch(url, {
 					...options,
 					// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
 					dispatcher: proxyAgent,
 				});
 			};
+
+			// discovery call with custom fetch client using proxy agent
+			const configuration = await this.openidClient.discovery(
+				discoveryUrl,
+				clientId,
+				clientSecret,
+				undefined,
+				{
+					[this.openidClient.customFetch]: proxyFetch,
+				},
+			);
+
+			// Configure customFetch to use the proxy agent
+			configuration[this.openidClient.customFetch] = proxyFetch;
+
+			return configuration;
 		}
 
-		return configuration;
+		return await this.openidClient.discovery(discoveryUrl, clientId, clientSecret);
 	}
 
-	private async getOidcConfiguration(): Promise<client.Configuration> {
+	private async getOidcConfiguration(): Promise<openidClientTypes.Configuration> {
 		const now = Date.now();
 		if (
 			this.cachedOidcConfiguration === undefined ||

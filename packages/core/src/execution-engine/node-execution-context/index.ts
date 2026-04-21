@@ -9,6 +9,7 @@ export { SupplyDataContext } from './supply-data-context';
 export { TriggerContext } from './trigger-context';
 export { WebhookContext } from './webhook-context';
 
+export { StructuredToolkit, type SupplyDataToolResponse } from './utils/ai-tool-types';
 export { constructExecutionMetaData } from './utils/construct-execution-metadata';
 export { getAdditionalKeys, getNonWorkflowAdditionalKeys } from './utils/get-additional-keys';
 export { normalizeItems } from './utils/normalize-items';

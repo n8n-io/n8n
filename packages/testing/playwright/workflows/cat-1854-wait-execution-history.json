@@ -16,12 +16,32 @@
 		},
 		{
 			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "capture-resume-url",
+							"name": "resumeUrl",
+							"value": "={{ $execution.resumeUrl }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "capture-url-id",
+			"name": "Capture Resume URL"
+		},
+		{
+			"parameters": {
 				"resume": "webhook",
 				"options": {}
 			},
 			"type": "n8n-nodes-base.wait",
 			"typeVersion": 1.1,
-			"position": [220, 0],
+			"position": [440, 0],
 			"id": "wait-node-id",
 			"name": "Wait",
 			"webhookId": "cat-1854-wait-webhook-id"
@@ -42,13 +62,24 @@
 			},
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [440, 0],
+			"position": [660, 0],
 			"id": "set-node-id",
 			"name": "Edit Fields"
 		}
 	],
 	"connections": {
 		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Capture Resume URL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Capture Resume URL": {
 			"main": [
 				[
 					{

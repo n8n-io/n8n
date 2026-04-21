@@ -95,12 +95,18 @@ export const cssVariables = `
   --chat--button--color--primary--hover: var(--chat--color-light);
   --chat--button--background--primary--hover: var(--chat--color-secondary-shade-50);
   --chat--button--border--primary--hover: none;
+  --chat--button--color--primary--disabled: var(--chat--color-light);
+  --chat--button--background--primary--disabled: #81bbb1;
+  --chat--button--border--primary--disabled: none;
   --chat--button--color--secondary: var(--chat--color-light);
   --chat--button--background--secondary: hsl(0, 0%, 58%);
   --chat--button--border--secondary: none;
   --chat--button--color--secondary--hover: var(--chat--color-light);
   --chat--button--background--secondary--hover: hsl(0, 0%, 51%);
   --chat--button--border--secondary--hover: none;
+  --chat--button--color--secondary--disabled: var(--chat--color-light);
+  --chat--button--background--secondary--disabled: hsl(0, 0%, 78%);
+  --chat--button--border--secondary--disabled: none;
   --chat--close--button--color-hover: var(--chat--color--primary);
 
   /* Send and File Buttons */

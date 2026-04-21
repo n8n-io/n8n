@@ -43,9 +43,9 @@ const handleClick = () => {
 		</div>
 		<div :class="[$style.actions, 'mt-m']">
 			<N8nButton
+				variant="subtle"
 				:label="i18n.baseText('experiments.resourceCenter.templateCard.useNow')"
-				type="secondary"
-				size="mini"
+				size="xsmall"
 				@click.stop="handleClick"
 			/>
 		</div>

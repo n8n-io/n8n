@@ -1,6 +1,9 @@
 import type { FrontendSettings } from '@n8n/api-types';
 
 export const defaultSettings: FrontendSettings = {
+	ai: {
+		allowSendingParameterValues: true,
+	},
 	inE2ETests: false,
 	databaseType: 'sqlite',
 	isDocker: false,
@@ -21,6 +24,7 @@ export const defaultSettings: FrontendSettings = {
 	endpointWebhook: '',
 	endpointWebhookTest: '',
 	endpointWebhookWaiting: '',
+	endpointHealth: '/healthz',
 	enterprise: {
 		sharing: false,
 		ldap: false,
@@ -38,8 +42,9 @@ export const defaultSettings: FrontendSettings = {
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
-		apiKeyScopes: false,
+
 		workflowDiffs: false,
+		namedVersions: false,
 		provisioning: true,
 		projects: {
 			team: {
@@ -47,6 +52,8 @@ export const defaultSettings: FrontendSettings = {
 			},
 		},
 		customRoles: false,
+		personalSpacePolicy: false,
+		dataRedaction: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -81,6 +88,7 @@ export const defaultSettings: FrontendSettings = {
 	saveManualExecutions: false,
 	saveExecutionProgress: false,
 	sso: {
+		managedByEnv: false,
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
 		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
@@ -163,6 +171,7 @@ export const defaultSettings: FrontendSettings = {
 		quota: 0,
 	},
 	activeModules: [],
+	canvasOnly: false,
 	envFeatureFlags: {},
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',

@@ -1,20 +1,21 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
+
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
 import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type {
 	ProjectListItem,
 	ProjectSharingData,
 } from '@/features/collaboration/projects/projects.types';
-import type { ChangeLocationSearchResult } from '../folders.types';
+import type { ChangeLocationSearchResult, WorkflowListEventMap } from '../folders.types';
 import type {
 	ICredentialsResponse,
 	IUsedCredential,
@@ -28,8 +29,11 @@ import ProjectSharing from '@/features/collaboration/projects/components/Project
 import {
 	ResourceType,
 	getTruncatedProjectName,
+	splitName,
+	useAvailableProjectSearch,
 } from '@/features/collaboration/projects/projects.utils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useToast } from '@/app/composables/useToast';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -48,7 +52,7 @@ type Props = {
 			sharedWithProjects?: ProjectSharingData[];
 			homeProjectId?: string;
 		};
-		workflowListEventBus: EventBus;
+		workflowListEventBus: EventBus<WorkflowListEventMap>;
 	};
 };
 
@@ -62,16 +66,18 @@ const props = defineProps<Props>();
 
 const i18n = useI18n();
 const modalBus = createEventBus();
-const moveToFolderDropdown = ref<InstanceType<typeof MoveToFolderDropdown>>();
 
 const foldersStore = useFoldersStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
+const toast = useToast();
 
 const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
 const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject);
+const loading = ref(false);
 const isPersonalProject = computed(() => {
 	return selectedProject.value?.type === ProjectTypes.Personal;
 });
@@ -117,14 +123,9 @@ const unShareableCredentials = computed(() =>
 	),
 );
 
-const availableProjects = computed<ProjectListItem[]>(() =>
-	sortByProperty(
-		'name',
-		projectsStore.availableProjects.filter(
-			(p) => !p.scopes || getResourcePermissions(p.scopes)[props.data.resourceType].create,
-		),
-	),
-);
+const searchFn = useAvailableProjectSearch();
+const filterFn = (p: ProjectListItem) =>
+	!p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
 
 const resourceTypeLabel = computed(() => {
 	return i18n.baseText(`generic.${props.data.resourceType}`).toLowerCase();
@@ -182,16 +183,26 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 	selectedFolder.value = payload;
 };
 
+const getPersonalProjectLabel = (projectName?: string | null) => {
+	const { name } = splitName(projectName ?? '');
+	const personalSpaceText = i18n.baseText('projects.sharing.personalSpace');
+	return name ? `${name} (${personalSpaceText})` : personalSpaceText;
+};
+
 const targetProjectName = computed(() => {
+	if (selectedProject.value?.type === ProjectTypes.Personal) {
+		return getPersonalProjectLabel(selectedProject.value?.name);
+	}
+
 	return getTruncatedProjectName(selectedProject.value?.name);
 });
 
-const onSubmit = () => {
-	if (!selectedProject.value) {
+const onSubmit = async () => {
+	if (!selectedProject.value || loading.value) {
 		return;
 	}
 
-	const newParent = selectedFolder.value
+	const newParent: { id: string; name: string; type: 'folder' | 'project' } = selectedFolder.value
 		? {
 				id: selectedFolder.value.id,
 				name: selectedFolder.value.name,
@@ -206,86 +217,139 @@ const onSubmit = () => {
 				type: 'project',
 			};
 
-	if (props.data.resourceType === 'folder') {
-		if (selectedProject.value.id !== projectsStore.currentProject?.id) {
-			props.data.workflowListEventBus.emit('folder-transferred', {
-				source: {
-					projectId: projectsStore.currentProject?.id,
-					folder: {
-						id: props.data.resource.id,
-						name: props.data.resource.name,
-					},
-				},
-				destination: {
-					projectId: selectedProject.value.id,
-					parentFolder: {
-						id:
-							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
-								? selectedFolder.value.id
-								: undefined,
-						name:
-							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
-								? selectedFolder.value.name
-								: targetProjectName.value,
-					},
-					canAccess: isFolderSelectable.value,
-				},
-				shareCredentials: shareUsedCredentials.value
+	loading.value = true;
+
+	try {
+		if (props.data.resourceType === 'folder') {
+			if (selectedProject.value.id !== projectsStore.currentProject?.id) {
+				// Transfer folder to another project
+				const destinationParentFolderId =
+					selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+						? selectedFolder.value.id
+						: undefined;
+				const shareCredentials = shareUsedCredentials.value
 					? shareableCredentials.value.map((c) => c.id)
-					: undefined,
-			});
+					: undefined;
+
+				await foldersStore.moveFolderToProject(
+					projectsStore.currentProject?.id ?? '',
+					props.data.resource.id,
+					selectedProject.value.id,
+					destinationParentFolderId,
+					shareCredentials,
+				);
+
+				props.data.workflowListEventBus.emit('folder-transferred', {
+					source: {
+						projectId: projectsStore.currentProject?.id,
+						folder: {
+							id: props.data.resource.id,
+							name: props.data.resource.name,
+						},
+					},
+					destination: {
+						projectId: selectedProject.value.id,
+						parentFolder: {
+							id: destinationParentFolderId,
+							name:
+								selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+									? selectedFolder.value.name
+									: targetProjectName.value,
+						},
+						canAccess: isFolderSelectable.value,
+					},
+				});
+			} else {
+				// Move folder within same project
+				const newParentId = newParent.type === 'folder' ? newParent.id : '0';
+				await foldersStore.moveFolder(
+					projectsStore.currentProject?.id ?? '',
+					props.data.resource.id,
+					newParentId,
+				);
+
+				props.data.workflowListEventBus.emit('folder-moved', {
+					newParent,
+					folder: { id: props.data.resource.id, name: props.data.resource.name },
+					options: { skipApiCall: true },
+				});
+			}
 		} else {
-			props.data.workflowListEventBus.emit('folder-moved', {
-				newParent,
-				folder: { id: props.data.resource.id, name: props.data.resource.name },
-			});
-		}
-	} else {
-		if (isTransferringOwnership.value) {
-			props.data.workflowListEventBus.emit('workflow-transferred', {
-				source: {
-					projectId: projectsStore.currentProject?.id,
+			if (isTransferringOwnership.value) {
+				// Transfer workflow to another project
+				const destinationParentFolderId =
+					selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+						? selectedFolder.value.id
+						: undefined;
+				const shareCredentials = shareUsedCredentials.value
+					? shareableCredentials.value.map((c) => c.id)
+					: undefined;
+
+				await projectsStore.moveResourceToProject(
+					'workflow',
+					props.data.resource.id,
+					selectedProject.value.id,
+					destinationParentFolderId,
+					shareCredentials,
+				);
+
+				props.data.workflowListEventBus.emit('workflow-transferred', {
+					source: {
+						projectId: projectsStore.currentProject?.id,
+						workflow: {
+							id: props.data.resource.id,
+							name: props.data.resource.name,
+						},
+					},
+					destination: {
+						projectId: selectedProject.value.id,
+						parentFolder: {
+							id: destinationParentFolderId,
+							name:
+								selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
+									? selectedFolder.value.name
+									: targetProjectName.value,
+						},
+						canAccess: isFolderSelectable.value,
+					},
+					toast: {
+						targetProject: selectedProject.value as ProjectListItem,
+						targetProjectName: targetProjectName.value,
+						shareUsedCredentials: shareUsedCredentials.value,
+						areAllUsedCredentialsShareable:
+							shareableCredentials.value.length === usedCredentials.value.length,
+					},
+				});
+			} else {
+				// Move workflow within same project
+				const newParentFolderId = newParent.type === 'folder' ? newParent.id : '0';
+				await workflowsStore.updateWorkflow(props.data.resource.id, {
+					parentFolderId: newParentFolderId,
+				});
+
+				props.data.workflowListEventBus.emit('workflow-moved', {
+					newParent,
 					workflow: {
 						id: props.data.resource.id,
 						name: props.data.resource.name,
+						oldParentId: props.data.resource.parentFolderId,
 					},
-				},
-				destination: {
-					projectId: selectedProject.value.id,
-					parentFolder: {
-						id:
-							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
-								? selectedFolder.value.id
-								: undefined,
-						name:
-							selectedFolder.value && selectedFolder.value.id !== selectedProject.value.id
-								? selectedFolder.value.name
-								: targetProjectName.value,
-					},
-					canAccess: isFolderSelectable.value,
-				},
-				shareCredentials: shareUsedCredentials.value
-					? shareableCredentials.value.map((c) => c.id)
-					: undefined,
-			});
-		} else {
-			props.data.workflowListEventBus.emit('workflow-moved', {
-				newParent,
-				workflow: {
-					id: props.data.resource.id,
-					name: props.data.resource.name,
-					oldParentId: props.data.resource.parentFolderId,
-				},
-			});
+					options: { skipApiCall: true },
+				});
+			}
 		}
+
+		uiStore.closeModal(MOVE_FOLDER_MODAL_KEY);
+	} catch (error) {
+		const errorTitleKey =
+			props.data.resourceType === 'folder'
+				? 'folders.move.error.title'
+				: 'folders.move.workflow.error.title';
+		toast.showError(error, i18n.baseText(errorTitleKey));
+	} finally {
+		loading.value = false;
 	}
-
-	uiStore.closeModal(MOVE_FOLDER_MODAL_KEY);
 };
-
-modalBus.on('opened', () => {
-	moveToFolderDropdown.value?.focusOnInput();
-});
 
 const descriptionMessage = computed(() => {
 	let folderText = '';
@@ -329,7 +393,7 @@ onMounted(async () => {
 	}
 	if (isResourceWorkflow.value) {
 		const [workflow, credentials] = await Promise.all([
-			workflowsStore.fetchWorkflow(props.data.resource.id),
+			workflowsListStore.fetchWorkflow(props.data.resource.id),
 			credentialsStore.fetchAllCredentials(),
 		]);
 
@@ -376,7 +440,8 @@ onMounted(async () => {
 					<ProjectSharing
 						v-model="selectedProject"
 						class="pt-2xs"
-						:projects="availableProjects"
+						:search-fn="searchFn"
+						:filter-fn="filterFn"
 						:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
 					/>
 				</div>
@@ -413,7 +478,6 @@ onMounted(async () => {
 						{{ i18n.baseText('folders.move.modal.folder.label') }}
 					</N8nText>
 					<MoveToFolderDropdown
-						ref="moveToFolderDropdown"
 						:selected-location="selectedFolder"
 						:selected-project-id="selectedProject.id"
 						:current-project-id="currentResourceProjectId"
@@ -492,14 +556,16 @@ onMounted(async () => {
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
+					:disabled="loading"
 					float="right"
 					data-test-id="cancel-move-folder-button"
 					@click="close"
 				/>
 				<N8nButton
-					:disabled="!selectedFolder && isFolderSelectable"
+					:disabled="(!selectedFolder && isFolderSelectable) || loading"
+					:loading="loading"
 					:label="
 						i18n.baseText('folders.move.modal.confirm', {
 							interpolate: {

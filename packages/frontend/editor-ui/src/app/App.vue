@@ -7,10 +7,14 @@ import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
+import { useBackendStatus } from '@/app/composables/useBackendStatus';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
+import { INSTANCE_AI_OPTIN_MODAL_KEY } from '@/app/constants/modals';
+import { canManageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
@@ -29,8 +33,10 @@ const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
+const uiStore = useUIStore();
 const { setAppZIndexes } = useStyles();
-const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
+const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
+	useFloatingUiOffsets();
 
 // Initialize undo/redo
 useHistoryHelper(route);
@@ -39,6 +45,9 @@ useHistoryHelper(route);
 useWorkflowDiffRouting();
 
 useTelemetryInitializer();
+
+// Initialize global backend status tracking
+useBackendStatus();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
@@ -65,6 +74,26 @@ watch(route, (r) => {
 	);
 });
 
+// Assistant AI opt-in modal: admins only, until dismissed
+watch(
+	() => {
+		const moduleLoaded = settingsStore.moduleSettings['instance-ai'] !== undefined;
+		return (
+			moduleLoaded &&
+			settingsStore.isModuleActive('instance-ai') &&
+			route.meta.layout !== 'auth' &&
+			!settingsStore.moduleSettings['instance-ai']?.optinModalDismissed &&
+			canManageInstanceAi()
+		);
+	},
+	(shouldShow) => {
+		if (shouldShow) {
+			uiStore.openModal(INSTANCE_AI_OPTIN_MODAL_KEY);
+		}
+	},
+	{ once: true },
+);
+
 watch(
 	defaultLocale,
 	async (newLocale) => {
@@ -84,6 +113,7 @@ const setLayoutRef = (el: Element) => {
 };
 
 useExposeCssVar('--toast--offset', toastBottomOffset);
+useExposeCssVar('--toast--right', toastRightOffset);
 useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloatingButtonBottomOffset);
 </script>
 

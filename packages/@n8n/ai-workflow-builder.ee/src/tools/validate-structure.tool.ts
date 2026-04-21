@@ -8,7 +8,7 @@ import { validateConnections, validateTrigger } from '@/validation/checks';
 import { ToolExecutionError, ValidationError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createErrorResponse, createSuccessResponse } from './helpers/response';
-import { getWorkflowState } from './helpers/state';
+import { getEffectiveWorkflow } from './helpers/state';
 
 const validateStructureSchema = z.object({}).strict().default({});
 
@@ -34,11 +34,12 @@ export function createValidateStructureTool(parsedNodeTypes: INodeTypeDescriptio
 				const validatedInput = validateStructureSchema.parse(input ?? {});
 				reporter.start(validatedInput);
 
-				const state = getWorkflowState();
+				// Get effective workflow (includes pending operations from this turn)
+				const workflow = getEffectiveWorkflow();
 				reportProgress(reporter, 'Validating structure');
 
-				const connectionViolations = validateConnections(state.workflowJSON, parsedNodeTypes);
-				const triggerViolations = validateTrigger(state.workflowJSON, parsedNodeTypes);
+				const connectionViolations = validateConnections(workflow, parsedNodeTypes);
+				const triggerViolations = validateTrigger(workflow, parsedNodeTypes);
 				const allViolations = [...connectionViolations, ...triggerViolations];
 
 				let message: string;

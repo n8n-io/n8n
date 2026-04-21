@@ -62,7 +62,7 @@ export class EditFieldsNode extends BasePage {
 		await typeSelect.click();
 
 		const typeOptionText = this.getTypeOptionText(type);
-		const option = this.page.getByRole('option', { name: typeOptionText });
+		const option = this.page.getByRole('menuitem', { name: typeOptionText });
 		await option.waitFor({ state: 'visible' });
 		await option.click();
 	}

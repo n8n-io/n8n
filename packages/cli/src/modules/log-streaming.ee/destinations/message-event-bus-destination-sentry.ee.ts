@@ -8,7 +8,6 @@ import type {
 } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
-import { eventMessageGenericDestinationTestEvent } from '@/eventbus/event-message-classes/event-message-generic';
 import type {
 	MessageEventBus,
 	MessageWithCallback,
@@ -60,10 +59,7 @@ export class MessageEventBusDestinationSentry
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
 		if (!this.sentryClient) return sendResult;
-		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
-			if (!this.license.isLogStreamingEnabled()) return sendResult;
-			if (!this.hasSubscribedToEvent(msg)) return sendResult;
-		}
+
 		try {
 			const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
 			const scope: Sentry.Scope = new Sentry.Scope();

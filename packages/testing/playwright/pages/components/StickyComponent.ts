@@ -24,10 +24,6 @@ export class StickyComponent extends BasePage {
 		return this.page.getByTestId('sticky');
 	}
 
-	getStickyByIndex(index: number): Locator {
-		return this.getStickies().nth(index);
-	}
-
 	async addSticky(): Promise<void> {
 		await this.getAddButton().click();
 	}

@@ -22,8 +22,12 @@ export type PubSubEventName =
 	| 'response-to-get-worker-status'
 	| 'restart-event-bus'
 	| 'relay-execution-lifecycle-event'
+	| 'relay-chat-stream-event'
+	| 'relay-chat-human-message'
+	| 'relay-chat-message-edit'
 	| 'reload-sso-provisioning-configuration'
-	| 'reload-source-control-config';
+	| 'reload-source-control-config'
+	| 'cancel-test-run';
 
 export type PubSubEventFilter =
 	| {

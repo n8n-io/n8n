@@ -62,12 +62,7 @@ export class WorkflowFinderService {
 		return sharedWorkflow.workflow;
 	}
 
-	async findAllWorkflowsForUser(
-		user: User,
-		scopes: Scope[],
-		folderId?: string,
-		projectId?: string,
-	) {
+	private async findAllWhere(user: User, scopes: Scope[], folderId?: string, projectId?: string) {
 		let where: FindOptionsWhere<SharedWorkflow> = {};
 
 		if (folderId) {
@@ -101,13 +96,60 @@ export class WorkflowFinderService {
 					},
 				},
 			};
+		} else if (projectId) {
+			where = {
+				...where,
+				project: {
+					id: projectId,
+				},
+			};
 		}
+
+		return where;
+	}
+
+	async findWorkflowIdsWithScopeForUser(
+		workflowIds: string[],
+		user: User,
+		scopes: Scope[],
+	): Promise<Set<string>> {
+		if (workflowIds.length === 0) return new Set();
+		const where = await this.findAllWhere(user, scopes);
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			select: { workflowId: true },
+			where: { ...where, workflowId: In(workflowIds) },
+		});
+		return new Set(sharedWorkflows.map((sw) => sw.workflowId));
+	}
+
+	async findAllWorkflowIdsForUser(
+		user: User,
+		scopes: Scope[],
+		folderId?: string,
+		projectId?: string,
+	) {
+		const where = await this.findAllWhere(user, scopes, folderId, projectId);
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			select: { workflowId: true, projectId: true },
+			where,
+		});
+
+		return sharedWorkflows.map(({ workflowId }) => workflowId);
+	}
+
+	async findAllWorkflowsForUser(
+		user: User,
+		scopes: Scope[],
+		folderId?: string,
+		projectId?: string,
+	) {
+		const where = await this.findAllWhere(user, scopes, folderId, projectId);
 
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where,
 			relations: {
 				workflow: {
-					shared: { project: { projectRelations: { user: true } } },
+					shared: { project: true },
 				},
 			},
 		});

@@ -88,6 +88,36 @@ Valid Connection Methods:
    - Agent Tool nodes allow one agent to invoke another agent
    - Tools provide indirect connections between workflow components
 
+7. **Loop Patterns (Split In Batches)**: Intentional cycles for batch processing
+   - Output 0 ("loop"): Fires for EACH batch - connect batch processing here
+   - Output 1 ("done"): Fires once after ALL iterations complete - connect final processing here
+   - Processing nodes loop BACK to Split In Batches input to continue the loop
+   - This circular connection is CORRECT and INTENTIONAL - it creates the batch processing loop
+
+   **NEVER flag as incorrect if:**
+   - Output 1 connects to processing nodes
+   - Processing nodes connect back to Split In Batches input (index 0)
+   - Output 0 connects to aggregation/final step
+
+   This is the standard n8n pattern for processing large datasets in batches.
+
+8. **Shared Destination Pattern**: Multiple branches connecting to same node
+   - Multiple Switch/IF outputs can ALL connect to the same downstream node
+   - This is correct when all branches need the same final processing (e.g., save to database)
+   - Do NOT use Merge for this - Merge waits for all inputs, but only one branch executes per item
+
+9. **Chat Trigger Auto-Response**: Chat Trigger handles responses automatically
+   - Chat Trigger (@n8n/n8n-nodes-langchain.chatTrigger) is BIDIRECTIONAL
+   - AI Agent output is automatically sent back to the chat interface
+   - There is NO main connection back to Chat Trigger - this is correct behavior
+   - **NEVER flag "AI Agent has no connection back to Chat Trigger"** - responses are built-in
+
+10. **Document Loader Input Pattern**: Document Loaders read from context, not main connections
+    - Document Loaders have NO main input connections by design
+    - They read binary data/URLs from workflow context based on their configuration
+    - They OUTPUT via ai_document to Vector Store or other consumers
+    - **NEVER flag "Document Loader has no main input"** or "Trigger not connected to Document Loader"
+
 Before assessing there is a missing connection as per best practices documentation (for example a chatbot
 should be connected to data from other triggered components of the workflow) make sure that there is no
 possible connection, check all possible connections, ESPECIALLY agent nodes (memory and tools could

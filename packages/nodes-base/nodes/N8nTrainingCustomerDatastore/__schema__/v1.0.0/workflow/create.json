@@ -4,6 +4,9 @@
         "active": {
             "type": "boolean"
         },
+        "activeVersionId": {
+            "type": "null"
+        },
         "createdAt": {
             "type": "string"
         },
@@ -73,6 +76,9 @@
                 }
             }
         },
+        "staticData": {
+            "type": "null"
+        },
         "triggerCount": {
             "type": "integer"
         },
@@ -86,5 +92,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

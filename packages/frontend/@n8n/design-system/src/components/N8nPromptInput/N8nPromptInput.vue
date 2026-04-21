@@ -4,8 +4,6 @@ import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue';
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
 import { useI18n } from '../../composables/useI18n';
 import N8nCallout from '../N8nCallout/Callout.vue';
-import N8nIcon from '../N8nIcon/Icon.vue';
-import N8nLink from '../N8nLink';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nSendStopButton from '../N8nSendStopButton';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
@@ -28,6 +26,7 @@ export interface N8nPromptInputProps {
 	showAskOwnerTooltip?: boolean;
 	refocusAfterSend?: boolean;
 	autofocus?: boolean;
+	buttonLabel?: string;
 }
 
 const INFINITE_CREDITS = -1;
@@ -46,6 +45,7 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	showAskOwnerTooltip: false,
 	refocusAfterSend: false,
 	autofocus: false,
+	buttonLabel: undefined,
 });
 
 const emit = defineEmits<{
@@ -91,65 +91,22 @@ const sendDisabled = computed(
 );
 
 const containerStyle = computed(() => {
-	return { minHeight: isMultiline.value ? '80px' : '40px' };
-});
-
-const showCredits = computed(() => {
-	return (
-		props.creditsQuota !== undefined &&
-		props.creditsRemaining !== undefined &&
-		props.creditsQuota !== INFINITE_CREDITS
-	);
-});
-
-const creditsInfo = computed(() => {
-	if (!showCredits.value || props.creditsRemaining === undefined) return '';
-	return t('promptInput.creditsInfo', {
-		remaining: props.creditsRemaining,
-		total: props.creditsQuota,
-	});
-});
-
-const getNextMonth = () => {
-	const now = new Date();
-	const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-	const options: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' };
-	return nextMonth.toLocaleDateString('en-US', options);
-};
-
-const creditsTooltipContent = computed(() => {
-	if (!showCredits.value) return '';
-
-	const nextMonthDate = getNextMonth();
-
-	const lines = [
-		t('promptInput.remainingCredits', {
-			count: props.creditsRemaining ?? 0,
-		}),
-		t('promptInput.monthlyCredits', {
-			count: props.creditsQuota ?? 0,
-		}),
-		t('promptInput.creditsRenew', { date: nextMonthDate }),
-		t('promptInput.creditsExpire', { date: nextMonthDate }),
-	];
-
-	return lines.join('<br />');
+	return { minHeight: '80px' };
 });
 
 const hasNoCredits = computed(() => {
-	return showCredits.value && props.creditsRemaining === 0;
+	return (
+		props.creditsQuota !== undefined &&
+		props.creditsRemaining !== undefined &&
+		props.creditsQuota !== INFINITE_CREDITS &&
+		props.creditsRemaining === 0
+	);
 });
 
-const textareaStyle = computed<{ height?: string; overflowY?: 'hidden' }>(() => {
-	if (!isMultiline.value) {
-		return {};
-	}
-
-	return {
-		height: `${textareaHeight.value}px`,
-		overflowY: 'hidden',
-	};
-});
+const textareaStyle = computed(() => ({
+	height: `${textareaHeight.value}px`,
+	overflowY: 'hidden' as const,
+}));
 
 function adjustHeight() {
 	// Store focus state and scroll position before potential mode change
@@ -342,9 +299,7 @@ defineExpose({
 					$style.container,
 					{
 						[$style.focused]: isFocused,
-						[$style.multiline]: isMultiline,
 						[$style.disabled]: disabled || hasNoCredits,
-						[$style.withBottomBorder]: !!showCredits,
 					},
 				]"
 				:style="containerStyle"
@@ -360,99 +315,51 @@ defineExpose({
 					{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
 				</N8nCallout>
 
-				<!-- Single line mode: input and button side by side -->
-				<div v-if="!isMultiline" :class="$style.singleLineWrapper">
+				<!-- Use ScrollArea when content exceeds max height -->
+				<N8nScrollArea
+					ref="scrollAreaRef"
+					:class="$style.scrollAreaWrapper"
+					:max-height="`${textAreaMaxHeight}px`"
+					type="auto"
+				>
+					<!-- Chips row (above textarea) -->
+					<div v-if="$slots['inline-chips']" :class="$style.chipsRow">
+						<slot name="inline-chips" />
+					</div>
+					<!-- Textarea -->
 					<textarea
 						ref="textareaRef"
 						v-model="textValue"
 						:class="[
-							$style.singleLineTextarea,
+							$style.multilineTextarea,
 							'ignore-key-press-node-creator',
 							'ignore-key-press-canvas',
 						]"
+						:style="textareaStyle"
 						:placeholder="hasNoCredits ? '' : placeholder"
 						:disabled="disabled || hasNoCredits"
 						:maxlength="maxLength"
-						rows="1"
 						@keydown="handleKeyDown"
 						@focus="handleFocus"
 						@blur="handleBlur"
 						@input="adjustHeight"
 					/>
-					<div :class="$style.inlineActions">
-						<N8nSendStopButton
-							data-test-id="send-message-button"
-							:streaming="streaming"
-							:disabled="sendDisabled"
-							@send="handleSubmit"
-							@stop="handleStop"
-						/>
+				</N8nScrollArea>
+				<div :class="$style.bottomActions">
+					<!-- Slot for bottom actions chips (e.g., unconfirmed node chips) -->
+					<div v-if="$slots['bottom-actions-chips']" :class="$style.bottomActionsChips">
+						<slot name="bottom-actions-chips" />
 					</div>
+					<slot name="extra-actions" />
+					<N8nSendStopButton
+						data-test-id="send-message-button"
+						:streaming="streaming"
+						:disabled="sendDisabled"
+						:label="buttonLabel"
+						@send="handleSubmit"
+						@stop="handleStop"
+					/>
 				</div>
-
-				<!-- Multiline mode: textarea full width with button below -->
-				<template v-else>
-					<!-- Use ScrollArea when content exceeds max height -->
-					<N8nScrollArea
-						ref="scrollAreaRef"
-						:class="$style.scrollAreaWrapper"
-						:max-height="`${textAreaMaxHeight}px`"
-						type="auto"
-					>
-						<textarea
-							ref="textareaRef"
-							v-model="textValue"
-							:class="[
-								$style.multilineTextarea,
-								'ignore-key-press-node-creator',
-								'ignore-key-press-canvas',
-							]"
-							:style="textareaStyle"
-							:placeholder="hasNoCredits ? '' : placeholder"
-							:disabled="disabled || hasNoCredits"
-							:maxlength="maxLength"
-							@keydown="handleKeyDown"
-							@focus="handleFocus"
-							@blur="handleBlur"
-							@input="adjustHeight"
-						/>
-					</N8nScrollArea>
-					<div :class="$style.bottomActions">
-						<N8nSendStopButton
-							data-test-id="send-message-button"
-							:streaming="streaming"
-							:disabled="sendDisabled"
-							@send="handleSubmit"
-							@stop="handleStop"
-						/>
-					</div>
-				</template>
-			</div>
-
-			<!-- Credits bar below input -->
-			<div v-if="showCredits" :class="$style.creditsBar">
-				<div :class="$style.creditsInfoWrapper">
-					<span v-n8n-html="creditsInfo" :class="{ [$style.noCredits]: hasNoCredits }"></span>
-					<N8nTooltip
-						:content="creditsTooltipContent"
-						:content-class="$style.infoContent"
-						:show-after="300"
-						placement="top"
-					>
-						<N8nIcon icon="info" size="small" />
-					</N8nTooltip>
-				</div>
-				<N8nTooltip
-					:disabled="!showAskOwnerTooltip"
-					:content="t('promptInput.askAdminToUpgrade')"
-					placement="top"
-					:show-after="300"
-					:enterable="false"
-				>
-					<N8nLink size="small" theme="text" @click="() => emit('upgrade-click')">
-						{{ t('promptInput.getMore') }}
-					</N8nLink>
-				</N8nTooltip>
 			</div>
 		</div>
 	</N8nTooltip>
@@ -479,18 +386,9 @@ defineExpose({
 	padding: var(--spacing--2xs);
 	box-sizing: border-box;
 
-	// if credit bar is showing
-	&.withBottomBorder {
-		border-bottom: var(--border);
-	}
-
 	&.focused {
 		box-shadow: 0 0 0 1px var(--color--secondary);
 		border-bottom: 1px transparent solid;
-	}
-
-	&.multiline {
-		padding-bottom: 0;
 	}
 
 	&.disabled {
@@ -508,42 +406,6 @@ defineExpose({
 	margin: 0 var(--spacing--3xs) var(--spacing--2xs) var(--spacing--3xs);
 }
 
-// Single line mode
-.singleLineWrapper {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-}
-
-.singleLineTextarea {
-	flex: 1;
-	border: none;
-	background: transparent;
-	resize: none;
-	outline: none;
-	font-family: var(--font-family), sans-serif;
-	font-size: var(--font-size--sm);
-	line-height: 24px;
-	color: var(--color--text--shade-1);
-	padding: 0 var(--spacing--2xs);
-	height: 24px;
-	overflow: hidden;
-	box-sizing: border-box;
-	display: block;
-
-	&::placeholder {
-		color: var(--color--text--tint-1);
-	}
-}
-
-.inlineActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-// Multiline mode
 .scrollAreaWrapper {
 	width: 100%;
 	margin-bottom: 0;
@@ -574,43 +436,25 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--2xs) 0 var(--spacing--2xs) var(--spacing--2xs);
+	gap: var(--spacing--xs) var(--spacing--2xs);
+	padding: var(--spacing--2xs) 0 0 var(--spacing--2xs);
 	margin-top: auto;
 }
 
-// Credits bar below input
-.creditsBar {
+.bottomActionsChips {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border: none;
+	gap: var(--spacing--4xs);
 }
 
-.creditsInfoWrapper {
+.chipsRow {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
-
-	b {
-		font-weight: var(--font-weight--bold);
-	}
-}
-
-.infoContent {
-	min-width: 200px;
-	line-height: 18px;
-
-	b {
-		font-weight: var(--font-weight--bold);
-	}
-}
-
-.noCredits {
-	color: var(--color--danger);
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--3xs);
+	padding-bottom: var(--spacing--4xs);
 }
 
 // Common styles

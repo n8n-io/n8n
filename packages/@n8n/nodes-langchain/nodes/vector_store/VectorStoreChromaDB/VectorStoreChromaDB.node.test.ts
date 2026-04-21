@@ -25,37 +25,39 @@ jest.mock('@langchain/community/vectorstores/chroma', () => {
 	return { Chroma, __state: state };
 });
 
-jest.mock('@utils/sharedFields', () => ({ metadataFilterField: {} }), { virtual: true });
-jest.mock('../shared/descriptions', () => ({ chromaCollectionRLC: {} }), { virtual: true });
-
-// Mock the vector store node factory
-jest.mock('../shared/createVectorStoreNode/createVectorStoreNode', () => ({
-	createVectorStoreNode: (config: {
-		getVectorStoreClient: (...args: unknown[]) => unknown;
-		populateVectorStore: (...args: unknown[]) => unknown;
-		methods: {
-			listSearch: {
-				chromaCollectionsSearch: (
-					this: ISupplyDataFunctions,
-				) => Promise<{ results: Array<{ name: string; value: string }> }>;
+jest.mock(
+	'@n8n/ai-utilities',
+	() => ({
+		createVectorStoreNode: (config: {
+			getVectorStoreClient: (...args: unknown[]) => unknown;
+			populateVectorStore: (...args: unknown[]) => unknown;
+			methods: {
+				listSearch: {
+					chromaCollectionsSearch: (
+						this: ISupplyDataFunctions,
+					) => Promise<{ results: Array<{ name: string; value: string }> }>;
+				};
 			};
-		};
-	}) =>
-		class BaseNode {
-			async getVectorStoreClient(...args: unknown[]) {
-				return config.getVectorStoreClient.apply(config, args);
-			}
-			async populateVectorStore(...args: unknown[]) {
-				return config.populateVectorStore.apply(config, args);
-			}
-			async chromaCollectionsSearch(...args: unknown[]) {
-				return await config.methods.listSearch.chromaCollectionsSearch.apply(
-					this as any,
-					args as any,
-				);
-			}
-		},
-}));
+		}) =>
+			class BaseNode {
+				async getVectorStoreClient(...args: unknown[]) {
+					return config.getVectorStoreClient.apply(config, args);
+				}
+				async populateVectorStore(...args: unknown[]) {
+					return config.populateVectorStore.apply(config, args);
+				}
+				async chromaCollectionsSearch(...args: unknown[]) {
+					return await config.methods.listSearch.chromaCollectionsSearch.apply(
+						this as any,
+						args as any,
+					);
+				}
+			},
+		metadataFilterField: {},
+	}),
+	{ virtual: true },
+);
+jest.mock('../shared/descriptions', () => ({ chromaCollectionRLC: {} }), { virtual: true });
 
 const MockChromaClient = ChromaClient as jest.MockedClass<typeof ChromaClient>;
 const MockCloudClient = CloudClient as jest.MockedClass<typeof CloudClient>;

@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
+import type { EditableCallbackParams, ICellRendererParams } from 'ag-grid-community';
 import { useDataTableColumns } from './useDataTableColumns';
 import type { DataTableColumn } from '@/features/core/dataTable/dataTable.types';
+import { ADD_ROW_ROW_ID } from '@/features/core/dataTable/constants';
 
 vi.mock('@/features/core/dataTable/composables/useDataTableTypes', () => ({
 	useDataTableTypes: () => ({
@@ -376,6 +378,256 @@ describe('useDataTableColumns', () => {
 			moveColumn(999, 1);
 
 			expect(colDefs.value).toEqual(initialColDefs);
+		});
+	});
+
+	describe('readOnly mode', () => {
+		it('should disable editing on cells when readOnly is true', () => {
+			const readOnly = ref(true);
+			const { createColumnDef } = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				readOnly,
+			});
+
+			const column: DataTableColumn = {
+				id: 'col1',
+				name: 'Column 1',
+				type: 'string',
+				index: 0,
+			};
+
+			const colDef = createColumnDef(column);
+
+			// Test the editable function with normal row data
+			const normalParams = { data: { id: 'row1' } };
+			expect(typeof colDef.editable).toBe('function');
+			if (typeof colDef.editable === 'function') {
+				expect(colDef.editable(normalParams as EditableCallbackParams)).toBe(false);
+			}
+		});
+
+		it('should enable editing on cells when readOnly is false', () => {
+			const readOnly = ref(false);
+			const { createColumnDef } = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				readOnly,
+			});
+
+			const column: DataTableColumn = {
+				id: 'col1',
+				name: 'Column 1',
+				type: 'string',
+				index: 0,
+			};
+
+			const colDef = createColumnDef(column);
+
+			// Test the editable function with normal row data
+			const normalParams = { data: { id: 'row1' } };
+			expect(typeof colDef.editable).toBe('function');
+			if (typeof colDef.editable === 'function') {
+				expect(colDef.editable(normalParams as EditableCallbackParams)).toBe(true);
+			}
+		});
+
+		it('should disable column menu actions when readOnly is true', () => {
+			const readOnly = ref(true);
+			const { createColumnDef } = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				readOnly,
+			});
+
+			const column: DataTableColumn = {
+				id: 'col1',
+				name: 'Column 1',
+				type: 'string',
+				index: 0,
+			};
+
+			const colDef = createColumnDef(column);
+
+			expect(colDef.headerComponentParams).toMatchObject({
+				allowMenuActions: false,
+			});
+		});
+
+		it('should enable column menu actions when readOnly is false', () => {
+			const readOnly = ref(false);
+			const { createColumnDef } = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				readOnly,
+			});
+
+			const column: DataTableColumn = {
+				id: 'col1',
+				name: 'Column 1',
+				type: 'string',
+				index: 0,
+			};
+
+			const colDef = createColumnDef(column);
+
+			expect(colDef.headerComponentParams).toMatchObject({
+				allowMenuActions: true,
+			});
+		});
+
+		it('should disable AddRow button when readOnly is true', () => {
+			const readOnly = ref(true);
+			const { loadColumns, colDefs } = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				readOnly,
+			});
+
+			const columns: DataTableColumn[] = [
+				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+			];
+
+			loadColumns(columns);
+
+			const idColumn = colDefs.value.find((col) => col.colId === 'id');
+			expect(idColumn).toBeDefined();
+
+			// Check cellRendererSelector for AddRowButton params
+			// The cellRendererSelector should return the AddRowButton with disabled: true
+			// when the row value is the ADD_ROW_ROW_ID constant
+			if (idColumn?.cellRendererSelector) {
+				const addRowParams = { value: ADD_ROW_ROW_ID } as ICellRendererParams;
+				const result = idColumn.cellRendererSelector(addRowParams);
+				expect(result).toBeDefined();
+				if (result && 'params' in result) {
+					expect(result.params).toMatchObject({
+						disabled: true,
+					});
+				}
+			}
+		});
+
+		it('should enable AddRow button when readOnly is false', () => {
+			const readOnly = ref(false);
+			const { loadColumns, colDefs } = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				readOnly,
+			});
+
+			const columns: DataTableColumn[] = [
+				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+			];
+
+			loadColumns(columns);
+
+			const idColumn = colDefs.value.find((col) => col.colId === 'id');
+			expect(idColumn).toBeDefined();
+
+			// Check cellRendererSelector for AddRowButton params
+			// The cellRendererSelector should return the AddRowButton with disabled: false
+			// when the row value is the ADD_ROW_ROW_ID constant
+			if (idColumn?.cellRendererSelector) {
+				const addRowParams = { value: ADD_ROW_ROW_ID } as ICellRendererParams;
+				const result = idColumn.cellRendererSelector(addRowParams);
+				expect(result).toBeDefined();
+				if (result && 'params' in result) {
+					expect(result.params).toMatchObject({
+						disabled: false,
+					});
+				}
+			}
+		});
+
+		it('should disable AddColumn button when readOnly is true', () => {
+			const readOnly = ref(true);
+			const { loadColumns, colDefs } = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				readOnly,
+			});
+
+			const columns: DataTableColumn[] = [
+				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+			];
+
+			loadColumns(columns);
+
+			const addColumnCol = colDefs.value.find((col) => col.colId === 'add-column');
+			expect(addColumnCol).toBeDefined();
+			expect(addColumnCol?.headerComponentParams).toMatchObject({
+				disabled: true,
+			});
+		});
+
+		it('should enable AddColumn button when readOnly is false', () => {
+			const readOnly = ref(false);
+			const { loadColumns, colDefs } = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				readOnly,
+			});
+
+			const columns: DataTableColumn[] = [
+				{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+			];
+
+			loadColumns(columns);
+
+			const addColumnCol = colDefs.value.find((col) => col.colId === 'add-column');
+			expect(addColumnCol).toBeDefined();
+			expect(addColumnCol?.headerComponentParams).toMatchObject({
+				disabled: false,
+			});
+		});
+
+		it('should work without readOnly parameter (defaults to false)', () => {
+			const { createColumnDef } = createComposable();
+			const column: DataTableColumn = {
+				id: 'col1',
+				name: 'Column 1',
+				type: 'string',
+				index: 0,
+			};
+
+			const colDef = createColumnDef(column);
+
+			// Test the editable function with normal row data
+			const normalParams = { data: { id: 'row1' } };
+			expect(typeof colDef.editable).toBe('function');
+			if (typeof colDef.editable === 'function') {
+				expect(colDef.editable(normalParams as EditableCallbackParams)).toBe(true);
+			}
+
+			// Menu actions should be enabled by default
+			expect(colDef.headerComponentParams).toMatchObject({
+				allowMenuActions: true,
+			});
 		});
 	});
 });

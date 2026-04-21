@@ -35,6 +35,7 @@ popd
 - **LLM key** (required for generation and any LLM-based evaluators):
   - `N8N_AI_ANTHROPIC_KEY` (see `evaluations/support/environment.ts`)
 - **Node definitions** (required for workflow generation, and used by evaluators):
+	- export using `pnpm export:nodes` in this package.
   - `evaluations/.data/nodes.json` (see `evaluations/support/load-nodes.ts`)
   - Optional: `N8N_EVALS_DISABLED_NODES="n8n-nodes-base.httpRequest,..."` to exclude specific nodes from generation.
 - **LangSmith** (only for `--backend langsmith` runs):
@@ -70,6 +71,7 @@ flowchart TB
         LLM["LLM-Judge"]
         Pair["Pairwise"]
         Prog["Programmatic"]
+        Bin["Binary-Checks"]
     end
 
     Evaluators --> Feedback
@@ -276,6 +278,37 @@ Additional per-judge details may also be emitted (e.g. `judge1`, `judge2`).
 
 **Context required:** `{ dos?: string, donts?: string }`
 
+### Binary-Checks
+
+Per-check binary pass/fail evaluation — 17 deterministic checks (fast, no LLM) plus 5 LLM-judge checks (parallel):
+
+```typescript
+import { createBinaryChecksEvaluator } from './evaluators';
+
+const evaluator = createBinaryChecksEvaluator({ nodeTypes, llm });
+```
+
+**Evaluator:** `binary-checks`
+
+**Deterministic checks:** `has_nodes`, `all_nodes_connected`, `no_unreachable_nodes`, `has_trigger`, `no_empty_set_nodes`, `agent_has_dynamic_prompt`, `agent_has_language_model`, `memory_properly_connected`, `vector_store_has_embeddings`, `has_start_node`, `no_hardcoded_credentials`, `no_unnecessary_code_nodes`, `expressions_reference_existing_nodes`, `valid_required_parameters`, `valid_options_values`, `no_invalid_from_ai`, `tools_have_parameters`
+
+**LLM checks** (require `llm` option): `fulfills_user_request`, `correct_node_operations`, `valid_data_flow`, `handles_multiple_items`, `descriptive_node_names`
+
+**Context required:** `{ prompt: string }`, optional `{ annotations?: Record<string, unknown> }`
+
+**CLI:**
+
+```bash
+# Run all checks
+pnpm eval --suite binary-checks --prompt "Create a Slack workflow"
+
+# Run specific checks only
+pnpm eval --suite binary-checks --checks has_nodes,has_trigger --prompt "..."
+
+# LangSmith
+pnpm eval --suite binary-checks --langsmith --dataset "binary-checks-spec-prompts"
+```
+
 ### Programmatic
 
 Rule-based checks without LLM calls:
@@ -324,7 +357,7 @@ Notes:
 ### Common Flags
 
 ```bash
---suite <llm-judge|pairwise|programmatic|similarity>
+--suite <llm-judge|pairwise|programmatic|similarity|binary-checks>
 --backend <local|langsmith>   # Or `--langsmith` as a shortcut
 --verbose, -v       # Enable verbose output
 --name <name>       # Experiment name (LangSmith mode)
@@ -337,8 +370,11 @@ Notes:
 --prompt <text>     # Single prompt for local testing
 --dos <text>        # Pairwise: things the workflow should do
 --donts <text>      # Pairwise: things the workflow should not do
+--checks <names>    # Comma-separated binary check names (binary-checks suite only)
 --output-dir <dir>  # Local mode: write artifacts (one folder per example + summary.json)
 --template-examples # Enable template examples feature flag
+--webhook-url <url> # Send results to webhook URL on completion (HTTPS only)
+--webhook-secret <s> # HMAC-SHA256 secret for webhook authentication (min 16 chars)
 ```
 
 ### CSV Format
@@ -373,9 +409,9 @@ tsx evaluations/cli/index.ts --suite pairwise --prompt "..." --dos "Must use Sla
 
 This directory is intentionally split by responsibility:
 
-- `evaluations/cli/`: CLI entrypoint and input parsing (`cli/index.ts`, `cli/argument-parser.ts`, `cli/csv-prompt-loader.ts`)
+- `evaluations/cli/`: CLI entrypoint and input parsing (`cli/index.ts`, `cli/argument-parser.ts`, `cli/csv-prompt-loader.ts`, `cli/webhook.ts`)
 - `evaluations/harness/`: orchestration, scoring, logging, and artifact writing (`harness/runner.ts`, `harness/lifecycle.ts`, `harness/score-calculator.ts`, `harness/output.ts`)
-- `evaluations/evaluators/`: evaluator factories used by the harness (LLM-judge, pairwise, programmatic, similarity)
+- `evaluations/evaluators/`: evaluator factories used by the harness (LLM-judge, pairwise, programmatic, similarity, binary-checks)
 - `evaluations/judge/`: the LLM-judge “engine” (schemas + category evaluators + `judge/workflow-evaluator.ts`)
 - `evaluations/langsmith/`: LangSmith-specific helpers (`langsmith/trace-filters.ts`, `langsmith/types.ts`)
 - `evaluations/support/`: environment setup, node loading, report generation, and test-case generation
@@ -406,6 +442,7 @@ evaluations/
 ├── __tests__/               # Unit tests
 ├── cli/                     # CLI entry + arg parsing + CSV loader
 ├── evaluators/              # Evaluator factories
+│   ├── binary-checks/       # Binary pass/fail checks (deterministic + LLM)
 │   ├── llm-judge/
 │   ├── pairwise/
 │   ├── programmatic/
@@ -490,6 +527,139 @@ All LangSmith experiments include metadata to distinguish CI runs from local dev
 ```
 
 Local runs show `"source": "local"` with no other CI fields.
+
+### Webhook Notifications
+
+The CLI supports sending evaluation results to a webhook URL when evaluations complete. This enables integrations with Slack, Discord, or custom notification systems.
+
+```bash
+pnpm eval:langsmith --dataset "my-dataset" --webhook-url "https://hooks.slack.com/services/..."
+```
+
+**Why custom webhooks?**
+
+LangSmith's `evaluate()` function does not provide native webhook support for experiment run notifications. LangSmith offers webhooks via:
+- **Trace Rules** — triggered on individual traces, not experiment completions
+- **API endpoint webhooks** — for specific API events, but not for `evaluate()` completions
+- **API polling** — requires external orchestration to detect when experiments finish
+
+Since none of these approaches support the "notify on experiment completion" use case for the `evaluate()` SDK function, we implemented a custom webhook system that fires after all evaluations complete, sending a summary payload with experiment metadata.
+
+**Payload format:**
+
+```json
+{
+  "suite": "llm-judge",
+  "summary": {
+    "totalExamples": 50,
+    "passed": 45,
+    "failed": 5,
+    "errors": 0,
+    "averageScore": 0.87
+  },
+  "evaluatorAverages": {
+    "llm-judge": 0.85,
+    "programmatic": 0.92
+  },
+  "totalDurationMs": 120000,
+  "metadata": {
+    "source": "ci",
+    "trigger": "push",
+    "runId": "12345678"
+  },
+  "langsmith": {
+    "experimentName": "AI-1234_2026_01_20",
+    "experimentId": "48660e0e-0ed5-4e32-9e04-88803d7c161f",
+    "datasetId": "b04d1ce8-8e3f-455a-818c-ee2c7e14c458",
+    "datasetName": "workflow-builder-canvas-prompts"
+  }
+}
+```
+
+The `langsmith` object (only present in LangSmith mode) contains IDs and names for constructing comparison URLs.
+
+**Security:**
+- Only HTTPS URLs are allowed
+- Localhost and private/internal IPs are blocked (SSRF prevention)
+- DNS resolution validates that hostnames don't resolve to private IPs
+- Webhook URLs are masked in logs to protect embedded tokens
+- HMAC-SHA256 signature for request authentication (optional but recommended)
+
+#### Webhook Authentication (HMAC Signature)
+
+For production use, authenticate webhook requests using HMAC-SHA256 signatures:
+
+```bash
+# Generate a secret (run once, store securely)
+openssl rand -hex 32
+
+# Use with the CLI
+pnpm eval:langsmith --dataset "my-dataset" \
+  --webhook-url "https://your.endpoint/webhook" \
+  --webhook-secret "your-64-char-hex-secret"
+```
+
+When a secret is provided, requests include:
+- `X-Signature-256`: HMAC-SHA256 signature (`sha256=<hex>`)
+- `X-Timestamp`: Unix timestamp in milliseconds
+
+**How it works:**
+
+```
+Sender:
+1. payload = JSON.stringify(body)
+2. signatureInput = `${timestamp}.${payload}`
+3. signature = HMAC-SHA256(signatureInput, secret)
+4. Send with headers: X-Signature-256, X-Timestamp
+
+Receiver:
+1. Extract X-Signature-256 and X-Timestamp headers
+2. Check timestamp is recent (< 5 minutes old)
+3. Recreate: signatureInput = `${timestamp}.${rawBody}`
+4. Compute expected = HMAC-SHA256(signatureInput, secret)
+5. Compare signatures (timing-safe)
+```
+
+**Verifying in an n8n workflow:**
+
+Use a Code node after the Webhook trigger:
+
+```javascript
+const crypto = require('crypto');
+
+// Get from webhook input (adjust based on your webhook node config)
+const signature = $input.first().json.headers['x-signature-256'];
+const timestamp = $input.first().json.headers['x-timestamp'];
+const rawBody = $input.first().json.rawBody ?? $input.first().json.body;
+const body = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
+
+// Your secret (use n8n credentials or environment variable)
+const secret = $env.WEBHOOK_SECRET;
+
+// Verify timestamp (reject requests older than 5 minutes)
+const MAX_AGE_MS = 5 * 60 * 1000;
+const age = Date.now() - parseInt(timestamp, 10);
+if (!signature || !timestamp) throw new Error('Missing signature headers');
+if (age > MAX_AGE_MS) throw new Error('Request too old');
+
+// Compute and compare signature
+const payload = `${timestamp}.${body}`;
+const expected = 'sha256=' + crypto.createHmac('sha256', secret)
+  .update(payload, 'utf8').digest('hex');
+
+if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+  throw new Error('Invalid signature');
+}
+
+// Valid! Return parsed payload
+return [{ json: JSON.parse(body) }];
+```
+
+**CI Configuration:**
+
+Add secrets to GitHub:
+- `EVALS_WEBHOOK_URL`: Your webhook endpoint
+- `EVALS_WEBHOOK_SECRET`: The HMAC secret (64-char hex string)
 
 ### Debug Dataset
 

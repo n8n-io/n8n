@@ -4,6 +4,7 @@ import type { DbConnection } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import type { EventService } from '@/events/event.service';
 import { WorkflowHistoryCompactionService } from '../workflow-history-compaction.service';
 
 describe('WorkflowHistoryCompactionService', () => {
@@ -34,6 +35,7 @@ describe('WorkflowHistoryCompactionService', () => {
 				mock<InstanceSettings>({ isLeader: true, isMultiMain: true }),
 				dbConnection,
 				mock(),
+				mock<EventService>(),
 			);
 			const startCompacting = jest.spyOn(compactingService, 'startCompacting');
 
@@ -50,6 +52,7 @@ describe('WorkflowHistoryCompactionService', () => {
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: true }),
 				dbConnection,
 				mock(),
+				mock<EventService>(),
 			);
 			const startCompacting = jest.spyOn(compactingService, 'startCompacting');
 
@@ -68,6 +71,7 @@ describe('WorkflowHistoryCompactionService', () => {
 				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 				dbConnection,
 				mock(),
+				mock<EventService>(),
 			);
 
 			const scheduleOptimizationSpy = jest
@@ -95,6 +99,7 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 			dbConnection,
 			mock(),
+			mock<EventService>(),
 		);
 
 		jest
@@ -119,6 +124,7 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 			dbConnection,
 			mock(),
+			mock<EventService>(),
 		);
 
 		jest
@@ -143,6 +149,7 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 			dbConnection,
 			mock(),
+			mock<EventService>(),
 		);
 
 		const optimizeHistoriesSpy = jest
@@ -168,6 +175,7 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 			dbConnection,
 			mock(),
+			mock<EventService>(),
 		);
 
 		const optimizeHistoriesSpy = jest

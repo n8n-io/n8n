@@ -1,4 +1,6 @@
+import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import ParameterInput from './ParameterInput.vue';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
@@ -17,7 +19,7 @@ import {
 	createTestWorkflowObject,
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-workflow';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
@@ -62,7 +64,8 @@ beforeEach(() => {
 	mockNodeTypesState = getNodeTypesStateMock();
 	mockCompletionResult = {};
 	mockBuilderState.trackWorkflowBuilderJourney.mockClear();
-	mockIsPlaceholderValue.mockClear();
+	mockIsPlaceholderValue.mockReset();
+	mockExtractPlaceholderLabels.mockReset().mockReturnValue([]);
 	mockBuilderState.isAIBuilderEnabled = true;
 });
 
@@ -110,19 +113,26 @@ vi.mock('@/features/ai/assistant/builder.store', () => {
 });
 
 const mockIsPlaceholderValue = vi.fn();
+const mockExtractPlaceholderLabels = vi.fn().mockReturnValue([]);
 
 vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
 	return {
 		isPlaceholderValue: (value: unknown) => mockIsPlaceholderValue(value),
+		extractPlaceholderLabels: (value: unknown) => mockExtractPlaceholderLabels(value),
 	};
 });
 
 const renderComponent = createComponentRenderer(ParameterInput, {
 	pinia: createTestingPinia(),
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 });
 
 const settingsStore = mockedStore(useSettingsStore);
-const workflowsStore = mockedStore(useWorkflowsStore);
+const workflowsListStore = mockedStore(useWorkflowsListStore);
 
 describe('ParameterInput.vue', () => {
 	beforeEach(() => {
@@ -425,7 +435,7 @@ describe('ParameterInput.vue', () => {
 			value: workflowId,
 		};
 
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
 			mock<WorkflowListResource>({
 				id: workflowId,
 				name: 'Test',
@@ -487,8 +497,10 @@ describe('ParameterInput.vue', () => {
 			updatedAt: new Date().toISOString(),
 			versionId: faker.string.uuid(),
 		};
-		workflowsStore.allWorkflows = [mock<IWorkflowDb>(workflowBase)];
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([mock<WorkflowListResource>(workflowBase)]);
+		workflowsListStore.allWorkflows = [mock<IWorkflowDb>(workflowBase)];
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			mock<WorkflowListResource>(workflowBase),
+		]);
 
 		const { emitted, container, getByTestId } = renderComponent({
 			props: {
@@ -894,6 +906,188 @@ describe('ParameterInput.vue', () => {
 			}
 
 			expect(mockBuilderState.trackWorkflowBuilderJourney).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('multi-line string handling', () => {
+		test('should render multi-line string value as textarea', async () => {
+			const multiLineValue = 'line1\nline2\nline3';
+			const { container } = renderComponent({
+				props: {
+					path: 'description',
+					parameter: createTestNodeProperties({
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+					}),
+					modelValue: multiLineValue,
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+			await waitFor(() => {
+				expect(textarea.value).toBe(multiLineValue);
+			});
+		});
+
+		test('should preserve newlines in multi-row textarea', async () => {
+			const multiLineValue = 'line1\nline2\nline3';
+			const { container } = renderComponent({
+				props: {
+					path: 'description',
+					parameter: createTestNodeProperties({
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						typeOptions: { rows: 5 },
+					}),
+					modelValue: multiLineValue,
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+			expect(textarea.value).toBe(multiLineValue);
+		});
+
+		test('should keep pipe characters as-is in single-line input', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'pattern',
+					parameter: createTestNodeProperties({
+						displayName: 'Pattern',
+						name: 'pattern',
+						type: 'string',
+					}),
+					modelValue: 'foo|bar',
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await waitFor(() => {
+				expect(input.value).toBe('foo|bar');
+			});
+		});
+
+		test('should render string with consecutive newlines as textarea', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'test',
+					parameter: createTestNodeProperties({
+						displayName: 'Test',
+						name: 'test',
+						type: 'string',
+					}),
+					modelValue: 'a\n\n\nb',
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+			await waitFor(() => {
+				expect(textarea.value).toBe('a\n\n\nb');
+			});
+		});
+	});
+
+	describe('JSON Password Field Validation', () => {
+		const jsonPasswordParameter = createTestNodeProperties({
+			displayName: 'Service Account Key',
+			name: 'serviceAccountKey',
+			type: 'json',
+			default: '',
+			required: true,
+			typeOptions: {
+				password: true,
+			},
+			noDataExpression: true,
+		});
+
+		it('renders as a password input', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input[type="password"]');
+			expect(input).toBeInTheDocument();
+		});
+
+		it('shows validation error for invalid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{invalid');
+
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+		});
+
+		it('does not show validation error for valid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{"type": "service_account"}');
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('does not show validation error for empty input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '');
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('clears validation error when invalid JSON is corrected', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+
+			await fireEvent.update(input, '{invalid');
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+
+			await fireEvent.update(input, '{"valid": true}');
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
 		});
 	});
 });

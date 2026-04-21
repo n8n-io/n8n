@@ -6,6 +6,10 @@ import Modal from './Modal.vue';
 import { CHAT_EMBED_MODAL_KEY, CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '../constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import HtmlEditor from '@/features/shared/editors/components/HtmlEditor/HtmlEditor.vue';
 import JsEditor from '@/features/shared/editors/components/JsEditor/JsEditor.vue';
 import { useI18n } from '@n8n/i18n';
@@ -24,6 +28,11 @@ const props = withDefaults(
 const i18n = useI18n();
 const rootStore = useRootStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined,
+);
 
 type ChatEmbedModalTabValue = 'cdn' | 'vue' | 'react' | 'other';
 type ChatEmbedModalTab = {
@@ -52,7 +61,7 @@ const currentTab = ref<ChatEmbedModalTabValue>('cdn');
 
 const webhookNode = computed(() => {
 	for (const type of [CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE]) {
-		const node = workflowsStore.workflow.nodes.find((node) => node.type === type);
+		const node = (workflowDocumentStore.value?.allNodes ?? []).find((node) => node.type === type);
 		if (node) {
 			// This has to be kept up-to-date with the mode in the Chat-Trigger node
 			if (type === CHAT_TRIGGER_NODE_TYPE && !node.parameters.public) {

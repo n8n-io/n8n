@@ -206,7 +206,7 @@ export class MessageEventBus extends EventEmitter {
 			this.logger.debug(`Found unsent event messages: ${unsentMessages.length}`);
 			for (const unsentMsg of unsentMessages) {
 				this.logger.debug(`Retrying: ${unsentMsg.id} ${unsentMsg.__type}`);
-				await this.emitMessage(unsentMsg);
+				this.emitMessageWithCallback('message', unsentMsg);
 			}
 		}
 	}
@@ -223,26 +223,31 @@ export class MessageEventBus extends EventEmitter {
 			msgs = [msgs];
 		}
 		for (const msg of msgs) {
+			// 1. Write the message to the log file
 			this.logWriter?.putMessage(msg);
-			await this.emitMessage(msg);
+
+			// 2. Emit for internal metrics (e.g. Prometheus)
+			this.emit('metrics.eventBus.event', msg);
+
+			// 3. Emit for external destinations (e.g. log-streaming to syslog/webhook/sentry).
+			//    Returns true if at least one listener is registered, false otherwise.
+			const hasDestinationListener = this.emitMessageWithCallback('message', msg);
+
+			// 4. If no external listener is registered (e.g. log-streaming module
+			//    not licensed), confirm it immediately to prevent unbounded log accumulation.
+			if (!hasDestinationListener) {
+				this.confirmMessageDelivered(msg, { id: '0', name: 'eventBus' });
+			}
 		}
 	}
 
-	confirmSent(msg: EventMessageTypes, source?: EventMessageConfirmSource) {
+	confirmMessageDelivered(msg: EventMessageTypes, source?: EventMessageConfirmSource) {
 		this.logWriter?.confirmMessageSent(msg.id, source);
-	}
-
-	private async emitMessage(msg: EventMessageTypes) {
-		this.emit('metrics.eventBus.event', msg);
-
-		// generic emit for external modules to capture events
-		// this is for internal use ONLY and not for use with custom destinations!
-		this.emitMessageWithCallback('message', msg);
 	}
 
 	private emitMessageWithCallback(eventName: string, msg: EventMessageTypes): boolean {
 		const confirmCallback = (message: EventMessageTypes, src: EventMessageConfirmSource) =>
-			this.confirmSent(message, src);
+			this.confirmMessageDelivered(message, src);
 		return this.emit(eventName, msg, confirmCallback);
 	}
 

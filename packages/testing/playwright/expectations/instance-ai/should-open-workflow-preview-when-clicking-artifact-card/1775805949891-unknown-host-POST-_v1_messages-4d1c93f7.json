@@ -1,0 +1,62 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"type": "STRING",
+			"string": "[{\"type\":\"text\",\"text\":\"You are an expert n8n workflow builder. You generate com",
+			"subString": true
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["782"],
+			"vary": ["Accept-Encoding"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"set-cookie": [
+				"_cfuvid=ZZWtRjPmEQu9DR4YUbo4pyuIcIU1WjeHJP1vRX9L0d4-1775805928.0917044-1.0.1.1-n9dJI34I84KgsprACweehy5A3oxvgA0AVIm5QHA5FZc; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+			],
+			"server-timing": ["x-originResponse;dur=784"],
+			"request-id": ["req_011CZuh73Z7b4q9TibJFQD6B"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-04-10T07:25:28Z"],
+			"anthropic-ratelimit-tokens-remaining": ["26975000"],
+			"anthropic-ratelimit-tokens-limit": ["27000000"],
+			"anthropic-ratelimit-requests-reset": ["2026-04-10T07:25:28Z"],
+			"anthropic-ratelimit-requests-remaining": ["19998"],
+			"anthropic-ratelimit-requests-limit": ["20000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-04-10T07:25:28Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["4500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["4500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-04-10T07:25:28Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["22475000"],
+			"anthropic-ratelimit-input-tokens-limit": ["22500000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 10 Apr 2026 07:25:28 GMT"],
+			"Content-Type": ["text/event-stream; charset=utf-8"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"],
+			"Cache-Control": ["no-cache"],
+			"CF-RAY": ["9ea0048a9d15e508-TXL"]
+		},
+		"cookies": {
+			"_cfuvid": "ZZWtRjPmEQu9DR4YUbo4pyuIcIU1WjeHJP1vRX9L0d4-1775805928.0917044-1.0.1.1-n9dJI34I84KgsprACweehy5A3oxvgA0AVIm5QHA5FZc"
+		},
+		"body": {
+			"type": "STRING",
+			"string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011ZXi4fnvre2gBqfSfEqbhj\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":683,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":16176,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":1,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}       }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Done\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" — the workflow \\\"artifact click test\\\" is ready with a manual trigger connected to a Set node named \\\"artifact click test\\\".\"}     }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0       }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":683,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":16176,\"output_tokens\":29}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"    }\n\n",
+			"rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxMVpYaTRmbnZyZTJnQnFmU2ZFcWJoaiIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjY4MywiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MTYxNzYsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX19CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjAsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRleHQiLCJ0ZXh0IjoiIn0gICAgICAgfQoKZXZlbnQ6IHBpbmcKZGF0YTogeyJ0eXBlIjogInBpbmcifQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiJEb25lIn0gICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRleHRfZGVsdGEiLCJ0ZXh0IjoiIOKAlCB0aGUgd29ya2Zsb3cgXCJhcnRpZmFjdCBjbGljayB0ZXN0XCIgaXMgcmVhZHkgd2l0aCBhIG1hbnVhbCB0cmlnZ2VyIGNvbm5lY3RlZCB0byBhIFNldCBub2RlIG5hbWVkIFwiYXJ0aWZhY3QgY2xpY2sgdGVzdFwiLiJ9ICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdG9wCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RvcCIsImluZGV4IjowICAgICAgIH0KCmV2ZW50OiBtZXNzYWdlX2RlbHRhCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2VfZGVsdGEiLCJkZWx0YSI6eyJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsfSwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo2ODMsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjE2MTc2LCJvdXRwdXRfdG9rZW5zIjoyOX19CgpldmVudDogbWVzc2FnZV9zdG9wCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2Vfc3RvcCIgICAgfQoK",
+			"contentType": "text/event-stream; charset=utf-8"
+		}
+	},
+	"id": "1775805949891-unknown-host-POST-_v1_messages-4d1c93f7.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}
