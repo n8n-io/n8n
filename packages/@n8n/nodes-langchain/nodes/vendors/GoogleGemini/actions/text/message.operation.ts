@@ -23,7 +23,7 @@ import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	modelRLC('modelSearch'),
+	modelRLC('modelSearch', 'models/gemini-3-flash-preview'),
 	{
 		displayName: 'Messages',
 		name: 'messages',

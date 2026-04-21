@@ -118,7 +118,7 @@ export class LmChatGoogleGemini implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'models/gemini-2.5-flash',
+				default: 'models/gemini-3-flash-preview',
 			},
 			// thinking budget not supported in @langchain/google-genai
 			// as it utilises the old google generative ai SDK

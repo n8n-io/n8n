@@ -12,7 +12,7 @@ import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	modelRLC('imageGenerationModelSearch'),
+	modelRLC('imageGenerationModelSearch', 'models/gemini-3.1-flash-image-preview'),
 	{
 		displayName: 'Prompt',
 		name: 'prompt',

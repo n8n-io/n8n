@@ -1,10 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const modelRLC = (searchListMethod: string): INodeProperties => ({
+export const modelRLC = (searchListMethod: string, defaultValue = ''): INodeProperties => ({
 	displayName: 'Model',
 	name: 'modelId',
 	type: 'resourceLocator',
-	default: { mode: 'list', value: '' },
+	default: { mode: 'list', value: defaultValue },
 	required: true,
 	modes: [
 		{

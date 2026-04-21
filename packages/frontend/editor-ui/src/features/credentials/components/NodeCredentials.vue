@@ -330,6 +330,38 @@ onMounted(() => {
 	}
 });
 
+const GEMINI_MODEL_DEFAULTS: Record<string, string> = {
+	'text:message': 'models/gemini-3-flash-preview',
+	'image:generate': 'models/gemini-3.1-flash-image-preview',
+};
+
+watch(
+	() =>
+		[
+			props.node.parameters?.resource as string | undefined,
+			props.node.parameters?.operation as string | undefined,
+		] as const,
+	([resource, operation], [oldResource, oldOperation]) => {
+		if (
+			!resource ||
+			!operation ||
+			(resource === oldResource && operation === oldOperation) ||
+			props.node.type !== '@n8n/n8n-nodes-langchain.googleGemini'
+		) {
+			return;
+		}
+		const defaultModel = GEMINI_MODEL_DEFAULTS[`${resource}:${operation}`];
+		if (!defaultModel) return;
+
+		const parameters = { ...(props.node.parameters ?? {}) } as Record<string, unknown>;
+		parameters.modelId = { mode: 'list', value: defaultModel };
+		emit('credentialSelected', {
+			name: props.node.name,
+			properties: { parameters: parameters as INodeUi['parameters'] },
+		});
+	},
+);
+
 onBeforeUnmount(() => {
 	ndvEventBus.off('credential.createNew', onCreateAndAssignNewCredential);
 	cancelConnect();
