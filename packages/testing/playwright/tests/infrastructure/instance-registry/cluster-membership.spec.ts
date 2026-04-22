@@ -18,7 +18,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 test.use({
 	capability: {
-		mains: 1,
+		mains: 2,
 		workers: 1,
 		env: { N8N_ENV_FEAT_INSTANCE_REGISTRY: 'true' },
 	},
@@ -31,7 +31,7 @@ test.describe(
 	},
 	() => {
 		test('should register every n8n process in the cluster', async ({ api }) => {
-			const expectedInstanceCount = 2;
+			const expectedInstanceCount = 3;
 
 			await expect
 				.poll(
@@ -47,7 +47,7 @@ test.describe(
 
 			const mains = info.instances.filter((i) => i.instanceType === 'main');
 			const workers = info.instances.filter((i) => i.instanceType === 'worker');
-			expect(mains).toHaveLength(1);
+			expect(mains).toHaveLength(2);
 			expect(workers).toHaveLength(1);
 
 			for (const entry of info.instances) {
