@@ -15,8 +15,8 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
-import { CredentialsEntity, SharedWorkflowRepository } from '@n8n/db';
-import type { User } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 
 describe('DynamicNodeParametersService', () => {
 	const logger = mockInstance(Logger);
