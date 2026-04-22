@@ -38,9 +38,12 @@ export function extractProviderKeysFromExpression(expression: string): string[] 
 	for (const expression of expressionBlocks) {
 		const expressionContent = expression[1]; // Content inside {{ }}
 
-		// Match all dot notation occurrences: $secrets.providerKey
+		// Match dot-accessed provider keys: $secrets.providerKey. The lookahead
+		// accepts either a further dot ($secrets.vault.key) or an opening
+		// bracket ($secrets.vault["key"]) so mixed expressions still resolve
+		// the provider key when the secret name can't use dot notation.
 		const dotMatches = expressionContent.matchAll(
-			new RegExp(`\\$secrets\\.(${PROVIDER_KEY_PATTERN})(?=\\.)`, 'g'),
+			new RegExp(`\\$secrets\\.(${PROVIDER_KEY_PATTERN})(?=[.\\[])`, 'g'),
 		);
 		for (const match of dotMatches) {
 			providerKeys.add(match[1]);

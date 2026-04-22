@@ -63,6 +63,37 @@ describe('External secrets utils', () => {
 			const result = extractProviderKeysFromExpression(expression);
 			expect(result.sort()).toEqual(['aws', 'vault']);
 		});
+
+		it('extracts provider from mixed dot and double-quoted bracket notation', () => {
+			expect(
+				extractProviderKeysFromExpression('={{ $secrets.azureKeyVault["postgres-n8n-data"] }}'),
+			).toEqual(['azureKeyVault']);
+		});
+
+		it('extracts provider from mixed dot and single-quoted bracket notation', () => {
+			expect(
+				extractProviderKeysFromExpression("={{ $secrets.azureKeyVault['postgres-n8n-data'] }}"),
+			).toEqual(['azureKeyVault']);
+		});
+
+		it('extracts hyphenated provider from mixed dot and bracket notation', () => {
+			expect(
+				extractProviderKeysFromExpression('={{ $secrets.my-vault["postgres-n8n-data"] }}'),
+			).toEqual(['my-vault']);
+		});
+
+		it('extracts provider when bracket access is followed by further dot access', () => {
+			expect(extractProviderKeysFromExpression('={{ $secrets.vault["key"].subfield }}')).toEqual([
+				'vault',
+			]);
+		});
+
+		it('extracts multiple providers from expression mixing dot and bracket notation', () => {
+			const result = extractProviderKeysFromExpression(
+				'={{ $secrets.vault["a"] + ":" + $secrets.aws.b }}',
+			);
+			expect(result.sort()).toEqual(['aws', 'vault']);
+		});
 	});
 
 	describe('getExternalSecretExpressionPaths', () => {
