@@ -17,6 +17,7 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 import {
 	getSamlLoginLabel,
@@ -41,6 +42,7 @@ import { getServiceProviderInstance } from './service-provider.ee';
 import type { SamlLoginBinding, SamlUserAttributes } from './types';
 
 const TEST_CONFIG_TTL_MS = 10 * 60 * 1000;
+const TEST_CONFIG_CACHE_PREFIX = 'saml:pending-test-config:';
 
 @Service()
 export class SamlService {
@@ -48,8 +50,6 @@ export class SamlService {
 
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	private samlify: typeof import('samlify') | undefined;
-
-	private readonly pendingTestConfigs = new Map<string, { metadata: string; expiresAt: number }>();
 
 	private _samlPreferences: SamlPreferences = {
 		mapping: {
@@ -97,6 +97,7 @@ export class SamlService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
 		private readonly cipher: Cipher,
+		private readonly cacheService: CacheService,
 	) {}
 
 	/**
@@ -312,16 +313,17 @@ export class SamlService {
 
 	/**
 	 * Temporarily stores IdP metadata for a pending connection test so it can be
-	 * retrieved when the IdP posts back to the ACS endpoint. Returns an opaque
-	 * token to be embedded in the RelayState.
+	 * retrieved when the IdP posts back to the ACS endpoint. Uses the shared
+	 * cache service so it works across instances in a multi-main setup. Returns
+	 * an opaque token to be embedded in the RelayState.
 	 */
-	storePendingTestConfig(metadata: string): string {
-		this.pruneExpiredTestConfigs();
+	async storePendingTestConfig(metadata: string): Promise<string> {
 		const testId = randomBytes(6).toString('hex');
-		this.pendingTestConfigs.set(testId, {
+		await this.cacheService.set(
+			`${TEST_CONFIG_CACHE_PREFIX}${testId}`,
 			metadata,
-			expiresAt: Date.now() + TEST_CONFIG_TTL_MS,
-		});
+			TEST_CONFIG_TTL_MS,
+		);
 		return testId;
 	}
 
@@ -329,20 +331,12 @@ export class SamlService {
 	 * Retrieves and removes the pending test metadata associated with the given
 	 * token. Returns undefined if the token is unknown or expired.
 	 */
-	consumePendingTestConfig(testId: string): string | undefined {
-		this.pruneExpiredTestConfigs();
-		const entry = this.pendingTestConfigs.get(testId);
-		if (!entry) return undefined;
-		this.pendingTestConfigs.delete(testId);
-		if (entry.expiresAt < Date.now()) return undefined;
-		return entry.metadata;
-	}
-
-	private pruneExpiredTestConfigs(): void {
-		const now = Date.now();
-		for (const [id, entry] of this.pendingTestConfigs) {
-			if (entry.expiresAt < now) this.pendingTestConfigs.delete(id);
-		}
+	async consumePendingTestConfig(testId: string): Promise<string | undefined> {
+		const key = `${TEST_CONFIG_CACHE_PREFIX}${testId}`;
+		const metadata = await this.cacheService.get<string>(key);
+		if (metadata === undefined) return undefined;
+		await this.cacheService.delete(key);
+		return metadata;
 	}
 
 	private async createIdentityProviderFromMetadata(

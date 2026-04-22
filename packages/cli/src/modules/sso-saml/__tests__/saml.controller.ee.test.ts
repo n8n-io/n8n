@@ -115,7 +115,7 @@ describe('Test views', () => {
 		const RelayStateWithTestId = `${RelayState}?t=${testId}`;
 
 		(extractTestIdFromRelayState as jest.Mock).mockReturnValue(testId);
-		samlService.consumePendingTestConfig.mockReturnValueOnce(metadata);
+		samlService.consumePendingTestConfig.mockResolvedValueOnce(metadata);
 		samlService.handleSamlLogin.mockResolvedValueOnce({
 			authenticatedUser: user,
 			attributes,
@@ -160,7 +160,7 @@ describe('configTestPost', () => {
 		const res = mock<Response>();
 		const metadata = '<EntityDescriptor/>';
 
-		samlService.storePendingTestConfig.mockReturnValueOnce('tok12345');
+		samlService.storePendingTestConfig.mockResolvedValueOnce('tok12345');
 		samlService.getLoginRequestUrl.mockResolvedValueOnce({
 			binding: 'redirect',
 			context: { context: 'http://idp.example.com/login' } as any,
@@ -184,7 +184,7 @@ describe('configTestPost', () => {
 		const fetchedMetadata = '<EntityDescriptor fetched/>';
 
 		samlService.fetchMetadataFromUrl.mockResolvedValueOnce(fetchedMetadata);
-		samlService.storePendingTestConfig.mockReturnValueOnce('tokXYZ');
+		samlService.storePendingTestConfig.mockResolvedValueOnce('tokXYZ');
 		samlService.getLoginRequestUrl.mockResolvedValueOnce({
 			binding: 'redirect',
 			context: { context: 'http://idp.example.com/login' } as any,

@@ -120,7 +120,7 @@ export class SamlController {
 			if (isConnectionTestRequest(payload)) {
 				const testId = extractTestIdFromRelayState(payload.RelayState);
 				if (testId) {
-					metadataOverride = this.samlService.consumePendingTestConfig(testId);
+					metadataOverride = await this.samlService.consumePendingTestConfig(testId);
 				}
 			}
 			const loginResult = await this.samlService.handleSamlLogin(req, binding, metadataOverride);
@@ -223,8 +223,10 @@ export class SamlController {
 
 		let relayState = getServiceProviderConfigTestReturnUrl();
 		if (metadata) {
-			const testId = this.samlService.storePendingTestConfig(metadata);
-			relayState = `${relayState}?t=${testId}`;
+			const testId = await this.samlService.storePendingTestConfig(metadata);
+			const relayStateUrl = new URL(relayState);
+			relayStateUrl.searchParams.set('t', testId);
+			relayState = relayStateUrl.toString();
 		}
 
 		const result = await this.samlService.getLoginRequestUrl(

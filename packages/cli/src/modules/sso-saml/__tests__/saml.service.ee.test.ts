@@ -16,6 +16,7 @@ import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { CacheService } from '@/services/cache/cache.service';
 import type { UrlService } from '@/services/url.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
@@ -166,6 +167,7 @@ describe('SamlService', () => {
 	let userRepository: UserRepository;
 	let provisioningService: ProvisioningService;
 	let cipher: Cipher;
+	let cacheService: jest.Mocked<CacheService>;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
 
@@ -216,6 +218,7 @@ describe('SamlService', () => {
 		cipher = mock<Cipher>();
 		cipher.encrypt = jest.fn((data: string) => `encrypted:${data}`) as Cipher['encrypt'];
 		cipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
+		cacheService = mock<CacheService>();
 
 		jest
 			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
@@ -231,6 +234,7 @@ describe('SamlService', () => {
 			instanceSettings,
 			provisioningService,
 			cipher,
+			cacheService,
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
@@ -1707,31 +1711,37 @@ describe('SamlService', () => {
 	});
 
 	describe('pending test configs', () => {
-		test('storePendingTestConfig returns a token and consumePendingTestConfig retrieves the metadata once', () => {
+		test('storePendingTestConfig writes metadata to the cache under a random token with TTL', async () => {
 			const metadata = '<EntityDescriptor/>';
-			const token = samlService.storePendingTestConfig(metadata);
+
+			const token = await samlService.storePendingTestConfig(metadata);
 
 			expect(token).toMatch(/^[0-9a-f]+$/);
-			expect(samlService.consumePendingTestConfig(token)).toBe(metadata);
-			// Consuming a second time returns undefined (single-use)
-			expect(samlService.consumePendingTestConfig(token)).toBeUndefined();
+			expect(cacheService.set).toHaveBeenCalledWith(
+				`saml:pending-test-config:${token}`,
+				metadata,
+				10 * 60 * 1000,
+			);
 		});
 
-		test('consumePendingTestConfig returns undefined for unknown tokens', () => {
-			expect(samlService.consumePendingTestConfig('unknown-token')).toBeUndefined();
-		});
-
-		test('consumePendingTestConfig returns undefined once the entry has expired', () => {
+		test('consumePendingTestConfig returns metadata from the cache and deletes it', async () => {
 			const metadata = '<EntityDescriptor/>';
-			const now = Date.now();
-			jest.spyOn(Date, 'now').mockReturnValue(now);
-			const token = samlService.storePendingTestConfig(metadata);
+			cacheService.get.mockResolvedValueOnce(metadata);
 
-			// Advance past the 10 minute TTL
-			jest.spyOn(Date, 'now').mockReturnValue(now + 11 * 60 * 1000);
-			expect(samlService.consumePendingTestConfig(token)).toBeUndefined();
+			const result = await samlService.consumePendingTestConfig('abc123');
 
-			(Date.now as jest.Mock).mockRestore();
+			expect(result).toBe(metadata);
+			expect(cacheService.get).toHaveBeenCalledWith('saml:pending-test-config:abc123');
+			expect(cacheService.delete).toHaveBeenCalledWith('saml:pending-test-config:abc123');
+		});
+
+		test('consumePendingTestConfig returns undefined for unknown tokens and does not delete', async () => {
+			cacheService.get.mockResolvedValueOnce(undefined);
+
+			const result = await samlService.consumePendingTestConfig('unknown-token');
+
+			expect(result).toBeUndefined();
+			expect(cacheService.delete).not.toHaveBeenCalled();
 		});
 	});
 
