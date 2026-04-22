@@ -65,7 +65,9 @@ function shouldScopeSessionKey(ctx: ISupplyDataFunctions | IWebhookFunctions): b
 	const node = ctx.getNode();
 	if (!node) return false;
 	const minVersion = SESSION_KEY_SCOPING_MIN_VERSION[node.type];
-	if (minVersion === undefined) return false;
+	// if the node is not in SESSION_KEY_SCOPING_MIN_VERSION, it should
+	// scope by default the session key with no retrocompatibility issues
+	if (minVersion === undefined) return true;
 	return (node.typeVersion ?? 0) >= minVersion;
 }
 
