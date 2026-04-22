@@ -125,10 +125,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 					// Clear dirtiness timestamps so nodes don't appear dirty after restoration.
 					// The old pinData({ isRestoration: true }) handled this internally.
-					if (workflowsStore.nodeMetadata[node.name]) {
-						delete workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt;
-						delete workflowsStore.nodeMetadata[node.name].pinnedDataLastRemovedAt;
-					}
+					workflowDocumentStore.value.clearPinnedDataTimestamps(node.name);
 				}
 			}
 		});

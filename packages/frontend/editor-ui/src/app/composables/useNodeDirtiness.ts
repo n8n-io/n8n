@@ -147,7 +147,7 @@ export function useNodeDirtiness() {
 		nodeName: string,
 		after: number,
 	): CanvasNodeDirtinessType | undefined {
-		if ((workflowsStore.getParametersLastUpdate(nodeName) ?? 0) > after) {
+		if ((workflowDocumentStore.value.getParametersLastUpdate(nodeName) ?? 0) > after) {
 			return CanvasNodeDirtiness.PARAMETERS_UPDATED;
 		}
 
@@ -292,7 +292,7 @@ export function useNodeDirtiness() {
 				.filter((connection) => connection !== null)
 				.some((connection) => {
 					const pinnedDataLastUpdatedAt =
-						workflowsStore.getPinnedDataLastUpdate(connection.node) ?? 0;
+						workflowDocumentStore.value.getPinnedDataLastUpdate(connection.node) ?? 0;
 
 					return pinnedDataLastUpdatedAt > runAt;
 				});
@@ -302,7 +302,8 @@ export function useNodeDirtiness() {
 				continue;
 			}
 
-			const pinnedDataLastRemovedAt = workflowsStore.getPinnedDataLastRemovedAt(nodeName) ?? 0;
+			const pinnedDataLastRemovedAt =
+				workflowDocumentStore.value.getPinnedDataLastRemovedAt(nodeName) ?? 0;
 
 			if (pinnedDataLastRemovedAt > runAt) {
 				setDirtiness(nodeName, CanvasNodeDirtiness.PINNED_DATA_UPDATED);
