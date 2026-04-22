@@ -30,8 +30,6 @@ jobs:
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
-      e2e_matrix: ${{ steps.e2e-matrix.outputs.matrix }}
-      e2e_skip_tests: ${{ steps.e2e-matrix.outputs.skip-tests }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -102,27 +100,6 @@ jobs:
       - name: Run format check
         if: fromJSON(steps.ci-filter.outputs.results).ci
         run: pnpm format:check
-
-      # Generate the E2E shard matrix here rather than in a dedicated job —
-      # install-and-build has already paid the pnpm install + build cost,
-      # so running the janitor CLI is cheap (~1s vs a ~40s fresh setup).
-      - name: Generate E2E shard matrix
-        id: e2e-matrix
-        if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
-        env:
-          # When only playwright files changed, narrow to impacted specs via the janitor analyzer.
-          PLAYWRIGHT_ONLY: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true && fromJSON(steps.ci-filter.outputs.results).unit != true }}
-          BASE_REF: ${{ github.event.pull_request.base.ref || 'master' }}
-        run: |
-          ARGS=(--matrix 16 --orchestrate)
-          if [[ "$PLAYWRIGHT_ONLY" == "true" ]]; then
-            git fetch --depth=1 origin "$BASE_REF"
-            CHANGED_FILES=$(git diff --name-only FETCH_HEAD HEAD | tr '\n' ',' | sed 's/,$//')
-            ARGS+=(--impact "--files=$CHANGED_FILES" "--base=FETCH_HEAD")
-          fi
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs "${ARGS[@]}")
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-          echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
   unit-test:
     name: Unit tests
@@ -203,8 +180,7 @@ jobs:
     uses: ./.github/workflows/test-e2e-ci-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
-      matrix: ${{ needs.install-and-build.outputs.e2e_matrix }}
-      skip-tests: ${{ needs.install-and-build.outputs.e2e_skip_tests == 'true' }}
+      playwright-only: ${{ needs.install-and-build.outputs.e2e == 'true' && needs.install-and-build.outputs.unit == 'false' }}
       # Fork PRs have no license secrets — route to sqlite-only + skip @licensed tests.
       community-mode: ${{ github.event.pull_request.head.repo.fork == true }}
     secrets: inherit
