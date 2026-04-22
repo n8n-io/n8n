@@ -250,9 +250,9 @@ export {
 } from './schemas/community-package.schema';
 
 export {
-	publicApiCreatedCredentialSchema,
-	type PublicApiCreatedCredential,
-} from './schemas/credential-created.schema';
+	publicApiCredentialResponseSchema,
+	type PublicApiCredentialResponse,
+} from './schemas/credential-response.schema';
 
 export {
 	instanceAiEventTypeSchema,
@@ -278,8 +278,6 @@ export {
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
-	instanceAiFilesystemResponseSchema,
-	instanceAiGatewayCapabilitiesSchema,
 	mcpToolSchema,
 	mcpToolCallRequestSchema,
 	mcpToolCallResultSchema,
@@ -302,6 +300,8 @@ export {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiFilesystemResponseDto,
 	applyBranchReadOnlyOverrides,
 } from './schemas/instance-ai.schema';
 

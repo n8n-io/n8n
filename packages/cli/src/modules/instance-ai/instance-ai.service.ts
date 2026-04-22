@@ -47,7 +47,7 @@ import {
 	startResearchAgentTask,
 	streamAgentRun,
 	truncateToTitle,
-	generateThreadTitle,
+	generateTitleForRun,
 	patchThread,
 	type ConfirmationData,
 	type DomainAccessTracker,
@@ -943,6 +943,10 @@ export class InstanceAiService {
 
 	initGateway(userId: string, data: InstanceAiGatewayCapabilities): void {
 		this.gatewayRegistry.initGateway(userId, data);
+		this.telemetry.track('User connected to Computer Use', {
+			user_id: userId,
+			tool_groups: data.toolCategories.filter((c) => c.enabled).map((c) => c.name),
+		});
 	}
 
 	resolveGatewayRequest(
@@ -956,6 +960,13 @@ export class InstanceAiService {
 
 	disconnectGateway(userId: string): void {
 		this.gatewayRegistry.disconnectGateway(userId);
+	}
+
+	/** Disconnect all connected gateways and return the user IDs that were connected. */
+	disconnectAllGateways(): string[] {
+		const connectedUserIds = this.gatewayRegistry.getConnectedUserIds();
+		this.gatewayRegistry.disconnectAll();
+		return connectedUserIds;
 	}
 
 	isLocalGatewayDisabled(): boolean {
@@ -1180,7 +1191,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
-		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
+		const localGatewayDisabled = await this.settingsService.isLocalGatewayDisabledForUser(user.id);
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
 
 		// When the proxy is enabled, create a single ProxyTokenManager and
@@ -2450,16 +2461,16 @@ export class InstanceAiService {
 			// Skip if thread already has an LLM-refined title
 			if (thread.metadata?.titleRefined) return;
 
-			// Get first user message
+			// Concat all recalled user messages so retries after a trivial first message
+			// (e.g. "hey") have enough signal to produce a good title.
 			const result = await memory.recall({ threadId, resourceId: userId, perPage: 5 });
-			const firstUserMsg = result.messages.find((m) => m.role === 'user');
-			if (!firstUserMsg) return;
-			const userText =
-				typeof firstUserMsg.content === 'string'
-					? firstUserMsg.content
-					: JSON.stringify(firstUserMsg.content);
+			const userTexts = result.messages
+				.filter((m) => m.role === 'user')
+				.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)));
+			if (userTexts.length === 0) return;
+			const userText = userTexts.join('\n');
 
-			const llmTitle = await generateThreadTitle(modelId, userText);
+			const llmTitle = await generateTitleForRun(modelId, userText);
 			if (!llmTitle) return;
 
 			await patchThread(memory, {
