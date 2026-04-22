@@ -190,13 +190,6 @@ export class InstanceAiService {
 	/** In-memory guard to prevent double credit counting within the same process. */
 	private readonly creditedThreads = new Set<string>();
 
-	/**
-	 * Latched when the AI-assistant proxy rejects LangSmith feedback as an
-	 * unsupported endpoint. Once set, subsequent feedback submissions no-op
-	 * instead of generating warn-level log noise.
-	 */
-	private langsmithFeedbackProxyUnsupported = false;
-
 	/** Test-only trace replay state (slugs, events, shared TraceIndex/IdRemapper). */
 	private readonly traceReplay = new TraceReplayState();
 
@@ -747,11 +740,6 @@ export class InstanceAiService {
 		responseId: string,
 		payload: { rating: 'up' | 'down'; comment?: string },
 	): Promise<void> {
-		// The AI-assistant proxy doesn't yet whitelist LangSmith's POST /feedback
-		// (returns 400 api_proxy_not_supported_endpoint). Short-circuit after the
-		// first failure so we don't fill logs; direct-LangSmith setups still work.
-		if (this.langsmithFeedbackProxyUnsupported) return;
-
 		const anchor = await this.dbSnapshotStorage.findLangsmithAnchor(threadId, responseId);
 		if (!anchor) {
 			this.logger.debug('No LangSmith anchor for feedback; skipping annotation', {
@@ -805,19 +793,10 @@ export class InstanceAiService {
 				proxyConfig: tracingProxyConfig,
 			});
 		} catch (error) {
-			const message = getErrorMessage(error);
-			if (tracingProxyConfig && message.includes('api_proxy_not_supported_endpoint')) {
-				this.langsmithFeedbackProxyUnsupported = true;
-				this.logger.info(
-					'LangSmith proxy does not support the feedback endpoint; skipping further annotations',
-					{ threadId, responseId },
-				);
-				return;
-			}
 			this.logger.warn('Failed to submit LangSmith feedback', {
 				threadId,
 				responseId,
-				error: message,
+				error: getErrorMessage(error),
 			});
 		}
 	}
