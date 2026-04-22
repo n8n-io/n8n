@@ -57,6 +57,7 @@ import {
 } from './tool-adapter';
 import { buildWorkingMemoryTool } from './working-memory';
 import { AgentEvent } from '../types/runtime/event';
+import type { AgentEventData } from '../types/runtime/event';
 import type {
 	AgentPersistenceOptions,
 	ExecutionOptions,
