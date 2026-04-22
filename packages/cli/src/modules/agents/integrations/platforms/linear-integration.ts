@@ -11,12 +11,15 @@ type LinearAuth = { kind: 'apiKey'; token: string } | { kind: 'accessToken'; tok
  *
  * Linear issues are the threads and issue comments are the messages. The
  * Vercel Chat SDK's Linear adapter renders `rich_interaction` cards into
- * issue-comment markdown — action buttons become bold text (non-interactive),
- * images become markdown images, sections and dividers are preserved.
+ * issue-comment markdown — images become markdown images, and sections,
+ * dividers, and fields are preserved.
  *
- * Select / radio_select aren't rendered by the adapter, so this integration
- * omits them from `supportedComponents` — the agent won't generate components
- * the adapter can't render.
+ * Linear has no interactive UI surface for bot comments: action buttons
+ * would render as bold markdown text that the user can't click, and selects
+ * aren't rendered at all. We therefore omit `button`, `select`, and
+ * `radio_select` from `supportedComponents` — the agent won't generate
+ * controls the user cannot respond to, so rich_interaction always posts
+ * and returns instead of suspending on a dead-end card.
  *
  * Mention detection in the Chat SDK is a literal string match on
  * `@<adapter.userName>` in the comment body. The adapter defaults `userName` to
