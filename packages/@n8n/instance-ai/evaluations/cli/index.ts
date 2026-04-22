@@ -84,9 +84,14 @@ function isEvalResult(v: unknown): v is InstanceAiEvalExecutionResult {
 }
 
 /** Safe-parse a run's outputs. Returns `undefined` if the row is malformed
- *  so callers can skip it instead of aborting the whole iteration. */
+ *  or missing, so callers can skip it instead of treating it as a genuine
+ *  failed evaluation. Every field in the schema has a default, so an empty
+ *  or nullish raw value would otherwise parse successfully into a "failed"
+ *  shape (passed:false, score:0) — masking infra errors as builder regressions.
+ */
 function parseTargetOutput(raw: unknown): TargetOutput | undefined {
-	const parsed = targetOutputSchema.safeParse(raw ?? {});
+	if (!isPlainObject(raw) || Object.keys(raw).length === 0) return undefined;
+	const parsed = targetOutputSchema.safeParse(raw);
 	if (!parsed.success) return undefined;
 	return {
 		...parsed.data,
@@ -155,7 +160,7 @@ async function main(): Promise<void> {
 		const totalDuration = Date.now() - startTime;
 		const outputPath = writeEvalResults(evaluation, totalDuration, args.outputDir);
 		console.log(`Results: ${outputPath}`);
-		const htmlPath = writeWorkflowReport(evaluation.testCases.map((tc) => tc.runs[0]));
+		const htmlPath = writeWorkflowReport(flattenRunsForReport(evaluation));
 		console.log(`Report:  ${htmlPath}`);
 		printSummary(evaluation);
 	} finally {
@@ -265,11 +270,34 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		}
 
 		const execStart = Date.now();
-		const result = await traceableExecute({
-			workflowId: build.workflowId,
-			scenario,
-			workflowJsons: build.workflowJsons,
-		});
+		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
+		let result;
+		try {
+			result = await traceableExecute({
+				workflowId: build.workflowId,
+				scenario,
+				workflowJsons: build.workflowJsons,
+			});
+		} catch (error: unknown) {
+			// Mirror direct mode's per-scenario guard — without this, n8n API errors
+			// or verifier timeouts from executeWithLlmMock / verifyChecklist would
+			// escape to LangSmith, come back as a Run with null outputs, and be
+			// misclassified as builder regressions by the feedback extractor.
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+			return {
+				buildSuccess: true,
+				workflowId: build.workflowId,
+				passed: false,
+				score: 0,
+				reasoning: `Scenario execution error: ${errorMessage}`,
+				failureCategory: 'framework_issue',
+				execErrors: [errorMessage],
+				buildDurationMs,
+				execDurationMs: Date.now() - execStart,
+				nodeCount,
+			};
+		}
 		const execDurationMs = Date.now() - execStart;
 
 		// Strip failure fields on pass: the verifier sometimes returns "."
@@ -289,7 +317,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			evalResult: result.evalResult,
 			buildDurationMs,
 			execDurationMs,
-			nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
+			nodeCount,
 		};
 	};
 
@@ -652,6 +680,29 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 // ---------------------------------------------------------------------------
 // eval-results.json output (same shape as CI PR comment expects)
 // ---------------------------------------------------------------------------
+
+/**
+ * Flatten per-iteration runs into a single list of test-case results for the
+ * HTML report. Previously we rendered only `tc.runs[0]`, which silently hid
+ * iterations 2..N — a flaky scenario that passed once and failed twice would
+ * appear clean in the uploaded artifact. For multi-iteration runs we prefix
+ * each prompt with its iteration number so the cards are distinguishable at
+ * a glance.
+ */
+function flattenRunsForReport(evaluation: MultiRunEvaluation): WorkflowTestCaseResult[] {
+	if (evaluation.totalRuns <= 1) {
+		return evaluation.testCases.map((tc) => tc.runs[0]);
+	}
+	return evaluation.testCases.flatMap((tc) =>
+		tc.runs.map((run, iter) => ({
+			...run,
+			testCase: {
+				...run.testCase,
+				prompt: `[iter ${String(iter + 1)}/${String(evaluation.totalRuns)}] ${run.testCase.prompt}`,
+			},
+		})),
+	);
+}
 
 interface AggregateMetrics {
 	/** Number of test cases with at least one successful build across iterations. */
