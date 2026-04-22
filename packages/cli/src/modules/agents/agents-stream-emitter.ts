@@ -38,6 +38,12 @@ export class AgentStreamEmitter {
 			case 'tool-call-delta':
 				this.emitToolCallStart(chunk.id, chunk.name, emitted);
 				break;
+			case 'tool-execution-start':
+				this.emit(
+					{ toolCallExecuting: { toolCallId: chunk.toolCallId, tool: chunk.toolName } },
+					emitted,
+				);
+				break;
 			case 'message':
 				this.emitMessageEvents(chunk.message, emitted);
 				break;

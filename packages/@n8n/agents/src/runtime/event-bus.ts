@@ -32,6 +32,10 @@ export class AgentEventBus {
 		set.add(handler);
 	}
 
+	off(event: AgentEvent, handler: AgentEventHandler): void {
+		this.handlers.get(event)?.delete(handler);
+	}
+
 	emit(data: AgentEventData): void {
 		const set = this.handlers.get(data.type);
 		if (!set) return;

@@ -219,6 +219,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 								tool: tc.tool,
 								toolCallId: tc.toolCallId,
 								input: tc.input,
+								status: 'pending',
 							});
 						}
 					}
@@ -230,6 +231,22 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 								(t: ToolCall) => t.toolCallId === tci.toolCallId,
 							);
 							if (existing) existing.input = tci.input;
+						}
+					}
+
+					if (data.toolCallExecuting && typeof data.toolCallExecuting === 'object') {
+						const tce = data.toolCallExecuting as { toolCallId?: string; tool?: string };
+						const existing =
+							(tce.toolCallId
+								? assistantMsg.toolCalls?.find((t: ToolCall) => t.toolCallId === tce.toolCallId)
+								: undefined) ??
+							(tce.tool
+								? assistantMsg.toolCalls?.find(
+										(t: ToolCall) => t.tool === tce.tool && t.status !== 'done',
+									)
+								: undefined);
+						if (existing) {
+							if (existing.status !== 'done') existing.status = 'running';
 						}
 					}
 
@@ -248,6 +265,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							);
 						if (existing) {
 							existing.output = tr.output;
+							existing.status = 'done';
 						}
 						if (assistantMsg.content && !assistantMsg.content.endsWith('\n')) {
 							assistantMsg.content += '\n';

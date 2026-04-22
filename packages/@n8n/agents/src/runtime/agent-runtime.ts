@@ -57,6 +57,7 @@ import {
 } from './tool-adapter';
 import { buildWorkingMemoryTool } from './working-memory';
 import { AgentEvent } from '../types/runtime/event';
+import type { AgentEventData } from '../types/runtime/event';
 import type {
 	AgentPersistenceOptions,
 	ExecutionOptions,
@@ -831,241 +832,264 @@ export class AgentRuntime {
 			await writer.write(chunk);
 		};
 
-		let totalUsage: TokenUsage | undefined;
-		let lastFinishReason: FinishReason = 'stop';
-		let structuredOutput: unknown;
-		const collectedSubAgentUsage: SubAgentUsage[] = [];
-		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
-
-		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
-			await this.cleanupRun(runId);
-			this.updateState({ status });
-			await writer.write({ type: 'error', error });
-			await writer.write({ type: 'finish', finishReason: 'error' });
-			await writer.close();
-		};
-
-		const handleAbort = async (): Promise<boolean> => {
-			if (!this.eventBus.isAborted) return false;
-			await closeStreamWithError(new Error('Agent run was aborted'), 'cancelled');
-			return true;
-		};
-
-		// Resolve pending tool calls from a resumed run before the first LLM call.
-		const runTelemetry = this.resolveTelemetry(options);
-		if (pendingResume) {
-			try {
-				const batch = await this.iteratePendingToolCallsConcurrent(
-					pendingResume,
-					toolMap,
-					list,
-					runTelemetry,
-				);
-
-				for (const r of batch.results) {
-					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
-					await writer.write({
-						type: 'message',
-						message: r.message,
-					});
-					if (r.customMessage) {
-						await writer.write({ type: 'message', message: r.customMessage });
-					}
-				}
-
-				for (const e of batch.errors) {
-					await writer.write({
-						type: 'message',
-						message: e.message,
-					});
-				}
-
-				if (Object.keys(batch.pending).length > 0) {
-					const suspendRunId = await this.persistSuspension(
-						batch.pending,
-						options,
-						list,
-						totalUsage,
-						runId,
-					);
-					for (const s of batch.suspensions) {
-						await writer.write({
-							type: 'tool-call-suspended',
-							runId: suspendRunId,
-							toolCallId: s.toolCallId,
-							toolName: s.toolName,
-							input: s.input,
-							suspendPayload: s.payload,
-							resumeSchema: s.resumeSchema,
-						});
-					}
-					await writer.write({ type: 'finish', finishReason: 'tool-calls' });
-					await writer.close();
-					return;
-				}
-			} catch (error) {
-				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
-				await closeStreamWithError(error, 'failed');
-				return;
-			}
-		}
-
-		for (let i = 0; i < maxIterations; i++) {
-			if (await handleAbort()) return;
-
-			this.eventBus.emit({ type: AgentEvent.TurnStart });
-
-			const result = streamText({
-				model,
-				messages: list.forLlm(this.config.instructions, this.config.instructionProviderOptions),
-				abortSignal: this.eventBus.signal,
-				...(hasTools ? { tools: aiTools } : {}),
-				...(providerOptions
-					? { providerOptions: providerOptions as Record<string, JSONObject> }
-					: {}),
-				...(outputSpec ? { output: outputSpec } : {}),
-				...this.buildTelemetryOptions(options),
+		// Bridge tool-execution lifecycle events into the stream so consumers
+		// can show a mid-flight indicator between the LLM's tool-call message
+		// and the eventual tool-result message. Writer queues writes in order
+		// so the fire-and-forget is safe.
+		const onToolExecutionStart = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.ToolExecutionStart) return;
+			void writer.write({
+				type: 'tool-execution-start',
+				toolCallId: data.toolCallId,
+				toolName: data.toolName,
 			});
-
-			// Consume the stream. When the AbortSignal fires mid-stream the
-			// AI SDK cancels the underlying fetch and the async iterator throws.
-			// We catch that here and close the consumer stream with an error chunk.
-			try {
-				for await (const chunk of result.fullStream) {
-					if (chunk.type === 'finish' || chunk.type === 'finish-step') continue;
-					const converted = convertChunk(chunk);
-					if (converted) await writeChunk(converted);
-				}
-			} catch (streamError) {
-				if (await handleAbort()) return;
-				this.eventBus.emit({
-					type: AgentEvent.Error,
-					message: String(streamError),
-					error: streamError,
-				});
-				await closeStreamWithError(streamError, 'failed');
-				return;
-			}
-
-			if (await handleAbort()) return;
-
-			const aiFinishReason = await result.finishReason;
-			const usage = await result.usage;
-			const response = await result.response;
-
-			lastFinishReason = fromAiFinishReason(aiFinishReason);
-
-			totalUsage = accumulateUsage(totalUsage, usage);
-
-			const responseMessages = response.messages;
-			const newMessages = fromAiMessages(responseMessages);
-			list.addResponse(newMessages);
-
-			if (aiFinishReason !== 'tool-calls') {
-				if (outputSpec) {
-					structuredOutput = await result.output;
-				}
-				this.emitTurnEnd(newMessages, extractToolResults(newMessages));
-				break;
-			}
-
-			const toolCalls = await result.toolCalls;
-
-			try {
-				const batch = await this.iterateToolCallsConcurrent(toolCalls, toolMap, list, runTelemetry);
-
-				if (await handleAbort()) return;
-
-				for (const r of batch.results) {
-					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
-					await writer.write({
-						type: 'message',
-						message: r.message,
-					});
-					if (r.customMessage) {
-						await writer.write({ type: 'message', message: r.customMessage });
-					}
-				}
-
-				for (const e of batch.errors) {
-					await writer.write({
-						type: 'message',
-						message: e.message,
-					});
-				}
-
-				if (Object.keys(batch.pending).length > 0) {
-					const suspendRunId = await this.persistSuspension(
-						batch.pending,
-						options,
-						list,
-						totalUsage,
-						runId,
-					);
-					for (const s of batch.suspensions) {
-						await writer.write({
-							type: 'tool-call-suspended',
-							runId: suspendRunId,
-							toolCallId: s.toolCallId,
-							toolName: s.toolName,
-							input: s.input,
-							suspendPayload: s.payload,
-							resumeSchema: s.resumeSchema,
-						});
-					}
-					await writer.write({ type: 'finish', finishReason: 'tool-calls' });
-					await writer.close();
-					return;
-				}
-			} catch (error) {
-				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
-				await closeStreamWithError(error, 'failed');
-				return;
-			}
-
-			// Emit TurnEnd after all tool calls in this iteration are processed
-			this.emitTurnEnd(newMessages, extractToolResults(list.responseDelta()));
-		}
-
-		const costUsage = this.applyCost(totalUsage);
-		const parentCost = costUsage?.cost ?? 0;
-		const subCost = collectedSubAgentUsage.reduce((sum, s) => sum + (s.usage.cost ?? 0), 0);
-		await writer.write({
-			type: 'finish',
-			finishReason: lastFinishReason,
-			...(costUsage && { usage: costUsage }),
-			model: this.modelIdString,
-			...(structuredOutput !== undefined && { structuredOutput }),
-			...(collectedSubAgentUsage.length > 0 && {
-				subAgentUsage: collectedSubAgentUsage,
-				totalCost: parentCost + subCost,
-			}),
-		});
+		};
+		this.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
 
 		try {
-			await this.saveToMemory(list, options);
+			let totalUsage: TokenUsage | undefined;
+			let lastFinishReason: FinishReason = 'stop';
+			let structuredOutput: unknown;
+			const collectedSubAgentUsage: SubAgentUsage[] = [];
+			const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 
-			if (this.config.titleGeneration && options?.persistence && this.config.memory) {
-				const titlePromise = generateThreadTitle({
-					memory: this.config.memory,
-					threadId: options.persistence.threadId,
-					resourceId: options.persistence.resourceId,
-					titleConfig: this.config.titleGeneration,
-					agentModel: this.config.model,
-					turnDelta: list.turnDelta(),
-				});
-				if (this.config.titleGeneration.sync) {
-					await titlePromise;
+			const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
+				await this.cleanupRun(runId);
+				this.updateState({ status });
+				await writer.write({ type: 'error', error });
+				await writer.write({ type: 'finish', finishReason: 'error' });
+				await writer.close();
+			};
+
+			const handleAbort = async (): Promise<boolean> => {
+				if (!this.eventBus.isAborted) return false;
+				await closeStreamWithError(new Error('Agent run was aborted'), 'cancelled');
+				return true;
+			};
+
+			// Resolve pending tool calls from a resumed run before the first LLM call.
+			const runTelemetry = this.resolveTelemetry(options);
+			if (pendingResume) {
+				try {
+					const batch = await this.iteratePendingToolCallsConcurrent(
+						pendingResume,
+						toolMap,
+						list,
+						runTelemetry,
+					);
+
+					for (const r of batch.results) {
+						if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
+						await writer.write({
+							type: 'message',
+							message: r.message,
+						});
+						if (r.customMessage) {
+							await writer.write({ type: 'message', message: r.customMessage });
+						}
+					}
+
+					for (const e of batch.errors) {
+						await writer.write({
+							type: 'message',
+							message: e.message,
+						});
+					}
+
+					if (Object.keys(batch.pending).length > 0) {
+						const suspendRunId = await this.persistSuspension(
+							batch.pending,
+							options,
+							list,
+							totalUsage,
+							runId,
+						);
+						for (const s of batch.suspensions) {
+							await writer.write({
+								type: 'tool-call-suspended',
+								runId: suspendRunId,
+								toolCallId: s.toolCallId,
+								toolName: s.toolName,
+								input: s.input,
+								suspendPayload: s.payload,
+								resumeSchema: s.resumeSchema,
+							});
+						}
+						await writer.write({ type: 'finish', finishReason: 'tool-calls' });
+						await writer.close();
+						return;
+					}
+				} catch (error) {
+					this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+					await closeStreamWithError(error, 'failed');
+					return;
 				}
 			}
 
-			await this.cleanupRun(runId);
-			await this.flushTelemetry(options);
+			for (let i = 0; i < maxIterations; i++) {
+				if (await handleAbort()) return;
 
-			this.updateState({ status: 'success', messageList: list.serialize() });
-			this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
+				this.eventBus.emit({ type: AgentEvent.TurnStart });
+
+				const result = streamText({
+					model,
+					messages: list.forLlm(this.config.instructions, this.config.instructionProviderOptions),
+					abortSignal: this.eventBus.signal,
+					...(hasTools ? { tools: aiTools } : {}),
+					...(providerOptions
+						? { providerOptions: providerOptions as Record<string, JSONObject> }
+						: {}),
+					...(outputSpec ? { output: outputSpec } : {}),
+					...this.buildTelemetryOptions(options),
+				});
+
+				// Consume the stream. When the AbortSignal fires mid-stream the
+				// AI SDK cancels the underlying fetch and the async iterator throws.
+				// We catch that here and close the consumer stream with an error chunk.
+				try {
+					for await (const chunk of result.fullStream) {
+						if (chunk.type === 'finish' || chunk.type === 'finish-step') continue;
+						const converted = convertChunk(chunk);
+						if (converted) await writeChunk(converted);
+					}
+				} catch (streamError) {
+					if (await handleAbort()) return;
+					this.eventBus.emit({
+						type: AgentEvent.Error,
+						message: String(streamError),
+						error: streamError,
+					});
+					await closeStreamWithError(streamError, 'failed');
+					return;
+				}
+
+				if (await handleAbort()) return;
+
+				const aiFinishReason = await result.finishReason;
+				const usage = await result.usage;
+				const response = await result.response;
+
+				lastFinishReason = fromAiFinishReason(aiFinishReason);
+
+				totalUsage = accumulateUsage(totalUsage, usage);
+
+				const responseMessages = response.messages;
+				const newMessages = fromAiMessages(responseMessages);
+				list.addResponse(newMessages);
+
+				if (aiFinishReason !== 'tool-calls') {
+					if (outputSpec) {
+						structuredOutput = await result.output;
+					}
+					this.emitTurnEnd(newMessages, extractToolResults(newMessages));
+					break;
+				}
+
+				const toolCalls = await result.toolCalls;
+
+				try {
+					const batch = await this.iterateToolCallsConcurrent(
+						toolCalls,
+						toolMap,
+						list,
+						runTelemetry,
+					);
+
+					if (await handleAbort()) return;
+
+					for (const r of batch.results) {
+						if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
+						await writer.write({
+							type: 'message',
+							message: r.message,
+						});
+						if (r.customMessage) {
+							await writer.write({ type: 'message', message: r.customMessage });
+						}
+					}
+
+					for (const e of batch.errors) {
+						await writer.write({
+							type: 'message',
+							message: e.message,
+						});
+					}
+
+					if (Object.keys(batch.pending).length > 0) {
+						const suspendRunId = await this.persistSuspension(
+							batch.pending,
+							options,
+							list,
+							totalUsage,
+							runId,
+						);
+						for (const s of batch.suspensions) {
+							await writer.write({
+								type: 'tool-call-suspended',
+								runId: suspendRunId,
+								toolCallId: s.toolCallId,
+								toolName: s.toolName,
+								input: s.input,
+								suspendPayload: s.payload,
+								resumeSchema: s.resumeSchema,
+							});
+						}
+						await writer.write({ type: 'finish', finishReason: 'tool-calls' });
+						await writer.close();
+						return;
+					}
+				} catch (error) {
+					this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+					await closeStreamWithError(error, 'failed');
+					return;
+				}
+
+				// Emit TurnEnd after all tool calls in this iteration are processed
+				this.emitTurnEnd(newMessages, extractToolResults(list.responseDelta()));
+			}
+
+			const costUsage = this.applyCost(totalUsage);
+			const parentCost = costUsage?.cost ?? 0;
+			const subCost = collectedSubAgentUsage.reduce((sum, s) => sum + (s.usage.cost ?? 0), 0);
+			await writer.write({
+				type: 'finish',
+				finishReason: lastFinishReason,
+				...(costUsage && { usage: costUsage }),
+				model: this.modelIdString,
+				...(structuredOutput !== undefined && { structuredOutput }),
+				...(collectedSubAgentUsage.length > 0 && {
+					subAgentUsage: collectedSubAgentUsage,
+					totalCost: parentCost + subCost,
+				}),
+			});
+
+			try {
+				await this.saveToMemory(list, options);
+
+				if (this.config.titleGeneration && options?.persistence && this.config.memory) {
+					const titlePromise = generateThreadTitle({
+						memory: this.config.memory,
+						threadId: options.persistence.threadId,
+						resourceId: options.persistence.resourceId,
+						titleConfig: this.config.titleGeneration,
+						agentModel: this.config.model,
+						turnDelta: list.turnDelta(),
+					});
+					if (this.config.titleGeneration.sync) {
+						await titlePromise;
+					}
+				}
+
+				await this.cleanupRun(runId);
+				await this.flushTelemetry(options);
+
+				this.updateState({ status: 'success', messageList: list.serialize() });
+				this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
+			} finally {
+				await writer.close();
+			}
 		} finally {
-			await writer.close();
+			this.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);
 		}
 	}
 
