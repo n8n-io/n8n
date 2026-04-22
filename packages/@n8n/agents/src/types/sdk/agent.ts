@@ -4,6 +4,7 @@ import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
 import type { BuiltTool } from './tool';
+import type { ProviderId, ProviderCredentials } from '../../runtime/provider-credentials';
 import type { AgentEvent, AgentEventHandler } from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
@@ -27,12 +28,20 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	additionalMetadata?: T;
 };
 
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents -- LanguageModel is semantically distinct from string */
+/**
+ * Typed model config for known providers — gives IDE autocompletion for
+ * provider-specific credential fields based on the model id prefix.
+ */
+export type TypedModelConfig = {
+	[P in ProviderId]: { id: `${P}/${string}` } & ProviderCredentials<P>;
+}[ProviderId];
+
 export type ModelConfig =
 	| string
-	| { id: string; apiKey?: string; url?: string; headers?: Record<string, string> }
+	| TypedModelConfig
+	| { id: string; [k: string]: unknown }
+	// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- LanguageModel is semantically distinct from string
 	| LanguageModel;
-/* eslint-enable @typescript-eslint/no-redundant-type-constituents */
 
 export interface AgentResult {
 	id?: string;

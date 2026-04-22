@@ -35,7 +35,6 @@ import type {
 	ResumeOptions,
 } from '../types';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
-import type { CredentialProvider } from '../types/sdk/credential-provider';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
 
@@ -52,8 +51,6 @@ export interface AgentSnapshot {
 	name: string;
 	/** Parsed model identifier. Both fields are null if no model has been set. */
 	model: { provider: string | null; name: string | null };
-	/** Credential name passed to `.credential()`, or null if not set. */
-	credential: string | null;
 	/** Instruction text passed to `.instructions()`, or null if not set. */
 	instructions: string | null;
 	/** Minimal description of each registered tool. */
@@ -74,8 +71,7 @@ export interface AgentSnapshot {
  * Usage:
  * ```typescript
  * const agent = new Agent('assistant')
- *   .model('anthropic', 'claude-sonnet-4')   // typed: Agent<'anthropic'>
- *   .credential('anthropic')
+ *   .model('anthropic', 'claude-sonnet-4')
  *   .instructions('You are a helpful assistant.')
  *   .tool(searchTool);
  *
@@ -86,9 +82,7 @@ export interface AgentSnapshot {
 export class Agent implements BuiltAgent, AgentBuilder {
 	readonly name: string;
 
-	private modelId?: string;
-
-	private modelConfigObj?: ModelConfig;
+	private modelConfig?: ModelConfig;
 
 	private instructionProviderOpts?: ProviderOptions;
 
@@ -113,12 +107,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private checkpointStore?: 'memory' | CheckpointStore;
 
 	private thinkingConfig?: ThinkingConfig;
-
-	private credentialName?: string;
-
-	private credProvider?: CredentialProvider;
-
-	private resolvedKey?: string;
 
 	private runtime?: AgentRuntime;
 
@@ -166,11 +154,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this {
 		if (typeof providerOrIdOrConfig === 'string') {
-			this.modelId = modelName ? `${providerOrIdOrConfig}/${modelName}` : providerOrIdOrConfig;
-			this.modelConfigObj = undefined;
+			this.modelConfig = modelName ? `${providerOrIdOrConfig}/${modelName}` : providerOrIdOrConfig;
 		} else {
-			this.modelConfigObj = providerOrIdOrConfig;
-			this.modelId = undefined;
+			this.modelConfig = providerOrIdOrConfig;
 		}
 		return this;
 	}
@@ -277,54 +263,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	checkpoint(storage: 'memory' | CheckpointStore): this {
 		this.checkpointStore = storage;
 		return this;
-	}
-
-	/**
-	 * Declare a credential this agent requires. The execution engine resolves
-	 * the credential name to an API key at build time and injects it into the
-	 * model configuration — user code never handles raw keys.
-	 *
-	 * @example
-	 * ```typescript
-	 * const agent = new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
-	 *   .credential('anthropic')
-	 *   .instructions('You are helpful.');
-	 * ```
-	 */
-	credential(name: string): this {
-		this.credentialName = name;
-		return this;
-	}
-
-	/**
-	 * Attach a credential provider that resolves credential identifiers to
-	 * decrypted API keys at build time. When both `.credential()` and
-	 * `.credentialProvider()` are set, the provider resolves the credential
-	 * before model creation — no subclassing required.
-	 *
-	 * @example
-	 * ```typescript
-	 * const agent = new Agent('assistant')
-	 *   .model('anthropic', 'claude-sonnet-4')
-	 *   .credential('credential-id-123')
-	 *   .credentialProvider(myProvider)
-	 *   .instructions('You are helpful.');
-	 * ```
-	 */
-	credentialProvider(provider: CredentialProvider): this {
-		this.credProvider = provider;
-		return this;
-	}
-
-	/** @internal Read the declared credential name (used by the execution engine). */
-	protected get declaredCredential(): string | undefined {
-		return this.credentialName;
-	}
-
-	/** @internal Set the resolved API key (called by the execution engine before super.build()). */
-	protected set resolvedApiKey(key: string) {
-		this.resolvedKey = key;
 	}
 
 	/**
@@ -526,14 +464,21 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	get snapshot(): AgentSnapshot {
 		let model: AgentSnapshot['model'];
-		if (this.modelId) {
-			const slashIdx = this.modelId.indexOf('/');
+		const rawModelId =
+			typeof this.modelConfig === 'string'
+				? this.modelConfig
+				: this.modelConfig && typeof this.modelConfig === 'object' && 'id' in this.modelConfig
+					? this.modelConfig.id
+					: undefined;
+
+		if (rawModelId) {
+			const slashIdx = rawModelId.indexOf('/');
 			if (slashIdx === -1) {
-				model = { provider: null, name: this.modelId };
+				model = { provider: null, name: rawModelId };
 			} else {
 				model = {
-					provider: this.modelId.slice(0, slashIdx),
-					name: this.modelId.slice(slashIdx + 1),
+					provider: rawModelId.slice(0, slashIdx),
+					name: rawModelId.slice(slashIdx + 1),
 				};
 			}
 		} else {
@@ -543,7 +488,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return {
 			name: this.name,
 			model,
-			credential: this.credentialName ?? null,
 			instructions: this.instructionsText ?? null,
 			tools: this.tools.map((t) => ({ name: t.name, description: t.description })),
 			hasMemory: this.memoryConfig !== undefined,
@@ -662,8 +606,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	/** @internal Validate configuration and produce an AgentRuntime. Overridden by the execution engine. */
 	protected async build(): Promise<AgentRuntime> {
-		const hasModel = this.modelId ?? this.modelConfigObj;
-		if (!hasModel) {
+		if (!this.modelConfig) {
 			throw new Error(`Agent "${this.name}" requires a model`);
 		}
 		if (!this.instructionsText) {
@@ -732,28 +675,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
-		// Resolve credential via provider before building the model config.
-		if (this.credProvider && this.credentialName) {
-			const resolved = await this.credProvider.resolve(this.credentialName);
-			this.resolvedKey = resolved.apiKey;
-		}
-
-		let modelConfig: ModelConfig;
-		if (this.modelConfigObj) {
-			if (
-				this.resolvedKey &&
-				typeof this.modelConfigObj === 'object' &&
-				'id' in this.modelConfigObj
-			) {
-				modelConfig = { ...this.modelConfigObj, apiKey: this.resolvedKey };
-			} else {
-				modelConfig = this.modelConfigObj;
-			}
-		} else if (this.resolvedKey) {
-			modelConfig = { id: this.modelId!, apiKey: this.resolvedKey };
-		} else {
-			modelConfig = this.modelId!;
-		}
+		const modelConfig: ModelConfig = this.modelConfig;
 
 		let instructions = this.instructionsText;
 		if (this.workspaceInstance) {

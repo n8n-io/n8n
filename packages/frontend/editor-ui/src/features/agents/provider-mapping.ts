@@ -33,3 +33,9 @@ for (const [chatHub, catalog] of Object.entries(CHATHUB_TO_CATALOG)) {
 		CATALOG_TO_CHATHUB[catalog] = chatHub as ChatHubLLMProvider;
 	}
 }
+
+/**
+ * ChatHub provider IDs that the @n8n/agents runtime does not support.
+ * These are filtered out in the Agents UI so users cannot select them.
+ */
+export const AGENT_UNSUPPORTED_PROVIDERS = new Set<string>(['ollama']);

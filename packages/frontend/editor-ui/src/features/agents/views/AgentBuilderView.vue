@@ -255,8 +255,9 @@ function scheduleAutosave() {
 				await saveConfig();
 				saveStatus.value = 'saved';
 				telemetry.track('User saved agent settings', { agent_id: agentId.value });
-			} catch {
+			} catch (error) {
 				saveStatus.value = 'idle';
+				showError(error, locale.baseText('agents.builder.saveError'));
 			} finally {
 				autosaveInFlight = null;
 			}

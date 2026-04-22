@@ -23,6 +23,11 @@ describe('buildFromJson()', () => {
 		executeTool: jest.fn().mockResolvedValue({ result: 'tool result' }),
 	});
 
+	const makeMockCredentialProvider = () => ({
+		resolve: jest.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+		list: jest.fn().mockResolvedValue([]),
+	});
+
 	const makeToolDescriptor = (overrides: Partial<ToolDescriptor> = {}): ToolDescriptor => ({
 		name: 'search',
 		description: 'Search the web',
@@ -38,12 +43,13 @@ describe('buildFromJson()', () => {
 
 	const makeMockMemoryFactory = () => jest.fn();
 
-	it('sets name, model, credential, and instructions', async () => {
+	it('sets name, model, and instructions', async () => {
 		const agent = await buildFromJson(
 			makeConfig(),
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
@@ -52,15 +58,36 @@ describe('buildFromJson()', () => {
 		expect(snap.name).toBe('test-agent');
 		expect(snap.model.provider).toBe('anthropic');
 		expect(snap.model.name).toBe('claude-sonnet-4-5');
-		expect(snap.credential).toBe('my-anthropic-key');
 		expect(snap.instructions).toBe('You are a test agent.');
+	});
+
+	it('handles multi-slash model string for aggregator providers', async () => {
+		const agent = await buildFromJson(
+			makeConfig({ model: 'openrouter/amazon/nova-micro-v1' }),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const snap: AgentSnapshot = agent.snapshot;
+		// Provider is always everything before the FIRST slash.
+		expect(snap.model.provider).toBe('openrouter');
+		// Model name is everything after the first slash, including any further slashes.
+		expect(snap.model.name).toBe('amazon/nova-micro-v1');
 	});
 
 	it('handles single-part model string (no slash)', async () => {
 		const agent = await buildFromJson(
 			makeConfig({ model: 'claude-sonnet-4-5' }),
 			{},
-			{ toolExecutor: makeMockToolExecutor(), memoryFactory: makeMockMemoryFactory() },
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
 		);
 
 		const snap: AgentSnapshot = agent.snapshot;
@@ -77,6 +104,7 @@ describe('buildFromJson()', () => {
 			{ search_tool: descriptor },
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
@@ -93,6 +121,7 @@ describe('buildFromJson()', () => {
 				{},
 				{
 					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
 					memoryFactory: makeMockMemoryFactory(),
 				},
 			),
@@ -116,6 +145,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 				resolveTool,
 			},
@@ -144,6 +174,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 				resolveTool,
 			},
@@ -180,6 +211,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 				resolveTool,
 			},
@@ -207,6 +239,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 				resolveTool,
 			},
@@ -225,6 +258,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
@@ -242,6 +276,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
@@ -259,6 +294,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
@@ -274,6 +310,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
@@ -306,6 +343,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory,
 			},
 		);
@@ -324,6 +362,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory,
 			},
 		);
@@ -352,6 +391,57 @@ describe('AgentJsonConfigSchema', () => {
 		const config = {
 			name: 'test',
 			model: 'invalid-no-slash',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('accepts multi-slash model format for aggregator providers', () => {
+		const config = {
+			name: 'test',
+			model: 'openrouter/amazon/nova-micro-v1',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
+	});
+
+	it('accepts deeply-nested model format', () => {
+		const config = {
+			name: 'test',
+			model: 'openrouter/openai/gpt-4o',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		const parsed = AgentJsonConfigSchema.parse(config);
+		expect(parsed.model).toBe('openrouter/openai/gpt-4o');
+	});
+
+	it('rejects model with consecutive slashes', () => {
+		const config = {
+			name: 'test',
+			model: 'openrouter//nova-micro-v1',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('rejects model with trailing slash', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5/',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('rejects model with leading slash in model segment', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic//claude-sonnet-4-5',
 			credential: 'my-key',
 			instructions: 'Be helpful.',
 		};
