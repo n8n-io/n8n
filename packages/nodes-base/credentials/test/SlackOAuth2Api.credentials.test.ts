@@ -1,32 +1,7 @@
-import { SlackOAuth2Api } from '../SlackOAuth2Api.credentials';
+import { SlackOAuth2Api, userScopes } from '../SlackOAuth2Api.credentials';
 
 describe('SlackOAuth2Api Credential', () => {
 	const credential = new SlackOAuth2Api();
-
-	const defaultUserScopes = [
-		'channels:read',
-		'channels:write',
-		'channels:history',
-		'chat:write',
-		'files:read',
-		'files:write',
-		'groups:read',
-		'groups:history',
-		'im:read',
-		'im:history',
-		'mpim:read',
-		'mpim:history',
-		'reactions:read',
-		'reactions:write',
-		'stars:read',
-		'stars:write',
-		'usergroups:write',
-		'usergroups:read',
-		'users.profile:read',
-		'users.profile:write',
-		'users:read',
-		'search:read',
-	];
 
 	it('should have correct credential metadata', () => {
 		expect(credential.name).toBe('slackOAuth2Api');
@@ -53,7 +28,7 @@ describe('SlackOAuth2Api Credential', () => {
 
 	it('should have userScope defaulting to the full default scope list', () => {
 		const userScopeProperty = credential.properties.find((p) => p.name === 'userScope');
-		expect(userScopeProperty?.default).toBe(defaultUserScopes.join(' '));
+		expect(userScopeProperty?.default).toBe(userScopes.join(' '));
 	});
 
 	it('should use userScope in authQueryParameters when customScopes is true, otherwise use defaults', () => {
@@ -61,7 +36,7 @@ describe('SlackOAuth2Api Credential', () => {
 			(p) => p.name === 'authQueryParameters',
 		);
 		expect(authQueryParamsProperty?.default).toBe(
-			`={{$self["customScopes"] ? "user_scope=" + $self["userScope"] : "user_scope=${defaultUserScopes.join(' ')}"}}`,
+			`={{$self["customScopes"] ? "user_scope=" + $self["userScope"] : "user_scope=${userScopes.join(' ')}"}}`,
 		);
 	});
 });

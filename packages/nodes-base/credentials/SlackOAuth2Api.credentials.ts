@@ -1,7 +1,7 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 //https://api.slack.com/authentication/oauth-v2
-const userScopes = [
+export const userScopes = [
 	'channels:read',
 	'channels:write',
 	'channels:history',
@@ -65,7 +65,7 @@ export class SlackOAuth2Api implements ICredentialType {
 			name: 'customScopes',
 			type: 'boolean',
 			default: false,
-			description: 'Define custom OAuth2 scopes instead of using the defaults',
+			description: 'Define custom scopes',
 		},
 		{
 			displayName:
