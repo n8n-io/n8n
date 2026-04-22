@@ -1067,3 +1067,54 @@ export interface InstanceAiEvalSubAgentResponse {
 	stopReason?: string;
 	error?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Evals proposal schemas (suspend/resume for `evals(action="propose")`)
+// ---------------------------------------------------------------------------
+
+export const instanceAiEvalMetricKindSchema = z.enum(['llm-judge', 'exact-match', 'contains']);
+export type InstanceAiEvalMetricKind = z.infer<typeof instanceAiEvalMetricKindSchema>;
+
+export const instanceAiEvalMetricProposalSchema = z.object({
+	id: z.string().describe('Stable slug used as key in the resume payload.'),
+	name: z.string(),
+	kind: instanceAiEvalMetricKindSchema,
+	description: z.string(),
+	prompt: z.string().optional().describe('Only set for kind="llm-judge".'),
+	cannedMetricKey: z
+		.string()
+		.optional()
+		.describe('Set when this metric reuses a canned prompt from the Evaluation node.'),
+	defaultEnabled: z.boolean(),
+});
+export type InstanceAiEvalMetricProposal = z.infer<typeof instanceAiEvalMetricProposalSchema>;
+
+export const instanceAiEvalsProposeSuspendSchema = z.object({
+	requestId: z.string(),
+	message: z.string(),
+	severity: instanceAiConfirmationSeveritySchema,
+	workflowId: z.string(),
+	projectId: z.string().optional(),
+	detectedAiNodes: z.array(z.string()),
+	proposedGraphSummary: z.object({
+		evalTriggerName: z.string(),
+		setOutputsNodeName: z.string(),
+		setMetricsNodeName: z.string(),
+	}),
+	datasetOptions: z.object({
+		suggestedColumns: z.object({
+			input: z.array(z.string()),
+			output: z.array(z.string()),
+		}),
+	}),
+	suggestedMetrics: z.array(instanceAiEvalMetricProposalSchema),
+});
+export type InstanceAiEvalsProposeSuspend = z.infer<typeof instanceAiEvalsProposeSuspendSchema>;
+
+export const instanceAiEvalsProposeResumeSchema = z.object({
+	approved: z.boolean(),
+	datasetChoice: z.enum(['generate', 'link-existing', 'later']).optional(),
+	existingDataTableId: z.string().optional(),
+	enabledMetricIds: z.array(z.string()).optional(),
+});
+export type InstanceAiEvalsProposeResume = z.infer<typeof instanceAiEvalsProposeResumeSchema>;
