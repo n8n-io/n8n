@@ -289,10 +289,13 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	async function initializeWorkspaceForExistingWorkflow(id: string) {
+		let didOpenWorkflow = false;
+
 		try {
 			const workflowData = await workflowsListStore.fetchWorkflow(id);
 
 			await openWorkflow(workflowData);
+			didOpenWorkflow = true;
 
 			// Track telemetry for onboarding and experiment workflows
 			if (workflowData.meta?.onboardingId) {
@@ -334,12 +337,11 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			}
 
 			toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
-			void router.push({
-				name: VIEWS.NEW_WORKFLOW,
-			});
 		} finally {
 			uiStore.nodeViewInitialized = true;
-			initializedWorkflowId.value = workflowId.value;
+			if (didOpenWorkflow) {
+				initializedWorkflowId.value = workflowId.value;
+			}
 		}
 	}
 
