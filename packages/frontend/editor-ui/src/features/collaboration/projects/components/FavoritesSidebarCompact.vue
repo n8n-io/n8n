@@ -146,6 +146,7 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 	&:hover a[role='menuitem'] {
 		background-color: var(--color--background--light-1);
 		color: var(--color--text--shade-1);
+		padding-right: var(--spacing--lg);
 	}
 }
 
