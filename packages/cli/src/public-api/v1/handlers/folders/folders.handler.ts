@@ -11,8 +11,8 @@ import { FolderService } from '@/services/folder.service';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
-	resolveProjectId,
 } from '../../shared/middlewares/global.middleware';
+import { resolveProjectId } from '../../shared/services/utils.service';
 
 export = {
 	createFolder: [

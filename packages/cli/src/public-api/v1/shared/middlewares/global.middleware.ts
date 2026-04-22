@@ -1,16 +1,14 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 import type { BooleanLicenseFeature } from '@n8n/constants';
-import { type AuthenticatedRequest, ProjectRepository, type User } from '@n8n/db';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectService } from '@/services/project.service.ee';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
@@ -157,19 +155,3 @@ export const isLicensed = (feature: BooleanLicenseFeature) => {
 		return res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
 	};
 };
-
-export async function resolveProjectId(
-	user: User,
-	projectId: string,
-	scopes: Scope[],
-): Promise<string> {
-	const exists = await Container.get(ProjectRepository).findOneBy({ id: projectId });
-	if (!exists) {
-		throw new NotFoundError(`Project with ID "${projectId}" not found`);
-	}
-
-	const project = await Container.get(ProjectService).getProjectWithScope(user, projectId, scopes);
-	if (!project) throw new ForbiddenError();
-
-	return project.id;
-}
