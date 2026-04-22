@@ -213,10 +213,17 @@ export async function fetchExecutionData(
 			return;
 		}
 
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(executionResponse.workflowId),
+		);
+
 		return {
 			id: executionId,
 			workflowId: executionResponse.workflowId,
-			workflowData: workflowsStore.workflow,
+			workflowData: {
+				...workflowsStore.workflow,
+				pinData: workflowDocumentStore.getPinDataSnapshot(),
+			},
 			data: executionResponse.data,
 			status: executionResponse.status,
 			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,

@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import {
 	continueEvaluationLoop,
 	executionFinished,
+	fetchExecutionData,
 	getRunExecutionData,
 	handleExecutionFinishedWithSuccessOrOther,
 	handleExecutionFinishedWithErrorOrCanceled,
@@ -19,6 +20,10 @@ import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -235,6 +240,40 @@ describe('getRunExecutionData()', () => {
 		const result = getRunExecutionData(execution);
 
 		expect(result.pushRef).toBeUndefined();
+	});
+});
+
+describe('fetchExecutionData()', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	it('prefers current document pin data over stale workflow store pin data', async () => {
+		const workflowsStore = useWorkflowsStore();
+		const workflowId = '1';
+		const stalePinData = { Trigger: [{ json: { value: 'old' } }] };
+		const currentPinData = { Trigger: [{ json: { value: 'new' } }] };
+
+		workflowsStore.workflow.id = workflowId;
+		workflowsStore.workflow.pinData = stalePinData;
+		workflowsStore.workflowExecutionData = { startedAt: new Date() } as IExecutionResponse;
+
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		workflowDocumentStore.setPinData(currentPinData);
+
+		vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue({
+			workflowId,
+			status: 'success',
+			data: {
+				resultData: {
+					runData: {},
+				},
+			},
+		} as IExecutionResponse);
+
+		const execution = await fetchExecutionData('exec-1');
+
+		expect(execution?.workflowData.pinData).toEqual(currentPinData);
 	});
 });
 
