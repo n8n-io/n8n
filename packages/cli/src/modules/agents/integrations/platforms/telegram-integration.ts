@@ -30,6 +30,8 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly needsShortCallbackData = true;
 
+	readonly disableStreaming = true;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,

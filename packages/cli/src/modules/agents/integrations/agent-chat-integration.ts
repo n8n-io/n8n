@@ -40,6 +40,17 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly needsShortCallbackData: boolean = false;
 
+	/**
+	 * True if the bridge should buffer streaming output and post it as a single
+	 * message instead of streaming text deltas via post-and-edit.
+	 *
+	 * Telegram sets this to true because the Bot API rate-limits `editMessageText`
+	 * per chat (≈1 req/s per chat, 30 req/s per bot) — streaming token-by-token
+	 * blows through the quota and produces visible edit flicker. Slack and other
+	 * platforms that handle streaming edits cleanly leave this false.
+	 */
+	readonly disableStreaming: boolean = false;
+
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
 
