@@ -576,6 +576,23 @@ describe('SettingsSso View', () => {
 		});
 	});
 
+	describe('Env-managed readonly mode', () => {
+		it('should hide save button but keep test button when SAML is managed by env', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.ssoManagedByEnv = true;
+
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(queryByTestId('sso-save')).not.toBeInTheDocument();
+				expect(queryByTestId('sso-test')).toBeInTheDocument();
+			});
+		});
+	});
+
 	describe('Protocol Selection Persistence', () => {
 		it('should not persist protocol selection to store until save is clicked', async () => {
 			ssoStore.isEnterpriseSamlEnabled = true;

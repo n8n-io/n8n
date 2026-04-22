@@ -62,6 +62,44 @@ describe('Git Node', () => {
 	});
 
 	describe('Branch switching', () => {
+		const mockNodeParameters = (params: Record<string, unknown>) => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(name: string, _itemIndex: number, fallbackValue?: unknown) =>
+					(name in params ? params[name] : fallbackValue) as any,
+			);
+		};
+
+		it('should reject commit operation when branch starts with hyphen', async () => {
+			mockNodeParameters({
+				operation: 'commit',
+				repositoryPath: '/repo',
+				options: { branch: '-main' },
+				message: 'test commit',
+			});
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Reference cannot start with a hyphen',
+			);
+
+			expect(mockGit.checkout).not.toHaveBeenCalled();
+			expect(mockGit.commit).not.toHaveBeenCalled();
+		});
+
+		it('should reject push operation when branch starts with hyphen', async () => {
+			mockNodeParameters({
+				operation: 'push',
+				repositoryPath: '/repo',
+				options: { branch: '--pathspec-from-file' },
+			});
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Reference cannot start with a hyphen',
+			);
+
+			expect(mockGit.checkout).not.toHaveBeenCalled();
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
 		it('should switch to existing branch for commit operation', async () => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('commit')
@@ -363,6 +401,21 @@ describe('Git Node', () => {
 
 			expect(mockGit.checkout).not.toHaveBeenCalled();
 			expect(mockGit.commit).toHaveBeenCalledWith('test commit');
+		});
+
+		it('should reject switchBranch operation when branchName starts with hyphen', async () => {
+			mockNodeParameters({
+				operation: 'switchBranch',
+				repositoryPath: '/repo',
+				options: {},
+				branchName: '-main',
+			});
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Reference cannot start with a hyphen',
+			);
+
+			expect(mockGit.checkout).not.toHaveBeenCalled();
 		});
 	});
 
