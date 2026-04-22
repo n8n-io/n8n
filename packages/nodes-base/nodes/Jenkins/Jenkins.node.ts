@@ -457,7 +457,10 @@ export class Jenkins implements INodeType {
 				const allParameters = [...(result.actions ?? []), ...(result.property ?? [])];
 				const seenParameterNames = new Set<string>();
 				for (const { _class, parameterDefinitions } of allParameters) {
-					if (!_class?.includes('ParametersDefinitionProperty')) {
+					if (
+						!_class?.includes('ParametersDefinitionProperty') ||
+						!Array.isArray(parameterDefinitions)
+					) {
 						continue;
 					}
 
