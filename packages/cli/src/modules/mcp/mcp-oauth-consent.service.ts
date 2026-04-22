@@ -83,11 +83,14 @@ export class McpOAuthConsentService {
 			return { redirectUrl };
 		}
 
-		await this.userConsentRepository.insert({
-			userId,
-			clientId: sessionPayload.clientId,
-			grantedAt: Date.now(),
-		});
+		await this.userConsentRepository.upsert(
+			{
+				userId,
+				clientId: sessionPayload.clientId,
+				grantedAt: Date.now(),
+			},
+			['userId', 'clientId'],
+		);
 
 		const code = await this.authorizationCodeService.createAuthorizationCode(
 			sessionPayload.clientId,

@@ -24,7 +24,7 @@ import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-wor
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { nextTick } from 'vue';
+import { nextTick, reactive } from 'vue';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
@@ -906,6 +906,208 @@ describe('ParameterInput.vue', () => {
 			}
 
 			expect(mockBuilderState.trackWorkflowBuilderJourney).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('credential change resets options value', () => {
+		test('should reset options value when credentials change', async () => {
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
+				{ name: 'GPT-4', value: 'gpt-4' },
+				{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' },
+			]);
+
+			const activeNode = reactive({
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: { model: 'gpt-3.5-turbo' },
+				position: [0, 0] as [number, number],
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				credentials: {
+					openAiApi: { id: '1', name: 'OpenAI Account 1' },
+				},
+			});
+
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode,
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					path: 'model',
+					parameter: createTestNodeProperties({
+						displayName: 'Model',
+						name: 'model',
+						type: 'options',
+						default: 'gpt-4',
+						typeOptions: { loadOptionsMethod: 'getModels' },
+					}),
+					modelValue: 'gpt-3.5-turbo',
+				},
+			});
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
+			});
+
+			// Change credentials — the previously selected model should be reset to the default
+			activeNode.credentials = {
+				openAiApi: { id: '2', name: 'OpenAI Account 2' },
+			};
+			await nextTick();
+
+			await waitFor(() => {
+				expect(emitted('update')).toContainEqual([
+					expect.objectContaining({ name: 'model', value: 'gpt-4' }),
+				]);
+			});
+		});
+
+		test('should not reset non-options parameter when credentials change', async () => {
+			const activeNode = reactive({
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: { temperature: 0.9 },
+				position: [0, 0] as [number, number],
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				credentials: {
+					openAiApi: { id: '1', name: 'OpenAI Account 1' },
+				},
+			});
+
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => []);
+
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode,
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					path: 'temperature',
+					parameter: createTestNodeProperties({
+						displayName: 'Temperature',
+						name: 'temperature',
+						type: 'number',
+						default: 0.7,
+						typeOptions: { loadOptionsMethod: 'getTemperature' },
+					}),
+					modelValue: 0.9,
+				},
+			});
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
+			});
+
+			activeNode.credentials = {
+				openAiApi: { id: '2', name: 'OpenAI Account 2' },
+			};
+			await nextTick();
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(2);
+			});
+
+			const updates = emitted('update') ?? [];
+			expect(updates).not.toContainEqual([expect.objectContaining({ name: 'temperature' })]);
+		});
+
+		test('should not reset options value on initial load', async () => {
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
+				{ name: 'GPT-4', value: 'gpt-4' },
+			]);
+
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode: reactive({
+					id: faker.string.uuid(),
+					name: 'Test Node',
+					parameters: { model: 'gpt-4' },
+					position: [0, 0] as [number, number],
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					credentials: {
+						openAiApi: { id: '1', name: 'OpenAI Account 1' },
+					},
+				}),
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					path: 'model',
+					parameter: createTestNodeProperties({
+						displayName: 'Model',
+						name: 'model',
+						type: 'options',
+						default: 'gpt-4',
+						typeOptions: { loadOptionsMethod: 'getModels' },
+					}),
+					modelValue: 'gpt-4',
+				},
+			});
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
+			});
+
+			expect(emitted('update')).toBeUndefined();
+		});
+
+		test('should not reset options value on first credential assignment', async () => {
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
+				{ name: 'GPT-4', value: 'gpt-4' },
+				{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' },
+			]);
+
+			const activeNode = reactive({
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: { model: 'gpt-3.5-turbo' },
+				position: [0, 0] as [number, number],
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				credentials: {} as Record<string, { id: string; name: string }>,
+			});
+
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode,
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					path: 'model',
+					parameter: createTestNodeProperties({
+						displayName: 'Model',
+						name: 'model',
+						type: 'options',
+						default: 'gpt-4',
+						typeOptions: { loadOptionsMethod: 'getModels' },
+					}),
+					modelValue: 'gpt-3.5-turbo',
+				},
+			});
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
+			});
+
+			// Assign credentials for the first time (from empty to having credentials)
+			activeNode.credentials = {
+				openAiApi: { id: '1', name: 'OpenAI Account 1' },
+			};
+			await nextTick();
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(2);
+			});
+
+			// Should NOT reset the value since this is first credential assignment, not a change
+			const updates = emitted('update') ?? [];
+			expect(updates).not.toContainEqual([expect.objectContaining({ name: 'model' })]);
 		});
 	});
 

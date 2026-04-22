@@ -43,6 +43,7 @@ import {
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -819,6 +820,37 @@ export class CredentialsService {
 		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
 	}
 
+	async testById(userId: User['id'], credentialId: string) {
+		const storedCredential = await this.credentialsFinderService.findCredentialById(credentialId);
+
+		if (!storedCredential) {
+			throw new CredentialNotFoundError(credentialId);
+		}
+
+		const credentials = await this.prepareCredentialsForTest({ storedCredential });
+		return await this.test(userId, credentials);
+	}
+
+	async testWithCredentials(user: User, credentials: ICredentialsDecrypted) {
+		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+			credentials.id,
+			user,
+			['credential:read'],
+		);
+
+		if (!storedCredential) {
+			throw new CredentialNotFoundError(credentials.id);
+		}
+
+		const mergedCredentials = await this.prepareCredentialsForTest({
+			storedCredential,
+			user,
+			credentialsToTest: credentials,
+		});
+
+		return await this.test(user.id, mergedCredentials);
+	}
+
 	// Take data and replace all sensitive values with a sentinel value.
 	// This will replace password fields and oauth data.
 	redact(data: ICredentialDataDecryptedObject, credential: CredentialsEntity) {
@@ -1285,5 +1317,52 @@ export class CredentialsService {
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
 		return { ...credential, scopes };
+	}
+
+	/**
+	 * Build credentials payload ready to pass to credential testing.
+	 *
+	 * - If `credentialsToTest` is not provided, uses stored decrypted credential data.
+	 * - If `credentialsToTest` is provided, normalizes it for testing:
+	 *   - fills payload data for sharees when needed
+	 *   - restores redacted values from stored decrypted data
+	 */
+	private async prepareCredentialsForTest({
+		storedCredential,
+		user,
+		credentialsToTest,
+	}: {
+		storedCredential: CredentialsEntity;
+		user?: User;
+		credentialsToTest?: ICredentialsDecrypted;
+	}): Promise<ICredentialsDecrypted> {
+		const decryptedData = this.decrypt(storedCredential, true);
+		const mergedCredentials: ICredentialsDecrypted = credentialsToTest
+			? deepCopy(credentialsToTest)
+			: {
+					id: storedCredential.id,
+					name: storedCredential.name,
+					type: storedCredential.type,
+					data: decryptedData,
+				};
+
+		if (user && credentialsToTest) {
+			await this.replaceCredentialContentsForSharee(
+				user,
+				storedCredential,
+				decryptedData,
+				mergedCredentials,
+			);
+
+			if (mergedCredentials.data) {
+				mergedCredentials.data = this.unredact(
+					mergedCredentials.data,
+					decryptedData,
+					this.getCredentialTypeProperties(storedCredential.type),
+				);
+			}
+		}
+
+		return mergedCredentials;
 	}
 }
