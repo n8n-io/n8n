@@ -4,7 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, deepCopy, sanitizeXmlName } from 'n8n-workflow';
 import { Builder, Parser } from 'xml2js';
 
 export class Xml implements INodeType {
@@ -249,6 +249,10 @@ export class Xml implements INodeType {
 							explicitArray: false,
 						},
 						options,
+						{
+							tagNameProcessors: [sanitizeXmlName],
+							attrNameProcessors: [sanitizeXmlName],
+						},
 					);
 
 					const parser = new Parser(parserOptions);

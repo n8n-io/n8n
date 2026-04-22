@@ -28,7 +28,7 @@ import {
 } from './descriptions';
 import { Container } from '@n8n/di';
 import { DeploymentConfig, SecurityConfig } from '@n8n/config';
-import { mapGitConfigList } from './GenericFunctions';
+import { mapGitConfigList, validateGitReference } from './GenericFunctions';
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -253,6 +253,9 @@ export class Git implements INodeType {
 				setUpstream = false,
 				remoteName = 'origin',
 			} = options;
+
+			validateGitReference(branchName, this.getNode());
+
 			try {
 				if (force) {
 					await git.checkout(['-f', branchName]);

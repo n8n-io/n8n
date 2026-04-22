@@ -1,3 +1,11 @@
+## [1.123.32](https://github.com/n8n-io/n8n/compare/n8n@1.123.31...n8n@1.123.32) (2026-04-22)
+
+
+### Bug Fixes
+
+* **core:** Preserve NODE_PATH for globally installed npm packages in Docker ([#28781](https://github.com/n8n-io/n8n/issues/28781)) ([a6b3e81](https://github.com/n8n-io/n8n/commit/a6b3e819bb7036e0ef8df36e1ea9461e5738c905))
+
+
 ## [1.123.31](https://github.com/n8n-io/n8n/compare/n8n@1.123.30...n8n@1.123.31) (2026-04-15)
 
 

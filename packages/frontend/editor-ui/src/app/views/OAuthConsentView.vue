@@ -48,8 +48,8 @@ const handleAllow = async () => {
 
 const handleDeny = async () => {
 	try {
-		const response = await consentStore.approveConsent(false);
-		window.location.href = response.redirectUrl;
+		await consentStore.approveConsent(false);
+		window.location.href = window.BASE_PATH ?? '/';
 	} catch (err) {
 		toast.showError(err, i18n.baseText('oauth.consentView.error.deny'));
 	}

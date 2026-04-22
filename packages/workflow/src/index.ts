@@ -52,6 +52,7 @@ export {
 	isDomainAllowed,
 	isCommunityPackageName,
 	sanitizeFilename,
+	sanitizeXmlName,
 } from './utils';
 export {
 	isINodeProperties,
