@@ -14,8 +14,8 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'googleGemini',
 	icon: 'file:gemini.svg',
 	group: ['transform'],
-	version: [1, 1.1],
-	defaultVersion: 1.1,
+	version: [1, 1.1, 1.2],
+	defaultVersion: 1.2,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 	description: 'Interact with Google Gemini AI models',
 	defaults: {
