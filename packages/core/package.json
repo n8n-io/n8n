@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "2.17.0",
+  "version": "2.18.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -37,7 +37,11 @@
     "@types/mime-types": "catalog:",
     "@types/proxy-from-env": "^1.0.4",
     "@types/uuid": "catalog:",
-    "@types/xml2js": "catalog:"
+    "@types/xml2js": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.808.0",
@@ -78,7 +82,6 @@
     "ssh2": "1.15.0",
     "uuid": "catalog:",
     "winston": "3.14.2",
-    "xml2js": "catalog:",
-    "zod": "catalog:"
+    "xml2js": "catalog:"
   }
 }

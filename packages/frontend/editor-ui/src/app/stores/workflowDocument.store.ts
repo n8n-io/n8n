@@ -23,8 +23,11 @@ import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDo
 import { useWorkflowDocumentGraph } from './workflowDocument/useWorkflowDocumentGraph';
 import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDocumentExpression';
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
+import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { WorkflowObjectAccessors } from '../types';
+import type { IPinData } from 'n8n-workflow';
 
 export {
 	getPinDataSize,
@@ -65,6 +68,7 @@ type ExpressionReturn = ReturnType<typeof useWorkflowDocumentExpression>;
 type MetaReturn = ReturnType<typeof useWorkflowDocumentMeta>;
 type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
+type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -81,6 +85,12 @@ void (0 as unknown as [
 	AssertNoOverlap<MetaReturn, ConnectionsReturn>,
 	AssertNoOverlap<PinDataReturn, NodesReturn>,
 	AssertNoOverlap<SettingsReturn, NodesReturn>,
+	AssertNoOverlap<NodeMetadataReturn, NodesReturn>,
+	AssertNoOverlap<NodeMetadataReturn, ConnectionsReturn>,
+	AssertNoOverlap<NodeMetadataReturn, GraphReturn>,
+	AssertNoOverlap<NodeMetadataReturn, PinDataReturn>,
+	AssertNoOverlap<NodeMetadataReturn, MetaReturn>,
+	AssertNoOverlap<NodeMetadataReturn, SettingsReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -131,8 +141,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentVersionData = useWorkflowDocumentVersionData();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
 		const nodeTypesStore = useNodeTypesStore();
+		const workflowDocumentNodeMetadata = useWorkflowDocumentNodeMetadata();
 		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
+			nodeMetadata: workflowDocumentNodeMetadata,
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
@@ -155,6 +167,21 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentNodes.removeAllNodes();
 			workflowDocumentConnections.removeAllConnections();
 			workflowDocumentPinData.setPinData({});
+		}
+
+		function getSnapshot(): WorkflowObjectAccessors {
+			return {
+				id: workflowId,
+				connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode.value,
+				pinData: workflowDocumentPinData.pinData.value as IPinData,
+				expression: workflowDocumentExpression.getExpressionHandler(),
+				getNode: workflowDocumentNodes.getNodeByName,
+				getParentNodes: workflowDocumentGraph.getParentNodes,
+				getNodeConnectionIndexes: workflowDocumentGraph.getNodeConnectionIndexes,
+				getParentMainInputNode: workflowDocumentGraph.getParentMainInputNode,
+				getChildNodes: workflowDocumentGraph.getChildNodes,
+				getParentNodesByDepth: workflowDocumentGraph.getParentNodesByDepth,
+			};
 		}
 
 		return {
@@ -181,7 +208,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentConnections,
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
+			...workflowDocumentNodeMetadata,
 			removeAllNodes,
+			getSnapshot,
 		};
 	})();
 }

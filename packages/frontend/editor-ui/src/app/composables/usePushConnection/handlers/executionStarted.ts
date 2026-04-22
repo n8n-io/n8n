@@ -1,5 +1,9 @@
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
@@ -35,6 +39,9 @@ export async function executionStarted(
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
 	if (!workflowsStore.workflowExecutionData?.data || needsInit) {
 		const wf = workflowsStore.workflow;
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
 		options.workflowState.setWorkflowExecutionData({
 			id: data.executionId,
 			finished: false,
@@ -44,7 +51,7 @@ export async function executionStarted(
 			startedAt: new Date(),
 			workflowData: {
 				id: wf.id,
-				name: wf.name,
+				name: workflowDocumentStore?.name ?? '',
 				active: wf.active,
 				isArchived: wf.isArchived,
 				nodes: wf.nodes,

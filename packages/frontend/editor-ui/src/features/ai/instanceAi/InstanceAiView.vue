@@ -73,7 +73,7 @@ function goToSettings() {
 	void router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
 }
 
-documentTitle.set('n8n Agent');
+documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
 // --- Execution tracking via push events ---
 const executionTracking = useExecutionPushEvents();
@@ -116,7 +116,7 @@ watch(
 	},
 );
 const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
-const showEmptyStateLayout = computed(() => !store.hasMessages && !store.isHydratingThread);
+const showEmptyStateLayout = computed(() => !props.threadId);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
@@ -746,9 +746,9 @@ function handleStop() {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
 	gap: var(--spacing--lg);
 	padding: var(--spacing--lg);
+	padding-top: 20vh;
 }
 
 .centeredInput {

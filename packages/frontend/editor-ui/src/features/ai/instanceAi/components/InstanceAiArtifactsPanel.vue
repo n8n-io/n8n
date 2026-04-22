@@ -55,7 +55,7 @@ const statusIconMap: Record<
 // --- Artifacts ---
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
-	for (const entry of store.resourceRegistry.values()) {
+	for (const entry of store.producedArtifacts.values()) {
 		if (entry.type === 'workflow' || entry.type === 'data-table') {
 			result.push(entry);
 		}
