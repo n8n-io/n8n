@@ -2,7 +2,6 @@ export const CHANGE_ACTION = {
 	ADD: 'add',
 	UPDATE: 'update',
 	DELETE: 'delete',
-	SET: 'set',
 } as const;
 
 export type ChangeAction = (typeof CHANGE_ACTION)[keyof typeof CHANGE_ACTION];

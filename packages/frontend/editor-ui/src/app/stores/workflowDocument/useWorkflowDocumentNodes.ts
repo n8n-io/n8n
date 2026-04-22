@@ -29,14 +29,12 @@ import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeM
 export type NodeAddedPayload = { node: INodeUi };
 export type NodeRemovedPayload = { name: string; id: string };
 export type NodeUpdatedPayload = { name: string };
-export type NodesSetPayload = { nodes: INodeUi[] };
 export type NodesResetPayload = Record<string, never>;
 
 export type NodesChangeEvent =
 	| ChangeEvent<NodeAddedPayload>
 	| ChangeEvent<NodeRemovedPayload>
 	| ChangeEvent<NodeUpdatedPayload>
-	| ChangeEvent<NodesSetPayload>
 	| ChangeEvent<NodesResetPayload>;
 
 // --- Deps ---
@@ -113,10 +111,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		for (const node of nodes) {
 			deps.nodeMetadata.initPristineNodeMetadata(node.name);
 		}
-		void onNodesChange.trigger({
-			action: CHANGE_ACTION.SET,
-			payload: { nodes },
-		});
 	}
 
 	function applyAddNode(node: INodeUi) {
@@ -152,8 +146,21 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function applyRemoveNodeById(id: string) {
 		const node = workflowsStore.getNodeById(id);
-		if (!node) return;
-		applyRemoveNode(node);
+		const idx = workflowsStore.workflow.nodes.findIndex((n) => n.id === id);
+		if (idx !== -1) {
+			workflowsStore.workflow.nodes = [
+				...workflowsStore.workflow.nodes.slice(0, idx),
+				...workflowsStore.workflow.nodes.slice(idx + 1),
+			];
+		}
+		if (node) {
+			deps.nodeMetadata.removeNodeMetadata(node.name);
+		}
+		void onNodesChange.trigger({
+			action: CHANGE_ACTION.DELETE,
+			payload: { name: node?.name ?? '', id },
+		});
+		void onStateDirty.trigger();
 	}
 
 	// -----------------------------------------------------------------------

@@ -11,15 +11,17 @@ import type { ChangeEvent } from './types';
 export type ConnectionAddedPayload = { connection: IConnection[] };
 export type ConnectionRemovedPayload = { connection: IConnection[] };
 export type AllNodeConnectionsRemovedPayload = { nodeName: string };
-export type ConnectionsSetPayload = { connections: IConnections };
-export type ConnectionsResetPayload = Record<string, never>;
 
 export type ConnectionsChangeEvent =
 	| ChangeEvent<ConnectionAddedPayload>
 	| ChangeEvent<ConnectionRemovedPayload>
-	| ChangeEvent<AllNodeConnectionsRemovedPayload>
-	| ChangeEvent<ConnectionsSetPayload>
-	| ChangeEvent<ConnectionsResetPayload>;
+	| ChangeEvent<AllNodeConnectionsRemovedPayload>;
+
+// --- Deps ---
+
+export interface WorkflowDocumentConnectionsDeps {
+	getNodeById: (id: string) => INodeUi | undefined;
+}
 
 // --- Composable ---
 
@@ -27,7 +29,7 @@ export type ConnectionsChangeEvent =
 // The long-term goal is to remove workflowsStore entirely — connections will become
 // private state owned by workflowDocumentStore. Once that happens, the direct import
 // (and the import-cycle warning it causes) will go away.
-export function useWorkflowDocumentConnections(getNodeById: (id: string) => INodeUi | undefined) {
+export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnectionsDeps) {
 	const workflowsStore = useWorkflowsStore();
 
 	const onConnectionsChange = createEventHook<ConnectionsChangeEvent>();
@@ -40,10 +42,6 @@ export function useWorkflowDocumentConnections(getNodeById: (id: string) => INod
 
 	function applySetConnections(value: IConnections) {
 		workflowsStore.workflow.connections = value;
-		void onConnectionsChange.trigger({
-			action: CHANGE_ACTION.SET,
-			payload: { connections: value },
-		});
 	}
 
 	function applyAddConnection(data: { connection: IConnection[] }) {
@@ -178,10 +176,6 @@ export function useWorkflowDocumentConnections(getNodeById: (id: string) => INod
 
 	function applyRemoveAllConnections() {
 		workflowsStore.workflow.connections = {};
-		void onConnectionsChange.trigger({
-			action: CHANGE_ACTION.DELETE,
-			payload: {} as ConnectionsResetPayload,
-		});
 	}
 
 	// -----------------------------------------------------------------------
@@ -240,7 +234,7 @@ export function useWorkflowDocumentConnections(getNodeById: (id: string) => INod
 	}
 
 	function removeNodeConnectionsById(nodeId: string): void {
-		const node = getNodeById(nodeId);
+		const node = deps.getNodeById(nodeId);
 		if (!node) return;
 		applyRemoveAllNodeConnection(node);
 	}

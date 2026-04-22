@@ -165,7 +165,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
-			useWorkflowDocumentConnections((id) => workflowDocumentNodes.getNodeById(id));
+			useWorkflowDocumentConnections({
+				getNodeById: (id) => workflowDocumentNodes.getNodeById(id),
+			});
 		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
 		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
 
