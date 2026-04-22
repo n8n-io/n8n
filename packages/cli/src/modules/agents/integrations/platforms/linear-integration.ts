@@ -9,17 +9,12 @@ type LinearAuth = { kind: 'apiKey'; token: string } | { kind: 'accessToken'; tok
 /**
  * Linear platform integration.
  *
- * Linear issues are the threads and issue comments are the messages. The
- * Vercel Chat SDK's Linear adapter renders `rich_interaction` cards into
- * issue-comment markdown — images become markdown images, and sections,
- * dividers, and fields are preserved.
- *
- * Linear has no interactive UI surface for bot comments: action buttons
- * would render as bold markdown text that the user can't click, and selects
- * aren't rendered at all. We therefore omit `button`, `select`, and
- * `radio_select` from `supportedComponents` — the agent won't generate
- * controls the user cannot respond to, so rich_interaction always posts
- * and returns instead of suspending on a dead-end card.
+ * Linear issues are the threads and issue comments are the messages. Linear
+ * comments have no interactive UI surface (buttons render as non-clickable
+ * bold markdown, selects aren't rendered at all), so this integration omits
+ * `supportedComponents` entirely — `AgentsService` reads the absence as
+ * "skip the rich_interaction tool for this platform" and the agent responds
+ * with normal markdown replies instead of offering dead-end cards.
  *
  * Mention detection in the Chat SDK is a literal string match on
  * `@<adapter.userName>` in the comment body. The adapter defaults `userName` to
@@ -32,14 +27,6 @@ export class LinearIntegration extends AgentChatIntegration {
 	readonly type = 'linear';
 
 	readonly credentialTypes = ['linearApi', 'linearOAuth2Api'];
-
-	readonly supportedComponents = ['section', 'divider', 'image', 'fields'];
-
-	readonly description =
-		'Post formatted content as a comment on a Linear issue. Available: markdown sections, ' +
-		'dividers, images, key-value fields. Linear does not support interactive components, ' +
-		'so buttons/selects are not available — the agent should ask follow-up questions with ' +
-		'a normal reply instead. Users respond by commenting on the issue.';
 
 	constructor(private readonly logger: Logger) {
 		super();

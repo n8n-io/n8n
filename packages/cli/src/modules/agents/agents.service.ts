@@ -425,7 +425,7 @@ export class AgentsService {
 			: undefined;
 		const supportsInteractive =
 			!integration ||
-			integration.supportedComponents.some((c) => INTERACTIVE_COMPONENT_TYPES.has(c));
+			(integration.supportedComponents?.some((c) => INTERACTIVE_COMPONENT_TYPES.has(c)) ?? false);
 
 		if (supportsInteractive) {
 			try {
