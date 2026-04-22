@@ -76,9 +76,6 @@ export interface ExecuteAgentData {
 	finishReason: string;
 }
 
-/** Component types that cause rich_interaction to actually pause for user input. */
-const INTERACTIVE_COMPONENT_TYPES = new Set(['button', 'select', 'radio_select']);
-
 @Service()
 export class AgentsService {
 	/**
@@ -414,20 +411,17 @@ export class AgentsService {
 		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
 			params;
 
-		// Inject the rich_interaction tool for ad-hoc UI in chat integrations —
-		// but only if the target platform has at least one interactive component
-		// type. Without button/select/radio_select the handler can't suspend, so
-		// the tool call would produce no user-visible output on the platform and
-		// confuse the agent's state. Draft/editor contexts (no integrationType)
+		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
+		// Platforms opt in by declaring `supportedComponents`; integrations that
+		// omit it (e.g. Linear) are treated as having no rich_interaction surface
+		// and the tool is skipped. Draft/editor contexts (no integrationType)
 		// always get the tool.
 		const integration = integrationType
 			? Container.get(ChatIntegrationRegistry).get(integrationType)
 			: undefined;
-		const supportsInteractive =
-			!integration ||
-			(integration.supportedComponents?.some((c) => INTERACTIVE_COMPONENT_TYPES.has(c)) ?? false);
+		const hasRichInteraction = !integration || integration.supportedComponents !== undefined;
 
-		if (supportsInteractive) {
+		if (hasRichInteraction) {
 			try {
 				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
 				agent.tool(createRichInteractionTool(integrationType));
