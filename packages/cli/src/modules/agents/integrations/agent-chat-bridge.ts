@@ -247,7 +247,7 @@ export class AgentChatBridge {
 	 * so Chat SDK can render incrementally (post-and-edit). Integrations that
 	 * set `disableStreaming` short-circuit to `consumeStreamBuffered`, which
 	 * accumulates deltas into a string and posts them as a single message per
-	 * flush event (used by Telegram to avoid `editMessageText` rate limits).
+	 * flush event (used by Telegram to avoid Markdown streaming issues).
 	 *
 	 * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
 	 * `error`) flush any pending text first, then get handled in order.
