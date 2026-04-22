@@ -113,6 +113,9 @@ export abstract class TaskRunner extends EventEmitter {
 			maxPayload: opts.maxPayloadSize,
 		});
 
+		this.ws.addEventListener('open', () => {
+			console.log('Connected successfully to task broker');
+		});
 		this.ws.addEventListener('error', (event) => {
 			const error = ensureError(event.error);
 
@@ -215,10 +218,13 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	send(message: RunnerMessage.ToBroker.All) {
+		if (message.type !== 'runner:taskoffer') console.log(`-> Sent message \`${message.type}\``);
+
 		this.ws.send(JSON.stringify(message));
 	}
 
 	onMessage(message: BrokerMessage.ToRunner.All) {
+		console.log(`<- Received message \`${message.type}\``);
 		switch (message.type) {
 			case 'broker:inforequest':
 				this.send({

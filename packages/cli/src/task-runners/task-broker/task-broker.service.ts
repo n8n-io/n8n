@@ -179,6 +179,9 @@ export class TaskBroker {
 	}
 
 	async onRunnerMessage(runnerId: TaskRunner['id'], message: RunnerMessage.ToBroker.All) {
+		if (message.type !== 'runner:taskoffer')
+			console.log('Received message for runner', runnerId, 'with type', message.type);
+
 		const runner = this.knownRunners.get(runnerId);
 		if (!runner) {
 			return;
