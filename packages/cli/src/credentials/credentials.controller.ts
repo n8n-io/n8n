@@ -28,7 +28,6 @@ import {
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { deepCopy } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -37,6 +36,7 @@ import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -140,41 +140,15 @@ export class CredentialsController {
 	// TODO: Write at least test cases for the failure paths.
 	@Post('/test')
 	async testCredentials(req: CredentialRequest.Test) {
-		const { credentials } = req.body;
+		try {
+			return await this.credentialsService.testWithCredentials(req.user, req.body.credentials);
+		} catch (error) {
+			if (error instanceof CredentialNotFoundError) {
+				throw new ForbiddenError();
+			}
 
-		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
-			credentials.id,
-			req.user,
-			['credential:read'],
-		);
-
-		if (!storedCredential) {
-			throw new ForbiddenError();
+			throw error;
 		}
-
-		const mergedCredentials = deepCopy(credentials);
-		const decryptedData = this.credentialsService.decrypt(storedCredential, true);
-
-		// When a sharee (or project viewer) opens a credential, the fields and the
-		// credential data are missing so the payload will be empty
-		// We need to replace the credential contents with the db version if that's the case
-		// So the credential can be tested properly
-		await this.credentialsService.replaceCredentialContentsForSharee(
-			req.user,
-			storedCredential,
-			decryptedData,
-			mergedCredentials,
-		);
-
-		if (mergedCredentials.data) {
-			mergedCredentials.data = this.credentialsService.unredact(
-				mergedCredentials.data,
-				decryptedData,
-				this.credentialsService.getCredentialTypeProperties(storedCredential.type),
-			);
-		}
-
-		return await this.credentialsService.test(req.user.id, mergedCredentials);
 	}
 
 	@Post('/')

@@ -6,6 +6,7 @@ describe('ApiKeyScope', () => {
 	test('Valid scopes', () => {
 		const validScopes: ApiKeyScope[] = [
 			'credential:create',
+			'credential:read',
 			'credential:delete',
 			'credential:move',
 			'execution:delete',

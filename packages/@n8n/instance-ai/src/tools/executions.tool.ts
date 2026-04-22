@@ -39,7 +39,6 @@ const getAction = z.object({
 const runAction = z.object({
 	action: z.literal('run').describe('Execute a workflow and wait for completion'),
 	workflowId: z.string().describe('Workflow ID'),
-	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
 	inputData: z
 		.record(z.unknown())
 		.optional()
@@ -144,9 +143,13 @@ async function handleRun(
 
 	// If approval is required and this is the first call, suspend for confirmation
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName = await context.workflowService
+			.get(input.workflowId)
+			.then((wf) => wf.name)
+			.catch(() => input.workflowId);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Execute workflow "${input.workflowName ?? input.workflowId}" (ID: ${input.workflowId})?`,
+			message: `Execute workflow "${workflowName}" (ID: ${input.workflowId})?`,
 			severity: 'warning' as const,
 		});
 		return {

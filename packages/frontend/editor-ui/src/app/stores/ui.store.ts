@@ -344,9 +344,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
@@ -418,7 +416,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const lastInteractedWithNode = computed(() => {
 		if (lastInteractedWithNodeId.value) {
-			return workflowDocumentStore.value?.getNodeById(lastInteractedWithNodeId.value) ?? null;
+			return workflowDocumentStore.value.getNodeById(lastInteractedWithNodeId.value) ?? null;
 		}
 
 		return null;
@@ -550,6 +548,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		forceManualMode = false,
 		projectId?: string,
 		suggestedName?: string,
+		nodeName?: string,
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
@@ -558,6 +557,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			forceManualMode,
 			projectId,
 			suggestedName,
+			nodeName,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);

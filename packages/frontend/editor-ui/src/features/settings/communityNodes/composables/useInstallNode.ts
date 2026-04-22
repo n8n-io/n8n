@@ -45,9 +45,7 @@ export function useInstallNode() {
 	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const userStore = useUsersStore();
 	const loading = ref(false);
@@ -104,7 +102,7 @@ export function useInstallNode() {
 			// update parameters and webhooks for freshly installed nodes
 			// rename types from preview version to the actual version
 			const nodeType = props.nodeType;
-			const allNodes = workflowDocumentStore.value?.allNodes ?? [];
+			const allNodes = workflowDocumentStore.value.allNodes;
 			if (nodeType && allNodes.length) {
 				const nodesToUpdate = allNodes.filter((node) => node.type === removePreviewToken(nodeType));
 				canvasOperations.initializeUnknownNodes(nodesToUpdate);

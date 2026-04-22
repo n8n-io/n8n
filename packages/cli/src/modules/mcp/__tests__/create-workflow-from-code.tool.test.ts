@@ -9,6 +9,7 @@ import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 // Mock dynamic imports
 const mockParseAndValidate = jest.fn();
@@ -100,11 +101,15 @@ describe('create-workflow-from-code MCP tool', () => {
 	const projectRepository = mockInstance(ProjectRepository, {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-1' }),
 	});
+	const workflowFinderService = mockInstance(WorkflowFinderService, {
+		findWorkflowForUser: jest.fn().mockResolvedValue(null),
+	});
 
 	const createTool = () =>
 		createCreateWorkflowFromCodeTool(
 			user,
 			workflowCreationService,
+			workflowFinderService,
 			urlService,
 			telemetry,
 			nodeTypes,
@@ -234,7 +239,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: undefined },
+				{ projectId: undefined, source: 'n8n-mcp' },
 			);
 		});
 
@@ -244,7 +249,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,
 				expect.any(WorkflowEntity),
-				{ projectId: 'custom-project-id' },
+				{ projectId: 'custom-project-id', source: 'n8n-mcp' },
 			);
 		});
 
