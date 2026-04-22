@@ -1,0 +1,66 @@
+{
+	"name": "Snowflake update - parameter binding",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{ "name": "id", "type": "numberValue", "numberValue": 1 },
+						{ "name": "status", "type": "stringValue", "stringValue": "shipped" }
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [680, 460]
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"table": "orders",
+				"updateKey": "id",
+				"columns": "status"
+			},
+			"id": "a7b8c9d0-e1f2-3456-abcd-567890123456",
+			"name": "Snowflake Update",
+			"type": "n8n-nodes-base.snowflake",
+			"typeVersion": 1,
+			"position": [900, 460],
+			"credentials": {
+				"snowflake": {
+					"id": "1",
+					"name": "Snowflake account"
+				}
+			}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+		},
+		"Edit Fields": {
+			"main": [[{ "node": "Snowflake Update", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "b8c9d0e1-f2a3-4567-bcde-678901234567",
+	"id": "SnowflakeUpdateParameterBinding",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

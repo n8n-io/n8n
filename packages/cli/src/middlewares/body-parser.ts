@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
 import { parseIncomingMessage } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, sanitizeXmlName } from 'n8n-workflow';
 import { parse as parseQueryString } from 'querystring';
 import getRawBody from 'raw-body';
 import { type Readable } from 'stream';
@@ -16,6 +16,8 @@ const xmlParser = new XmlParser({
 	normalize: true, // Trim whitespace inside text nodes
 	normalizeTags: true, // Transform tags to lowercase
 	explicitArray: false, // Only put properties in array if length > 1
+	tagNameProcessors: [sanitizeXmlName],
+	attrNameProcessors: [sanitizeXmlName],
 });
 
 const payloadSizeMax = Container.get(GlobalConfig).endpoints.payloadSizeMax;

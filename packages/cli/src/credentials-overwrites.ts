@@ -147,7 +147,7 @@ export class CredentialsOverwrites {
 		// customized (any overwrite field has a non-empty value that differs from
 		// the overwrite value). Since overwrites are never persisted to the DB,
 		// any non-empty stored value that differs from the overwrite is user-set.
-		if (this.globalConfig.credentials.overwrite.skipTypes.includes(type)) {
+		if (this.globalConfig.credentials.overwrite?.skipTypes?.includes(type)) {
 			const isFieldCustomized = (key: string) => {
 				const storedValue = data[key];
 				return (
@@ -208,11 +208,17 @@ export class CredentialsOverwrites {
 
 	private get(name: string): ICredentialDataDecryptedObject | undefined {
 		const parentTypes = this.credentialTypes.getParentTypes(name);
-		return [name, ...parentTypes]
+		const entries = [name, ...parentTypes]
 			.reverse()
 			.map((type) => this.overwriteData[type])
-			.filter((type) => !!type)
-			.reduce((acc, current) => Object.assign(acc, current), {});
+			.filter((type): type is ICredentialDataDecryptedObject => !!type);
+
+		if (entries.length === 0) return undefined;
+
+		return entries.reduce(
+			(acc, current) => Object.assign(acc, current),
+			{} as ICredentialDataDecryptedObject,
+		);
 	}
 
 	getAll(): ICredentialsOverwrite {

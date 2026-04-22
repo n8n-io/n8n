@@ -49,9 +49,7 @@ import { prepareCommunityNodeDetailsViewStack, transformNodeType } from './nodeC
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const ndvStore = useNDVStore();
 	const uiStore = useUIStore();
@@ -109,7 +107,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}) {
 		const nodeName = node ?? ndvStore.activeNodeName;
 		const nodeData = nodeName
-			? (workflowDocumentStore.value?.getNodeByName(nodeName) ?? null)
+			? (workflowDocumentStore.value.getNodeByName(nodeName) ?? null)
 			: null;
 
 		ndvStore.unsetActiveNodeName();
@@ -186,7 +184,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		// Get the node and set it as active that new nodes
 		// which get created get automatically connected
 		// to it.
-		const sourceNode = workflowDocumentStore.value?.getNodeById(connection.source);
+		const sourceNode = workflowDocumentStore.value.getNodeById(connection.source);
 		if (!sourceNode) {
 			return;
 		}
@@ -226,7 +224,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	async function openNodeCreatorWithNode(nodeName: string) {
 		const nodeData = nodeName
-			? (workflowDocumentStore.value?.getNodeByName(nodeName) ?? null)
+			? (workflowDocumentStore.value.getNodeByName(nodeName) ?? null)
 			: null;
 		if (!nodeData) {
 			return;
@@ -251,7 +249,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 				type: 'node',
 				subcategory: '*',
 			},
-			getNodeIconSource(nodeType.name),
+			getNodeIconSource(nodeType.name, null, workflowDocumentStore.value.getExpressionHandler()),
 			'Regular',
 			nodeActions ?? [],
 		);
