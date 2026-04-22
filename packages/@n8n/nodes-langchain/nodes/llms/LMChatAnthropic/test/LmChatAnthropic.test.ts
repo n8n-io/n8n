@@ -565,8 +565,8 @@ describe('LmChatAnthropic', () => {
 			expect(v13ModelField).toBeDefined();
 			expect(v13ModelField!.default).toEqual({
 				mode: 'list',
-				value: 'claude-sonnet-4-5-20250929',
-				cachedResultName: 'Claude Sonnet 4.5',
+				value: 'claude-sonnet-4-6',
+				cachedResultName: 'Claude Sonnet 4.6',
 			});
 		});
 	});

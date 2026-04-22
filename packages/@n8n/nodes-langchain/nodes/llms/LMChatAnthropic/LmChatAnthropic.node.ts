@@ -155,8 +155,8 @@ export class LmChatAnthropic implements INodeType {
 				type: 'resourceLocator',
 				default: {
 					mode: 'list',
-					value: 'claude-sonnet-4-5-20250929',
-					cachedResultName: 'Claude Sonnet 4.5',
+					value: 'claude-sonnet-4-6',
+					cachedResultName: 'Claude Sonnet 4.6',
 				},
 				required: true,
 				modes: [
