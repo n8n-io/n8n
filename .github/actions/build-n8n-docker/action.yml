@@ -3,21 +3,24 @@
 #
 # Two distribution modes:
 #   - ghcr:     builds and pushes to GHCR. Downstream shards docker-pull.
-#   - artifact: builds, docker save + zstd, uploads as GHA artifact.
+#   - artifact: builds, docker save + zstd, stores as GHA cache entry.
 #               Use for fork PRs that can't push to GHCR (no secrets).
+#               Blacksmith transparently routes actions/cache through their
+#               co-located cache backend, which saturates the runner NIC
+#               (~4× faster than GHA artifact blob storage).
 #
 # Always builds with INCLUDE_TEST_CONTROLLER=true and amd64 platform.
 # Tag applied to both n8n and runners images.
 
 name: 'Build n8n CI Docker image'
-description: 'Builds n8nio/n8n + n8nio/runners test images and makes them available to downstream jobs via GHCR or an uploaded artifact.'
+description: 'Builds n8nio/n8n + n8nio/runners test images and makes them available to downstream jobs via GHCR or a GHA cache entry.'
 
 inputs:
   distribution:
-    description: 'ghcr (push to registry) or artifact (docker save + upload artifact)'
+    description: 'ghcr (push to registry) or artifact (docker save + cache entry)'
     required: true
   image-tag:
-    description: 'Tag to apply to both n8n and runners images. Used as the GHCR tag or the artifact suffix.'
+    description: 'Tag to apply to both n8n and runners images. Used as the GHCR tag or (in artifact mode) as part of the cache key.'
     required: true
   ghcr-image-base:
     description: 'Full GHCR base for the n8n image (e.g. ghcr.io/n8n-io/n8n). Required when distribution=ghcr.'
@@ -28,13 +31,9 @@ inputs:
     required: false
     default: ''
   artifact-name:
-    description: 'Artifact name to upload. Required when distribution=artifact.'
+    description: 'Cache key identifying the image tarball (artifact mode).'
     required: false
     default: 'n8n-docker-image'
-  artifact-retention-days:
-    description: 'Artifact retention (days).'
-    required: false
-    default: '1'
   build-variant:
     description: 'standard or coverage. Coverage uses build:docker:coverage.'
     required: false
@@ -45,7 +44,7 @@ outputs:
     description: 'Fully qualified n8n image reference (ghcr mode only; empty for artifact).'
     value: ${{ inputs.distribution == 'ghcr' && format('{0}:{1}', inputs.ghcr-image-base, inputs.image-tag) || '' }}
   artifact-name:
-    description: 'Artifact name containing the image tarball (artifact mode only; empty for ghcr).'
+    description: 'Cache key containing the image tarball (artifact mode only; empty for ghcr).'
     value: ${{ inputs.distribution == 'artifact' && inputs.artifact-name || '' }}
 
 runs:
@@ -100,11 +99,11 @@ runs:
         docker save n8nio/n8n:local n8nio/runners:local | zstd -T0 -3 -o /tmp/n8n-image.tar.zst
         ls -lh /tmp/n8n-image.tar.zst
 
-    - name: Upload image artifact
+    # Transparent Blacksmith cache routes this through their co-located backend
+    # on Blacksmith runners; elsewhere it falls back to the stock GHA cache.
+    - name: Publish image tarball to cache
       if: ${{ inputs.distribution == 'artifact' }}
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      uses: actions/cache/save@640a1c2554105b57832a23eea0b4672fc7a790d5 # v4.2.3
       with:
-        name: ${{ inputs.artifact-name }}
+        key: ${{ inputs.artifact-name }}
         path: /tmp/n8n-image.tar.zst
-        retention-days: ${{ inputs.artifact-retention-days }}
-        compression-level: 0 # already zstd-compressed
