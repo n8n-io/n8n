@@ -12,7 +12,6 @@ import { Logger } from '@n8n/backend-common';
 
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
