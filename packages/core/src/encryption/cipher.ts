@@ -6,25 +6,44 @@ import { InstanceSettings } from '@/instance-settings';
 // Data encrypted by CryptoJS always starts with these bytes
 const RANDOM_BYTES = Buffer.from('53616c7465645f5f', 'hex');
 
+export type CipherAlgorithm = 'aes-256-cbc' | 'aes-256-gcm';
+
 @Service()
 export class Cipher {
 	constructor(private readonly instanceSettings: InstanceSettings) {}
 
 	encrypt(data: string | object, customEncryptionKey?: string) {
-		const salt = randomBytes(8);
-		const [key, iv] = this.getKeyAndIv(salt, customEncryptionKey);
-		const cipher = createCipheriv('aes-256-cbc', key, iv);
-		const encrypted = cipher.update(typeof data === 'string' ? data : JSON.stringify(data));
-		return Buffer.concat([RANDOM_BYTES, salt, encrypted, cipher.final()]).toString('base64');
+		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
+		const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
+		return this.encryptWithKey(plaintext, key, 'aes-256-cbc');
 	}
 
 	decrypt(data: string, customEncryptionKey?: string) {
+		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
+		return this.decryptWithKey(data, key, 'aes-256-cbc');
+	}
+
+	encryptWithKey(data: string, key: string, algorithm: CipherAlgorithm): string {
+		if (algorithm === 'aes-256-gcm') {
+			throw new Error('GCM not yet implemented');
+		}
+		const salt = randomBytes(8);
+		const [derivedKey, iv] = this.getKeyAndIv(salt, key);
+		const cipher = createCipheriv('aes-256-cbc', derivedKey, iv);
+		const encrypted = cipher.update(data);
+		return Buffer.concat([RANDOM_BYTES, salt, encrypted, cipher.final()]).toString('base64');
+	}
+
+	decryptWithKey(data: string, key: string, algorithm: CipherAlgorithm): string {
+		if (algorithm === 'aes-256-gcm') {
+			throw new Error('GCM not yet implemented');
+		}
 		const input = Buffer.from(data, 'base64');
 		if (input.length < 16) return '';
 		const salt = input.subarray(8, 16);
-		const [key, iv] = this.getKeyAndIv(salt, customEncryptionKey);
+		const [derivedKey, iv] = this.getKeyAndIv(salt, key);
 		const contents = input.subarray(16);
-		const decipher = createDecipheriv('aes-256-cbc', key, iv);
+		const decipher = createDecipheriv('aes-256-cbc', derivedKey, iv);
 		return Buffer.concat([decipher.update(contents), decipher.final()]).toString('utf-8');
 	}
 

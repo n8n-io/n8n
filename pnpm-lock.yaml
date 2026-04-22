@@ -1273,6 +1273,9 @@ importers:
 
   packages/@n8n/decorators:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/constants':
         specifier: workspace:*
         version: link:../constants
@@ -4429,6 +4432,9 @@ importers:
       '@types/autocannon':
         specifier: ^7.12.7
         version: 7.12.7
+      '@types/jsonwebtoken':
+        specifier: 'catalog:'
+        version: 9.0.10
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
@@ -4444,6 +4450,9 @@ importers:
       generate-schema:
         specifier: 2.6.0
         version: 2.6.0
+      jsonwebtoken:
+        specifier: 'catalog:'
+        version: 9.0.3
       mockserver-client:
         specifier: ^5.15.0
         version: 5.15.0
