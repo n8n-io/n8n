@@ -108,7 +108,13 @@ export function normalizeToObjectSchema(schema: JSONSchema7): JSONSchema7 {
 		}
 	}
 
-	if (schema.type === 'array' || typeof schema.type === 'string') {
+	// JSON Schema's `type` can be a single string (`"string"`, `"array"`, …) or
+	// an array of strings (e.g. `["string", "null"]`, which `zodToJsonSchema`
+	// emits for `z.string().nullable()` or `z.union([z.string(), z.null()])`
+	// in its nullable-as-type-union mode). Both shapes carry real inner type
+	// guidance, so wrap them in a single-property object rather than flattening
+	// to an empty one.
+	if (typeof schema.type === 'string' || Array.isArray(schema.type)) {
 		return {
 			type: 'object',
 			properties: { input: schema },

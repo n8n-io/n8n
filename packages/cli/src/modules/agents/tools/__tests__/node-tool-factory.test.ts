@@ -171,4 +171,17 @@ describe('normalizeToObjectSchema', () => {
 			required: ['input'],
 		});
 	});
+
+	it('wraps a multi-type root (e.g. { type: ["string", "null"] }) in { input: <schema> }', () => {
+		// JSON Schema's `type` is allowed to be an array of type names. zod-to-
+		// json-schema emits this for `z.string().nullable()` and similar nullable
+		// primitives. The earlier `typeof schema.type === 'string'` check missed
+		// this shape and collapsed it to an empty object.
+		const input: JSONSchema7 = { type: ['string', 'null'] };
+		expect(normalizeToObjectSchema(input)).toEqual({
+			type: 'object',
+			properties: { input: { type: ['string', 'null'] } },
+			required: ['input'],
+		});
+	});
 });
