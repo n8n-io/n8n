@@ -130,6 +130,11 @@ test.describe(
 				timeout: 5_000,
 			});
 
+			// Once the required param is filled, the card flips to complete and
+			// the "Complete" step-check badge renders — the visible signal that
+			// Apply is safe to press.
+			await expect(n8n.instanceAi.getWorkflowSetupStepCheck()).toBeVisible();
+
 			// Single-step wizard: Apply triggers `handleApply` directly.
 			await n8n.instanceAi.getWorkflowSetupApplyButton().click();
 			// The wizard template unmounts as soon as `isApplying` flips true
@@ -188,6 +193,19 @@ test.describe(
 			// Slack is pre-complete via backend-reported credentialTestResult, so
 			// the auto-advance watcher has no incomplete card to jump to. Navigate
 			// to Slack manually, then click Later to trigger the partial apply.
+			await n8n.instanceAi.getWorkflowSetupNextButton().click();
+			await expect(n8n.instanceAi.getWorkflowSetupStepCounter()).toContainText('2 of 2');
+
+			// Prev navigation must return to the HTTP card and keep the user's
+			// filled value intact — `paramValues` is the wizard's source of
+			// truth across step changes, not the node's persisted parameters.
+			await n8n.instanceAi.getWorkflowSetupPrevButton().click();
+			await expect(n8n.instanceAi.getWorkflowSetupStepCounter()).toContainText('1 of 2');
+			await expect(n8n.instanceAi.getWorkflowSetupParameterInput()).toHaveValue(
+				'https://example.com/api',
+			);
+
+			// Advance back to the Slack card to trigger the partial apply.
 			await n8n.instanceAi.getWorkflowSetupNextButton().click();
 			await expect(n8n.instanceAi.getWorkflowSetupStepCounter()).toContainText('2 of 2');
 			await n8n.instanceAi.getWorkflowSetupLaterButton().click();
