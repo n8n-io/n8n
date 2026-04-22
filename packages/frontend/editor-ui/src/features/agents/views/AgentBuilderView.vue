@@ -166,22 +166,27 @@ function startChat(msg: string) {
 		initialPrompt.value = msg;
 		chatMode.value = 'test';
 		mode.value = 'chat';
-		// Intentionally do NOT clear initialPrompt here. The chat panel reads
-		// it in onMounted, but the <Transition mode="out-in"> animates the home
-		// view out before the chat panel mounts — clearing on nextTick wipes
-		// the prompt before onMounted runs, so the first message never gets
-		// sent. onMounted runs only once per mount (the panel's :key binds to
-		// the session id, not chatMode), so there's no replay risk on toggle.
 		telemetry.track('User started agent chat', { agent_id: agentId.value });
-		return;
+	} else {
+		// Fresh agent — route through the same build chat panel the Build tab
+		// uses so the first-build experience matches the ongoing Build UX.
+		initialPrompt.value = msg;
+		chatMode.value = 'build';
+		mode.value = 'chat';
+		settingsVisible.value = true;
+		telemetry.track('User started agent build', { agent_id: agentId.value });
 	}
-	// Fresh agent — route through the same build chat panel the Build tab uses
-	// so the first-build experience matches the ongoing Build UX.
-	initialPrompt.value = msg;
-	chatMode.value = 'build';
-	mode.value = 'chat';
-	settingsVisible.value = true;
-	telemetry.track('User started agent build', { agent_id: agentId.value });
+
+	// Drop the seed prompt after the re-render that mounts the target panel.
+	// Vue runs this child's setup during the render kicked off by the state
+	// changes above, so `props.initialMessage` is captured synchronously in
+	// the panel's setup before this callback fires. Leaving the prompt in
+	// place would bleed the same message into whichever panel the user
+	// opens next (e.g. clicking Build after starting a Test chat would
+	// re-send the Test message to the builder and skip loadHistory).
+	void nextTick(() => {
+		initialPrompt.value = undefined;
+	});
 }
 
 /**
@@ -444,6 +449,17 @@ async function initialize() {
 	// `isBuilt` would still be stale here.
 	const hasInstructions = !!config.value?.instructions?.trim();
 	chatMode.value = hasInstructions ? 'test' : 'build';
+
+	// Unbuilt agents skip the home screen entirely and land in the build
+	// chat. The home screen is designed for agents you can chat with (Test
+	// mode) or a "new chat" surface for the built case — neither of which
+	// applies to an unbuilt agent. Dropping the user into the build panel
+	// means `loadHistory()` fires, so any prior builder conversation is
+	// immediately visible instead of appearing lost until the agent is
+	// eventually built.
+	if (!hasInstructions) {
+		mode.value = 'chat';
+	}
 
 	// If the user arrived via NewAgentView with a seed prompt, skip home and
 	// jump straight into the build chat. Doing this before flipping the

@@ -105,24 +105,28 @@ function sendMessageFromOutside(message: string) {
 
 defineExpose({ sendMessageFromOutside });
 
+// Capture the seed message locally so later clearing of `props.initialMessage`
+// by the parent (which does so on `nextTick` to prevent the same prompt
+// bleeding into the other chat panel) can't race the `onMounted` guard below.
+const seedMessage = props.initialMessage;
+
 // Seed the initial message synchronously during setup (not onMounted) so the
 // user bubble is in `messages` before Vue performs the first render. Without
 // this, the panel renders once with an empty message list and THEN the user
-// message appears — visible as a 1-frame flash of the blank/centered layout
-// underneath the parent's 260ms mode transition.
+// message appears — visible as a 1-frame flash of the blank/centered layout.
 //
 // `sendMessage` is an async function but the push to `messages` happens
 // before any await, so calling it here runs the sync prefix (push + set
 // `isStreaming = true` inside streamFromEndpoint) before setup returns. The
 // fetch itself continues to run async in the background.
-if (props.initialMessage) {
-	void sendMessage(props.initialMessage);
+if (seedMessage) {
+	void sendMessage(seedMessage);
 }
 
 onMounted(() => {
-	// Only load history when there's no initialMessage — a fresh session has
+	// Only load history when there's no seed message — a fresh session has
 	// nothing to fetch yet and the endpoint would 404.
-	if (!props.initialMessage) {
+	if (!seedMessage) {
 		void loadHistory();
 	}
 });

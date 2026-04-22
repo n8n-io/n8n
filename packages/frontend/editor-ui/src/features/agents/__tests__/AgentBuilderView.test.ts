@@ -193,6 +193,29 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
 	});
 
+	it('drops unbuilt agents straight into the build chat on load', async () => {
+		// Unbuilt agents go to the build chat unconditionally so the build
+		// panel mounts, triggers loadHistory, and any prior conversation with
+		// the builder is visible instead of being stranded behind the home
+		// screen (where the Test tab is locked and clicking Build is a no-op).
+		intendedConfig = { name: 'Agent One', instructions: '' };
+		mockConfig.value = { ...intendedConfig };
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { mode: string; chatMode: string };
+
+		expect(vm.mode).toBe('chat');
+		expect(vm.chatMode).toBe('build');
+	});
+
+	it('lands built agents on the home screen', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { mode: string; chatMode: string };
+
+		expect(vm.mode).toBe('home');
+		expect(vm.chatMode).toBe('test');
+	});
+
 	it('locks the Test tab when the agent has no instructions', async () => {
 		intendedConfig = { name: 'Agent One', instructions: '' };
 		mockConfig.value = { ...intendedConfig };
