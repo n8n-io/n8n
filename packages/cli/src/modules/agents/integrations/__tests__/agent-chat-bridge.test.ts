@@ -136,7 +136,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(1);
-			expect(thread.post).toHaveBeenCalledWith('Hello world');
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello world' });
 		});
 
 		it('flushes the buffer before posting a suspension card, then continues buffering', async () => {
@@ -172,9 +172,9 @@ describe('AgentChatBridge — consumeStream', () => {
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(3);
-			expect(thread.post).toHaveBeenNthCalledWith(1, 'Before suspend. ');
+			expect(thread.post).toHaveBeenNthCalledWith(1, { markdown: 'Before suspend. ' });
 			expect(thread.post).toHaveBeenNthCalledWith(2, { card: { kind: 'card' } });
-			expect(thread.post).toHaveBeenNthCalledWith(3, 'After resume.');
+			expect(thread.post).toHaveBeenNthCalledWith(3, { markdown: 'After resume.' });
 		});
 
 		it('does not post when the buffer is only whitespace', async () => {

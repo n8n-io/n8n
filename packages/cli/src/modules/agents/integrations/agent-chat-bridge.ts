@@ -403,7 +403,12 @@ export class AgentChatBridge {
 			buffer = '';
 			if (!text.trim()) return;
 			try {
-				await thread.post(text);
+				// Chat SDK's streaming path wraps accumulated deltas as `{ markdown }`
+				// so the platform adapter applies markdown parse-mode (e.g. Telegram's
+				// sendMessage with parse_mode=MarkdownV2). A raw string bypasses that
+				// and renders as plain text, so we post the buffered message the same
+				// shape the streaming path uses under the hood.
+				await thread.post({ markdown: text });
 			} catch (postError: unknown) {
 				this.logger.error('[AgentChatBridge] Buffered post failed', {
 					error: postError instanceof Error ? postError.message : String(postError),
