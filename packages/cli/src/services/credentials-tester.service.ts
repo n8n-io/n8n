@@ -18,7 +18,6 @@ import type {
 	INodeProperties,
 	INodeType,
 	IVersionedNodeType,
-	IRunExecutionData,
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	INodeTypeData,
@@ -27,15 +26,21 @@ import type {
 	IDataObject,
 	IExecuteData,
 } from 'n8n-workflow';
-import { VersionedNodeType, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
+import {
+	VersionedNodeType,
+	NodeHelpers,
+	Workflow,
+	UnexpectedError,
+	createEmptyRunExecutionData,
+} from 'n8n-workflow';
+
+import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import { getExternalSecretExpressionPaths } from '../credentials/external-secrets.utils';
+import { CredentialsHelper } from '../credentials-helper';
 
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
-import { getAllKeyPaths } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -200,16 +205,16 @@ export class CredentialsTester {
 		let credentialsDataSecretKeys: string[] = [];
 		if (credentialsDecrypted.data) {
 			try {
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(userId);
+				const additionalData = await WorkflowExecuteAdditionalData.getBase({
+					userId,
+					projectId: credentialsDecrypted.homeProject?.id,
+				});
 
 				// Keep all credentials data keys which have a secret value
-				credentialsDataSecretKeys = getAllKeyPaths(credentialsDecrypted.data, '', [], (value) =>
-					value.includes('$secrets.'),
-				);
+				credentialsDataSecretKeys = getExternalSecretExpressionPaths(credentialsDecrypted.data);
 				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
-					credentialsDecrypted,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
 					undefined,
@@ -318,13 +323,13 @@ export class CredentialsTester {
 			main: [[{ json: {} }]],
 		};
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
+		const runExecutionData = createEmptyRunExecutionData();
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(userId, node.parameters);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			userId,
+			projectId: credentialsDecrypted.homeProject?.id,
+			currentNodeParameters: node.parameters,
+		});
 
 		const executeData: IExecuteData = { node, data: {}, source: null };
 		const executeFunctions = new ExecuteContext(
@@ -343,6 +348,7 @@ export class CredentialsTester {
 
 		let response: INodeExecutionData[][] | null | undefined;
 		try {
+			await workflow.expression.acquireIsolate();
 			response = await routingNode.runNode();
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -388,6 +394,7 @@ export class CredentialsTester {
 				message: error.message.toString(),
 			};
 		} finally {
+			await workflow.expression.releaseIsolate();
 			delete mockNodesData[nodeTypeCopy.description.name];
 		}
 

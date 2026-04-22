@@ -1,14 +1,15 @@
 import { WolframAlphaTool } from '@langchain/community/tools/wolframalpha';
 import {
 	NodeConnectionTypes,
+	type IExecuteFunctions,
+	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 export class ToolWolframAlpha implements INodeType {
 	description: INodeTypeDescription = {
@@ -55,5 +56,26 @@ export class ToolWolframAlpha implements INodeType {
 		return {
 			response: logWrapper(new WolframAlphaTool({ appid: credentials.appId as string }), this),
 		};
+	}
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const credentials = await this.getCredentials('wolframAlphaApi');
+		const input = this.getInputData();
+		const result: INodeExecutionData[] = [];
+
+		for (let i = 0; i < input.length; i++) {
+			const item = input[i];
+			const tool = new WolframAlphaTool({ appid: credentials.appId as string });
+			result.push({
+				json: {
+					response: await tool.invoke(item.json),
+				},
+				pairedItem: {
+					item: i,
+				},
+			});
+		}
+
+		return [result];
 	}
 }

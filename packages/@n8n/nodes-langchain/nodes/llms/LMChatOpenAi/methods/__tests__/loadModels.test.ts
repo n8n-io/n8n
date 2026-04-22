@@ -119,6 +119,23 @@ describe('searchModels', () => {
 		expect(result.results).toHaveLength(11);
 	});
 
+	it('should treat ai-assistant.n8n.io as official API', async () => {
+		mockContext.getCredentials.mockResolvedValueOnce({
+			apiKey: 'test-api-key',
+			url: 'https://ai-assistant.n8n.io/v1',
+		});
+
+		const result = await searchModels.call(mockContext);
+
+		expect(result.results).toEqual([
+			{ name: 'ft:gpt-3.5-turbo', value: 'ft:gpt-3.5-turbo' },
+			{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' },
+			{ name: 'gpt-4', value: 'gpt-4' },
+			{ name: 'o1-model', value: 'o1-model' },
+			{ name: 'other-model', value: 'other-model' },
+		]);
+	});
+
 	it('should filter models based on search term', async () => {
 		const result = await searchModels.call(mockContext, 'gpt');
 
@@ -137,6 +154,25 @@ describe('searchModels', () => {
 			{ name: 'gpt-3.5-turbo', value: 'gpt-3.5-turbo' },
 			{ name: 'gpt-4', value: 'gpt-4' },
 		]);
+	});
+
+	it('should include custom credential headers in the OpenAI client', async () => {
+		mockContext.getCredentials.mockResolvedValueOnce({
+			apiKey: 'test-api-key',
+			header: true,
+			headerName: 'X-Custom-Auth',
+			headerValue: 'custom-value',
+		});
+
+		await searchModels.call(mockContext);
+
+		expect(mockOpenAI).toHaveBeenCalledWith(
+			expect.objectContaining({
+				defaultHeaders: expect.objectContaining({
+					'X-Custom-Auth': 'custom-value',
+				}),
+			}),
+		);
 	});
 
 	it('should return models sorted alphabetically by id', async () => {

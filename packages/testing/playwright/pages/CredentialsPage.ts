@@ -1,8 +1,16 @@
 import { BasePage } from './BasePage';
+import { AddResource } from './components/AddResource';
 import { CredentialModal } from './components/CredentialModal';
+import { ResourceCards } from './components/ResourceCards';
 
 export class CredentialsPage extends BasePage {
+	async goto() {
+		await this.page.goto('/home/credentials');
+	}
+
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly addResource = new AddResource(this.page);
+	readonly cards = new ResourceCards(this.page);
 
 	get emptyListCreateCredentialButton() {
 		return this.page.getByRole('button', { name: 'Add first credential' });
@@ -10,21 +18,6 @@ export class CredentialsPage extends BasePage {
 
 	get createCredentialButton() {
 		return this.page.getByTestId('create-credential-button');
-	}
-
-	get credentialCards() {
-		return this.page.getByTestId('resources-list-item');
-	}
-
-	getCredentialByName(name: string) {
-		return this.credentialCards.filter({ hasText: name }).first();
-	}
-
-	get addResourceButton() {
-		return this.page.getByTestId('add-resource');
-	}
-	get actionCredentialButton() {
-		return this.page.getByTestId('action-credential');
 	}
 
 	/**
@@ -35,7 +28,7 @@ export class CredentialsPage extends BasePage {
 	async createCredentialFromCredentialPicker(
 		credentialType: string,
 		fields: Record<string, string>,
-		options?: { closeDialog?: boolean; name?: string },
+		options?: { closeDialog?: boolean; skipSave?: boolean; name?: string },
 	): Promise<void> {
 		await this.page.getByRole('combobox', { name: 'Search for app...' }).fill(credentialType);
 		await this.page
@@ -46,6 +39,7 @@ export class CredentialsPage extends BasePage {
 		await this.credentialModal.addCredential(fields, {
 			name: options?.name,
 			closeDialog: options?.closeDialog,
+			skipSave: options?.skipSave,
 		});
 	}
 

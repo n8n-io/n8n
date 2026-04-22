@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
+import { createBodyKeyedRateLimiter } from '../rate-limit';
 import { Get, Post, Put, Patch, Delete } from '../route';
 import type { Controller } from '../types';
 
@@ -8,7 +9,7 @@ describe('Route Decorators', () => {
 	let controllerRegistryMetadata: ControllerRegistryMetadata;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		controllerRegistryMetadata = new ControllerRegistryMetadata();
 		Container.set(ControllerRegistryMetadata, controllerRegistryMetadata);
@@ -38,7 +39,7 @@ describe('Route Decorators', () => {
 			expect(routeMetadata.middlewares).toEqual([]);
 			expect(routeMetadata.usesTemplates).toBe(false);
 			expect(routeMetadata.skipAuth).toBe(false);
-			expect(routeMetadata.rateLimit).toBeUndefined();
+			expect(routeMetadata.ipRateLimit).toBeUndefined();
 		});
 
 		it('should accept and apply route options', () => {
@@ -49,7 +50,12 @@ describe('Route Decorators', () => {
 					middlewares: [middleware],
 					usesTemplates: true,
 					skipAuth: true,
-					rateLimit: { limit: 10, windowMs: 60000 },
+					ipRateLimit: { limit: 10, windowMs: 60000 },
+					keyedRateLimit: createBodyKeyedRateLimiter<{ email: string }>({
+						limit: 10,
+						windowMs: 60000,
+						field: 'email',
+					}),
 				})
 				testMethod() {}
 			}
@@ -62,12 +68,18 @@ describe('Route Decorators', () => {
 			expect(routeMetadata.middlewares).toEqual([middleware]);
 			expect(routeMetadata.usesTemplates).toBe(true);
 			expect(routeMetadata.skipAuth).toBe(true);
-			expect(routeMetadata.rateLimit).toEqual({ limit: 10, windowMs: 60000 });
+			expect(routeMetadata.ipRateLimit).toEqual({ limit: 10, windowMs: 60000 });
+			expect(routeMetadata.keyedRateLimit).toMatchObject({
+				limit: 10,
+				windowMs: 60000,
+				source: 'body',
+				field: 'email',
+			});
 		});
 
-		it('should work with boolean rateLimit option', () => {
+		it('should work with boolean ipRateLimit option', () => {
 			class TestController {
-				@decorator('/test', { rateLimit: true })
+				@decorator('/test', { ipRateLimit: true })
 				testMethod() {}
 			}
 
@@ -76,7 +88,7 @@ describe('Route Decorators', () => {
 				'testMethod',
 			);
 
-			expect(routeMetadata.rateLimit).toBe(true);
+			expect(routeMetadata.ipRateLimit).toBe(true);
 		});
 
 		it('should work with multiple routes on the same controller', () => {

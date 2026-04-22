@@ -19,7 +19,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Richard Hendricks</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">29</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -27,7 +27,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Bertram Gilfoyle</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">44</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -35,7 +35,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Dinesh Chugtai</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">31</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -43,7 +43,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Jared Dunn </span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">38</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -51,7 +51,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Richard Hendricks</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">29</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -59,7 +59,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Bertram Gilfoyle</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">44</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -67,7 +67,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Dinesh Chugtai</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">31</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -75,7 +75,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Jared Dunn </span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">38</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -83,7 +83,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Richard Hendricks</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">29</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
           <tr data-v-c73ff18f="">
@@ -91,7 +91,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">Bertram Gilfoyle</span></td>
             <td data-v-c73ff18f="" class=""><span data-v-c73ff18f="">44</span></td>
             <td data-v-c73ff18f="" class="">
-              <n8n-button-stub data-v-c73ff18f="" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+              <n8n-button-stub data-v-c73ff18f="" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" column="[object Object]"></n8n-button-stub>
             </td>
           </tr>
         </tbody>

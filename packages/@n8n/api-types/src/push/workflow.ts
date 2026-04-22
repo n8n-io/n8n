@@ -2,6 +2,7 @@ export type WorkflowActivated = {
 	type: 'workflowActivated';
 	data: {
 		workflowId: string;
+		activeVersionId: string;
 	};
 };
 
@@ -10,6 +11,8 @@ export type WorkflowFailedToActivate = {
 	data: {
 		workflowId: string;
 		errorMessage: string;
+		errorDescription?: string;
+		nodeId?: string;
 	};
 };
 
@@ -20,7 +23,24 @@ export type WorkflowDeactivated = {
 	};
 };
 
+export type WorkflowAutoDeactivated = {
+	type: 'workflowAutoDeactivated';
+	data: {
+		workflowId: string;
+	};
+};
+
+export type WorkflowUpdated = {
+	type: 'workflowUpdated';
+	data: {
+		workflowId: string;
+		userId: string;
+	};
+};
+
 export type WorkflowPushMessage =
 	| WorkflowActivated
 	| WorkflowFailedToActivate
-	| WorkflowDeactivated;
+	| WorkflowDeactivated
+	| WorkflowAutoDeactivated
+	| WorkflowUpdated;

@@ -1,0 +1,283 @@
+import { nextTick, type ShallowRef } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import { useRoute } from 'vue-router';
+import { VIEWS } from '@/app/constants';
+import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
+import { useToast } from '@/app/composables/useToast';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useCanvasStore } from '@/app/stores/canvas.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { buildExecutionResponseFromSchema } from '@/features/execution/executions/executions.utils';
+import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions/executions.types';
+import type { IWorkflowDb } from '@/Interface';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	type useWorkflowDocumentStore,
+	useWorkflowDocumentStore as createWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+
+interface PostMessageHandlerDeps {
+	workflowState: WorkflowState;
+	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>;
+}
+
+export function usePostMessageHandler({
+	workflowState,
+	currentWorkflowDocumentStore,
+}: PostMessageHandlerDeps) {
+	const i18n = useI18n();
+	const toast = useToast();
+	const canvasStore = useCanvasStore();
+	const uiStore = useUIStore();
+	const projectsStore = useProjectsStore();
+	const executionsStore = useExecutionsStore();
+	const credentialsStore = useCredentialsStore();
+	const rootStore = useRootStore();
+	const externalHooks = useExternalHooks();
+	const telemetry = useTelemetry();
+	const nodeHelpers = useNodeHelpers();
+
+	const route = useRoute();
+	const workflowsStore = useWorkflowsStore();
+	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
+	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore);
+
+	function emitPostMessageReady() {
+		if (window.parent) {
+			window.parent.postMessage(
+				JSON.stringify({
+					command: 'n8nReady',
+					version: rootStore.versionCli,
+					pushRef: rootStore.pushRef,
+				}),
+				'*',
+			);
+		}
+	}
+
+	function reportErrorToParent(message: string) {
+		if (window.top) {
+			window.top.postMessage(JSON.stringify({ command: 'error', message }), '*');
+		}
+	}
+
+	async function handleOpenWorkflow(json: {
+		workflow: WorkflowDataUpdate;
+		projectId?: string;
+		tidyUp?: boolean;
+		suppressNotifications?: boolean;
+	}) {
+		if (json.suppressNotifications) {
+			uiStore.setNotificationsSuppressed(true);
+		}
+
+		if (json.projectId) {
+			await projectsStore.fetchAndSetProject(json.projectId);
+		}
+
+		// On the demo route, override the workflow ID to 'demo' so the page
+		// doesn't reference a real workflow — unless canExecute is enabled,
+		// in which case the real ID is needed for execution API calls.
+		if (route.name === VIEWS.DEMO && route.query.canExecute !== 'true') {
+			json.workflow.id = 'demo';
+		}
+
+		await importWorkflowExact(json);
+
+		// importWorkflowExact → resetWorkspace resets activeExecutionId to undefined,
+		// which causes the iframe to reject push execution events relayed from the
+		// parent. Re-set to null so the iframe stays receptive — but only when
+		// canExecute is disabled. When canExecute is enabled, leave it as undefined
+		// so the run button isn't disabled (isWorkflowRunning treats null as
+		// "execution starting"). The user-triggered execution flow will handle
+		// activeExecutionId itself.
+		if (window !== window.parent && route.query.canExecute !== 'true') {
+			workflowState.setActiveExecutionId(null);
+		}
+
+		if (json.tidyUp === true) {
+			canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
+		}
+	}
+
+	async function handleOpenExecution(json: {
+		executionId: string;
+		executionMode?: string;
+		nodeId?: string;
+		projectId?: string;
+	}) {
+		if (json.projectId) {
+			await projectsStore.fetchAndSetProject(json.projectId);
+		}
+
+		nodeHelpers.isProductionExecutionPreview.value =
+			json.executionMode !== 'manual' && json.executionMode !== 'evaluation';
+
+		canvasStore.startLoading();
+		resetWorkspace();
+
+		const data = await openExecution(json.executionId, json.nodeId);
+		if (!data) {
+			return;
+		}
+
+		await credentialsStore.fetchAllCredentialsForWorkflow({ workflowId: data.workflowData.id });
+
+		const wfId = workflowsStore.workflowId;
+		if (wfId) {
+			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(
+				createWorkflowDocumentId(wfId),
+			);
+		}
+
+		void nextTick(() => {
+			nodeHelpers.updateNodesInputIssues();
+			nodeHelpers.updateNodesCredentialsIssues();
+		});
+
+		canvasStore.stopLoading();
+		fitView();
+
+		canvasEventBus.emit('open:execution', data);
+
+		void externalHooks.run('execution.open', {
+			workflowId: data.workflowData.id,
+			workflowName: data.workflowData.name,
+			executionId: json.executionId,
+		});
+
+		telemetry.track('User opened read-only execution', {
+			workflow_id: data.workflowData.id,
+			execution_mode: data.mode,
+			execution_finished: data.finished,
+		});
+	}
+
+	async function handleOpenExecutionPreview(json: {
+		workflow: IWorkflowDb;
+		nodeExecutionSchema: Record<string, ExecutionPreviewNodeSchema>;
+		executionStatus: ExecutionStatus;
+		executionError?: { message: string; description?: string; name?: string; stack?: string };
+		lastNodeExecuted?: string;
+		projectId?: string;
+	}) {
+		canvasStore.startLoading();
+
+		const workflow = json.workflow;
+		if (!workflow?.nodes || !workflow?.connections) {
+			canvasStore.stopLoading();
+			throw new Error('Invalid workflow object');
+		}
+
+		// Execution previews always use 'demo' ID — they display pre-computed
+		// results and never need real execution API calls.
+		if (window !== window.parent) {
+			json.workflow.id = 'demo';
+		}
+
+		if (json.projectId) {
+			await projectsStore.fetchAndSetProject(json.projectId);
+		}
+
+		const data = buildExecutionResponseFromSchema({
+			workflow,
+			nodeExecutionSchema: json.nodeExecutionSchema,
+			executionStatus: json.executionStatus,
+			executionError: json.executionError,
+			lastNodeExecuted: json.lastNodeExecuted,
+		});
+
+		await importWorkflowExact(json);
+
+		workflowState.setWorkflowExecutionData(data);
+		currentWorkflowDocumentStore.value?.setPinData({});
+
+		canvasStore.stopLoading();
+
+		canvasEventBus.emit('open:execution', data);
+	}
+
+	async function onPostMessageReceived(messageEvent: MessageEvent) {
+		if (
+			!messageEvent ||
+			typeof messageEvent.data !== 'string' ||
+			!messageEvent.data?.includes?.('"command"')
+		) {
+			return;
+		}
+		try {
+			const json = JSON.parse(messageEvent.data);
+			if (json && json.command === 'openWorkflow') {
+				try {
+					await handleOpenWorkflow(json);
+				} catch (e) {
+					reportErrorToParent(i18n.baseText('openWorkflow.workflowImportError'));
+					toast.showError(e, i18n.baseText('openWorkflow.workflowImportError'));
+				}
+			} else if (json && json.command === 'openExecution') {
+				try {
+					await handleOpenExecution(json);
+				} catch (e) {
+					reportErrorToParent(i18n.baseText('nodeView.showError.openExecution.title'));
+					toast.showMessage({
+						title: i18n.baseText('nodeView.showError.openExecution.title'),
+						message: (e as Error).message,
+						type: 'error',
+					});
+				}
+			} else if (json && json.command === 'openExecutionPreview') {
+				try {
+					await handleOpenExecutionPreview(json);
+				} catch (e) {
+					reportErrorToParent(i18n.baseText('nodeView.showError.openExecution.title'));
+					toast.showMessage({
+						title: i18n.baseText('nodeView.showError.openExecution.title'),
+						message: (e as Error).message,
+						type: 'error',
+					});
+				}
+			} else if (json?.command === 'setActiveExecution') {
+				executionsStore.activeExecution = (await executionsStore.fetchExecution(
+					json.executionId,
+				)) as ExecutionSummary;
+			} else if (json?.command === 'executionEvent') {
+				// Relay execution push events from parent into the iframe's push pipeline.
+				// Uses onMessageReceivedHandlers (part of the store's public API) to dispatch
+				// the event to all registered listeners — same pattern the store uses internally.
+				const { usePushConnectionStore } = await import('@/app/stores/pushConnection.store');
+				const pushStore = usePushConnectionStore();
+				for (const handler of pushStore.onMessageReceivedHandlers) {
+					handler(json.event);
+				}
+			}
+		} catch {
+			// Ignore parse errors
+		}
+	}
+
+	function setup() {
+		window.addEventListener('message', onPostMessageReceived);
+		emitPostMessageReady();
+	}
+
+	function cleanup() {
+		window.removeEventListener('message', onPostMessageReceived);
+	}
+
+	return {
+		setup,
+		cleanup,
+	};
+}

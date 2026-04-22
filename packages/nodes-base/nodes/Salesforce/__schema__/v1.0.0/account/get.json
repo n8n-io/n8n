@@ -12,10 +12,24 @@
                 }
             }
         },
+        "BillingAddress": {
+            "type": "object",
+            "properties": {
+                "geocodeAccuracy": {
+                    "type": "null"
+                }
+            }
+        },
+        "BillingGeocodeAccuracy": {
+            "type": "null"
+        },
         "CreatedById": {
             "type": "string"
         },
         "CreatedDate": {
+            "type": "string"
+        },
+        "error": {
             "type": "string"
         },
         "Id": {
@@ -45,6 +59,9 @@
         "OwnerId": {
             "type": "string"
         },
+        "ShippingGeocodeAccuracy": {
+            "type": "null"
+        },
         "SicDesc": {
             "type": "null"
         },
@@ -52,5 +69,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

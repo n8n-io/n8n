@@ -30,7 +30,7 @@ const stickyNode: LoadedClass<INodeType> = {
 					type: 'string',
 					required: true,
 					default:
-						"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+						"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 				},
 				{ displayName: 'Height', name: 'height', type: 'number', required: true, default: 160 },
 				{ displayName: 'Width', name: 'width', type: 'number', required: true, default: 240 },
@@ -1404,6 +1404,7 @@ export class NodeTypes implements INodeTypes {
 			description: {
 				properties: [],
 				name: nodeType,
+				communityNodePackageVersion: undefined,
 			},
 		});
 	}

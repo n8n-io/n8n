@@ -1,9 +1,9 @@
 {
     "type": "object",
     "properties": {
-        "date": {
+        "name": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

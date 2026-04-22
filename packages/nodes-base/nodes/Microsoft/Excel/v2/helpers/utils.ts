@@ -5,6 +5,8 @@ import { generatePairedItemData, wrapData } from '@utils/utilities';
 
 import type { ExcelResponse, SheetData, UpdateSummary } from './interfaces';
 
+export const CELL_REGEX = /([a-zA-Z]{1,10})([0-9]{0,10})/;
+
 type PrepareOutputConfig = {
 	rawData: boolean;
 	dataProperty?: string;
@@ -81,7 +83,7 @@ export function updateByDefinedValues(
 	updateAllOccurences: boolean,
 ): UpdateSummary {
 	const [columns, ...originalValues] = sheetData;
-	const updateValues: SheetData = originalValues.map((row) => row.map(() => null));
+	const updateValues: SheetData = originalValues;
 
 	const updatedRowsIndexes = new Set<number>();
 	const appendData: IDataObject[] = [];
@@ -218,4 +220,100 @@ export const checkRange = (node: INode, range: string) => {
 			`Specify the range more precisely e.g. A1:B5, generic ranges like ${range} are not supported`,
 		);
 	}
+};
+
+/**
+ * Parses strings like A1:B5 to Sheet!A1:B5 into detailed range information
+ * If the range does not have an end, it will be assumed to be the same as the start. E.g. A1 will be parsed as A1:A1
+ */
+export const parseAddress = (addressOrRange: string) => {
+	// remove sheet name
+	const range = addressOrRange.replace(/^.+!/, '');
+
+	const [rangeFrom, rangeTo] = range.split(':') as [string, string | undefined];
+
+	const cellFrom = rangeFrom.match(CELL_REGEX) ?? [];
+
+	if (cellFrom.length < 2) {
+		throw new Error(`Failed to parse range: ${addressOrRange}`);
+	}
+
+	const cellTo = (rangeTo ?? rangeFrom)?.match(CELL_REGEX) ?? [];
+
+	if (cellTo.length < 2) {
+		throw new Error(`Failed to parse range: ${addressOrRange}`);
+	}
+
+	return {
+		cellFrom: {
+			value: rangeFrom,
+			column: cellFrom[1],
+			row: cellFrom[2],
+		},
+		cellTo: {
+			value: rangeTo ?? rangeFrom,
+			column: cellTo[1],
+			row: cellTo[2],
+		},
+	};
+};
+
+/**
+ * Finds a next column in the sequence of columns in Excel
+ * Example:
+ * A -> B
+ * Z -> AA
+ */
+export const nextExcelColumn = (col: string, offset = 1) => {
+	if (offset < 0) {
+		throw new Error(`Invalid offset: ${offset}`);
+	}
+
+	if (offset === 0) {
+		return col;
+	}
+
+	const toNumber = (s: string) => {
+		return s.split('').reduce((acc, c) => acc * 26 + (c.charCodeAt(0) - 64), 0);
+	};
+
+	const toLetters = (n: number): string => {
+		if (n <= 26) {
+			return String.fromCharCode(64 + n);
+		} else {
+			const rem = ((n - 1) % 26) + 1;
+			const div = Math.floor((n - 1) / 26);
+			return toLetters(div) + String.fromCharCode(64 + rem);
+		}
+	};
+
+	const num = toNumber(col);
+	return toLetters(num + offset);
+};
+
+/**
+ * Accepts a used range and finds a new area under the used range.
+ * Changes the new area based on the number of columns and rows inserted.
+ * Example:
+ * A1:B2 -> A3:B4
+ */
+export const findAppendRange = (
+	usedRange: string,
+	{ cols, rows }: { cols: number; rows: number },
+) => {
+	const { cellFrom, cellTo } = parseAddress(usedRange);
+	const isEmptyTable = cellFrom.value === cellTo.value;
+	// if table is empty we don't want to skip the first row
+	const rowOffset = isEmptyTable ? 0 : 1;
+
+	const startingCell = {
+		column: cellFrom.column,
+		row: Number(cellTo.row) + rowOffset,
+	};
+
+	const from = `${startingCell.column}${startingCell.row}`;
+	const nextColumn = nextExcelColumn(startingCell.column, Math.max(cols - 1, 0));
+	const to = `${nextColumn}${Number(startingCell.row) + Math.max(rows - 1, 0)}`;
+
+	return `${from}:${to}`;
 };

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import { inTest, Logger } from '@n8n/backend-common';
+import { inTest, Logger, safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { once as eventOnce } from 'events';
@@ -8,7 +8,7 @@ import { createReadStream, existsSync, rmSync } from 'fs';
 import remove from 'lodash/remove';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
-import path, { parse } from 'path';
+import { parse } from 'path';
 import readline from 'readline';
 import { Worker } from 'worker_threads';
 
@@ -84,7 +84,7 @@ export class MessageEventBusLogWriter {
 		if (!MessageEventBusLogWriter.instance) {
 			MessageEventBusLogWriter.instance = new MessageEventBusLogWriter();
 			MessageEventBusLogWriter.options = {
-				logFullBasePath: path.join(
+				logFullBasePath: safeJoinPath(
 					options?.logBasePath ?? Container.get(InstanceSettings).n8nFolder,
 					options?.logBaseName ?? Container.get(GlobalConfig).eventBus.logWriter.logBaseName,
 				),
@@ -142,7 +142,7 @@ export class MessageEventBusLogWriter {
 			workerFileName =
 				'./dist/eventbus/message-event-bus-writer/message-event-bus-log-writer-worker.js';
 		} else {
-			workerFileName = path.join(parsedName.dir, `${parsedName.name}-worker${parsedName.ext}`);
+			workerFileName = safeJoinPath(parsedName.dir, `${parsedName.name}-worker${parsedName.ext}`);
 		}
 		this._worker = new Worker(workerFileName);
 		if (this.worker) {
@@ -205,51 +205,40 @@ export class MessageEventBusLogWriter {
 	): Promise<ReadMessagesFromLogFileResult> {
 		if (logFileName && existsSync(logFileName)) {
 			try {
+				const stream = createReadStream(logFileName);
+				stream.on('error', (error) => {
+					if ((error as NodeJS.ErrnoException).code !== 'ERR_STREAM_DESTROYED') {
+						this.logger.error(`Error reading logged messages from file: ${logFileName}`, {
+							error,
+						});
+					}
+				});
 				const rl = readline.createInterface({
-					input: createReadStream(logFileName),
+					input: stream,
 					crlfDelay: Infinity,
 				});
+				// Safety guard: abort if the per-file working set grows too large.
+				// Healthy files stay small because confirm lines prune loggedMessages as
+				// they stream; legacy files with orphaned messages (pre-PR #27334) are
+				// the pathological case this guards against.
+				// The guard is skipped in 'all' mode because confirms don't prune there,
+				// so the count would grow monotonically even for healthy files.
+				const maxMessagesPerParse = this.globalConfig.eventBus.logWriter.maxMessagesPerParse;
+				const baselineCount = results.loggedMessages.length;
+				let aborted = false;
 				rl.on('line', (line) => {
-					try {
-						const json = jsonParse(line);
-						if (isEventMessageOptions(json) && json.__type !== undefined) {
-							const msg = this.getEventMessageObjectByType(json);
-							if (msg !== null) results.loggedMessages.push(msg);
-							if (msg?.eventName && msg.payload?.executionId) {
-								const executionId = msg.payload.executionId as string;
-								switch (msg.eventName) {
-									case 'n8n.workflow.started':
-										if (!Object.keys(results.unfinishedExecutions).includes(executionId)) {
-											results.unfinishedExecutions[executionId] = [];
-										}
-										results.unfinishedExecutions[executionId] = [msg];
-										break;
-									case 'n8n.workflow.success':
-									case 'n8n.workflow.failed':
-									case 'n8n.execution.throttled':
-									case 'n8n.execution.started-during-bootup':
-										delete results.unfinishedExecutions[executionId];
-										break;
-									case 'n8n.node.started':
-									case 'n8n.node.finished':
-										if (!Object.keys(results.unfinishedExecutions).includes(executionId)) {
-											results.unfinishedExecutions[executionId] = [];
-										}
-										results.unfinishedExecutions[executionId].push(msg);
-										break;
-								}
-							}
-						}
-						if (isEventMessageConfirm(json) && mode !== 'all') {
-							const removedMessage = remove(results.loggedMessages, (e) => e.id === json.confirm);
-							if (mode === 'sent') {
-								results.sentMessages.push(...removedMessage);
-							}
-						}
-					} catch (error) {
-						this.logger.error(
-							`Error reading line messages from file: ${logFileName}, line: ${line}, ${error.message}}`,
+					if (aborted) return;
+					this.processLoggedLine(line, results, mode, logFileName);
+					if (
+						mode !== 'all' &&
+						results.loggedMessages.length - baselineCount > maxMessagesPerParse
+					) {
+						aborted = true;
+						this.logger.warn(
+							`Event log ${logFileName} exceeded ${maxMessagesPerParse} in-memory messages during parse; aborting to prevent out-of-memory. Some unfinished execution recovery may be skipped. Tune via N8N_EVENTBUS_LOGWRITER_MAXMESSAGESPERPARSE.`,
 						);
+						rl.close();
+						stream.destroy();
 					}
 				});
 				// wait for stream to finish before continue
@@ -259,6 +248,56 @@ export class MessageEventBusLogWriter {
 			}
 		}
 		return results;
+	}
+
+	// eslint-disable-next-line complexity
+	private processLoggedLine(
+		line: string,
+		results: ReadMessagesFromLogFileResult,
+		mode: EventMessageReturnMode,
+		logFileName: string,
+	): void {
+		try {
+			const json = jsonParse(line);
+			if (isEventMessageOptions(json) && json.__type !== undefined) {
+				const msg = this.getEventMessageObjectByType(json);
+				if (msg !== null) results.loggedMessages.push(msg);
+				if (msg?.eventName && msg.payload?.executionId) {
+					const executionId = msg.payload.executionId as string;
+					switch (msg.eventName) {
+						case 'n8n.workflow.started':
+							if (!Object.keys(results.unfinishedExecutions).includes(executionId)) {
+								results.unfinishedExecutions[executionId] = [];
+							}
+							results.unfinishedExecutions[executionId] = [msg];
+							break;
+						case 'n8n.workflow.success':
+						case 'n8n.workflow.failed':
+						case 'n8n.execution.throttled':
+						case 'n8n.execution.started-during-bootup':
+							delete results.unfinishedExecutions[executionId];
+							break;
+						case 'n8n.node.started':
+						case 'n8n.node.finished':
+							if (!Object.keys(results.unfinishedExecutions).includes(executionId)) {
+								results.unfinishedExecutions[executionId] = [];
+							}
+							results.unfinishedExecutions[executionId].push(msg);
+							break;
+					}
+				}
+			}
+			if (isEventMessageConfirm(json) && mode !== 'all') {
+				const removedMessage = remove(results.loggedMessages, (e) => e.id === json.confirm);
+				if (mode === 'sent') {
+					results.sentMessages.push(...removedMessage);
+				}
+			}
+		} catch (error) {
+			this.logger.error(
+				`Error reading line messages from file: ${logFileName}, line: ${line}, ${error.message}}`,
+			);
+		}
 	}
 
 	getLogFileName(counter?: number): string {

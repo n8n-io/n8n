@@ -1,4 +1,5 @@
 import {
+	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
 	type INodePropertyOptions,
@@ -42,14 +43,13 @@ export async function tableSearch(
 }
 
 export async function getDataTableColumns(this: ILoadOptionsFunctions) {
-	const returnData: Array<INodePropertyOptions & { type: string }> = [
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'id (number)', value: 'id', type: 'number' },
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'createdAt (date)', value: 'createdAt', type: 'date' },
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'updatedAt (date)', value: 'updatedAt', type: 'date' },
-	];
+	const returnData: Array<INodePropertyOptions & { type: string }> = Object.entries(
+		DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	).map(([name, type]) => ({
+		name: `${name} (${type})`,
+		value: name,
+		type,
+	}));
 
 	const proxy = await getDataTableProxyLoadOptions(this);
 	if (!proxy) {
@@ -66,12 +66,6 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	}
 	return returnData;
 }
-
-const systemColumns = [
-	{ name: 'id', type: 'number' },
-	{ name: 'createdAt', type: 'date' },
-	{ name: 'updatedAt', type: 'date' },
-] as const;
 
 export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	const proxy = await getDataTableProxyLoadOptions(this);
@@ -121,28 +115,28 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	}
 
 	// Get column type to determine available conditions
-	const column =
-		systemColumns.find((col) => col.name === keyName) ??
-		(await proxy.getColumns()).find((col) => col.name === keyName);
+	const type =
+		DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP[keyName] ??
+		(await proxy.getColumns()).find((col) => col.name === keyName)?.type;
 
-	if (!column) {
+	if (!type) {
 		return [...equalsConditions, ...nullConditions];
 	}
 
 	const conditions: INodePropertyOptions[] = [];
 
-	if (column.type === 'boolean') {
+	if (type === 'boolean') {
 		conditions.push.apply(conditions, booleanConditions);
 	}
 
 	// String columns get LIKE operators
-	if (column.type === 'string') {
+	if (type === 'string') {
 		conditions.push.apply(conditions, equalsConditions);
 		conditions.push.apply(conditions, stringConditions);
 		conditions.push.apply(conditions, comparableConditions);
 	}
 
-	if (['number', 'date'].includes(column.type)) {
+	if (['number', 'date'].includes(type)) {
 		conditions.push.apply(conditions, equalsConditions);
 		conditions.push.apply(conditions, comparableConditions);
 	}

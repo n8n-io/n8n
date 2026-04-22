@@ -12,14 +12,12 @@ class LoggingConfig {
 	enabled: boolean = false;
 
 	/**
-	 * Database logging level. Requires `DB_LOGGING_MAX_EXECUTION_TIME` to be higher than `0`.
+	 * Database logging verbosity. Only applies when `DB_LOGGING_MAX_EXECUTION_TIME` is greater than 0.
 	 */
 	@Env('DB_LOGGING_OPTIONS', dbLoggingOptionsSchema)
 	options: DbLoggingOptions = 'error';
 
-	/**
-	 * Only queries that exceed this time (ms) will be logged. Set `0` to disable.
-	 */
+	/** Only log queries that run longer than this many milliseconds. Set to 0 to disable slow-query logging. */
 	@Env('DB_LOGGING_MAX_EXECUTION_TIME')
 	maxQueryExecutionTime: number = 0;
 }
@@ -27,148 +25,110 @@ class LoggingConfig {
 @Config
 class PostgresSSLConfig {
 	/**
-	 * Whether to enable SSL.
-	 * If `DB_POSTGRESDB_SSL_CA`, `DB_POSTGRESDB_SSL_CERT`, or `DB_POSTGRESDB_SSL_KEY` are defined, `DB_POSTGRESDB_SSL_ENABLED` defaults to `true`.
+	 * Whether to use SSL/TLS for the Postgres connection.
+	 * Defaults to true if any of the SSL cert/key/CA environment variables are set.
 	 */
 	@Env('DB_POSTGRESDB_SSL_ENABLED')
 	enabled: boolean = false;
 
-	/** SSL certificate authority */
+	/** Path or contents of the CA certificate for Postgres SSL. */
 	@Env('DB_POSTGRESDB_SSL_CA')
 	ca: string = '';
 
-	/** SSL certificate */
+	/** Path or contents of the client certificate for Postgres SSL. */
 	@Env('DB_POSTGRESDB_SSL_CERT')
 	cert: string = '';
 
-	/** SSL key */
+	/** Path or contents of the client private key for Postgres SSL. */
 	@Env('DB_POSTGRESDB_SSL_KEY')
 	key: string = '';
 
-	/** If unauthorized SSL connections should be rejected */
+	/** Whether to reject Postgres connections when the server certificate cannot be verified. */
 	@Env('DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED')
 	rejectUnauthorized: boolean = true;
 }
 
 @Config
 class PostgresConfig {
-	/** Postgres database name */
+	/** Postgres database name. */
 	@Env('DB_POSTGRESDB_DATABASE')
 	database: string = 'n8n';
 
-	/** Postgres database host */
+	/** Postgres database host. */
 	@Env('DB_POSTGRESDB_HOST')
 	host: string = 'localhost';
 
-	/** Postgres database password */
+	/** Postgres database password. */
 	@Env('DB_POSTGRESDB_PASSWORD')
 	password: string = '';
 
-	/** Postgres database port */
+	/** Postgres database port. */
 	@Env('DB_POSTGRESDB_PORT')
 	port: number = 5432;
 
-	/** Postgres database user */
+	/** Postgres user name. */
 	@Env('DB_POSTGRESDB_USER')
 	user: string = 'postgres';
 
-	/** Postgres database schema */
+	/** Postgres schema to use. */
 	@Env('DB_POSTGRESDB_SCHEMA')
 	schema: string = 'public';
 
-	/** Postgres database pool size */
+	/** Maximum number of connections in the Postgres connection pool. */
 	@Env('DB_POSTGRESDB_POOL_SIZE')
 	poolSize: number = 2;
 
-	/** Postgres connection timeout (ms) */
+	/** Timeout in milliseconds when establishing a new Postgres connection. */
 	@Env('DB_POSTGRESDB_CONNECTION_TIMEOUT')
 	connectionTimeoutMs: number = 20_000;
 
-	/** Postgres idle connection timeout (ms) */
+	/** Time in milliseconds after which an idle connection in the pool is closed. */
 	@Env('DB_POSTGRESDB_IDLE_CONNECTION_TIMEOUT')
 	idleTimeoutMs: number = 30_000;
+
+	/** Maximum time in milliseconds for a single query. Queries exceeding this are cancelled. Set to 0 to disable. */
+	@Env('DB_POSTGRESDB_STATEMENT_TIMEOUT')
+	statementTimeoutMs: number = 5 * 60 * 1000; // 5 minutes
 
 	@Nested
 	ssl: PostgresSSLConfig;
 }
 
-@Config
-class MysqlConfig {
-	/** @deprecated MySQL database name */
-	@Env('DB_MYSQLDB_DATABASE')
-	database: string = 'n8n';
-
-	/** MySQL database host */
-	@Env('DB_MYSQLDB_HOST')
-	host: string = 'localhost';
-
-	/** MySQL database password */
-	@Env('DB_MYSQLDB_PASSWORD')
-	password: string = '';
-
-	/** MySQL database port */
-	@Env('DB_MYSQLDB_PORT')
-	port: number = 3306;
-
-	/** MySQL database user */
-	@Env('DB_MYSQLDB_USER')
-	user: string = 'root';
-
-	/** MySQL connection pool size */
-	@Env('DB_MYSQLDB_POOL_SIZE')
-	poolSize: number = 10;
-}
+const sqlitePoolSizeSchema = z.coerce.number().int().gte(1);
 
 @Config
 export class SqliteConfig {
-	/** SQLite database file name */
+	/** Path to the SQLite database file. */
 	@Env('DB_SQLITE_DATABASE')
 	database: string = 'database.sqlite';
 
-	/** SQLite database pool size. Set to `0` to disable pooling. */
-	@Env('DB_SQLITE_POOL_SIZE')
-	poolSize: number = 0;
+	/** Number of connections in the SQLite connection pool. Must be at least 1. */
+	@Env('DB_SQLITE_POOL_SIZE', sqlitePoolSizeSchema)
+	poolSize: number = 3;
 
 	/**
-	 * Enable SQLite WAL mode.
-	 */
-	@Env('DB_SQLITE_ENABLE_WAL')
-	enableWAL: boolean = this.poolSize > 1;
-
-	/**
-	 * Run `VACUUM` on startup to rebuild the database, reducing file size and optimizing indexes.
+	 * Whether to run SQLite VACUUM on startup to reclaim space and optimize the file.
 	 *
-	 * @warning Long-running blocking operation that will increase startup time.
+	 * @warning Blocking operation; can significantly increase startup time.
 	 */
 	@Env('DB_SQLITE_VACUUM_ON_STARTUP')
 	executeVacuumOnStartup: boolean = false;
 }
 
-const dbTypeSchema = z.enum(['sqlite', 'mariadb', 'mysqldb', 'postgresdb']);
+const dbTypeSchema = z.enum(['sqlite', 'postgresdb']);
 type DbType = z.infer<typeof dbTypeSchema>;
 
 @Config
 export class DatabaseConfig {
-	/** Type of database to use */
+	/** Database type: `sqlite` or `postgresdb`. */
 	@Env('DB_TYPE', dbTypeSchema)
 	type: DbType = 'sqlite';
 
-	/**
-	 * Is true if the default sqlite data source of TypeORM is used, as opposed
-	 * to any other (e.g. postgres)
-	 * This also returns false if n8n's new pooled sqlite data source is used.
-	 */
-	get isLegacySqlite() {
-		return this.type === 'sqlite' && this.sqlite.poolSize === 0;
-	}
-
-	/** Prefix for table names */
+	/** Prefix prepended to all n8n table names (useful for shared databases). */
 	@Env('DB_TABLE_PREFIX')
 	tablePrefix: string = '';
 
-	/**
-	 * The interval in seconds to ping the database to check if the connection is still alive.
-	 */
+	/** Interval in seconds between health-check pings to the database. */
 	@Env('DB_PING_INTERVAL_SECONDS')
 	pingIntervalSeconds: number = 2;
 
@@ -177,9 +137,6 @@ export class DatabaseConfig {
 
 	@Nested
 	postgresdb: PostgresConfig;
-
-	@Nested
-	mysqldb: MysqlConfig;
 
 	@Nested
 	sqlite: SqliteConfig;

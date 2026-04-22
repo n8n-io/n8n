@@ -3,7 +3,6 @@ import {
 	User,
 	CredentialsRepository,
 	ProjectRepository,
-	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
@@ -19,6 +18,7 @@ const defaultUserProps = {
 	lastName: null,
 	email: null,
 	password: null,
+	lastActiveAt: null,
 	role: 'global:owner',
 };
 
@@ -52,11 +52,6 @@ export class Reset extends BaseCommand {
 			}),
 		);
 		await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
-
-		await Container.get(SettingsRepository).update(
-			{ key: 'userManagement.isInstanceOwnerSetUp' },
-			{ value: 'false' },
-		);
 
 		this.logger.info('Successfully reset the database to default user state.');
 	}

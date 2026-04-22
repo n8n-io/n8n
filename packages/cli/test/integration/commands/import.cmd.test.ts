@@ -5,9 +5,12 @@ import {
 	getAllSharedWorkflows,
 	getAllWorkflows,
 } from '@n8n/backend-test-utils';
+import { WorkflowPublishHistoryRepository, WorkflowHistoryRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { nanoid } from 'nanoid';
 
 import '@/zod-alias-support';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
@@ -15,6 +18,9 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 import { createMember, createOwner } from '../shared/db/users';
 
 mockInstance(LoadNodesAndCredentials);
+mockInstance(ActiveWorkflowManager);
+mockInstance(WorkflowPublishHistoryRepository);
+
 const command = setupTestCommand(ImportWorkflowsCommand);
 
 beforeEach(async () => {
@@ -45,8 +51,8 @@ test('import:workflow should import active workflow and deactivate it', async ()
 	};
 	expect(after).toMatchObject({
 		workflows: [
-			expect.objectContaining({ name: 'active-workflow', active: false }),
-			expect.objectContaining({ name: 'inactive-workflow', active: false }),
+			expect.objectContaining({ name: 'active-workflow', active: false, activeVersionId: null }),
+			expect.objectContaining({ name: 'inactive-workflow', active: false, activeVersionId: null }),
 		],
 		sharings: [
 			expect.objectContaining({
@@ -86,8 +92,8 @@ test('import:workflow should import active workflow from combined file and deact
 	};
 	expect(after).toMatchObject({
 		workflows: [
-			expect.objectContaining({ name: 'active-workflow', active: false }),
-			expect.objectContaining({ name: 'inactive-workflow', active: false }),
+			expect.objectContaining({ name: 'active-workflow', active: false, activeVersionId: null }),
+			expect.objectContaining({ name: 'inactive-workflow', active: false, activeVersionId: null }),
 		],
 		sharings: [
 			expect.objectContaining({
@@ -124,7 +130,9 @@ test('import:workflow can import a single workflow object', async () => {
 		sharings: await getAllSharedWorkflows(),
 	};
 	expect(after).toMatchObject({
-		workflows: [expect.objectContaining({ name: 'active-workflow', active: false })],
+		workflows: [
+			expect.objectContaining({ name: 'active-workflow', active: false, activeVersionId: null }),
+		],
 		sharings: [
 			expect.objectContaining({
 				workflowId: '998',
@@ -332,4 +340,34 @@ test('`import:workflow --projectId ... --userId ...` fails explaining that only 
 	).rejects.toThrowError(
 		'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 	);
+});
+
+test('should preserve versionMetadata from JSON file when importing', async () => {
+	//
+	// ARRANGE
+	//
+	await createOwner();
+
+	//
+	// ACT
+	//
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/with-history/workflow-with-metadata.json',
+	]);
+
+	//
+	// ASSERT
+	//
+	const workflows = await getAllWorkflows();
+	expect(workflows).toHaveLength(1);
+	expect(workflows[0].id).toBe('test-workflow-123');
+	expect(workflows[0].name).toBe('Workflow with History Metadata');
+
+	const workflowHistoryRecords = await Container.get(WorkflowHistoryRepository).find({
+		where: { workflowId: 'test-workflow-123' },
+	});
+
+	expect(workflowHistoryRecords).toHaveLength(1);
+	expect(workflowHistoryRecords[0].name).toBe('Historical Version Name');
+	expect(workflowHistoryRecords[0].description).toBe('Historical version description');
 });

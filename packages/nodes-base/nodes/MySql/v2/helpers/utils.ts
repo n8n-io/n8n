@@ -10,6 +10,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type {
 	Mysql2Pool,
+	Mysql2PoolConnection,
 	ParameterMatch,
 	QueryMode,
 	QueryValues,
@@ -19,6 +20,7 @@ import type {
 } from './interfaces';
 import { BATCH_MODE } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
+import { operatorOptions } from '../actions/common.descriptions';
 
 export function escapeSqlIdentifier(identifier: string): string {
 	const parts = identifier.match(/(`[^`]*`|[^.`]+)/g) ?? [];
@@ -319,7 +321,17 @@ export function configureQueryRunner(
 		let returnData: INodeExecutionData[] = [];
 		const mode = (options.queryBatching as QueryMode) || BATCH_MODE.SINGLE;
 
-		const connection = await pool.getConnection();
+		let connection: Mysql2PoolConnection;
+		try {
+			connection = await pool.getConnection();
+		} catch (e) {
+			const error = parseMySqlError.call(this, e);
+			if (!this.continueOnFail()) {
+				throw error;
+			}
+
+			return [{ json: { message: error.message, error: { ...error } } }];
+		}
 
 		if (mode === BATCH_MODE.SINGLE) {
 			const formattedQueries = queries.map(({ query, values }) => connection.format(query, values));
@@ -532,7 +544,7 @@ export function addWhereClauses(
 		}${valueReplacement}${operator}`;
 	});
 
-	return [`${query}${whereQuery}`, replacements.concat(...values)];
+	return [`${query}${whereQuery}`, replacements.concat.apply(replacements, values)];
 }
 
 export function addSortRules(
@@ -547,11 +559,11 @@ export function addSortRules(
 
 	rules.forEach((rule, index) => {
 		const endWith = index === rules.length - 1 ? '' : ',';
-
-		orderByQuery += ` ${escapeSqlIdentifier(rule.column)} ${rule.direction}${endWith}`;
+		const direction = rule.direction === 'ASC' ? 'ASC' : 'DESC';
+		orderByQuery += ` ${escapeSqlIdentifier(rule.column)} ${direction}${endWith}`;
 	});
 
-	return [`${query}${orderByQuery}`, replacements.concat(...values)];
+	return [`${query}${orderByQuery}`, replacements.concat.apply(replacements, values)];
 }
 
 export function replaceEmptyStringsByNulls(
@@ -575,3 +587,34 @@ export function replaceEmptyStringsByNulls(
 
 	return returnData;
 }
+
+// operations use 'equal' instead of '=' because of the way expressions are handled
+// manually add '=' to allow entering it instead of 'equal'
+const conditionSet = new Set(operatorOptions.map((option) => option.value)).add('=');
+
+export const isWhereClause = (clause: unknown): clause is WhereClause => {
+	if (typeof clause !== 'object' || clause === null) return false;
+	if (!('column' in clause)) return false;
+	if (
+		!('condition' in clause) ||
+		typeof clause.condition !== 'string' ||
+		!conditionSet.has(clause.condition)
+	)
+		return false;
+	return true;
+};
+
+export const getWhereClauses = (ctx: IExecuteFunctions, itemIndex: number): WhereClause[] => {
+	const whereClauses = ctx.getNodeParameter('where', itemIndex, []) as IDataObject;
+	const whereClausesValues = whereClauses.values as unknown[];
+	if (!Array.isArray(whereClausesValues)) {
+		return [];
+	}
+	const someInvalid = whereClausesValues.some((clause) => !isWhereClause(clause));
+	if (someInvalid) {
+		throw new NodeOperationError(ctx.getNode(), 'Invalid where clause', {
+			itemIndex,
+		});
+	}
+	return whereClausesValues as WhereClause[];
+};

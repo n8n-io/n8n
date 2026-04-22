@@ -1,5 +1,5 @@
 import { SecurityConfig } from '@n8n/config';
-import { CredentialsRepository, ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
+import { CredentialsRepository, ExecutionDataRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IWorkflowBase } from 'n8n-workflow';
 
@@ -10,7 +10,6 @@ import type { RiskReporter, Risk } from '@/security-audit/types';
 export class CredentialsRiskReporter implements RiskReporter {
 	constructor(
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly securityConfig: SecurityConfig,
 	) {}
@@ -19,7 +18,7 @@ export class CredentialsRiskReporter implements RiskReporter {
 		const days = this.securityConfig.daysAbandonedWorkflow;
 
 		const allExistingCreds = await this.getAllExistingCreds();
-		const { credsInAnyUse, credsInActiveUse } = await this.getAllCredsInUse(workflows);
+		const { credsInAnyUse, credsInActiveUse } = this.getAllCredsInUse(workflows);
 		const recentlyExecutedCreds = await this.getCredsInRecentlyExecutedWorkflows(days);
 
 		const credsNotInAnyUse = allExistingCreds.filter((c) => !credsInAnyUse.has(c.id));
@@ -81,7 +80,7 @@ export class CredentialsRiskReporter implements RiskReporter {
 		return report;
 	}
 
-	private async getAllCredsInUse(workflows: IWorkflowBase[]) {
+	private getAllCredsInUse(workflows: IWorkflowBase[]) {
 		const credsInAnyUse = new Set<string>();
 		const credsInActiveUse = new Set<string>();
 
@@ -94,7 +93,9 @@ export class CredentialsRiskReporter implements RiskReporter {
 
 					credsInAnyUse.add(cred.id);
 
-					if (workflow.active) credsInActiveUse.add(cred.id);
+					if (workflow.activeVersionId !== null) {
+						credsInActiveUse.add(cred.id);
+					}
 				});
 			});
 		});
@@ -116,9 +117,7 @@ export class CredentialsRiskReporter implements RiskReporter {
 
 		date.setDate(date.getDate() - days);
 
-		const executionIds = await this.executionRepository.getIdsSince(date);
-
-		return await this.executionDataRepository.findByExecutionIds(executionIds);
+		return await this.executionDataRepository.getWorkflowsExecutedSince(date);
 	}
 
 	/**

@@ -8,16 +8,17 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeExecutionHint,
 } from 'n8n-workflow';
 
 import { prepareFieldsArray } from '../utils/utils';
+import { FieldsTracker } from './utils';
 
 export class SplitOut implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Split Out',
 		name: 'splitOut',
-		icon: 'file:splitOut.svg',
+		icon: 'node:split-out',
+		iconColor: 'violet',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,
@@ -27,6 +28,14 @@ export class SplitOut implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.aggregate',
+					relationHint: 'Reverse operation - combine items back',
+				},
+			],
+		},
 		properties: [
 			{
 				displayName: 'Fields To Split Out',
@@ -38,6 +47,7 @@ export class SplitOut implements INodeType {
 				description:
 					'The name of the input fields to break out into separate items. Separate multiple field names by commas. For binary data, use $binary.',
 				requiresDataPath: 'multiple',
+				hint: 'Use $binary to split out the input item by binary data',
 			},
 			{
 				displayName: 'Include',
@@ -112,7 +122,7 @@ export class SplitOut implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
-		const notFoundedFields: { [key: string]: boolean[] } = {};
+		const fieldsTracker = new FieldsTracker();
 
 		for (let i = 0; i < items.length; i++) {
 			const fieldsToSplitOut = (this.getNodeParameter('fieldToSplitOut', i) as string)
@@ -160,17 +170,15 @@ export class SplitOut implements INodeType {
 						entityToSplit = item[fieldToSplitOut] as IDataObject[];
 					}
 
-					if (entityToSplit === undefined) {
+					fieldsTracker.add(fieldToSplitOut);
+
+					const entryExists = entityToSplit !== undefined;
+
+					if (!entryExists) {
 						entityToSplit = [];
-						if (!notFoundedFields[fieldToSplitOut]) {
-							notFoundedFields[fieldToSplitOut] = [];
-						}
-						notFoundedFields[fieldToSplitOut].push(false);
-					} else {
-						if (notFoundedFields[fieldToSplitOut]) {
-							notFoundedFields[fieldToSplitOut].push(true);
-						}
 					}
+
+					fieldsTracker.update(fieldToSplitOut, entryExists);
 
 					if (typeof entityToSplit !== 'object' || entityToSplit === null) {
 						entityToSplit = [entityToSplit] as unknown as IDataObject[];
@@ -264,21 +272,10 @@ export class SplitOut implements INodeType {
 			}
 		}
 
-		if (Object.keys(notFoundedFields).length) {
-			const hints: NodeExecutionHint[] = [];
+		const hints = fieldsTracker.getHints();
 
-			for (const [field, values] of Object.entries(notFoundedFields)) {
-				if (values.every((value) => !value)) {
-					hints.push({
-						message: `The field '${field}' wasn't found in any input item`,
-						location: 'outputPane',
-					});
-				}
-			}
-
-			if (hints.length) {
-				this.addExecutionHints(...hints);
-			}
+		if (hints.length) {
+			this.addExecutionHints(...hints);
 		}
 
 		return [returnData];

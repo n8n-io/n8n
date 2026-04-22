@@ -1,12 +1,12 @@
-import type { Tool } from 'langchain/tools';
-import { DynamicStructuredTool } from 'langchain/tools';
+import type { Tool } from '@langchain/classic/tools';
+import { DynamicStructuredTool } from '@langchain/classic/tools';
 import { NodeOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { ZodObjectAny } from '../../../../types/types';
 import { checkForStructuredTools } from '../agents/utils';
-import { getInputs } from '../V2/utils';
+import { getInputs } from '../utils';
 
 describe('checkForStructuredTools', () => {
 	let mockNode: INode;

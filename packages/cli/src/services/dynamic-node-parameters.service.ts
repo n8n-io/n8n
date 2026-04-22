@@ -9,7 +9,6 @@ import type {
 	INodeProperties,
 	INodePropertyOptions,
 	INodeType,
-	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	ResourceMapperFields,
@@ -21,12 +20,14 @@ import type {
 	ILocalLoadOptionsFunctions,
 	IExecuteData,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError } from 'n8n-workflow';
+import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { WorkflowLoaderService } from './workflow-loader.service';
-import { User } from '@n8n/db';
+import { SharedWorkflowRepository, User } from '@n8n/db';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Logger } from '@n8n/backend-common';
 
@@ -58,16 +59,21 @@ export class DynamicNodeParametersService {
 		private logger: Logger,
 		private nodeTypes: NodeTypes,
 		private workflowLoaderService: WorkflowLoaderService,
+		private sharedWorkflowRepository: SharedWorkflowRepository,
+		private credentialsFinderService: CredentialsFinderService,
 	) {}
 
-	async scrubInaccessibleProjectId(user: User, payload: { projectId?: string }) {
+	async refineResourceIds(
+		user: User,
+		payload: { projectId?: string; workflowId?: string; credentials?: INodeCredentials },
+	) {
 		// We want to avoid relying on generic project:read permissions to enable
 		// a future with fine-grained permission control dependent on the respective resource
-		// For now we use the dataStore:listProject scope as this is the existing consumer of
+		// For now we use the dataTable:listProject scope as this is the existing consumer of
 		// the project id
 		if (
 			payload.projectId &&
-			!(await userHasScopes(user, ['dataStore:listProject'], false, {
+			!(await userHasScopes(user, ['dataTable:listProject'], false, {
 				projectId: payload.projectId,
 			}))
 		) {
@@ -75,6 +81,43 @@ export class DynamicNodeParametersService {
 				`Scrubbed inaccessible projectId ${payload.projectId} from DynamicNodeParameters request`,
 			);
 			payload.projectId = undefined;
+		}
+
+		if (payload.workflowId) {
+			const hasAccess = await userHasScopes(user, ['workflow:read'], false, {
+				workflowId: payload.workflowId,
+			});
+
+			if (!hasAccess) {
+				this.logger.warn(
+					`Scrubbed inaccessible workflowId ${payload.workflowId} from DynamicNodeParameters request`,
+				);
+				payload.workflowId = undefined;
+			} else if (payload.projectId === undefined) {
+				const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(
+					payload.workflowId,
+				);
+				payload.projectId = project?.id;
+			}
+		}
+
+		if (payload.credentials) {
+			const credentialIds = Object.values(payload.credentials)
+				.map((details) => details.id)
+				.filter((id): id is string => id !== undefined && id !== null);
+
+			if (credentialIds.length > 0) {
+				const accessibleIds = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+					credentialIds,
+					user,
+					['credential:read'],
+				);
+
+				const forbiddenId = credentialIds.find((id) => !accessibleIds.has(id));
+				if (forbiddenId !== undefined) {
+					throw new ForbiddenError();
+				}
+			}
 		}
 	}
 
@@ -122,7 +165,7 @@ export class DynamicNodeParametersService {
 		const mode = 'internal';
 		const runIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData = createEmptyRunExecutionData();
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const node = workflow.nodes['Temp-Node'];
 
@@ -211,8 +254,9 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('resourceMapping', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs);
+		return this.removeDuplicateResourceMappingFields(
+			(await method.call(thisArgs)) as ResourceMapperFields,
+		);
 	}
 
 	/** Returns the available workflow input mapping fields for the ResourceMapper component */
@@ -225,8 +269,9 @@ export class DynamicNodeParametersService {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		const method = this.getMethod('localResourceMapping', methodName, nodeType);
 		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs);
+		return this.removeDuplicateResourceMappingFields(
+			(await method.call(thisArgs)) as ResourceMapperFields,
+		);
 	}
 
 	/** Returns the result of the action handler */
@@ -337,5 +382,20 @@ export class DynamicNodeParametersService {
 			path,
 			this.workflowLoaderService,
 		);
+	}
+
+	private removeDuplicateResourceMappingFields(fields: ResourceMapperFields) {
+		const uniqueFieldIds = new Set<string>();
+		return {
+			...fields,
+			fields: fields.fields?.filter((field) => {
+				if (uniqueFieldIds.has(field.id)) {
+					return false;
+				}
+
+				uniqueFieldIds.add(field.id);
+				return true;
+			}),
+		};
 	}
 }

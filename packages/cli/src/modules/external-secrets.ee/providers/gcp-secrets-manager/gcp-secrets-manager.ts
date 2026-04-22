@@ -1,29 +1,27 @@
-import type { SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
+import type { protos, SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { ensureError, jsonParse, type INodeProperties } from 'n8n-workflow';
+import { ensureError, jsonParse, UserError, type INodeProperties } from 'n8n-workflow';
 
 import type {
 	GcpSecretsManagerContext,
 	GcpSecretAccountKey,
 	RawGcpSecretAccountKey,
 } from './types';
-import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../../constants';
-import type { SecretsProvider, SecretsProviderState } from '../../types';
+import { DOCS_HELP_NOTICE } from '../../constants';
+import { SecretsProvider } from '../../types';
 
-export class GcpSecretsManager implements SecretsProvider {
+export class GcpSecretsManager extends SecretsProvider {
 	name = 'gcpSecretsManager';
 
 	displayName = 'GCP Secrets Manager';
-
-	state: SecretsProviderState = 'initializing';
 
 	properties: INodeProperties[] = [
 		DOCS_HELP_NOTICE,
 		{
 			displayName: 'Service Account Key',
 			name: 'serviceAccountKey',
-			type: 'string',
+			type: 'json',
 			default: '',
 			required: true,
 			typeOptions: { password: true },
@@ -40,6 +38,7 @@ export class GcpSecretsManager implements SecretsProvider {
 	private settings: GcpSecretAccountKey;
 
 	constructor(private readonly logger = Container.get(Logger)) {
+		super();
 		this.logger = this.logger.scoped('external-secrets');
 	}
 
@@ -47,24 +46,17 @@ export class GcpSecretsManager implements SecretsProvider {
 		this.settings = this.parseSecretAccountKey(context.settings.serviceAccountKey);
 	}
 
-	async connect() {
+	protected async doConnect(): Promise<void> {
 		const { projectId, privateKey, clientEmail } = this.settings;
 
 		const { SecretManagerServiceClient: GcpClient } = await import('@google-cloud/secret-manager');
 
-		try {
-			this.client = new GcpClient({
-				credentials: { client_email: clientEmail, private_key: privateKey },
-				projectId,
-			});
-			this.state = 'connected';
-			this.logger.debug('GCP Secrets Manager provider connected');
-		} catch (error) {
-			this.state = 'error';
-			this.logger.debug('GCP Secrets Manager provider failed to connect', {
-				error: ensureError(error),
-			});
-		}
+		this.client = new GcpClient({
+			credentials: { client_email: clientEmail, private_key: privateKey },
+			projectId,
+		});
+
+		this.logger.debug('GCP Secrets Manager provider connected');
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {
@@ -90,7 +82,7 @@ export class GcpSecretsManager implements SecretsProvider {
 		});
 
 		const secretNames = rawSecretNames.reduce<string[]>((acc, cur) => {
-			if (!cur.name || !EXTERNAL_SECRETS_NAME_REGEX.test(cur.name)) return acc;
+			if (!cur.name) return acc;
 
 			const secretName = cur.name.split('/').pop();
 
@@ -100,9 +92,34 @@ export class GcpSecretsManager implements SecretsProvider {
 		}, []);
 
 		const promises = secretNames.map(async (name) => {
-			const versions = await this.client.accessSecretVersion({
-				name: `projects/${projectId}/secrets/${name}/versions/latest`,
-			});
+			let versions:
+				| [
+						protos.google.cloud.secretmanager.v1.IAccessSecretVersionResponse,
+						protos.google.cloud.secretmanager.v1.IAccessSecretVersionRequest | undefined,
+						{} | undefined,
+				  ]
+				| undefined;
+
+			try {
+				versions = await this.client.accessSecretVersion({
+					name: `projects/${projectId}/secrets/${name}/versions/latest`,
+				});
+			} catch (error) {
+				// Only handle expected error codes that indicate the secret is not accessible
+				// PERMISSION_DENIED (7), NOT_FOUND (5), UNAVAILABLE (14)
+				const errorCode = error?.code;
+				if (errorCode === 7 || errorCode === 5 || errorCode === 14) {
+					this.logger.info(
+						`Skipping GCP secret: ${name}, version: latest as the version is not accessible`,
+						{
+							error: ensureError(error),
+						},
+					);
+				} else {
+					// Rethrow unexpected errors to avoid masking broader failures
+					throw error;
+				}
+			}
 
 			if (!Array.isArray(versions) || !versions.length) return null;
 
@@ -139,13 +156,24 @@ export class GcpSecretsManager implements SecretsProvider {
 		return Object.keys(this.cachedSecrets);
 	}
 
-	private parseSecretAccountKey(privateKey: string): GcpSecretAccountKey {
-		const parsed = jsonParse<RawGcpSecretAccountKey>(privateKey, { fallbackValue: {} });
+	private parseSecretAccountKey(serviceAccountKey: string): GcpSecretAccountKey {
+		const secretAccountKey = jsonParse<RawGcpSecretAccountKey>(serviceAccountKey, {
+			fallbackValue: {},
+		});
+		const clientEmail = secretAccountKey.client_email?.trim();
+		const privateKey = secretAccountKey.private_key?.trim();
+		const projectId = secretAccountKey.project_id?.trim();
+
+		if (!clientEmail || !privateKey) {
+			throw new UserError(
+				'Service account key must contain "client_email" and "private_key" fields. Use the downloaded service account JSON key file from Google Cloud Console.',
+			);
+		}
 
 		return {
-			projectId: parsed?.project_id ?? '',
-			clientEmail: parsed?.client_email ?? '',
-			privateKey: parsed?.private_key ?? '',
+			projectId: projectId ?? '',
+			clientEmail,
+			privateKey,
 		};
 	}
 }

@@ -1,9 +1,9 @@
 {
     "name": "{{nodePackageName}}",
     "version": "0.1.0",
-    "description": "n8n community node to work with the GitHub Issues API",
+    "description": "",
     "license": "MIT",
-    "homepage": "https://example.com",
+    "homepage": "",
     "keywords": [
         "n8n-community-node-package"
     ],
@@ -13,7 +13,7 @@
     },
     "repository": {
         "type": "git",
-        "url": ""
+        "url": "https://github.com/<...>/n8n-nodes-<...>.git"
     },
    "scripts": {
 		"build": "n8n-node build",
@@ -29,6 +29,7 @@
     ],
     "n8n": {
         "n8nNodesApiVersion": 1,
+        "strict": true,
         "credentials": [
             "dist/credentials/GithubIssuesApi.credentials.js",
             "dist/credentials/GithubIssuesOAuth2Api.credentials.js"

@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { IDriveItem, IList, IListItem, ISite } from '../helpers/interfaces';
+import { escapeFilterValue } from '../helpers/utils';
 import { microsoftSharePointApiRequest } from '../transport';
 
 export async function getFiles(
@@ -34,7 +35,7 @@ export async function getFiles(
 			$select: 'id,name,file',
 		};
 		if (filter) {
-			qs.$filter = `name eq '${filter}'`;
+			qs.$filter = `startswith(name, '${escapeFilterValue(filter)}')`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
@@ -85,9 +86,6 @@ export async function getFolders(
 			// https://learn.microsoft.com/en-us/onedrive/developer/rest-api/concepts/filtering-results?view=odsp-graph-online#filterable-properties
 			$filter: 'folder ne null',
 		};
-		if (filter) {
-			qs.$filter = `name eq '${filter}'`;
-		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
 			'GET',
@@ -100,7 +98,7 @@ export async function getFolders(
 	const items: IDriveItem[] = response.value;
 
 	const results: INodeListSearchItems[] = items
-		.filter((x) => x.folder)
+		.filter((x) => x.folder && (!filter || x.name?.toLowerCase()?.includes?.(filter.toLowerCase())))
 		.map((g) => ({
 			name: g.name,
 			value: g.id,
@@ -137,7 +135,7 @@ export async function getItems(
 			$select: 'id,fields',
 		};
 		if (filter) {
-			qs.$filter = `fields/Title eq '${filter}'`;
+			qs.$filter = `fields/Title eq '${escapeFilterValue(filter)}'`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,
@@ -185,7 +183,7 @@ export async function getLists(
 			$select: 'id,displayName',
 		};
 		if (filter) {
-			qs.$filter = `displayName eq '${filter}'`;
+			qs.$filter = `displayName eq '${escapeFilterValue(filter)}'`;
 		}
 		response = await microsoftSharePointApiRequest.call(
 			this,

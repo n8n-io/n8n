@@ -27,7 +27,7 @@ export type CreateNodeAsToolOptions = {
  * @throws {NodeOperationError} When parameter keys are invalid or when duplicate keys have inconsistent definitions
  * @returns {z.ZodObject} A Zod schema object representing the structure and validation rules for the node parameters
  */
-function getSchema(node: INode) {
+export function getSchema(node: INode) {
 	const collectedArguments: FromAIArgument[] = [];
 	try {
 		traverseNodeParameters(node.parameters, collectedArguments);
@@ -106,6 +106,11 @@ function createTool(options: CreateNodeAsToolOptions) {
 		description,
 		schema,
 		func: async (toolArgs: z.infer<typeof schema>) => await handleToolInvocation(toolArgs),
+		// Include sourceNodeName in metadata for engine request routing
+		// This is required for HITL tools to know which node to execute after approval
+		metadata: {
+			sourceNodeName: node.name,
+		},
 	});
 }
 

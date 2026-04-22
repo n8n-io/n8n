@@ -5,7 +5,7 @@ export class HttpHeaderAuth implements ICredentialType {
 
 	displayName = 'Header Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 

@@ -1,6 +1,74 @@
+import { AuthIdentity } from '../auth-identity';
+import { type Role } from '../role';
 import { User } from '../user';
 
 describe('User Entity', () => {
+	describe('computeIsPending', () => {
+		const createUser = (overrides: Partial<User> = {}) => {
+			const user = new User();
+			user.password = null;
+			user.role = { slug: 'global:member' } as Role;
+			user.authIdentities = [];
+			return Object.assign(user, overrides);
+		};
+
+		const createAuthIdentity = (providerType: 'email' | 'saml' | 'oidc' | 'ldap'): AuthIdentity => {
+			const identity = new AuthIdentity();
+			identity.providerType = providerType;
+			identity.providerId = 'test-provider-id';
+			return identity;
+		};
+
+		it('should be pending when password is null and no auth identities', () => {
+			const user = createUser();
+			user.computeIsPending();
+			expect(user.isPending).toBe(true);
+		});
+
+		it('should NOT be pending when password is set', () => {
+			const user = createUser({ password: 'hashed-password' });
+			user.computeIsPending();
+			expect(user.isPending).toBe(false);
+		});
+
+		it('should NOT be pending when user is global owner (even without password)', () => {
+			const user = createUser({ role: { slug: 'global:owner' } as Role });
+			user.computeIsPending();
+			expect(user.isPending).toBe(false);
+		});
+
+		it('should NOT be pending when user has SAML auth identity', () => {
+			const user = createUser({ authIdentities: [createAuthIdentity('saml')] });
+			user.computeIsPending();
+			expect(user.isPending).toBe(false);
+		});
+
+		it('should NOT be pending when user has OIDC auth identity', () => {
+			const user = createUser({ authIdentities: [createAuthIdentity('oidc')] });
+			user.computeIsPending();
+			expect(user.isPending).toBe(false);
+		});
+
+		it('should NOT be pending when user has LDAP auth identity', () => {
+			const user = createUser({ authIdentities: [createAuthIdentity('ldap')] });
+			user.computeIsPending();
+			expect(user.isPending).toBe(false);
+		});
+
+		it('should be pending when user only has email auth identity (no password)', () => {
+			const user = createUser({ authIdentities: [createAuthIdentity('email')] });
+			user.computeIsPending();
+			expect(user.isPending).toBe(true);
+		});
+
+		it('should handle undefined authIdentities gracefully', () => {
+			const user = createUser();
+			user.authIdentities = undefined as unknown as AuthIdentity[];
+			user.computeIsPending();
+			expect(user.isPending).toBe(true);
+		});
+	});
+
 	describe('JSON.stringify', () => {
 		it('should not serialize sensitive data', () => {
 			const user = Object.assign(new User(), {

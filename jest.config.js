@@ -1,5 +1,6 @@
 const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('get-tsconfig').getTsconfig().config;
+const { resolve } = require('path');
 
 /** @type {import('ts-jest').TsJestGlobalOptions} */
 const tsJestOptions = {
@@ -8,6 +9,7 @@ const tsJestOptions = {
 		...compilerOptions,
 		declaration: false,
 		sourceMap: true,
+		rootDir: '.',
 	},
 };
 
@@ -18,6 +20,9 @@ const esmDependencies = [
 	'openid-client',
 	'oauth4webapi',
 	'jose',
+	'p-retry',
+	'is-network-error',
+	'uuid',
 	// Add other ESM dependencies that need to be transformed here
 ];
 
@@ -42,11 +47,14 @@ const config = {
 	},
 	transformIgnorePatterns: [`/node_modules/(?!${esmDependenciesPattern})/`],
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
-	moduleNameMapper: compilerOptions?.paths
-		? pathsToModuleNameMapper(compilerOptions.paths, {
-				prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
-			})
-		: {},
+	moduleNameMapper: {
+		'^@n8n/utils$': resolve(__dirname, 'packages/@n8n/utils/dist/index.cjs'),
+		...(compilerOptions?.paths
+			? pathsToModuleNameMapper(compilerOptions.paths, {
+					prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
+				})
+			: {}),
+	},
 	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],

@@ -13,6 +13,44 @@
         "id": {
             "type": "integer"
         },
+        "image": {
+            "type": "object",
+            "properties": {
+                "admin_graphql_api_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "height": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "product_id": {
+                    "type": "integer"
+                },
+                "src": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "variant_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "width": {
+                    "type": "integer"
+                }
+            }
+        },
         "images": {
             "type": "array",
             "items": {
@@ -24,6 +62,9 @@
                     "created_at": {
                         "type": "string"
                     },
+                    "height": {
+                        "type": "integer"
+                    },
                     "id": {
                         "type": "integer"
                     },
@@ -33,6 +74,9 @@
                     "product_id": {
                         "type": "integer"
                     },
+                    "src": {
+                        "type": "string"
+                    },
                     "updated_at": {
                         "type": "string"
                     },
@@ -41,6 +85,9 @@
                         "items": {
                             "type": "integer"
                         }
+                    },
+                    "width": {
+                        "type": "integer"
                     }
                 }
             }
@@ -155,5 +202,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

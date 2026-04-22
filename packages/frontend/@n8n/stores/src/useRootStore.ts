@@ -31,7 +31,7 @@ export type RootStoreState = {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
-	binaryDataMode: 'default' | 'filesystem' | 's3';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
 };
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
@@ -200,6 +200,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.binaryDataMode = value;
 	};
 
+	const setPushRef = (value: string) => {
+		state.value.pushRef = value;
+	};
+
 	// #endregion
 
 	return {
@@ -243,5 +247,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setN8nMetadata,
 		setDefaultLocale,
 		setBinaryDataMode,
+		setPushRef,
 	};
 });

@@ -1,11 +1,17 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
+import { SettingsRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
+import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy, jsonParse } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite } from '@/interfaces';
+import { StaticAuthService } from './services/static-auth-service';
+
+const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
 
 @Service()
 export class CredentialsOverwrites {
@@ -14,19 +20,86 @@ export class CredentialsOverwrites {
 	private resolvedTypes: string[] = [];
 
 	constructor(
-		globalConfig: GlobalConfig,
+		private readonly globalConfig: GlobalConfig,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly logger: Logger,
-	) {
-		const data = globalConfig.credentials.overwrite.data;
-		const overwriteData = jsonParse<ICredentialsOverwrite>(data, {
-			errorMessage: 'The credentials-overwrite is not valid JSON.',
-		});
+		private readonly settings: SettingsRepository,
+		private readonly cipher: Cipher,
+	) {}
 
-		this.setData(overwriteData);
+	async init() {
+		const data = this.globalConfig.credentials.overwrite.data;
+		if (data) {
+			this.logger.debug('Loading overwrite credentials from static envvar');
+			const overwriteData = jsonParse<ICredentialsOverwrite>(data, {
+				errorMessage: 'The credentials-overwrite is not valid JSON.',
+			});
+
+			this.setPlainData(overwriteData);
+		}
+
+		const persistence = this.globalConfig.credentials.overwrite.persistence;
+
+		if (persistence) {
+			this.logger.debug('Loading overwrite credentials from database');
+			await this.loadOverwriteDataFromDB(false);
+		}
 	}
 
-	setData(overwriteData: ICredentialsOverwrite) {
+	private reloading = false;
+
+	@OnPubSubEvent('reload-overwrite-credentials')
+	async reloadOverwriteCredentials() {
+		await this.loadOverwriteDataFromDB(true);
+	}
+
+	async loadOverwriteDataFromDB(reloadFrontend: boolean) {
+		if (this.reloading) return;
+		try {
+			this.reloading = true;
+			this.logger.debug('Loading overwrite credentials from DB');
+			const data = await this.settings.findByKey(CREDENTIALS_OVERWRITE_KEY);
+
+			if (data) {
+				const decryptedData = this.cipher.decrypt(data.value);
+				const overwriteData = jsonParse<ICredentialsOverwrite>(decryptedData, {
+					errorMessage: 'The credentials-overwrite is not valid JSON.',
+				});
+
+				await this.setData(overwriteData, false, reloadFrontend);
+			}
+		} catch (error) {
+			this.logger.error('Error loading overwrite credentials', { error });
+		} finally {
+			this.reloading = false;
+		}
+	}
+
+	private async broadcastReloadOverwriteCredentialsCommand(): Promise<void> {
+		const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+		await Container.get(Publisher).publishCommand({ command: 'reload-overwrite-credentials' });
+	}
+
+	async saveOverwriteDataToDB(overwriteData: ICredentialsOverwrite, broadcast: boolean = true) {
+		const data = this.cipher.encrypt(JSON.stringify(overwriteData));
+		const setting = this.settings.create({
+			key: CREDENTIALS_OVERWRITE_KEY,
+			value: data,
+			loadOnStartup: false,
+		});
+		await this.settings.save(setting);
+
+		if (broadcast) {
+			await this.broadcastReloadOverwriteCredentialsCommand();
+		}
+	}
+
+	getOverwriteEndpointMiddleware() {
+		const { endpointAuthToken } = this.globalConfig.credentials.overwrite;
+		return StaticAuthService.getStaticAuthMiddleware(endpointAuthToken);
+	}
+
+	setPlainData(overwriteData: ICredentialsOverwrite) {
 		// If data gets reinitialized reset the resolved types cache
 		this.resolvedTypes.length = 0;
 
@@ -41,11 +114,52 @@ export class CredentialsOverwrites {
 		}
 	}
 
+	async setData(
+		overwriteData: ICredentialsOverwrite,
+		storeInDb: boolean = true,
+		reloadFrontend: boolean = true,
+	) {
+		this.setPlainData(overwriteData);
+		if (storeInDb && this.globalConfig.credentials.overwrite.persistence) {
+			await this.saveOverwriteDataToDB(overwriteData, true);
+		}
+
+		if (reloadFrontend) {
+			await this.reloadFrontendService();
+		}
+	}
+
+	private async reloadFrontendService() {
+		// FrontendService has CredentialOverwrites injected via the constructor
+		// to break the circular dependency we need to use the container to get the instance
+		const { FrontendService } = await import('./services/frontend.service');
+		await Container.get(FrontendService)?.generateTypes();
+	}
+
 	applyOverwrite(type: string, data: ICredentialDataDecryptedObject) {
 		const overwrites = this.get(type);
 
 		if (overwrites === undefined) {
 			return data;
+		}
+
+		// For skip-list types, don't apply overwrite if the credential has been
+		// customized (any overwrite field has a non-empty value that differs from
+		// the overwrite value). Since overwrites are never persisted to the DB,
+		// any non-empty stored value that differs from the overwrite is user-set.
+		if (this.globalConfig.credentials.overwrite?.skipTypes?.includes(type)) {
+			const isFieldCustomized = (key: string) => {
+				const storedValue = data[key];
+				return (
+					storedValue !== null &&
+					storedValue !== undefined &&
+					storedValue !== '' &&
+					storedValue !== overwrites[key]
+				);
+			};
+			if (Object.keys(overwrites).some(isFieldCustomized)) {
+				return data;
+			}
 		}
 
 		const returnData = deepCopy(data);
@@ -94,11 +208,17 @@ export class CredentialsOverwrites {
 
 	private get(name: string): ICredentialDataDecryptedObject | undefined {
 		const parentTypes = this.credentialTypes.getParentTypes(name);
-		return [name, ...parentTypes]
+		const entries = [name, ...parentTypes]
 			.reverse()
 			.map((type) => this.overwriteData[type])
-			.filter((type) => !!type)
-			.reduce((acc, current) => Object.assign(acc, current), {});
+			.filter((type): type is ICredentialDataDecryptedObject => !!type);
+
+		if (entries.length === 0) return undefined;
+
+		return entries.reduce(
+			(acc, current) => Object.assign(acc, current),
+			{} as ICredentialDataDecryptedObject,
+		);
 	}
 
 	getAll(): ICredentialsOverwrite {

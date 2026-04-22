@@ -1,0 +1,230 @@
+import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
+import { ListProjectsQueryDto } from '@n8n/api-types';
+import { mock } from 'jest-mock-extended';
+
+import type { EventService } from '@/events/event.service';
+import type { Response } from 'express';
+import { ProjectController } from '@/controllers/project.controller';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { UserManagementMailer } from '@/user-management/email';
+
+describe('ProjectController', () => {
+	const eventService = mock<EventService>();
+	const projectsService = mock<ProjectService>();
+	const projectRepository = mock<ProjectRepository>();
+	const userManagementMailer = mock<UserManagementMailer>();
+	const provisioningService = mock<ProvisioningService>();
+
+	const controller = new ProjectController(
+		projectsService as unknown as ProjectService,
+		projectRepository as unknown as ProjectRepository,
+		eventService as unknown as EventService,
+		userManagementMailer as unknown as UserManagementMailer,
+		provisioningService as unknown as ProvisioningService,
+	);
+
+	const makeRes = () => {
+		const res = {
+			status: jest.fn().mockReturnThis(),
+			json: jest.fn().mockReturnThis(),
+			send: jest.fn().mockReturnThis(),
+		} as unknown as Response;
+		return res;
+	};
+
+	const req: AuthenticatedRequest = {
+		user: { id: 'actor-user', role: { slug: 'global:owner' } } as any,
+	} as AuthenticatedRequest;
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+	});
+
+	describe('getAllProjects', () => {
+		it('calls service with query options and returns { count, data }', async () => {
+			const projects = [
+				{ id: 'p1', name: 'Project 1' },
+				{ id: 'p2', name: 'Project 2' },
+			];
+			(projectsService.getAccessibleProjectsAndCount as jest.Mock).mockResolvedValue([projects, 2]);
+			(projectsService.addUserScopes as jest.Mock).mockResolvedValue(projects);
+
+			const res = makeRes();
+			const query = { skip: 0, take: 10, search: 'test', type: 'team' as const };
+
+			await controller.getAllProjects(req, res, query as any);
+
+			expect(projectsService.getAccessibleProjectsAndCount).toHaveBeenCalledWith(req.user, query);
+			expect(projectsService.addUserScopes).toHaveBeenCalledWith(req.user, projects);
+			expect(res.json).toHaveBeenCalledWith({ count: 2, data: projects });
+		});
+
+		it('returns bare array when no pagination params given', async () => {
+			const projects = [{ id: 'p1', name: 'Project 1' }];
+			(projectsService.getAccessibleProjectsAndCount as jest.Mock).mockResolvedValue([projects, 1]);
+
+			const res = makeRes();
+			// Simulate DTO-parsed output: when no query params are provided,
+			// both skip and take must default to undefined for backward compat.
+			const parsed = ListProjectsQueryDto.safeParse({});
+			expect(parsed.success).toBe(true);
+			const query = parsed.data!;
+
+			const result = await controller.getAllProjects(req, res, query);
+
+			expect(res.json).not.toHaveBeenCalled();
+			expect(result).toEqual(projects);
+		});
+	});
+
+	it('emits team-project-updated with full members list on addProjectUsers', async () => {
+		// Arrange
+		const projectId = 'p1';
+		const payload = { relations: [{ userId: 'u2', role: 'project:viewer' as const }] };
+
+		(projectsService.addUsersWithConflictSemantics as jest.Mock).mockResolvedValue({
+			project: { id: projectId, name: 'Project' },
+			added: payload.relations,
+			conflicts: [],
+		});
+
+		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+			{ userId: 'u1', role: { slug: 'project:admin' } },
+			{ userId: 'u2', role: { slug: 'project:viewer' } },
+		]);
+
+		const res = makeRes();
+
+		// Act
+		await controller.addProjectUsers(req, res, projectId, payload as any);
+
+		// Assert
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			members: [
+				{ userId: 'u1', role: 'project:admin' },
+				{ userId: 'u2', role: 'project:viewer' },
+			],
+			projectId,
+		});
+
+		// Verify mailer called for new sharees
+		expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledWith({
+			sharer: req.user,
+			newSharees: payload.relations,
+			project: { id: projectId, name: 'Project' },
+		});
+	});
+
+	it('emits team-project-updated on changeProjectUserRole and returns 204', async () => {
+		// Arrange
+		const projectId = 'p2';
+		provisioningService.isProjectRoleManaged.mockResolvedValue(false);
+		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+			{ userId: 'u1', role: { slug: 'project:admin' } },
+			{ userId: 'u2', role: { slug: 'project:editor' } },
+		]);
+
+		const res = makeRes();
+
+		// Act
+		await controller.changeProjectUserRole(req, res, projectId, 'u2', {
+			role: 'project:editor',
+		} as any);
+
+		// Assert
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			members: [
+				{ userId: 'u1', role: 'project:admin' },
+				{ userId: 'u2', role: 'project:editor' },
+			],
+			projectId,
+		});
+		expect(res.status).toHaveBeenCalledWith(204);
+	});
+
+	it('emits team-project-updated on deleteProjectUser and returns 204', async () => {
+		// Arrange
+		const projectId = 'p3';
+		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+			{ userId: 'u1', role: { slug: 'project:admin' } },
+			{ userId: 'u3', role: { slug: 'project:viewer' } },
+		]);
+
+		const res = makeRes();
+
+		// Act
+		await controller.deleteProjectUser(req, res, projectId, 'u2');
+
+		// Assert
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			members: [
+				{ userId: 'u1', role: 'project:admin' },
+				{ userId: 'u3', role: 'project:viewer' },
+			],
+			projectId,
+		});
+		expect(res.status).toHaveBeenCalledWith(204);
+	});
+
+	it('returns 201 with conflicts body when some users added and some conflicted', async () => {
+		// Arrange
+		const projectId = 'p4';
+		const added = [{ userId: 'u4', role: 'project:viewer' as const }];
+		const conflicts = [
+			{
+				userId: 'u5',
+				currentRole: 'project:viewer' as const,
+				requestedRole: 'project:editor' as const,
+			},
+		];
+
+		(projectsService.addUsersWithConflictSemantics as jest.Mock).mockResolvedValue({
+			project: { id: projectId, name: 'Project' },
+			added,
+			conflicts,
+		});
+
+		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+			{ userId: 'u1', role: { slug: 'project:admin' } },
+			{ userId: 'u4', role: { slug: 'project:viewer' } },
+			{ userId: 'u5', role: { slug: 'project:viewer' } },
+		]);
+
+		const res = makeRes();
+
+		// Act
+		await controller.addProjectUsers(req, res, projectId, {
+			relations: [...added, { userId: 'u5', role: 'project:editor' }],
+		} as any);
+
+		// Assert: 201 with conflicts body
+		expect(res.status).toHaveBeenCalledWith(201);
+		expect(res.json).toHaveBeenCalledWith({ conflicts });
+
+		// Mailer is called for newly added sharees
+		expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledWith({
+			sharer: req.user,
+			newSharees: added,
+			project: { id: projectId, name: 'Project' },
+		});
+
+		// Telemetry event has full members list
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			members: [
+				{ userId: 'u1', role: 'project:admin' },
+				{ userId: 'u4', role: 'project:viewer' },
+				{ userId: 'u5', role: 'project:viewer' },
+			],
+			projectId,
+		});
+	});
+});

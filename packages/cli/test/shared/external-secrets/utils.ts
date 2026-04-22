@@ -1,30 +1,16 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { SecretsProvider } from '@/modules/external-secrets.ee/types';
-import type {
-	SecretsProviderSettings,
-	SecretsProviderState,
-} from '@/modules/external-secrets.ee/types';
+import type { SecretsProviderSettings } from '@/modules/external-secrets.ee/types';
 
-export class MockProviders {
-	providers: Record<string, { new (): SecretsProvider }> = {
+export class MockProviders extends ExternalSecretsProviders {
+	override providers: Record<string, { new (): SecretsProvider }> = {
 		dummy: DummyProvider,
 	};
 
 	setProviders(providers: Record<string, { new (): SecretsProvider }>) {
 		this.providers = providers;
-	}
-
-	getProvider(name: string): { new (): SecretsProvider } {
-		return this.providers[name];
-	}
-
-	hasProvider(name: string) {
-		return name in this.providers;
-	}
-
-	getAllProviders() {
-		return this.providers;
 	}
 }
 
@@ -60,8 +46,6 @@ export class DummyProvider extends SecretsProvider {
 
 	name = 'dummy';
 
-	state: SecretsProviderState = 'initializing';
-
 	_updateSecrets: Record<string, string> = {
 		test1: 'value1',
 		test2: 'value2',
@@ -69,8 +53,8 @@ export class DummyProvider extends SecretsProvider {
 
 	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
 
-	async connect(): Promise<void> {
-		this.state = 'connected';
+	protected async doConnect(): Promise<void> {
+		// Connected successfully - base class will set state
 	}
 
 	async disconnect(): Promise<void> {}
@@ -96,10 +80,56 @@ export class DummyProvider extends SecretsProvider {
 	}
 }
 
-export class AnotherDummyProvider extends DummyProvider {
-	name = 'another_dummy';
-}
+export class AnotherDummyProvider extends SecretsProvider {
+	properties: INodeProperties[] = [
+		{
+			name: 'username',
+			displayName: 'Username',
+			type: 'string',
+			default: '',
+			required: true,
+		},
+	];
 
+	secrets: Record<string, string> = {};
+
+	displayName = 'Another Dummy Provider';
+
+	name = 'another_dummy';
+
+	_updateSecrets: Record<string, string> = {
+		test1: 'value1',
+		test2: 'value2',
+	};
+
+	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
+
+	protected async doConnect(): Promise<void> {
+		// Connected successfully - base class will set state
+	}
+
+	async disconnect(): Promise<void> {}
+
+	async update(): Promise<void> {
+		this.secrets = this._updateSecrets;
+	}
+
+	async test(): Promise<[boolean] | [boolean, string]> {
+		return [true];
+	}
+
+	getSecret(name: string): IDataObject | undefined {
+		return this.secrets[name] as unknown as IDataObject | undefined;
+	}
+
+	hasSecret(name: string): boolean {
+		return name in this.secrets;
+	}
+
+	getSecretNames(): string[] {
+		return Object.keys(this.secrets);
+	}
+}
 export class ErrorProvider extends SecretsProvider {
 	secrets: Record<string, string> = {};
 
@@ -107,15 +137,14 @@ export class ErrorProvider extends SecretsProvider {
 
 	name = 'dummy';
 
-	state: SecretsProviderState = 'initializing';
+	properties = [];
 
 	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {
 		throw new Error();
 	}
 
-	async connect(): Promise<void> {
-		this.state = 'error';
-		throw new Error();
+	protected async doConnect(): Promise<void> {
+		throw new Error('Connection failed');
 	}
 
 	async disconnect(): Promise<void> {
@@ -150,12 +179,12 @@ export class FailedProvider extends SecretsProvider {
 
 	name = 'dummy';
 
-	state: SecretsProviderState = 'initializing';
+	properties = [];
 
 	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
 
-	async connect(): Promise<void> {
-		this.state = 'error';
+	protected async doConnect(): Promise<void> {
+		throw new Error('Failed to connect');
 	}
 
 	async disconnect(): Promise<void> {}
@@ -186,7 +215,7 @@ export class TestFailProvider extends SecretsProvider {
 
 	name = 'dummy';
 
-	state: SecretsProviderState = 'initializing';
+	properties = [];
 
 	_updateSecrets: Record<string, string> = {
 		test1: 'value1',
@@ -195,8 +224,8 @@ export class TestFailProvider extends SecretsProvider {
 
 	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
 
-	async connect(): Promise<void> {
-		this.state = 'connected';
+	protected async doConnect(): Promise<void> {
+		// Connected successfully - base class will set state
 	}
 
 	async disconnect(): Promise<void> {}
@@ -220,4 +249,84 @@ export class TestFailProvider extends SecretsProvider {
 	getSecretNames(): string[] {
 		return Object.keys(this.secrets);
 	}
+}
+
+export function createDummyProvider({
+	name,
+	secrets,
+	displayName,
+	properties,
+}: {
+	name: string;
+	displayName?: string;
+	secrets?: Record<string, string>;
+	properties?: INodeProperties[];
+}): { new (): SecretsProvider } {
+	const defaultSecrets = secrets ?? {
+		test1: 'value1',
+		test2: 'value2',
+	};
+
+	class FreshProvider extends SecretsProvider {
+		name = name;
+		displayName = displayName ?? name;
+
+		properties: INodeProperties[] = properties ?? [
+			{
+				name: 'username',
+				displayName: 'Username',
+				type: 'string',
+				default: '',
+				required: true,
+			},
+			{
+				name: 'other',
+				displayName: 'Other',
+				type: 'string',
+				default: '',
+			},
+			{
+				name: 'password',
+				displayName: 'Password',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					password: true,
+				},
+			},
+		];
+
+		secrets: Record<string, string> = { ...defaultSecrets };
+
+		_updateSecrets: Record<string, string> = { ...defaultSecrets };
+
+		async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
+
+		protected async doConnect(): Promise<void> {
+			// Connected successfully - base class will set state
+		}
+
+		async disconnect(): Promise<void> {}
+
+		async update(): Promise<void> {
+			this.secrets = this._updateSecrets;
+		}
+
+		async test(): Promise<[boolean] | [boolean, string]> {
+			return [true];
+		}
+
+		getSecret(name: string): IDataObject | undefined {
+			return this.secrets[name] as unknown as IDataObject | undefined;
+		}
+
+		hasSecret(name: string): boolean {
+			return name in this.secrets;
+		}
+
+		getSecretNames(): string[] {
+			return Object.keys(this.secrets);
+		}
+	}
+	return FreshProvider;
 }

@@ -1,5 +1,6 @@
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
@@ -10,6 +11,7 @@ import {
 	getCanonicalizedHeadersString,
 	getCanonicalizedResourceString,
 	HeaderConstants,
+	XMsVersion,
 } from '../nodes/Microsoft/Storage/GenericFunctions';
 
 export class AzureStorageSharedKeyApi implements ICredentialType {
@@ -67,6 +69,9 @@ export class AzureStorageSharedKeyApi implements ICredentialType {
 		requestOptions.method ??= 'GET';
 		requestOptions.headers ??= {};
 
+		requestOptions.headers[HeaderConstants.X_MS_VERSION] ??= XMsVersion;
+		requestOptions.headers[HeaderConstants.X_MS_DATE] ??= new Date().toUTCString();
+
 		const stringToSign: string = [
 			requestOptions.method.toUpperCase(),
 			requestOptions.headers[HeaderConstants.CONTENT_LANGUAGE] ?? '',
@@ -93,4 +98,18 @@ export class AzureStorageSharedKeyApi implements ICredentialType {
 
 		return requestOptions;
 	}
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.baseUrl}}',
+			url: '/',
+			headers: {
+				'x-ms-date': '={{ new Date().toUTCString() }}',
+				'x-ms-version': '2021-12-02',
+			},
+			qs: {
+				comp: 'list',
+			},
+		},
+	};
 }

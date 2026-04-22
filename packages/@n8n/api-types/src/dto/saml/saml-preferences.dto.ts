@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 const SamlLoginBindingSchema = z.enum(['redirect', 'post']);
 
@@ -12,16 +13,24 @@ const SignatureConfigSchema = z.object({
 	}),
 });
 
+export class SamlPreferencesAttributeMapping extends Z.class({
+	/** SAML attribute mapped to the user's email. */
+	email: z.string(),
+	/** SAML attribute mapped to the user's first name. */
+	firstName: z.string(),
+	/** SAML attribute mapped to the user's last name. */
+	lastName: z.string(),
+	/** SAML attribute mapped to the user's principal name. */
+	userPrincipalName: z.string(),
+	/** SAML attribute mapped to the n8n instance role. */
+	n8nInstanceRole: z.string().optional(),
+	/** Each element in the array is formatted like "<projectId>:<role>" */
+	n8nProjectRoles: z.array(z.string()).optional(),
+}) {}
+
 export class SamlPreferences extends Z.class({
 	/** Mapping of SAML attributes to user fields. */
-	mapping: z
-		.object({
-			email: z.string(),
-			firstName: z.string(),
-			lastName: z.string(),
-			userPrincipalName: z.string(),
-		})
-		.optional(),
+	mapping: SamlPreferencesAttributeMapping.schema.optional(),
 	/** SAML metadata in XML format. */
 	metadata: z.string().optional(),
 	metadataUrl: z.string().optional(),
@@ -36,6 +45,11 @@ export class SamlPreferences extends Z.class({
 	authnRequestsSigned: z.boolean().default(false),
 	wantAssertionsSigned: z.boolean().default(true),
 	wantMessageSigned: z.boolean().default(true),
+
+	/** PEM-encoded private key for signing SAML AuthnRequests. Stored encrypted at rest. */
+	signingPrivateKey: z.string().optional(),
+	/** PEM-encoded certificate containing the public key matching signingPrivateKey. */
+	signingCertificate: z.string().optional(),
 
 	acsBinding: SamlLoginBindingSchema.default('post'),
 	signatureConfig: SignatureConfigSchema.default({

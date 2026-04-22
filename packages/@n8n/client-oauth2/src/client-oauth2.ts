@@ -96,6 +96,10 @@ export class ClientOAuth2 {
 			// Axios rejects the promise by default for all status codes 4xx.
 			// We override this to reject promises only on 5xxs
 			validateStatus: (status) => status < 500,
+			// Disable axios's built-in proxy handling so requests are routed
+			// through n8n's global proxy agents (HttpProxyManager / HttpsProxyManager)
+			// instead of being double-proxied in corporate proxy-chain environments.
+			proxy: false,
 		};
 
 		if (options.ignoreSSLIssues) {
@@ -127,7 +131,17 @@ export class ClientOAuth2 {
 		const body = response.data as string;
 
 		if (contentType.startsWith('application/json')) {
-			return JSON.parse(body) as T;
+			try {
+				return JSON.parse(body) as T;
+			} catch {
+				const preview = body.length > 100 ? body.slice(0, 100) + '...' : body;
+				throw new ResponseError(
+					response.status,
+					body,
+					undefined,
+					`Expected JSON response from OAuth2 token endpoint but received: ${preview}`,
+				);
+			}
 		}
 
 		if (contentType.startsWith('application/x-www-form-urlencoded')) {

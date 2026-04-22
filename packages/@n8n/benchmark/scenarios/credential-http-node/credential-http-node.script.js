@@ -4,7 +4,7 @@ import { check } from 'k6';
 const apiBaseUrl = __ENV.API_BASE_URL;
 
 export default function () {
-	const res = http.post(`${apiBaseUrl}/webhook/benchmark-http-node`);
+	const res = http.post(`${apiBaseUrl}/webhook/benchmark-credential-http-node`);
 
 	if (res.status !== 200) {
 		console.error(

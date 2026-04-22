@@ -6,7 +6,6 @@ import { access } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
-import { MissingRequirementsError } from './errors/missing-requirements.error';
 import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
 import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
 import { TaskRunnerProcessBase } from './task-runner-process-base';
@@ -33,27 +32,15 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 	}
 
 	async startProcess(grantToken: string, taskBrokerUri: string) {
-		try {
-			await asyncExec('python3 --version', { timeout: 5000 });
-		} catch {
-			throw new MissingRequirementsError('python');
-		}
-
 		const pythonDir = path.join(__dirname, '../../../@n8n/task-runner-python');
-		const venvPath = path.join(pythonDir, '.venv/bin/python');
-
-		try {
-			await access(venvPath);
-		} catch {
-			throw new MissingRequirementsError('venv');
-		}
+		const venvPath = PyTaskRunnerProcess.getVenvPath();
 
 		return spawn(venvPath, ['-m', 'src.main'], {
 			cwd: pythonDir,
 			env: {
 				// system environment
 				PATH: process.env.PATH,
-				HOME: process.env.HOME,
+				HOME: process.env.HOME ?? process.env.USERPROFILE,
 
 				// runner
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
@@ -62,7 +49,50 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 				N8N_RUNNERS_MAX_CONCURRENCY: this.runnerConfig.maxConcurrency.toString(),
 				N8N_RUNNERS_TASK_TIMEOUT: this.runnerConfig.taskTimeout.toString(),
 				N8N_RUNNERS_HEARTBEAT_INTERVAL: this.runnerConfig.heartbeatInterval.toString(),
+
+				// n8n
+				N8N_RUNNERS_STDLIB_ALLOW: process.env.N8N_RUNNERS_STDLIB_ALLOW,
+				N8N_RUNNERS_EXTERNAL_ALLOW: process.env.N8N_RUNNERS_EXTERNAL_ALLOW,
+				N8N_RUNNERS_BUILTINS_DENY: process.env.N8N_RUNNERS_BUILTINS_DENY,
+				N8N_BLOCK_RUNNER_ENV_ACCESS: process.env.N8N_BLOCK_RUNNER_ENV_ACCESS,
 			},
 		});
+	}
+
+	/**
+	 * Check if Python requirements are met for internal mode.
+	 * Returns the failure reason if requirements are missing, or `null` if all requirements are met.
+	 */
+	static async checkRequirements(): Promise<'python' | 'venv' | null> {
+		try {
+			if (process.platform === 'win32') {
+				const { stdout, stderr } = await asyncExec('python --version', { timeout: 5000 });
+				// Python 2 prints version to stderr, Python 3 to stdout
+				const output = (stdout + stderr).trim();
+				if (!output.startsWith('Python 3')) {
+					return 'python';
+				}
+			} else {
+				await asyncExec('python3 --version', { timeout: 5000 });
+			}
+		} catch {
+			return 'python';
+		}
+
+		try {
+			await access(PyTaskRunnerProcess.getVenvPath());
+		} catch {
+			return 'venv';
+		}
+
+		return null;
+	}
+
+	private static getVenvPath() {
+		const pythonDir = path.join(__dirname, '../../../@n8n/task-runner-python');
+		const isWindows = process.platform === 'win32';
+		const venvBin = isWindows ? 'Scripts' : 'bin';
+		const pythonExe = isWindows ? 'python.exe' : 'python';
+		return path.join(pythonDir, '.venv', venvBin, pythonExe);
 	}
 }

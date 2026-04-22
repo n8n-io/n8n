@@ -1,0 +1,87 @@
+type: object
+additionalProperties: false
+required:
+  - name
+  - nodes
+  - connections
+  - settings
+properties:
+  id:
+    type: string
+    readOnly: true
+    example: 2tUt1wbLX592XDdX
+  name:
+    type: string
+    example: Workflow 1
+  active:
+    type: boolean
+    readOnly: true
+  createdAt:
+    type: string
+    format: date-time
+    readOnly: true
+  updatedAt:
+    type: string
+    format: date-time
+    readOnly: true
+  isArchived:
+    type: boolean
+    readOnly: true
+  versionId:
+    type: string
+    readOnly: true
+    description: Current version identifier used for optimistic locking
+  triggerCount:
+    type: integer
+    readOnly: true
+    description: Number of active trigger nodes in the workflow
+  nodes:
+    type: array
+    items:
+      $ref: './node.yml'
+  connections:
+    type: object
+    example: { Jira: { main: [[{ node: 'Jira', type: 'main', index: 0 }]] } }
+  settings:
+    $ref: './workflowSettings.yml'
+  staticData:
+    example: { lastId: 1 }
+    anyOf:
+      - type: string
+        format: 'jsonString'
+        nullable: true
+      - type: object
+        nullable: true
+  pinData:
+    type: object
+    nullable: true
+    description: Pinned sample data for nodes, keyed by node name
+  projectId:
+    type: string
+    description: Target project to create the workflow in. Defaults to the user's personal project.
+    example: VmwOO9HeTEj20kxM
+  meta:
+    type: object
+    nullable: true
+    readOnly: true
+    description: Workflow metadata such as template information
+    properties:
+      onboardingId:
+        type: string
+      templateId:
+        type: string
+      instanceId:
+        type: string
+      templateCredsSetupCompleted:
+        type: boolean
+  tags:
+    type: array
+    items:
+      $ref: '../../../tags/spec/schemas/tag.yml'
+    readOnly: true
+  shared:
+    type: array
+    items:
+      $ref: './sharedWorkflow.yml'
+  activeVersion:
+    $ref: './activeVersion.yml'

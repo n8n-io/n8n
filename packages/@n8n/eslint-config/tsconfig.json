@@ -4,10 +4,12 @@
 		"baseUrl": ".",
 		"rootDir": "src",
 		"outDir": "dist",
-		"types": ["vitest/globals"],
+		"types": ["vitest/globals", "node"],
 		"esModuleInterop": true,
 		"module": "NodeNext",
-		"moduleResolution": "nodenext"
+		"moduleResolution": "nodenext",
+		"declaration": true
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"files": []
 }

@@ -10,7 +10,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRunExecutionData,
 	NodeParameterValueType,
 } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
@@ -19,6 +18,7 @@ process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 
 // eslint-disable-next-line import/order
 import * as Helpers from './helpers';
+import { createRunExecutionData, type IRunExecutionData } from '../src';
 
 interface StubNode {
 	name: string;
@@ -1742,7 +1742,9 @@ describe('Workflow', () => {
 		const nodeTypes = Helpers.NodeTypes();
 
 		for (const testData of tests) {
-			test(testData.description, () => {
+			test(testData.description, async () => {
+				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+
 				const nodes: INode[] = [
 					{
 						name: 'Node1',
@@ -1818,64 +1820,70 @@ describe('Workflow', () => {
 				};
 
 				const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
-				const activeNodeName = testData.input.hasOwnProperty('Node3') ? 'Node3' : 'Node2';
+				await workflow.expression.acquireIsolate();
+				try {
+					const activeNodeName = testData.input.hasOwnProperty('Node3') ? 'Node3' : 'Node2';
 
-				const runExecutionData: IRunExecutionData = {
-					resultData: {
-						runData: {
-							Node1: [
-								{
-									source: [
-										{
-											previousNode: 'test',
-										},
-									],
-									startTime: 1,
-									executionTime: 1,
-									executionIndex: 0,
-									data: {
-										main: [
-											[
-												{
-													json: testData.input.Node1.outputJson || testData.input.Node1.parameters,
-													binary: testData.input.Node1.outputBinary,
-												},
-											],
+					const runExecutionData = createRunExecutionData({
+						resultData: {
+							runData: {
+								Node1: [
+									{
+										source: [
+											{
+												previousNode: 'test',
+											},
 										],
+										startTime: 1,
+										executionTime: 1,
+										executionIndex: 0,
+										data: {
+											main: [
+												[
+													{
+														json:
+															testData.input.Node1.outputJson || testData.input.Node1.parameters,
+														binary: testData.input.Node1.outputBinary,
+													},
+												],
+											],
+										},
 									},
-								},
-							],
-							Node2: [],
-							'Node 4 with spaces': [],
+								],
+								Node2: [],
+								'Node 4 with spaces': [],
+							},
 						},
-					},
-				};
+					});
 
-				const itemIndex = 0;
-				const runIndex = 0;
-				const connectionInputData: INodeExecutionData[] =
-					runExecutionData.resultData.runData.Node1[0].data!.main[0]!;
+					const itemIndex = 0;
+					const runIndex = 0;
+					const connectionInputData: INodeExecutionData[] =
+						runExecutionData.resultData.runData.Node1[0].data!.main[0]!;
 
-				for (const parameterName of Object.keys(testData.output)) {
-					const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
-						parameterName
-					];
-					const result = workflow.expression.getParameterValue(
-						parameterValue,
-						runExecutionData,
-						runIndex,
-						itemIndex,
-						activeNodeName,
-						connectionInputData,
-						'manual',
-						{},
-					);
-					expect(result).toEqual(testData.output[parameterName]);
+					for (const parameterName of Object.keys(testData.output)) {
+						const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
+							parameterName
+						];
+						const result = workflow.expression.getParameterValue(
+							parameterValue,
+							runExecutionData,
+							runIndex,
+							itemIndex,
+							activeNodeName,
+							connectionInputData,
+							'manual',
+							{},
+						);
+						expect(result).toEqual(testData.output[parameterName]);
+					}
+				} finally {
+					await workflow.expression.releaseIsolate();
 				}
 			});
 		}
 
-		test('should also resolve all child parameters when the parent get requested', () => {
+		test('should also resolve all child parameters when the parent get requested', async () => {
 			const nodes: INode[] = [
 				{
 					name: 'Node1',
@@ -1902,9 +1910,10 @@ describe('Workflow', () => {
 			const connections: IConnections = {};
 
 			const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
+			await workflow.expression.acquireIsolate();
 			const activeNodeName = 'Node1';
 
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				resultData: {
 					runData: {
 						Node1: [
@@ -1926,7 +1935,7 @@ describe('Workflow', () => {
 						],
 					},
 				},
-			};
+			});
 
 			const itemIndex = 0;
 			const runIndex = 0;
@@ -1960,6 +1969,7 @@ describe('Workflow', () => {
 					},
 				],
 			});
+			await workflow.expression.releaseIsolate();
 		});
 	});
 

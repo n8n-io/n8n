@@ -1,5 +1,5 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { NodeOperationError, NodeConnectionTypes, sleep } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { getBatchingOptionFields } from '@utils/sharedFields';
+import { getBatchingOptionFields } from '@n8n/ai-utilities';
 
 import { processItem } from './processItem';
 
@@ -32,7 +32,7 @@ export class TextClassifier implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Text Classifier',
 		name: 'textClassifier',
-		icon: 'fa:tags',
+		icon: 'node:text-classifier',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
@@ -63,6 +63,13 @@ export class TextClassifier implements INodeType {
 			},
 		],
 		outputs: `={{(${configuredOutputs})($parameter)}}`,
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+			},
+			message:
+				'Each category defined creates a separate output branch. Output 0 corresponds to the first category, output 1 to the second, and so on. Use .output(index).to() to connect from a specific category. @example textClassifier.output(0).to(nodeA) and textClassifier.output(1).to(nodeB)',
+		},
 		properties: [
 			{
 				displayName: 'Text to Classify',

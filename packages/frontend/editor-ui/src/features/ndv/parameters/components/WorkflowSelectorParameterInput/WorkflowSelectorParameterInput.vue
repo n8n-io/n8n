@@ -1,0 +1,493 @@
+<script setup lang="ts">
+import type { ComponentPublicInstance } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createEventBus } from '@n8n/utils/event-bus';
+import type {
+	INodeParameterResourceLocator,
+	INodeProperties,
+	NodeParameterValue,
+	ResourceLocatorModes,
+} from 'n8n-workflow';
+import { useI18n } from '@n8n/i18n';
+import DraggableTarget from '@/app/components/DraggableTarget.vue';
+import ExpressionParameterInput from '../ExpressionParameterInput.vue';
+import ResourceLocatorDropdown from '../ResourceLocator/ResourceLocatorDropdown.vue';
+import ParameterIssues from '../ParameterIssues.vue';
+import { onClickOutside } from '@vueuse/core';
+import { useRouter } from 'vue-router';
+import { useWorkflowResourceLocatorDropdown } from '../../composables/useWorkflowResourceLocatorDropdown';
+import { useWorkflowResourceLocatorModes } from '../../composables/useWorkflowResourceLocatorModes';
+import { useWorkflowResourcesLocator } from '../../composables/useWorkflowResourcesLocator';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { VIEWS } from '@/app/constants';
+import {
+	SAMPLE_SUBWORKFLOW_TRIGGER_ID,
+	SAMPLE_SUBWORKFLOW_WORKFLOW,
+} from '@/app/constants/samples';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
+import { useToast } from '@/app/composables/useToast';
+
+import {
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+export interface Props {
+	modelValue: INodeParameterResourceLocator;
+	eventBus?: EventBus;
+	inputSize?: 'small' | 'mini' | 'medium' | 'large' | 'xlarge';
+	isValueExpression?: boolean;
+	isReadOnly?: boolean;
+	path: string;
+	expressionDisplayValue?: string;
+	forceShowExpression?: boolean;
+	parameterIssues?: string[];
+	parameter: INodeProperties;
+	sampleWorkflow?: WorkflowDataCreate;
+	newResourceLabel?: string;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	eventBus: () => createEventBus(),
+	inputSize: 'small',
+	isValueExpression: false,
+	isReadOnly: false,
+	forceShowExpression: false,
+	expressionDisplayValue: '',
+	newResourceLabel: '',
+	parameterIssues: () => [],
+	sampleWorkflow: () => SAMPLE_SUBWORKFLOW_WORKFLOW,
+});
+
+const emit = defineEmits<{
+	'update:modelValue': [value: INodeParameterResourceLocator];
+	drop: [data: string];
+	modalOpenerClick: [];
+	focus: [];
+	blur: [];
+	workflowCreated: [workflowId: string];
+}>();
+
+const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
+const projectStore = useProjectsStore();
+
+const router = useRouter();
+const i18n = useI18n();
+const container = ref<HTMLDivElement>();
+const dropdown = ref<ComponentPublicInstance<typeof ResourceLocatorDropdown>>();
+const telemetry = useTelemetry();
+const toast = useToast();
+
+const width = ref(0);
+const inputRef = ref<HTMLInputElement | undefined>();
+
+const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getModeLabel } =
+	useWorkflowResourceLocatorModes(
+		computed(() => props.modelValue),
+		router,
+	);
+const { hideDropdown, isDropdownVisible, showDropdown } = useWorkflowResourceLocatorDropdown(
+	isListMode,
+	inputRef,
+);
+
+const { onDocumentVisible } = useDocumentVisibility();
+
+const {
+	hasMoreWorkflowsToLoad,
+	isLoadingResources,
+	searchFilter,
+	onSearchFilter,
+	getWorkflowName,
+	applyDefaultExecuteWorkflowNodeName,
+	populateNextWorkflowsPage,
+	setWorkflowsResources,
+	workflowDbToResourceMapper,
+	getWorkflowUrl,
+	workflowsResources,
+} = useWorkflowResourcesLocator(router);
+
+const currentProjectName = computed(() => {
+	if (!projectStore.isTeamProjectFeatureEnabled) return '';
+
+	if (!projectStore?.currentProject || projectStore.currentProject?.type === 'personal') {
+		return `'${i18n.baseText('projects.menu.personal')}'`;
+	}
+
+	return `'${projectStore.currentProject?.name}'`;
+});
+
+const getCreateResourceLabel = computed(() => {
+	if (props.newResourceLabel) {
+		return props.newResourceLabel;
+	}
+
+	if (!currentProjectName.value) {
+		return i18n.baseText('executeWorkflowTrigger.createNewSubworkflow.noProject');
+	}
+
+	return i18n.baseText('executeWorkflowTrigger.createNewSubworkflow', {
+		interpolate: { projectName: currentProjectName.value },
+	});
+});
+
+const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
+	if (typeof props.modelValue !== 'object') {
+		return props.modelValue ?? '';
+	}
+
+	if (isListMode.value) {
+		return props.modelValue ? (props.modelValue.cachedResultName ?? props.modelValue.value) : '';
+	}
+
+	return props.modelValue ? props.modelValue.value : '';
+});
+
+const placeholder = computed(() => {
+	if (isListMode.value) {
+		return i18n.baseText('resourceLocator.mode.list.placeholder');
+	}
+
+	return i18n.baseText('resourceLocator.id.placeholder');
+});
+
+const showOpenResourceLink = computed(() => {
+	return !props.isValueExpression && props.modelValue.value;
+});
+
+function setWidth() {
+	const containerRef = container.value as HTMLElement | undefined;
+	if (containerRef) {
+		width.value = containerRef?.offsetWidth;
+	}
+}
+
+function onInputChange(workflowId: NodeParameterValue): void {
+	if (typeof workflowId !== 'string') return;
+
+	const params: INodeParameterResourceLocator = {
+		__rl: true,
+		value: workflowId,
+		mode: selectedMode.value,
+		cachedResultUrl: getWorkflowUrl(workflowId),
+	};
+	if (isListMode.value) {
+		const resource = workflowsListStore.getWorkflowById(workflowId);
+		if (resource?.name) {
+			params.cachedResultName = getWorkflowName(workflowId);
+		}
+	}
+	emit('update:modelValue', params);
+}
+
+function onListItemSelected(value: NodeParameterValue) {
+	telemetry.track('User chose sub-workflow', {});
+	onInputChange(value);
+	hideDropdown();
+	// we rename defaults here to allow selecting the same workflow to
+	// update the name, as we don't eagerly update a changed workflow name
+	// but rather only react on changed id elsewhere
+	applyDefaultExecuteWorkflowNodeName(value);
+}
+
+function onInputFocus(): void {
+	setWidth();
+	emit('focus');
+}
+
+function onInputBlur(): void {
+	emit('blur');
+}
+
+async function onDrop(data: string) {
+	emit('drop', data);
+}
+
+function onModeSwitched(mode: ResourceLocatorModes) {
+	emit('update:modelValue', getUpdatedModePayload(mode));
+}
+function onKeyDown(e: KeyboardEvent) {
+	if (isDropdownVisible.value) {
+		props.eventBus.emit('keyDown', e);
+	}
+}
+
+function openWorkflow() {
+	window.open(getWorkflowUrl(props.modelValue.value?.toString() ?? ''), '_blank');
+}
+
+async function refreshCachedWorkflow() {
+	if (!props.modelValue || props.modelValue.mode !== 'list' || !props.modelValue.value) {
+		return;
+	}
+
+	const workflowId = props.modelValue.value;
+	try {
+		await workflowsListStore.fetchWorkflow(`${workflowId}`);
+		onInputChange(workflowId);
+	} catch (e) {
+		// keep old cached value
+	}
+}
+
+onDocumentVisible(refreshCachedWorkflow);
+
+onMounted(() => {
+	void refreshCachedWorkflow();
+	window.addEventListener('resize', setWidth);
+	setWidth();
+	void setWorkflowsResources();
+});
+
+onUnmounted(() => {
+	window.removeEventListener('resize', setWidth);
+});
+
+watch(
+	() => props.isValueExpression,
+	(isValueExpression) => {
+		// Expressions are always in ID mode
+		if (isValueExpression) {
+			onModeSwitched('id');
+		}
+	},
+);
+
+watch(
+	() => props.modelValue,
+	(val, old) => {
+		// We update the name only if the actual ID changed
+		// Because eagerly renaming the node when the target sub-workflow
+		// changed name means the workflow becomes unsaved and changed just by
+		// opening the ExecuteWorkflow node referencing the renamed workflow
+		if (old.value !== val.value) {
+			applyDefaultExecuteWorkflowNodeName(val.value);
+		}
+	},
+);
+
+onClickOutside(dropdown, () => {
+	isDropdownVisible.value = false;
+});
+
+const onAddResourceClicked = async () => {
+	try {
+		const projectId = projectStore.currentProjectId;
+		const sampleWorkflow = props.sampleWorkflow;
+		const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
+		const sampleSubWorkflows = workflowsListStore.allWorkflows.filter(
+			(w) => w.name && new RegExp(workflowName).test(w.name),
+		);
+
+		const workflow: WorkflowDataCreate = {
+			...sampleWorkflow,
+			name: `${workflowName} ${sampleSubWorkflows.length + 1}`,
+		};
+		if (projectId) {
+			workflow.projectId = projectId;
+		}
+		telemetry.track('User clicked create new sub-workflow button', {});
+
+		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
+		const { href } = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: { name: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
+		});
+		workflowsResources.value.push(workflowDbToResourceMapper(newWorkflow));
+		emit('update:modelValue', {
+			__rl: true,
+			value: newWorkflow.id,
+			mode: selectedMode.value,
+			cachedResultName: newWorkflow.name,
+			cachedResultUrl: getWorkflowUrl(newWorkflow.id),
+		});
+		hideDropdown();
+
+		window.open(href, '_blank');
+
+		emit('workflowCreated', newWorkflow.id);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error.subworkflowCreationFailed'));
+	}
+};
+</script>
+<template>
+	<div
+		ref="container"
+		:class="$style.container"
+		:data-test-id="`resource-locator-${parameter.name}`"
+	>
+		<ResourceLocatorDropdown
+			ref="dropdown"
+			:show="isDropdownVisible"
+			:filterable="true"
+			:filter-required="false"
+			:resources="workflowsResources"
+			:loading="isLoadingResources"
+			:filter="searchFilter"
+			:has-more="hasMoreWorkflowsToLoad"
+			:error-view="false"
+			:allow-new-resources="{
+				label: getCreateResourceLabel,
+			}"
+			:width="width"
+			:event-bus="eventBus"
+			:model-value="modelValue"
+			:disable-inactive-items="false"
+			@update:model-value="onListItemSelected"
+			@filter="onSearchFilter"
+			@load-more="populateNextWorkflowsPage"
+			@add-resource-click="onAddResourceClicked"
+		>
+			<template #error>
+				<div :class="$style.error" data-test-id="rlc-error-container">
+					<N8nText color="text-dark" align="center" tag="div">
+						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
+					</N8nText>
+				</div>
+			</template>
+			<template #item-badge="{ item, isHovered }">
+				<span v-if="!item.active && isHovered" :class="$style.inactiveBadgeWrapper">
+					<N8nTooltip
+						:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
+						placement="top"
+					>
+						<span :class="$style.inactiveBadge">
+							<N8nIcon icon="triangle-alert" size="small" data-test-id="workflow-inactive-icon" />
+						</span>
+					</N8nTooltip>
+				</span>
+			</template>
+			<div
+				:class="{
+					[$style.resourceLocator]: true,
+					[$style.multipleModes]: true,
+				}"
+			>
+				<div :class="$style.modeSelector">
+					<N8nSelect
+						:model-value="selectedMode"
+						:size="inputSize"
+						:disabled="isReadOnly"
+						:placeholder="i18n.baseText('resourceLocator.modeSelector.placeholder')"
+						data-test-id="rlc-mode-selector"
+						@update:model-value="onModeSwitched"
+					>
+						<N8nOption
+							v-for="mode in supportedModes"
+							:key="mode.name"
+							:value="mode.name"
+							:label="getModeLabel(mode)"
+							:disabled="isValueExpression && mode.name === 'list'"
+							:title="
+								isValueExpression && mode.name === 'list'
+									? i18n.baseText('resourceLocator.mode.list.disabled.title')
+									: ''
+							"
+						>
+							{{ getModeLabel(mode) }}
+						</N8nOption>
+					</N8nSelect>
+				</div>
+
+				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
+					<DraggableTarget
+						type="mapping"
+						:sticky="true"
+						:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
+						@drop="onDrop"
+					>
+						<template #default="{ droppable, activeDrop }">
+							<div
+								:class="{
+									[$style.listModeInputContainer]: isListMode,
+									[$style.droppable]: droppable,
+									[$style.activeDrop]: activeDrop,
+								}"
+								@keydown.stop="onKeyDown"
+							>
+								<ExpressionParameterInput
+									v-if="isValueExpression || forceShowExpression"
+									ref="input"
+									:model-value="expressionDisplayValue"
+									:path="path"
+									:is-read-only="isReadOnly"
+									:rows="3"
+									@update:model-value="onInputChange"
+									@modal-opener-click="emit('modalOpenerClick')"
+								/>
+								<N8nInput
+									v-else
+									ref="input"
+									:class="{ [$style.selectInput]: isListMode }"
+									:size="inputSize"
+									:model-value="valueToDisplay"
+									:disabled="isReadOnly"
+									:readonly="isListMode"
+									:placeholder="placeholder"
+									type="text"
+									data-test-id="rlc-input"
+									@update:model-value="onInputChange"
+									@click="showDropdown"
+									@focus="onInputFocus"
+									@blur="onInputBlur"
+								>
+									<template v-if="isListMode" #suffix>
+										<N8nIcon
+											icon="chevron-down"
+											:class="{
+												[$style.selectIcon]: true,
+												[$style.isReverse]: isDropdownVisible,
+											}"
+										/>
+									</template>
+								</N8nInput>
+							</div>
+						</template>
+					</DraggableTarget>
+
+					<ParameterIssues
+						v-if="parameterIssues && parameterIssues.length"
+						:issues="parameterIssues"
+						:class="$style['parameter-issues']"
+					/>
+					<div
+						v-if="showOpenResourceLink"
+						:class="$style.openResourceLink"
+						data-test-id="rlc-open-resource-link"
+					>
+						<N8nLink theme="text" @click.stop="openWorkflow()">
+							<N8nIcon icon="external-link" :title="'Open resource link'" />
+						</N8nLink>
+					</div>
+				</div>
+			</div>
+		</ResourceLocatorDropdown>
+	</div>
+</template>
+
+<style lang="scss" module>
+@use '../ResourceLocator/resourceLocator.scss';
+
+.inactiveBadgeWrapper {
+	display: inline-flex;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+}
+
+.inactiveBadge {
+	display: inline-flex;
+	align-items: center;
+	color: var(--color--warning);
+}
+</style>

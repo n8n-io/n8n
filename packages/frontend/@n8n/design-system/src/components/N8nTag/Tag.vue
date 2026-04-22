@@ -22,22 +22,22 @@ withDefaults(defineProps<TagProps>(), {
 	align-items: center;
 	justify-content: center;
 	min-width: max-content;
-	height: var(--tag-height);
-	padding: var(--tag-padding);
-	line-height: var(--tag-line-height);
-	color: var(--tag-text-color);
-	background-color: var(--tag-background-color);
-	border: 1px solid var(--tag-border-color);
-	border-radius: var(--tag-border-radius);
-	font-size: var(--tag-font-size);
+	height: var(--tag--height);
+	padding: var(--tag--padding);
+	line-height: var(--tag--line-height);
+	color: var(--tag--color--text);
+	background-color: var(--tag--color--background);
+	border: 1px solid var(--tag--border-color);
+	border-radius: var(--tag--radius);
+	font-size: var(--tag--font-size);
 	transition: background-color 0.3s ease;
 
 	&.clickable {
 		cursor: pointer;
 
 		&:hover {
-			background-color: var(--tag-background-hover-color);
-			border-color: var(--tag-border-hover-color);
+			background-color: var(--tag--color--background--hover);
+			border-color: var(--tag--border-color--hover);
 		}
 	}
 }

@@ -19,7 +19,7 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Workflow } from 'n8n-workflow';
+import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
 import type { ICredentialsDecrypted } from 'n8n-workflow/src';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
@@ -99,7 +99,11 @@ const getExecuteSingleFunctions = (
 
 describe('RoutingNode', () => {
 	const nodeTypes = NodeTypes();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		executionId: 'test-exec-123',
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 
 	describe('getRequestOptionsFromParameters', () => {
 		const tests: Array<{
@@ -720,7 +724,7 @@ describe('RoutingNode', () => {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const path = '';
 		const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
@@ -750,6 +754,7 @@ describe('RoutingNode', () => {
 					mode,
 					connectionInputData,
 					runExecutionData,
+					nodeType,
 				});
 				const routingNode = new RoutingNode(executeFunctions, nodeType);
 
@@ -787,7 +792,7 @@ describe('RoutingNode', () => {
 				nodeType: {
 					properties?: INodeProperties[];
 					credentials?: INodeCredentialDescription[];
-					requestDefaults?: IHttpRequestOptions;
+					requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 					requestOperations?: IN8nRequestOperations;
 				};
 				node: {
@@ -2054,6 +2059,124 @@ describe('RoutingNode', () => {
 					],
 				],
 			},
+			{
+				description: 'single parameter, routing.request.url resolves $execution.id',
+				input: {
+					node: {
+						parameters: {
+							resource: 'executions',
+						},
+					},
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+						},
+						properties: [
+							{
+								displayName: 'Resource',
+								name: 'resource',
+								type: 'string',
+								routing: {
+									request: {
+										method: 'GET',
+										url: '=/{{$value}}/{{ $execution.id }}',
+									},
+								},
+								default: '',
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/executions/test-exec-123',
+									method: 'GET',
+									headers: {},
+									qs: {},
+									body: {},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
+			{
+				description:
+					'options parameter with routing.request.url on selected option resolves $execution.id via $parameter',
+				input: {
+					node: {
+						parameters: {
+							operation: 'get',
+							executionId: '={{ $execution.id }}',
+						},
+					},
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+						},
+						properties: [
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								noDataExpression: true,
+								default: 'get',
+								options: [
+									{
+										name: 'Get',
+										value: 'get',
+										routing: {
+											request: {
+												method: 'GET',
+												url: '=/executions/{{ $parameter.executionId }}',
+											},
+										},
+									},
+								],
+							},
+							{
+								displayName: 'Execution ID',
+								name: 'executionId',
+								type: 'string',
+								default: '',
+								displayOptions: {
+									show: {
+										operation: ['get'],
+									},
+								},
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/executions/test-exec-123',
+									method: 'GET',
+									headers: {},
+									qs: {},
+									body: {},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
 		];
 
 		const baseNode: INode = {
@@ -2069,7 +2192,7 @@ describe('RoutingNode', () => {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
 		DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
 
@@ -2256,7 +2379,7 @@ describe('RoutingNode', () => {
 
 		const runIndex = 0;
 		const itemIndex = 0;
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const nodeType = mock<INodeType>();
 
 		const inputData: ITaskDataConnections = {

@@ -5,7 +5,7 @@ export class TimescaleDb implements ICredentialType {
 
 	displayName = 'TimescaleDB';
 
-	documentationUrl = 'timescaleDb';
+	documentationUrl = 'timescaledb';
 
 	properties: INodeProperties[] = [
 		{

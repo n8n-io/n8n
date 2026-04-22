@@ -3,8 +3,12 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class WorkflowActivationModal extends BasePage {
-	getModal(): Locator {
+	get container(): Locator {
 		return this.page.getByTestId('activation-modal');
+	}
+
+	getModal(): Locator {
+		return this.container;
 	}
 
 	getDontShowAgainCheckbox(): Locator {
@@ -18,14 +22,6 @@ export class WorkflowActivationModal extends BasePage {
 	async close(): Promise<void> {
 		await this.getDontShowAgainCheckbox().click();
 
-		await this.getGotItButton().click();
-	}
-
-	async clickDontShowAgain(): Promise<void> {
-		await this.getDontShowAgainCheckbox().click();
-	}
-
-	async clickGotIt(): Promise<void> {
 		await this.getGotItButton().click();
 	}
 }
