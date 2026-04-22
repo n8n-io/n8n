@@ -87,6 +87,7 @@ const filteredAgents = computed<ChatModelsResponse>(
 function parseModelString(model: string): { provider: string; name: string } | null {
 	const slashIndex = model.indexOf('/');
 	if (slashIndex <= 0) return null;
+
 	return { provider: model.slice(0, slashIndex), name: model.slice(slashIndex + 1) };
 }
 
