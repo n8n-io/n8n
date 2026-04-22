@@ -117,8 +117,9 @@ describe('Google Drive V2', () => {
 				.query({ mimeType: 'text/markdown', supportsAllDrives: true })
 				.reply(200, '# Hello World', {
 					'Content-Type': 'text/markdown',
-			
-      // Mock file download for file that doesn't exist
+				});
+
+			// Mock file download for file that doesn't exist
 			mock
 				.get('/drive/v3/files/does-not-exist')
 				.query({ fields: 'mimeType,name', supportsTeamDrives: true, supportsAllDrives: true })
