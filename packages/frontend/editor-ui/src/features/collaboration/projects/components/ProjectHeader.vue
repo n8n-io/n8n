@@ -339,7 +339,9 @@ function getUIContext(routeName: string) {
 	}
 }
 
-const actions: Record<ActionTypes, (projectId: string) => void> = {
+type CreateSource = 'button' | 'dropdown';
+
+const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => void> = {
 	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
 		void router.push({
 			name: VIEWS.NEW_WORKFLOW,
@@ -375,8 +377,8 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
 		telemetry.track('User clicked header add variable button');
 	},
-	[ACTION_TYPES.AGENT]: () => {
-		agentTelemetry.trackClickedNewAgent('button');
+	[ACTION_TYPES.AGENT]: (_projectId, source) => {
+		agentTelemetry.trackClickedNewAgent(source);
 		void router.push({ name: NEW_AGENT_VIEW });
 	},
 } as const;
@@ -452,13 +454,13 @@ const projectDescriptionTruncated = computed(() => {
 	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
 });
 
-const onSelect = (action: string) => {
+const onSelect = (action: string, source: CreateSource) => {
 	const executableAction = actions[action as ActionTypes];
 	if (!homeProject.value) {
 		return;
 	}
 
-	executableAction(homeProject.value.id);
+	executableAction(homeProject.value.id, source);
 };
 </script>
 
@@ -522,13 +524,13 @@ const onSelect = (action: string) => {
 							data-test-id="add-resource-buttons"
 							:actions="menu"
 							:disabled="sourceControlStore.preferences.branchReadOnly"
-							@action="onSelect"
+							@action="(action: string) => onSelect(action, 'dropdown')"
 						>
 							<N8nButton
 								:data-test-id="`add-resource-${selectedMainButtonType}`"
 								v-bind="mainButtonConfig"
 								size="medium"
-								@click="onSelect(selectedMainButtonType)"
+								@click="onSelect(selectedMainButtonType, 'button')"
 							/>
 						</ProjectCreateResource>
 					</div>
