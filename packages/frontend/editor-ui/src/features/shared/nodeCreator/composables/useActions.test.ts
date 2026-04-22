@@ -22,7 +22,12 @@ import type { INodeUi } from '@/Interface';
 
 let mockAllNodes: INodeUi[] = [];
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: () => ({ allNodes: mockAllNodes }),
+	useWorkflowDocumentStore: () => ({
+		allNodes: mockAllNodes,
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
+	}),
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
 }));
 

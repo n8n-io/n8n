@@ -183,6 +183,18 @@ const AI_TYPE_TO_SCHEMA_FIELD: Record<
  */
 function isPropertyOptional(prop: NodeProperty): boolean {
 	const hasDefault = 'default' in prop && prop.default !== undefined;
+	// A fixedCollection with minRequiredFields > 0 cannot satisfy the
+	// constraint via its default (typically `{}`), so the property itself
+	// must be present — overrides the hasDefault shortcut.
+	const minRequired = prop.typeOptions?.minRequiredFields;
+	if (
+		prop.type === 'fixedCollection' &&
+		prop.typeOptions?.multipleValues === true &&
+		typeof minRequired === 'number' &&
+		minRequired > 0
+	) {
+		return false;
+	}
 	return !prop.required || hasDefault;
 }
 
@@ -424,6 +436,12 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 		case 'assignmentCollection':
 			return 'assignmentCollectionValueSchema';
 
+		case 'fixedCollection':
+			return generateFixedCollectionZodSchema(prop);
+
+		case 'collection':
+			return generateCollectionZodSchema(prop);
+
 		case 'hidden':
 			return 'z.unknown()';
 
@@ -466,8 +484,24 @@ function generateFixedCollectionZodSchema(prop: NodeProperty): string {
 
 		if (nestedProps.length > 0) {
 			const innerSchema = `z.object({ ${nestedProps.join(', ')} })`;
-			const groupSchema = isMultipleValues ? `z.array(${innerSchema})` : innerSchema;
-			groups.push(`${groupName}: ${groupSchema}.optional()`);
+			const minRequired = prop.typeOptions?.minRequiredFields;
+			const hasMinRequired = typeof minRequired === 'number' && minRequired > 0;
+			let groupSchema: string;
+			if (isMultipleValues) {
+				const maxAllowed = prop.typeOptions?.maxAllowedFields;
+				let arraySchema = `z.array(${innerSchema})`;
+				if (hasMinRequired) {
+					arraySchema += `.min(${minRequired})`;
+				}
+				if (typeof maxAllowed === 'number' && maxAllowed > 0) {
+					arraySchema += `.max(${maxAllowed})`;
+				}
+				groupSchema = arraySchema;
+			} else {
+				groupSchema = innerSchema;
+			}
+			const groupSuffix = hasMinRequired ? '' : '.optional()';
+			groups.push(`${groupName}: ${groupSchema}${groupSuffix}`);
 		}
 	}
 
