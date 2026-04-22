@@ -3,6 +3,7 @@ import { z } from 'zod';
 const apiKeyCreds = z.object({
 	apiKey: z.string().optional(),
 	baseURL: z.string().optional(),
+	headers: z.record(z.string(), z.string()).optional(),
 });
 
 /**
