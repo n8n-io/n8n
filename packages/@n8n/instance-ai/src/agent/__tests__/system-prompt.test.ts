@@ -59,4 +59,15 @@ describe('getSystemPrompt', () => {
 			expect(prompt).not.toContain('Read-Only Instance');
 		});
 	});
+
+	describe('secret handling guidance', () => {
+		it('instructs the agent not to ask for plaintext secrets in chat', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Never ask the user to paste passwords, API keys');
+			expect(prompt).toContain(
+				'credential setup, browser credential setup, or existing credential selection',
+			);
+		});
+	});
 });
