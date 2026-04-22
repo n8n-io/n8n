@@ -2,7 +2,12 @@
 import { ref, computed, watch } from 'vue';
 import { N8nBadge, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { ChatHubConversationModel, ChatHubProvider, ChatModelDto } from '@n8n/api-types';
+import type {
+	ChatHubConversationModel,
+	ChatHubProvider,
+	ChatModelDto,
+	ChatModelsResponse,
+} from '@n8n/api-types';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
@@ -10,7 +15,11 @@ import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import type { AgentResource, AgentJsonConfig } from '../types';
 import type { CustomToolEntry } from '../agent.types';
-import { CHATHUB_TO_CATALOG, CATALOG_TO_CHATHUB } from '../provider-mapping';
+import {
+	CHATHUB_TO_CATALOG,
+	CATALOG_TO_CHATHUB,
+	AGENT_UNSUPPORTED_PROVIDERS,
+} from '../provider-mapping';
 import AgentPublishButton from './AgentPublishButton.vue';
 import AgentToolsPanel from './AgentToolsPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
@@ -61,6 +70,18 @@ watch(
 	{ immediate: true },
 );
 
+/**
+ * TODO: Add support for missing chathub providers
+ */
+const filteredAgents = computed<ChatModelsResponse>(
+	() =>
+		Object.fromEntries(
+			Object.entries(chatStore.agents).filter(
+				([provider]) => !AGENT_UNSUPPORTED_PROVIDERS.has(provider),
+			),
+		) as ChatModelsResponse,
+);
+
 /** Parse "provider/model" string into provider and model parts */
 function parseModelString(model: string): { provider: string; name: string } | null {
 	const slashIndex = model.indexOf('/');
@@ -94,6 +115,21 @@ const selectedAgent = computed<ChatModelDto | null>(() => {
 	};
 });
 
+/** Strip "models/" prefix from Gemini model IDs (e.g. "models/gemini-2.5-flash" → "gemini-2.5-flash") */
+function sanitizeGeminiModelId(provider: string, modelId: string): string {
+	if (provider === 'google') {
+		return modelId.replace(/^models\//, '');
+	}
+	return modelId;
+}
+
+function sanitizeModelId(provider: string, modelId: string): string {
+	if (provider === 'google') {
+		return sanitizeGeminiModelId(provider, modelId);
+	}
+	return modelId;
+}
+
 function onModelChange(selection: ChatHubConversationModel) {
 	if (!isLlmProviderModel(selection)) return;
 
@@ -101,7 +137,7 @@ function onModelChange(selection: ChatHubConversationModel) {
 	const credentialId = credentialsByProvider.value?.[selection.provider] ?? '';
 
 	emit('update:config', {
-		model: `${catalogProvider}/${selection.model}`,
+		model: `${catalogProvider}/${sanitizeModelId(catalogProvider, selection.model)}`,
 		credential: credentialId,
 	});
 }
@@ -210,7 +246,7 @@ watch(
 						:selected-agent="selectedAgent"
 						:include-custom-agents="false"
 						:credentials="credentialsByProvider"
-						:agents="chatStore.agents"
+						:agents="filteredAgents"
 						:is-loading="false"
 						:warn-missing-credentials="true"
 						horizontal

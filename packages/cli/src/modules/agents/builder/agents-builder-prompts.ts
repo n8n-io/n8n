@@ -221,7 +221,7 @@ export function getConfigRulesSection(builderModel: string): string {
 	return `\
 ## Agent config rules
 
-- \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
+- \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5"). For aggregator providers like OpenRouter the model name itself contains a slash: "openrouter/amazon/nova-micro-v1"
 - \`credential\` must match an available credential name (call list_credentials first)
 - \`memory.storage\` is a preset: "n8n" (recommended, persists in n8n DB), "sqlite", or "postgres"
 - \`memory.lastMessages\` default: 20

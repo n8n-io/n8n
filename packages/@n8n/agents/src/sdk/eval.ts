@@ -1,6 +1,7 @@
 import { filterLlmMessages } from './message';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import type { BuiltEval, CheckFn, EvalInput, EvalScore, JudgeFn, JudgeHandlerFn } from '../types';
+import type { ModelConfig } from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';
 
 /** Extract text content from LLM messages (custom messages are skipped). */
@@ -54,8 +55,6 @@ export class Eval {
 
 	private credentialName?: string;
 
-	private _resolvedApiKey?: string;
-
 	constructor(name: string) {
 		this.evalName = name;
 	}
@@ -68,6 +67,7 @@ export class Eval {
 
 	/** Set the judge model (LLM-as-judge mode). */
 	model(modelId: string): this {
+		// TODO: support full model config
 		this.modelId = modelId;
 		return this;
 	}
@@ -76,16 +76,6 @@ export class Eval {
 	credential(name: string): this {
 		this.credentialName = name;
 		return this;
-	}
-
-	/** @internal Read the declared credential name (used by the execution engine). */
-	protected get declaredCredential(): string | undefined {
-		return this.credentialName;
-	}
-
-	/** @internal Set the resolved API key for the judge model. */
-	protected set resolvedApiKey(key: string) {
-		this._resolvedApiKey = key;
 	}
 
 	/**
@@ -146,9 +136,10 @@ export class Eval {
 
 		// LLM-as-judge mode
 		const judgeFn = this.judgeFn!;
-		const modelConfig: string | { id: `${string}/${string}`; apiKey: string } = this._resolvedApiKey
-			? { id: this.modelId! as `${string}/${string}`, apiKey: this._resolvedApiKey }
-			: this.modelId!;
+		if (!this.modelId) {
+			throw new Error(`Eval "${this.evalName}" uses .judge() but no .model() was set`);
+		}
+		const modelConfig: ModelConfig = this.modelId;
 
 		const runtime = new AgentRuntime({
 			name: `${name}-judge`,
