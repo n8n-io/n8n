@@ -9,9 +9,6 @@ import type { Message, MessagePart, SearchCriteria } from './types';
 const IMAP_EVENTS = ['alert', 'mail', 'expunge', 'uidvalidity', 'update', 'close', 'end'] as const;
 
 export class ImapSimple extends EventEmitter {
-	/** flag to determine whether we should suppress ECONNRESET from bubbling up to listener */
-	private ending = false;
-
 	constructor(private readonly imap: Imap) {
 		super();
 
@@ -20,30 +17,26 @@ export class ImapSimple extends EventEmitter {
 			this.imap.on(event, this.emit.bind(this, event));
 		});
 
-		// special handling for `error` event
-		this.imap.on('error', (e: Error & { code?: string }) => {
-			// if .end() has been called and an 'ECONNRESET' error is received, don't bubble
-			if (e && this.ending && e.code?.toUpperCase() === 'ECONNRESET') {
-				return;
-			}
+		// forward error events from the underlying connection
+		this.imap.on('error', (e: Error) => {
 			this.emit('error', e);
 		});
 	}
 
 	/** disconnect from the imap server */
 	end(): void {
-		// set state flag to suppress 'ECONNRESET' errors that are triggered when .end() is called.
-		// it is a known issue that has no known fix. This just temporarily ignores that error.
+		// Remove all forwarding listeners to prevent leaks on reconnect
+		this.imap.removeAllListeners();
+
+		// Suppress errors emitted during disconnect (e.g. ECONNRESET).
+		// This is a known node-imap issue with no upstream fix:
 		// https://github.com/mscdex/node-imap/issues/391
 		// https://github.com/mscdex/node-imap/issues/395
-		this.ending = true;
+		this.imap.on('error', () => {});
 
-		// using 'close' event to unbind ECONNRESET error handler, because the node-imap
-		// maintainer claims it is the more reliable event between 'end' and 'close'.
-		// https://github.com/mscdex/node-imap/issues/394
-		this.imap.once('close', () => {
-			this.ending = false;
-		});
+		// Forward the final 'close' event so callers can still react
+		// (e.g. EmailReadImapV2 logs reconnect/shutdown status on close)
+		this.imap.once('close', (...args: unknown[]) => this.emit('close', ...args));
 
 		this.imap.end();
 	}

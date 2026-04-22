@@ -54,7 +54,7 @@ export class SecuritySettingsController {
 	) {
 		if (this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv) {
 			throw new ForbiddenError(
-				'Security settings are managed via environment variables and cannot be updated through the API',
+				'Security settings are managed via environment variables and cannot be modified through the API',
 			);
 		}
 

@@ -112,6 +112,9 @@ export type {
 export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
+export { createModel } from './runtime/model-factory';
+export { generateTitleFromMessage } from './runtime/title-generation';
+
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
 export { BaseSandbox } from './workspace';

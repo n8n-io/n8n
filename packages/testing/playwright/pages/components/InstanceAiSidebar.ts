@@ -24,6 +24,6 @@ export class InstanceAiSidebar {
 	}
 
 	getDeleteMenuItem(): Locator {
-		return this.root.page().getByText('Delete', { exact: true }).first();
+		return this.root.page().getByRole('menuitem').filter({ hasText: 'Delete' });
 	}
 }
