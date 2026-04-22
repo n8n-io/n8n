@@ -36,14 +36,16 @@ describe('useAgentTelemetry', () => {
 		};
 		useAgentTelemetry().trackSubmittedMessage({
 			agentId: 'ag-1',
-			message: 'hi',
+			messageHash: 'abcd1234',
+			messageLength: 2,
 			mode: 'test',
 			status: 'draft',
 			agentConfig: fingerprint,
 		});
 		expect(trackMock).toHaveBeenCalledWith('User submitted message to agent', {
 			agent_id: 'ag-1',
-			message: 'hi',
+			message_hash: 'abcd1234',
+			message_length: 2,
 			mode: 'test',
 			status: 'draft',
 			agent_config: fingerprint,

@@ -8,7 +8,7 @@ import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type { AgentJsonConfig } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
-import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
+import { buildAgentConfigFingerprint, sha256Hex16 } from '../composables/agentTelemetry.utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -76,13 +76,14 @@ async function onSubmit() {
 	if (!text || isStreaming.value) return;
 	inputText.value = '';
 
-	const fingerprint = await buildAgentConfigFingerprint(props.agentConfig, props.connectedTriggers);
-	// The raw `message` is sent intentionally — product accepts the privacy
-	// trade-off here (unlike `instructions`, which are only sent as a hash).
-	// Revisit if the privacy posture tightens.
+	const [fingerprint, messageHash] = await Promise.all([
+		buildAgentConfigFingerprint(props.agentConfig, props.connectedTriggers),
+		sha256Hex16(text),
+	]);
 	agentTelemetry.trackSubmittedMessage({
 		agentId: props.agentId,
-		message: text,
+		messageHash,
+		messageLength: text.length,
 		mode: props.endpoint === 'build' ? 'build' : 'test',
 		status: props.agentStatus,
 		agentConfig: fingerprint,

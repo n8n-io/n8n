@@ -69,7 +69,7 @@ Every agent event also carries:
 | Event name | Trigger | Extra properties |
 |---|---|---|
 | `User clicked new agent` | "New agent" button or dropdown option clicked | `source: 'button' \| 'dropdown'` |
-| `User submitted message to agent` | Chat submit in agent builder or agent test chat | `message: string`, `mode: 'build' \| 'test'`, `agent_config: AgentConfigFingerprint` |
+| `User submitted message to agent` | Chat submit in agent builder or agent test chat | `message_hash`, `message_length`, `mode: 'build' \| 'test'`, `agent_config: AgentConfigFingerprint` |
 | `User edited agent config` | Config change via a settings panel (not via the builder chat) | `part: 'instructions' \| 'model' \| 'memory' \| 'tools' \| 'triggers' \| 'name' \| 'description'`, `config_version: string` |
 | `User added trigger to agent` | Integration connected via `AgentIntegrationsPanel` | `trigger_type: 'slack' \| 'telegram'`, `triggers: string[]` (full connected set after add) |
 | `User added tools to agent` | Tool added via tools panel | `tool_added: string`, `tools: string[]` (full list after add) |
@@ -100,7 +100,7 @@ The spec intentionally tracks adds (`User added trigger`, `User added tools`) ra
 
 ### Privacy
 
-- `message` (submitted prompt): sent raw — accepted risk, flagged
+- `message` (submitted prompt): never sent raw; only SHA-256 hash (first 16 hex chars) + length
 - `instructions`: never sent raw, only hash + length
 - Tools / triggers / memory storage: identifiers, not user data
 
@@ -120,5 +120,4 @@ None at this time.
 ## Out of scope / future work
 
 - Backend correlation via OTel browser SDK
-- Hashing the submitted message if privacy posture tightens
 - Session-level umbrella event (`Agent builder journey`) — considered, left out for now to keep the surface flat; can be added later if analytics needs it
