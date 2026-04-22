@@ -13,8 +13,11 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import type { AgentResource, AgentJsonConfig } from '../types';
+import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { CustomToolEntry } from '../agent.types';
+import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
+import { getExistingToolNames } from '../composables/useAgentToolRefAdapter';
+import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import {
 	CHATHUB_TO_CATALOG,
 	CATALOG_TO_CHATHUB,
@@ -26,12 +29,7 @@ import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentIntegrationsPanel from './AgentIntegrationsPanel.vue';
 import AgentConfigJsonEditor from './AgentConfigJsonEditor.vue';
 import AgentCustomToolsList from './AgentCustomToolsList.vue';
-
-const toolCount = computed(() => Object.keys(props.agentTools).length);
-
-const locale = useI18n();
-const usersStore = useUsersStore();
-const chatStore = useChatStore();
+import { useUIStore } from '@/app/stores/ui.store';
 
 const props = defineProps<{
 	config: AgentJsonConfig | null;
@@ -54,6 +52,13 @@ const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 }>();
+
+const toolCount = computed(() => Object.keys(props.agentTools).length);
+
+const locale = useI18n();
+const usersStore = useUsersStore();
+const chatStore = useChatStore();
+const uiStore = useUIStore();
 
 // --- Model & credential state (reusing ChatHub infrastructure) ---
 const { credentialsByProvider, selectCredential } = useChatCredentials(
@@ -170,6 +175,28 @@ watch(
 function onInstructionsChange(value: string) {
 	instructions.value = value;
 	emit('update:config', { instructions: value });
+}
+
+const toolTelemetry = useAgentToolTelemetry(props.agentId);
+
+function openToolConfigModal(toolRef: AgentJsonToolRef) {
+	const currentTools = (props.config?.tools ?? []) as AgentJsonToolRef[];
+	uiStore.openModalWithData({
+		name: AGENT_TOOL_CONFIG_MODAL_KEY,
+		data: {
+			toolRef,
+			existingToolNames: getExistingToolNames(currentTools, toolRef),
+			onConfirm: (updatedRef: AgentJsonToolRef) => {
+				const updatedTools = currentTools.map((t) => (t === toolRef ? updatedRef : t));
+				emit('update:config', { tools: updatedTools });
+				toolTelemetry.trackEdited(updatedRef);
+			},
+		},
+	});
+}
+
+function onSidebarToolRemoved(toolRef: AgentJsonToolRef) {
+	toolTelemetry.trackRemoved(toolRef);
 }
 
 // --- Collapsible sections ---
@@ -316,6 +343,8 @@ watch(
 							:config="config"
 							:agent-tools="agentTools"
 							@update:config="(changes) => emit('update:config', changes)"
+							@configure="openToolConfigModal"
+							@remove="onSidebarToolRemoved"
 						/>
 					</div>
 				</div>

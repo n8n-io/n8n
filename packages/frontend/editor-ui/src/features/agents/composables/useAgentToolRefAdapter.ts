@@ -171,6 +171,22 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
 }
 
 /**
+ * A node-type tool is missing credentials when the underlying node declares
+ * at least one required credential type but the tool ref has no matching
+ * saved credential entry.
+ */
+export function isToolMissingCredentials(
+	ref: AgentJsonToolRef,
+	nodeType: INodeTypeDescription | null,
+): boolean {
+	if (ref.type !== 'node' || !ref.node || !nodeType) return false;
+	const required = (nodeType.credentials ?? []).filter((c) => c.required !== false);
+	if (required.length === 0) return false;
+	const saved = ref.node.credentials ?? {};
+	return required.some((c) => !saved[c.name] || !saved[c.name].id);
+}
+
+/**
  * Build a new `AgentJsonToolRef` of type `workflow` from the user's chosen
  * workflow. Persists the workflow's **name** (not id) on `ref.workflow`
  * because the backend's `buildWorkflowTool` looks workflows up by name scoped

@@ -95,6 +95,10 @@ vi.mock('@/features/ai/chatHub/chat.utils', () => ({
 	isLlmProviderModel: () => true,
 }));
 
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({ openModalWithData: vi.fn() }),
+}));
+
 const mockConfig = {
 	name: 'Test Agent',
 	model: 'anthropic/claude-sonnet-4-6',
