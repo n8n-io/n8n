@@ -54,6 +54,13 @@ vi.mock('@/app/composables/useToast', () => ({
 	})),
 }));
 
+const mockFetchAllCredentialsForWorkflow = vi.hoisted(() => vi.fn());
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: vi.fn(() => ({
+		fetchAllCredentialsForWorkflow: mockFetchAllCredentialsForWorkflow,
+	})),
+}));
+
 const mockCanvasEventBusEmit = vi.hoisted(() => vi.fn());
 vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 	canvasEventBus: {
@@ -72,11 +79,15 @@ vi.mock('@/features/execution/executions/executions.utils', async (importOrigina
 	};
 });
 
+const mockRoute = vi.hoisted(() => ({
+	name: 'workflow' as string,
+	query: {} as Record<string, string>,
+}));
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as object;
 	return {
 		...actual,
-		useRoute: vi.fn(() => ({ name: 'workflow' })),
+		useRoute: vi.fn(() => mockRoute),
 	};
 });
 
@@ -93,6 +104,8 @@ describe('usePostMessageHandler', () => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia());
 		mockIsProductionExecutionPreview.value = false;
+		mockRoute.name = 'workflow';
+		mockRoute.query = {};
 		workflowState = createMockWorkflowState();
 	});
 
@@ -185,6 +198,55 @@ describe('usePostMessageHandler', () => {
 			cleanup();
 		});
 
+		it('should override workflow id to "demo" on demo route when canExecute is not set', async () => {
+			mockRoute.name = 'WorkflowDemo';
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			const workflow = { id: 'real-wf-id', nodes: [], connections: {} };
+			const messageEvent = new MessageEvent('message', {
+				data: JSON.stringify({ command: 'openWorkflow', workflow }),
+			});
+			window.dispatchEvent(messageEvent);
+
+			await vi.waitFor(() => {
+				expect(mockImportWorkflowExact).toHaveBeenCalledWith(
+					expect.objectContaining({ workflow: expect.objectContaining({ id: 'demo' }) }),
+				);
+			});
+
+			cleanup();
+		});
+
+		it('should preserve real workflow id on demo route when canExecute is true', async () => {
+			mockRoute.name = 'WorkflowDemo';
+			mockRoute.query = { canExecute: 'true' };
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			const workflow = { id: 'real-wf-id', nodes: [], connections: {} };
+			const messageEvent = new MessageEvent('message', {
+				data: JSON.stringify({ command: 'openWorkflow', workflow }),
+			});
+			window.dispatchEvent(messageEvent);
+
+			await vi.waitFor(() => {
+				expect(mockImportWorkflowExact).toHaveBeenCalledWith(
+					expect.objectContaining({ workflow: expect.objectContaining({ id: 'real-wf-id' }) }),
+				);
+			});
+
+			cleanup();
+		});
+
 		it('should emit tidyUp event when tidyUp is true', async () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
@@ -271,10 +333,70 @@ describe('usePostMessageHandler', () => {
 			window.dispatchEvent(messageEvent);
 
 			await vi.waitFor(() => {
-				expect(mockOpenExecution).toHaveBeenCalled();
+				expect(mockFetchAllCredentialsForWorkflow).toHaveBeenCalled();
 			});
 
 			expect(storeRef.value).not.toBeNull();
+
+			cleanup();
+		});
+
+		it('should fetch workflow credentials after opening execution', async () => {
+			mockOpenExecution.mockResolvedValue({
+				workflowData: { id: 'test-wf-id', name: 'Test' },
+				mode: 'trigger',
+				finished: true,
+			});
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			const messageEvent = new MessageEvent('message', {
+				data: JSON.stringify({
+					command: 'openExecution',
+					executionId: 'exec-1',
+					executionMode: 'trigger',
+				}),
+			});
+			window.dispatchEvent(messageEvent);
+
+			await vi.waitFor(() => {
+				expect(mockFetchAllCredentialsForWorkflow).toHaveBeenCalled();
+			});
+
+			expect(mockFetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				workflowId: 'test-wf-id',
+			});
+
+			cleanup();
+		});
+
+		it('should not fetch workflow credentials when execution data is missing', async () => {
+			mockOpenExecution.mockResolvedValue(null);
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			const messageEvent = new MessageEvent('message', {
+				data: JSON.stringify({
+					command: 'openExecution',
+					executionId: 'exec-1',
+					executionMode: 'trigger',
+				}),
+			});
+			window.dispatchEvent(messageEvent);
+
+			await vi.waitFor(() => {
+				expect(mockOpenExecution).toHaveBeenCalled();
+			});
+
+			expect(mockFetchAllCredentialsForWorkflow).not.toHaveBeenCalled();
 
 			cleanup();
 		});
@@ -344,6 +466,54 @@ describe('usePostMessageHandler', () => {
 			expect(mockSetPinData).toHaveBeenCalledWith({});
 
 			cleanup();
+		});
+
+		it('should always override workflow id to "demo" in iframe context', async () => {
+			mockRoute.query = { canExecute: 'true' };
+
+			// Simulate iframe context
+			const originalParent = Object.getOwnPropertyDescriptor(window, 'parent');
+			Object.defineProperty(window, 'parent', {
+				value: { postMessage: vi.fn() },
+				writable: true,
+				configurable: true,
+			});
+
+			const mockSetPinData = vi.fn();
+			const storeRef = shallowRef({ setPinData: mockSetPinData } as never);
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: storeRef,
+			});
+			setup();
+
+			const messageEvent = new MessageEvent('message', {
+				data: JSON.stringify({
+					command: 'openExecutionPreview',
+					workflow: {
+						id: 'real-wf-id',
+						nodes: [{ name: 'Node1' }],
+						connections: {},
+					},
+					nodeExecutionSchema: {},
+					executionStatus: 'success',
+				}),
+			});
+			window.dispatchEvent(messageEvent);
+
+			await vi.waitFor(() => {
+				expect(mockImportWorkflowExact).toHaveBeenCalledWith(
+					expect.objectContaining({
+						workflow: expect.objectContaining({ id: 'demo' }),
+					}),
+				);
+			});
+
+			cleanup();
+			if (originalParent) {
+				Object.defineProperty(window, 'parent', originalParent);
+			}
 		});
 
 		it('should throw if workflow has no nodes', async () => {

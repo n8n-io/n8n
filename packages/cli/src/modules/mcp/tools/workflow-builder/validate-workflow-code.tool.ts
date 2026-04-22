@@ -3,6 +3,7 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import type { Telemetry } from '@/telemetry';
 
@@ -34,6 +35,12 @@ const outputSchema = {
 		.optional()
 		.describe('Validation warnings (if any)'),
 	errors: z.array(z.string()).optional().describe('Validation errors (if invalid)'),
+	hint: z
+		.string()
+		.optional()
+		.describe(
+			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
+		),
 } satisfies z.ZodRawShape;
 
 /**
@@ -104,9 +111,12 @@ export const createValidateWorkflowCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const hint = getSdkReferenceHint(error);
+
 			const output = {
 				valid: false,
 				errors: [errorMessage],
+				...(hint ? { hint } : {}),
 			};
 
 			return {

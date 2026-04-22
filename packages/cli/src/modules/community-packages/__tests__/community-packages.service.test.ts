@@ -37,6 +37,9 @@ jest.mock('../community-node-types-utils', () => ({
 jest.mock('../npm-utils', () => ({
 	...jest.requireActual('../npm-utils'),
 	executeNpmCommand: jest.fn(),
+	executeNpmRequest: jest.fn().mockResolvedValue({}),
+	checkIfVersionExistsOrThrow: jest.fn().mockResolvedValue(true),
+	verifyIntegrity: jest.fn().mockResolvedValue(undefined),
 }));
 
 type ExecFileCallback = NonNullable<Parameters<typeof execFile>[3]>;
@@ -54,6 +57,7 @@ describe('CommunityPackagesService', () => {
 		reinstallMissing: false,
 		registry: 'some.random.host',
 		unverifiedEnabled: true,
+		authToken: '',
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
@@ -106,11 +110,22 @@ describe('CommunityPackagesService', () => {
 			).toThrowError();
 		});
 
-		test.each(['invalid', '1.a.b'])('should fail with invalid version', (version) => {
-			expect(() =>
-				communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${version}`),
-			).toThrow(`Invalid version: ${version}`);
-		});
+		test.each(['1.a.b', '1invalid', '-starts-with-dash'])(
+			'should fail with invalid version',
+			(version) => {
+				expect(() =>
+					communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${version}`),
+				).toThrow(`Invalid version: ${version}`);
+			},
+		);
+
+		test.each(['beta', 'next', 'latest', 'canary', 'rc-1'])(
+			'should accept npm dist-tag as version',
+			(tag) => {
+				const parsed = communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${tag}`);
+				expect(parsed.version).toBe(tag);
+			},
+		);
 
 		test('should parse valid package name', () => {
 			const name = mockPackageName();
@@ -351,7 +366,6 @@ describe('CommunityPackagesService', () => {
 			'--install-strategy=shallow',
 			'--ignore-scripts=true',
 			'--package-lock=false',
-			`--registry=${testBlockRegistry}`,
 		].join(' ');
 
 		const execMockForThisBlock = ((...args: Parameters<typeof execFile>) => {
@@ -423,14 +437,14 @@ describe('CommunityPackagesService', () => {
 			expect(executeNpmCommand).toHaveBeenCalledTimes(2);
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				1,
-				['pack', `${PACKAGE_NAME}@latest`, `--registry=${testBlockRegistry}`, '--quiet'],
-				{ cwd: testBlockDownloadDir },
+				['pack', `${PACKAGE_NAME}@latest`, '--quiet'],
+				{ cwd: testBlockDownloadDir, registry: testBlockRegistry, authToken: undefined },
 			);
 
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				2,
 				['install', ...testBlockNpmInstallArgs.split(' ')],
-				{ cwd: testBlockPackageDir },
+				{ cwd: testBlockPackageDir, registry: testBlockRegistry, authToken: undefined },
 			);
 
 			// Check execFile was called only for tar command

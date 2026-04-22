@@ -75,6 +75,7 @@ export async function initializeCore() {
 	ssoStore.initialize({
 		authenticationMethod: settingsStore.userManagement
 			.authenticationMethod as UserManagementAuthenticationMethod,
+		managedByEnv: settingsStore.settings.sso.managedByEnv,
 		config: settingsStore.settings.sso,
 		features: {
 			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
@@ -236,10 +237,26 @@ function registerAuthenticationHooks() {
 	const telemetry = useTelemetry();
 	const RBACStore = useRBACStore();
 	const settingsStore = useSettingsStore();
+	const ssoStore = useSSOStore();
 	const favoritesStore = useFavoritesStore();
 
 	usersStore.registerLoginHook(async (user) => {
 		await settingsStore.getSettings();
+
+		// Re-initialize SSO store with authenticated settings.
+		// Before login, public settings omit callbackUrl, leaving it empty.
+		// Without this, navigating to SSO settings after login shows an empty redirect URL.
+		ssoStore.initialize({
+			authenticationMethod: settingsStore.userManagement
+				.authenticationMethod as UserManagementAuthenticationMethod,
+			managedByEnv: settingsStore.settings.sso.managedByEnv,
+			config: settingsStore.settings.sso,
+			features: {
+				saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
+				ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
+				oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
+			},
+		});
 
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
 		telemetry.identify({

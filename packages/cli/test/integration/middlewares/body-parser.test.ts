@@ -38,4 +38,15 @@ describe('bodyParser', () => {
 			.expect(200);
 		expect(response.text).toEqual('{"hello":"world"}');
 	});
+
+	it('should sanitize XML tag names', async () => {
+		const response = await request(server)
+			.post('/')
+			.set('content-type', 'application/xml')
+			.send('<test><__proto__/></test>')
+			.expect(200);
+		const body = JSON.parse(response.text);
+		expect(body.test).toHaveProperty('sanitized___proto__');
+		expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	});
 });
