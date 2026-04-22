@@ -252,4 +252,19 @@ describe('useWorkflowInitialization', () => {
 		expect(mockToast.showError).not.toHaveBeenCalled();
 		expect(initializedWorkflowId.value).toBeUndefined();
 	});
+
+	it('ignores stale workflow-open failures after navigating away', async () => {
+		mockRoute.params = { name: 'wf-2' };
+		mockWorkflowsListStore.fetchWorkflow.mockRejectedValue(new Error('boom'));
+
+		const { initializeWorkspaceForExistingWorkflow, initializedWorkflowId } =
+			useWorkflowInitialization({} as WorkflowState);
+		initializedWorkflowId.value = 'wf-1';
+
+		await initializeWorkspaceForExistingWorkflow('wf-1');
+
+		expect(mockToast.showError).not.toHaveBeenCalled();
+		expect(mockRouter.replace).not.toHaveBeenCalled();
+		expect(initializedWorkflowId.value).toBe('wf-1');
+	});
 });

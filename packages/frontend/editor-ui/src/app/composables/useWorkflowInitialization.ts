@@ -323,6 +323,10 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			);
 			void workflowsStore.fetchLastSuccessfulExecution();
 		} catch (error) {
+			if (workflowId.value !== id) {
+				return;
+			}
+
 			if ((error as { httpStatusCode?: number }).httpStatusCode === 404) {
 				return await router.replace({
 					name: VIEWS.ENTITY_NOT_FOUND,
