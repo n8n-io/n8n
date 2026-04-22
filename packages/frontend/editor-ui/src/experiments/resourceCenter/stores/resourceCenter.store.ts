@@ -1,4 +1,5 @@
 import { RESOURCE_CENTER_EXPERIMENT, VIEWS } from '@/app/constants';
+
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -7,7 +8,7 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { OPEN_AI_API_CREDENTIAL_TYPE, deepCopy } from 'n8n-workflow';
 import { quickStartWorkflows } from '../data/quickStartWorkflows';
@@ -26,17 +27,8 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	const isLoadingTemplates = ref(false);
 	const hasTooltipBeenDismissed = ref(localStorage.getItem(TOOLTIP_STORAGE_KEY) === 'true');
 
-	const isFeatureEnabled = () => {
-		const variant = posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name);
-		return (
-			variant === RESOURCE_CENTER_EXPERIMENT.variantResources ||
-			variant === RESOURCE_CENTER_EXPERIMENT.variantInspiration
-		);
-	};
-
-	const getCurrentVariant = () => {
-		return posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name);
-	};
+	const isFeatureEnabled = () =>
+		posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name) === RESOURCE_CENTER_EXPERIMENT.variant;
 
 	const shouldShowResourceCenterTooltip = computed(() => {
 		return isFeatureEnabled() && !hasTooltipBeenDismissed.value;
@@ -89,16 +81,8 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 		telemetry.track('User visited resource center');
 	}
 
-	function trackSectionView(section: string) {
-		telemetry.track('User visited resource center section', { section });
-	}
-
 	function trackTileClick(section: string, type: string, id: string | number) {
 		telemetry.track('User clicked on resource center tile', { section, type, id });
-	}
-
-	function trackTemplateRepoVisit() {
-		telemetry.track('User visited template repo', { source: 'resource_center' });
 	}
 
 	async function createAndOpenQuickStartWorkflow(quickStartId: string) {
@@ -139,44 +123,31 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 		});
 	}
 
-	// Track experiment participation
-	const trackExperimentParticipation = () => {
-		const variant = posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name);
-		if (variant) {
-			telemetry.track('User is part of experiment', {
-				name: RESOURCE_CENTER_EXPERIMENT.name,
-				variant,
-			});
-		}
-	};
+	// Sidebar auto-expand
+	const SIDEBAR_AUTO_EXPANDED_KEY = 'n8n-resourceCenter-sidebarAutoExpanded';
 
-	let hasTrackedExperiment = false;
-	watch(
-		() => isFeatureEnabled(),
-		(enabled) => {
-			if (enabled && !hasTrackedExperiment) {
-				hasTrackedExperiment = true;
-				trackExperimentParticipation();
-			}
-		},
-		{ immediate: true },
-	);
+	const shouldAutoExpandSidebar = computed(() => {
+		return isFeatureEnabled() && localStorage.getItem(SIDEBAR_AUTO_EXPANDED_KEY) !== 'true';
+	});
+
+	function markSidebarAutoExpanded() {
+		localStorage.setItem(SIDEBAR_AUTO_EXPANDED_KEY, 'true');
+	}
 
 	return {
 		isFeatureEnabled,
-		getCurrentVariant,
 		isLoadingTemplates,
 		shouldShowResourceCenterTooltip,
+		shouldAutoExpandSidebar,
 		fetchTemplateById,
 		loadTemplates,
 		getTemplateRoute,
 		createAndOpenQuickStartWorkflow,
 		markResourceCenterTooltipDismissed,
+		markSidebarAutoExpanded,
 		trackResourceCenterView,
 		trackResourceCenterTooltipView,
 		trackResourceCenterTooltipDismiss,
-		trackSectionView,
 		trackTileClick,
-		trackTemplateRepoVisit,
 	};
 });

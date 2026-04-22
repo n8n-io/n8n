@@ -73,11 +73,7 @@ export const EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT = createExperiment(
 
 export const FOCUSED_NODES_EXPERIMENT = createExperiment('064_focused_nodes');
 
-export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_0', {
-	control: 'control',
-	variantResources: 'variant-resources',
-	variantInspiration: 'variant-inspiration',
-});
+export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_1');
 
 export const SIDEBAR_EXPANDED_EXPERIMENT = createExperiment('067_sidebar_expanded');
 export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout', {
