@@ -54,7 +54,7 @@
   "dependencies": {
     "@n8n/errors": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
-    "@n8n/tournament": "1.0.6",
+    "@n8n/tournament": "catalog:",
     "ast-types": "0.16.1",
     "callsites": "catalog:",
     "esprima-next": "5.8.4",
