@@ -1,4 +1,4 @@
-import { Agent, Memory } from '@n8n/agents';
+import { Agent, Memory, providerTools } from '@n8n/agents';
 import type { CredentialProvider, StreamChunk } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -69,7 +69,7 @@ export class AgentsBuilderService {
 			);
 		}
 
-		const builderModel = 'anthropic/claude-sonnet-4-5';
+		const builderModel = 'anthropic/claude-sonnet-4-6';
 
 		const currentConfig = agent.schema as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
@@ -89,7 +89,8 @@ export class AgentsBuilderService {
 		const builder = new Agent('agent-builder')
 			.model({ id: builderModel, apiKey: envAnthropicKey })
 			.instructions(instructions)
-			.memory(builderMemory);
+			.memory(builderMemory)
+			.providerTool(providerTools.anthropicWebSearch({ maxUses: 5 }));
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);

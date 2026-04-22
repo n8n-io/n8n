@@ -523,6 +523,58 @@ export class AgentsService {
 	}
 
 	/**
+	 * Check whether an agent has the minimum config it needs to be run.
+	 * Returns the list of missing/invalid fields, if any.
+	 *
+	 * `missing` items correspond to user-facing concepts:
+	 *   - "instructions": empty or whitespace-only instructions string
+	 *   - "model":        missing model or one that fails the provider/model regex
+	 *   - "credential":   credential name is set in config but doesn't resolve to
+	 *                     a real credential in the project
+	 */
+	async validateAgentIsRunnable(
+		agentId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): Promise<{ missing: string[] }> {
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) {
+			return { missing: ['agent'] };
+		}
+		const config = agentEntity.schema as unknown as AgentJsonConfig | null;
+		const missing: string[] = [];
+
+		if (!config) {
+			return { missing: ['instructions', 'model'] };
+		}
+
+		if (!config.instructions || !config.instructions.trim()) {
+			missing.push('instructions');
+		}
+
+		const modelSchema = AgentJsonConfigSchema.shape.model;
+		if (!config.model || !modelSchema.safeParse(config.model).success) {
+			missing.push('model');
+		}
+
+		if (config.credential) {
+			try {
+				const credentialName = config.credential;
+				const creds = await credentialProvider.list();
+				const exists = creds.some(
+					(c) => c.id === credentialName || c.name.toLowerCase() === credentialName.toLowerCase(),
+				);
+				if (!exists) missing.push('credential');
+			} catch {
+				// If listing fails (e.g. permissions), don't flag as misconfigured —
+				// the runtime will surface the real error path on execute.
+			}
+		}
+
+		return { missing };
+	}
+
+	/**
 	 * Execute a compiled SDK agent for a chat integration and yield stream chunks.
 	 * Uses userId as the resourceId so each user gets their own memory context.
 	 *
