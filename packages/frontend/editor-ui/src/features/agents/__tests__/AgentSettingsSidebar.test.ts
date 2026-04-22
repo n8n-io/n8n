@@ -1,6 +1,8 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and any-based mock reads */
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { nextTick } from 'vue';
+import { N8nTabs } from '@n8n/design-system';
 import { CHATHUB_TO_CATALOG, CATALOG_TO_CHATHUB } from '../provider-mapping';
 
 /**
@@ -60,10 +62,13 @@ const baseTextFn = (key: string) => {
 		'agents.settings.triggers': 'Triggers',
 		'agents.settings.triggers.placeholder': 'No triggers configured',
 		'agents.settings.tools': 'Tools',
-		'agents.settings.advanced': 'Advanced',
+		'agents.settings.memory': 'Memory',
 		'agents.settings.code': 'Code',
 		'agents.settings.configJson': 'config.json',
 		'agents.settings.customTools': 'Custom tools',
+		'agents.settings.view.overview': 'Overview',
+		'agents.settings.view.source': 'Source',
+		'agents.settings.view.ariaLabel': 'Settings editor view',
 	};
 	return map[key] ?? key;
 };
@@ -103,6 +108,11 @@ const mockConfig = {
 };
 
 describe('AgentSettingsSidebar', () => {
+	async function switchToSourceView(wrapper: Awaited<ReturnType<typeof renderComponent>>) {
+		wrapper.findComponent(N8nTabs).vm.$emit('update:modelValue', 'source');
+		await nextTick();
+	}
+
 	async function renderComponent(props: Record<string, unknown> = {}) {
 		const { default: AgentSettingsSidebar } = await import(
 			'../components/AgentSettingsSidebar.vue'
@@ -146,27 +156,12 @@ describe('AgentSettingsSidebar', () => {
 		});
 	}
 
-	it('renders the settings header', async () => {
+	it('renders the header with view toggle and publish button', async () => {
 		const wrapper = await renderComponent();
 		expect(wrapper.text()).toContain('Settings');
+		expect(wrapper.find('[data-test-id="tab-overview"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="publish-button-stub"]').exists()).toBe(true);
 	}, 15_000);
-
-	it('renders non-code sections by default', async () => {
-		const wrapper = await renderComponent();
-		expect(wrapper.text()).toContain('Model');
-		expect(wrapper.text()).toContain('Instructions');
-		expect(wrapper.text()).toContain('Triggers');
-		expect(wrapper.text()).toContain('Tools');
-		expect(wrapper.text()).toContain('Advanced');
-		expect(wrapper.text()).not.toContain('config.json');
-	});
-
-	it('renders only code sections when codeOnly is true', async () => {
-		const wrapper = await renderComponent({ codeOnly: true });
-		expect(wrapper.text()).toContain('config.json');
-		expect(wrapper.text()).not.toContain('Model');
-		expect(wrapper.text()).not.toContain('Instructions');
-	});
 
 	it('renders the publish button', async () => {
 		const wrapper = await renderComponent();
@@ -203,33 +198,6 @@ describe('AgentSettingsSidebar', () => {
 		expect(wrapper.find('[data-testid="tools-panel-stub"]').exists()).toBe(true);
 	});
 
-	it('expands config.json section when clicked', async () => {
-		const wrapper = await renderComponent({ codeOnly: true });
-		// codeOnly auto-expands the configJson section, so collapse it first.
-		const header = wrapper.findAll('button').find((b) => b.text().includes('config.json'));
-		await header?.trigger('click');
-		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(false);
-
-		await header?.trigger('click');
-		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(true);
-	});
-
-	it('auto-expands config.json section when building prop becomes true', async () => {
-		const wrapper = await renderComponent({ codeOnly: true, building: false });
-		// In codeOnly mode, the codeOnly watcher already expands configJson; collapse first.
-		const header = wrapper.findAll('button').find((b) => b.text().includes('config.json'));
-		await header?.trigger('click');
-		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(false);
-
-		await wrapper.setProps({ building: true });
-		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(true);
-	});
-
-	it('auto-expands config.json section when mounted with building already true', async () => {
-		const wrapper = await renderComponent({ codeOnly: true, building: true });
-		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(true);
-	});
-
 	it('expands Triggers section to show integrations panel', async () => {
 		const wrapper = await renderComponent();
 		expect(wrapper.find('[data-testid="integrations-panel-stub"]').exists()).toBe(false);
@@ -239,12 +207,70 @@ describe('AgentSettingsSidebar', () => {
 		expect(wrapper.find('[data-testid="integrations-panel-stub"]').exists()).toBe(true);
 	});
 
-	it('expands Advanced section to show memory panel', async () => {
+	it('expands Memory section to show memory panel', async () => {
 		const wrapper = await renderComponent();
 		expect(wrapper.find('[data-testid="memory-panel-stub"]').exists()).toBe(false);
 
-		const advancedHeader = wrapper.findAll('button').find((b) => b.text().includes('Advanced'));
-		await advancedHeader?.trigger('click');
+		const memoryHeader = wrapper.findAll('button').find((b) => b.text().includes('Memory'));
+		await memoryHeader?.trigger('click');
 		expect(wrapper.find('[data-testid="memory-panel-stub"]').exists()).toBe(true);
+	});
+
+	it('renders Overview view by default', async () => {
+		const wrapper = await renderComponent();
+		expect(wrapper.text()).toContain('Model');
+		expect(wrapper.text()).toContain('Instructions');
+		expect(wrapper.text()).toContain('Triggers');
+		expect(wrapper.text()).toContain('Tools');
+		expect(wrapper.text()).toContain('Memory');
+		expect(wrapper.text()).not.toContain('config.json');
+	});
+
+	it('renders the view toggle with Overview and Source options', async () => {
+		const wrapper = await renderComponent();
+		expect(wrapper.find('[data-test-id="tab-overview"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="tab-source"]').exists()).toBe(true);
+	});
+
+	it('switches to Source view when the Source tab is clicked', async () => {
+		const wrapper = await renderComponent();
+		await switchToSourceView(wrapper);
+		expect(wrapper.text()).toContain('config.json');
+		expect(wrapper.text()).not.toContain('Model');
+		expect(wrapper.text()).not.toContain('Instructions');
+	});
+
+	it('auto-expands config.json when switching to Source', async () => {
+		const wrapper = await renderComponent();
+		await switchToSourceView(wrapper);
+		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(true);
+	});
+
+	it('expands config.json section when header is clicked in Source view', async () => {
+		const wrapper = await renderComponent();
+		await switchToSourceView(wrapper);
+		const header = wrapper.findAll('button').find((b) => b.text().includes('config.json'));
+		await header?.trigger('click');
+		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(false);
+		await header?.trigger('click');
+		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(true);
+	});
+
+	it('does not switch to Source view when building becomes true', async () => {
+		const wrapper = await renderComponent({ building: false });
+		expect(wrapper.text()).toContain('Model');
+		await wrapper.setProps({ building: true });
+		expect(wrapper.text()).toContain('Model');
+		expect(wrapper.text()).not.toContain('config.json');
+	});
+
+	it('auto-expands config.json when building becomes true and Source is already selected', async () => {
+		const wrapper = await renderComponent({ building: false });
+		await switchToSourceView(wrapper);
+		const header = wrapper.findAll('button').find((b) => b.text().includes('config.json'));
+		await header?.trigger('click');
+		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(false);
+		await wrapper.setProps({ building: true });
+		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(true);
 	});
 });

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { N8nBadge, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nInput, N8nTabs, N8nText } from '@n8n/design-system';
+import type { TabOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type {
 	ChatHubConversationModel,
@@ -43,7 +44,7 @@ const props = defineProps<{
 	agent: AgentResource | null;
 	saveStatus: 'idle' | 'saving' | 'saved';
 	building?: boolean;
-	codeOnly?: boolean;
+	chatMode?: 'build' | 'test';
 }>();
 
 const emit = defineEmits<{
@@ -173,7 +174,7 @@ function onInstructionsChange(value: string) {
 const expandedSections = ref<Record<string, boolean>>({
 	triggers: false,
 	tools: false,
-	advanced: false,
+	memory: false,
 	configJson: false,
 	customTools: false,
 });
@@ -193,17 +194,25 @@ watch(
 	{ immediate: true },
 );
 
-// When the sidebar is in code-only mode (builder chat active), auto-expand the
-// config editor so it's visible without an extra click.
-watch(
-	() => props.codeOnly,
-	(codeOnly) => {
-		if (codeOnly) {
-			expandedSections.value.configJson = true;
-		}
-	},
-	{ immediate: true },
-);
+// --- View tabs (Overview / Source) ---
+type SidebarView = 'overview' | 'source';
+const view = ref<SidebarView>('overview');
+
+const viewOptions = computed<Array<TabOptions<SidebarView>>>(() => [
+	{ label: locale.baseText('agents.settings.view.overview'), value: 'overview' },
+	{ label: locale.baseText('agents.settings.view.source'), value: 'source' },
+]);
+
+// On the first switch to the source view, auto-expand the config editor so
+// users see JSON contents without an extra click. Subsequent switches respect
+// whatever state the user left the section in.
+let hasAutoExpandedSource = false;
+watch(view, (next) => {
+	if (next === 'source' && !hasAutoExpandedSource) {
+		expandedSections.value.configJson = true;
+		hasAutoExpandedSource = true;
+	}
+});
 </script>
 
 <template>
@@ -233,8 +242,17 @@ watch(
 			</div>
 		</div>
 
+		<div :class="$style.viewBar">
+			<N8nTabs
+				v-model="view"
+				:options="viewOptions"
+				size="small"
+				data-testid="agent-settings-view-toggle"
+			/>
+		</div>
+
 		<div :class="$style.body">
-			<template v-if="!codeOnly">
+			<template v-if="view === 'overview'">
 				<!-- Model section -->
 				<div :class="[$style.staticSection, $style.modelSection]">
 					<div :class="$style.sectionLabel">
@@ -316,20 +334,20 @@ watch(
 					</div>
 				</div>
 
-				<!-- Advanced (collapsible) -->
+				<!-- Memory (collapsible) -->
 				<div :class="$style.section">
-					<button :class="$style.sectionHeader" @click="toggleSection('advanced')">
+					<button :class="$style.sectionHeader" @click="toggleSection('memory')">
 						<div :class="$style.sectionHeaderLeft">
 							<N8nIcon
-								:icon="expandedSections.advanced ? 'chevron-down' : 'chevron-right'"
+								:icon="expandedSections.memory ? 'chevron-down' : 'chevron-right'"
 								:size="16"
 							/>
 							<N8nText tag="span" bold size="small">{{
-								locale.baseText('agents.settings.advanced')
+								locale.baseText('agents.settings.memory')
 							}}</N8nText>
 						</div>
 					</button>
-					<div v-if="expandedSections.advanced" :class="$style.sectionContent">
+					<div v-if="expandedSections.memory" :class="$style.sectionContent">
 						<AgentMemoryPanel
 							:config="config"
 							@update:config="(changes) => emit('update:config', changes)"
@@ -338,7 +356,7 @@ watch(
 				</div>
 			</template>
 
-			<template v-if="codeOnly">
+			<template v-if="view === 'source'">
 				<!-- Config JSON (collapsible top-level section) -->
 				<div :class="$style.section">
 					<button :class="$style.sectionHeader" @click="toggleSection('configJson')">
@@ -419,6 +437,28 @@ watch(
 .body {
 	flex: 1;
 	overflow-y: auto;
+}
+
+.viewBar {
+	position: relative;
+	padding: var(--spacing--xs) var(--spacing--sm) 0;
+}
+
+.viewBar::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 2px;
+	height: var(--border-width);
+	background-color: var(--color--foreground);
+	z-index: 0;
+	pointer-events: none;
+}
+
+.viewBar :global(.n8n-tabs) {
+	position: relative;
+	z-index: 1;
 }
 
 .staticSection {

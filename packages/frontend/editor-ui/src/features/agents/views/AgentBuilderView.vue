@@ -578,7 +578,7 @@ function onContinueLoaded(count: number) {
 			:agent="agent"
 			:save-status="saveStatus"
 			:building="isBuilding || isBuildChatStreaming"
-			:code-only="mode === 'chat' && chatMode === 'build'"
+			:chat-mode="mode === 'chat' ? chatMode : undefined"
 			@update:config="onConfigFieldUpdate"
 			@published="onPublished"
 			@unpublished="onUnpublished"
