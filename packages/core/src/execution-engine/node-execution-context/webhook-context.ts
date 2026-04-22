@@ -48,6 +48,20 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			}
 		}
 
+		if (connectionInputData.length === 0 && additionalData.httpRequest) {
+			const req = additionalData.httpRequest;
+			connectionInputData = [
+				{
+					json: {
+						body: (req.body ?? {}) as IDataObject,
+						headers: req.headers,
+						params: req.params as IDataObject,
+						query: req.query as IDataObject,
+					},
+				},
+			];
+		}
+
 		super(
 			workflow,
 			node,

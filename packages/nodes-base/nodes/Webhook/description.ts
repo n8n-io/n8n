@@ -292,6 +292,16 @@ export const optionsProperty: INodeProperties = {
 			description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 		},
 		{
+			displayName: 'Only Run If',
+			name: 'onlyRunIf',
+			type: 'string',
+			default: '',
+			placeholder: "={{ $json.body.campaign_id === 'user-research-invite' }}",
+			// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
+			description:
+				'Expression evaluated against the incoming request. The workflow will run only if the expression returns true. <code>$json</code> exposes the request as <code>{ body, headers, params, query }</code>. Requests that do not match receive a 200 response, without creating an execution. If the expression fails to evaluate, the request is allowed through and the error is logged.',
+		},
+		{
 			displayName: 'IP(s) Allowlist',
 			name: 'ipWhitelist',
 			type: 'string',
