@@ -6,7 +6,7 @@ import { deepCopy } from 'n8n-workflow';
 
 import { useI18n } from '@n8n/i18n';
 import type { IUpdateInformation } from '@/Interface';
-import CollectionParameter from './CollectionParameter.vue';
+import CollectionParameter from './Collection/CollectionParameter.vue';
 import ParameterInputFull from './ParameterInputFull.vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { storeToRefs } from 'pinia';
@@ -184,9 +184,9 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				}}</N8nText>
 			</div>
 			<N8nButton
+				style="width: 100%"
+				variant="subtle"
 				v-if="!isReadOnly"
-				type="tertiary"
-				block
 				:label="addButtonText"
 				@click="addItem()"
 			/>

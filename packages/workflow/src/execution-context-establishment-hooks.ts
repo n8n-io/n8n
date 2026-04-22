@@ -3,14 +3,17 @@ import z from 'zod/v4';
 const ExecutionContextEstablishmentHookParameterSchemaV1 = z.object({
 	executionsHooksVersion: z.literal(1),
 	contextEstablishmentHooks: z.object({
-		hooks: z.array(
-			z
-				.object({
-					hookName: z.string(),
-					isAllowedToFail: z.boolean().optional().default(false),
-				})
-				.loose(),
-		),
+		hooks: z
+			.array(
+				z
+					.object({
+						hookName: z.string(),
+						isAllowedToFail: z.boolean().optional().default(false),
+					})
+					.loose(),
+			)
+			.optional()
+			.default([]),
 	}),
 });
 

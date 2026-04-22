@@ -1,11 +1,29 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
-import type { WorkflowActivateMode } from 'n8n-workflow';
+import type { ActiveWorkflows, InstanceSettings } from 'n8n-core';
+import type {
+	ExecutionError,
+	INodeExecutionData,
+	INode,
+	IWorkflowExecuteAdditionalData,
+	Workflow,
+	WorkflowActivateMode,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
+import { WorkflowActivationError } from 'n8n-workflow';
+
+import type { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { EventService } from '@/events/event.service';
+import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
+import type { Push } from '@/push';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 describe('ActiveWorkflowManager', () => {
 	let activeWorkflowManager: ActiveWorkflowManager;
@@ -30,6 +48,9 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			instanceSettings,
+			mock(),
+			mock(),
+			mock(),
 			mock(),
 			mock(),
 			mock(),
@@ -116,6 +137,84 @@ describe('ActiveWorkflowManager', () => {
 		});
 	});
 
+	describe('handleAddWebhooksTriggersAndPollers', () => {
+		const push = mock<Push>();
+		const publisher = mock<Publisher>();
+
+		beforeEach(() => {
+			activeWorkflowManager = new ActiveWorkflowManager(
+				mockLogger(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				instanceSettings,
+				publisher,
+				mock(),
+				push,
+				mock(),
+				mock(),
+				mock(),
+			);
+		});
+
+		test('should include nodeId in broadcast when error has node', async () => {
+			const triggerNode = mock<INode>({ id: 'node-123', name: 'Linear Trigger' });
+			const activationError = new WorkflowActivationError('Invalid role: admin required', {
+				node: triggerNode,
+			});
+
+			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(activationError);
+
+			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+				activationMode: 'activate',
+			});
+
+			expect(push.broadcast).toHaveBeenCalledWith({
+				type: 'workflowFailedToActivate',
+				data: {
+					workflowId: 'wf-1',
+					errorMessage: 'Invalid role: admin required',
+					nodeId: 'node-123',
+				},
+			});
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'display-workflow-activation-error',
+				payload: {
+					workflowId: 'wf-1',
+					errorMessage: 'Invalid role: admin required',
+					nodeId: 'node-123',
+				},
+			});
+		});
+
+		test('should not include nodeId in broadcast when error has no node', async () => {
+			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
+
+			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+				activationMode: 'activate',
+			});
+
+			expect(push.broadcast).toHaveBeenCalledWith({
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'Some error' },
+			});
+		});
+	});
+
 	describe('activateWorkflow', () => {
 		beforeEach(() => {
 			// Set up as leader to allow workflow activation
@@ -185,6 +284,175 @@ describe('ActiveWorkflowManager', () => {
 
 			expect(workflowData.nodes).toEqual(activeNodes);
 			expect(workflowData.nodes[0].name).toBe('Active Webhook');
+		});
+	});
+
+	describe('getExecuteTriggerFunctions', () => {
+		const workflowStaticDataService = mock<WorkflowStaticDataService>();
+		const workflowExecutionService = mock<WorkflowExecutionService>();
+		const eventService = mock<EventService>();
+		const activeWorkflows = mock<ActiveWorkflows>();
+		const activationErrorsService = mock<ActivationErrorsService>();
+		const executionService = mock<ExecutionService>();
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
+			workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
+			activeWorkflows.remove.mockResolvedValue(true);
+			activationErrorsService.register.mockResolvedValue(undefined);
+			executionService.createErrorExecution.mockResolvedValue(undefined);
+
+			activeWorkflowManager = new ActiveWorkflowManager(
+				mockLogger(),
+				mock(),
+				activeWorkflows,
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRepository,
+				activationErrorsService,
+				executionService,
+				workflowStaticDataService,
+				mock(),
+				workflowExecutionService,
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				eventService,
+				mock(),
+				mock(),
+			);
+		});
+
+		describe('emit', () => {
+			test('calls workflowStaticDataService.saveStaticData, workflowExecutionService.runWorkflow, and eventService.emit', async () => {
+				const workflowData = mock<WorkflowEntity>({
+					id: 'wf-1',
+					name: 'Test Workflow',
+				});
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Trigger Node' });
+				const triggerData: INodeExecutionData[][] = [[]];
+
+				const getTriggerFunctions = activeWorkflowManager.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+				);
+				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+
+				context.emit(triggerData);
+
+				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
+					workflowData,
+					node,
+					triggerData,
+					additionalData,
+					mode,
+					undefined,
+				);
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
+					workflowId: workflowData.id,
+					workflowName: workflowData.name,
+					executionId: 'exec-123',
+					source: 'trigger',
+				});
+			});
+		});
+
+		describe('emitError', () => {
+			test('removes workflow from activeWorkflows, registers error, calls executeErrorWorkflow and addQueuedWorkflowActivation', () => {
+				const workflowData = mock<WorkflowEntity>({
+					id: 'wf-1',
+					name: 'Test Workflow',
+				});
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Trigger Node' });
+				const triggerError = new Error('Trigger connection failed');
+
+				const executeErrorWorkflowSpy = jest
+					.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
+					.mockImplementation(() => {});
+				const addQueuedWorkflowActivationSpy = jest.spyOn(
+					activeWorkflowManager as unknown as Record<
+						'addQueuedWorkflowActivation',
+						(a: WorkflowActivateMode, w: WorkflowEntity) => void
+					>,
+					'addQueuedWorkflowActivation',
+				);
+
+				const getTriggerFunctions = activeWorkflowManager.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+				);
+				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+
+				context.emitError(triggerError);
+
+				expect(activeWorkflows.remove).toHaveBeenCalledWith(workflowData.id);
+				expect(activationErrorsService.register).toHaveBeenCalledWith(
+					workflowData.id,
+					triggerError.message,
+				);
+				expect(executeErrorWorkflowSpy).toHaveBeenCalled();
+				expect(addQueuedWorkflowActivationSpy).toHaveBeenCalledWith(activation, workflowData);
+			});
+		});
+
+		describe('saveFailedExecution', () => {
+			test('calls executionService.createErrorExecution and executeErrorWorkflow', async () => {
+				const workflowData = mock<WorkflowEntity>({
+					id: 'wf-1',
+					name: 'Test Workflow',
+				});
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Trigger Node' });
+				const executionError = mock<ExecutionError>();
+
+				const executeErrorWorkflowSpy = jest
+					.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
+					.mockImplementation(() => {});
+
+				const getTriggerFunctions = activeWorkflowManager.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+				);
+				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+
+				context.saveFailedExecution(executionError);
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(executionService.createErrorExecution).toHaveBeenCalledWith(
+					executionError,
+					node,
+					workflowData,
+					workflow,
+					mode,
+				);
+				expect(executeErrorWorkflowSpy).toHaveBeenCalledWith(executionError, workflowData, mode);
+			});
 		});
 	});
 });

@@ -1,5 +1,8 @@
 import type { Component, Ref } from 'vue';
 
+import type { ChatMessage } from './messages';
+import type { SendMessageResponse } from './webhook';
+
 export interface ChatOptions {
 	webhookUrl: string;
 	webhookConfig?: {
@@ -11,10 +14,12 @@ export interface ChatOptions {
 	showWindowCloseButton?: boolean;
 	showWelcomeScreen?: boolean;
 	loadPreviousSession?: boolean;
+	sessionId?: string;
 	chatInputKey?: string;
 	chatSessionKey?: string;
 	defaultLanguage?: 'en';
 	initialMessages?: string[];
+	messageHistory?: ChatMessage[];
 	metadata?: Record<string, unknown>;
 	i18n: Record<
 		string,
@@ -34,4 +39,9 @@ export interface ChatOptions {
 	allowFileUploads?: Ref<boolean> | boolean;
 	allowedFilesMimeTypes?: Ref<string> | string;
 	enableStreaming?: boolean;
+	// Event handlers for message lifecycle
+	beforeMessageSent?: (message: string) => void | Promise<void>;
+	afterMessageSent?: (message: string, response?: SendMessageResponse) => void | Promise<void>;
+	// Message action options
+	enableMessageActions?: boolean;
 }

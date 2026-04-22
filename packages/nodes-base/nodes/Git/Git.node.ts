@@ -29,7 +29,7 @@ import {
 	switchBranchFields,
 	tagFields,
 } from './descriptions';
-import { validateGitReference } from './GenericFunctions';
+import { mapGitConfigList, validateGitReference } from './GenericFunctions';
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -261,6 +261,9 @@ export class Git implements INodeType {
 				setUpstream = false,
 				remoteName = 'origin',
 			} = options;
+
+			validateGitReference(branchName, this.getNode());
+
 			try {
 				if (force) {
 					await git.checkout(['-f', branchName]);
@@ -348,8 +351,13 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const pathsToAdd = this.getNodeParameter('pathsToAdd', itemIndex, '') as string;
+					const paths = pathsToAdd
+						.split(',')
+						.map((p) => p.trim())
+						.filter((p) => p.length > 0);
 
-					await git.add(pathsToAdd.split(','));
+					// Use -- separator to prevent argument injection
+					await git.add(['--', ...paths]);
 
 					returnItems.push({
 						json: {
@@ -424,10 +432,18 @@ export class Git implements INodeType {
 
 					let pathsToAdd: string[] | undefined = undefined;
 					if (options.files !== undefined) {
-						pathsToAdd = (options.pathsToAdd as string).split(',');
+						pathsToAdd = (options.pathsToAdd as string)
+							.split(',')
+							.map((p) => p.trim())
+							.filter((p) => p.length > 0);
 					}
 
-					await git.commit(message, pathsToAdd);
+					// Use -- separator to prevent argument injection
+					if (pathsToAdd && pathsToAdd.length > 0) {
+						await git.commit(message, ['--', ...pathsToAdd]);
+					} else {
+						await git.commit(message);
+					}
 
 					returnItems.push({
 						json: {
@@ -562,7 +578,7 @@ export class Git implements INodeType {
 					let reference = 'HEAD';
 					if (options.reference !== undefined && options.reference !== '') {
 						assertParamIsString('reference', options.reference, this.getNode());
-						validateGitReference(reference, this.getNode());
+						validateGitReference(options.reference, this.getNode());
 
 						reference = options.reference;
 					}
@@ -610,13 +626,7 @@ export class Git implements INodeType {
 
 					const config = await git.listConfig();
 
-					const data = [];
-					for (const fileName of Object.keys(config.values)) {
-						data.push({
-							_file: fileName,
-							...config.values[fileName],
-						});
-					}
+					const data = mapGitConfigList(config);
 
 					returnItems.push(
 						...this.helpers.returnJsonArray(data).map((item) => {

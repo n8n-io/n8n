@@ -113,12 +113,7 @@ describe('UpdateNodeParametersTool', () => {
 				}),
 			});
 
-			expectToolSuccess(
-				content,
-				'Successfully updated parameters for node "HTTP Request" (n8n-nodes-base.httpRequest):',
-			);
-			expect(content.update.messages[0]?.kwargs.content).toContain('- Change method to POST');
-			expect(content.update.messages[0]?.kwargs.content).toContain('- Add Content-Type header');
+			expectToolSuccess(content, 'Updated "HTTP Request" (n8n-nodes-base.httpRequest)');
 
 			// Check progress messages
 			const progressCalls = extractProgressMessages(mockConfig.writer);
@@ -433,7 +428,7 @@ describe('UpdateNodeParametersTool', () => {
 
 			const content = parseToolResult<ParsedToolContent>(result);
 
-			expectToolSuccess(content, 'Successfully updated parameters');
+			expectToolSuccess(content, 'Updated');
 			const updatedNode = content.update.workflowOperations?.[0]?.updates as Partial<INode>;
 			// Type-safe access to nested properties
 			const headers = updatedNode?.parameters?.headers as { pairs?: unknown[] } | undefined;
@@ -499,7 +494,7 @@ describe('UpdateNodeParametersTool', () => {
 			const content = parseToolResult<ParsedToolContent>(result);
 
 			// Should still succeed even with validation issues
-			expectToolSuccess(content, 'Successfully updated parameters');
+			expectToolSuccess(content, 'Updated');
 
 			// The parameter update should still happen
 			expectNodeUpdated(content, 'node1', {
@@ -711,13 +706,8 @@ describe('UpdateNodeParametersTool', () => {
 			);
 
 			const content = parseToolResult<ParsedToolContent>(result);
-			const message = content.update.messages[0]?.kwargs.content;
 
-			expectToolSuccess(content, 'Successfully updated parameters');
-			// Check all changes are listed
-			expect(message).toContain('- Add console log statement');
-			expect(message).toContain('- Log the word "test"');
-			expect(message).toContain('- Use JavaScript syntax');
+			expectToolSuccess(content, 'Updated "Code" (n8n-nodes-base.code)');
 		});
 
 		it('should properly wrap chain schema errors as ToolExecutionError', async () => {
@@ -866,10 +856,7 @@ describe('UpdateNodeParametersTool', () => {
 
 			const content = parseToolResult<ParsedToolContent>(result);
 
-			expectToolSuccess(
-				content,
-				'Successfully updated parameters for node "HTTP Request" (n8n-nodes-base.httpRequest):',
-			);
+			expectToolSuccess(content, 'Updated "HTTP Request" (n8n-nodes-base.httpRequest)');
 
 			// Verify that the update was successful and used v2 parameters
 			expectNodeUpdated(content, 'http-node', {
@@ -959,10 +946,7 @@ describe('UpdateNodeParametersTool', () => {
 
 			const content = parseToolResult<ParsedToolContent>(result);
 
-			expectToolSuccess(
-				content,
-				'Successfully updated parameters for node "Multi Version Code" (n8n-nodes-base.code):',
-			);
+			expectToolSuccess(content, 'Updated "Multi Version Code" (n8n-nodes-base.code)');
 			expectNodeUpdated(content, 'multi-version-node', {
 				parameters: expect.objectContaining({
 					mode: 'python',

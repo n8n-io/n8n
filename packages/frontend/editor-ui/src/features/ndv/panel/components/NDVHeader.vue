@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import { getNodeIconSize, type NodeIconSource } from '@/app/utils/nodeIcon';
 import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 
 import {
 	N8nIcon,
@@ -23,6 +24,11 @@ const i18n = useI18n();
 
 const emit = defineEmits<{ close: []; rename: [name: string] }>();
 
+const iconSize = computed(() => {
+	const iconName = props.icon?.type === 'icon' ? props.icon.name : undefined;
+	return getNodeIconSize('ndvHeader', iconName);
+});
+
 function onRename(newNodeName: string) {
 	emit('rename', newNodeName || props.nodeTypeName);
 }
@@ -34,7 +40,7 @@ function onRename(newNodeName: string) {
 			<NodeIcon
 				v-if="icon"
 				:class="$style.icon"
-				:size="20"
+				:size="iconSize"
 				:icon-source="icon"
 				:node-name="props.nodeTypeName"
 				:show-tooltip="true"
@@ -65,9 +71,8 @@ function onRename(newNodeName: string) {
 					{{ i18n.baseText('ndv.close.tooltip') }}
 				</template>
 				<N8nIconButton
+					variant="ghost"
 					icon="x"
-					type="tertiary"
-					text
 					data-test-id="ndv-close-button"
 					@click="emit('close')"
 				/>

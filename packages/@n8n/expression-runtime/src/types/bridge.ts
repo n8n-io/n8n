@@ -1,0 +1,102 @@
+// ============================================================================
+// Phase 1.1: Bridge Interface (CORE - IMPLEMENT FIRST)
+//
+// This is the main interface all environments must implement.
+// Start here for CLI/backend (IsolatedVmBridge) or frontend (WebWorkerBridge).
+// ============================================================================
+
+/**
+ * Abstract interface for runtime bridges.
+ *
+ * A bridge manages communication between the host process and the isolated context.
+ * Different bridge implementations support different isolation mechanisms:
+ * - IsolatedVmBridge: Uses isolated-vm for Node.js backend (secure isolation with memory limits)
+ * - WebWorkerBridge: Uses Web Workers for browser frontend (Phase 2+)
+ * - Task Runner: TBD - May use IsolatedVmBridge locally or direct evaluation (Phase 2+)
+ */
+export interface RuntimeBridge {
+	/**
+	 * Initialize the isolated context and load runtime code.
+	 * Must be called before any execute() calls.
+	 */
+	initialize(): Promise<void>;
+
+	/**
+	 * Execute JavaScript code in the isolated context.
+	 *
+	 * @param code - Transformed JavaScript code to execute
+	 * @param data - Workflow data proxy from WorkflowDataProxy.getDataProxy()
+	 * @returns Result of the expression evaluation.
+	 *          Must be JSON-serializable (no functions, symbols, etc.)
+	 *
+	 * Note: Synchronous for Node.js vm module (Slice 1).
+	 *       Will be async for isolated-vm (Slice 2).
+	 */
+	execute(code: string, data: Record<string, unknown>, options?: ExecuteOptions): unknown;
+
+	/**
+	 * Dispose of the isolated context and free resources.
+	 * After disposal, the bridge cannot be used again.
+	 */
+	dispose(): Promise<void>;
+
+	/**
+	 * Check if the bridge has been disposed.
+	 * Disposed bridges cannot execute code.
+	 */
+	isDisposed(): boolean;
+}
+
+/**
+ * Logger interface matching n8n-workflow's Logger type.
+ * Accepts an optional metadata bag on each call.
+ */
+export interface Logger {
+	error(message: string, metadata?: Record<string, unknown>): void;
+	warn(message: string, metadata?: Record<string, unknown>): void;
+	info(message: string, metadata?: Record<string, unknown>): void;
+	debug(message: string, metadata?: Record<string, unknown>): void;
+}
+
+/**
+ * Configuration for runtime bridges.
+ */
+export interface BridgeConfig {
+	/**
+	 * Memory limit in MB for isolated context.
+	 * Default: 128MB
+	 */
+	memoryLimit?: number;
+
+	/**
+	 * Timeout in milliseconds for expression execution.
+	 * Default: 5000ms
+	 */
+	timeout?: number;
+
+	/** Optional logger. Falls back to no-op if not provided. */
+	logger?: Logger;
+}
+
+const NO_OP_LOGGER: Logger = {
+	error: () => {},
+	warn: () => {},
+	info: () => {},
+	debug: () => {},
+};
+
+/** Default values for BridgeConfig. Bridge implementations should use this as their baseline. */
+export const DEFAULT_BRIDGE_CONFIG: Required<BridgeConfig> = {
+	memoryLimit: 128,
+	timeout: 5000,
+	logger: NO_OP_LOGGER,
+};
+
+/** Options for a single execute() call. */
+export interface ExecuteOptions {
+	/**
+	 * IANA timezone for this evaluation (e.g., 'America/New_York').
+	 * Sets luxon Settings.defaultZone inside the isolate before execution.
+	 */
+	timezone?: string;
+}

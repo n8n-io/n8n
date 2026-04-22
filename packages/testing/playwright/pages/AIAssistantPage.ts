@@ -1,6 +1,14 @@
 import { BasePage } from './BasePage';
 
 export class AIAssistantPage extends BasePage {
+	// #region Container
+
+	get container() {
+		return this.page.getByTestId('ask-assistant-sidebar');
+	}
+
+	// #endregion
+
 	// #region Getters
 
 	getAskAssistantFloatingButton() {
@@ -12,37 +20,41 @@ export class AIAssistantPage extends BasePage {
 	}
 
 	getAskAssistantChat() {
-		return this.page.getByTestId('ask-assistant-chat');
+		return this.container.getByTestId('ask-assistant-chat');
 	}
 
 	getAskAssistantSidebar() {
-		return this.page.getByTestId('ask-assistant-sidebar');
+		return this.container;
 	}
 
 	getPlaceholderMessage() {
-		return this.page.getByTestId('placeholder-message');
+		return this.container.getByTestId('placeholder-message');
 	}
 
 	getChatInput() {
 		// Try suggestions input first (shown when suggestions are visible),
-		// fall back to regular input (shown when there are messages)
-		const suggestionsInput = this.page.getByTestId('chat-suggestions-input').locator('textarea');
-		const regularInput = this.page.getByTestId('chat-input').locator('textarea');
+		// fall back to regular input (shown when there are messages),
+		// or the mention input (shown when focused nodes feature is enabled)
+		const suggestionsInput = this.container
+			.getByTestId('chat-suggestions-input')
+			.locator('textarea');
+		const regularInput = this.container.getByTestId('chat-input').locator('textarea');
+		const mentionInput = this.container.getByTestId('chat-input-with-mention').locator('textarea');
 
 		// Return the first one that's visible
-		return suggestionsInput.or(regularInput);
+		return suggestionsInput.or(regularInput).or(mentionInput);
 	}
 
 	getSendMessageButton() {
-		return this.page.getByTestId('send-message-button');
+		return this.container.getByTestId('send-message-button');
 	}
 
 	getCloseChatButton() {
-		return this.page.getByTestId('close-chat-button');
+		return this.container.getByTestId('close-chat-button');
 	}
 
 	getAskAssistantSidebarResizer() {
-		return this.getAskAssistantSidebar().locator('[class*="_resizer"][data-dir="left"]').first();
+		return this.container.locator('[class*="_resizer"][data-dir="left"]').first();
 	}
 
 	getNodeErrorViewAssistantButton() {
@@ -50,47 +62,47 @@ export class AIAssistantPage extends BasePage {
 	}
 
 	getChatMessagesAll() {
-		return this.page.locator('[data-test-id^="chat-message"]');
+		return this.container.locator('[data-test-id^="chat-message"]');
 	}
 
 	getChatMessagesAssistant() {
-		return this.page.getByTestId('chat-message-assistant');
+		return this.container.getByTestId('chat-message-assistant');
 	}
 
 	getChatMessagesUser() {
-		return this.page.getByTestId('chat-message-user');
+		return this.container.getByTestId('chat-message-user');
 	}
 
 	getChatMessagesSystem() {
-		return this.page.getByTestId('chat-message-system');
+		return this.container.getByTestId('chat-message-system');
 	}
 
 	getQuickReplyButtons() {
-		return this.page.getByTestId('quick-replies').locator('button');
-	}
-
-	getQuickReplies() {
-		return this.page.getByTestId('quick-replies');
+		return this.container.getByTestId('quick-replies').locator('button');
 	}
 
 	getNewAssistantSessionModal() {
 		return this.page.getByTestId('new-assistant-session-modal');
 	}
 
+	getStartNewSessionButton() {
+		return this.getNewAssistantSessionModal().getByRole('button', { name: 'Start new session' });
+	}
+
 	getCodeDiffs() {
-		return this.page.getByTestId('code-diff-suggestion');
+		return this.container.getByTestId('code-diff-suggestion');
 	}
 
 	getApplyCodeDiffButtons() {
-		return this.page.getByTestId('replace-code-button');
+		return this.container.getByTestId('replace-code-button');
 	}
 
 	getUndoReplaceCodeButtons() {
-		return this.page.getByTestId('undo-replace-button');
+		return this.container.getByTestId('undo-replace-button');
 	}
 
 	getCodeReplacedMessage() {
-		return this.page.getByTestId('code-replaced-message');
+		return this.container.getByTestId('code-replaced-message');
 	}
 
 	getCredentialEditAssistantButton() {
@@ -98,7 +110,7 @@ export class AIAssistantPage extends BasePage {
 	}
 
 	getCodeSnippet() {
-		return this.page.getByTestId('assistant-code-snippet-content');
+		return this.container.getByTestId('assistant-code-snippet-content');
 	}
 
 	// #endregion
@@ -123,14 +135,18 @@ export class AIAssistantPage extends BasePage {
 	async waitForStreamingComplete(options?: { timeout?: number }) {
 		const timeout = options?.timeout ?? 60000;
 		// Wait for at least one assistant message to appear (indicating streaming has produced output)
-		// and ensure the send button is re-enabled (indicating streaming is complete)
 		await this.getChatMessagesAssistant().first().waitFor({ state: 'visible', timeout });
+		// Wait for streaming to end by checking for the send button's arrow-up icon
+		// During streaming, a stop button with filled-square icon is shown instead
+		// After streaming, the send button with arrow-up icon appears
 		await this.page.waitForFunction(
 			() => {
-				const sendButton = document.querySelector(
-					'[data-test-id="send-message-button"]',
-				) as HTMLButtonElement;
-				return sendButton && !sendButton.disabled;
+				const sendButton = document.querySelector('[data-test-id="send-message-button"]');
+				if (!sendButton) return false;
+				// The arrow-up icon indicates the send button (not streaming)
+				// The filled-square icon indicates the stop button (streaming)
+				const sendIcon = sendButton.querySelector('[data-icon="arrow-up"]');
+				return sendIcon !== null;
 			},
 			{ timeout },
 		);

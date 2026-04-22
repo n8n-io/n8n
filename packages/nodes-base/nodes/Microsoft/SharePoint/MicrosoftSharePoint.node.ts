@@ -16,6 +16,7 @@ export class MicrosoftSharePoint implements INodeType {
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description: 'Interact with Microsoft SharePoint API',
+		schemaPath: 'Microsoft/SharePoint',
 		defaults: {
 			name: 'Microsoft SharePoint',
 		},

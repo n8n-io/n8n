@@ -73,7 +73,7 @@ export class ExecutionsConfig {
 	@Env('EXECUTIONS_TIMEOUT')
 	timeout: number = -1;
 
-	/** How long (seconds) a workflow execution may run for at most. */
+	/** Upper bound in seconds for execution timeout. Default: 1 hour. */
 	@Env('EXECUTIONS_TIMEOUT_MAX')
 	maxTimeout: number = 3600; // 1h
 

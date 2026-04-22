@@ -8,30 +8,23 @@ import {
 } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
 import { createRunExecutionData } from 'n8n-workflow';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let workflowState: WorkflowState;
 	beforeEach(() => {
 		setActivePinia(createPinia());
 
 		workflowsStore = useWorkflowsStore();
+		workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflow.id),
+		);
 		workflowState = useWorkflowState();
-	});
-
-	describe('setWorkflowName()', () => {
-		it('should set the workflow name correctly', () => {
-			workflowState.setWorkflowName({
-				newName: 'New Workflow Name',
-				setStateDirty: false,
-			});
-			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
-		});
-
-		it('should propagate name to workflowObject for pre-exec expressions', () => {
-			workflowState.setWorkflowName({ newName: 'WF Title', setStateDirty: false });
-			expect(workflowsStore.workflowObject.name).toBe('WF Title');
-		});
 	});
 
 	describe('markExecutionAsStopped', () => {
@@ -97,7 +90,9 @@ describe('useWorkflowState', () => {
 	});
 	describe('setNodeParameters', () => {
 		beforeEach(() => {
-			workflowsStore.setNodes([createTestNode({ name: 'a', parameters: { p: 1, q: true } })]);
+			workflowDocumentStore.setNodes([
+				createTestNode({ name: 'a', parameters: { p: 1, q: true } }),
+			]);
 		});
 
 		it('should set node parameters', () => {
@@ -117,17 +112,17 @@ describe('useWorkflowState', () => {
 		});
 
 		it('should not update last parameter update time if parameters are set to the same value', () => {
-			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
+			expect(workflowDocumentStore.getParametersLastUpdate('a')).toEqual(undefined);
 
 			workflowState.setNodeParameters({ name: 'a', value: { p: 1, q: true } });
 
-			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
+			expect(workflowDocumentStore.getParametersLastUpdate('a')).toEqual(undefined);
 		});
 	});
 	describe('setNodeValue()', () => {
 		it('should update a node', () => {
 			const nodeName = 'Edit Fields';
-			workflowsStore.addNode({
+			workflowDocumentStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
 				name: nodeName,
@@ -136,14 +131,12 @@ describe('useWorkflowState', () => {
 				typeVersion: 3.4,
 			});
 
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
+			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toBe(undefined);
 
 			workflowState.setNodeValue({ name: 'Edit Fields', key: 'executeOnce', value: true });
 
 			expect(workflowsStore.workflow.nodes[0].executeOnce).toBe(true);
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
-				expect.any(Number),
-			);
+			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toEqual(expect.any(Number));
 		});
 	});
 
@@ -151,7 +144,7 @@ describe('useWorkflowState', () => {
 		it('should NOT update parametersLastUpdatedAt', () => {
 			const nodeName = 'Edit Fields';
 			const nodeId = '554c7ff4-7ee2-407c-8931-e34234c5056a';
-			workflowsStore.addNode({
+			workflowDocumentStore.addNode({
 				parameters: {},
 				id: nodeId,
 				name: nodeName,
@@ -160,12 +153,12 @@ describe('useWorkflowState', () => {
 				typeVersion: 3.4,
 			});
 
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
+			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toBe(undefined);
 
 			workflowState.setNodePositionById(nodeId, [0, 0]);
 
 			expect(workflowsStore.workflow.nodes[0].position).toStrictEqual([0, 0]);
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
+			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toBe(undefined);
 		});
 	});
 	describe('updateNodeAtIndex', () => {
@@ -214,6 +207,50 @@ describe('useWorkflowState', () => {
 		it('should throw error if out of bounds', () => {
 			workflowsStore.workflow.nodes = [];
 			expect(() => workflowState.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
+		});
+	});
+
+	describe('updateNodeById', () => {
+		beforeEach(() => {
+			workflowsStore.setNodes([
+				createTestNode({ id: 'node-1', name: 'First Node', parameters: { key: 'value1' } }),
+				createTestNode({ id: 'node-2', name: 'Second Node', parameters: { key: 'value2' } }),
+			]);
+		});
+
+		it('should update node by ID and return true', () => {
+			const result = workflowState.updateNodeById('node-1', { name: 'Updated First Node' });
+
+			expect(result).toBe(true);
+			expect(workflowsStore.workflow.nodes[0].name).toBe('Updated First Node');
+		});
+
+		it('should return false if node ID is not found', () => {
+			const result = workflowState.updateNodeById('non-existent-id', { name: 'Updated Node' });
+
+			expect(result).toBe(false);
+			// Nodes should remain unchanged
+			expect(workflowsStore.workflow.nodes[0].name).toBe('First Node');
+			expect(workflowsStore.workflow.nodes[1].name).toBe('Second Node');
+		});
+
+		it('should update only specified properties', () => {
+			const result = workflowState.updateNodeById('node-2', {
+				name: 'Updated Second Node',
+				disabled: true,
+			});
+
+			expect(result).toBe(true);
+			expect(workflowsStore.workflow.nodes[1].name).toBe('Updated Second Node');
+			expect(workflowsStore.workflow.nodes[1].disabled).toBe(true);
+			// Other properties should remain unchanged
+			expect(workflowsStore.workflow.nodes[1].id).toBe('node-2');
+		});
+
+		it('should return false if node data is unchanged', () => {
+			const result = workflowState.updateNodeById('node-1', { name: 'First Node' });
+
+			expect(result).toBe(false);
 		});
 	});
 });

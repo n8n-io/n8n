@@ -6,6 +6,10 @@
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
 import type {
@@ -36,7 +40,6 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	ITaskData,
-	Workflow,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
@@ -63,6 +66,7 @@ import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import * as workflowUtils from 'n8n-workflow/common';
 import { throttledWatch } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import type { WorkflowObjectAccessors } from '@/app/types';
 
 export function useCanvasMapping({
 	nodes,
@@ -71,10 +75,13 @@ export function useCanvasMapping({
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
-	workflowObject: Ref<Workflow>;
+	workflowObject: Ref<WorkflowObjectAccessors>;
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
@@ -109,7 +116,11 @@ export function useCanvasMapping({
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
 		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
 		const source = simulatedNodeTypeDescriptionByNodeId.value[node.id] ?? nodeType ?? node.type;
-		const icon = getNodeIconSource(source, node);
+		const icon = getNodeIconSource(
+			source,
+			node,
+			workflowDocumentStore.value.getExpressionHandler(),
+		);
 
 		return {
 			type: CanvasNodeRenderType.Default,
@@ -131,6 +142,7 @@ export function useCanvasMapping({
 				tooltip: nodeTooltipById.value[node.id],
 				dirtiness: dirtinessByName.value[node.name],
 				icon,
+				placeholder: node.placeholder,
 			},
 		};
 	}
@@ -279,7 +291,7 @@ export function useCanvasMapping({
 
 	const nodePinnedDataById = computed(() =>
 		nodes.value.reduce<Record<string, INodeExecutionData[] | undefined>>((acc, node) => {
-			acc[node.id] = workflowsStore.pinDataByNodeName(node.name);
+			acc[node.id] = workflowDocumentStore.value.getNodePinData(node.name);
 			return acc;
 		}, {}),
 	);
@@ -803,7 +815,7 @@ export function useCanvasMapping({
 	}
 
 	function getConnectionLabel(connection: CanvasConnection): string {
-		const fromNode = nodes.value.find((node) => node.name === connection.data?.source.node);
+		const fromNode = nodesByName.value.get(connection.data?.source.node ?? '');
 		if (!fromNode) {
 			return '';
 		}

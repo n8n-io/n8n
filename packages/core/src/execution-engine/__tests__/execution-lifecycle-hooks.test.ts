@@ -39,6 +39,7 @@ describe('ExecutionLifecycleHooks', () => {
 				sendResponse: [],
 				workflowExecuteAfter: [],
 				workflowExecuteBefore: [],
+				workflowExecuteResume: [],
 				sendChunk: [],
 			});
 		});
@@ -63,6 +64,7 @@ describe('ExecutionLifecycleHooks', () => {
 			},
 			{ hook: 'workflowExecuteBefore', args: [mock<Workflow>(), mock<IRunExecutionData>()] },
 			{ hook: 'workflowExecuteAfter', args: [mock<IRun>(), mock<IDataObject>()] },
+			{ hook: 'workflowExecuteResume', args: [mock<Workflow>(), mock<IRunExecutionData>()] },
 			{ hook: 'sendResponse', args: [mock<IExecuteResponsePromiseData>()] },
 			{ hook: 'nodeFetchedData', args: ['workflow123', mock<INode>()] },
 		];

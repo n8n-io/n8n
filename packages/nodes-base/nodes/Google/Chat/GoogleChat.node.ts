@@ -54,6 +54,7 @@ export class GoogleChat implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Chat API',
+		schemaPath: 'Google/Chat',
 		defaults: {
 			name: 'Google Chat',
 		},

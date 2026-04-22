@@ -8,6 +8,7 @@ import * as workflowsApi from '@/app/api/workflows';
 import * as workflowsEEApi from '@/app/api/workflows.ee';
 import * as credentialsApi from '@/features/credentials/credentials.api';
 import * as credentialsEEApi from '@/features/credentials/credentials.ee.api';
+import { getProjectSecretProviderConnectionsByProjectId } from '@n8n/rest-api-client';
 import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
 import { ProjectTypes } from './projects.types';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -17,9 +18,10 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
+import type { CreateProjectDto, UpdateProjectDto, SecretProviderConnection } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { hasRole } from '@/app/utils/rbac/checks';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 export type ResourceCounts = {
 	credentials: number;
@@ -114,6 +116,16 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		}
 	};
 
+	const searchProjects = async (params: {
+		search?: string;
+		take?: number;
+		skip?: number;
+		type?: 'personal' | 'team';
+		activated?: boolean;
+	}) => {
+		return await projectsApi.searchProjects(rootStore.restApiContext, params);
+	};
+
 	const fetchProject = async (id: string) =>
 		await projectsApi.getProject(rootStore.restApiContext, id);
 
@@ -159,6 +171,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 			if (nm !== undefined) currentProject.value.name = nm;
 			if (ic !== undefined) currentProject.value.icon = ic;
 			if (desc !== undefined) currentProject.value.description = desc;
+		}
+		if (nm !== undefined) {
+			useFavoritesStore().renameFavorite(id, 'project', nm);
 		}
 	};
 
@@ -233,7 +248,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	};
 
 	const moveResourceToProject = async (
-		resourceType: 'workflow' | 'credential',
+		resourceType: 'workflow' | 'credential' | 'dataTable',
 		resourceId: string,
 		projectId: string,
 		parentFolderId?: string,
@@ -251,13 +266,13 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				resourceId,
 				projectId,
 			);
-			await credentialsStore.fetchAllCredentials(currentProjectId.value);
+			await credentialsStore.fetchAllCredentials({ projectId: currentProjectId.value });
 		}
 	};
 
 	const getResourceCounts = async (projectId: string): Promise<ResourceCounts> => {
 		const [credentials, workflows, dataTables] = await Promise.all([
-			credentialsApi.getAllCredentials(rootStore.restApiContext, { projectId }),
+			credentialsApi.getAllCredentials(rootStore.restApiContext, { filter: { projectId } }),
 			workflowsApi.getWorkflows(rootStore.restApiContext, { projectId }),
 			dataTableApi.fetchDataTablesApi(rootStore.restApiContext, projectId),
 		]);
@@ -267,6 +282,15 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 			workflows: workflows.count,
 			dataTables: dataTables.count,
 		};
+	};
+
+	const getProjectSecretProviders = async (
+		projectId: string,
+	): Promise<SecretProviderConnection[]> => {
+		return await getProjectSecretProviderConnectionsByProjectId(
+			rootStore.restApiContext,
+			projectId,
+		);
 	};
 
 	watch(
@@ -317,8 +341,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		canViewProjects,
 		hasPermissionToCreateProjects,
 		isTeamProjectFeatureEnabled,
+		globalProjectPermissions,
 		projectNavActiveId,
 		setCurrentProject,
+		searchProjects,
 		getAllProjects,
 		getMyProjects,
 		getPersonalProject,
@@ -337,5 +363,6 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		setProjectNavActiveIdByWorkflowHomeProject,
 		moveResourceToProject,
 		getResourceCounts,
+		getProjectSecretProviders,
 	};
 });

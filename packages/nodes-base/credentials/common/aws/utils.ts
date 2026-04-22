@@ -2,6 +2,7 @@ import {
 	ApplicationError,
 	type IHttpRequestMethods,
 	isObjectEmpty,
+	sanitizeXmlName,
 	type ICredentialTestRequest,
 	type IDataObject,
 	type IHttpRequestOptions,
@@ -252,13 +253,7 @@ export async function assumeRole(
 				'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
 			);
 		}
-		if (systemCredentials.source !== 'environment') {
-			return {
-				accessKeyId: systemCredentials.accessKeyId,
-				secretAccessKey: systemCredentials.secretAccessKey,
-				sessionToken: systemCredentials.sessionToken as string,
-			};
-		}
+
 		stsCallCredentials = systemCredentials;
 	} else {
 		if (!credentials.stsAccessKeyId || credentials.stsAccessKeyId.trim() === '') {
@@ -336,13 +331,21 @@ export async function assumeRole(
 
 	const responseText = await response.text();
 	const responseData = await new Promise<IDataObject>((resolve, reject) => {
-		parseString(responseText, { explicitArray: false }, (err: any, data: IDataObject) => {
-			if (err) {
-				reject(err);
-			} else {
-				resolve(data);
-			}
-		});
+		parseString(
+			responseText,
+			{
+				explicitArray: false,
+				tagNameProcessors: [sanitizeXmlName],
+				attrNameProcessors: [sanitizeXmlName],
+			},
+			(err: any, data: IDataObject) => {
+				if (err) {
+					reject(err);
+				} else {
+					resolve(data);
+				}
+			},
+		);
 	});
 
 	const assumeRoleResult = (responseData.AssumeRoleResponse as IDataObject)

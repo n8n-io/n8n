@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import WorkflowExecutionsCard from './WorkflowExecutionsCard.vue';
@@ -20,8 +20,7 @@ import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
-import { ElCheckbox } from 'element-plus';
-import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nCheckbox, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
@@ -147,9 +146,8 @@ function onFilterChanged(filter: ExecutionFilterType) {
 	emit('filterUpdated', filter);
 }
 
-function onAutoRefreshChange(enabled: string | number | boolean) {
-	const boolValue = typeof enabled === 'boolean' ? enabled : Boolean(enabled);
-	emit('update:autoRefresh', boolValue);
+function onAutoRefreshChange(enabled: boolean) {
+	emit('update:autoRefresh', enabled);
 }
 
 function scrollToActiveCard(): void {
@@ -194,16 +192,16 @@ const goToUpgrade = () => {
 			<ExecutionStopAllText :executions="props.executions" />
 		</div>
 		<div :class="$style.controls">
-			<ElCheckbox
+			<N8nCheckbox
 				v-model="executionsStore.autoRefresh"
 				data-test-id="auto-refresh-checkbox"
+				:label="i18n.baseText('executionsList.autoRefresh')"
 				@update:model-value="onAutoRefreshChange"
-			>
-				{{ i18n.baseText('executionsList.autoRefresh') }}
-			</ElCheckbox>
+			/>
 			<ExecutionsFilter
 				popover-side="right"
 				popover-align="start"
+				:workflow-id="props.workflow?.id"
 				@filter-changed="onFilterChanged"
 			/>
 		</div>
@@ -282,11 +280,6 @@ const goToUpgrade = () => {
 	justify-content: space-between;
 	padding-top: var(--spacing--sm);
 	padding-right: var(--spacing--md);
-
-	button {
-		display: flex;
-		align-items: center;
-	}
 }
 
 .executionList {
@@ -338,10 +331,5 @@ const goToUpgrade = () => {
 		height: 60px;
 		border-radius: 0;
 	}
-}
-
-:deep(.el-checkbox) {
-	display: flex;
-	align-items: center;
 }
 </style>

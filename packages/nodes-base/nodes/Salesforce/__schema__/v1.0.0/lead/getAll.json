@@ -14,7 +14,10 @@
         },
         "Id": {
             "type": "string"
+        },
+        "Status": {
+            "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

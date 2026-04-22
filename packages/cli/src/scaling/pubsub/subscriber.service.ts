@@ -11,11 +11,25 @@ import { RedisClientService } from '@/services/redis-client.service';
 
 import { PubSubEventBus } from './pubsub.eventbus';
 import type { PubSub } from './pubsub.types';
-import { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
+import {
+	COMMAND_PUBSUB_CHANNEL,
+	WORKER_RESPONSE_PUBSUB_CHANNEL,
+	MCP_RELAY_PUBSUB_CHANNEL,
+} from '../constants';
 
 /**
  * Responsible for subscribing to the pubsub channels used by scaling mode.
  */
+/**
+ * MCP relay message format for multi-main queue mode.
+ * Used to relay MCP responses (like list tools) between main instances.
+ */
+export interface McpRelayMessage {
+	sessionId: string;
+	messageId: string;
+	response: unknown;
+}
+
 @Service()
 export class Subscriber {
 	private readonly client: SingleNodeClient | MultiNodeClient;
@@ -23,6 +37,13 @@ export class Subscriber {
 	private readonly commandChannel: string;
 
 	private readonly workerResponseChannel: string;
+
+	private readonly mcpRelayChannel: string;
+
+	/** Callback for MCP relay messages. Set by ScalingService. */
+	private mcpRelayHandler?: (msg: McpRelayMessage) => void;
+
+	private readonly debouncedHandlers = new Map<string, ReturnType<typeof debounce>>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -41,22 +62,58 @@ export class Subscriber {
 		const prefix = this.globalConfig.redis.prefix;
 		this.commandChannel = `${prefix}:${COMMAND_PUBSUB_CHANNEL}`;
 		this.workerResponseChannel = `${prefix}:${WORKER_RESPONSE_PUBSUB_CHANNEL}`;
+		this.mcpRelayChannel = `${prefix}:${MCP_RELAY_PUBSUB_CHANNEL}`;
 
 		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
 
 		const handlerFn = (msg: PubSub.Command | PubSub.WorkerResponse) => {
-			const eventName = 'command' in msg ? msg.command : msg.response;
-			this.pubsubEventBus.emit(eventName, msg.payload);
+			this.pubsubEventBus.emit(this.eventNameFrom(msg), msg.payload);
 		};
 
-		const debouncedHandlerFn = debounce(handlerFn, 300);
-
 		this.client.on('message', (channel: string, str: string) => {
+			// Handle MCP relay messages separately
+			if (channel === this.mcpRelayChannel) {
+				this.handleMcpRelayMessage(str);
+				return;
+			}
+
 			const msg = this.parseMessage(str, channel);
 			if (!msg) return;
-			if (msg.debounce) debouncedHandlerFn(msg);
-			else handlerFn(msg);
+			if (!msg.debounce) return handlerFn(msg);
+
+			const eventName = this.eventNameFrom(msg);
+			let handler = this.debouncedHandlers.get(eventName);
+			if (!handler) {
+				handler = debounce(handlerFn, 300);
+				this.debouncedHandlers.set(eventName, handler);
+			}
+			handler(msg);
 		});
+	}
+
+	/**
+	 * Set the handler for MCP relay messages.
+	 * Called by ScalingService to route messages to handleMcpResponse.
+	 */
+	setMcpRelayHandler(handler: (msg: McpRelayMessage) => void): void {
+		this.mcpRelayHandler = handler;
+	}
+
+	private handleMcpRelayMessage(str: string): void {
+		const msg = jsonParse<McpRelayMessage | null>(str, { fallbackValue: null });
+		if (!msg || !msg.sessionId || !msg.messageId) {
+			this.logger.error('Received malformed MCP relay message', { msg: str });
+			return;
+		}
+
+		this.logger.debug('Received MCP relay message', {
+			sessionId: msg.sessionId,
+			messageId: msg.messageId,
+		});
+
+		if (this.mcpRelayHandler) {
+			this.mcpRelayHandler(msg);
+		}
 	}
 
 	getClient() {
@@ -71,8 +128,13 @@ export class Subscriber {
 		return this.workerResponseChannel;
 	}
 
+	getMcpRelayChannel() {
+		return this.mcpRelayChannel;
+	}
+
 	// @TODO: Use `@OnShutdown()` decorator
 	shutdown() {
+		for (const handler of this.debouncedHandlers.values()) handler.cancel();
 		this.client.disconnect();
 	}
 
@@ -85,6 +147,10 @@ export class Subscriber {
 
 			this.logger.debug(`Subscribed to channel ${channel}`);
 		});
+	}
+
+	private eventNameFrom(msg: PubSub.Command | PubSub.WorkerResponse) {
+		return 'command' in msg ? msg.command : msg.response;
 	}
 
 	private parseMessage(str: string, channel: string) {
@@ -110,7 +176,7 @@ export class Subscriber {
 			return null;
 		}
 
-		let msgName = 'command' in msg ? msg.command : msg.response;
+		let msgName = this.eventNameFrom(msg);
 
 		const metadata: LogMetadata = { msg: msgName, channel };
 

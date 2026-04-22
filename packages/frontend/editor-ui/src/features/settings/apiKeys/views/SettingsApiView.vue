@@ -117,9 +117,6 @@ function onEdit(id: string) {
 		<div :class="$style.header">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
-				<span :style="{ fontSize: 'var(--font-size--sm)', color: 'var(--color--text--tint-1)' }">
-					({{ i18n.baseText('generic.beta') }})
-				</span>
 			</N8nHeading>
 		</div>
 		<p v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.topHint">

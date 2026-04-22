@@ -7,7 +7,7 @@ import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-import { N8nLoading, N8nSpinner } from '@n8n/design-system';
+import { N8nLoading, N8nIcon } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		loading?: boolean;
@@ -20,6 +20,9 @@ const props = withDefaults(
 		canOpenNDV?: boolean;
 		hideNodeIssues?: boolean;
 		focusOnLoad?: boolean;
+		hideControls?: boolean;
+		suppressNotifications?: boolean;
+		canExecute?: boolean;
 	}>(),
 	{
 		loading: false,
@@ -32,11 +35,15 @@ const props = withDefaults(
 		canOpenNDV: true,
 		hideNodeIssues: false,
 		focusOnLoad: true,
+		hideControls: false,
+		suppressNotifications: false,
+		canExecute: false,
 	},
 );
 
 const emit = defineEmits<{
 	close: [];
+	ready: [];
 }>();
 
 const i18n = useI18n();
@@ -52,7 +59,16 @@ const scrollX = ref(0);
 const scrollY = ref(0);
 
 const iframeSrc = computed(() => {
-	return `${window.BASE_PATH ?? '/'}workflows/demo`;
+	const basePath = `${window.BASE_PATH ?? '/'}workflows/demo`;
+	const params = new URLSearchParams();
+	if (props.hideControls) {
+		params.set('hideControls', 'true');
+	}
+	if (props.canExecute) {
+		params.set('canExecute', 'true');
+	}
+	const qs = params.toString();
+	return qs ? `${basePath}?${qs}` : basePath;
 });
 
 const showPreview = computed(() => {
@@ -78,16 +94,15 @@ const loadWorkflow = () => {
 				workflow: props.workflow,
 				canOpenNDV: props.canOpenNDV,
 				hideNodeIssues: props.hideNodeIssues,
+				suppressNotifications: props.suppressNotifications,
 				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
 		);
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('workflowPreview.showError.previewError.title'),
-			i18n.baseText('workflowPreview.showError.previewError.message'),
-		);
+		toast.showError(error, i18n.baseText('workflowPreview.showError.previewError.title'), {
+			message: i18n.baseText('workflowPreview.showError.previewError.message'),
+		});
 	}
 };
 
@@ -118,11 +133,9 @@ const loadExecution = () => {
 			);
 		}
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('workflowPreview.showError.previewError.title'),
-			i18n.baseText('workflowPreview.executionMode.showError.previewError.message'),
-		);
+		toast.showError(error, i18n.baseText('workflowPreview.showError.previewError.title'), {
+			message: i18n.baseText('workflowPreview.executionMode.showError.previewError.message'),
+		});
 	}
 };
 
@@ -164,6 +177,8 @@ const onReady = () => {
 			iframeRef.value?.contentWindow?.focus();
 		});
 	}
+
+	emit('ready');
 };
 
 const onOpenNDV = () => {
@@ -208,6 +223,19 @@ watch(
 );
 
 watch(
+	() => props.mode,
+	() => {
+		if (showPreview.value) {
+			if (props.mode === 'workflow') {
+				loadWorkflow();
+			} else if (props.mode === 'execution') {
+				loadExecution();
+			}
+		}
+	},
+);
+
+watch(
 	() => props.executionId,
 	() => {
 		if (props.mode === 'execution' && props.executionId) {
@@ -224,6 +252,8 @@ watch(
 		}
 	},
 );
+
+defineExpose({ iframeRef, reloadExecution: loadExecution });
 </script>
 
 <template>
@@ -232,7 +262,7 @@ watch(
 			<N8nLoading :loading="!showPreview" :rows="1" variant="image" />
 		</div>
 		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
-			<N8nSpinner type="dots" />
+			<N8nIcon icon="spinner" color="primary" size="xxlarge" spin />
 		</div>
 		<iframe
 			ref="iframeRef"

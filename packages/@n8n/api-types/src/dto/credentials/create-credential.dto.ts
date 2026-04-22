@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 export class CreateCredentialDto extends Z.class({
 	name: z.string().min(1).max(128),

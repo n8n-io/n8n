@@ -17,6 +17,42 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 import { createLogTree, flattenLogEntries } from '../logs.utils';
 
+const { mockDocumentStore } = vi.hoisted(() => ({
+	mockDocumentStore: {
+		workflowId: 'test-workflow-id',
+		name: 'Test Workflow',
+		allNodes: [] as unknown[],
+		getNodeByName: vi.fn(),
+		getParentNodes: vi.fn().mockReturnValue([]),
+		getChildNodes: vi.fn().mockReturnValue([]),
+		getStartNode: vi.fn(),
+		getExpressionHandler: vi.fn().mockReturnValue(null),
+		getSnapshot: vi.fn().mockReturnValue({
+			id: 'test-workflow-id',
+			connectionsBySourceNode: {},
+			pinData: {},
+			expression: null,
+			getNode: vi.fn(),
+			getParentNodes: vi.fn().mockReturnValue([]),
+			getNodeConnectionIndexes: vi.fn(),
+			getParentMainInputNode: vi.fn(),
+			getChildNodes: vi.fn().mockReturnValue([]),
+			getParentNodesByDepth: vi.fn().mockReturnValue([]),
+		}),
+		connectionsBySourceNode: {} as Record<string, unknown>,
+		pinData: {} as Record<string, unknown>,
+		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+		settings: {},
+		getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	...(await importOriginal<{}>()),
+	useWorkflowDocumentStore: () => mockDocumentStore,
+}));
+
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -56,6 +92,7 @@ describe('LogsOverviewPanel', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow-id';
 
 		pushConnectionStore = mockedStore(usePushConnectionStore);
 		pushConnectionStore.isConnected = true;

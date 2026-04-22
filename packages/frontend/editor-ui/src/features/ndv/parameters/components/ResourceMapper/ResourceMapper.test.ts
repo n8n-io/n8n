@@ -309,8 +309,8 @@ describe('ResourceMapper.vue', () => {
 			{ merge: true },
 		);
 		await waitAllPromises();
-		// Should have one option in the bottom dropdown for one removed field
-		expect(getByTestId('add-fields-select').querySelectorAll('li').length).toBe(1);
+		// Should show an add button for one removed field
+		expect(getByTestId('add-fields-select').querySelector('button')).toBeTruthy();
 	});
 
 	it('should fetch fields if there is no cached schema', async () => {

@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, sanitizeXmlName } from 'n8n-workflow';
 import Parser from 'rss-parser';
 import { URL } from 'url';
 
@@ -26,14 +26,13 @@ export class RssFeedRead implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RSS Read',
 		name: 'rssFeedRead',
-		icon: 'fa:rss',
+		icon: 'node:rss-read',
 		iconColor: 'orange-red',
 		group: ['input'],
 		version: [1, 1.1, 1.2],
 		description: 'Reads data from an RSS Feed',
 		defaults: {
 			name: 'RSS Read',
-			color: '#b02020',
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
@@ -109,6 +108,10 @@ export class RssFeedRead implements INodeType {
 				const parserOptions: IDataObject = {
 					requestOptions: {
 						rejectUnauthorized: !ignoreSSL,
+					},
+					xml2js: {
+						tagNameProcessors: [sanitizeXmlName],
+						attrNameProcessors: [sanitizeXmlName],
 					},
 				};
 

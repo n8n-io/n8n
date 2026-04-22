@@ -110,18 +110,18 @@ onBeforeUnmount(() => {
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
+					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
 					:size="'small'"
 					:disabled="isSaving"
-					type="tertiary"
 					data-test-id="mcp-connect-workflows-cancel-button"
 					@click="cancel(close)"
 				/>
 				<N8nButton
+					variant="solid"
 					:label="i18n.baseText('settings.mcp.connectWorkflows.confirm.label')"
 					:loading="isSaving"
 					:disabled="!canSave || isSaving"
-					type="primary"
 					data-test-id="mcp-connect-workflows-save-button"
 					@click="save(close)"
 				/>
