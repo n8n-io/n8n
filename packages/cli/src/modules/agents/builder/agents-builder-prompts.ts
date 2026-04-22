@@ -96,9 +96,21 @@ export default new Tool('tool_name')
 
 Rules for custom tool code:
 - Must use \`export default new Tool(...)\` pattern
-- Only imports: '@n8n/agents' and 'zod'
+- Only imports at the top of the file: '@n8n/agents' and 'zod'
+- Inside the \`handler\` body the following are STRICTLY FORBIDDEN:
+  - \`import\` statements, \`require\`, dynamic \`import()\`
+  - Any module name (\`fs\`, \`path\`, \`http\`, \`child_process\`, npm packages, etc.)
+  - Any global other than those provided to the handler: \`crypto\`, \`process\`, \`globalThis\`, \`global\`, \`window\`, \`document\`, \`fetch\`, \`XMLHttpRequest\`, \`WebSocket\`, \`URL\`, \`URLSearchParams\`, \`Buffer\`, \`setTimeout\`, \`setInterval\`, \`setImmediate\`, \`performance\`, \`console\`, \`atob\`, \`btoa\`, and similar host globals are NOT available.
+- Inside the handler you may ONLY use:
+  - The validated \`input\` argument
+  - Pure language features: variables, control flow, arithmetic, template literals, destructuring
+  - Built-in values whose identity is a language primitive or pure standard-library object: \`Math\`, \`Date\`, \`JSON\`, \`Number\`, \`String\`, \`Boolean\`, \`Array\`, \`Object\`, \`Map\`, \`Set\`, \`RegExp\`, \`Error\`, \`Promise\`, \`Symbol\`
+  - Instance methods on values you already have (e.g. \`input.name.toUpperCase()\`, \`[1,2].map(...)\`)
+- Concretely: if a value is not \`input\`, not a language keyword, and not in the short list above, DO NOT reference it. Examples of forbidden code:
+  - \`crypto.randomUUID()\` — \`crypto\` is not available; generate IDs from \`input\` or \`Math.random\` + \`Date.now\` if you really need one
+  - \`await fetch(...)\` — no network access from a custom tool
+  - \`process.env.X\` — no environment access
 - Tool handlers are async, receive validated input
-- Do NOT use process.env, fetch external URLs only if needed
 - Do NOT call .build() -- the engine handles it`;
 
 export const N8N_EXPRESSIONS_SECTION = `\
