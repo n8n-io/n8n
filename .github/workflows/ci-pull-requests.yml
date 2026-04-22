@@ -4,12 +4,6 @@ on:
   pull_request:
   merge_group:
   workflow_dispatch:
-    inputs:
-      force-community-mode:
-        description: 'Force the community (artifact) path, for testing the fork flow against the base repo.'
-        required: false
-        type: boolean
-        default: false
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
@@ -63,7 +57,9 @@ jobs:
               !.github/**
             e2e:
               .github/workflows/test-e2e-*.yml
-              .github/scripts/cleanup-ghcr-images.mjs
+              .github/workflows/prepare-docker-reusable.yml
+              .github/actions/build-n8n-docker/**
+              .github/actions/load-n8n-docker/**
               packages/testing/playwright/**
               packages/testing/containers/**
             workflows: .github/**
@@ -156,10 +152,9 @@ jobs:
         run: |
           pnpm -r pack --dry-run
 
-  # Builds the n8n + runners CI Docker images once and distributes them.
-  # Internal PRs push to GHCR; fork PRs upload as a GHA artifact (no
-  # `packages: write` access). Shared across downstream consumers
-  # (e2e-tests, and — after migration — e2e-performance, evals, helm).
+  # Seeds the SHA-keyed Docker image cache once so that downstream e2e jobs
+  # (each of which invokes prepare-docker internally) short-circuit to a
+  # cache hit instead of racing to rebuild.
   prepare-docker:
     name: Prepare Docker
     needs: install-and-build
@@ -172,8 +167,6 @@ jobs:
     uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
-      # Community mode for fork PRs or when manually dispatched with the override.
-      community-mode: true # TEMP: force community path for testing, revert before merge
     secrets: inherit
 
   e2e-tests:
@@ -188,9 +181,8 @@ jobs:
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
       playwright-only: ${{ needs.install-and-build.outputs.e2e == 'true' && needs.install-and-build.outputs.unit == 'false' }}
-      community-mode: true # TEMP: force community path for testing, revert before merge
-      docker-ref: ${{ needs.prepare-docker.outputs.docker-ref }}
-      image-tag: ${{ needs.prepare-docker.outputs.image-tag }}
+      # Fork PRs have no license secrets — route to sqlite-only + skip @licensed tests.
+      community-mode: ${{ github.event.pull_request.head.repo.fork == true }}
     secrets: inherit
 
   db-tests:
@@ -212,12 +204,12 @@ jobs:
   e2e-performance:
     name: E2E Performance
     needs: [install-and-build, prepare-docker]
-    # Performance is internal-only (needs license secrets). Skipped in community mode.
-    # TEMP: disabled while we force community mode for testing. Revert before merge.
-    if: false
+    # Performance is internal-only (license secrets required, not available on forks).
+    if: >-
+      needs.prepare-docker.result == 'success' &&
+      needs.install-and-build.outputs.e2e_performance == 'true' &&
+      github.event.pull_request.head.repo.fork != true
     uses: ./.github/workflows/test-e2e-performance-reusable.yml
-    with:
-      docker-ref: ${{ needs.prepare-docker.outputs.docker-ref }}
     secrets: inherit
 
   security-checks:

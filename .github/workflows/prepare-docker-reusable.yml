@@ -1,38 +1,22 @@
 name: 'Prepare n8n Docker (reusable)'
 
-# Reusable workflow that builds the n8n + runners CI test images once and
-# distributes them to downstream jobs.
+# Reusable workflow that ensures the n8n + runners CI test images for the
+# current commit SHA are present in the GHA cache. Cache-aware: if another
+# job in the same run already populated `n8n-docker-image-<sha>`, this
+# becomes a no-op.
 #
-# Community mode (fork PRs or caller opt-in) uses artifact distribution.
-# Internal mode pushes to GHCR. The split is about GHCR write access:
-# fork-triggered workflows have `packages: write` silently downgraded to
-# read, so they fall back to uploading a tarball artifact that shards
-# download and `docker load`. Both modes run on the same Blacksmith runner.
-#
-# Downstream consumers:
-#   - needs.<this-job>.outputs.docker-ref → image ref (internal) OR artifact name (community)
-#   - needs.<this-job>.outputs.image-tag  → e.g. ci-12345 (used for GHCR cleanup)
+# Downstream jobs restore the same SHA-keyed cache via load-n8n-docker.
 
 on:
   workflow_call:
     inputs:
-      community-mode:
-        description: 'true to produce an artifact (fork PRs / community contributors), false to push to GHCR (internal).'
-        required: false
-        default: false
-        type: boolean
-      image-tag:
-        description: 'Tag applied to both n8n and runners images. Defaults to ci-<run_id>.'
-        required: false
-        default: ''
-        type: string
       build-variant:
         description: 'standard or coverage'
         required: false
         default: 'standard'
         type: string
       runner:
-        description: 'Runner for the build (community and internal use the same runner).'
+        description: 'Runner for the build.'
         required: false
         default: 'blacksmith-4vcpu-ubuntu-2204'
         type: string
@@ -41,28 +25,13 @@ on:
         required: false
         default: ''
         type: string
-    outputs:
-      docker-ref:
-        description: 'Image ref (internal) or artifact name (community).'
-        value: ${{ jobs.prepare.outputs.docker-ref }}
-      image-tag:
-        description: 'Tag applied to both images. Used by downstream GHCR cleanup.'
-        value: ${{ jobs.prepare.outputs.image-tag }}
 
 jobs:
   prepare:
     name: 'Build & publish image'
     runs-on: ${{ inputs.runner }}
     permissions:
-      # GitHub silently downgrades `packages: write` to read for fork-triggered
-      # workflows. Declaring both is safe: internal PRs get GHCR push, forks get
-      # the artifact path (selected by distribution=auto).
-      packages: write
       contents: read
-    outputs:
-      # Coalesce: image is set in ghcr mode, artifact-name in artifact mode.
-      docker-ref: ${{ steps.build.outputs.image || steps.build.outputs.artifact-name }}
-      image-tag: ${{ steps.resolve.outputs.image-tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -70,29 +39,9 @@ jobs:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
 
-      - name: Resolve tag
-        id: resolve
-        shell: bash
-        env:
-          RUN_ID: ${{ github.run_id }}
-          INPUT_TAG: ${{ inputs.image-tag }}
-        run: |
-          if [ -n "$INPUT_TAG" ]; then
-            echo "image-tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
-          else
-            echo "image-tag=ci-$RUN_ID" >> "$GITHUB_OUTPUT"
-          fi
-          echo "artifact-name=n8n-docker-image-$RUN_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Build and distribute image
-        id: build
+      - name: Build and publish image
         uses: ./.github/actions/build-n8n-docker
         with:
-          distribution: ${{ inputs.community-mode && 'artifact' || 'ghcr' }}
-          image-tag: ${{ steps.resolve.outputs.image-tag }}
-          ghcr-image-base: ghcr.io/${{ github.repository }}
-          ghcr-runners-image-base: ghcr.io/${{ github.repository_owner }}/runners
-          artifact-name: ${{ steps.resolve.outputs.artifact-name }}
           build-variant: ${{ inputs.build-variant }}
         env:
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}

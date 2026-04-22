@@ -2,24 +2,21 @@ name: 'Test: E2E Performance'
 
 on:
   workflow_call:
-    inputs:
-      docker-ref:
-        description: 'Pre-built n8n image ref from prepare-docker. If empty, the workflow builds its own (nightly/manual runs).'
-        required: false
-        type: string
-        default: ''
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *' # Runs daily at midnight
 
 jobs:
+  # Cache-aware: no-op if an ancestor already populated the SHA-keyed cache.
+  prepare-docker:
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    secrets: inherit
+
   build-and-test-performance:
+    needs: [prepare-docker]
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
-      # Use the shared pre-built image when the caller provided one (PR path);
-      # otherwise self-build for nightly / manual dispatch.
-      test-mode: ${{ inputs.docker-ref != '' && 'docker-pull' || 'docker-build' }}
-      docker-image: ${{ inputs.docker-ref }}
+      test-mode: docker-artifact
       test-command: pnpm --filter=n8n-playwright test:performance
       currents-project-id: 'O9BJaN'
     secrets: inherit

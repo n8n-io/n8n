@@ -19,21 +19,10 @@ on:
         type: string
         default: ''
       community-mode:
-        description: 'true routes to the community (fork) path: sqlite-only, load image from artifact, skip license-dependent tests.'
+        description: 'true routes to the community (fork) path: sqlite-only, skip @licensed tests.'
         required: false
         type: boolean
         default: false
-      # GHCR image ref in internal mode, artifact name in community mode.
-      docker-ref:
-        description: 'Image ref (internal) or artifact name (community) produced by prepare-docker.'
-        required: false
-        type: string
-        default: ''
-      image-tag:
-        description: 'Tag used by prepare-docker. Needed for GHCR cleanup.'
-        required: false
-        type: string
-        default: ''
   workflow_dispatch:
     inputs:
       branch:
@@ -52,22 +41,20 @@ on:
         type: string
         default: ''
       community-mode:
-        description: 'true routes to the community (fork) path: sqlite-only, load image from artifact, skip license-dependent tests.'
+        description: 'true routes to the community (fork) path: sqlite-only, skip @licensed tests.'
         required: false
         type: boolean
         default: false
-      docker-ref:
-        description: 'Image ref (internal) or artifact name (community) produced by prepare-docker.'
-        required: false
-        type: string
-        default: ''
-      image-tag:
-        description: 'Tag used by prepare-docker. Needed for GHCR cleanup.'
-        required: false
-        type: string
-        default: ''
 
 jobs:
+  # Ensures the n8n + runners image tarball is cached under the SHA-derived
+  # key. Cache-aware: no-op if an ancestor workflow already populated it.
+  prepare-docker:
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    with:
+      branch: ${{ inputs.branch }}
+    secrets: inherit
+
   prepare-matrix:
     name: 'Prepare Matrix'
     runs-on: blacksmith-2vcpu-ubuntu-2204
@@ -111,30 +98,28 @@ jobs:
   # Internal-only 1-spec fail-fast sanity check on sqlite.
   sqlite-sanity:
     name: 'SQLite: Sanity Check'
+    needs: [prepare-docker]
     if: ${{ !inputs.community-mode }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
-      test-mode: docker-pull
-      docker-image: ${{ inputs.docker-ref }}
+      test-mode: docker-artifact
       test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e tests/e2e/building-blocks/workflow-entry-points.spec.ts
-      runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
       n8n-env: ${{ inputs.n8n-env }}
+    secrets: inherit
 
   # Internal-only full run: postgres + redis + caddy + 2 mains + 1 worker.
   # Requires enterprise license secrets so cannot run in community mode.
   multi-main-e2e:
-    needs: [prepare-matrix]
+    needs: [prepare-docker, prepare-matrix]
     name: 'Multi-Main: E2E'
     if: ${{ !inputs.community-mode && needs.prepare-matrix.outputs.skip-tests != 'true' }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
-      test-mode: docker-pull
-      docker-image: ${{ inputs.docker-ref }}
+      test-mode: docker-artifact
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
-      runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
       pre-generated-matrix: ${{ needs.prepare-matrix.outputs.matrix }}
       n8n-env: ${{ inputs.n8n-env }}
@@ -142,45 +127,17 @@ jobs:
 
   # Community-mode full run on sqlite (no enterprise license needed).
   # Excludes @licensed tests since community contributors have no license secrets.
-  # Loads image from the artifact produced by prepare-docker.
   community-sqlite-e2e:
-    needs: [prepare-matrix]
+    needs: [prepare-docker, prepare-matrix]
     name: 'SQLite: E2E (community)'
     if: ${{ inputs.community-mode && needs.prepare-matrix.outputs.skip-tests != 'true' }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-artifact
-      docker-artifact-name: ${{ inputs.docker-ref }}
       test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e --grep-invert="@licensed"
-      runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
       pre-generated-matrix: ${{ needs.prepare-matrix.outputs.matrix }}
       n8n-env: ${{ inputs.n8n-env }}
       upload-failure-artifacts: true
-
-  # Cleanup ephemeral Docker image from GHCR after tests complete.
-  # Skipped in community mode (no GHCR push happened, nothing to clean).
-  # Local runner cleanup is handled by each test shard in test-e2e-reusable.yml
-  cleanup-ghcr:
-    name: 'Cleanup GHCR Image'
-    needs: [sqlite-sanity, multi-main-e2e]
-    if: ${{ !failure() && !cancelled() && !inputs.community-mode && inputs.image-tag != '' }}
-    runs-on: blacksmith-2vcpu-ubuntu-2204
-    permissions:
-      packages: write
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          sparse-checkout: .github/scripts
-          sparse-checkout-cone-mode: false
-
-      - name: Delete images from GHCR
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_ORG: ${{ github.repository_owner }}
-          GHCR_REPO: ${{ github.event.repository.name }}
-        run: node .github/scripts/cleanup-ghcr-images.mjs --tag ${{ inputs.image-tag }}
+    secrets: inherit

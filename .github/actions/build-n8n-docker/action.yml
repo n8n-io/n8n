@@ -1,109 +1,51 @@
-# Composite action for building the n8n and runners CI test images
-# (n8nio/n8n + n8nio/runners) and distributing them to downstream jobs.
+# Builds the n8n and runners CI test images (n8nio/n8n:local +
+# n8nio/runners:local) and caches the tarball under a SHA-derived key so
+# downstream jobs in the same workflow run can restore it via
+# load-n8n-docker.
 #
-# Two distribution modes:
-#   - ghcr:     builds and pushes to GHCR. Downstream shards docker-pull.
-#   - artifact: builds, docker save + zstd, stores as GHA cache entry.
-#               Use for fork PRs that can't push to GHCR (no secrets).
-#               Blacksmith transparently routes actions/cache through their
-#               co-located cache backend, which saturates the runner NIC
-#               (~4× faster than GHA artifact blob storage).
-#
-# Always builds with INCLUDE_TEST_CONTROLLER=true and amd64 platform.
-# Tag applied to both n8n and runners images.
+# Cache-aware: if the tarball for this SHA is already cached (e.g. a parent
+# workflow ran prepare-docker earlier), the build step is skipped and this
+# action becomes a no-op.
 
 name: 'Build n8n CI Docker image'
-description: 'Builds n8nio/n8n + n8nio/runners test images and makes them available to downstream jobs via GHCR or a GHA cache entry.'
+description: 'Builds n8nio/n8n + n8nio/runners test images and publishes them as a SHA-keyed cache tarball for downstream shards.'
 
 inputs:
-  distribution:
-    description: 'ghcr (push to registry) or artifact (docker save + cache entry)'
-    required: true
-  image-tag:
-    description: 'Tag to apply to both n8n and runners images. Used as the GHCR tag or (in artifact mode) as part of the cache key.'
-    required: true
-  ghcr-image-base:
-    description: 'Full GHCR base for the n8n image (e.g. ghcr.io/n8n-io/n8n). Required when distribution=ghcr.'
-    required: false
-    default: ''
-  ghcr-runners-image-base:
-    description: 'Full GHCR base for the runners image (e.g. ghcr.io/n8n-io/runners). Required when distribution=ghcr.'
-    required: false
-    default: ''
-  artifact-name:
-    description: 'Cache key identifying the image tarball (artifact mode).'
-    required: false
-    default: 'n8n-docker-image'
   build-variant:
     description: 'standard or coverage. Coverage uses build:docker:coverage.'
     required: false
     default: 'standard'
 
-outputs:
-  image:
-    description: 'Fully qualified n8n image reference (ghcr mode only; empty for artifact).'
-    value: ${{ inputs.distribution == 'ghcr' && format('{0}:{1}', inputs.ghcr-image-base, inputs.image-tag) || '' }}
-  artifact-name:
-    description: 'Cache key containing the image tarball (artifact mode only; empty for ghcr).'
-    value: ${{ inputs.distribution == 'artifact' && inputs.artifact-name || '' }}
-
 runs:
   using: 'composite'
   steps:
-    - name: Validate inputs
-      shell: bash
-      run: |
-        case "${{ inputs.distribution }}" in
-          ghcr)
-            if [ -z "${{ inputs.ghcr-image-base }}" ] || [ -z "${{ inputs.ghcr-runners-image-base }}" ]; then
-              echo "::error::ghcr-image-base and ghcr-runners-image-base are required when distribution=ghcr"
-              exit 1
-            fi
-            ;;
-          artifact)
-            if [ -z "${{ inputs.artifact-name }}" ]; then
-              echo "::error::artifact-name is required when distribution=artifact"
-              exit 1
-            fi
-            ;;
-          *)
-            echo "::error::distribution must be 'ghcr' or 'artifact' (got: ${{ inputs.distribution }})"
-            exit 1
-            ;;
-        esac
-
-    - name: Login to GHCR
-      if: ${{ inputs.distribution == 'ghcr' }}
-      uses: ./.github/actions/docker-registry-login
+    - name: Check cache for existing image
+      id: cache-check
+      uses: actions/cache/restore@640a1c2554105b57832a23eea0b4672fc7a790d5 # v4.2.3
+      with:
+        key: n8n-docker-image-${{ github.sha }}
+        path: /tmp/n8n-image.tar.zst
+        lookup-only: true
 
     - name: Build Docker image
+      if: steps.cache-check.outputs.cache-hit != 'true'
       uses: ./.github/actions/setup-nodejs
       with:
         build-command: ${{ inputs.build-variant == 'coverage' && 'pnpm build:docker:coverage' || 'pnpm build:docker' }}
         enable-docker-cache: true
       env:
         INCLUDE_TEST_CONTROLLER: 'true'
-        # ghcr: IMAGE_BASE_NAME + IMAGE_TAG → buildx --push publishes
-        #       ghcr.io/<repo>:<ci-tag> directly (skips local --load).
-        # artifact: both empty → dockerize-n8n defaults to n8nio/n8n:local +
-        #           n8nio/runners:local, which the save step below packages
-        #           into the tarball downstream shards `docker load`.
-        IMAGE_BASE_NAME: ${{ inputs.distribution == 'ghcr' && inputs.ghcr-image-base || '' }}
-        RUNNERS_IMAGE_BASE_NAME: ${{ inputs.distribution == 'ghcr' && inputs.ghcr-runners-image-base || '' }}
-        IMAGE_TAG: ${{ inputs.distribution == 'ghcr' && inputs.image-tag || '' }}
 
     - name: Save image tarball
-      if: ${{ inputs.distribution == 'artifact' }}
+      if: steps.cache-check.outputs.cache-hit != 'true'
       shell: bash
       run: |
         docker save n8nio/n8n:local n8nio/runners:local | zstd -T0 -3 -o /tmp/n8n-image.tar.zst
         ls -lh /tmp/n8n-image.tar.zst
 
-    # Transparent Blacksmith cache routes this through their co-located backend
-    # on Blacksmith runners; elsewhere it falls back to the stock GHA cache.
     - name: Publish image tarball to cache
-      if: ${{ inputs.distribution == 'artifact' }}
+      if: steps.cache-check.outputs.cache-hit != 'true'
       uses: actions/cache/save@640a1c2554105b57832a23eea0b4672fc7a790d5 # v4.2.3
       with:
-        key: ${{ inputs.artifact-name }}
+        key: n8n-docker-image-${{ github.sha }}
         path: /tmp/n8n-image.tar.zst
