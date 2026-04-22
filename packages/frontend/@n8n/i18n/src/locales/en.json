@@ -2270,7 +2270,7 @@
 	"oauth.consentView.action.listWorkflows": "Get a list of your workflows",
 	"oauth.consentView.action.workflowDetails": "Get details for a specific workflow",
 	"oauth.consentView.action.executeWorkflows": "Execute workflows on your behalf",
-	"oauth.consentView.action.executionDetails": "Get details for a specific workflow executions",
+	"oauth.consentView.action.executionDetails": "Get details for a specific workflow execution",
 	"oauth.consentView.action.createUpdateWorkflows": "Create and update workflows on your behalf",
 	"oauth.consentView.action.createDataTables": "Create and update data tables on your behalf",
 	"oauth.consentView.action.searchProjectsAndFolders": "Search for projects and folders",
