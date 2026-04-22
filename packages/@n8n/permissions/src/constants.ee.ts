@@ -58,6 +58,7 @@ export const RESOURCES = {
 	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
 	breakingChanges: ['list'] as const,
 	apiKey: ['manage'] as const,
+	encryptionKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
 	instanceAi: ['message', 'manage', 'gateway'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,

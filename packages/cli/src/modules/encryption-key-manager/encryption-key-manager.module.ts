@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 export class EncryptionKeyManagerModule implements ModuleInterface {
 	async init() {
 		await import('./key-manager.service');
+		await import('./encryption-key.controller');
 
 		const { EncryptionBootstrapService } = await import('./encryption-bootstrap.service');
 		await Container.get(EncryptionBootstrapService).run();
