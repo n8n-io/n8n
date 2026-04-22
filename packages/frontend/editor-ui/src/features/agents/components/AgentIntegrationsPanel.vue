@@ -64,10 +64,8 @@ const integrationConfigs: IntegrationConfig[] = [
 		icon: 'list-checks',
 		description:
 			'Connect a Linear API credential to let this agent respond to comments in Linear issues. ' +
-			'Point a Linear webhook at the URL below, paste its signing secret into the credential, ' +
-			'and comments that @-mention the bot user will trigger the agent.',
-		connectedDescription:
-			'Your agent is connected to Linear. Make sure the Linear webhook points to the URL below.',
+			'Point a Linear webhook at the URL below and paste its signing secret into the credential',
+		connectedDescription: 'Your agent is connected to Linear and can reply to @-mentions',
 		credentialTypes: ['linearApi', 'linearOAuth2Api'],
 		noCredentialsMessage: 'No Linear credentials found.',
 	},
