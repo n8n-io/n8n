@@ -18,6 +18,7 @@ concurrency:
 
 jobs:
   prepare-docker:
+    name: 'Prepare Docker'
     uses: ./.github/workflows/prepare-docker-reusable.yml
     secrets: inherit
 

@@ -12,10 +12,42 @@ on:
         default: 'master'
 
 jobs:
+  prepare-docker:
+    name: 'Prepare Docker'
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    with:
+      branch: ${{ github.event_name == 'schedule' && 'master' || inputs.branch }}
+    secrets: inherit
+
+  prepare-matrix:
+    name: 'Prepare Matrix'
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event_name == 'schedule' && 'master' || inputs.branch }}
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm turbo run build --filter=@n8n/playwright-janitor'
+
+      - name: Generate shard matrix
+        id: generate
+        run: |
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
   e2e-vm-expressions:
+    needs: [prepare-docker, prepare-matrix]
     uses: ./.github/workflows/test-e2e-ci-reusable.yml
     with:
       branch: ${{ github.event_name == 'schedule' && 'master' || inputs.branch }}
+      matrix: ${{ needs.prepare-matrix.outputs.matrix }}
       n8n-env: '{"N8N_EXPRESSION_ENGINE":"vm"}'
     secrets: inherit
 

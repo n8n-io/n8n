@@ -9,6 +9,7 @@ on:
 jobs:
   # Cache-aware: no-op if an ancestor already populated the SHA-keyed cache.
   prepare-docker:
+    name: 'Prepare Docker'
     uses: ./.github/workflows/prepare-docker-reusable.yml
     secrets: inherit
 
