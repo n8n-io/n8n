@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
-import type { AgentResource, AgentJsonConfig } from '../types';
+import type { AgentResource } from '../types';
 import type { AgentPublishedVersion } from '../agent.types';
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -95,8 +95,6 @@ interface RenderProps {
 	agent?: AgentResource | null;
 	projectId?: string;
 	agentId?: string;
-	config?: AgentJsonConfig | null;
-	connectedTriggers?: string[];
 }
 
 describe('AgentPublishButton', () => {
@@ -107,8 +105,6 @@ describe('AgentPublishButton', () => {
 				agent: createAgent(),
 				projectId: 'project-1',
 				agentId: 'agent-1',
-				config: null,
-				connectedTriggers: [],
 				...props,
 			},
 			global: { stubs: STUBS },
@@ -185,6 +181,31 @@ describe('AgentPublishButton', () => {
 		await flushPromises();
 
 		expect(publishAgent).not.toHaveBeenCalled();
+	});
+
+	it('computes config_version from the server-returned publishedVersion.schema, not caller context', async () => {
+		const { publishAgent } = await import('../composables/useAgentApi');
+		const { buildAgentConfigFingerprint } = await import('../composables/agentTelemetry.utils');
+
+		// Server returns the just-published config in publishedVersion.schema.
+		const publishedSchema = { name: 'X', instructions: 'pub', model: 'gpt-4' } as unknown as Record<
+			string,
+			unknown
+		>;
+		const updatedAgent = createAgent({
+			publishedVersion: { ...publishedVersion, schema: publishedSchema as never },
+		});
+		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
+
+		// Caller has no live draft available — mirrors the list-card publish path.
+		const agent = createAgent({ publishedVersion: null });
+		const wrapper = await renderComponent({ agent });
+		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+		await flushPromises();
+
+		// Fingerprint must be derived from the server's response so different
+		// agents never collide on `config_version`.
+		expect(buildAgentConfigFingerprint).toHaveBeenCalledWith(publishedSchema, []);
 	});
 
 	it('treats publish as successful when telemetry fingerprinting throws', async () => {

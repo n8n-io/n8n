@@ -37,10 +37,7 @@ function getActions() {
 
 async function onAction(action: string) {
 	if (action === 'publish') {
-		const updated = await publish(props.projectId, props.agent.id, {
-			config: props.agent.publishedVersion?.schema ?? null,
-			connectedTriggers: [],
-		});
+		const updated = await publish(props.projectId, props.agent.id);
 		if (updated) emit('published', updated);
 	} else if (action === 'unpublish') {
 		const updated = await unpublish(props.projectId, props.agent.id);

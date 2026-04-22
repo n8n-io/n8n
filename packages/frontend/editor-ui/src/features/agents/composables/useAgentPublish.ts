@@ -7,7 +7,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { publishAgent, unpublishAgent } from './useAgentApi';
 import { useAgentTelemetry } from './useAgentTelemetry';
 import { buildAgentConfigFingerprint } from './agentTelemetry.utils';
-import type { AgentResource, AgentJsonConfig } from '../types';
+import type { AgentResource } from '../types';
 
 /**
  * Shared publish/unpublish flow used by the builder header button and the list card.
@@ -23,20 +23,21 @@ export function useAgentPublish() {
 
 	const publishing = ref(false);
 
-	async function publish(
-		projectId: string,
-		agentId: string,
-		context: { config: AgentJsonConfig | null; connectedTriggers: string[] },
-	): Promise<AgentResource | null> {
+	async function publish(projectId: string, agentId: string): Promise<AgentResource | null> {
 		if (publishing.value) return null;
 		publishing.value = true;
 		try {
 			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
 			// Telemetry is best-effort and must never surface as a publish failure.
 			// `buildAgentConfigFingerprint` uses `crypto.subtle.digest`, which throws in
-			// insecure contexts; the RudderStack track call can also fail.
+			// insecure contexts; the RudderStack track call can also fail. We derive
+			// the fingerprint from the server's response (`publishedVersion.schema`)
+			// so `config_version` reflects what was actually published regardless of
+			// the caller — list-card publishes don't have access to the live draft.
+			// Triggers are intentionally omitted: they live outside AgentJsonConfig
+			// and aren't part of the published schema.
 			try {
-				const fp = await buildAgentConfigFingerprint(context.config, context.connectedTriggers);
+				const fp = await buildAgentConfigFingerprint(updated.publishedVersion?.schema ?? null, []);
 				agentTelemetry.trackPublishedAgent({ agentId, configVersion: fp.config_version });
 			} catch {
 				// Swallow — the agent is already published.

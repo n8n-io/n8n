@@ -539,10 +539,12 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 			await settleAutosave();
 			if (!localConfig.value) return;
 			await saveConfig();
-			await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
+			const updated = await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
 			// Telemetry is best-effort and must never surface as a publish failure.
+			// Derive the fingerprint from the server's response so `config_version`
+			// reflects what was actually published (same approach as `useAgentPublish`).
 			try {
-				const fp = await buildAgentConfigFingerprint(localConfig.value, connectedTriggers.value);
+				const fp = await buildAgentConfigFingerprint(updated.publishedVersion?.schema ?? null, []);
 				agentTelemetry.trackPublishedAgent({
 					agentId: agentId.value,
 					configVersion: fp.config_version,
@@ -795,7 +797,6 @@ function onContinueLoaded(count: number) {
 			:save-status="saveStatus"
 			:building="isBuilding || isBuildChatStreaming"
 			:code-only="mode === 'chat' && chatMode === 'build'"
-			:connected-triggers="connectedTriggers"
 			:agent-status="deriveAgentStatus(agent)"
 			@update:config="onConfigFieldUpdate"
 			@published="onPublished"
