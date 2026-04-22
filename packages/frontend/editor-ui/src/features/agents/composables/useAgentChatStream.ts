@@ -1,6 +1,11 @@
 import { ref, reactive, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type {
+	AgentBuilderOpenSuspension,
+	AgentPersistedMessageDto,
+	AgentSseEvent,
+} from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import {
 	getBuilderMessages,
@@ -9,9 +14,14 @@ import {
 	getTestChatMessages,
 	clearTestChatMessages,
 } from './useAgentApi';
-import type { AgentPersistedMessageDto } from '@n8n/api-types';
 
-import { convertDbMessages, type ChatMessage, type ToolCall } from './agentChatMessages';
+import {
+	applyOpenSuspensions,
+	convertDbMessages,
+	rebuildInteractiveFromHistory,
+	type ChatMessage,
+	type ToolCall,
+} from './agentChatMessages';
 
 export interface UseAgentChatStreamParams {
 	projectId: Ref<string>;
@@ -51,12 +61,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const continueId = params.continueSessionId?.value;
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
+			let openSuspensions: AgentBuilderOpenSuspension[] = [];
 			if (params.endpoint.value === 'build') {
-				dbMessages = await getBuilderMessages(
+				const envelope = await getBuilderMessages(
 					rootStore.restApiContext,
 					params.projectId.value,
 					params.agentId.value,
 				);
+				dbMessages = envelope.messages;
+				openSuspensions = envelope.openSuspensions;
 			} else if (continueId) {
 				dbMessages = await getChatMessages(
 					rootStore.restApiContext,
@@ -72,7 +85,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				);
 			}
 			if (dbMessages.length > 0) {
-				messages.value = convertDbMessages(dbMessages);
+				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
 			}
 			params.onHistoryLoaded?.(messages.value.length);
 		} catch (error) {
@@ -101,63 +114,167 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
-	async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string): Promise<void> {
-		isStreaming.value = true;
-		let builderMutated = false;
-		const assistantMsg = reactive<ChatMessage>({
-			id: crypto.randomUUID(),
+	// -------------------------------------------------------------------------
+	// SSE handler — typed AgentSseEvent dispatch
+	// -------------------------------------------------------------------------
+
+	interface StreamSession {
+		builderMutated: boolean;
+		/** Per-turn ChatMessage cache keyed by server-issued messageId. */
+		msgsByMessageId: Map<string, ChatMessage>;
+	}
+
+	function ensureMsgFor(session: StreamSession, messageId: string): ChatMessage {
+		const existing = session.msgsByMessageId.get(messageId);
+		if (existing) return existing;
+		const msg = reactive<ChatMessage>({
+			id: messageId,
 			role: 'assistant',
 			content: '',
 			thinking: '',
 			toolCalls: [],
 			status: 'streaming',
 		});
-		let msgAdded = false;
+		messages.value.push(msg);
+		session.msgsByMessageId.set(messageId, msg);
+		return msg;
+	}
 
-		const ensureMsg = () => {
-			if (!msgAdded) {
-				messages.value.push(assistantMsg);
-				msgAdded = true;
+	function findToolCall(messageId: string, toolCallId: string, session: StreamSession) {
+		// First check the message bucket the event claims to belong to.
+		const msg = session.msgsByMessageId.get(messageId);
+		const inOwn = msg?.toolCalls?.find((t) => t.toolCallId === toolCallId);
+		if (inOwn) return { msg: msg!, tc: inOwn };
+		// Tool results often arrive against the assistant turn that issued the
+		// call — but we tag both events with the same messageId server-side, so
+		// this fallback only catches resilience cases (e.g. a tool result whose
+		// messageId was lost). Walk recent assistant messages.
+		for (let i = messages.value.length - 1; i >= 0; i--) {
+			const m = messages.value[i];
+			const found = m.toolCalls?.find((t) => t.toolCallId === toolCallId);
+			if (found) return { msg: m, tc: found };
+		}
+		return null;
+	}
+
+	function handleEvent(
+		event: AgentSseEvent,
+		session: StreamSession,
+	): { done?: boolean } | undefined {
+		switch (event.type) {
+			case 'text': {
+				const msg = ensureMsgFor(session, event.messageId);
+				msg.content += event.delta;
+				break;
 			}
-		};
+			case 'reasoning': {
+				const msg = ensureMsgFor(session, event.messageId);
+				msg.thinking = (msg.thinking ?? '') + event.delta;
+				break;
+			}
+			case 'toolCall': {
+				const msg = ensureMsgFor(session, event.messageId);
+				if (msg.content && !msg.content.endsWith('\n')) msg.content += '\n';
+				msg.toolCalls = msg.toolCalls ?? [];
+				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
+				if (!existing) {
+					msg.toolCalls.push({
+						tool: event.toolName,
+						toolCallId: event.toolCallId,
+						input: event.input,
+						state: 'running',
+					});
+				} else {
+					existing.input = event.input;
+					existing.state = 'running';
+				}
+				break;
+			}
+			case 'toolCallDelta': {
+				// Streaming tool input — used for `build_custom_tool` codeDelta.
+				// No state change to a ToolCall here (it may not exist yet).
+				break;
+			}
+			case 'toolResult': {
+				const found = findToolCall(event.messageId, event.toolCallId, session);
+				if (found) {
+					found.tc.output = event.output;
+					found.tc.state = event.isError ? 'error' : 'done';
+					// If this was an interactive tool call, the result IS the user's
+					// resume payload — refresh the card so it flips to its resolved
+					// (disabled) state immediately. No separate "resumed" event needed.
+					if (found.msg.interactive) {
+						const updated = rebuildInteractiveFromHistory(found.tc);
+						if (updated) found.msg.interactive = updated;
+					}
+					if (found.msg.status === 'awaitingUser') found.msg.status = 'success';
+				}
+				break;
+			}
+			case 'toolSuspended': {
+				const msg = ensureMsgFor(session, event.messageId);
+				const { payload } = event;
+				const tc =
+					msg.toolCalls?.find((t) => t.toolCallId === payload.toolCallId) ??
+					({
+						tool: payload.toolName,
+						toolCallId: payload.toolCallId,
+						input: payload.input,
+						state: 'suspended',
+					} satisfies ToolCall);
+				if (!msg.toolCalls?.includes(tc)) {
+					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
+				} else {
+					tc.state = 'suspended';
+					tc.input = payload.input;
+				}
+				const interactive = rebuildInteractiveFromHistory({
+					...tc,
+					output: undefined,
+				});
+				if (interactive) {
+					interactive.runId = payload.runId;
+					msg.interactive = interactive;
+					msg.status = 'awaitingUser';
+				}
+				break;
+			}
+			case 'codeDelta': {
+				params.onCodeDelta?.(event.delta);
+				break;
+			}
+			case 'configUpdated':
+			case 'toolUpdated': {
+				session.builderMutated = true;
+				params.onConfigUpdated?.();
+				break;
+			}
+			case 'error': {
+				const lastMsg = messages.value[messages.value.length - 1];
+				if (lastMsg) {
+					lastMsg.content += `\n\nError: ${event.message}`;
+					lastMsg.status = 'error';
+				}
+				break;
+			}
+			case 'done':
+				return { done: true };
+			default:
+				break;
+		}
+		return undefined;
+	}
 
-		const controller = new AbortController();
-		abortController.value = controller;
+	async function consumeStream(response: Response, session: StreamSession): Promise<void> {
+		if (!response.body) return;
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
 
 		try {
-			const { baseUrl } = rootStore.restApiContext;
-			const browserId = localStorage.getItem('n8n-browserId') ?? '';
-			const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}`;
-			const body: Record<string, unknown> = { message };
-			if (endpoint === 'chat' && params.continueSessionId?.value) {
-				body.sessionId = params.continueSessionId.value;
-			}
-			const response = await fetch(url, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'browser-id': browserId,
-				},
-				credentials: 'include',
-				body: JSON.stringify(body),
-				signal: controller.signal,
-			});
-
-			if (!response.ok || !response.body) {
-				assistantMsg.content = `Error: ${response.statusText || 'Failed to reach agent'}`;
-				assistantMsg.status = 'error';
-				messages.value.push(assistantMsg);
-				return;
-			}
-
-			const reader = response.body.getReader();
-			const decoder = new TextDecoder();
-			let buffer = '';
-
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
-
 				buffer += decoder.decode(value, { stream: true });
 				const lines = buffer.split('\n');
 				buffer = lines.pop() ?? '';
@@ -165,91 +282,109 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				for (const line of lines) {
 					if (!line.startsWith('data: ')) continue;
 					const raw = line.slice(6);
-
-					let data: Record<string, unknown>;
+					let event: AgentSseEvent;
 					try {
-						data = JSON.parse(raw) as Record<string, unknown>;
+						event = JSON.parse(raw) as AgentSseEvent;
 					} catch {
 						continue;
 					}
-
-					if (data.done) continue;
-
-					if (typeof data.text === 'string') {
-						ensureMsg();
-						assistantMsg.content += data.text;
-					}
-
-					if (typeof data.thinking === 'string') {
-						ensureMsg();
-						assistantMsg.thinking = (assistantMsg.thinking ?? '') + data.thinking;
-					}
-
-					if (typeof data.codeDelta === 'string') {
-						params.onCodeDelta?.(data.codeDelta);
-					}
-
-					if (typeof data.code === 'string') {
-						params.onCodeUpdated?.();
-					}
-
-					if (data.configUpdated !== undefined || data.toolUpdated !== undefined) {
-						builderMutated = true;
-						params.onConfigUpdated?.();
-					}
-
-					if (data.toolCall && typeof data.toolCall === 'object') {
-						ensureMsg();
-						if (assistantMsg.content && !assistantMsg.content.endsWith('\n')) {
-							assistantMsg.content += '\n';
-						}
-						const tc = data.toolCall as { tool: string; input?: unknown };
-						assistantMsg.toolCalls = assistantMsg.toolCalls ?? [];
-						assistantMsg.toolCalls.push({ tool: tc.tool, input: tc.input });
-					}
-
-					if (data.toolResult && typeof data.toolResult === 'object') {
-						const tr = data.toolResult as { tool: string; output?: unknown };
-						const existing = assistantMsg.toolCalls?.find(
-							(t: ToolCall) => t.tool === tr.tool && t.output === undefined,
-						);
-						if (existing) {
-							existing.output = tr.output;
-						}
-						if (assistantMsg.content && !assistantMsg.content.endsWith('\n')) {
-							assistantMsg.content += '\n';
-						}
-					}
-
-					if (typeof data.error === 'string') {
-						ensureMsg();
-						assistantMsg.content += `\n\nError: ${data.error}`;
-						assistantMsg.status = 'error';
-					}
+					handleEvent(event, session);
 				}
 			}
+		} finally {
+			reader.releaseLock();
+		}
+	}
 
-			assistantMsg.status = 'success';
+	// -------------------------------------------------------------------------
+	// Run a request against a build/chat/resume endpoint
+	// -------------------------------------------------------------------------
+
+	function finalizeStream(session: StreamSession): void {
+		// Flip any still-streaming messages to success.
+		for (const msg of session.msgsByMessageId.values()) {
+			if (msg.status === 'streaming') msg.status = 'success';
+		}
+		if (params.endpoint.value === 'build' && session.builderMutated) {
+			params.onConfigUpdated?.();
+		}
+	}
+
+	async function postAndConsume(url: string, body: Record<string, unknown>): Promise<void> {
+		const session: StreamSession = {
+			builderMutated: false,
+			msgsByMessageId: new Map(),
+		};
+
+		isStreaming.value = true;
+		const controller = new AbortController();
+		abortController.value = controller;
+
+		try {
+			const browserId = localStorage.getItem('n8n-browserId') ?? '';
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'browser-id': browserId },
+				credentials: 'include',
+				body: JSON.stringify(body),
+				signal: controller.signal,
+			});
+
+			if (!response.ok || !response.body) {
+				const errorMsg: ChatMessage = {
+					id: crypto.randomUUID(),
+					role: 'assistant',
+					content: `Error: ${response.statusText || 'Failed to reach agent'}`,
+					status: 'error',
+				};
+				messages.value.push(errorMsg);
+				return;
+			}
+
+			await consumeStream(response, session);
+			finalizeStream(session);
 		} catch (e) {
 			if (e instanceof DOMException && e.name === 'AbortError') {
-				assistantMsg.status = 'success';
-			} else {
-				if (!msgAdded) {
-					messages.value.push(assistantMsg);
-				}
-				const errorText = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
-				assistantMsg.content = assistantMsg.content
-					? `${assistantMsg.content}\n\n${errorText}`
-					: errorText;
-				assistantMsg.status = 'error';
+				finalizeStream(session);
+				return;
 			}
+			const text = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
+			messages.value.push({
+				id: crypto.randomUUID(),
+				role: 'assistant',
+				content: text,
+				status: 'error',
+			});
 		} finally {
 			abortController.value = null;
 			isStreaming.value = false;
-			if (endpoint === 'build' && builderMutated) {
-				params.onConfigUpdated?.();
-			}
 		}
+	}
+
+	async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string): Promise<void> {
+		const { baseUrl } = rootStore.restApiContext;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}`;
+		const body: Record<string, unknown> = { message };
+		if (endpoint === 'chat' && params.continueSessionId?.value) {
+			body.sessionId = params.continueSessionId.value;
+		}
+		await postAndConsume(url, body);
+	}
+
+	/**
+	 * Resume a suspended build interaction. Posts to the build/resume endpoint
+	 * and re-enters the same SSE handler. The `runId` is required — it comes
+	 * from the original `tool-call-suspended` chunk (live) or from the
+	 * `openSuspensions` sidecar applied during history reload.
+	 */
+	async function resume(payload: {
+		runId: string;
+		toolCallId: string;
+		resumeData: unknown;
+	}): Promise<void> {
+		const { baseUrl } = rootStore.restApiContext;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
+		await postAndConsume(url, payload);
 	}
 
 	async function sendMessage(text: string): Promise<void> {
@@ -276,5 +411,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		clearHistory,
 		sendMessage,
 		stopGenerating,
+		resume,
 	};
 }

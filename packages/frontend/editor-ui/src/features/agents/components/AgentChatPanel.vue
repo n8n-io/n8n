@@ -36,6 +36,7 @@ const emit = defineEmits<{
 	configUpdated: [];
 	'update:streaming': [streaming: boolean];
 	'continue-loaded': [count: number];
+	'initial-consumed': [];
 	back: [];
 }>();
 
@@ -48,7 +49,7 @@ const displayTitle = computed(() => props.sessionTitle ?? locale.baseText('agent
 
 const inputText = ref('');
 
-const { messages, isStreaming, messagingState, loadHistory, sendMessage, stopGenerating } =
+const { messages, isStreaming, messagingState, loadHistory, sendMessage, stopGenerating, resume } =
 	useAgentChatStream({
 		projectId: toRef(props, 'projectId'),
 		agentId: toRef(props, 'agentId'),
@@ -82,8 +83,17 @@ onMounted(() => {
 	// A supplied `initialMessage` means the parent just minted a fresh session
 	// and wants us to seed it with the first message — there's no thread to
 	// load yet, and hitting the history endpoint would 404.
+	//
+	// We emit `initial-consumed` right after reading the prop so the parent
+	// can clear its source ref. This guards against re-sending on HMR / any
+	// re-mount where the parent's prompt ref is still populated. We can't
+	// wait for the parent to clear the prop *before* we mount (the home →
+	// chat <Transition mode="out-in"> delays our mount, and clearing on
+	// `nextTick` would wipe the prompt before this hook runs) — so the
+	// consume-then-emit pattern is the right ordering.
 	if (props.initialMessage) {
 		sendMessageFromOutside(props.initialMessage);
+		emit('initial-consumed');
 	} else {
 		void loadHistory();
 	}
@@ -115,7 +125,14 @@ onBeforeUnmount(() => {
 		</div>
 
 		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :endpoint="endpoint" />
-		<AgentChatMessageList v-else :messages="messages" :messaging-state="messagingState" />
+		<AgentChatMessageList
+			v-else
+			:messages="messages"
+			:messaging-state="messagingState"
+			:project-id="projectId"
+			:agent-id="agentId"
+			@resume="resume"
+		/>
 
 		<div :class="$style.inputArea">
 			<ChatInputBase

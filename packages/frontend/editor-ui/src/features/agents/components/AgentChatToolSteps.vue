@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { ToolCall } from '../composables/agentChatMessages';
 
 defineProps<{
@@ -12,11 +12,24 @@ defineProps<{
 		<li v-for="(tc, i) in toolCalls" :key="i" :class="$style.toolStep">
 			<div :class="$style.toolStepIndicator">
 				<N8nIcon
-					v-if="tc.output !== undefined"
+					v-if="tc.state === 'done'"
 					icon="circle-check"
 					:size="14"
 					:class="$style.toolStepDone"
 				/>
+				<N8nIcon
+					v-else-if="tc.state === 'error'"
+					icon="circle-x"
+					:size="14"
+					:class="$style.toolStepError"
+				/>
+				<N8nTooltip
+					v-else-if="tc.state === 'suspended'"
+					placement="top"
+					content="Waiting for your input"
+				>
+					<N8nIcon icon="clock" :size="14" :class="$style.toolStepSuspended" />
+				</N8nTooltip>
 				<N8nIcon
 					v-else
 					icon="loader-circle"
@@ -73,8 +86,16 @@ defineProps<{
 	color: var(--color--success);
 }
 
+.toolStepError {
+	color: var(--color--danger);
+}
+
 .toolStepLoading {
 	color: var(--color--primary);
+}
+
+.toolStepSuspended {
+	color: var(--color--warning);
 }
 
 .toolStepLabel {

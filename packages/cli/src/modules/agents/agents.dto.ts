@@ -11,11 +11,6 @@ export class UpdateAgentDto extends Z.class({
 	description: z.string().optional(),
 }) {}
 
-export class AgentChatMessageDto extends Z.class({
-	message: z.string().min(1),
-	sessionId: z.string().min(1).optional(),
-}) {}
-
 export class AgentIntegrationDto extends Z.class({
 	type: z.string().min(1),
 	credentialId: z.string().min(1),

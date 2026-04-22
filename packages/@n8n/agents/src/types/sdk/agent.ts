@@ -98,9 +98,9 @@ export type StreamChunk = ContentMetadata &
 		  }
 		| {
 				type: 'tool-call-suspended';
-				runId?: string;
-				toolCallId?: string;
-				toolName?: string;
+				runId: string;
+				toolCallId: string;
+				toolName: string;
 				input?: unknown;
 				suspendPayload?: unknown;
 				/** JSON Schema describing the shape of data to send when resuming. */
@@ -263,6 +263,7 @@ export type PendingToolCall = {
 			suspended: true;
 			suspendPayload: unknown;
 			resumeSchema: JsonSchema7Type;
+			runId: string;
 	  }
 	| {
 			suspended: false;

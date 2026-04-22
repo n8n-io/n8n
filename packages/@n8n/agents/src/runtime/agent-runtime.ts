@@ -228,7 +228,7 @@ export class AgentRuntime {
 		let list: AgentMessageList | undefined = undefined;
 		try {
 			list = await this.initRun(input, options);
-			const rawResult = await this.runGenerateLoop(list, options, undefined, runId);
+			const rawResult = await this.runGenerateLoop(list, options, runId, undefined);
 			return this.finalizeGenerate(rawResult, list, runId);
 		} catch (error) {
 			await this.flushTelemetry(options);
@@ -259,7 +259,7 @@ export class AgentRuntime {
 			return { runId, stream: makeErrorStream(error) };
 		}
 
-		return { runId, stream: this.startStreamLoop(list, options, undefined, runId) };
+		return { runId, stream: this.startStreamLoop(list, options, runId, undefined) };
 	}
 
 	/**
@@ -338,8 +338,8 @@ export class AgentRuntime {
 				const rawResult = await this.runGenerateLoop(
 					list,
 					resumeOptions,
-					pendingResume,
 					options.runId,
+					pendingResume,
 				);
 				if (!rawResult.pendingSuspend) {
 					await this.cleanupRun(options.runId);
@@ -349,7 +349,7 @@ export class AgentRuntime {
 
 			return {
 				runId: options.runId,
-				stream: this.startStreamLoop(list, resumeOptions, pendingResume, options.runId),
+				stream: this.startStreamLoop(list, resumeOptions, options.runId, pendingResume),
 			};
 		} catch (error) {
 			const isAbort = this.eventBus.isAborted;
@@ -609,8 +609,8 @@ export class AgentRuntime {
 	private async runGenerateLoop(
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
+		runId: string,
 		pendingResume?: PendingResume,
-		runId?: string,
 	): Promise<GenerateResult> {
 		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
 			this.buildLoopContext({ ...options, persistence: options?.persistence });
@@ -628,6 +628,7 @@ export class AgentRuntime {
 				pendingResume,
 				toolMap,
 				list,
+				runId,
 				runTelemetry,
 			);
 
@@ -703,6 +704,7 @@ export class AgentRuntime {
 				result.toolCalls,
 				toolMap,
 				list,
+				runId,
 				runTelemetry,
 			);
 
@@ -784,13 +786,13 @@ export class AgentRuntime {
 	private startStreamLoop(
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
+		runId: string,
 		pendingResume?: PendingResume,
-		runId?: string,
 	): ReadableStream<StreamChunk> {
 		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
 		const writer = writable.getWriter();
 
-		this.runStreamLoop(list, options, writer, pendingResume, runId).catch(
+		this.runStreamLoop(list, options, writer, runId, pendingResume).catch(
 			async (error: unknown) => {
 				await this.flushTelemetry(options);
 				await this.cleanupRun(runId);
@@ -821,8 +823,8 @@ export class AgentRuntime {
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 		writer: WritableStreamDefaultWriter<StreamChunk>,
+		runId: string,
 		pendingResume?: PendingResume,
-		runId?: string,
 	): Promise<void> {
 		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
 			this.buildLoopContext({ ...options, persistence: options?.persistence });
@@ -859,6 +861,7 @@ export class AgentRuntime {
 					pendingResume,
 					toolMap,
 					list,
+					runId,
 					runTelemetry,
 				);
 
@@ -972,7 +975,13 @@ export class AgentRuntime {
 			const toolCalls = await result.toolCalls;
 
 			try {
-				const batch = await this.iterateToolCallsConcurrent(toolCalls, toolMap, list, runTelemetry);
+				const batch = await this.iterateToolCallsConcurrent(
+					toolCalls,
+					toolMap,
+					list,
+					runId,
+					runTelemetry,
+				);
 
 				if (await handleAbort()) return;
 
@@ -1226,6 +1235,7 @@ export class AgentRuntime {
 		}>,
 		toolMap: Map<string, BuiltTool>,
 		list: AgentMessageList,
+		runId: string,
 		resolvedTelemetry?: BuiltTelemetry,
 	): Promise<ToolCallBatchResult> {
 		const executableCalls = toolCalls.filter((tc) => !tc.providerExecuted);
@@ -1295,6 +1305,7 @@ export class AgentRuntime {
 						input: toolInput,
 						suspendPayload: result.value.payload,
 						resumeSchema: result.value.resumeSchema,
+						runId,
 					};
 				} else if (result.value.outcome === 'success') {
 					results.push({
@@ -1350,6 +1361,7 @@ export class AgentRuntime {
 		pendingResume: PendingResume,
 		toolMap: Map<string, BuiltTool>,
 		list: AgentMessageList,
+		runId: string,
 		resolvedTelemetry?: BuiltTelemetry,
 	): Promise<ToolCallBatchResult> {
 		const resumedId = pendingResume.resumeToolCallId;
@@ -1381,6 +1393,7 @@ export class AgentRuntime {
 				suspended: true,
 				suspendPayload: processResult.payload,
 				resumeSchema: processResult.resumeSchema,
+				runId,
 			};
 			suspensions.push({
 				toolCallId: resumedId,
@@ -1445,6 +1458,7 @@ export class AgentRuntime {
 				unexecuted,
 				toolMap,
 				list,
+				runId,
 				resolvedTelemetry,
 			);
 			results.push(...batch.results);

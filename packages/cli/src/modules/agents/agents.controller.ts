@@ -1,5 +1,12 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
-import type { AgentPersistedMessageDto } from '@n8n/api-types';
+import {
+	type AgentBuilderMessagesResponse,
+	AgentBuildResumeDto,
+	AgentChatMessageDto,
+	type AgentPersistedMessageDto,
+	type AgentSseEvent,
+	type ToolSuspendedPayload,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
 import { randomUUID } from 'crypto';
@@ -11,7 +18,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import {
-	AgentChatMessageDto,
 	AgentIntegrationDto,
 	CreateAgentDto,
 	UpdateAgentConfigDto,
@@ -26,29 +32,13 @@ import { AgentRepository } from './repositories/agent.repository';
 type FlushableResponse = Response & { flush?: () => void };
 
 /**
- * Extract SSE-sendable events from AgentMessage content parts.
- * Returns an array of event objects suitable for `send()`.
+ * Set up SSE headers and return a typed `send(event)` helper plus a
+ * per-turn `messageId` tracker. Every per-turn event (text, reasoning, tool
+ * calls, tool results, suspensions, resumes) is tagged with the current
+ * messageId; the id rolls over when a tool-result is emitted, so the next
+ * assistant turn (the next LLM call) starts a fresh ChatMessage on the FE.
  */
-function extractMessageEvents(message: AgentMessage): Array<Record<string, unknown>> {
-	if (!('content' in message) || !Array.isArray(message.content)) return [];
-
-	const events: Array<Record<string, unknown>> = [];
-	for (const part of message.content) {
-		if (part.type === 'text' && 'text' in part) {
-			events.push({ text: part.text });
-		} else if (part.type === 'tool-call' && 'toolName' in part) {
-			events.push({ toolCall: { tool: part.toolName, input: part.input } });
-		} else if (part.type === 'tool-result' && 'toolName' in part) {
-			events.push({ toolResult: { tool: part.toolName, output: part.result } });
-		}
-	}
-	return events;
-}
-
-/**
- * Set up SSE headers and return a send helper for streaming responses.
- */
-function initSseResponse(res: FlushableResponse): (data: Record<string, unknown>) => void {
+function initSseStream(res: FlushableResponse) {
 	res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 	res.setHeader('Cache-Control', 'no-cache');
 	res.setHeader('Connection', 'keep-alive');
@@ -56,10 +46,141 @@ function initSseResponse(res: FlushableResponse): (data: Record<string, unknown>
 	res.flushHeaders();
 	(res.socket as { setNoDelay?: (v: boolean) => void })?.setNoDelay?.(true);
 
-	return (data: Record<string, unknown>) => {
-		res.write(`data: ${JSON.stringify(data)}\n\n`);
+	const send = (event: AgentSseEvent) => {
+		res.write(`data: ${JSON.stringify(event)}\n\n`);
 		res.flush?.();
 	};
+
+	let currentTurnMessageId: string | undefined;
+	const getMessageId = (): string => {
+		currentTurnMessageId ??= randomUUID();
+		return currentTurnMessageId;
+	};
+	const startNewTurn = () => {
+		currentTurnMessageId = undefined;
+	};
+
+	return { send, getMessageId, startNewTurn };
+}
+
+interface ToolEventCallbacks {
+	toolCall?: (toolName: string) => void;
+	toolResult?: (toolName: string) => void;
+	toolCallDelta?: (toolName: string | undefined, argumentsDelta: string) => void;
+}
+
+interface ChunkHandlerCtx {
+	send: (e: AgentSseEvent) => void;
+	getMessageId: () => string;
+	startNewTurn: () => void;
+	onToolEvent?: ToolEventCallbacks;
+}
+
+/** Translate a single non-suspension chunk into one or more SSE events. */
+function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): void {
+	const { send, getMessageId, onToolEvent } = ctx;
+
+	switch (chunk.type) {
+		case 'text-delta':
+			if (chunk.delta) send({ type: 'text', messageId: getMessageId(), delta: chunk.delta });
+			break;
+		case 'reasoning-delta':
+			if (chunk.delta) send({ type: 'reasoning', messageId: getMessageId(), delta: chunk.delta });
+			break;
+		case 'tool-call-delta':
+			if (chunk.argumentsDelta) {
+				send({
+					type: 'toolCallDelta',
+					messageId: getMessageId(),
+					toolName: chunk.name,
+					argumentsDelta: chunk.argumentsDelta,
+				});
+				onToolEvent?.toolCallDelta?.(chunk.name, chunk.argumentsDelta);
+			}
+			break;
+		case 'message':
+			emitMessageParts(chunk.message, ctx);
+			break;
+		case 'error': {
+			const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
+			send({ type: 'error', message: errMsg });
+			break;
+		}
+		default:
+			break;
+	}
+}
+
+/** Flatten an `AgentMessage` into per-part SSE events. */
+function emitMessageParts(message: AgentMessage, ctx: ChunkHandlerCtx): void {
+	if (!('content' in message) || !Array.isArray(message.content)) return;
+	const { send, getMessageId, startNewTurn, onToolEvent } = ctx;
+
+	for (const part of message.content) {
+		if (part.type === 'text' && 'text' in part) {
+			// Text content is already streamed via text-delta; the final
+			// `message` chunk repeats it. Skip to avoid duplication.
+			continue;
+		}
+		if (part.type === 'tool-call' && 'toolName' in part) {
+			send({
+				type: 'toolCall',
+				messageId: getMessageId(),
+				toolCallId: part.toolCallId ?? '',
+				toolName: part.toolName,
+				input: part.input,
+			});
+			onToolEvent?.toolCall?.(part.toolName);
+			continue;
+		}
+		if (part.type === 'tool-result' && 'toolName' in part) {
+			send({
+				type: 'toolResult',
+				messageId: getMessageId(),
+				toolCallId: part.toolCallId ?? '',
+				toolName: part.toolName,
+				output: part.result,
+				...(part.isError !== undefined && { isError: part.isError }),
+			});
+			onToolEvent?.toolResult?.(part.toolName);
+			// A tool-result message ends the current "turn" — the next
+			// assistant message (next LLM call) gets a fresh messageId.
+			startNewTurn();
+		}
+	}
+}
+
+/**
+ * Pump SDK stream chunks through a typed AgentSseEvent stream.
+ *
+ * Side-effects (configUpdated / toolUpdated / codeDelta) for the agent builder
+ * are surfaced via the `onToolEvent` callback so the chat path can ignore them.
+ *
+ * Returns `true` when a suspension was emitted (the run paused), `false` otherwise.
+ */
+async function pumpChunks(
+	chunks: AsyncIterable<StreamChunk>,
+	send: (e: AgentSseEvent) => void,
+	getMessageId: () => string,
+	startNewTurn: () => void,
+	onToolEvent?: ToolEventCallbacks,
+): Promise<boolean> {
+	const ctx: ChunkHandlerCtx = { send, getMessageId, startNewTurn, onToolEvent };
+
+	for await (const chunk of chunks) {
+		if (chunk.type === 'tool-call-suspended') {
+			const payload: ToolSuspendedPayload = {
+				toolCallId: chunk.toolCallId ?? '',
+				runId: chunk.runId ?? '',
+				toolName: chunk.toolName ?? '',
+				input: chunk.suspendPayload,
+			};
+			send({ type: 'toolSuspended', messageId: getMessageId(), payload });
+			return true;
+		}
+		emitChunkEvents(chunk, ctx);
+	}
+	return false;
 }
 
 @RestController('/projects/:projectId/agents/v2')
@@ -278,7 +399,7 @@ export class AgentsController {
 
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
-		const send = initSseResponse(res);
+		const { send, getMessageId, startNewTurn } = initSseStream(res);
 
 		// If the client supplied a sessionId and a thread already exists under that id,
 		// the thread must belong to this (project, agent). Otherwise a caller could
@@ -287,7 +408,7 @@ export class AgentsController {
 		if (sessionId) {
 			const existing = await this.agentExecutionService.findThreadById(sessionId);
 			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
-				send({ error: 'Session not found' });
+				send({ type: 'error', message: 'Session not found' });
 				res.end();
 				return;
 			}
@@ -296,21 +417,24 @@ export class AgentsController {
 		const threadId = sessionId ?? randomUUID();
 
 		try {
-			for await (const chunk of this.agentsService.executeForChat(
-				agentId,
-				message,
-				threadId,
-				req.user.id,
-				projectId,
-				credentialProvider,
-				'chat',
-			)) {
-				this.sendStreamChunk(chunk, send);
-			}
-			send({ done: true, sessionId: threadId });
+			await pumpChunks(
+				this.agentsService.executeForChat(
+					agentId,
+					message,
+					threadId,
+					req.user.id,
+					projectId,
+					credentialProvider,
+					'chat',
+				),
+				send,
+				getMessageId,
+				startNewTurn,
+			);
+			send({ type: 'done', sessionId: threadId });
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
-			send({ error: errorMessage });
+			send({ type: 'error', message: errorMessage });
 		}
 
 		res.end();
@@ -333,12 +457,28 @@ export class AgentsController {
 	@Get('/:agentId/build/messages')
 	async getBuilderMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
-	): Promise<AgentPersistedMessageDto[]> {
+	): Promise<AgentBuilderMessagesResponse> {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const messages = await this.agentsBuilderService.getBuilderMessages(agentId);
-		return messages as unknown as AgentPersistedMessageDto[];
+
+		// Merge persisted thread memory with any open suspension's checkpoint
+		// so a refresh during a suspended turn still returns the suspended
+		// assistant message (the SDK only saveToMemory's on completion).
+		const memory = await this.agentsBuilderService.getBuilderMessages(agentId);
+		const checkpoint = await this.agentsBuilderService.getOpenCheckpointMessages(agentId);
+		const openSuspensions = await this.agentsBuilderService.getOpenSuspensions(agentId);
+
+		let messages: AgentPersistedMessageDto[];
+		if (!checkpoint) {
+			messages = memory as unknown as AgentPersistedMessageDto[];
+		} else {
+			const memoryIds = new Set(memory.map((m) => (m as { id?: string }).id));
+			const newFromCheckpoint = checkpoint.filter((m) => !memoryIds.has((m as { id?: string }).id));
+			messages = [...memory, ...newFromCheckpoint] as unknown as AgentPersistedMessageDto[];
+		}
+
+		return { messages, openSuspensions };
 	}
 
 	@Delete('/:agentId/build/messages')
@@ -382,53 +522,108 @@ export class AgentsController {
 
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
-		const send = initSseResponse(res);
+		const { send, getMessageId, startNewTurn } = initSseStream(res);
 
 		try {
-			// Track streaming tool call input for set_code eager input streaming
 			let streamingToolName: string | undefined;
-
-			for await (const chunk of this.agentsBuilderService.buildAgent(
-				agentId,
-				projectId,
-				message,
-				credentialProvider,
-				req.user.id,
-			)) {
-				if (chunk.type === 'tool-call-delta') {
-					// Track which tool is streaming
-					if (chunk.name) {
-						streamingToolName = chunk.name;
-					}
-					// Stream tool code deltas for build_custom_tool
-					if (streamingToolName === 'build_custom_tool' && chunk.argumentsDelta) {
-						send({ toolCodeDelta: chunk.argumentsDelta });
-					}
-				} else if (chunk.type === 'message' && 'message' in chunk) {
-					const events = extractMessageEvents(chunk.message);
-					for (const event of events) {
-						send(event);
-						if ('toolResult' in event) {
-							const toolResult = event.toolResult as { tool?: string };
-							if (toolResult.tool === 'write_config' || toolResult.tool === 'patch_config') {
-								send({ configUpdated: true });
-								streamingToolName = undefined;
-							}
-							if (toolResult.tool === 'build_custom_tool') {
-								send({ toolUpdated: true });
-								streamingToolName = undefined;
-							}
+			const suspended = await pumpChunks(
+				this.agentsBuilderService.buildAgent(
+					agentId,
+					projectId,
+					message,
+					credentialProvider,
+					req.user.id,
+				),
+				send,
+				getMessageId,
+				startNewTurn,
+				{
+					toolCall: (name) => (streamingToolName = name),
+					toolCallDelta: (name, argumentsDelta) => {
+						if (name) streamingToolName = name;
+						if (streamingToolName === 'build_custom_tool') {
+							send({ type: 'codeDelta', delta: argumentsDelta });
 						}
-					}
-				} else {
-					this.sendStreamChunk(chunk, send);
-				}
-			}
+					},
+					toolResult: (name) => {
+						if (name === 'write_config' || name === 'patch_config') {
+							send({ type: 'configUpdated' });
+							streamingToolName = undefined;
+						}
+						if (name === 'build_custom_tool') {
+							send({ type: 'toolUpdated' });
+							streamingToolName = undefined;
+						}
+					},
+				},
+			);
 
-			send({ done: true });
+			if (!suspended) {
+				send({ type: 'done' });
+			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Build failed';
-			send({ error: errorMessage });
+			send({ type: 'error', message: errorMessage });
+		}
+
+		res.end();
+	}
+
+	@Post('/:agentId/build/resume', { usesTemplates: true })
+	async buildResume(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: FlushableResponse,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentBuildResumeDto,
+	) {
+		const { projectId } = req.params;
+		const { runId, toolCallId, resumeData } = payload;
+
+		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+
+		const { send, getMessageId, startNewTurn } = initSseStream(res);
+
+		try {
+			let streamingToolName: string | undefined;
+			const suspended = await pumpChunks(
+				this.agentsBuilderService.resumeBuild(
+					agentId,
+					projectId,
+					runId,
+					toolCallId,
+					resumeData,
+					credentialProvider,
+				),
+				send,
+				getMessageId,
+				startNewTurn,
+				{
+					toolCall: (name) => (streamingToolName = name),
+					toolCallDelta: (name, argumentsDelta) => {
+						if (name) streamingToolName = name;
+						if (streamingToolName === 'build_custom_tool') {
+							send({ type: 'codeDelta', delta: argumentsDelta });
+						}
+					},
+					toolResult: (name) => {
+						if (name === 'write_config' || name === 'patch_config') {
+							send({ type: 'configUpdated' });
+							streamingToolName = undefined;
+						}
+						if (name === 'build_custom_tool') {
+							send({ type: 'toolUpdated' });
+							streamingToolName = undefined;
+						}
+					},
+				},
+			);
+
+			if (!suspended) {
+				send({ type: 'done' });
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
+			send({ type: 'error', message: errorMessage });
 		}
 
 		res.end();
@@ -588,36 +783,5 @@ export class AgentsController {
 		});
 		const body = await webResponse.text();
 		res.send(body);
-	}
-
-	// ---------------------------------------------------------------------------
-	// Private helpers
-	// ---------------------------------------------------------------------------
-
-	/**
-	 * Map a single StreamChunk to an SSE event and send it.
-	 * Handles text-delta, reasoning-delta, message, and error chunk types.
-	 */
-	private sendStreamChunk(chunk: StreamChunk, send: (data: Record<string, unknown>) => void): void {
-		switch (chunk.type) {
-			case 'text-delta':
-				if (chunk.delta) send({ text: chunk.delta });
-				break;
-			case 'reasoning-delta':
-				if (chunk.delta) send({ thinking: chunk.delta });
-				break;
-			case 'message':
-				for (const event of extractMessageEvents(chunk.message)) {
-					send(event);
-				}
-				break;
-			case 'error': {
-				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
-				send({ error: errMsg });
-				break;
-			}
-			default:
-				break;
-		}
 	}
 }

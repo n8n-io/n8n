@@ -73,10 +73,10 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 // The first test in this file pays the one-time SFC transform cost for
-// AgentBuilderView.vue (~4s), which overruns vitest's default 5s test timeout.
-// A higher cap gives that first render enough headroom; subsequent tests hit
-// the cached module and finish well under the default budget anyway.
-vi.setConfig({ testTimeout: 15_000 });
+// AgentBuilderView.vue and its dependencies. A generous timeout gives that
+// first render enough headroom; subsequent tests hit the cached module and
+// finish well under the default budget.
+vi.setConfig({ testTimeout: 30_000 });
 
 describe('AgentBuilderView — chat mode toggle', () => {
 	beforeEach(() => {
@@ -94,7 +94,6 @@ describe('AgentBuilderView — chat mode toggle', () => {
 						props: ['endpoint', 'projectId', 'agentId', 'mode', 'initialMessage'],
 					},
 					AgentHomeContent: { template: '<div data-testid="home-stub" />' },
-					AgentBuilderProgress: { template: '<div data-testid="progress-stub" />' },
 					AgentSettingsSidebar: { template: '<div data-testid="settings-stub" />' },
 					N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 					N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
@@ -184,5 +183,32 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
 		expect(buildPanel.exists()).toBe(true);
 		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
+	});
+
+	it('navigates directly to build chat on startChat for an unbuilt agent (no progress screen)', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			mode: string;
+			chatMode: string;
+			startChat: (msg: string) => void;
+			isBuilt: boolean;
+		};
+
+		// Agent has no instructions — isBuilt should be false.
+		expect(vm.isBuilt).toBe(false);
+
+		vm.startChat('Build me a Slack triage agent');
+		await nextTick();
+
+		// Should go directly into build chat — no 'building' mode.
+		expect(vm.mode).toBe('chat');
+		expect(vm.chatMode).toBe('build');
+
+		// No progress screen rendered
+		expect(wrapper.find('[data-testid="progress-stub"]').exists()).toBe(false);
+
+		// Build chat panel should be visible
+		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
+		expect(buildPanel.exists()).toBe(true);
 	});
 });
