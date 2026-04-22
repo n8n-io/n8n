@@ -10,6 +10,17 @@ vi.mock('../composables/useAgentApi', () => ({
 	unpublishAgent: vi.fn(),
 }));
 
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackPublishedAgent: vi.fn(),
+		trackUnpublishedAgent: vi.fn(),
+	}),
+}));
+
+vi.mock('../composables/agentTelemetry.utils', () => ({
+	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({ config_version: 'v-test' }),
+}));
+
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
 }));
@@ -170,6 +181,53 @@ describe('AgentPublishButton', () => {
 		await flushPromises();
 
 		expect(publishAgent).not.toHaveBeenCalled();
+	});
+
+	it('computes config_version from the server-returned publishedVersion.schema, not caller context', async () => {
+		const { publishAgent } = await import('../composables/useAgentApi');
+		const { buildAgentConfigFingerprint } = await import('../composables/agentTelemetry.utils');
+
+		// Server returns the just-published config in publishedVersion.schema.
+		const publishedSchema = { name: 'X', instructions: 'pub', model: 'gpt-4' } as unknown as Record<
+			string,
+			unknown
+		>;
+		const updatedAgent = createAgent({
+			publishedVersion: { ...publishedVersion, schema: publishedSchema as never },
+		});
+		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
+
+		// Caller has no live draft available — mirrors the list-card publish path.
+		const agent = createAgent({ publishedVersion: null });
+		const wrapper = await renderComponent({ agent });
+		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+		await flushPromises();
+
+		// Fingerprint must be derived from the server's response so different
+		// agents never collide on `config_version`.
+		expect(buildAgentConfigFingerprint).toHaveBeenCalledWith(publishedSchema, []);
+	});
+
+	it('treats publish as successful when telemetry fingerprinting throws', async () => {
+		const { publishAgent } = await import('../composables/useAgentApi');
+		const { buildAgentConfigFingerprint } = await import('../composables/agentTelemetry.utils');
+		const { useToast } = await import('@/app/composables/useToast');
+		const updatedAgent = createAgent({ publishedVersion });
+		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
+		vi.mocked(buildAgentConfigFingerprint).mockRejectedValueOnce(
+			new Error('crypto.subtle unavailable'),
+		);
+
+		const agent = createAgent({ publishedVersion: null });
+		const wrapper = await renderComponent({ agent });
+		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+		await flushPromises();
+
+		// Success path ran all the way through — no error toast, published event emitted.
+		const toast = useToast();
+		expect(toast.showError).not.toHaveBeenCalled();
+		expect(toast.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 	});
 
 	// Dropdown — publish action

@@ -117,6 +117,7 @@ describe('AgentSettingsSidebar', () => {
 				updatedAt: '2026-04-09T00:00:00Z',
 				agent: null,
 				saveStatus: 'idle',
+				agentStatus: 'draft' as const,
 				...props,
 			},
 			global: {
