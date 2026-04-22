@@ -148,7 +148,7 @@ export async function runMemoryBenchmark(
 	let baselineRss: RssBreakdown | null = null;
 	if (!dryRun) {
 		baseline = await getStableHeap(baseUrl, metrics, heapOptions);
-		await attachMetric(testInfo, 'heap-baseline', baseline.heapUsedMB, 'MB', dimensions);
+		await attachMetric(testInfo, 'heap-pre-phase', baseline.heapUsedMB, 'MB', dimensions);
 		baselineRss = await captureRssBreakdown(baseUrl, testInfo.outputDir, 'baseline');
 		if (captureSnapshots) {
 			snapshotPaths.baseline = await takeHeapSnapshot(baseUrl, testInfo, 'baseline');
