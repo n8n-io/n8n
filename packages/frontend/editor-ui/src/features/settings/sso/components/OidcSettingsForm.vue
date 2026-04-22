@@ -159,7 +159,12 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			loginEnabled: ssoStore.isOidcLoginEnabled,
 			authenticationContextClassReference: acrArray,
 		});
+		const wasDroppingProjectRules = isDroppingProjectRules.value;
 		await saveProvisioningConfig(isDisablingOidcLogin);
+
+		if (wasDroppingProjectRules) {
+			roleMappingRuleEditorRef.value?.discardProjectRules();
+		}
 
 		if (userRoleProvisioning.value === 'expression_based') {
 			await roleMappingRuleEditorRef.value?.save();

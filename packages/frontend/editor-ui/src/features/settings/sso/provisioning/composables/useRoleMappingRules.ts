@@ -33,6 +33,7 @@ export function useRoleMappingRules() {
 	const isDirty = ref(false);
 
 	let serverRuleIds = new Set<string>();
+	let serverProjectRuleIds = new Set<string>();
 
 	let fallbackInitialized = false;
 	watch(fallbackInstanceRole, () => {
@@ -111,10 +112,19 @@ export function useRoleMappingRules() {
 			instanceRules.value = allRules.filter((r) => r.type === 'instance');
 			projectRules.value = allRules.filter((r) => r.type === 'project');
 			serverRuleIds = new Set(allRules.map((r) => r.id));
+			serverProjectRuleIds = new Set(allRules.filter((r) => r.type === 'project').map((r) => r.id));
 			isDirty.value = false;
 		} finally {
 			isLoading.value = false;
 		}
+	}
+
+	function discardProjectRules() {
+		projectRules.value = [];
+		for (const id of serverProjectRuleIds) {
+			serverRuleIds.delete(id);
+		}
+		serverProjectRuleIds = new Set();
 	}
 
 	async function save() {
@@ -158,5 +168,6 @@ export function useRoleMappingRules() {
 		reorder,
 		loadRules,
 		save,
+		discardProjectRules,
 	};
 }

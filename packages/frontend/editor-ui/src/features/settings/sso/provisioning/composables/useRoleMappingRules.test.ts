@@ -204,4 +204,59 @@ describe('useRoleMappingRules', () => {
 			expect(composable.projectRules.value.every((r) => r.type === 'project')).toBe(true);
 		});
 	});
+
+	describe('discardProjectRules', () => {
+		it('clears local project rules (both persisted and unsaved local-* ones)', async () => {
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
+				makeRule({ id: 'i1', type: 'instance', order: 0 }),
+				makeRule({ id: 'p1', type: 'project', order: 0, projectIds: ['proj-1'] }),
+			]);
+
+			await composable.loadRules();
+			composable.addRule('project');
+			expect(composable.projectRules.value).toHaveLength(2);
+
+			composable.discardProjectRules();
+
+			expect(composable.projectRules.value).toEqual([]);
+			expect(composable.instanceRules.value).toHaveLength(1);
+		});
+
+		it('prevents save() from trying to DELETE or UPDATE project rules that the backend already removed', async () => {
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
+				makeRule({ id: 'i1', type: 'instance', order: 0 }),
+				makeRule({ id: 'p1', type: 'project', order: 0, projectIds: ['proj-1'] }),
+			]);
+			vi.mocked(roleMappingRuleApi.updateRoleMappingRule).mockResolvedValue(
+				{} as RoleMappingRuleResponse,
+			);
+			vi.mocked(roleMappingRuleApi.deleteRoleMappingRule).mockResolvedValue(undefined);
+			vi.mocked(roleMappingRuleApi.createRoleMappingRule).mockResolvedValue(
+				{} as RoleMappingRuleResponse,
+			);
+
+			await composable.loadRules();
+			// Simulate: user added a new project rule (local-*) on top of the existing p1
+			composable.addRule('project');
+			// Simulate: backend (via deleteProjectRules in config patch) has just wiped project rules
+			composable.discardProjectRules();
+
+			// listRules is re-called at the end of save(); stub it for the post-save refresh
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
+				makeRule({ id: 'i1', type: 'instance', order: 0 }),
+			]);
+
+			await composable.save();
+
+			// Critical: the save must NOT try to DELETE or UPDATE p1 — backend already did.
+			expect(roleMappingRuleApi.deleteRoleMappingRule).not.toHaveBeenCalled();
+			expect(roleMappingRuleApi.updateRoleMappingRule).not.toHaveBeenCalledWith(
+				expect.anything(),
+				'p1',
+				expect.anything(),
+			);
+			// And it must NOT re-create the locally-added project rule either.
+			expect(roleMappingRuleApi.createRoleMappingRule).not.toHaveBeenCalled();
+		});
+	});
 });

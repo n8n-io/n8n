@@ -243,7 +243,12 @@ const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<bo
 			loginEnabled: samlLoginEnabled.value,
 		});
 
+		const wasDroppingProjectRules = isDroppingProjectRules.value;
 		await saveProvisioningConfig(isDisablingSamlLogin);
+
+		if (wasDroppingProjectRules) {
+			roleMappingRuleEditorRef.value?.discardProjectRules();
+		}
 
 		if (userRoleProvisioning.value === 'expression_based') {
 			await roleMappingRuleEditorRef.value?.save();
