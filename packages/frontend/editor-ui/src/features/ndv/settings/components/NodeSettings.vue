@@ -47,7 +47,6 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
-import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import {
 	collectParametersByTab,
 	collectSettings,
@@ -69,6 +68,7 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
 
 const props = withDefaults(
 	defineProps<{
@@ -149,12 +149,7 @@ if (props.isEmbeddedInCanvas) {
 
 const nodeValid = ref(true);
 
-const initialNode = props.activeNode ?? ndvStore.activeNode;
-const initialHasExecutionData =
-	!!initialNode && !!workflowsStore.getWorkflowRunData?.[initialNode.name]?.length;
-const openPanel = ref<NodeSettingsTab>(
-	props.readOnly && initialHasExecutionData ? 'output' : 'params',
-);
+const openPanel = ref<NodeSettingsTab>('params');
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
@@ -484,21 +479,19 @@ const onOpenConnectionNodeCreator = (
 };
 
 const populateHiddenIssuesSet = () => {
-	if (!node.value || !workflowsStore.isNodePristine(node.value.name)) return;
+	if (!node.value || !workflowDocumentStore?.value?.isNodePristine(node.value.name)) return;
 	hiddenIssuesInputs.value.push('credentials');
 	parametersByTab.value.params.forEach((parameter) => {
 		hiddenIssuesInputs.value.push(parameter.name);
 	});
-	workflowsStore.setNodePristine(node.value.name, false);
+	workflowDocumentStore?.value?.setNodePristine(node.value.name, false);
 };
 
 const nodeSettings = computed(() =>
 	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
 );
 
-const iconSource = computed(() =>
-	getNodeIconSource(nodeType.value ?? node.value?.type, node.value ?? null),
-);
+const iconSource = useNodeIconSource(nodeType, node);
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
@@ -581,16 +574,8 @@ const onFeatureRequestClick = () => {
 	}
 };
 
-watch(node, (newNode, oldNode) => {
+watch(node, () => {
 	setNodeValues();
-
-	// When the active node changes in a read-only view, re-evaluate which
-	// tab to open so nodes with execution data land on 'output' by default.
-	if (newNode?.name !== oldNode?.name && props.readOnly) {
-		const hasExecutionData =
-			!!newNode && !!workflowsStore.getWorkflowRunData?.[newNode.name]?.length;
-		openPanel.value = hasExecutionData ? 'output' : 'params';
-	}
 });
 
 onMounted(async () => {

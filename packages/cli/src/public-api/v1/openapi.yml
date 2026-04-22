@@ -42,6 +42,8 @@ tags:
     description: API capability discovery
   - name: Insights
     description: Operations about insights
+  - name: Folders
+    description: Operations about folders
 
 paths:
   /audit:
@@ -130,6 +132,8 @@ paths:
     $ref: './handlers/discover/spec/paths/discover.yml'
   /insights/summary:
     $ref: './handlers/insights/spec/paths/insights.yml'
+  /projects/{projectId}/folders:
+    $ref: './handlers/folders/spec/paths/folders.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, sanitizeXmlName } from 'n8n-workflow';
 import Parser from 'rss-parser';
 
 interface PollData {
@@ -54,7 +54,12 @@ export class RssFeedReadTrigger implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
 		}
 
-		const parser = new Parser();
+		const parser = new Parser({
+			xml2js: {
+				tagNameProcessors: [sanitizeXmlName],
+				attrNameProcessors: [sanitizeXmlName],
+			},
+		});
 
 		let feed: Parser.Output<IDataObject>;
 		try {
