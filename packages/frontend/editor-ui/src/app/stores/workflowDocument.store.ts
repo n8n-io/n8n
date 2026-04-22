@@ -172,6 +172,19 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		}
 
 		function hydrate(workflow: IWorkflowDb) {
+			if (workflow.id !== workflowId) {
+				throw new Error(
+					`workflowDocumentStore(${id}).hydrate(): workflow id mismatch — ` +
+						`expected "${workflowId}", got "${workflow.id}"`,
+				);
+			}
+			if (workflowVersion !== 'latest' && workflow.versionId !== workflowVersion) {
+				throw new Error(
+					`workflowDocumentStore(${id}).hydrate(): workflow version mismatch — ` +
+						`expected "${workflowVersion}", got "${workflow.versionId}"`,
+				);
+			}
+
 			workflowDocumentName.setName(workflow.name ?? '');
 			workflowDocumentDescription.setDescription(workflow.description ?? '');
 			workflowDocumentActive.setActiveState({
@@ -224,6 +237,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentNodes.setNodes([]);
 			workflowDocumentConnections.setConnections({});
 			workflowDocumentPinData.setPinData({});
+			workflowDocumentViewport.setViewport(null);
 		}
 
 		function getSnapshot(): WorkflowObjectAccessors {

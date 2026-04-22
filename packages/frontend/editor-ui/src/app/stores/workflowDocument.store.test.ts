@@ -244,7 +244,7 @@ describe('workflowDocument.store orchestration', () => {
 		});
 
 		it('is idempotent — hydrating twice with the same input yields the same state', () => {
-			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-idem'));
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
 			const workflow = buildFullWorkflow();
 
 			store.hydrate(workflow);
@@ -269,6 +269,39 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.checksum).toBe(firstSnapshot.checksum);
 			expect(store.allNodes.map((n) => n.name)).toEqual(firstSnapshot.allNodes);
 			expect({ ...store.pinData }).toEqual(firstSnapshot.pinData);
+		});
+
+		describe('identity guards', () => {
+			it('throws when workflow.id does not match the store workflow id', () => {
+				const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+				const workflow = { ...buildFullWorkflow(), id: 'wf-other' };
+
+				expect(() => store.hydrate(workflow)).toThrow(/workflow id mismatch/);
+			});
+
+			it('throws when workflow.versionId does not match an explicit store version', () => {
+				const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1', 'ver-123'));
+				const workflow = { ...buildFullWorkflow(), versionId: 'ver-999' };
+
+				expect(() => store.hydrate(workflow)).toThrow(/workflow version mismatch/);
+			});
+
+			it("does not validate versionId when store version is 'latest'", () => {
+				const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+				const workflow = { ...buildFullWorkflow(), versionId: 'ver-anything' };
+
+				expect(() => store.hydrate(workflow)).not.toThrow();
+				expect(store.versionId).toBe('ver-anything');
+			});
+
+			it('hydrates normally when both id and versionId match', () => {
+				const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1', 'ver-123'));
+				const workflow = buildFullWorkflow();
+
+				expect(() => store.hydrate(workflow)).not.toThrow();
+				expect(store.name).toBe('My Workflow');
+				expect(store.versionId).toBe('ver-123');
+			});
 		});
 	});
 
@@ -309,6 +342,7 @@ describe('workflowDocument.store orchestration', () => {
 				checksum: 'sum',
 				meta: { templateId: 'tpl' },
 			});
+			store.setViewport({ x: 100, y: 200, zoom: 1.5 });
 
 			store.reset();
 
@@ -334,6 +368,7 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.allNodes).toHaveLength(0);
 			expect(store.connectionsBySourceNode).toEqual({});
 			expect(store.pinData).toEqual({});
+			expect(store.viewport).toBeNull();
 		});
 	});
 });
