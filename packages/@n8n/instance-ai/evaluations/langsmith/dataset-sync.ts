@@ -40,23 +40,25 @@ function deterministicUuid(input: string): string {
  * `testCaseFile` is included so the LangSmith Inputs column shows which
  * workflow a scenario belongs to (metadata is hidden by default).
  */
-export interface DatasetExampleInputs {
-	prompt: string;
-	testCaseFile: string;
-	scenarioName: string;
-	scenarioDescription: string;
-	dataSetup: string;
-	successCriteria: string;
-}
+export const datasetExampleInputsSchema = z.object({
+	prompt: z.string(),
+	testCaseFile: z.string(),
+	scenarioName: z.string(),
+	scenarioDescription: z.string(),
+	dataSetup: z.string(),
+	successCriteria: z.string(),
+});
+export type DatasetExampleInputs = z.infer<typeof datasetExampleInputsSchema>;
 
 /** Metadata attached to each example for filtering / grouping in the UI. */
-export interface DatasetExampleMetadata {
+export const datasetExampleMetadataSchema = z.object({
 	/** Duplicated from inputs so the LangSmith UI can group by it (only metadata keys are groupable). */
-	testCaseFile: string;
-	complexity?: 'simple' | 'medium' | 'complex';
-	tags?: string[];
-	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-}
+	testCaseFile: z.string(),
+	complexity: z.enum(['simple', 'medium', 'complex']).optional(),
+	tags: z.array(z.string()).optional(),
+	triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
+});
+export type DatasetExampleMetadata = z.infer<typeof datasetExampleMetadataSchema>;
 
 /**
  * Sync JSON test cases to a LangSmith dataset.

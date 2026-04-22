@@ -54,22 +54,21 @@ Verify each checklist item against the artifact above.`;
 			cache: true,
 		}).structuredOutput(checklistResultSchema);
 
-		let timer: NodeJS.Timeout | undefined;
+		const abortController = new AbortController();
+		const timer = setTimeout(
+			() =>
+				abortController.abort(new Error(`verifier timed out after ${VERIFY_ATTEMPT_TIMEOUT_MS}ms`)),
+			VERIFY_ATTEMPT_TIMEOUT_MS,
+		);
 		let result;
 		try {
-			const timeout = new Promise<never>((_, reject) => {
-				timer = setTimeout(
-					() => reject(new Error(`verifier timed out after ${VERIFY_ATTEMPT_TIMEOUT_MS}ms`)),
-					VERIFY_ATTEMPT_TIMEOUT_MS,
-				);
-			});
-			result = await Promise.race([agent.generate(userMessage), timeout]);
+			result = await agent.generate(userMessage, { abortSignal: abortController.signal });
 		} catch (error: unknown) {
 			const msg = error instanceof Error ? error.message : String(error);
 			console.warn(`[verifier] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} failed: ${msg}`);
 			continue;
 		} finally {
-			if (timer) clearTimeout(timer);
+			clearTimeout(timer);
 		}
 
 		const parsed = result.structuredOutput as z.infer<typeof checklistResultSchema> | undefined;
