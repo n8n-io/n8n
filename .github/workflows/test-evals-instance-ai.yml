@@ -93,7 +93,7 @@ jobs:
           --base-url http://localhost:5678
           --concurrency 4
           --verbose
-          --runs 5
+          --runs 3
           ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
         env:
           N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}

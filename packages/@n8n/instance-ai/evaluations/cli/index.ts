@@ -85,8 +85,13 @@ const runInputsSchema = z
 		prompt: z.string().default(''),
 		testCaseFile: z.string().default(''),
 		scenarioName: z.string().default(''),
+		/** 0-based iteration index; injected during multi-run expansion. */
+		_iteration: z.number().int().nonnegative().default(0),
 	})
 	.passthrough();
+
+/** Target input shape with the iteration index we inject for multi-run. */
+type TargetInputs = DatasetExampleInputs & { _iteration?: number };
 
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
@@ -161,17 +166,21 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	const { args, client, preRunWorkflowIds, claimedWorkflowIds, logger } = config;
 
 	const lsClient = new Client();
-
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
 
 	const buildLimiter = pLimit(MAX_CONCURRENT_BUILDS);
+	// Keyed by `${iteration}:${prompt}` so the same prompt gets a fresh build
+	// per iteration — pass@k captures real builder variance.
 	const buildCache = new Map<string, Promise<BuildResult>>();
 	const buildDurations = new Map<string, number>();
 
 	async function getOrBuild(
 		prompt: string,
+		iteration: number,
 	): Promise<{ build: BuildResult; buildDurationMs?: number }> {
-		const existing = buildCache.get(prompt);
+		const key = `${String(iteration)}:${prompt}`;
+		const existing = buildCache.get(key);
 		if (existing) return { build: await existing };
 		// Timer runs inside the limiter so queue-wait isn't counted as build time.
 		const promise = buildLimiter(async () => {
@@ -184,20 +193,19 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 				claimedWorkflowIds,
 				logger,
 			});
-			buildDurations.set(prompt, Date.now() - start);
+			buildDurations.set(key, Date.now() - start);
 			return build;
 		});
-		buildCache.set(prompt, promise);
+		buildCache.set(key, promise);
 		const build = await promise;
-		return { build, buildDurationMs: buildDurations.get(prompt) };
+		return { build, buildDurationMs: buildDurations.get(key) };
 	}
 
 	// Created once to avoid AsyncLocalStorage context leaks across concurrent runs.
-	const traceableBuild = traceable(async (prompt: string) => await getOrBuild(prompt), {
-		name: 'workflow_build',
-		run_type: 'chain',
-		client: lsClient,
-	});
+	const traceableBuild = traceable(
+		async (prompt: string, iteration: number) => await getOrBuild(prompt, iteration),
+		{ name: 'workflow_build', run_type: 'chain', client: lsClient },
+	);
 
 	const traceableExecute = traceable(
 		async (execArgs: {
@@ -215,7 +223,8 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		{ name: 'scenario_execution', run_type: 'chain', client: lsClient },
 	);
 
-	const target = async (inputs: DatasetExampleInputs): Promise<TargetOutput> => {
+	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
+		const iteration = inputs._iteration ?? 0;
 		const scenario: TestScenario = {
 			name: inputs.scenarioName,
 			description: inputs.scenarioDescription,
@@ -223,7 +232,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			successCriteria: inputs.successCriteria,
 		};
 
-		const { build, buildDurationMs } = await traceableBuild(inputs.prompt);
+		const { build, buildDurationMs } = await traceableBuild(inputs.prompt, iteration);
 
 		if (!build.success || !build.workflowId) {
 			return {
@@ -304,9 +313,11 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		`Starting evaluate() with concurrency=${String(args.concurrency)}, builds limited to ${String(MAX_CONCURRENT_BUILDS)}, runs=${String(args.runs)}`,
 	);
 
-	const evaluateData = args.filter
+	const sourceExamples = args.filter
 		? filteredExamplesIterable(lsClient, datasetName, args.filter, logger)
-		: datasetName;
+		: lsClient.listExamples({ datasetName });
+	const evaluateData =
+		args.runs > 1 ? expandExamplesForIterations(sourceExamples, args.runs) : sourceExamples;
 
 	try {
 		const evaluateStart = Date.now();
@@ -315,7 +326,6 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			evaluators: [feedbackExtractor],
 			experimentPrefix,
 			maxConcurrency: args.concurrency,
-			numRepetitions: args.runs,
 			client: lsClient,
 			metadata: {
 				filter: args.filter ?? 'all',
@@ -339,7 +349,6 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			logger,
 		});
 
-		const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
 		const allRunResults = reshapeLangSmithRuns(
 			experimentResults.results,
 			testCasesWithFiles,
@@ -358,6 +367,26 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 					}
 				}),
 			);
+		}
+	}
+}
+
+/**
+ * Expand a source example stream into N copies, tagging each with `_iteration`
+ * so the target function can key its build cache by iteration and we can
+ * reshape runs back into per-iteration groups afterwards. All N copies share
+ * the source example's id, so LangSmith's UI groups them naturally by
+ * `reference_example_id` — useful for pass@k visualization.
+ */
+async function* expandExamplesForIterations(
+	source: AsyncIterable<Example>,
+	runs: number,
+): AsyncIterable<Example> {
+	const cached: Example[] = [];
+	for await (const ex of source) cached.push(ex);
+	for (let i = 0; i < runs; i++) {
+		for (const ex of cached) {
+			yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
 		}
 	}
 }
@@ -431,20 +460,13 @@ function reshapeLangSmithRuns(
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
 	numRuns: number,
 ): WorkflowTestCaseResult[][] {
-	const byKey = new Map<string, Run[]>();
+	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
+	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
+	const byKey = new Map<string, Run>();
 	for (const { run } of rows) {
 		const inputs = runInputsSchema.parse(run.inputs ?? {});
-		const key = `${inputs.testCaseFile}/${inputs.scenarioName}`;
-		const group = byKey.get(key) ?? [];
-		group.push(run);
-		byKey.set(key, group);
-	}
-	for (const group of byKey.values()) {
-		group.sort(
-			(a, b) =>
-				new Date(a.start_time as string | number).getTime() -
-				new Date(b.start_time as string | number).getTime(),
-		);
+		const key = `${String(inputs._iteration)}/${inputs.testCaseFile}/${inputs.scenarioName}`;
+		byKey.set(key, run);
 	}
 
 	const allRunResults: WorkflowTestCaseResult[][] = [];
@@ -457,8 +479,7 @@ function reshapeLangSmithRuns(
 			let buildError: string | undefined;
 
 			for (const scenario of testCase.scenarios) {
-				const runs = byKey.get(`${fileSlug}/${scenario.name}`);
-				const run = runs?.[iter];
+				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
 				if (!run) {
 					scenarioResults.push({
 						scenario,
