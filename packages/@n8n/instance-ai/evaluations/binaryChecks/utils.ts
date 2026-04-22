@@ -56,7 +56,7 @@ export function forEachConnection(
 	for (const [sourceName, outputs] of Object.entries(connections)) {
 		if (typeof outputs !== 'object' || outputs === null) continue;
 
-		for (const [connType, connectionGroup] of Object.entries(outputs as Record<string, unknown>)) {
+		for (const [connType, connectionGroup] of Object.entries(outputs)) {
 			if (!Array.isArray(connectionGroup)) continue;
 			for (const outputSlot of connectionGroup) {
 				if (!Array.isArray(outputSlot)) continue;
@@ -68,6 +68,29 @@ export function forEachConnection(
 			}
 		}
 	}
+}
+
+/**
+ * Recursively extract all expression strings from node parameters.
+ * An expression is a string starting with `=`, or the body of a `jsCode` field.
+ */
+export function extractExpressionsFromParams(value: unknown, key?: string): string[] {
+	if (typeof value === 'string') {
+		if (value.charAt(0) === '=' || key === 'jsCode') {
+			return [value];
+		}
+		return [];
+	}
+
+	if (Array.isArray(value)) {
+		return value.flatMap((item) => extractExpressionsFromParams(item));
+	}
+
+	if (typeof value === 'object' && value !== null) {
+		return Object.entries(value).flatMap(([k, v]) => extractExpressionsFromParams(v, k));
+	}
+
+	return [];
 }
 
 /**

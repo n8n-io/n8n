@@ -597,8 +597,8 @@ export class InstanceAiController {
 		_res: Response,
 		@Body payload: InstanceAiEvalSubAgentRequest,
 	) {
-		if (process.env.NODE_ENV === 'production') {
-			throw new ForbiddenError('Sub-agent evaluation is disabled in production');
+		if (process.env.E2E_TESTS !== 'true' || process.env.NODE_ENV === 'production') {
+			throw new ForbiddenError('Sub-agent evaluation is not enabled');
 		}
 		return await this.subAgentEvalService.run(req.user, payload);
 	}

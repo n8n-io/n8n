@@ -397,20 +397,6 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Build model config. When the AI service proxy is enabled, returns a native
-	 * Anthropic LanguageModelV2 instance pointing at the proxy.
-	 *
-	 * We use `@ai-sdk/anthropic` directly instead of returning a `{ url }` config
-	 * object because Mastra's model router forces all configs with a `url` through
-	 * `createOpenAICompatible`, which sends requests to `/chat/completions`.
-	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
-	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
-	 *
-	 * Auth headers are injected via a custom `fetch` wrapper so that each
-	 * request gets a fresh-or-cached token from the ProxyTokenManager,
-	 * avoiding 401s on long-running agent turns.
-	 */
-	/**
 	 * Full model-resolver chain shared between chat and eval paths.
 	 *
 	 * Mirrors the resolution used in `processMessage`:
@@ -435,6 +421,20 @@ export class InstanceAiService {
 		return await this.settingsService.resolveModelConfig(user);
 	}
 
+	/**
+	 * Build model config. When the AI service proxy is enabled, returns a native
+	 * Anthropic LanguageModelV2 instance pointing at the proxy.
+	 *
+	 * We use `@ai-sdk/anthropic` directly instead of returning a `{ url }` config
+	 * object because Mastra's model router forces all configs with a `url` through
+	 * `createOpenAICompatible`, which sends requests to `/chat/completions`.
+	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
+	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
+	 *
+	 * Auth headers are injected via a custom `fetch` wrapper so that each
+	 * request gets a fresh-or-cached token from the ProxyTokenManager,
+	 * avoiding 401s on long-running agent turns.
+	 */
 	private async resolveProxyModel(
 		user: User,
 		proxyBaseUrl: string,

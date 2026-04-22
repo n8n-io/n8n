@@ -1031,7 +1031,7 @@ export class InstanceAiEvalSubAgentRequest extends Z.class({
 	/** The task the sub-agent should perform. */
 	prompt: z.string().min(1).max(10_000),
 	/** Optional model override. Defaults to the server's configured Instance AI model. */
-	modelId: z.string().optional(),
+	modelId: z.string().min(1).optional(),
 	/** Max agent steps. Defaults to 40. */
 	maxSteps: z.number().int().positive().max(200).optional(),
 	/** Per-run timeout in ms. Defaults to 120_000. Max: 600_000. */

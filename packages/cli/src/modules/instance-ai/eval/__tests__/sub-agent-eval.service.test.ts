@@ -2,8 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
-import { InstanceAiService } from '../../instance-ai.service';
+import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
+import type { InstanceAiService } from '../../instance-ai.service';
 import { SubAgentEvalService } from '../sub-agent-eval.service';
 
 function makeAgentResult(

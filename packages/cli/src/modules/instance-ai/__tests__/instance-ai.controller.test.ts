@@ -744,13 +744,20 @@ describe('InstanceAiController', () => {
 
 	describe('runSubAgentEval', () => {
 		const originalNodeEnv = process.env.NODE_ENV;
+		const originalE2ETests = process.env.E2E_TESTS;
 
 		afterEach(() => {
 			process.env.NODE_ENV = originalNodeEnv;
+			if (originalE2ETests === undefined) {
+				delete process.env.E2E_TESTS;
+			} else {
+				process.env.E2E_TESTS = originalE2ETests;
+			}
 		});
 
 		it('should delegate to SubAgentEvalService.run and return the response', async () => {
 			process.env.NODE_ENV = 'test';
+			process.env.E2E_TESTS = 'true';
 			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
 			const expectedResponse = mock<InstanceAiEvalSubAgentResponse>({
 				text: 'done',
@@ -767,8 +774,17 @@ describe('InstanceAiController', () => {
 			expect(result).toBe(expectedResponse);
 		});
 
+		it('should throw ForbiddenError when E2E_TESTS is not set', async () => {
+			process.env.NODE_ENV = 'test';
+			delete process.env.E2E_TESTS;
+			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
+
+			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);
+		});
+
 		it('should throw ForbiddenError when NODE_ENV is production', async () => {
 			process.env.NODE_ENV = 'production';
+			process.env.E2E_TESTS = 'true';
 			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
 
 			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);

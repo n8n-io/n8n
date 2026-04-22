@@ -101,16 +101,19 @@ export class SubAgentEvalService {
 		original: InstanceAiWorkflowService,
 		capturedIds: string[],
 	): InstanceAiWorkflowService {
+		const capture = (id: string) => {
+			if (!capturedIds.includes(id)) capturedIds.push(id);
+		};
 		return {
 			...original,
 			createFromWorkflowJSON: async (json) => {
 				const detail = await original.createFromWorkflowJSON(json);
-				capturedIds.push(detail.id);
+				capture(detail.id);
 				return detail;
 			},
 			updateFromWorkflowJSON: async (workflowId, json) => {
 				const detail = await original.updateFromWorkflowJSON(workflowId, json);
-				if (!capturedIds.includes(detail.id)) capturedIds.push(detail.id);
+				capture(detail.id);
 				return detail;
 			},
 		};

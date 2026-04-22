@@ -147,7 +147,8 @@ function loadLocalTestCases(filter?: string, subagent?: string): SubAgentTestCas
 			id: parsed.id ?? basename(file, '.json'),
 			prompt: parsed.prompt,
 		};
-		if (parsed.subagent ?? subagent) tc.subagent = parsed.subagent ?? subagent;
+		const resolvedSubagent = parsed.subagent ?? subagent;
+		if (resolvedSubagent) tc.subagent = resolvedSubagent;
 		if (parsed.systemPrompt) tc.systemPrompt = parsed.systemPrompt;
 		if (parsed.tools) tc.tools = parsed.tools;
 		if (parsed.maxSteps) tc.maxSteps = parsed.maxSteps;
@@ -314,35 +315,23 @@ async function runLocalMode(
 
 	const results: SubAgentResult[] = [];
 
-	if (args.concurrency <= 1) {
-		for (const testCase of testCases) {
-			if (args.verbose) {
-				console.log(`Starting: ${testCase.id} — ${truncate(testCase.prompt, 80)}`);
-			}
+	// Concurrency=1 falls through the same batched path (batch size 1, strictly sequential).
+	for (let i = 0; i < testCases.length; i += args.concurrency) {
+		const batch = testCases.slice(i, i + args.concurrency);
 
-			const result = await runSubAgent(testCase, config, deps);
+		if (args.verbose) {
+			for (const tc of batch) {
+				console.log(`Starting: ${tc.id} — ${truncate(tc.prompt, 80)}`);
+			}
+		}
+
+		const batchResults = await Promise.all(
+			batch.map(async (testCase) => await runSubAgent(testCase, config, deps)),
+		);
+
+		for (const result of batchResults) {
 			results.push(result);
 			printResult(result, args.verbose);
-		}
-	} else {
-		// Run test cases concurrently in batches
-		for (let i = 0; i < testCases.length; i += args.concurrency) {
-			const batch = testCases.slice(i, i + args.concurrency);
-
-			if (args.verbose) {
-				for (const tc of batch) {
-					console.log(`Starting: ${tc.id} — ${truncate(tc.prompt, 80)}`);
-				}
-			}
-
-			const batchResults = await Promise.all(
-				batch.map(async (testCase) => await runSubAgent(testCase, config, deps)),
-			);
-
-			for (const result of batchResults) {
-				results.push(result);
-				printResult(result, args.verbose);
-			}
 		}
 	}
 

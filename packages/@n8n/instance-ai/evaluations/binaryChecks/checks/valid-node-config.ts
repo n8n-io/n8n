@@ -8,6 +8,30 @@ import type { BinaryCheck } from '../types';
 const SCHEMA_ERROR_CODES = new Set(['INVALID_PARAMETER', 'MISSING_PARAMETER']);
 
 /**
+ * WorkflowResponse uses `Record<string, unknown>` for parameters/connections where
+ * WorkflowJSON uses narrower type aliases (IDataObject, IConnections). The shapes
+ * are structurally compatible at runtime but require a bridge cast at compile time.
+ *
+ * If either type drifts (e.g. WorkflowJSON gains a required field), this cast
+ * will silently hide the mismatch. If that happens, replace the `as unknown as`
+ * with an explicit per-field mapper and let TS enforce the shape.
+ */
+function toWorkflowJson(workflow: WorkflowResponse): WorkflowJSON {
+	return {
+		name: workflow.name,
+		nodes: (workflow.nodes ?? []).map((n, i) => ({
+			id: String(i),
+			name: n.name,
+			type: n.type,
+			typeVersion: n.typeVersion ?? 1,
+			parameters: n.parameters ?? {},
+			position: [0, 0],
+		})),
+		connections: workflow.connections,
+	} as unknown as WorkflowJSON;
+}
+
+/**
  * Validates node parameters against generated Zod schemas via workflow-sdk.
  *
  * Covers both:
@@ -26,23 +50,7 @@ export const validNodeConfig: BinaryCheck = {
 		const nodes = workflow.nodes ?? [];
 		if (nodes.length === 0) return { pass: true };
 
-		// Convert WorkflowResponse to WorkflowJSON shape.
-		// The parameter types are structurally compatible but use different type aliases
-		// (Record<string, unknown> vs IDataObject), so we cast the entire object.
-		const workflowJson = {
-			name: workflow.name,
-			nodes: nodes.map((n, i) => ({
-				id: String(i),
-				name: n.name,
-				type: n.type,
-				typeVersion: n.typeVersion ?? 1,
-				parameters: n.parameters ?? {},
-				position: [0, 0] as [number, number],
-			})),
-			connections: workflow.connections,
-		} as unknown as WorkflowJSON;
-
-		const result = validateWorkflow(workflowJson, {
+		const result = validateWorkflow(toWorkflowJson(workflow), {
 			allowNoTrigger: true,
 			allowDisconnectedNodes: true,
 			validateSchema: true,

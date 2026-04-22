@@ -2,7 +2,7 @@ import { discoverOutputSchemaForNode } from '@n8n/workflow-sdk';
 
 import type { WorkflowNodeResponse, WorkflowResponse } from '../../clients/n8n-client';
 import type { BinaryCheck } from '../types';
-import { SET_NODE_TYPE } from '../utils';
+import { SET_NODE_TYPE, extractExpressionsFromParams } from '../utils';
 
 // ---------------------------------------------------------------------------
 // Expression field reference extraction
@@ -57,26 +57,6 @@ function extractFieldReferences(expression: string): FieldReference[] {
 	}
 
 	return refs;
-}
-
-/** Recursively extract all expression strings from node parameters. */
-function extractExpressionsFromParams(value: unknown, key?: string): string[] {
-	if (typeof value === 'string') {
-		if (value.charAt(0) === '=' || key === 'jsCode') {
-			return [value];
-		}
-		return [];
-	}
-
-	if (Array.isArray(value)) {
-		return value.flatMap((item) => extractExpressionsFromParams(item));
-	}
-
-	if (typeof value === 'object' && value !== null) {
-		return Object.entries(value).flatMap(([k, v]) => extractExpressionsFromParams(v, k));
-	}
-
-	return [];
 }
 
 // ---------------------------------------------------------------------------

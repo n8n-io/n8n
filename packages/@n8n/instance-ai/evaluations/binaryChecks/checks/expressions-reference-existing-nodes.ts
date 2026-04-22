@@ -1,4 +1,5 @@
 import type { BinaryCheck } from '../types';
+import { extractExpressionsFromParams } from '../utils';
 
 /**
  * Regex patterns to extract node names from n8n expression syntaxes.
@@ -39,26 +40,6 @@ function extractNodeNamesFromExpression(expression: string): string[] {
 	}
 
 	return names;
-}
-
-/** Recursively extract all expression strings from node parameters. */
-function extractExpressionsFromParams(value: unknown, key?: string): string[] {
-	if (typeof value === 'string') {
-		if (value.charAt(0) === '=' || key === 'jsCode') {
-			return [value];
-		}
-		return [];
-	}
-
-	if (Array.isArray(value)) {
-		return value.flatMap((item) => extractExpressionsFromParams(item));
-	}
-
-	if (typeof value === 'object' && value !== null) {
-		return Object.entries(value).flatMap(([k, v]) => extractExpressionsFromParams(v, k));
-	}
-
-	return [];
 }
 
 export const expressionsReferenceExistingNodes: BinaryCheck = {

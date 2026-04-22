@@ -32,7 +32,7 @@ export interface SubAgentTestCase {
 	tools?: string[];
 	/** Model ID override for this test case. Overrides the runner config modelId. */
 	modelId?: string;
-	/** Max agent steps before timeout. Defaults to 20. */
+	/** Max agent steps before timeout. Defaults to 40 (see `SubAgentEvalService.DEFAULT_MAX_STEPS`). */
 	maxSteps?: number;
 }
 
@@ -74,7 +74,7 @@ export interface SubAgentRunnerConfig {
 	modelId?: string;
 	/** Timeout per test case in milliseconds. Defaults to 120_000. */
 	timeoutMs?: number;
-	/** Max agent steps. Overridden by test case if set. Defaults to 20. */
+	/** Max agent steps. Overridden by test case if set. Defaults to 40 (see `SubAgentEvalService.DEFAULT_MAX_STEPS`). */
 	maxSteps?: number;
 	/** Whether to print verbose output */
 	verbose?: boolean;

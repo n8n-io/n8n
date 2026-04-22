@@ -80,7 +80,9 @@ export async function runSubAgent(
 			agentTextResponse: response.text,
 		});
 
-		// Surface server-side run error as its own feedback entry
+		// Surface the server-side run error both as feedback (so LangSmith scores
+		// it) and as `result.error` (so the CLI printer shows it inline). Same
+		// string, two consumers — intentional.
 		if (response.error) {
 			feedback.unshift({
 				evaluator: 'subagent-runner',
@@ -91,15 +93,18 @@ export async function runSubAgent(
 			});
 		}
 
-		// Cleanup (best-effort — never fails the run)
-		if (deps.deleteAfterRun) {
-			for (const id of response.capturedWorkflowIds) {
-				try {
-					await deps.client.deleteWorkflow(id);
-				} catch {
-					// Intentionally swallow — cleanup failure is not a test failure.
-				}
-			}
+		// Cleanup (best-effort — never fails the run). Run in parallel to keep
+		// per-case tail latency low when the agent produced several workflows.
+		if (deps.deleteAfterRun && response.capturedWorkflowIds.length > 0) {
+			await Promise.all(
+				response.capturedWorkflowIds.map(async (id) => {
+					try {
+						await deps.client.deleteWorkflow(id);
+					} catch {
+						// Intentionally swallow — cleanup failure is not a test failure.
+					}
+				}),
+			);
 		}
 
 		const result: SubAgentResult = {

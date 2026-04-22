@@ -6,21 +6,21 @@ Tests whether workflows built by Instance AI actually work by executing them wit
 
 ### CLI
 
-Both harnesses (`e2e` and `subagent`) drive a running n8n instance over HTTP.
-Start n8n locally with `N8N_ENABLED_MODULES=instance-ai` before running either
-one.
+Two harnesses (`eval:instance-ai` and `eval:subagent`) drive a running n8n
+instance over HTTP. Start n8n locally with `N8N_ENABLED_MODULES=instance-ai`
+before running either one. The sub-agent harness also requires `E2E_TESTS=true`
+on the n8n instance — the `/eval/run-sub-agent` endpoint is disabled otherwise.
 
 ```bash
 # From packages/@n8n/instance-ai/, with n8n running via pnpm dev:ai
 
-# Run all test cases
+# End-to-end workflow evaluation (builder + mock execution + verification)
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --verbose
-
-# Run a single test case
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-form --verbose
-
-# Keep built workflows for inspection
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-form --keep-workflows --verbose
+
+# Sub-agent evaluation (builder only, real tools on live n8n, binary checks)
+dotenvx run -f ../../../.env.local -- pnpm eval:subagent --filter webhook-to-slack --verbose
 ```
 
 Results are printed to the console and written to `eval-results.json`.
@@ -42,6 +42,7 @@ docker run -d --name n8n-eval \
 
 # Run evals against it
 pnpm eval:instance-ai --base-url http://localhost:5678 --verbose
+pnpm eval:subagent --base-url http://localhost:5678 --verbose
 ```
 
 ### CI
@@ -54,10 +55,13 @@ The eval job is **non-blocking**. Results are posted as a PR comment and uploade
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `N8N_INSTANCE_AI_MODEL_API_KEY` | Yes | Anthropic API key for the Instance AI agent, mock generation, and verification |
-| `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
-| `N8N_EVAL_PASSWORD` | No | n8n login password (defaults to E2E test owner) |
-| `CONTEXT7_API_KEY` | No | Context7 API key for higher rate limits on API doc lookups. Free tier is 1,000 req/month |
+| `N8N_EVAL_BASE_URL` | No | n8n base URL. Defaults to `http://localhost:5678`. |
+| `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner). |
+| `N8N_EVAL_PASSWORD` | No | n8n login password (defaults to E2E test owner). |
+| `N8N_INSTANCE_AI_MODEL_API_KEY` | On server | Anthropic key for the Instance AI agent, mock generation, and verification. Set on the n8n instance, not the eval CLI — the sub-agent runs inside n8n. |
+| `E2E_TESTS` | On server, for `eval:subagent` | Must be `true` on the n8n instance. The `/eval/run-sub-agent` endpoint returns 403 otherwise. |
+| `LANGSMITH_API_KEY` | For `--dataset` mode | Only needed when running the LangSmith dataset mode. |
+| `CONTEXT7_API_KEY` | No | Higher API-doc rate limits. Set on the n8n instance. Free tier is 1,000 req/month. |
 
 ### Sub-agent evaluation flags
 
@@ -75,10 +79,14 @@ The eval job is **non-blocking**. Results are posted as a PR comment and uploade
 | `--keep-workflows` | Do not archive/delete workflows created during the run |
 | `--verbose` | Verbose output |
 
+## How the e2e harness works
+
 1. **Build** — sends the test case prompt to Instance AI, which builds a workflow
 2. **Phase 1** — analyzes the workflow and generates consistent mock data hints (one Sonnet call per scenario)
 3. **Phase 2** — executes the workflow with all HTTP requests intercepted. Each request goes to an LLM that generates a realistic API response using the node's configuration and API documentation from Context7
 4. **Verify** — an LLM evaluates whether the scenario's success criteria were met and categorizes any failure by root cause (see Failure categories below)
+
+## How the sub-agent harness works
 
 1. The CLI logs in to n8n with `N8N_EVAL_EMAIL` / `N8N_EVAL_PASSWORD`.
 2. For each test case it POSTs `/rest/instance-ai/eval/run-sub-agent`.
