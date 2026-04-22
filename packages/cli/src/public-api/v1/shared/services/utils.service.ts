@@ -6,11 +6,11 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProjectService } from '@/services/project.service.ee';
 
-export async function resolveProjectId(
+export async function assertProjectScope(
 	user: User,
 	projectId: string,
 	scopes: Scope[],
-): Promise<string> {
+): Promise<void> {
 	const exists = await Container.get(ProjectRepository).findOneBy({ id: projectId });
 	if (!exists) {
 		throw new NotFoundError(`Project with ID "${projectId}" not found`);
@@ -18,6 +18,4 @@ export async function resolveProjectId(
 
 	const project = await Container.get(ProjectService).getProjectWithScope(user, projectId, scopes);
 	if (!project) throw new ForbiddenError();
-
-	return project.id;
 }

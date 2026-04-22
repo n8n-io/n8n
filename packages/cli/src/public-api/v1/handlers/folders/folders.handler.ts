@@ -12,14 +12,15 @@ import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
 } from '../../shared/middlewares/global.middleware';
-import { resolveProjectId } from '../../shared/services/utils.service';
+import { assertProjectScope } from '../../shared/services/utils.service';
 
 export = {
 	createFolder: [
 		isLicensed('feat:folders'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'folder:create' }),
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
-			const projectId = await resolveProjectId(req.user, req.params.projectId, ['folder:create']);
+			const { projectId } = req.params;
+			await assertProjectScope(req.user, projectId, ['folder:create']);
 
 			const payload = CreateFolderDto.safeParse(req.body);
 			if (payload.error) {
@@ -39,7 +40,8 @@ export = {
 		isLicensed('feat:folders'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'folder:list' }),
 		async (req: AuthenticatedRequest<{ projectId: string }>, res: Response) => {
-			const projectId = await resolveProjectId(req.user, req.params.projectId, ['folder:list']);
+			const { projectId } = req.params;
+			await assertProjectScope(req.user, projectId, ['folder:list']);
 
 			const query = ListFolderQueryDto.safeParse(req.query);
 			if (query.error) {
