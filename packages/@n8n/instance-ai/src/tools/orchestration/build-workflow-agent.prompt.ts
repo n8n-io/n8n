@@ -586,5 +586,3 @@ When modifying an existing workflow, the current code is **already pre-loaded** 
 ${SDK_RULES_AND_PATTERNS}
 `;
 }
-
-// ── Patch-mode builder prompt ────────────────────────────────────────────────
