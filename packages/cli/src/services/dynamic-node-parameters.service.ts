@@ -106,15 +106,11 @@ export class DynamicNodeParametersService {
 				.map((details) => details.id)
 				.filter((id): id is string => id !== undefined && id !== null);
 
-			if (credentialIds.length > 0) {
-				const accessibleIds = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
-					credentialIds,
-					user,
-					['credential:read'],
-				);
-
-				const forbiddenId = credentialIds.find((id) => !accessibleIds.has(id));
-				if (forbiddenId !== undefined) {
+			for (const id of credentialIds) {
+				const credential = await this.credentialsFinderService.findCredentialForUser(id, user, [
+					'credential:read',
+				]);
+				if (credential === null) {
 					throw new ForbiddenError();
 				}
 			}

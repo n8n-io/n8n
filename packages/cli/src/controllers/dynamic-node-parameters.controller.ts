@@ -21,7 +21,7 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: OptionsRequestDto,
 	): Promise<INodePropertyOptions[]> {
-		await this.service.scrubInaccessibleProjectId(req.user, payload);
+		await this.service.refineResourceIds(req.user, payload);
 
 		const {
 			credentials,
@@ -70,7 +70,7 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceLocatorRequestDto,
 	) {
-		await this.service.scrubInaccessibleProjectId(req.user, payload);
+		await this.service.refineResourceIds(req.user, payload);
 
 		const {
 			path,
@@ -108,7 +108,7 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceMapperFieldsRequestDto,
 	) {
-		await this.service.scrubInaccessibleProjectId(req.user, payload);
+		await this.service.refineResourceIds(req.user, payload);
 
 		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion, projectId } =
 			payload;
@@ -136,7 +136,7 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ResourceMapperFieldsRequestDto,
 	) {
-		await this.service.scrubInaccessibleProjectId(req.user, payload);
+		await this.service.refineResourceIds(req.user, payload);
 
 		const { path, methodName, currentNodeParameters, nodeTypeAndVersion, projectId } = payload;
 
@@ -160,7 +160,7 @@ export class DynamicNodeParametersController {
 		_res: Response,
 		@Body payload: ActionResultRequestDto,
 	): Promise<NodeParameterValueType> {
-		await this.service.scrubInaccessibleProjectId(req.user, payload);
+		await this.service.refineResourceIds(req.user, payload);
 
 		const {
 			currentNodeParameters,
