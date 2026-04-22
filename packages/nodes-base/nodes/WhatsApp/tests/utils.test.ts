@@ -1,8 +1,9 @@
 import type { IHttpRequestOptions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import type { SendAndWaitConfig } from '../../../utils/sendAndWait/utils';
 import { createMessage, WHATSAPP_BASE_URL } from '../GenericFunctions';
-import { sanitizePhoneNumber } from '../MessageFunctions';
+import { componentsRequest, sanitizePhoneNumber, sendErrorPostReceive } from '../MessageFunctions';
 
 describe('sanitizePhoneNumber', () => {
 	const testNumber = '+99-(000)-111-2222';
@@ -104,5 +105,110 @@ describe('createMessage', () => {
 				to: recipientPhone,
 			},
 		});
+	});
+});
+
+describe('componentsRequest', () => {
+	it('maps new header and button parameter types for template components', async () => {
+		const mockContext = {
+			getNodeParameter: jest.fn().mockReturnValue({
+				component: [
+					{
+						type: 'header',
+						headerParameters: {
+							parameter: [
+								{ type: 'video', videoLink: 'https://cdn.example.com/video.mp4' },
+								{ type: 'document', documentLink: 'https://cdn.example.com/doc.pdf' },
+							],
+						},
+					},
+					{
+						type: 'button',
+						sub_type: 'copy_code',
+						index: 1,
+						buttonParameters: {
+							parameter: { type: 'coupon_code', coupon_code: 'SPRING26' },
+						},
+					},
+					{
+						type: 'button',
+						sub_type: 'flow',
+						index: 2,
+						buttonParameters: {
+							parameter: { type: 'action', flowToken: 'flow-token-123' },
+						},
+					},
+				],
+			}),
+		} as any;
+
+		const requestOptions: IHttpRequestOptions = { body: {} };
+
+		const result = await componentsRequest.call(mockContext, requestOptions);
+
+		expect(result.body).toEqual({
+			template: {
+				components: [
+					{
+						type: 'header',
+						parameters: [
+							{ type: 'video', video: { link: 'https://cdn.example.com/video.mp4' } },
+							{ type: 'document', document: { link: 'https://cdn.example.com/doc.pdf' } },
+						],
+					},
+					{
+						type: 'button',
+						sub_type: 'copy_code',
+						index: '1',
+						parameters: [{ type: 'coupon_code', coupon_code: 'SPRING26' }],
+					},
+					{
+						type: 'button',
+						sub_type: 'flow',
+						index: '2',
+						parameters: [{ type: 'action', action: { flow_token: 'flow-token-123' } }],
+					},
+				],
+			},
+		});
+	});
+});
+
+describe('sendErrorPostReceive', () => {
+	it('adds detailed metadata to invalid URL errors', async () => {
+		const mockContext = {
+			getNode: jest.fn().mockReturnValue({ name: 'WhatsApp' }),
+			getNodeParameter: jest.fn((name: string, fallbackValue?: unknown) => {
+				if (name === 'operation') return 'sendTemplate';
+				if (name === 'messageType') return 'image';
+				return fallbackValue;
+			}),
+		} as any;
+
+		const response = {
+			statusCode: 400,
+			body: {
+				error: {
+					message: '(#100) image link is not a valid URI.',
+					type: 'OAuthException',
+					code: 100,
+					fbtrace_id: 'ABC123',
+				},
+			},
+		} as any;
+
+		await expect(sendErrorPostReceive.call(mockContext, [], response)).rejects.toBeInstanceOf(
+			NodeApiError,
+		);
+
+		try {
+			await sendErrorPostReceive.call(mockContext, [], response);
+		} catch (error) {
+			const apiError = error as NodeApiError;
+			expect(apiError.message).toContain('Invalid image URL');
+			expect(apiError.description).toContain('Operation: sendTemplate');
+			expect(apiError.description).toContain('Error code: 100');
+			expect(apiError.description).toContain('FB trace ID: ABC123');
+		}
 	});
 });
