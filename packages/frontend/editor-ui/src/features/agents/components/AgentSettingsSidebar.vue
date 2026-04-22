@@ -52,6 +52,7 @@ const emit = defineEmits<{
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	'update:connected-triggers': [triggers: string[]];
+	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 }>();
 
 // --- Model & credential state (reusing ChatHub infrastructure) ---
@@ -292,10 +293,10 @@ watch(
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
-							:agent-status="agentStatus"
 							@update:connected-triggers="
 								(list: string[]) => emit('update:connected-triggers', list)
 							"
+							@trigger-added="(payload) => emit('trigger-added', payload)"
 						/>
 					</div>
 				</div>

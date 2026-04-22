@@ -12,22 +12,19 @@ import {
 	disconnectIntegration,
 	getIntegrationStatus,
 } from '../composables/useAgentApi';
-import { useAgentTelemetry } from '../composables/useAgentTelemetry';
-
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	agentName: string;
-	agentStatus: 'draft' | 'production';
 }>();
 
 const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
+	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 }>();
 
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const agentTelemetry = useAgentTelemetry();
 
 interface CredentialOption {
 	id: string;
@@ -243,12 +240,7 @@ async function onConnect(type: string) {
 		// so the telemetry payload reflects the just-connected trigger.
 		statuses.value[type] = 'connected';
 		const triggers = computeConnectedTriggers();
-		agentTelemetry.trackAddedTrigger({
-			agentId: props.agentId,
-			triggerType: type,
-			triggers,
-			status: props.agentStatus,
-		});
+		emit('trigger-added', { triggerType: type, triggers });
 
 		await fetchStatus();
 	} catch (e: unknown) {

@@ -66,33 +66,37 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
-	it('trackAddedTrigger fires with trigger_type, triggers list and status', () => {
+	it('trackAddedTrigger fires with trigger_type, triggers list, config_version and status', () => {
 		useAgentTelemetry().trackAddedTrigger({
 			agentId: 'ag-1',
 			triggerType: 'slack',
 			triggers: ['slack', 'telegram'],
+			configVersion: 'v4',
 			status: 'draft',
 		});
 		expect(trackMock).toHaveBeenCalledWith('User added trigger to agent', {
 			agent_id: 'ag-1',
 			trigger_type: 'slack',
 			triggers: ['slack', 'telegram'],
+			config_version: 'v4',
 			status: 'draft',
 			session_id: 'session-xyz',
 		});
 	});
 
-	it('trackAddedTools fires with tool_added, tools list and status', () => {
+	it('trackAddedTools fires with tool_added, tools list, config_version and status', () => {
 		useAgentTelemetry().trackAddedTools({
 			agentId: 'ag-1',
 			toolAdded: 'search',
 			tools: ['search', 'summarize'],
+			configVersion: 'v5',
 			status: 'draft',
 		});
 		expect(trackMock).toHaveBeenCalledWith('User added tools to agent', {
 			agent_id: 'ag-1',
 			tool_added: 'search',
 			tools: ['search', 'summarize'],
+			config_version: 'v5',
 			status: 'draft',
 			session_id: 'session-xyz',
 		});

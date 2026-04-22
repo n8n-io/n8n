@@ -58,12 +58,14 @@ export function useAgentTelemetry() {
 		agentId: string;
 		triggerType: string;
 		triggers: string[];
+		configVersion: string;
 		status: AgentTelemetryStatus;
 	}) {
 		telemetry.track('User added trigger to agent', {
 			agent_id: params.agentId,
 			trigger_type: params.triggerType,
 			triggers: params.triggers,
+			config_version: params.configVersion,
 			status: params.status,
 			...common(),
 		});
@@ -73,12 +75,14 @@ export function useAgentTelemetry() {
 		agentId: string;
 		toolAdded: string;
 		tools: string[];
+		configVersion: string;
 		status: AgentTelemetryStatus;
 	}) {
 		telemetry.track('User added tools to agent', {
 			agent_id: params.agentId,
 			tool_added: params.toolAdded,
 			tools: params.tools,
+			config_version: params.configVersion,
 			status: params.status,
 			...common(),
 		});

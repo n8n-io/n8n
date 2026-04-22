@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { N8nActionDropdown, N8nIcon, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
@@ -11,6 +11,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM, MODAL_CANCEL, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
+import isEqual from 'lodash/isEqual';
 import {
 	getAgent,
 	updateAgent,
@@ -155,16 +156,8 @@ async function loadInitialConnectedTriggers() {
 	}
 }
 
-function areStringListsEqual(a: string[], b: string[]): boolean {
-	if (a.length !== b.length) return false;
-	for (let i = 0; i < a.length; i++) {
-		if (a[i] !== b[i]) return false;
-	}
-	return true;
-}
-
 function onConnectedTriggersUpdate(list: string[]) {
-	const changed = !areStringListsEqual(triggersTelemetryBaseline.value, list);
+	const changed = !isEqual(triggersTelemetryBaseline.value, list);
 	connectedTriggers.value = list;
 	triggersTelemetryBaseline.value = list;
 	if (!changed) return;
@@ -323,8 +316,12 @@ function scheduleAutosave() {
 				await saveConfig();
 				saveStatus.value = 'saved';
 				telemetry.track('User saved agent settings', { agent_id: agentId.value });
+				emitPendingEditedConfigTelemetry();
 			} catch (error) {
 				saveStatus.value = 'idle';
+				// Drop pending edits — they never persisted, so emitting an
+				// `edited` event would misrepresent the state on the backend.
+				pendingEditedConfigParts.clear();
 				showError(error, locale.baseText('agents.builder.saveError'));
 			} finally {
 				autosaveInFlight = null;
@@ -341,37 +338,48 @@ async function settleAutosave() {
 	if (autosaveInFlight) await autosaveInFlight;
 }
 
-function derivePart(updates: Partial<AgentJsonConfig>): AgentConfigPart | null {
-	if ('instructions' in updates) return 'instructions';
-	if ('model' in updates) return 'model';
-	if ('credential' in updates) return 'model';
-	if ('memory' in updates) return 'memory';
-	if ('tools' in updates) return 'tools';
-	if ('name' in updates) return 'name';
-	if ('description' in updates) return 'description';
-	return null;
-}
-
-// Parts that come from text inputs emit per-keystroke, so debounce their
-// telemetry to avoid flooding RudderStack with one event per character. Discrete
-// toggles/selectors (memory, tools, credential, …) fire immediately.
-const TEXT_INPUT_EDIT_PARTS: ReadonlySet<AgentConfigPart> = new Set([
+// Config keys that map directly to a same-named telemetry part. `credential`
+// is handled separately below because it maps to `model` (a credential change
+// is conceptually part of a model selection — the sidebar emits
+// `{ model, credential }` together).
+const TRACKED_CONFIG_KEYS = [
 	'instructions',
-	'description',
 	'model',
+	'memory',
+	'tools',
 	'name',
-]);
+	'description',
+] as const satisfies ReadonlyArray<keyof AgentJsonConfig & AgentConfigPart>;
 
-interface PendingEditedConfigSnapshot {
-	agentId: string;
-	status: AgentTelemetryStatus;
-	config: AgentJsonConfig | null;
-	connectedTriggers: string[];
-	parts: Set<AgentConfigPart>;
+/**
+ * Returns every telemetry part whose value actually changed between `current`
+ * and `updates`. A single update payload can touch multiple parts (e.g. the
+ * JSON editor broadcasts the whole config, or model-change emits
+ * `{ model, credential }`), and we want one event per genuinely-changed part
+ * rather than coalescing to the first match.
+ */
+function deriveChangedParts(
+	updates: Partial<AgentJsonConfig>,
+	current: AgentJsonConfig | null,
+): AgentConfigPart[] {
+	const parts = new Set<AgentConfigPart>();
+	const changed = <K extends keyof AgentJsonConfig>(key: K) =>
+		key in updates && (!current || !isEqual(current[key], updates[key]));
+
+	for (const key of TRACKED_CONFIG_KEYS) {
+		if (changed(key)) parts.add(key);
+	}
+	if (changed('credential')) parts.add('model');
+	return Array.from(parts);
 }
 
-let pendingEditedConfig: PendingEditedConfigSnapshot | null = null;
-let editedConfigDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+// Parts accumulated between autosave flushes. `onConfigFieldUpdate` adds to this
+// set; the autosave callback drains it and emits one `User edited agent config`
+// event per part after a successful save. Edits that never persist (save error,
+// agent deletion, etc.) are intentionally dropped — didn't persist = didn't
+// happen. Triggers/name/description use their own endpoints (not `saveConfig`)
+// and fire telemetry immediately from their handlers instead of via this set.
+const pendingEditedConfigParts = new Set<AgentConfigPart>();
 
 function emitEditedConfigTelemetry(
 	parts: AgentConfigPart[],
@@ -384,27 +392,23 @@ function emitEditedConfigTelemetry(
 ) {
 	if (parts.length === 0) return;
 	void (async () => {
-		const fp = await buildAgentConfigFingerprint(snapshot.config, snapshot.connectedTriggers);
-		for (const part of parts) {
-			agentTelemetry.trackEditedConfig({
-				agentId: snapshot.agentId,
-				part,
-				configVersion: fp.config_version,
-				status: snapshot.status,
-			});
+		try {
+			const fingerPrint = await buildAgentConfigFingerprint(
+				snapshot.config,
+				snapshot.connectedTriggers,
+			);
+			for (const part of parts) {
+				agentTelemetry.trackEditedConfig({
+					agentId: snapshot.agentId,
+					part,
+					configVersion: fingerPrint.config_version,
+					status: snapshot.status,
+				});
+			}
+		} catch {
+			// Telemetry is best-effort — swallow fingerprint/track failures.
 		}
 	})();
-}
-
-function flushEditedConfigTelemetry() {
-	if (editedConfigDebounceTimer !== null) {
-		clearTimeout(editedConfigDebounceTimer);
-		editedConfigDebounceTimer = null;
-	}
-	const pending = pendingEditedConfig;
-	pendingEditedConfig = null;
-	if (!pending || pending.parts.size === 0) return;
-	emitEditedConfigTelemetry(Array.from(pending.parts), pending);
 }
 
 function currentEditSnapshot() {
@@ -416,41 +420,28 @@ function currentEditSnapshot() {
 	};
 }
 
+// Called after a successful `saveConfig()` to flush accumulated config-edit
+// telemetry. Uses `config.value` (the server's post-save state) so
+// `config_version` reflects what was actually persisted.
+function emitPendingEditedConfigTelemetry() {
+	if (pendingEditedConfigParts.size === 0) return;
+	const parts = Array.from(pendingEditedConfigParts);
+	pendingEditedConfigParts.clear();
+	emitEditedConfigTelemetry(parts, {
+		agentId: agentId.value,
+		status: deriveAgentStatus(agent.value),
+		config: config.value,
+		connectedTriggers: connectedTriggers.value,
+	});
+}
+
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
+	// Diff BEFORE assigning so we can tell which parts actually changed.
+	const changedParts = deriveChangedParts(updates, localConfig.value);
 	Object.assign(localConfig.value, updates);
+	for (const part of changedParts) pendingEditedConfigParts.add(part);
 	scheduleAutosave();
-
-	const part = derivePart(updates);
-	if (!part) return;
-
-	if (TEXT_INPUT_EDIT_PARTS.has(part)) {
-		// If the user switched agents mid-debounce, flush the pending events for
-		// the previous agent before starting a new snapshot for the current one.
-		if (pendingEditedConfig && pendingEditedConfig.agentId !== agentId.value) {
-			flushEditedConfigTelemetry();
-		}
-		// Capture a snapshot of the edit-relevant state each call so telemetry
-		// stays attributed to the correct agent even if the route changes before
-		// the debounce timer fires.
-		const existingParts = pendingEditedConfig?.parts ?? new Set<AgentConfigPart>();
-		pendingEditedConfig = {
-			agentId: agentId.value,
-			status: deriveAgentStatus(agent.value),
-			config: localConfig.value ? deepCopy(localConfig.value) : null,
-			connectedTriggers: [...connectedTriggers.value],
-			parts: existingParts,
-		};
-		pendingEditedConfig.parts.add(part);
-		if (editedConfigDebounceTimer !== null) clearTimeout(editedConfigDebounceTimer);
-		editedConfigDebounceTimer = setTimeout(
-			flushEditedConfigTelemetry,
-			getDebounceTime(DEBOUNCE_TIME.TELEMETRY.TRACK),
-		);
-		return;
-	}
-
-	emitEditedConfigTelemetry([part], currentEditSnapshot());
 }
 
 async function onConfigUpdated() {
@@ -458,15 +449,44 @@ async function onConfigUpdated() {
 
 	const current = toolIdentifiersFromConfig(config.value);
 	const added = current.filter((t) => !previousTools.value.includes(t));
-	for (const toolAdded of added) {
-		agentTelemetry.trackAddedTools({
-			agentId: agentId.value,
-			toolAdded,
-			tools: current,
-			status: deriveAgentStatus(agent.value),
-		});
+	if (added.length > 0) {
+		const snapshot = currentEditSnapshot();
+		void (async () => {
+			try {
+				const fp = await buildAgentConfigFingerprint(snapshot.config, snapshot.connectedTriggers);
+				for (const toolAdded of added) {
+					agentTelemetry.trackAddedTools({
+						agentId: snapshot.agentId,
+						toolAdded,
+						tools: current,
+						configVersion: fp.config_version,
+						status: snapshot.status,
+					});
+				}
+			} catch {
+				// Telemetry is best-effort — swallow fingerprint/track failures.
+			}
+		})();
 	}
 	previousTools.value = current;
+}
+
+function onTriggerAdded(payload: { triggerType: string; triggers: string[] }) {
+	const snapshot = currentEditSnapshot();
+	void (async () => {
+		try {
+			const fp = await buildAgentConfigFingerprint(snapshot.config, payload.triggers);
+			agentTelemetry.trackAddedTrigger({
+				agentId: snapshot.agentId,
+				triggerType: payload.triggerType,
+				triggers: payload.triggers,
+				configVersion: fp.config_version,
+				status: snapshot.status,
+			});
+		} catch {
+			// Telemetry is best-effort — swallow fingerprint/track failures.
+		}
+	})();
 }
 
 const headerActions = [{ id: 'delete', label: 'Delete agent' }];
@@ -539,6 +559,7 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 			await settleAutosave();
 			if (!localConfig.value) return;
 			await saveConfig();
+			emitPendingEditedConfigTelemetry();
 			const updated = await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
 			// Telemetry is best-effort and must never surface as a publish failure.
 			// Derive the fingerprint from the server's response so `config_version`
@@ -564,10 +585,12 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 });
 
 async function initialize() {
-	// Flush any pending edited-config telemetry for the previous agent before
-	// resetting state — the snapshot was captured against the OLD agent's
-	// state, so it must fire before we overwrite local refs.
-	flushEditedConfigTelemetry();
+	// Drop any pending edited-config parts from the previous agent — they'll
+	// never be emitted because autosave for the previous agent either already
+	// fired (in which case the set is empty) or won't fire against the new
+	// agent's id. An in-flight save for the previous agent would've already
+	// flushed the set before we got here.
+	pendingEditedConfigParts.clear();
 
 	agent.value = null;
 	mode.value = 'home';
@@ -602,11 +625,6 @@ async function initialize() {
 }
 
 watch(agentId, initialize, { immediate: true });
-
-// Ensure any in-flight debounced telemetry fires before the view is torn down.
-onBeforeUnmount(() => {
-	flushEditedConfigTelemetry();
-});
 
 // Only react to the arrival of a session id — clearing the param is always
 // accompanied by an explicit `mode` assignment from the caller (exitContinueMode,
@@ -802,6 +820,7 @@ function onContinueLoaded(count: number) {
 			@published="onPublished"
 			@unpublished="onUnpublished"
 			@update:connected-triggers="onConnectedTriggersUpdate"
+			@trigger-added="onTriggerAdded"
 		/>
 	</div>
 </template>
