@@ -6,6 +6,9 @@ import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
+import type { AgentJsonConfig } from '../types';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -18,6 +21,9 @@ const props = withDefaults(
 		continueSessionId?: string;
 		sessionTitle?: string;
 		sessionEmoji?: string;
+		agentConfig: AgentJsonConfig | null;
+		agentStatus: 'draft' | 'production';
+		connectedTriggers: string[];
 	}>(),
 	{
 		visible: true,
@@ -40,6 +46,7 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
+const agentTelemetry = useAgentTelemetry();
 
 // Sub-header title for chat sessions — the persisted session title if one
 // exists, otherwise "New chat" for freshly-started ephemeral sessions.
@@ -68,6 +75,19 @@ async function onSubmit() {
 	const text = inputText.value.trim();
 	if (!text || isStreaming.value) return;
 	inputText.value = '';
+
+	const fingerprint = await buildAgentConfigFingerprint(props.agentConfig, props.connectedTriggers);
+	// Raw `message` is sent intentionally — matches the text-to-workflow
+	// builder's `User submitted builder message` event, which also sends the
+	// raw prompt. Revisit if the product-wide privacy posture tightens.
+	agentTelemetry.trackSubmittedMessage({
+		agentId: props.agentId,
+		message: text,
+		mode: props.endpoint === 'build' ? 'build' : 'test',
+		status: props.agentStatus,
+		agentConfig: fingerprint,
+	});
+
 	await sendMessage(text);
 }
 

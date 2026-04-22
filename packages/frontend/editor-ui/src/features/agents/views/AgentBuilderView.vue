@@ -13,6 +13,8 @@ import { MODAL_CONFIRM, MODAL_CANCEL, DEBOUNCE_TIME, getDebounceTime } from '@/a
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
+import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
+import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { PROJECT_AGENTS, AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentSessionsStore } from '../agentSessions.store';
@@ -87,6 +89,16 @@ const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle');
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
+const connectedTriggers = ref<string[]>([]);
+
+const builderTelemetry = useAgentBuilderTelemetry({
+	agentId,
+	projectId,
+	agent,
+	localConfig,
+	savedConfig: config,
+	connectedTriggers,
+});
 
 /**
  * An agent is considered "built" once it has instructions configured.
@@ -104,6 +116,14 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// Keep in sync with AgentIntegrationsPanel.integrationConfigs
+const KNOWN_TRIGGER_TYPES = ['slack', 'telegram'] as const;
+
+function onConnectedTriggersUpdate(list: string[]) {
+	connectedTriggers.value = list;
+	builderTelemetry.trackTriggerListChanged(list);
+}
 
 async function fetchAgent() {
 	const data = await getAgent(rootStore.restApiContext, projectId.value, agentId.value);
@@ -126,6 +146,7 @@ async function updateName(name: string) {
 			localConfig.value.name = updated.name;
 		}
 		agentsEventBus.emit('agentUpdated');
+		builderTelemetry.trackNameEdited();
 	}
 }
 
@@ -137,6 +158,7 @@ async function updateDescription(description: string) {
 		agent.value = updated;
 		agentDescription.value = updated.description ?? null;
 		updatedAt.value = updated.updatedAt;
+		builderTelemetry.trackDescriptionEdited();
 	}
 }
 
@@ -255,8 +277,13 @@ function scheduleAutosave() {
 				await saveConfig();
 				saveStatus.value = 'saved';
 				telemetry.track('User saved agent settings', { agent_id: agentId.value });
+				builderTelemetry.flushConfigEdits();
 			} catch (error) {
 				saveStatus.value = 'idle';
+				// Intentionally keep pending parts: `localConfig` still holds the
+				// failed edit, so the next successful autosave will persist it.
+				// Clearing here would drop telemetry for edits that do end up
+				// saved on the retry.
 				showError(error, locale.baseText('agents.builder.saveError'));
 			} finally {
 				autosaveInFlight = null;
@@ -275,12 +302,19 @@ async function settleAutosave() {
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
+	// Record BEFORE assigning so the composable can diff against the pre-update state.
+	builderTelemetry.recordConfigEdit(updates);
 	Object.assign(localConfig.value, updates);
 	scheduleAutosave();
 }
 
 async function onConfigUpdated() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
+	builderTelemetry.trackToolsAdded();
+}
+
+function onTriggerAdded(payload: { triggerType: string; triggers: string[] }) {
+	builderTelemetry.trackTriggerAdded(payload);
 }
 
 const headerActions = [{ id: 'delete', label: 'Delete agent' }];
@@ -353,7 +387,9 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 			await settleAutosave();
 			if (!localConfig.value) return;
 			await saveConfig();
-			await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
+			builderTelemetry.flushConfigEdits();
+			const updated = await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
+			builderTelemetry.trackPublished(updated.publishedVersion?.schema);
 		} catch (error) {
 			showError(error, locale.baseText('agents.builder.unsavedPublish.error'));
 			return; // stay on page
@@ -366,6 +402,12 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 });
 
 async function initialize() {
+	// Drop any per-agent telemetry state from the previous agent — an in-flight
+	// save for the previous agent would've already flushed pending edits before
+	// we got here, and a scheduled-but-not-fired save wouldn't flush correctly
+	// against the new agent's id anyway.
+	builderTelemetry.resetForAgentSwitch();
+
 	agent.value = null;
 	mode.value = 'home';
 	chatMode.value = 'test';
@@ -377,11 +419,19 @@ async function initialize() {
 	initialPrompt.value = undefined;
 	buildPrompt.value = '';
 	localConfig.value = null;
+	connectedTriggers.value = [];
 	saveStatus.value = 'idle';
 
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
+	builderTelemetry.captureToolsBaseline();
 	void sessionsStore.fetchThreads(projectId.value, agentId.value);
+	void (async () => {
+		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
+		// will correct it once the user expands the Triggers section.
+		const connected = await builderTelemetry.fetchInitialTriggersBaseline(KNOWN_TRIGGER_TYPES);
+		if (connected) connectedTriggers.value = connected;
+	})();
 
 	// Always land on the home screen. Users enter chat mode by sending a
 	// message, picking a recent session, clicking the Test/Build toggle, or
@@ -546,6 +596,9 @@ function onContinueLoaded(count: number) {
 							:continue-session-id="effectiveSessionId"
 							:session-title="sessionTitle"
 							:session-emoji="sessionEmoji"
+							:agent-config="localConfig"
+							:agent-status="deriveAgentStatus(agent)"
+							:connected-triggers="connectedTriggers"
 							@config-updated="onConfigUpdated"
 							@continue-loaded="onContinueLoaded"
 							@back="onBackFromChat"
@@ -557,6 +610,9 @@ function onContinueLoaded(count: number) {
 							:agent-id="agentId"
 							mode="inline"
 							endpoint="build"
+							:agent-config="localConfig"
+							:agent-status="deriveAgentStatus(agent)"
+							:connected-triggers="connectedTriggers"
 							@config-updated="onConfigUpdated"
 							@update:streaming="onBuildChatStreamingChange"
 							@back="onBackFromChat"
@@ -579,9 +635,12 @@ function onContinueLoaded(count: number) {
 			:save-status="saveStatus"
 			:building="isBuilding || isBuildChatStreaming"
 			:code-only="mode === 'chat' && chatMode === 'build'"
+			:agent-status="deriveAgentStatus(agent)"
 			@update:config="onConfigFieldUpdate"
 			@published="onPublished"
 			@unpublished="onUnpublished"
+			@update:connected-triggers="onConnectedTriggersUpdate"
+			@trigger-added="onTriggerAdded"
 		/>
 	</div>
 </template>

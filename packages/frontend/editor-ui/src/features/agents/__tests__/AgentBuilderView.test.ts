@@ -30,6 +30,10 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn() }),
 }));
 
+const updateAgentMock = vi.fn();
+const getIntegrationStatusMock = vi.fn();
+const publishAgentMock = vi.fn();
+
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: vi.fn().mockResolvedValue({
 		id: 'a1',
@@ -37,10 +41,33 @@ vi.mock('../composables/useAgentApi', () => ({
 		description: null,
 		tools: {},
 		updatedAt: '2026-01-01T00:00:00Z',
+		publishedVersion: null,
+		versionId: 'v1',
 	}),
-	updateAgent: vi.fn(),
+	updateAgent: updateAgentMock,
 	deleteAgent: vi.fn(),
-	publishAgent: vi.fn(),
+	publishAgent: publishAgentMock,
+	getIntegrationStatus: getIntegrationStatusMock,
+}));
+
+const trackClickedNewAgentMock = vi.fn();
+const trackSubmittedMessageMock = vi.fn();
+const trackEditedConfigMock = vi.fn();
+const trackAddedTriggerMock = vi.fn();
+const trackAddedToolsMock = vi.fn();
+const trackPublishedAgentMock = vi.fn();
+const trackUnpublishedAgentMock = vi.fn();
+
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackClickedNewAgent: trackClickedNewAgentMock,
+		trackSubmittedMessage: trackSubmittedMessageMock,
+		trackEditedConfig: trackEditedConfigMock,
+		trackAddedTrigger: trackAddedTriggerMock,
+		trackAddedTools: trackAddedToolsMock,
+		trackPublishedAgent: trackPublishedAgentMock,
+		trackUnpublishedAgent: trackUnpublishedAgentMock,
+	}),
 }));
 
 vi.mock('../composables/useAgentConfig', () => ({
@@ -81,6 +108,7 @@ vi.setConfig({ testTimeout: 15_000 });
 describe('AgentBuilderView — chat mode toggle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
 	async function renderView() {
@@ -91,11 +119,28 @@ describe('AgentBuilderView — chat mode toggle', () => {
 					AgentChatPanel: {
 						name: 'AgentChatPanel',
 						template: '<div data-testid="chat-panel-stub" :data-endpoint="endpoint" />',
-						props: ['endpoint', 'projectId', 'agentId', 'mode', 'initialMessage'],
+						props: [
+							'endpoint',
+							'projectId',
+							'agentId',
+							'mode',
+							'initialMessage',
+							'agentConfig',
+							'agentStatus',
+							'connectedTriggers',
+						],
 					},
-					AgentHomeContent: { template: '<div data-testid="home-stub" />' },
+					AgentHomeContent: {
+						name: 'AgentHomeContent',
+						emits: ['update:name', 'update:description'],
+						template: '<div data-testid="home-stub" />',
+					},
 					AgentBuilderProgress: { template: '<div data-testid="progress-stub" />' },
-					AgentSettingsSidebar: { template: '<div data-testid="settings-stub" />' },
+					AgentSettingsSidebar: {
+						name: 'AgentSettingsSidebar',
+						emits: ['update:connected-triggers'],
+						template: '<div data-testid="settings-stub" />',
+					},
 					N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 					N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
 					N8nActionDropdown: { template: '<div />' },
@@ -184,5 +229,137 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
 		expect(buildPanel.exists()).toBe(true);
 		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
+	});
+});
+
+describe('AgentBuilderView — telemetry', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		updateAgentMock.mockImplementation(
+			async (_ctx, _pid, _aid, patch: Record<string, unknown>) => ({
+				id: 'a1',
+				name: typeof patch.name === 'string' ? patch.name : 'Agent One',
+				description: typeof patch.description === 'string' ? patch.description : null,
+				tools: {},
+				updatedAt: '2026-01-02T00:00:00Z',
+				publishedVersion: null,
+				versionId: 'v1',
+			}),
+		);
+	});
+
+	async function renderViewWithEmittableStubs() {
+		const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
+		const wrapper = mount(AgentBuilderView, {
+			global: {
+				stubs: {
+					AgentChatPanel: {
+						name: 'AgentChatPanel',
+						template: '<div data-testid="chat-panel-stub" />',
+						props: [
+							'endpoint',
+							'projectId',
+							'agentId',
+							'mode',
+							'initialMessage',
+							'agentConfig',
+							'agentStatus',
+							'connectedTriggers',
+						],
+					},
+					AgentHomeContent: {
+						name: 'AgentHomeContent',
+						emits: ['update:name', 'update:description'],
+						template: '<div data-testid="home-stub" />',
+					},
+					AgentBuilderProgress: { template: '<div data-testid="progress-stub" />' },
+					AgentSettingsSidebar: {
+						name: 'AgentSettingsSidebar',
+						emits: ['update:connected-triggers'],
+						template: '<div data-testid="settings-stub" />',
+					},
+					N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
+					N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
+					N8nActionDropdown: { template: '<div />' },
+					Transition: { template: '<div><slot/></div>' },
+				},
+			},
+		});
+		await flushPromises();
+		return wrapper;
+	}
+
+	afterEach(async () => {
+		// Drain any telemetry IIFEs (crypto.subtle digest + track call) so
+		// pending work doesn't leak across tests and pollute later mocks.
+		for (let i = 0; i < 5; i++) await flushPromises();
+	});
+
+	it('fires User edited agent config with part=name when the agent name is updated', async () => {
+		const wrapper = await renderViewWithEmittableStubs();
+		const home = wrapper.findComponent({ name: 'AgentHomeContent' });
+
+		home.vm.$emit('update:name', 'Renamed Agent');
+
+		await vi.waitFor(() => {
+			expect(trackEditedConfigMock).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'a1', part: 'name' }),
+			);
+		});
+		expect(updateAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', {
+			name: 'Renamed Agent',
+		});
+	});
+
+	it('fires User edited agent config with part=description when the description is updated', async () => {
+		const wrapper = await renderViewWithEmittableStubs();
+		const home = wrapper.findComponent({ name: 'AgentHomeContent' });
+
+		home.vm.$emit('update:description', 'A new description');
+
+		await vi.waitFor(() => {
+			expect(trackEditedConfigMock).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'a1', part: 'description' }),
+			);
+		});
+		expect(updateAgentMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			expect.objectContaining({ description: 'A new description' }),
+		);
+	});
+
+	it('fires User edited agent config with part=triggers when the connected-triggers list changes', async () => {
+		const wrapper = await renderViewWithEmittableStubs();
+		const sidebar = wrapper.findComponent({ name: 'AgentSettingsSidebar' });
+
+		// Baseline starts at [] from loadInitialConnectedTriggers (mocked to
+		// return no integrations). Emitting a different list should fire.
+		sidebar.vm.$emit('update:connected-triggers', ['slack']);
+
+		await vi.waitFor(() => {
+			expect(trackEditedConfigMock).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'a1', part: 'triggers' }),
+			);
+		});
+	});
+
+	it('does not fire User edited agent config when the connected-triggers list is unchanged', async () => {
+		// Pre-seed the baseline to ['slack'] so an emission of the same list is a no-op.
+		getIntegrationStatusMock.mockResolvedValueOnce({
+			status: 'ok',
+			integrations: [{ type: 'slack', credentialId: 'c1' }],
+		});
+
+		const wrapper = await renderViewWithEmittableStubs();
+		const sidebar = wrapper.findComponent({ name: 'AgentSettingsSidebar' });
+
+		trackEditedConfigMock.mockClear();
+		sidebar.vm.$emit('update:connected-triggers', ['slack']);
+		for (let i = 0; i < 5; i++) await flushPromises();
+
+		expect(trackEditedConfigMock).not.toHaveBeenCalled();
 	});
 });
