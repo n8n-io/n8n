@@ -147,7 +147,7 @@ const loadTimeline = async () => {
 			workflowHistoryStore.getPublishTimeline(props.workflowId),
 			workflowHistoryStore
 				.getVersionFirstAdoptionDate({ major: 2, minor: 17, patch: 0 })
-				.catch((e) => null),
+				.catch(() => null),
 			usersStore.fetchUsers({ filter: { isPending: false }, take: 2 }),
 		]);
 		adoptionDate.value = firstAdoptionDate === null ? null : new Date(firstAdoptionDate);
