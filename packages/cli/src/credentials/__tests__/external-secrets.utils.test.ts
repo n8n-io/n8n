@@ -10,6 +10,19 @@ describe('External secrets utils', () => {
 			expect(extractProviderKeysFromExpression('={{ $secrets.vault.myKey }}')).toEqual(['vault']);
 		});
 
+		it('should extract provider keys from hybrid dot and bracket notation', () => {
+			const expression = '={{ $secrets.azureKeyVault["postgres-n8n-data"] }}';
+			const result = extractProviderKeysFromExpression(expression);
+			expect(result).toEqual(['azureKeyVault']);
+		});
+
+		it('should extract provider keys from multiple hybrid notations in one expression', () => {
+			const expression =
+				'={{ $secrets.azureKeyVault["postgres-n8n-data"] + $secrets.awsSecretsManager["my-key"] }}';
+			const result = extractProviderKeysFromExpression(expression);
+			expect(result).toEqual(['azureKeyVault', 'awsSecretsManager']);
+		});
+
 		it('extracts single provider from bracket notation', () => {
 			expect(extractProviderKeysFromExpression("={{ $secrets['aws']['secret'] }}")).toEqual([
 				'aws',
