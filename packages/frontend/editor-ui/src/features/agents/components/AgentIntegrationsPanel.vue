@@ -12,11 +12,15 @@ import {
 	disconnectIntegration,
 	getIntegrationStatus,
 } from '../composables/useAgentApi';
-
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	agentName: string;
+}>();
+
+const emit = defineEmits<{
+	'update:connected-triggers': [triggers: string[]];
+	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 }>();
 
 const rootStore = useRootStore();
@@ -163,6 +167,16 @@ async function copyManifest() {
 	}, 2000);
 }
 
+function computeConnectedTriggers(): string[] {
+	return Object.keys(statuses.value)
+		.filter((t) => statuses.value[t] === 'connected')
+		.sort();
+}
+
+function emitConnectedTriggers() {
+	emit('update:connected-triggers', computeConnectedTriggers());
+}
+
 async function fetchStatus() {
 	try {
 		const result = await getIntegrationStatus(
@@ -184,6 +198,7 @@ async function fetchStatus() {
 			connectedCredentials.value[config.type] = '';
 		}
 	}
+	emitConnectedTriggers();
 }
 
 async function fetchCredentials() {
@@ -220,6 +235,13 @@ async function onConnect(type: string) {
 			type,
 			credId,
 		);
+
+		// Optimistically mark as connected before fetchStatus() reconciles
+		// so the telemetry payload reflects the just-connected trigger.
+		statuses.value[type] = 'connected';
+		const triggers = computeConnectedTriggers();
+		emit('trigger-added', { triggerType: type, triggers });
+
 		await fetchStatus();
 	} catch (e: unknown) {
 		const msg =

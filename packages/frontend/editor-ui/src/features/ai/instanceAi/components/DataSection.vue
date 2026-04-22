@@ -13,6 +13,7 @@
 	padding: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
 	border: var(--border);
+	max-width: 90%;
 
 	:global(pre) {
 		background: transparent;
