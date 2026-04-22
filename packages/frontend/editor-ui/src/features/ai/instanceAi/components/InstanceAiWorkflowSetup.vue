@@ -10,7 +10,6 @@ import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
@@ -54,7 +53,6 @@ const credentialsStore = useCredentialsStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
-const ndvStore = useNDVStore();
 
 // ---------------------------------------------------------------------------
 // Composable wiring — order matters for dependencies
@@ -106,7 +104,6 @@ _initCredGroupSelections();
 const {
 	paramValues: _paramValues,
 	getCardSimpleParameters,
-	getCardNestedParameterCount,
 	onParameterValueChanged,
 	buildNodeParameters,
 } = useSetupCardParameters(cards, trackedParamNames, cardHasParamWork);
@@ -163,6 +160,7 @@ const {
 	isPartial,
 	isApplying,
 	applyError,
+	handleApply,
 	handleContinue,
 	handleLater,
 	handleTestTrigger,
@@ -404,6 +402,15 @@ onMounted(async () => {
 
 	isStoreReady.value = true;
 
+	// No renderable cards — every outstanding issue is nested (e.g. empty
+	// fixedCollection) and has no inline editor in this wizard. Apply with
+	// what we have so the backend's re-analyze loop can hand unresolved
+	// issues back to the AI via `partial` / `skippedNodes`.
+	if (props.setupRequests.length > 0 && cards.value.length === 0) {
+		void handleApply();
+		return;
+	}
+
 	const testedIds = new Set<string>();
 	for (const card of cards.value) {
 		if (!card.credentialType) continue;
@@ -465,10 +472,6 @@ function isTriggerOnly(card: SetupCard): boolean {
 function getCardNodeType(card: SetupCard) {
 	const node = card.nodes[0].node;
 	return nodeTypesStore.getNodeType(node.type, node.typeVersion);
-}
-
-function openNdv(card: SetupCard): void {
-	ndvStore.setActiveNodeName(card.nodes[0].node.name, 'other');
 }
 
 const nodeNames = computed(() => {
@@ -576,7 +579,8 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						:class="$style.loading"
 					/>
 					<N8nIcon
-						v-else-if="getCredTestIcon(currentCard) === 'check'"
+						v-else-if="getCredTestIcon(currentCard) === 'check' && !cardHasParamWork(currentCard)"
+						data-test-id="instance-ai-workflow-setup-cred-check"
 						icon="check"
 						size="small"
 						:class="$style.success"
@@ -662,23 +666,6 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
 						@value-changed="onParameterValueChanged(currentCard, $event)"
 					/>
-
-					<!-- Link to configure complex parameters in NDV -->
-					<N8nLink
-						v-if="cardHasParamWork(currentCard) && getCardNestedParameterCount(currentCard) > 0"
-						data-test-id="instance-ai-workflow-setup-configure-link"
-						:underline="true"
-						theme="text"
-						size="medium"
-						@click="openNdv(currentCard)"
-					>
-						{{
-							i18n.baseText('instanceAi.workflowSetup.configureParameters' as BaseTextKey, {
-								adjustToNumber: getCardNestedParameterCount(currentCard),
-								interpolate: { count: String(getCardNestedParameterCount(currentCard)) },
-							})
-						}}
-					</N8nLink>
 				</div>
 
 				<!-- Listening callout for webhook triggers -->

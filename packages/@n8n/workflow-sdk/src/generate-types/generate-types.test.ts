@@ -610,6 +610,69 @@ describe('generate-types', () => {
 			expect(result).toContain('secondsInterval?:');
 		});
 
+		it('should emit a tuple type and required group key when minRequiredFields is set', () => {
+			const prop: NodeProperty = {
+				name: 'filters',
+				displayName: 'Filters',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, minRequiredFields: 1 },
+				default: {},
+				options: [
+					{
+						displayName: 'Conditions',
+						name: 'conditions',
+						values: [{ displayName: 'Key', name: 'keyName', type: 'string', default: '' }],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('conditions: [');
+			expect(result).not.toContain('conditions?:');
+			expect(result).toContain('...Array<');
+			expect(result).toContain('@minItems 1');
+		});
+
+		it('should emit @maxItems JSDoc when maxAllowedFields is set', () => {
+			const prop: NodeProperty = {
+				name: 'filters',
+				displayName: 'Filters',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, maxAllowedFields: 3 },
+				default: {},
+				options: [
+					{
+						displayName: 'Conditions',
+						name: 'conditions',
+						values: [{ displayName: 'Key', name: 'keyName', type: 'string', default: '' }],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('@maxItems 3');
+			// maxAllowed alone does not force the key to be required
+			expect(result).toContain('conditions?:');
+		});
+
+		it('should not add tuple or required key when minRequiredFields is 0', () => {
+			const prop: NodeProperty = {
+				name: 'filters',
+				displayName: 'Filters',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, minRequiredFields: 0 },
+				default: {},
+				options: [
+					{
+						displayName: 'Conditions',
+						name: 'conditions',
+						values: [{ displayName: 'Key', name: 'keyName', type: 'string', default: '' }],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('conditions?: Array<');
+			expect(result).not.toContain('@minItems');
+		});
+
 		it('should map collection type without options to Record<string, unknown>', () => {
 			const prop: NodeProperty = {
 				name: 'options',
