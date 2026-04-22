@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { N8nBadge, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type {
 	ChatHubConversationModel,
@@ -222,9 +222,6 @@ watch(
 							: locale.baseText('agents.builder.saved')
 					}}
 				</N8nText>
-				<N8nBadge v-if="config && !config.credential" theme="warning">
-					{{ locale.baseText('agents.settings.credentialsMissing') }}
-				</N8nBadge>
 				<AgentPublishButton
 					:agent="agent"
 					:project-id="projectId"
