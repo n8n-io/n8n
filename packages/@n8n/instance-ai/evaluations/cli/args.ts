@@ -173,8 +173,11 @@ function parseRawArgs(argv: string[]): RawArgs {
 				break;
 
 			default:
-				// Ignore unknown flags
-				break;
+				// Fail loudly on unknown flags
+				if (arg.startsWith('--')) {
+					throw new Error(`Unknown flag: ${arg}`);
+				}
+				throw new Error(`Unexpected positional argument: ${arg}`);
 		}
 	}
 
