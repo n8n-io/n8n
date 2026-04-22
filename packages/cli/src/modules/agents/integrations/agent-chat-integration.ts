@@ -40,6 +40,12 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly needsShortCallbackData: boolean = false;
 
+	/**
+	 * True if the bridge should buffer streaming output and post it as a single
+	 * message instead of streaming text deltas via post-and-edit.
+	 */
+	readonly disableStreaming: boolean = false;
+
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
 
