@@ -28,10 +28,8 @@ const rootStore = useRootStore();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
-	for (const entry of store.resourceRegistry.values()) {
-		if (entry.id === artifact.resourceId) return entry.name;
-	}
-	return artifact.name;
+	const entry = store.producedArtifacts.get(artifact.resourceId);
+	return entry?.name ?? artifact.name;
 }
 
 function formatRelativeTime(isoTime: string): string {
@@ -176,7 +174,12 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 	<div :class="$style.timeline">
 		<template v-for="(entry, idx) in timelineEntries" :key="idx">
 			<!-- Text segment -->
-			<N8nText v-if="entry.type === 'text'" size="large" :compact="props.compact">
+			<N8nText
+				v-if="entry.type === 'text'"
+				size="large"
+				:compact="props.compact"
+				:class="$style.timelineItem"
+			>
 				<InstanceAiMarkdown :content="entry.content" />
 			</N8nText>
 
@@ -289,5 +292,9 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.timelineItem {
+	max-width: 90%;
 }
 </style>

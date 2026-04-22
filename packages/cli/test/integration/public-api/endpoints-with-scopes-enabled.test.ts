@@ -17,8 +17,11 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
+import { mock } from 'jest-mock-extended';
 import { randomString } from 'n8n-workflow';
 import validator from 'validator';
+
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
@@ -470,6 +473,74 @@ describe('Public API endpoints with API key scopes', () => {
 					expect(sharedCredential.credentials.name).toBe(payload.name);
 				});
 			});
+			describe('GET /credentials/:id', () => {
+				test('should retrieve credential when API key has "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:read'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+					expect(response.statusCode).toBe(200);
+					expect(response.body).toMatchObject({
+						id: savedCredential.id,
+						name: savedCredential.name,
+						type: savedCredential.type,
+					});
+					expect(response.body).not.toHaveProperty('data');
+					expect(response.body).not.toHaveProperty('shared');
+				});
+
+				test('should fail to retrieve credential when API key doesn\'t have "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['tag:create'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+			describe('POST /credentials/:id/test', () => {
+				const mockCredentialsTester = mock<CredentialsTester>();
+				Container.set(CredentialsTester, mockCredentialsTester);
+
+				beforeEach(() => {
+					mockCredentialsTester.testCredentials.mockResolvedValue({
+						status: 'OK',
+						message: 'Connection successful!',
+					});
+				});
+
+				afterEach(() => {
+					mockCredentialsTester.testCredentials.mockClear();
+				});
+
+				test('should test credential when API key has "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['credential:read'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.post(`/credentials/${savedCredential.id}/test`);
+
+					expect(response.statusCode).toBe(200);
+				});
+
+				test('should fail to test credential when API key doesn\'t have "credential:read" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['tag:create'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const savedCredential = await saveCredential(credentialPayload(), { user: owner });
+
+					const response = await authOwnerAgent.post(`/credentials/${savedCredential.id}/test`);
+
+					expect(response.statusCode).toBe(403);
+				});
+			});
+
 			describe('DELETE /credentials/:id', () => {
 				test('should delete credential when API key has "credential:delete" scope', async () => {
 					const owner = await createOwnerWithApiKey({ scopes: ['credential:delete'] });

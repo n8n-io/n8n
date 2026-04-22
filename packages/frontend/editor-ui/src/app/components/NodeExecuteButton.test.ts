@@ -377,7 +377,6 @@ describe('NodeExecuteButton', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		workflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
-		workflowsStore.workflowObject.getStartNode = vi.fn().mockReturnValue(undefined);
 
 		const { getByRole } = renderComponent();
 

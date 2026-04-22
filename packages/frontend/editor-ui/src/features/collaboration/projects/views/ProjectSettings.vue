@@ -499,8 +499,13 @@ const searchUsers = async (query: string) => {
 
 	isLoadingUsers.value = true;
 	try {
-		// If query is empty, load initial set of users, otherwise search
-		const filter = query.trim() ? { fullText: query } : undefined;
+		const projectId = projectsStore.currentProject?.id;
+		if (!projectId) {
+			userSearchResults.value = [];
+			return;
+		}
+		// List users in this project only (global /users requires user:create without projectId).
+		const filter = query.trim() ? { fullText: query, projectId } : { projectId };
 		await usersStore.fetchUsers({
 			take: 50,
 			filter,

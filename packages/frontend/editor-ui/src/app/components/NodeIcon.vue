@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { SimplifiedNodeType } from '@/Interface';
-import { getNodeIconSource, type NodeIconSource } from '@/app/utils/nodeIcon';
+import { type NodeIconSource } from '@/app/utils/nodeIcon';
 import type { VersionNode } from '@n8n/rest-api-client/api/versions';
 import type { INode } from 'n8n-workflow';
 import { computed } from 'vue';
 
 import { N8nNodeIcon } from '@n8n/design-system';
+import { useNodeIconSource } from '../composables/useNodeIconSource';
 type Props = {
 	size?: number;
 	disabled?: boolean;
@@ -39,10 +40,9 @@ const emit = defineEmits<{
 	click: [];
 }>();
 
-const iconSource = computed(() => {
-	if (props.iconSource) return props.iconSource;
-	return getNodeIconSource(props.nodeType, props.node ?? null);
-});
+const iconSourceFromNodeType = useNodeIconSource(props.nodeType, props.node ?? null);
+
+const iconSource = computed(() => props.iconSource ?? iconSourceFromNodeType.value);
 
 const iconType = computed(() => iconSource.value?.type ?? 'unknown');
 const src = computed(() => {
