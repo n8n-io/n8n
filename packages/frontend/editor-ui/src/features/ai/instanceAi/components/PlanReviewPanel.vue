@@ -143,6 +143,7 @@ function handleRequestChanges() {
 	margin: var(--spacing--2xs) 0;
 	overflow: hidden;
 	background-color: var(--color--background--light-3);
+	max-width: 90%;
 }
 
 .header {
