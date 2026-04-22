@@ -1,6 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
+import { existsSync } from 'fs';
 import type ivm from 'isolated-vm';
 import { mock } from 'jest-mock-extended';
+import path from 'path';
 
 import {
 	AgentIsolatePool,
@@ -9,6 +11,17 @@ import {
 	PoolExhaustedError,
 } from '../runtime/agent-isolate-pool';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+
+// The runtime reads the library bundle from packages/cli/dist/agent-library-bundle.js.
+// Build it on demand so the test can run without a prior `pnpm build`.
+const BUNDLE_PATH = path.resolve(__dirname, '../../../../dist/agent-library-bundle.js');
+async function ensureLibraryBundle() {
+	if (existsSync(BUNDLE_PATH)) return;
+	const { buildAgentLibraryBundle } = await import(
+		path.resolve(__dirname, '../../../../scripts/bundle-agent-library.mjs')
+	);
+	await buildAgentLibraryBundle({ silent: true });
+}
 
 // No mocking — uses the real isolated-vm V8 isolate.
 
@@ -285,6 +298,10 @@ describe('AgentIsolatePool', () => {
 describe('AgentSecureRuntime', () => {
 	let runtime: AgentSecureRuntime;
 
+	beforeAll(async () => {
+		await ensureLibraryBundle();
+	});
+
 	beforeEach(() => {
 		runtime = new AgentSecureRuntime(logger);
 	});
@@ -330,7 +347,7 @@ describe('AgentSecureRuntime', () => {
 		}
 	});
 
-	it('libraryBundle is not re-bundled after an OOM (cached string is reused)', async () => {
+	it('libraryBundle is not re-read after an OOM (cached string is reused)', async () => {
 		await runtime.describeToolSecurely(SIMPLE_TOOL_CODE); // warm up
 
 		const bundleBefore = (runtime as unknown as { libraryBundle: string }).libraryBundle;
