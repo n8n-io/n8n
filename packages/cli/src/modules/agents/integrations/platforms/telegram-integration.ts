@@ -10,13 +10,14 @@ import { loadTelegramAdapter } from '../esm-loader';
 /**
  * Telegram platform integration.
  *
- * Two capability flags are enabled here because of Telegram Bot API constraints:
+ * Two capability flags are enabled here because of Telegram constraints:
  * - {@link needsShortCallbackData} — `callback_data` is capped at 64 bytes, so the
  *   bridge stores full payloads in a CallbackStore and emits short 8-char keys as
  *   button IDs.
- * - {@link disableStreaming} — `editMessageText` is rate-limited (~1 req/s per chat,
- *   30 req/s per bot), so the bridge buffers agent output and posts it as a single
- *   message per flush instead of streaming token-by-token.
+ * - {@link disableStreaming} — streaming Markdown edits are unstable: intermediate
+ *   frames carry half-formed markup that Telegram rejects or renders inconsistently.
+ *   The bridge buffers agent output and posts it as a single message per flush,
+ *   guaranteeing well-formed Markdown on every post.
  *
  * The adapter runs in webhook mode when a public `WEBHOOK_URL` is configured,
  * otherwise it falls back to polling for local dev.

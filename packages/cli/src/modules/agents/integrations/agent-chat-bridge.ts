@@ -99,7 +99,8 @@ type TextEndFn = () => void;
  *     AsyncIterable<string> into `thread.post()` so Chat SDK can render
  *     incrementally (post-and-edit).
  *   • buffered (Telegram): deltas accumulate into a string and are posted as
- *     a single message per flush event, avoiding `editMessageText` rate limits.
+ *     a single message per flush event, so the platform adapter only ever
+ *     sees well-formed Markdown (streaming edits ship half-formed markup).
  *
  * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
  * `error`) flush any pending text before being handled, preserving ordering.
