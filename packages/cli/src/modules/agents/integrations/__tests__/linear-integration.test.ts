@@ -65,9 +65,12 @@ describe('LinearIntegration', () => {
 			webhookSecret: 'sec',
 			userName: 'Eugene',
 		});
+		expect(fetchSpy.mock.calls[0][1]).toMatchObject({
+			headers: { Authorization: 'lin_api_xyz' },
+		});
 	});
 
-	it('builds the adapter with an access token from a linearOAuth2Api credential', async () => {
+	it('builds the adapter with an accessToken from a linearOAuth2Api credential', async () => {
 		await integration.createAdapter(
 			ctx({
 				oauthTokenData: { access_token: 'oauth_token' },
@@ -76,9 +79,12 @@ describe('LinearIntegration', () => {
 		);
 
 		expect(createLinearAdapter).toHaveBeenCalledWith({
-			apiKey: 'oauth_token',
+			accessToken: 'oauth_token',
 			webhookSecret: 'sec',
 			userName: 'Eugene',
+		});
+		expect(fetchSpy.mock.calls[0][1]).toMatchObject({
+			headers: { Authorization: 'Bearer oauth_token' },
 		});
 	});
 
