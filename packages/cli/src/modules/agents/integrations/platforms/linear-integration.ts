@@ -30,13 +30,13 @@ export class LinearIntegration extends AgentChatIntegration {
 
 	readonly credentialTypes = ['linearApi', 'linearOAuth2Api'];
 
-	readonly supportedComponents = ['section', 'button', 'divider', 'image', 'fields'];
+	readonly supportedComponents = ['section', 'divider', 'image', 'fields'];
 
 	readonly description =
-		'Post rich content as a comment on a Linear issue. Available: markdown sections, ' +
-		'buttons (rendered as bold text — non-interactive on Linear), dividers, images, ' +
-		'key-value fields. Users reply by commenting on the issue, which the agent receives ' +
-		'as a new message in the thread.';
+		'Post formatted content as a comment on a Linear issue. Available: markdown sections, ' +
+		'dividers, images, key-value fields. Linear does not support interactive components, ' +
+		'so buttons/selects are not available — the agent should ask follow-up questions with ' +
+		'a normal reply instead. Users respond by commenting on the issue.';
 
 	constructor(private readonly logger: Logger) {
 		super();
