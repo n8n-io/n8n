@@ -6,22 +6,18 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
-import type { Workflow } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 
 export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undefined>) {
 	const environmentsStore = useEnvironmentsStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	return computed<ExpressionLocalResolveContext | undefined>(() => {
-		if (!node.value) {
+		if (!node.value || !workflowDocumentStore.value) {
 			return undefined;
 		}
 
@@ -41,7 +37,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 				};
 			}
 
-			const inputs = workflowObject.value.getParentNodesByDepth(nodeName, 1);
+			const inputs = workflowDocumentStore.value.getParentNodesByDepth(nodeName, 1);
 
 			if (inputs.length > 0) {
 				return {
@@ -57,12 +53,12 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 		return {
 			localResolve: true,
 			envVars: environmentsStore.variablesAsObject,
-			workflow: workflowObject.value,
+			workflow: workflowDocumentStore.value.getSnapshot(),
 			execution,
 			nodeName,
 			additionalKeys: {},
 			inputNode: findInputNode(),
-			connections: workflowDocumentStore.value?.connectionsBySourceNode ?? {},
+			connections: workflowDocumentStore.value.connectionsBySourceNode,
 		};
 	});
 }

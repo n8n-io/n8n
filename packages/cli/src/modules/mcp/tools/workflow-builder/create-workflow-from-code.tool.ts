@@ -184,6 +184,7 @@ export const createCreateWorkflowFromCodeTool = (
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
 				projectId,
 				parentFolderId: folderId,
+				source: 'n8n-mcp',
 			});
 
 			const baseUrl = urlService.getInstanceBaseUrl();

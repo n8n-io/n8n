@@ -45,6 +45,7 @@ import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -67,6 +68,7 @@ const { registerKeyHook } = useKeyboardNavigation();
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
 
@@ -142,6 +144,11 @@ function onSelected(item: INodeCreateElement) {
 		let nodeActions = getFilteredActions(item, actions);
 		const notInstalledCommunityNode =
 			isCommunityPackageName(item.key) && !useNodeTypesStore().getIsNodeInstalled(item.key);
+		const nodeIcon = getNodeIconSource(
+			item.properties,
+			null,
+			workflowDocumentStore?.value?.getExpressionHandler() ?? null,
+		);
 
 		if (
 			shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value) ||
@@ -153,7 +160,7 @@ function onSelected(item: INodeCreateElement) {
 
 			const viewStack = prepareCommunityNodeDetailsViewStack(
 				item,
-				getNodeIconSource(item.properties),
+				nodeIcon,
 				activeViewStack.value.rootView,
 				nodeActions,
 			);
@@ -186,7 +193,7 @@ function onSelected(item: INodeCreateElement) {
 		pushViewStack({
 			subcategory: item.properties.displayName,
 			title: item.properties.displayName,
-			nodeIcon: getNodeIconSource(item.properties),
+			nodeIcon,
 			rootView: activeViewStack.value.rootView,
 			hasSearch: true,
 			mode: 'actions',
