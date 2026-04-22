@@ -71,10 +71,7 @@ watch(
 );
 
 /**
- * Filter out providers that the @n8n/agents runtime does not support
- * (Ollama, OpenRouter) as well as non-LLM entries (n8n workflow agents,
- * custom agents). Only official AI SDK LLM providers are shown here.
- * TODO: Add support for OpenRouter and Ollama
+ * TODO: Add support for missing chathub providers
  */
 const filteredAgents = computed<ChatModelsResponse>(
 	() =>
