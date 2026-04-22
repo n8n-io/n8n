@@ -1,24 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-	sha256Hex16,
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
 } from '../composables/agentTelemetry.utils';
 import type { AgentJsonConfig, AgentResource } from '../types';
-
-describe('sha256Hex16', () => {
-	it('returns a 16-char hex string', async () => {
-		expect(await sha256Hex16('hello')).toMatch(/^[0-9a-f]{16}$/);
-	});
-
-	it('is deterministic for the same input', async () => {
-		expect(await sha256Hex16('abc')).toBe(await sha256Hex16('abc'));
-	});
-
-	it('differs for different inputs', async () => {
-		expect(await sha256Hex16('a')).not.toBe(await sha256Hex16('b'));
-	});
-});
 
 describe('buildAgentConfigFingerprint', () => {
 	const baseConfig: AgentJsonConfig = {
@@ -32,11 +17,10 @@ describe('buildAgentConfigFingerprint', () => {
 		memory: { enabled: true, storage: 'n8n' },
 	};
 
-	it('produces 16-char hex config_version and instructions_hash', async () => {
+	it('produces a 16-char hex config_version and includes the raw instructions', async () => {
 		const fp = await buildAgentConfigFingerprint(baseConfig, ['slack']);
 		expect(fp.config_version).toMatch(/^[0-9a-f]{16}$/);
-		expect(fp.instructions_hash).toMatch(/^[0-9a-f]{16}$/);
-		expect(fp.instructions_length).toBe('do things'.length);
+		expect(fp.instructions).toBe('do things');
 	});
 
 	it('sorts tools and triggers alphabetically', async () => {
@@ -81,7 +65,7 @@ describe('buildAgentConfigFingerprint', () => {
 
 	it('handles null config', async () => {
 		const fp = await buildAgentConfigFingerprint(null, []);
-		expect(fp.instructions_length).toBe(0);
+		expect(fp.instructions).toBe('');
 		expect(fp.tools).toEqual([]);
 		expect(fp.model).toBeNull();
 	});

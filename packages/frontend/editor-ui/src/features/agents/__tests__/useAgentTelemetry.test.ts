@@ -26,8 +26,7 @@ describe('useAgentTelemetry', () => {
 
 	it('trackSubmittedMessage includes message, mode, status, agent_config', () => {
 		const fingerprint = {
-			instructions_hash: 'abc',
-			instructions_length: 5,
+			instructions: 'hello',
 			tools: ['a'],
 			triggers: [],
 			memory: null,

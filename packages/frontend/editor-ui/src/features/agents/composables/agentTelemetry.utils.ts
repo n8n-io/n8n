@@ -3,8 +3,7 @@ import type { AgentJsonConfig, AgentJsonToolRef, AgentResource } from '../types'
 export type AgentTelemetryStatus = 'draft' | 'production';
 
 export type AgentConfigFingerprint = {
-	instructions_hash: string;
-	instructions_length: number;
+	instructions: string;
 	tools: string[];
 	triggers: string[];
 	memory: { enabled: boolean; storage: 'n8n' | 'sqlite' | 'postgres' } | null;
@@ -12,7 +11,11 @@ export type AgentConfigFingerprint = {
 	config_version: string;
 };
 
-export async function sha256Hex16(input: string): Promise<string> {
+/**
+ * Internal helper used to compute a stable 16-char hex `config_version` join
+ * key. Not a privacy mechanism — agent payloads carry the raw config fields.
+ */
+async function sha256Hex16(input: string): Promise<string> {
 	const bytes = new TextEncoder().encode(input);
 	const digest = await crypto.subtle.digest('SHA-256', bytes);
 	const hex = Array.from(new Uint8Array(digest))
@@ -36,7 +39,6 @@ export async function buildAgentConfigFingerprint(
 	connectedTriggers: string[],
 ): Promise<AgentConfigFingerprint> {
 	const instructions = config?.instructions ?? '';
-	const instructionsHash = await sha256Hex16(instructions);
 	const tools = toolIdentifiersFromConfig(config);
 	const triggers = [...connectedTriggers].sort();
 	const memory = config?.memory
@@ -45,7 +47,7 @@ export async function buildAgentConfigFingerprint(
 	const model = config?.model ?? null;
 
 	const versionPayload = JSON.stringify({
-		instructionsHash,
+		instructions,
 		tools,
 		triggers,
 		memory,
@@ -54,8 +56,7 @@ export async function buildAgentConfigFingerprint(
 	const configVersion = await sha256Hex16(versionPayload);
 
 	return {
-		instructions_hash: instructionsHash,
-		instructions_length: instructions.length,
+		instructions,
 		tools,
 		triggers,
 		memory,
