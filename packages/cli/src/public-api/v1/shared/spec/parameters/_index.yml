@@ -20,3 +20,5 @@ VariableId:
   $ref: '../../../handlers/variables/spec/schemas/parameters/variableId.yml'
 dataTableId:
   $ref: '../../../handlers/data-tables/spec/schemas/parameters/dataTableId.yml'
+columnId:
+  $ref: '../../../handlers/data-tables/spec/schemas/parameters/columnId.yml'
