@@ -118,9 +118,23 @@ Always wrap expressions in \`={{ }}\`. Never use bare JS variables outside the b
 export const PROVIDER_TOOLS_SECTION = `\
 ## Provider tools
 
-Built-in provider capabilities (web search, image generation):
+Built-in capabilities offered by the model provider. Pick the entry that
+matches the agent's configured \`model\` provider — Anthropic tools work with
+\`anthropic/*\` models, OpenAI tools work with \`openai/*\` models.
+
+Anthropic web search:
 \`\`\`json
 { "providerTools": { "anthropic.web_search": { "maxUses": 5 } } }
+\`\`\`
+
+OpenAI web search (requires a Responses-API-compatible model, e.g. \`openai/gpt-4o\`):
+\`\`\`json
+{ "providerTools": { "openai.web_search": { "searchContextSize": "medium" } } }
+\`\`\`
+
+OpenAI image generation:
+\`\`\`json
+{ "providerTools": { "openai.image_generation": {} } }
 \`\`\``;
 
 export const CONVERSATION_MODE_SECTION = `\
