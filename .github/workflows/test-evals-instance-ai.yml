@@ -121,7 +121,7 @@ jobs:
           # Build the full comment body with jq
           jq -r '
             "### Instance AI Workflow Eval Results\n\n" +
-            "**\(.summary.built)/\(.summary.testCases) built | \(.totalRuns) run(s) | pass@\(.totalRuns): \(.summary.passAtK * 100 | floor)% | pass^\(.totalRuns): \(.summary.passHatK * 100 | floor)%**\n\n" +
+            "**\(.summary.built)/\(.summary.testCases) built | \(.totalRuns) run(s) | pass@\(.totalRuns): \(.summary.passAtK * 100 | floor)% | pass^\(.totalRuns): \(.summary.passHatK * 100 | floor)% | iterations: \(.summary.passRatePerIter)**\n\n" +
             "| Workflow | Build | pass@\(.totalRuns) | pass^\(.totalRuns) |\n|---|---|---|---|\n" +
             ([.testCases[] as $tc | "| \($tc.name) | \($tc.buildSuccessCount)/\($tc.totalRuns) | \(([$tc.scenarios[] | .passAtK] | add) / ($tc.scenarios | length) * 100 | floor)% | \(([$tc.scenarios[] | .passHatK] | add) / ($tc.scenarios | length) * 100 | floor)% |"] | join("\n")) +
             "\n\n<details><summary>Failure details</summary>\n\n" +

@@ -18,7 +18,7 @@ import pLimit from 'p-limit';
 import { join } from 'path';
 import { z } from 'zod';
 
-import { aggregateResults } from './aggregator';
+import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { parseCliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { N8nClient } from '../clients/n8n-client';
@@ -175,6 +175,22 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	const buildCache = new Map<string, Promise<BuildResult>>();
 	const buildDurations = new Map<string, number>();
 
+	// Traceable wraps the actual build call *inside* the limiter — otherwise the
+	// LangSmith span would include queue-wait time, which accumulates across
+	// iterations as later builds queue behind earlier ones.
+	const tracedBuildWorkflow = traceable(
+		async (prompt: string) =>
+			await buildWorkflow({
+				client,
+				prompt,
+				timeoutMs: args.timeoutMs,
+				preRunWorkflowIds,
+				claimedWorkflowIds,
+				logger,
+			}),
+		{ name: 'workflow_build', run_type: 'chain', client: lsClient },
+	);
+
 	async function getOrBuild(
 		prompt: string,
 		iteration: number,
@@ -182,17 +198,9 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		const key = `${String(iteration)}:${prompt}`;
 		const existing = buildCache.get(key);
 		if (existing) return { build: await existing };
-		// Timer runs inside the limiter so queue-wait isn't counted as build time.
 		const promise = buildLimiter(async () => {
 			const start = Date.now();
-			const build = await buildWorkflow({
-				client,
-				prompt,
-				timeoutMs: args.timeoutMs,
-				preRunWorkflowIds,
-				claimedWorkflowIds,
-				logger,
-			});
+			const build = await tracedBuildWorkflow(prompt);
 			buildDurations.set(key, Date.now() - start);
 			return build;
 		});
@@ -200,12 +208,6 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		const build = await promise;
 		return { build, buildDurationMs: buildDurations.get(key) };
 	}
-
-	// Created once to avoid AsyncLocalStorage context leaks across concurrent runs.
-	const traceableBuild = traceable(
-		async (prompt: string, iteration: number) => await getOrBuild(prompt, iteration),
-		{ name: 'workflow_build', run_type: 'chain', client: lsClient },
-	);
 
 	const traceableExecute = traceable(
 		async (execArgs: {
@@ -232,7 +234,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			successCriteria: inputs.successCriteria,
 		};
 
-		const { build, buildDurationMs } = await traceableBuild(inputs.prompt, iteration);
+		const { build, buildDurationMs } = await getOrBuild(inputs.prompt, iteration);
 
 		if (!build.success || !build.workflowId) {
 			return {
@@ -340,6 +342,13 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		logger.info(`Experiment: ${experimentResults.experimentName}`);
 		await lsClient.awaitPendingTraceBatches();
 
+		const allRunResults = reshapeLangSmithRuns(
+			experimentResults.results,
+			testCasesWithFiles,
+			args.runs,
+		);
+		const evaluation = aggregateResults(allRunResults, args.runs);
+
 		await updateExperimentAggregates({
 			lsClient,
 			experimentName: experimentResults.experimentName,
@@ -349,12 +358,13 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			logger,
 		});
 
-		const allRunResults = reshapeLangSmithRuns(
-			experimentResults.results,
-			testCasesWithFiles,
-			args.runs,
-		);
-		return aggregateResults(allRunResults, args.runs);
+		await writePerRunPassMetrics({
+			lsClient,
+			runs: experimentResults.results,
+			logger,
+		});
+
+		return evaluation;
 	} finally {
 		if (!args.keepWorkflows) {
 			await Promise.all(
@@ -425,11 +435,31 @@ async function updateExperimentAggregates(config: {
 	const avgExecMs =
 		execTimes.length > 0 ? execTimes.reduce((sum, d) => sum + d, 0) / execTimes.length : 0;
 
+	// Per-iteration pass rate breakdown, e.g. "80 / 80 / 73" — lets reviewers
+	// spot drift or anomalies between iterations without extra columns.
+	const perIteration = new Map<number, { passed: number; total: number }>();
+	for (const { run } of runs) {
+		const inputs = runInputsSchema.parse(run.inputs ?? {});
+		const output = parseTargetOutput(run.outputs);
+		const entry = perIteration.get(inputs._iteration) ?? { passed: 0, total: 0 };
+		entry.total++;
+		if (output.passed) entry.passed++;
+		perIteration.set(inputs._iteration, entry);
+	}
+	const passRatePerIter = [...perIteration.entries()]
+		.sort(([a], [b]) => a - b)
+		.map(([, { passed, total }]) => {
+			const pct = total > 0 ? Math.round((passed / total) * 100) : 0;
+			return `${String(pct)}%`;
+		})
+		.join(' / ');
+
 	const aggregates = {
 		duration_s: Math.round(totalDurationMs / 100) / 10,
 		avg_build_s: Math.round(avgBuildMs / 100) / 10,
 		avg_exec_s: Math.round(avgExecMs / 100) / 10,
 		unique_builds: uniqueBuilds,
+		pass_rate_per_iter: passRatePerIter,
 	};
 
 	try {
@@ -446,6 +476,56 @@ async function updateExperimentAggregates(config: {
 	} catch (error: unknown) {
 		const msg = error instanceof Error ? error.message : String(error);
 		logger.verbose(`Could not update experiment metadata: ${msg}`);
+	}
+}
+
+/**
+ * Attach per-example pass metrics (pass_rate, pass_at_k, pass_hat_k) as
+ * feedback on every run in the example's group. All N runs of the same example
+ * carry the same value — that lets the LangSmith UI sort/filter individual
+ * runs by their example's metric, and its per-experiment column aggregation
+ * reduces to the mean across unique examples.
+ */
+async function writePerRunPassMetrics(config: {
+	lsClient: Client;
+	runs: Array<{ run: Run }>;
+	logger: EvalLogger;
+}): Promise<void> {
+	const { lsClient, runs, logger } = config;
+
+	// Group runs by reference_example_id, counting passes.
+	const byExample = new Map<string, { runIds: string[]; passed: number; total: number }>();
+	for (const { run } of runs) {
+		const exampleId = run.reference_example_id;
+		if (!exampleId) continue;
+		const output = parseTargetOutput(run.outputs);
+		const entry = byExample.get(exampleId) ?? { runIds: [], passed: 0, total: 0 };
+		entry.runIds.push(run.id);
+		entry.total++;
+		if (output.passed) entry.passed++;
+		byExample.set(exampleId, entry);
+	}
+
+	const feedbackWrites: Array<Promise<unknown>> = [];
+	for (const { runIds, passed, total } of byExample.values()) {
+		const passAtKValue = passAtK(total, passed, total);
+		const passHatKValue = passHatK(total, passed, total);
+		for (const runId of runIds) {
+			feedbackWrites.push(
+				lsClient.createFeedback(runId, 'pass_at_k', { score: passAtKValue }).catch(() => {}),
+				lsClient.createFeedback(runId, 'pass_hat_k', { score: passHatKValue }).catch(() => {}),
+			);
+		}
+	}
+
+	try {
+		await Promise.all(feedbackWrites);
+		logger.verbose(
+			`Wrote pass metrics feedback for ${String(byExample.size)} example(s) across ${String(runs.length)} run(s)`,
+		);
+	} catch (error: unknown) {
+		const msg = error instanceof Error ? error.message : String(error);
+		logger.verbose(`Could not write pass metrics feedback: ${msg}`);
 	}
 }
 
@@ -597,6 +677,7 @@ function writeEvalResults(
 			scenariosTotal: totalScenariosCount,
 			passAtK: totalScenariosCount > 0 ? passAtKCount / totalScenariosCount : 0,
 			passHatK: totalScenariosCount > 0 ? passHatKCount / totalScenariosCount : 0,
+			passRatePerIter: computePassRatePerIter(evaluation),
 		},
 		testCases: testCases.map((tc) => ({
 			name: tc.testCase.prompt.slice(0, 70),
@@ -626,6 +707,19 @@ function writeEvalResults(
 	const outputPath = join(targetDir, 'eval-results.json');
 	writeFileSync(outputPath, JSON.stringify(report, null, 2));
 	return outputPath;
+}
+
+/** Pass rate of each iteration formatted as e.g. "37% / 37% / 37%". */
+function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
+	const { totalRuns, testCases } = evaluation;
+	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
+	if (allScenarios.length === 0) return '';
+	const rates: string[] = [];
+	for (let i = 0; i < totalRuns; i++) {
+		const passed = allScenarios.filter((s) => s.runs[i]?.success).length;
+		rates.push(`${String(Math.round((passed / allScenarios.length) * 100))}%`);
+	}
+	return rates.join(' / ');
 }
 
 // ---------------------------------------------------------------------------
@@ -697,7 +791,7 @@ function printSummary(evaluation: MultiRunEvaluation): void {
 					)
 				: 0;
 		console.log(
-			`${String(built)}/${String(testCases.length)} built | pass@${String(totalRuns)}: ${String(avgPassAtK)}% | pass^${String(totalRuns)}: ${String(avgPassHatK)}%`,
+			`${String(built)}/${String(testCases.length)} built | pass@${String(totalRuns)}: ${String(avgPassAtK)}% | pass^${String(totalRuns)}: ${String(avgPassHatK)}% | iterations: ${computePassRatePerIter(evaluation)}`,
 		);
 	} else {
 		const passed = allScenarios.filter((s) => s.runs[0]?.success).length;
