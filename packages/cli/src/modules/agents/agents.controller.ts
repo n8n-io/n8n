@@ -165,6 +165,7 @@ async function pumpChunks(
 	startNewTurn: () => void,
 	onToolEvent?: ToolEventCallbacks,
 ): Promise<boolean> {
+	// TODO: update SDK to sent step-start, step-finish, text-start, text-finish events to avoid counting turns manually
 	const ctx: ChunkHandlerCtx = { send, getMessageId, startNewTurn, onToolEvent };
 
 	for await (const chunk of chunks) {
