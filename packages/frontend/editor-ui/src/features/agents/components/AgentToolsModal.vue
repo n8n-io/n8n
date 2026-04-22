@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import Modal from '@/app/components/Modal.vue';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -15,12 +16,11 @@ import nodePopularity from 'virtual:node-popularity-data';
 import AgentToolItem from './AgentToolItem.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
 
-import type { IWorkflowDb } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { AgentJsonToolRef } from '../types';
 import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	getExistingToolNames,
-	isToolMissingCredentials,
 	nodeTypeToNewToolRef,
 	toolRefToNode,
 	workflowToNewToolRef,
@@ -41,6 +41,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const nodeHelpers = useNodeHelpers();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
@@ -142,11 +143,15 @@ const configuredTools = computed<ConfiguredToolView[]>(() => {
 		if (!node) continue;
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (!nodeType) continue;
+		// Reuse the canvas credential validator so `displayOptions`-gated creds,
+		// proxy auth (`nodeCredentialType`), and gateway-managed creds are
+		// treated identically to how the workflow editor paints its red border.
+		const issues = nodeHelpers.getNodeCredentialIssues(node as INodeUi, nodeType);
 		out.push({
 			ref,
 			node,
 			nodeType,
-			missingCredentials: isToolMissingCredentials(ref, nodeType),
+			missingCredentials: !!issues?.credentials && Object.keys(issues.credentials).length > 0,
 		});
 	}
 	return out;

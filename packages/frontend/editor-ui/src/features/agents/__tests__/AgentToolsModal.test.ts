@@ -57,6 +57,27 @@ vi.mock('@/app/composables/useMessage', () => ({
 
 vi.mock('uuid', () => ({ v4: () => 'mock-uuid' }));
 
+// Stand-in for the canvas credential validator — see AgentToolsPanel.test for
+// the rationale. Minimal honoring of the `required` flag is enough to cover
+// the "chip shows / chip hides" assertions in this suite.
+vi.mock('@/app/composables/useNodeHelpers', () => ({
+	useNodeHelpers: () => ({
+		getNodeCredentialIssues: (
+			node: { credentials?: Record<string, { id: string | null }> },
+			nodeType: { credentials?: Array<{ name: string; required?: boolean }> } | null,
+		) => {
+			const required = (nodeType?.credentials ?? []).filter((c) => c.required !== false);
+			if (required.length === 0) return null;
+			const saved = node.credentials ?? {};
+			const missing: Record<string, unknown> = {};
+			for (const slot of required) {
+				if (!saved[slot.name]?.id) missing[slot.name] = true;
+			}
+			return Object.keys(missing).length > 0 ? { credentials: missing } : null;
+		},
+	}),
+}));
+
 const SLACK: INodeTypeDescription = {
 	displayName: 'Slack',
 	name: 'n8n-nodes-base.slack',
