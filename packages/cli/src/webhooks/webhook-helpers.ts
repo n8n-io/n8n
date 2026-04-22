@@ -733,7 +733,7 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
-		// Extract W3C trace context from webhook headers for OTEL propagation
+		// Extract W3C trace context from webhook headers for OTEL propagation.
 		const traceparent = req.headers.traceparent;
 		if (
 			typeof traceparent === 'string' &&
@@ -742,7 +742,8 @@ export async function executeWebhook(
 			const tracestate = req.headers.tracestate;
 			runData.tracingContext = {
 				traceparent,
-				tracestate: typeof tracestate === 'string' ? tracestate : undefined,
+				tracestate:
+					typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined,
 			};
 		}
 

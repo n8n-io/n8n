@@ -153,6 +153,51 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 		});
+
+		it('should retain tracked workflow span across a waiting endWorkflow', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-waiting',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-waiting',
+				status: 'waiting',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			// After a waiting end, the workflow span is still tracked — outbound
+			// propagation should still find it.
+			const headers: Record<string, string> = {};
+			tracer.injectTraceHeaders('exec-waiting', undefined, headers);
+			expect(headers.traceparent).toBeDefined();
+
+			// A terminal end should remove it.
+			tracer.endWorkflow({
+				executionId: 'exec-waiting',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const afterHeaders: Record<string, string> = {};
+			tracer.injectTraceHeaders('exec-waiting', undefined, afterHeaders);
+			expect(afterHeaders.traceparent).toBeUndefined();
+		});
+
+		it('should no-op when endWorkflow is called for an unknown executionId', () => {
+			expect(() =>
+				tracer.endWorkflow({
+					executionId: 'never-started',
+					status: 'success',
+					mode: 'manual',
+					isRetry: false,
+				}),
+			).not.toThrow();
+
+			expect(otel.getFinishedSpans()).toHaveLength(0);
+		});
 	});
 
 	describe('startNode / endNode', () => {
@@ -162,18 +207,19 @@ describe('ExecutionLevelTracer', () => {
 				tracingContext: inboundTracingContext,
 				workflow: defaultWorkflow,
 			});
+			const httpNode = {
+				id: 'n1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+			};
 			tracer.startNode({
 				executionId: 'exec-5',
-				node: {
-					id: 'n1',
-					name: 'HTTP Request',
-					type: 'n8n-nodes-base.httpRequest',
-					typeVersion: 1,
-				},
+				node: httpNode,
 			});
 			tracer.endNode({
 				executionId: 'exec-5',
-				nodeName: 'HTTP Request',
+				node: httpNode,
 				inputItemCount: 1,
 				outputItemCount: 3,
 			});
@@ -204,15 +250,16 @@ describe('ExecutionLevelTracer', () => {
 				tracingContext: inboundTracingContext,
 				workflow: defaultWorkflow,
 			});
+			const node1 = { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 };
 			tracer.startNode({
 				executionId: 'exec-6',
-				node: { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 },
+				node: node1,
 			});
 
 			const nodeError = new TypeError('connection refused');
 			tracer.endNode({
 				executionId: 'exec-6',
-				nodeName: 'Node1',
+				node: node1,
 				inputItemCount: 1,
 				outputItemCount: 0,
 				error: nodeError,
@@ -232,19 +279,61 @@ describe('ExecutionLevelTracer', () => {
 			expect(nodeSpan.events[0].attributes?.['exception.type']).toBe('TypeError');
 		});
 
+		it('should warn and not create a span when startNode has no parent workflow span', () => {
+			tracer.startNode({
+				executionId: 'exec-orphan',
+				node: { id: 'n1', name: 'Orphan', type: 'test', typeVersion: 1 },
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('without a pre-existing parent workflow trace'),
+			);
+			expect(otel.getFinishedSpans()).toHaveLength(0);
+		});
+
+		it('should no-op when endNode is called for a node that was never started', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-no-start',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+
+			expect(() =>
+				tracer.endNode({
+					executionId: 'exec-no-start',
+					node: { id: 'n-missing', name: 'Missing', type: 'test', typeVersion: 1 },
+					inputItemCount: 0,
+					outputItemCount: 0,
+				}),
+			).not.toThrow();
+
+			tracer.endWorkflow({
+				executionId: 'exec-no-start',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			// Only the workflow span should be finished.
+			const spans = otel.getFinishedSpans();
+			expect(spans).toHaveLength(1);
+			expect(spans[0].name).toBe('workflow.execute');
+		});
+
 		it('should add custom attributes from tracing metadata', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-7',
 				tracingContext: inboundTracingContext,
 				workflow: defaultWorkflow,
 			});
+			const aiNode = { id: 'n1', name: 'AI', type: 'test', typeVersion: 1 };
 			tracer.startNode({
 				executionId: 'exec-7',
-				node: { id: 'n1', name: 'AI', type: 'test', typeVersion: 1 },
+				node: aiNode,
 			});
 			tracer.endNode({
 				executionId: 'exec-7',
-				nodeName: 'AI',
+				node: aiNode,
 				inputItemCount: 1,
 				outputItemCount: 1,
 				customAttributes: { 'llm.model': 'gpt-4o', 'llm.tokens': '500' },
@@ -289,15 +378,22 @@ describe('ExecutionLevelTracer', () => {
 	});
 
 	describe('injectTraceHeaders', () => {
+		// Parse `00-<traceId>-<spanId>-<flags>` into its fields.
+		const parseTraceparent = (tp: string) => {
+			const [, traceId, spanId] = tp.split('-');
+			return { traceId, spanId };
+		};
+
 		it('should inject traceparent from node span', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-10',
 				tracingContext: inboundTracingContext,
 				workflow: defaultWorkflow,
 			});
+			const httpNode = { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 };
 			tracer.startNode({
 				executionId: 'exec-10',
-				node: { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 },
+				node: httpNode,
 			});
 
 			const headers: Record<string, string> = {};
@@ -308,12 +404,49 @@ describe('ExecutionLevelTracer', () => {
 
 			tracer.endNode({
 				executionId: 'exec-10',
-				nodeName: 'HTTP',
+				node: httpNode,
 				inputItemCount: 1,
 				outputItemCount: 1,
 			});
 			tracer.endWorkflow({
 				executionId: 'exec-10',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+		});
+
+		// Regression: the injected span was silently falling back to the workflow span
+		// because the internal node-span map was keyed by node.id while the lookup used
+		// node.name. This test locks in the distinction.
+		it('should inject the node span id when a node name is provided, not the workflow span id', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-node-preference',
+				workflow: defaultWorkflow,
+			});
+			const httpNode = { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 };
+			tracer.startNode({ executionId: 'exec-node-preference', node: httpNode });
+
+			const workflowHeaders: Record<string, string> = {};
+			tracer.injectTraceHeaders('exec-node-preference', undefined, workflowHeaders);
+
+			const nodeHeaders: Record<string, string> = {};
+			tracer.injectTraceHeaders('exec-node-preference', 'HTTP', nodeHeaders);
+
+			const { traceId: wfTrace, spanId: wfSpan } = parseTraceparent(workflowHeaders.traceparent);
+			const { traceId: nodeTrace, spanId: nodeSpan } = parseTraceparent(nodeHeaders.traceparent);
+
+			expect(nodeTrace).toBe(wfTrace); // same trace
+			expect(nodeSpan).not.toBe(wfSpan); // but distinct span — the node's, not the workflow's
+
+			tracer.endNode({
+				executionId: 'exec-node-preference',
+				node: httpNode,
+				inputItemCount: 0,
+				outputItemCount: 0,
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-node-preference',
 				status: 'success',
 				mode: 'manual',
 				isRetry: false,

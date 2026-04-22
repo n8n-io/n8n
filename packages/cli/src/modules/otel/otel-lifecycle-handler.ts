@@ -2,6 +2,7 @@ import { OnLifecycleEvent } from '@n8n/decorators';
 import type {
 	WorkflowExecuteBeforeContext,
 	WorkflowExecuteAfterContext,
+	WorkflowExecuteResumeContext,
 	NodeExecuteBeforeContext,
 	NodeExecuteAfterContext,
 } from '@n8n/decorators';
@@ -41,6 +42,29 @@ export class OtelLifecycleHandler {
 
 		// Given we have now started a "workflow" we should persist the traceparent - it will change the
 		// "parent-id" part of the traceparent header when we start the `workflow`
+		await this.traceContextService.persist(ctx.executionId, spanContext);
+	}
+
+	/**
+	 * Fired instead of `workflowExecuteBefore` when an execution resumes after a wait.
+	 * We start a fresh workflow span parented to the span we persisted pre-wait so
+	 * the resumed phase shares the original trace id and appears as a child in the tree.
+	 */
+	@OnLifecycleEvent('workflowExecuteResume')
+	async onWorkflowResume(ctx: WorkflowExecuteResumeContext): Promise<void> {
+		const tracingContext = await this.traceContextService.get(ctx.executionId);
+
+		const spanContext = this.tracer.startWorkflow({
+			executionId: ctx.executionId,
+			tracingContext,
+			workflow: {
+				id: ctx.workflow.id,
+				name: ctx.workflow.name,
+				versionId: ctx.workflow.versionId,
+				nodeCount: ctx.workflow.nodes.length,
+			},
+		});
+
 		await this.traceContextService.persist(ctx.executionId, spanContext);
 	}
 

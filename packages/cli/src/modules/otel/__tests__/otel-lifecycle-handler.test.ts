@@ -1,6 +1,11 @@
-import type { NodeExecuteAfterContext, WorkflowExecuteBeforeContext } from '@n8n/decorators';
+import type {
+	NodeExecuteAfterContext,
+	NodeExecuteBeforeContext,
+	WorkflowExecuteAfterContext,
+	WorkflowExecuteBeforeContext,
+} from '@n8n/decorators';
 import { mock } from 'jest-mock-extended';
-import type { IRunExecutionData } from 'n8n-workflow';
+import type { IRun, IRunExecutionData } from 'n8n-workflow';
 
 import type { ExecutionLevelTracer } from '../execution-level-tracer';
 import type { OtelConfig } from '../otel.config';
@@ -29,7 +34,18 @@ describe('OtelLifecycleHandler', () => {
 
 		const baseCtx: WorkflowExecuteBeforeContext = {
 			type: 'workflowExecuteBefore',
-			workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+			workflow: {
+				id: 'wf-1',
+				name: 'Test',
+				versionId: 'v1',
+				nodes: [],
+				connections: {},
+				active: false,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				activeVersionId: null,
+			},
 			workflowInstance: undefined as never,
 			executionId: 'exec-sub',
 		};
@@ -75,7 +91,7 @@ describe('OtelLifecycleHandler', () => {
 		});
 
 		it('should create root span when no own or parent context exists', async () => {
-			traceContextService.get.mockResolvedValue(null);
+			traceContextService.get.mockResolvedValue(undefined);
 
 			await handler.onWorkflowStart(baseCtx);
 
@@ -85,7 +101,7 @@ describe('OtelLifecycleHandler', () => {
 		});
 
 		it('should not look up parent when executionData has no parentExecution', async () => {
-			traceContextService.get.mockResolvedValueOnce(null);
+			traceContextService.get.mockResolvedValueOnce(undefined);
 
 			await handler.onWorkflowStart(baseCtx);
 
@@ -100,29 +116,112 @@ describe('OtelLifecycleHandler', () => {
 
 			expect(traceContextService.persist).toHaveBeenCalledWith('exec-sub', generatedSpanContext);
 		});
+	});
 
-		it('should persist spanContext for sub-workflows so nested children can inherit', async () => {
-			traceContextService.get.mockResolvedValueOnce(parentTracingContext);
+	describe('onWorkflowResume', () => {
+		const tracer = mock<ExecutionLevelTracer>();
+		const traceContextService = mock<TraceContextService>();
+		const config = mock<OtelConfig>();
+		let handler: OtelLifecycleHandler;
 
-			const ctx: WorkflowExecuteBeforeContext = {
-				...baseCtx,
-				executionData: {
-					parentExecution: { executionId: 'exec-parent', workflowId: 'wf-parent' },
-				} as IRunExecutionData,
-			};
+		const prePauseContext: TracingContext = {
+			traceparent: '00-0af7651916cd43dd8448eb211c80319c-1111111111111111-01',
+		};
+		const resumedSpanContext: TracingContext = {
+			traceparent: '00-0af7651916cd43dd8448eb211c80319c-2222222222222222-01',
+		};
 
-			await handler.onWorkflowStart(ctx);
-
-			expect(traceContextService.persist).toHaveBeenCalledWith('exec-sub', generatedSpanContext);
+		beforeEach(() => {
+			jest.clearAllMocks();
+			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			tracer.startWorkflow.mockReturnValue(resumedSpanContext);
 		});
 
-		it('should not persist when startWorkflow returns undefined', async () => {
-			tracer.startWorkflow.mockReturnValue(undefined);
-			traceContextService.get.mockResolvedValueOnce(null);
+		it('should start a new span parented to the execution’s own persisted context', async () => {
+			traceContextService.get.mockResolvedValueOnce(prePauseContext);
 
-			await handler.onWorkflowStart(baseCtx);
+			await handler.onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+				workflowInstance: undefined as never,
+				executionData: undefined as never,
+				executionId: 'exec-resume',
+			} as never);
 
-			expect(traceContextService.persist).not.toHaveBeenCalled();
+			expect(traceContextService.get).toHaveBeenCalledWith('exec-resume');
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					executionId: 'exec-resume',
+					tracingContext: prePauseContext,
+				}),
+			);
+			expect(traceContextService.persist).toHaveBeenCalledWith('exec-resume', resumedSpanContext);
+		});
+	});
+
+	describe('onWorkflowEnd', () => {
+		const tracer = mock<ExecutionLevelTracer>();
+		const traceContextService = mock<TraceContextService>();
+		const config = mock<OtelConfig>();
+		let handler: OtelLifecycleHandler;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+		});
+
+		const makeCtx = (
+			overrides: Partial<IRun> = {},
+			retryOf?: string,
+		): WorkflowExecuteAfterContext =>
+			({
+				type: 'workflowExecuteAfter',
+				workflow: { id: 'wf-1', name: 'Test', nodes: [], connections: {} },
+				executionId: 'exec-1',
+				newStaticData: {},
+				retryOf,
+				runData: {
+					status: 'success',
+					mode: 'manual',
+					data: { resultData: { runData: {}, pinData: {} } },
+					...overrides,
+				},
+			}) as unknown as WorkflowExecuteAfterContext;
+
+		it('should delegate to tracer.endWorkflow with mapped runData fields', () => {
+			handler.onWorkflowEnd(makeCtx({ status: 'success', mode: 'webhook' }));
+
+			expect(tracer.endWorkflow).toHaveBeenCalledWith({
+				executionId: 'exec-1',
+				status: 'success',
+				mode: 'webhook',
+				error: undefined,
+				isRetry: false,
+				retryOf: undefined,
+			});
+		});
+
+		it('should forward error from runData.data.resultData', () => {
+			const error = new Error('boom');
+			const ctx = makeCtx({
+				status: 'error',
+				mode: 'manual',
+				data: { resultData: { runData: {}, pinData: {}, error } },
+			} as unknown as Partial<IRun>);
+
+			handler.onWorkflowEnd(ctx);
+
+			expect(tracer.endWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'error', error }),
+			);
+		});
+
+		it('should derive isRetry from mode=retry and pass retryOf', () => {
+			handler.onWorkflowEnd(makeCtx({ status: 'success', mode: 'retry' }, 'exec-original'));
+
+			expect(tracer.endWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ isRetry: true, retryOf: 'exec-original' }),
+			);
 		});
 	});
 
@@ -130,31 +229,26 @@ describe('OtelLifecycleHandler', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
 		const config = mock<OtelConfig>();
+		let handler: OtelLifecycleHandler;
 
-		beforeEach(() => {
-			jest.clearAllMocks();
-		});
+		const node = { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 };
 
-		it('should skip node spans when includeNodeSpans is false', () => {
-			config.includeNodeSpans = false;
-			const handler = new OtelLifecycleHandler(tracer, traceContextService, config);
-
-			handler.onNodeStart({
+		const makeStartCtx = (nodeName = 'Node1'): NodeExecuteBeforeContext =>
+			({
 				type: 'nodeExecuteBefore',
-				workflow: {
-					id: 'wf-1',
-					name: 'Test',
-					nodes: [{ id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 }],
-					connections: {},
-				},
-				nodeName: 'Node1',
+				workflow: { id: 'wf-1', name: 'Test', nodes: [node], connections: {} },
+				nodeName,
 				executionId: 'exec-1',
-			} as never);
+			}) as unknown as NodeExecuteBeforeContext;
 
-			handler.onNodeEnd({
+		const makeEndCtx = (
+			overrides: Partial<NodeExecuteAfterContext['taskData']> = {},
+			nodeName = 'Node1',
+		): NodeExecuteAfterContext =>
+			({
 				type: 'nodeExecuteAfter',
-				workflow: { id: 'wf-1', name: 'Test', nodes: [], connections: {} },
-				nodeName: 'Node1',
+				workflow: { id: 'wf-1', name: 'Test', nodes: [node], connections: {} },
+				nodeName,
 				executionId: 'exec-1',
 				taskData: {
 					startTime: 0,
@@ -162,11 +256,90 @@ describe('OtelLifecycleHandler', () => {
 					executionIndex: 0,
 					source: [],
 					data: { main: [[{ json: {} }]] },
+					...overrides,
 				},
-				executionData: { resultData: { runData: {} } },
-			} as never);
+				executionData: emptyExecutionData,
+			}) as unknown as NodeExecuteAfterContext;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			config.includeNodeSpans = true;
+			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+		});
+
+		it('should skip node spans when includeNodeSpans is false', () => {
+			config.includeNodeSpans = false;
+			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+
+			handler.onNodeStart(makeStartCtx());
+			handler.onNodeEnd(makeEndCtx());
 
 			expect(tracer.startNode).not.toHaveBeenCalled();
+			expect(tracer.endNode).not.toHaveBeenCalled();
+		});
+
+		it('should call tracer.startNode with the resolved node', () => {
+			handler.onNodeStart(makeStartCtx());
+
+			expect(tracer.startNode).toHaveBeenCalledWith({ executionId: 'exec-1', node });
+		});
+
+		it('should not call tracer.startNode when node is not found in workflow', () => {
+			handler.onNodeStart(makeStartCtx('MissingNode'));
+
+			expect(tracer.startNode).not.toHaveBeenCalled();
+		});
+
+		it('should call tracer.endNode with counted items and coerced customAttributes', () => {
+			const ctx = makeEndCtx({
+				source: [{ previousNode: 'Trigger', previousNodeRun: 0 }],
+				data: { main: [[{ json: {} }, { json: {} }]] },
+				metadata: { tracing: { 'llm.model': 'gpt-4o', 'llm.tokens': 500 } },
+			} as unknown as Partial<NodeExecuteAfterContext['taskData']>);
+			(ctx.executionData as unknown as IRunExecutionData).resultData.runData = {
+				Trigger: [
+					{
+						startTime: 0,
+						executionTime: 1,
+						executionIndex: 0,
+						source: [],
+						data: { main: [[{ json: {} }]] },
+					},
+				],
+			};
+
+			handler.onNodeEnd(ctx);
+
+			expect(tracer.endNode).toHaveBeenCalledWith({
+				executionId: 'exec-1',
+				node,
+				inputItemCount: 1,
+				outputItemCount: 2,
+				error: undefined,
+				customAttributes: { 'llm.model': 'gpt-4o', 'llm.tokens': '500' },
+			});
+		});
+
+		it('should pass undefined customAttributes when metadata.tracing is absent', () => {
+			handler.onNodeEnd(makeEndCtx());
+
+			expect(tracer.endNode).toHaveBeenCalledWith(
+				expect.objectContaining({ customAttributes: undefined }),
+			);
+		});
+
+		it('should forward taskData.error to tracer.endNode', () => {
+			const error = new Error('node failure');
+			handler.onNodeEnd(
+				makeEndCtx({ error } as unknown as Partial<NodeExecuteAfterContext['taskData']>),
+			);
+
+			expect(tracer.endNode).toHaveBeenCalledWith(expect.objectContaining({ error }));
+		});
+
+		it('should not call tracer.endNode when node is not found in workflow', () => {
+			handler.onNodeEnd(makeEndCtx({}, 'MissingNode'));
+
 			expect(tracer.endNode).not.toHaveBeenCalled();
 		});
 	});

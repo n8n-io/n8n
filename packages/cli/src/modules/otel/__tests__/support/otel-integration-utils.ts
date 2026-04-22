@@ -3,12 +3,12 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import type { WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, UnrecognizedNodeTypeError } from 'n8n-core';
 import { DebugHelper } from 'n8n-nodes-base/nodes/DebugHelper/DebugHelper.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 
 import { TestNodeWithTracing } from './test-node-with-tracing';
-import { createRunExecutionData, UnrecognizedNodeTypeError } from 'n8n-workflow';
+import { createRunExecutionData } from 'n8n-workflow';
 import type { INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
 import { readFileSync } from 'fs';
 import path from 'path';

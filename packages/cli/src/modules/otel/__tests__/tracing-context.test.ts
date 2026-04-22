@@ -18,18 +18,6 @@ describe('TraceContextService', () => {
 		it('should persist context to the execution entity', async () => {
 			const tracingContext = {
 				traceparent: '00-abc123def456abc123def456abc123de-1234567890abcdef-01',
-			};
-
-			await service.persist('exec-1', tracingContext);
-
-			expect(executionRepository.update).toHaveBeenCalledWith('exec-1', {
-				tracingContext,
-			});
-		});
-
-		it('should persist context with tracestate', async () => {
-			const tracingContext = {
-				traceparent: '00-abc123def456abc123def456abc123de-1234567890abcdef-01',
 				tracestate: 'vendor1=value1',
 			};
 
@@ -85,20 +73,20 @@ describe('TraceContextService', () => {
 			expect(result).toEqual(tracingContext);
 		});
 
-		it('should return null when no execution found', async () => {
+		it('should return undefined when no execution found', async () => {
 			executionRepository.findOne.mockResolvedValueOnce(null);
 
 			const result = await service.get('exec-2');
 
-			expect(result).toBeNull();
+			expect(result).toBeUndefined();
 		});
 
-		it('should return null on DB error', async () => {
+		it('should return undefined on DB error', async () => {
 			executionRepository.findOne.mockRejectedValueOnce(new Error('DB error'));
 
 			const result = await service.get('exec-3');
 
-			expect(result).toBeNull();
+			expect(result).toBeUndefined();
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to load tracing context',
 				expect.objectContaining({ executionId: 'exec-3' }),

@@ -24,7 +24,7 @@ function isError(status: ExecutionStatus): boolean {
 	return status === 'error' || status === 'crashed';
 }
 
-type TrackedSpan = { span: Span; createdAt: number };
+type TrackedSpan = { span: Span };
 
 @Service()
 export class ExecutionLevelTracer {
@@ -54,7 +54,7 @@ export class ExecutionLevelTracer {
 				parentCtx,
 			);
 
-			this.activeWorkflowSpans.set(params.executionId, { span, createdAt: Date.now() });
+			this.activeWorkflowSpans.set(params.executionId, { span });
 			return toTracingParentContext(span);
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
@@ -131,7 +131,9 @@ export class ExecutionLevelTracer {
 				this.activeNodeSpansByExecutionId.set(params.executionId, executionNodes);
 			}
 
-			executionNodes.set(params.node.id, { span, createdAt: Date.now() });
+			// Keyed by node name — names are unique within a workflow and this is what
+			// the outbound header injection path passes (see `findMostSpecificSpan`).
+			executionNodes.set(params.node.name, { span });
 		} catch (error) {
 			this.logger.warn('Failed to start node span', {
 				executionId: params.executionId,
@@ -145,7 +147,7 @@ export class ExecutionLevelTracer {
 	endNode(params: EndNodeParams): void {
 		try {
 			const executionNodes = this.activeNodeSpansByExecutionId.get(params.executionId);
-			const nodeStart = executionNodes?.get(params.node.id);
+			const nodeStart = executionNodes?.get(params.node.name);
 			if (!nodeStart) return;
 
 			const { span: activeNodeSpan } = nodeStart;
@@ -162,11 +164,10 @@ export class ExecutionLevelTracer {
 			}
 
 			activeNodeSpan.end();
-			executionNodes!.delete(params.node.id);
+			executionNodes?.delete(params.node.name);
 		} catch (error) {
 			this.logger.warn('Failed to end node span', {
 				executionId: params.executionId,
-				nodeId: params.node.id,
 				nodeName: params.node.name,
 				error: error instanceof Error ? error.message : String(error),
 			});
@@ -218,7 +219,7 @@ export class ExecutionLevelTracer {
 		const executionNodes = this.activeNodeSpansByExecutionId.get(executionId);
 		if (!executionNodes) return;
 
-		for (const [, tracked] of executionNodes) {
+		for (const tracked of executionNodes.values()) {
 			terminateSpan(tracked.span, 'workflow_cancelled');
 		}
 

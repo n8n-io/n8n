@@ -38,9 +38,6 @@ export class OtelModule implements ModuleInterface {
 		const config = Container.get(OtelConfig);
 		if (!config.enabled) return;
 
-		const { ExecutionLevelTracer } = await import('./execution-level-tracer');
-		Container.get(ExecutionLevelTracer).stopEvictionTimer();
-
 		const { OtelService } = await import('./otel.service');
 		await Container.get(OtelService).shutdown();
 	}
