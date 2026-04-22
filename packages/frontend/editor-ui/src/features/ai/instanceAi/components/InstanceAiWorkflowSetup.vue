@@ -5,6 +5,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -461,8 +462,9 @@ function isTriggerOnly(card: SetupCard): boolean {
 	return isTriggerOnlyUtil(card, cardHasParamWork);
 }
 
-function useCredentialIcon(card: SetupCard): boolean {
-	return shouldUseCredentialIcon(card, cardHasParamWork);
+function getCardNodeType(card: SetupCard) {
+	const node = card.nodes[0].node;
+	return nodeTypesStore.getNodeType(node.type, node.typeVersion);
 }
 
 function openNdv(card: SetupCard): void {
@@ -508,11 +510,11 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 					<ul :class="$style.confirmList">
 						<li v-for="card in cards" :key="card.id" :class="$style.confirmItem">
 							<CredentialIcon
-								v-if="useCredentialIcon(card)"
+								v-if="shouldUseCredentialIcon(card)"
 								:credential-type-name="card.credentialType!"
 								:size="14"
 							/>
-							<N8nIcon v-else icon="check" size="xsmall" :class="$style.success" />
+							<NodeIcon v-else :node-type="getCardNodeType(card)" :size="14" />
 							<N8nText size="small">{{ getCardTitle(card) }}</N8nText>
 						</li>
 					</ul>
@@ -557,11 +559,11 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 				<!-- Header -->
 				<header :class="$style.header">
 					<CredentialIcon
-						v-if="useCredentialIcon(currentCard)"
+						v-if="shouldUseCredentialIcon(currentCard)"
 						:credential-type-name="currentCard.credentialType!"
 						:size="16"
 					/>
-					<N8nIcon v-else icon="play" size="small" />
+					<NodeIcon v-else :node-type="getCardNodeType(currentCard)" :size="16" />
 					<N8nText :class="$style.title" size="medium" color="text-dark" bold>
 						{{ getCardTitle(currentCard) }}
 					</N8nText>
@@ -574,7 +576,8 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						:class="$style.loading"
 					/>
 					<N8nIcon
-						v-else-if="getCredTestIcon(currentCard) === 'check'"
+						v-else-if="getCredTestIcon(currentCard) === 'check' && !cardHasParamWork(currentCard)"
+						data-test-id="instance-ai-workflow-setup-cred-check"
 						icon="check"
 						size="small"
 						:class="$style.success"
