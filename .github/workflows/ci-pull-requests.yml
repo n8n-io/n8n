@@ -3,7 +3,6 @@ name: 'CI: Pull Requests (Build, Test, Lint)'
 on:
   pull_request:
   merge_group:
-  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
@@ -181,8 +180,6 @@ jobs:
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
       playwright-only: ${{ needs.install-and-build.outputs.e2e == 'true' && needs.install-and-build.outputs.unit == 'false' }}
-      # Fork PRs have no license secrets — route to sqlite-only + skip @licensed tests.
-      community-mode: ${{ github.event.pull_request.head.repo.fork == true }}
     secrets: inherit
 
   db-tests:

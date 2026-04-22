@@ -18,11 +18,6 @@ on:
         required: false
         type: string
         default: ''
-      community-mode:
-        description: 'true routes to the community (fork) path: sqlite-only, skip @licensed tests.'
-        required: false
-        type: boolean
-        default: false
   workflow_dispatch:
     inputs:
       branch:
@@ -40,11 +35,10 @@ on:
         required: false
         type: string
         default: ''
-      community-mode:
-        description: 'true routes to the community (fork) path: sqlite-only, skip @licensed tests.'
-        required: false
-        type: boolean
-        default: false
+
+# Fork PRs route to the community path (sqlite-only, no @licensed tests) because
+# they have no license-secret access. Non-PR events (schedule, manual dispatch)
+# always use the internal path.
 
 jobs:
   # Ensures the n8n + runners image tarball is cached under the SHA-derived
@@ -99,7 +93,7 @@ jobs:
   sqlite-sanity:
     name: 'SQLite: Sanity Check'
     needs: [prepare-docker]
-    if: ${{ !inputs.community-mode }}
+    if: ${{ github.event.pull_request.head.repo.fork != true }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
@@ -114,7 +108,7 @@ jobs:
   multi-main-e2e:
     needs: [prepare-docker, prepare-matrix]
     name: 'Multi-Main: E2E'
-    if: ${{ !inputs.community-mode && needs.prepare-matrix.outputs.skip-tests != 'true' }}
+    if: ${{ github.event.pull_request.head.repo.fork != true && needs.prepare-matrix.outputs.skip-tests != 'true' }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
@@ -130,7 +124,7 @@ jobs:
   community-sqlite-e2e:
     needs: [prepare-docker, prepare-matrix]
     name: 'SQLite: E2E (community)'
-    if: ${{ inputs.community-mode && needs.prepare-matrix.outputs.skip-tests != 'true' }}
+    if: ${{ github.event.pull_request.head.repo.fork == true && needs.prepare-matrix.outputs.skip-tests != 'true' }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
