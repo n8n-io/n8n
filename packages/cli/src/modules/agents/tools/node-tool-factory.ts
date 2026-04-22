@@ -1,6 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents';
-import type { JSONSchema7 } from 'json-schema';
+import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { nodeNameToToolName } from 'n8n-workflow';
 import type { ZodType } from 'zod';
@@ -40,6 +40,52 @@ function isZodSchema(value: unknown): value is ZodType {
 		value !== null &&
 		typeof (value as { safeParse?: unknown }).safeParse === 'function'
 	);
+}
+
+/**
+ * Anthropic's tool-registration API requires `input_schema` to be a top-level
+ * `{ type: "object" }`. `zodToJsonSchema()` happily produces other roots:
+ *   - `z.union` / `z.discriminatedUnion` → top-level `anyOf`
+ *   - `z.intersection` / `.and()`        → top-level `allOf`
+ *   - `z.array` / primitives             → `type: 'array' | 'string' | ...`
+ *
+ * Native tool nodes mostly expose ZodObject schemas (LangChain's
+ * `DynamicStructuredTool` enforces it), but some paths (McpClientTool's raw
+ * schema, custom ToolCode schemas) can slip through. Normalize defensively so
+ * we never hand Anthropic a root it rejects.
+ *
+ * Strategy:
+ *   - `type: 'object'`  → pass through.
+ *   - `allOf` of objects → merge their properties/required into one object
+ *     (lossless for `z.intersection`-style schemas).
+ *   - Anything else     → fall back to a permissive empty object. We can't
+ *     faithfully advertise a union/primitive root, but the handler passes the
+ *     raw input through to the executor regardless, so the LLM can still send
+ *     whatever it chooses.
+ */
+export function normalizeToObjectSchema(schema: JSONSchema7): JSONSchema7 {
+	if (schema.type === 'object') return schema;
+
+	if (Array.isArray(schema.allOf)) {
+		const objectMembers = schema.allOf.filter(
+			(m): m is JSONSchema7 => typeof m === 'object' && m !== null && m.type === 'object',
+		);
+		if (objectMembers.length > 0) {
+			const properties: Record<string, JSONSchema7Definition> = {};
+			const required: string[] = [];
+			for (const member of objectMembers) {
+				Object.assign(properties, member.properties ?? {});
+				if (Array.isArray(member.required)) required.push(...member.required);
+			}
+			return {
+				type: 'object',
+				properties,
+				...(required.length > 0 && { required: Array.from(new Set(required)) }),
+			};
+		}
+	}
+
+	return { type: 'object', properties: {} };
 }
 
 /**
@@ -86,7 +132,7 @@ async function resolveInputSchema(
 			});
 
 			if (isZodSchema(introspected)) {
-				return zodToJsonSchema(introspected) as JSONSchema7;
+				return normalizeToObjectSchema(zodToJsonSchema(introspected) as JSONSchema7);
 			}
 
 			return {
