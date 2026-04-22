@@ -1,6 +1,7 @@
 import multiprocessing
 import traceback
 import textwrap
+import types
 import json
 import io
 import os
@@ -435,7 +436,7 @@ class TaskExecutor:
 
         filtered["__import__"] = TaskExecutor._create_safe_import(security_config)
 
-        return filtered
+        return types.MappingProxyType(filtered)
 
     @staticmethod
     def _sanitize_sys_modules(security_config: SecurityConfig):
