@@ -611,6 +611,9 @@ export class AgentsController {
 					send(event);
 				}
 				break;
+			case 'tool-execution-start':
+				send({ toolCallExecuting: { toolCallId: chunk.toolCallId, tool: chunk.toolName } });
+				break;
 			case 'error': {
 				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
 				send({ error: errMsg });

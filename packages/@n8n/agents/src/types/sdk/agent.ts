@@ -97,6 +97,16 @@ export type StreamChunk = ContentMetadata &
 				id?: string;
 		  }
 		| {
+				/**
+				 * Emitted just before a tool handler starts executing. Pairs with the
+				 * subsequent tool-result message chunk to let consumers show a
+				 * mid-flight indicator between "LLM picked a tool" and "result arrived".
+				 */
+				type: 'tool-execution-start';
+				toolCallId: string;
+				toolName: string;
+		  }
+		| {
 				type: 'tool-call-suspended';
 				runId?: string;
 				toolCallId?: string;
