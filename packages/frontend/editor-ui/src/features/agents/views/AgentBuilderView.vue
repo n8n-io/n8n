@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { N8nActionDropdown, N8nIcon, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
@@ -23,6 +23,7 @@ import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
 	toolIdentifiersFromConfig,
+	type AgentTelemetryStatus,
 } from '../composables/agentTelemetry.utils';
 import { useAgentTelemetry, type AgentConfigPart } from '../composables/useAgentTelemetry';
 import { PROJECT_AGENTS, AGENT_SESSION_DETAIL_VIEW } from '../constants';
@@ -167,7 +168,7 @@ function onConnectedTriggersUpdate(list: string[]) {
 	connectedTriggers.value = list;
 	triggersTelemetryBaseline.value = list;
 	if (!changed) return;
-	emitEditedConfigTelemetry(['triggers']);
+	emitEditedConfigTelemetry(['triggers'], currentEditSnapshot());
 }
 
 async function fetchAgent() {
@@ -191,7 +192,7 @@ async function updateName(name: string) {
 			localConfig.value.name = updated.name;
 		}
 		agentsEventBus.emit('agentUpdated');
-		emitEditedConfigTelemetry(['name']);
+		emitEditedConfigTelemetry(['name'], currentEditSnapshot());
 	}
 }
 
@@ -203,7 +204,7 @@ async function updateDescription(description: string) {
 		agent.value = updated;
 		agentDescription.value = updated.description ?? null;
 		updatedAt.value = updated.updatedAt;
-		emitEditedConfigTelemetry(['description']);
+		emitEditedConfigTelemetry(['description'], currentEditSnapshot());
 	}
 }
 
@@ -361,29 +362,58 @@ const TEXT_INPUT_EDIT_PARTS: ReadonlySet<AgentConfigPart> = new Set([
 	'name',
 ]);
 
-const pendingEditedParts = new Set<AgentConfigPart>();
+interface PendingEditedConfigSnapshot {
+	agentId: string;
+	status: AgentTelemetryStatus;
+	config: AgentJsonConfig | null;
+	connectedTriggers: string[];
+	parts: Set<AgentConfigPart>;
+}
+
+let pendingEditedConfig: PendingEditedConfigSnapshot | null = null;
 let editedConfigDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-function emitEditedConfigTelemetry(parts: AgentConfigPart[]) {
+function emitEditedConfigTelemetry(
+	parts: AgentConfigPart[],
+	snapshot: {
+		agentId: string;
+		status: AgentTelemetryStatus;
+		config: AgentJsonConfig | null;
+		connectedTriggers: string[];
+	},
+) {
 	if (parts.length === 0) return;
 	void (async () => {
-		const fp = await buildAgentConfigFingerprint(localConfig.value, connectedTriggers.value);
+		const fp = await buildAgentConfigFingerprint(snapshot.config, snapshot.connectedTriggers);
 		for (const part of parts) {
 			agentTelemetry.trackEditedConfig({
-				agentId: agentId.value,
+				agentId: snapshot.agentId,
 				part,
 				configVersion: fp.config_version,
-				status: deriveAgentStatus(agent.value),
+				status: snapshot.status,
 			});
 		}
 	})();
 }
 
 function flushEditedConfigTelemetry() {
-	editedConfigDebounceTimer = null;
-	const parts = Array.from(pendingEditedParts);
-	pendingEditedParts.clear();
-	emitEditedConfigTelemetry(parts);
+	if (editedConfigDebounceTimer !== null) {
+		clearTimeout(editedConfigDebounceTimer);
+		editedConfigDebounceTimer = null;
+	}
+	const pending = pendingEditedConfig;
+	pendingEditedConfig = null;
+	if (!pending || pending.parts.size === 0) return;
+	emitEditedConfigTelemetry(Array.from(pending.parts), pending);
+}
+
+function currentEditSnapshot() {
+	return {
+		agentId: agentId.value,
+		status: deriveAgentStatus(agent.value),
+		config: localConfig.value,
+		connectedTriggers: connectedTriggers.value,
+	};
 }
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
@@ -395,7 +425,23 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!part) return;
 
 	if (TEXT_INPUT_EDIT_PARTS.has(part)) {
-		pendingEditedParts.add(part);
+		// If the user switched agents mid-debounce, flush the pending events for
+		// the previous agent before starting a new snapshot for the current one.
+		if (pendingEditedConfig && pendingEditedConfig.agentId !== agentId.value) {
+			flushEditedConfigTelemetry();
+		}
+		// Capture a snapshot of the edit-relevant state each call so telemetry
+		// stays attributed to the correct agent even if the route changes before
+		// the debounce timer fires.
+		const existingParts = pendingEditedConfig?.parts ?? new Set<AgentConfigPart>();
+		pendingEditedConfig = {
+			agentId: agentId.value,
+			status: deriveAgentStatus(agent.value),
+			config: localConfig.value ? deepCopy(localConfig.value) : null,
+			connectedTriggers: [...connectedTriggers.value],
+			parts: existingParts,
+		};
+		pendingEditedConfig.parts.add(part);
 		if (editedConfigDebounceTimer !== null) clearTimeout(editedConfigDebounceTimer);
 		editedConfigDebounceTimer = setTimeout(
 			flushEditedConfigTelemetry,
@@ -404,7 +450,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 		return;
 	}
 
-	emitEditedConfigTelemetry([part]);
+	emitEditedConfigTelemetry([part], currentEditSnapshot());
 }
 
 async function onConfigUpdated() {
@@ -516,6 +562,11 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 });
 
 async function initialize() {
+	// Flush any pending edited-config telemetry for the previous agent before
+	// resetting state — the snapshot was captured against the OLD agent's
+	// state, so it must fire before we overwrite local refs.
+	flushEditedConfigTelemetry();
+
 	agent.value = null;
 	mode.value = 'home';
 	chatMode.value = 'test';
@@ -549,6 +600,11 @@ async function initialize() {
 }
 
 watch(agentId, initialize, { immediate: true });
+
+// Ensure any in-flight debounced telemetry fires before the view is torn down.
+onBeforeUnmount(() => {
+	flushEditedConfigTelemetry();
+});
 
 // Only react to the arrival of a session id — clearing the param is always
 // accompanied by an explicit `mode` assignment from the caller (exitContinueMode,
