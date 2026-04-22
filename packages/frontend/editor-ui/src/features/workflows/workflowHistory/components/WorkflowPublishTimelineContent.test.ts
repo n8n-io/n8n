@@ -202,6 +202,33 @@ describe('WorkflowPublishTimelineContent', () => {
 		expect(queryByText(/History before .* may be incomplete/)).not.toBeInTheDocument();
 	});
 
+	describe('date formatting', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			// Freeze "now" at a stable point so we can compare same-year vs. different-year rendering
+			vi.setSystemTime(new Date('2026-04-22T10:00:00Z'));
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should render a same-year, non-today date without the year', async () => {
+			const { findByText, queryByText } = renderWithEvents([
+				buildEvent({ createdAt: '2026-01-15T12:00:00Z' }),
+			]);
+
+			expect(await findByText('15 Jan')).toBeInTheDocument();
+			expect(queryByText(/15 Jan 2026/)).not.toBeInTheDocument();
+		});
+
+		it('should render a different-year date including the year', async () => {
+			const { findByText } = renderWithEvents([buildEvent({ createdAt: '2025-11-03T12:00:00Z' })]);
+
+			expect(await findByText('3 Nov 2025')).toBeInTheDocument();
+		});
+	});
+
 	it('should tolerate a failure fetching the adoption date and still render events', async () => {
 		const pinia = createTestingPinia({ stubActions: false });
 		const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);

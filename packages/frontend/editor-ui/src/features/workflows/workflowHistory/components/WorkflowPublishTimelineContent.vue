@@ -126,7 +126,7 @@ const isToday = (date: Date) => {
 
 const formatDateShort = (date: Date) => {
 	if (isToday(date)) return dateformat(date, 'HH:MM');
-	const format = date.getFullYear() !== new Date().getFullYear() ? 'd mmm yyyy' : 'd mmm yyyy';
+	const format = date.getFullYear() !== new Date().getFullYear() ? 'd mmm yyyy' : 'd mmm';
 	return dateformat(date, format);
 };
 
