@@ -506,6 +506,43 @@ describe('SlackTrigger Node', () => {
 			expect(out.user_resolved).toBe(mockRequest.body.event.user.name);
 		});
 
+		it('should trigger on app_home_opened event without channel validation', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, defaultValue?: any) => {
+					switch (paramName) {
+						case 'trigger':
+							return ['app_home_opened'];
+						case 'watchWorkspace':
+							return false;
+						case 'options':
+							return {};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+
+			const mockRequest = {
+				body: {
+					type: 'event_callback',
+					event: {
+						type: 'app_home_opened',
+						user: 'U061F7AUR',
+						channel: 'D0LAN2Q65',
+						tab: 'home',
+						event_ts: '1515449522000016',
+					},
+				},
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest as any);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(result.workflowData).toBeDefined();
+			expect(result.workflowData![0][0].json).toEqual(mockRequest.body.event);
+		});
+
 		it('should handle url_verification challenge', async () => {
 			const mockRequest = {
 				body: {

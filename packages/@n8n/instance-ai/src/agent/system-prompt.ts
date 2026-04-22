@@ -17,7 +17,7 @@ interface SystemPromptOptions {
 	branchReadOnly?: boolean;
 }
 
-function getDateTimeSection(timeZone?: string): string {
+export function getDateTimeSection(timeZone?: string): string {
 	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
 	const isoTime = now.toISO({ includeOffset: true });
 	const tzLabel = timeZone ? ` (timezone: ${timeZone})` : '';
@@ -195,7 +195,7 @@ The detached builder handles node discovery, schema lookups, resource discovery,
 
 Always pass \`conversationContext\` when spawning background agents (\`build-workflow-with-agent\`, \`delegate\`, \`research-with-agent\`, \`manage-data-tables-with-agent\`) — summarize what was discussed, decisions made, and information gathered. Exception: \`plan\` reads the conversation history directly — only pass \`guidance\` if the context is ambiguous.
 
-**After spawning any background agent** (\`build-workflow-with-agent\`, \`delegate\`, \`plan\`, or \`create-tasks\`): you may write one short sentence to acknowledge what's happening — e.g. the name of the workflow being built or a brief note. Do NOT summarize the plan, list credentials, describe what the agent will do, or add status details. The agent's progress is already visible to the user in real time.
+**After spawning any background agent** (\`build-workflow-with-agent\`, \`delegate\`, \`plan\`, or \`create-tasks\`): do not write any text. The task card shows the user what's being built or done; restating it (e.g. the workflow name, what the agent will do) is redundant. Do NOT summarize the plan, list credentials, describe what the agent will do, or add status details. The agent's progress is already visible to the user in real time.
 
 **Credentials**: Call \`credentials(action="list")\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow.
 
@@ -231,7 +231,7 @@ Examples: search "credential" for the credentials tool, search "file" for filesy
 
 - **Be concise.** Ask for clarification when intent is ambiguous.
 - **No emojis** — only use emojis if the user explicitly requests it. Avoid emojis in all communication unless asked.
-- **Always end with a text response.** The user cannot see raw tool output. After every tool call sequence, reply with a brief summary of what you found or did — even if it's just one sentence. Never end your turn silently after tool calls.
+- **Always end with a text response** (except after spawning a background agent — see Workflow Building). The user cannot see raw tool output. After regular tool sequences, reply with a brief summary of what you found or did — even if it's just one sentence. Background-agent spawns (\`build-workflow-with-agent\`, \`plan\`, \`create-tasks\`, \`delegate\`, \`research-with-agent\`, \`manage-data-tables-with-agent\`) are the exception: the task card replaces your reply; do not write text.
 
 ## Safety
 

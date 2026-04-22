@@ -11,6 +11,11 @@ import type { INode } from 'n8n-workflow';
 import * as useRunWorkflowModule from '@/app/composables/useRunWorkflow';
 
 vi.mock('@/app/composables/useRunWorkflow');
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn(() => ({
+		isConnected: true,
+	})),
+}));
 vi.mock('@/app/composables/useWorkflowHelpers', async (importOriginal) => {
 	const actual: Record<string, unknown> = await importOriginal();
 	return {

@@ -79,6 +79,7 @@ export interface IBinaryData {
 // credentials file.
 export interface IOAuth2Options {
 	includeCredentialsOnRefreshOnBody?: boolean;
+	skipTokenRefresh?: boolean;
 	property?: string;
 	tokenType?: string;
 	keepBearer?: boolean;
@@ -3540,6 +3541,11 @@ export interface IUserSettings {
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
 	dismissedCallouts?: Record<string, boolean>;
+	instanceAi?: {
+		credentialId?: string | null;
+		modelName?: string;
+		localGatewayDisabled?: boolean;
+	};
 }
 
 export interface IProcessedDataConfig {

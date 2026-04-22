@@ -9,6 +9,7 @@ import { createNodesTool } from './nodes.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
+import { createPlanWithAgentTool } from './orchestration/plan-with-agent.tool';
 import { createPlanTool } from './orchestration/plan.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
 import { createVerifyBuiltWorkflowTool } from './orchestration/verify-built-workflow.tool';
@@ -69,7 +70,8 @@ export function createOrchestratorDomainTools(context: InstanceAiContext) {
  */
 export function createOrchestrationTools(context: OrchestrationContext) {
 	return {
-		plan: createPlanTool(context),
+		plan: createPlanWithAgentTool(context),
+		'create-tasks': createPlanTool(context),
 		'task-control': createTaskControlTool(context),
 		delegate: createDelegateTool(context),
 		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),
