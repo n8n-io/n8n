@@ -344,12 +344,10 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 		});
 	}
 
-	if (activeVersion.value) {
-		actions.push({
-			id: VERSION_ACTIONS.PUBLISH_TIMELINE,
-			label: i18n.baseText('workflowHistory.action.viewTimeline'),
-		});
-	}
+	actions.push({
+		id: VERSION_ACTIONS.PUBLISH_TIMELINE,
+		label: i18n.baseText('workflowHistory.action.viewTimeline'),
+	});
 
 	actions.push({
 		id: VERSION_ACTIONS.UNPUBLISH,

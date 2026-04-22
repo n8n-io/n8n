@@ -140,12 +140,6 @@ const initialTab: HistoryTab =
 	route.query.tab === WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB ? 'publishTimeline' : 'history';
 const activeTab = ref<HistoryTab>(initialTab);
 
-const wasEverPublished = computed(
-	() =>
-		publishedWorkflowVersionId.value !== undefined ||
-		workflowHistory.value.some((item) => item.workflowPublishHistory.length > 0),
-);
-
 const tabOptions = computed<Array<TabOptions<HistoryTab>>>(() => [
 	{
 		label: i18n.baseText('workflowHistory.tab.history'),
@@ -621,19 +615,12 @@ watchEffect(async () => {
 			</span>
 		</div>
 		<div :class="$style.corner">
-			<template v-if="wasEverPublished">
-				<N8nTabs
-					v-model="activeTab"
-					:options="tabOptions"
-					size="small"
-					data-test-id="workflow-history-tabs"
-				/>
-			</template>
-			<template v-else>
-				<N8nHeading tag="h2" size="medium" bold>
-					{{ i18n.baseText('workflowHistory.title') }}
-				</N8nHeading>
-			</template>
+			<N8nTabs
+				v-model="activeTab"
+				:options="tabOptions"
+				size="small"
+				data-test-id="workflow-history-tabs"
+			/>
 			<div :class="$style.cornerActions">
 				<RouterLink :to="editorRoute" data-test-id="workflow-history-close-button">
 					<N8nButton variant="ghost" icon="x" size="small" square />
