@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import {
 	injectWorkflowState,
 	useWorkflowState,
@@ -221,5 +222,33 @@ describe('useExecutionDebugging()', () => {
 
 		expect(setWorkflowExecutionData).toHaveBeenCalledWith(mockExecution);
 		expect(toast.showToast).toHaveBeenCalledTimes(1);
+	});
+
+	it('should mark workflow state dirty after pinning execution data', async () => {
+		const mockExecution = {
+			data: {
+				resultData: {
+					runData: {
+						TriggerNode: [
+							{
+								data: {
+									main: [[{ json: { test: 'data' } }]],
+								},
+							},
+						],
+					},
+				},
+			},
+		} as unknown as IExecutionResponse;
+
+		const workflowStore = mockedStore(useWorkflowsStore);
+		const uiStore = mockedStore(useUIStore);
+		mockWorkflowDocumentStore.getNodes.mockReturnValue([{ name: 'TriggerNode' }] as INodeUi[]);
+		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
+
+		await executionDebugging.applyExecutionData('1');
+
+		expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalled();
+		expect(uiStore.markStateDirty).toHaveBeenCalled();
 	});
 });
