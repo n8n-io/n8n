@@ -55,11 +55,7 @@ import {
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
 } from './webhook-response-headers';
-import type {
-	IWebhookResponseCallbackData,
-	WebhookOptionsRequest,
-	WebhookRequest,
-} from './webhook.types';
+import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
