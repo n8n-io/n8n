@@ -7,6 +7,7 @@ import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -32,6 +33,7 @@ export const createUnpublishWorkflowTool = (
 	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
 	telemetry: Telemetry,
+	collaborationService: CollaborationService,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'unpublish_workflow',
 	config: {
@@ -57,9 +59,13 @@ export const createUnpublishWorkflowTool = (
 		try {
 			await getMcpWorkflow(workflowId, user, ['workflow:unpublish'], workflowFinderService);
 
+			await collaborationService.ensureWorkflowEditable(workflowId);
+
 			await workflowService.deactivateWorkflow(user, workflowId, {
 				source: 'n8n-mcp',
 			});
+
+			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
 			const output: UnpublishWorkflowOutput = {
 				success: true,

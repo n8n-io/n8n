@@ -11,6 +11,7 @@
 	"include": ["src/**/*.ts"],
 	"references": [
 		{ "path": "../../workflow/tsconfig.build.esm.json" },
+		{ "path": "../api-types/tsconfig.build.json" },
 		{ "path": "../constants/tsconfig.build.json" },
 		{ "path": "../di/tsconfig.build.json" },
 		{ "path": "../permissions/tsconfig.build.json" }
