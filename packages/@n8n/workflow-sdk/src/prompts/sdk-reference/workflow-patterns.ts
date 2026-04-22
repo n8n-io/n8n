@@ -173,7 +173,10 @@ export default workflow('id', 'name')
 
 <multi_way_routing>
 
-Switch rules use \`rules.values\` (NOT \`rules.rules\`). Each rule needs \`outputKey\` and a complete \`conditions\` object:
+Switch rules use \`rules.values\` (NOT \`rules.rules\`). Each rule needs \`outputKey\` and a complete \`conditions\` object.
+
+\`onCase(index, target)\` takes a **numeric index** — entry 0 targets the first rule's \`outputKey\`, entry 1 the second, and so on. String keys do not compile. To cover a fallback route, add a final rule whose condition matches everything and wire it via its positional index.
+
 \`\`\`javascript
 const routeByPriority = switchCase({
   version: 3.2,
@@ -184,6 +187,7 @@ const routeByPriority = switchCase({
         values: [
           { outputKey: 'urgent', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.priority }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'urgent' }], combinator: 'and' } },
           { outputKey: 'normal', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.priority }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'normal' }], combinator: 'and' } },
+          { outputKey: 'other', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ true }}', operator: { type: 'boolean', operation: 'true', singleValue: true } }], combinator: 'and' } },
         ]
       }
     }
@@ -193,9 +197,9 @@ const routeByPriority = switchCase({
 export default workflow('id', 'name')
   .add(startTrigger)
   .to(routeByPriority
-    .onCase('urgent', processUrgent.to(notifyTeam.to(escalate)))
-    .onCase('normal', processNormal)
-    .onDefault(archive));
+    .onCase(0, processUrgent.to(notifyTeam.to(escalate)))
+    .onCase(1, processNormal)
+    .onCase(2, archive));
 \`\`\`
 
 </multi_way_routing>
@@ -226,6 +230,18 @@ export default workflow('id', 'name')
 </parallel_execution>
 
 <batch_processing>
+
+**Nesting constraint:** \`SplitInBatchesBuilder\` is NOT a valid \`IfElseTarget\` or \`SwitchCaseTarget\` — you cannot pass a split-in-batches builder into \`onTrue\`, \`onFalse\`, or \`onCase\`. Do not batch inside a conditional; batch first, branch per-item inside \`.onEachBatch(...)\` via a \`NodeChain\`:
+
+\`\`\`javascript
+// To branch per batch item, chain the conditional inside onEachBatch:
+sibNode
+  .onEachBatch(prepareItem.to(ifElse.onTrue(actionA).onFalse(actionB)).to(nextBatch(sibNode)))
+  .onDone(finalizeResults);
+\`\`\`
+
+Standard looping pattern:
+
 \`\`\`javascript
 const startTrigger = trigger({
   type: 'n8n-nodes-base.manualTrigger',
