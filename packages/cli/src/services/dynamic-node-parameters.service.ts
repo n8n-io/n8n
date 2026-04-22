@@ -27,7 +27,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { WorkflowLoaderService } from './workflow-loader.service';
-import { User } from '@n8n/db';
+import { SharedWorkflowRepository, User } from '@n8n/db';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Logger } from '@n8n/backend-common';
 
@@ -59,11 +59,6 @@ export class DynamicNodeParametersService {
 		private logger: Logger,
 		private nodeTypes: NodeTypes,
 		private workflowLoaderService: WorkflowLoaderService,
-<<<<<<< HEAD
-	) {}
-
-	async scrubInaccessibleProjectId(user: User, payload: { projectId?: string }) {
-=======
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private credentialsFinderService: CredentialsFinderService,
 	) {}
@@ -72,7 +67,6 @@ export class DynamicNodeParametersService {
 		user: User,
 		payload: { projectId?: string; workflowId?: string; credentials?: INodeCredentials },
 	) {
->>>>>>> ac41112731 (fix(core): Enforce credential access checks in dynamic node parameter requests (#28446))
 		// We want to avoid relying on generic project:read permissions to enable
 		// a future with fine-grained permission control dependent on the respective resource
 		// For now we use the dataTable:listProject scope as this is the existing consumer of
@@ -88,8 +82,6 @@ export class DynamicNodeParametersService {
 			);
 			payload.projectId = undefined;
 		}
-<<<<<<< HEAD
-=======
 
 		if (payload.workflowId) {
 			const hasAccess = await userHasScopes(user, ['workflow:read'], false, {
@@ -127,7 +119,6 @@ export class DynamicNodeParametersService {
 				}
 			}
 		}
->>>>>>> ac41112731 (fix(core): Enforce credential access checks in dynamic node parameter requests (#28446))
 	}
 
 	/** Returns the available options via a predefined method */
