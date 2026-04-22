@@ -37,6 +37,22 @@ const PLACEHOLDER_RULE =
 const PLACEHOLDER_ESCALATION =
 	'When the user says "send me", "email me", "notify me", or similar and you don\'t know their specific address, use `placeholder(\'Your email address\')` for the recipient field rather than hardcoding a fake address like `user@example.com`. The setup wizard will collect this from the user after the build.';
 
+// ── Shared task-scope rule (used by both builder prompt variants) ───────────
+
+const TASK_SCOPE_SECTION = `## Scope — Build Only This Task
+
+You are building exactly ONE workflow for the task described in your briefing. Do nothing else:
+
+- Do not create, modify, or submit workflows for sibling tasks, neighboring phases, or alternate approaches mentioned in the briefing or conversation context. Each task in a multi-step plan runs as a separate builder execution — you are only responsible for yours.
+- All of your \`submit-workflow\` calls must refer to the **same single workflow** (identified by file path). Re-submitting the same workflow to fix errors or iterate is fine; submitting a second, differently-named workflow from one task is not.
+- If the briefing references other workflows (e.g. "this workflow feeds Workflow B" or "after this, task C will..."), treat that as informational context only. Those workflows are built by other executions — not by you.
+
+Read your task brief, build exactly what it describes, submit it, and stop.`;
+
+// prettier-ignore
+const TASK_SCOPE_CRITICAL_BULLET =
+	'- **Build ONLY the workflow described in your task briefing.** Do not create, submit, or modify workflows for sibling tasks or alternate approaches mentioned in the briefing or conversation context. Each task in a multi-step plan is handled by a separate builder execution. All of your `submit-workflow` calls must target the same workflow (same file path); re-submits to fix errors are fine, but a second differently-named workflow from one task is not.';
+
 // ── Shared SDK reference sections ────────────────────────────────────────────
 
 const SDK_CODE_RULES = `## SDK Code Rules
@@ -472,6 +488,8 @@ Do NOT produce visible output until step 4. All reasoning happens internally.
 - When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
 - Unresolved credentials (where the user chose mock data or no credential is available) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
 
+${TASK_SCOPE_SECTION}
+
 ${SDK_RULES_AND_PATTERNS}
 `;
 
@@ -702,6 +720,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 - **If you edit code after submitting, you MUST call \`submit-workflow\` again before doing anything else (verify, run, or finish).** The system tracks file hashes — if the file changed since the last submit, your work is discarded. The sequence is always: edit → submit → then verify/run/finish.
 - **Follow the runtime verification instructions in your briefing.** If the briefing says verification is required, do not stop after a successful submit.
 - **Do NOT call \`workflows(action="publish")\`.** Publishing is the user's decision after they have tested the workflow. Your job ends at a successful submit.
+${TASK_SCOPE_CRITICAL_BULLET}
 
 ## Mandatory Process
 
