@@ -137,7 +137,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const workflowId = computed(() => workflow.value.id);
 
-	// A workflow is new if it hasn't been saved to the backend yet
+	// A workflow is new if it hasn't been saved to the backend yet.
+	// TODO: move to workflowDocumentStore after `workflow` ref is removed from this store.
+	// When moved, preserve the `workflowsListStore.getWorkflowById` coupling — pure
+	// `workflowId === ''` semantics regress the imported-workflow-with-stale-ID case.
 	const isNewWorkflow = computed(() => {
 		if (!workflow.value.id) return true;
 
@@ -613,11 +616,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function resetWorkflow() {
+		const previousId = workflow.value.id;
 		workflow.value = createEmptyWorkflow();
+		if (previousId) {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(previousId));
+			workflowDocumentStore.reset();
+		}
 	}
 
 	function setWorkflowActiveVersion(version: WorkflowHistory | null) {
 		workflow.value.activeVersion = deepCopy(version);
+		const wfId = workflow.value.id;
+		if (wfId) {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
+			workflowDocumentStore.setActiveVersion(deepCopy(version));
+		}
 	}
 
 	// replace invalid credentials in workflow
@@ -790,11 +803,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...(!value.hasOwnProperty('settings') ? { settings: { ...DEFAULT_SETTINGS } } : {}),
 		};
 
-		// Sync settings to the document store so createWorkflowObject reads correct settings
 		const wfId = workflow.value.id;
 		if (wfId) {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
-			workflowDocumentStore.setSettings(workflow.value.settings ?? {});
+			workflowDocumentStore.hydrate(value);
 		}
 
 		workflowObject.value = createWorkflowObject(
