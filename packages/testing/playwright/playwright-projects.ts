@@ -63,7 +63,11 @@ const BENCHMARK_BASE_CONFIG: N8NConfig = {
 	},
 };
 
-const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
+type BenchmarkProfile = { name: string; config: N8NConfig };
+
+// Benchmark profiles exercised in CI (see `test-e2e-infrastructure-reusable.yml`).
+// They scan `tests/infrastructure/benchmarks/`.
+const CI_BENCHMARK_PROFILES: BenchmarkProfile[] = [
 	{
 		name: 'direct',
 		config: {
@@ -104,6 +108,12 @@ const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
 			},
 		},
 	},
+];
+
+// Benchmark profiles that host local-only tests (model API keys, long runtimes,
+// reserved metric names). They scan `tests/infrastructure/benchmarks-local/` and
+// are intentionally left out of the CI matrix.
+const LOCAL_ONLY_BENCHMARK_PROFILES: BenchmarkProfile[] = [
 	{
 		name: 'memory-instanceai',
 		config: {
@@ -182,10 +192,21 @@ export function getProjects(): Project[] {
 			);
 		}
 
-		for (const { name, config } of BENCHMARK_PROFILES) {
+		for (const { name, config } of CI_BENCHMARK_PROFILES) {
 			projects.push({
 				name: `benchmark-${name}:infrastructure`,
 				testDir: './tests/infrastructure/benchmarks',
+				workers: 1,
+				timeout: 600_000,
+				retries: 0,
+				use: { containerConfig: config },
+			});
+		}
+
+		for (const { name, config } of LOCAL_ONLY_BENCHMARK_PROFILES) {
+			projects.push({
+				name: `benchmark-${name}:infrastructure`,
+				testDir: './tests/infrastructure/benchmarks-local',
 				workers: 1,
 				timeout: 600_000,
 				retries: 0,
