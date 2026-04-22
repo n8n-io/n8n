@@ -4,7 +4,6 @@ export { ApiKeyRepository } from './api-key.repository';
 export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BinaryDataRepository } from './binary-data.repository';
-export { ClockRepository } from './clock.repository';
 export { CredentialsRepository } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export { DeploymentKeyRepository } from './deployment-key.repository';

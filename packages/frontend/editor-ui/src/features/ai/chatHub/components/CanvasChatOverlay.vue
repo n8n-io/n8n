@@ -14,9 +14,7 @@ const route = useRoute();
 const chatHubPanelStore = useChatHubPanelStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
 
 const canvasChatFloatingWindowRef = ref<InstanceType<typeof CanvasChatFloatingWindow>>();
@@ -46,7 +44,7 @@ watch(
 );
 
 const popOutWindowTitle = computed(
-	() => `Chat - ${workflowDocumentStore.value?.name || 'Workflow'}`,
+	() => `Chat - ${workflowDocumentStore.value.name || 'Workflow'}`,
 );
 const shouldPopOut = computed(() => isPoppedOut.value && chatHubPanelStore.isOpen);
 

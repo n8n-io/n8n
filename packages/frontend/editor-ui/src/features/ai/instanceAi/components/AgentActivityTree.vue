@@ -46,10 +46,8 @@ const lastGroupIdx = computed(() => {
 });
 
 function resolveArtifactName(artifact: ArtifactInfo): string {
-	for (const entry of store.resourceRegistry.values()) {
-		if (entry.id === artifact.resourceId) return entry.name;
-	}
-	return artifact.name;
+	const entry = store.producedArtifacts.get(artifact.resourceId);
+	return entry?.name ?? artifact.name;
 }
 </script>
 

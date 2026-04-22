@@ -1,4 +1,4 @@
-import { publicApiCreatedCredentialSchema } from '@n8n/api-types';
+import type { PublicApiCredentialResponse } from '@n8n/api-types';
 import type { User, ICredentialsDb, SharedCredentials } from '@n8n/db';
 import { CredentialsEntity, CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -10,7 +10,6 @@ import {
 	type IDataObject,
 	type INodeProperties,
 	type INodePropertyOptions,
-	UnexpectedError,
 } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -23,6 +22,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 
+import { toPublicApiCredentialResponse } from './credentials.mapper';
 import type { IDependency, IJsonSchema } from '../../../types';
 
 export class CredentialsIsNotUpdatableError extends BaseError {}
@@ -58,7 +58,7 @@ export function buildSharedForCredential(
 		}));
 }
 
-export async function getCredential(credentialId: string): Promise<ICredentialsDb | null> {
+export async function getCredential(credentialId: string): Promise<CredentialsEntity | null> {
 	return await Container.get(CredentialsRepository).findOne({
 		where: { id: credentialId },
 		relations: ['shared', 'shared.project'],
@@ -89,7 +89,7 @@ export async function getSharedCredentials(
 export async function saveCredential(
 	payload: { type: string; name: string; data: ICredentialDataDecryptedObject; projectId?: string },
 	user: User,
-): Promise<CredentialsEntity> {
+): Promise<PublicApiCredentialResponse> {
 	const { scopes: _scopes, ...credential } = await Container.get(
 		CredentialsService,
 	).createUnmanagedCredential({ ...payload, projectId: payload.projectId ?? undefined }, user);
@@ -121,12 +121,7 @@ export async function saveCredential(
 		updatedAt: credential.updatedAt,
 	};
 
-	const parsed = publicApiCreatedCredentialSchema.safeParse(credentialForApi);
-	if (!parsed.success) {
-		throw new UnexpectedError('Credential create response failed validation');
-	}
-
-	return Object.assign(new CredentialsEntity(), parsed.data, { shared: [] });
+	return toPublicApiCredentialResponse(credentialForApi);
 }
 
 export async function updateCredential(
