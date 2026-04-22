@@ -93,7 +93,9 @@ export class ExecutionLevelTracer {
 			});
 			throw error;
 		} finally {
-			this.activeWorkflowSpans.delete(params.executionId);
+			if (params.status !== 'waiting') {
+				this.activeWorkflowSpans.delete(params.executionId);
+			}
 		}
 	}
 
