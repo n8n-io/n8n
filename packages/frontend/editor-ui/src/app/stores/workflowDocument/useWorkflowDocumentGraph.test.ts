@@ -43,6 +43,7 @@ function createNodesDeps(): WorkflowDocumentNodesDeps {
 	return {
 		getNodeType: vi.fn().mockReturnValue(null),
 		assignNodeId: vi.fn().mockReturnValue(''),
+		syncWorkflowObject: vi.fn(),
 		nodeMetadata: useWorkflowDocumentNodeMetadata(),
 	};
 }
@@ -65,7 +66,10 @@ describe('useWorkflowDocumentGraph', () => {
 		setActivePinia(createPinia());
 		workflowsStore = useWorkflowsStore();
 		nodes = useWorkflowDocumentNodes(createNodesDeps());
-		connections = useWorkflowDocumentConnections((id) => nodes.getNodeById(id));
+		connections = useWorkflowDocumentConnections({
+			getNodeById: (id) => nodes.getNodeById(id),
+			syncWorkflowObject: vi.fn(),
+		});
 		workflowObj = useWorkflowDocumentWorkflowObject({
 			workflowId: '',
 			getNodeTypes: () => createMockNodeTypes(),

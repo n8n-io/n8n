@@ -21,6 +21,7 @@ export type ConnectionsChangeEvent =
 
 export interface WorkflowDocumentConnectionsDeps {
 	getNodeById: (id: string) => INodeUi | undefined;
+	syncWorkflowObject: (connections: IConnections) => void;
 }
 
 // --- Composable ---
@@ -42,6 +43,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 
 	function applySetConnections(value: IConnections) {
 		workflowsStore.workflow.connections = value;
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 	}
 
 	function applyAddConnection(data: { connection: IConnection[] }) {
@@ -97,6 +99,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 			}
 		}
 
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 		void onConnectionsChange.trigger({
 			action: CHANGE_ACTION.ADD,
 			payload: { connection: data.connection },
@@ -126,6 +129,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 			}
 		}
 
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 		void onConnectionsChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { connection: data.connection },
@@ -167,6 +171,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 			}
 		}
 
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 		void onConnectionsChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { nodeName: node.name },
@@ -176,6 +181,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 
 	function applyRemoveAllConnections() {
 		workflowsStore.workflow.connections = {};
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 	}
 
 	// -----------------------------------------------------------------------

@@ -29,7 +29,7 @@ import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeM
 export type NodeAddedPayload = { node: INodeUi };
 export type NodeRemovedPayload = { name: string; id: string };
 export type NodeUpdatedPayload = { name: string };
-export type NodesResetPayload = Record<string, never>;
+export type NodesResetPayload = object;
 
 export type NodesChangeEvent =
 	| ChangeEvent<NodeAddedPayload>
@@ -42,6 +42,7 @@ export type NodesChangeEvent =
 export interface WorkflowDocumentNodesDeps {
 	getNodeType: (typeName: string, version?: number) => INodeTypeDescription | null;
 	assignNodeId: (node: INodeUi) => string;
+	syncWorkflowObject: (nodes: INodeUi[]) => void;
 	nodeMetadata: ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 }
 
@@ -77,6 +78,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		if (changed) {
 			Object.assign(node, nodeData);
 			workflowsStore.workflow.nodes[nodeIndex] = node;
+			deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 			void onNodesChange.trigger({
 				action: CHANGE_ACTION.UPDATE,
 				payload: { name: node.name },
@@ -106,6 +108,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		}
 
 		workflowsStore.workflow.nodes = nodes;
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		// setNodes replaces the full node list, so reset metadata to match
 		deps.nodeMetadata.setAllNodeMetadata({});
 		for (const node of nodes) {
@@ -119,6 +122,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		}
 
 		workflowsStore.workflow.nodes.push(node);
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		deps.nodeMetadata.initNodeMetadata(node.name);
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.ADD,
@@ -136,6 +140,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 			];
 		}
 
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		deps.nodeMetadata.removeNodeMetadata(node.name);
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
@@ -153,6 +158,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 				...workflowsStore.workflow.nodes.slice(idx + 1),
 			];
 		}
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		if (node) {
 			deps.nodeMetadata.removeNodeMetadata(node.name);
 		}
@@ -355,10 +361,11 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function removeAllNodes(): void {
 		workflowsStore.workflow.nodes.splice(0, workflowsStore.workflow.nodes.length);
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		deps.nodeMetadata.setAllNodeMetadata({});
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
-			payload: {} as NodesResetPayload,
+			payload: {},
 		});
 	}
 

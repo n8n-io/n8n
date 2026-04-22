@@ -36,6 +36,7 @@ function createDeps(
 ): WorkflowDocumentConnectionsDeps {
 	return {
 		getNodeById: vi.fn().mockReturnValue(undefined),
+		syncWorkflowObject: vi.fn(),
 		...overrides,
 	};
 }

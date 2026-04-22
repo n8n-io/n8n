@@ -163,10 +163,13 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 			nodeMetadata: workflowDocumentNodeMetadata,
 			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
+			syncWorkflowObject: (nodes) => workflowDocumentWorkflowObject.syncWorkflowObjectNodes(nodes),
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
 				getNodeById: (id) => workflowDocumentNodes.getNodeById(id),
+				syncWorkflowObject: (connections) =>
+					workflowDocumentWorkflowObject.syncWorkflowObjectConnections(connections),
 			});
 		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
 		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
@@ -180,19 +183,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		onNodesStateDirty(() => useUIStore().markStateDirty());
 		onConnectionsStateDirty(() => useUIStore().markStateDirty());
 
-		workflowDocumentNodes.onNodesChange(() => {
-			workflowDocumentWorkflowObject.syncWorkflowObjectNodes(workflowsStore.workflow.nodes);
-		});
 		workflowDocumentNodes.onNodesChange((event) => {
 			if (event.action === 'delete' && 'name' in event.payload) {
 				workflowDocumentPinData.unpinNodeData(event.payload.name);
 			}
-		});
-
-		workflowDocumentConnections.onConnectionsChange(() => {
-			workflowDocumentWorkflowObject.syncWorkflowObjectConnections(
-				workflowsStore.workflow.connections,
-			);
 		});
 
 		workflowDocumentName.onNameChange(() => {

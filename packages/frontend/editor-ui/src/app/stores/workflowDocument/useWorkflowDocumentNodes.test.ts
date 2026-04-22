@@ -33,6 +33,7 @@ function createDeps(overrides: Partial<WorkflowDocumentNodesDeps> = {}): Workflo
 	return {
 		getNodeType: vi.fn().mockReturnValue(null),
 		assignNodeId: vi.fn().mockReturnValue(''),
+		syncWorkflowObject: vi.fn(),
 		nodeMetadata: useWorkflowDocumentNodeMetadata(),
 		...overrides,
 	};
