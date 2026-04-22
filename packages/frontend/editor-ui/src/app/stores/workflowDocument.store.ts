@@ -141,7 +141,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			},
 		);
 
-		const workflowDocumentName = useWorkflowDocumentName();
+		const workflowDocumentName = useWorkflowDocumentName({
+			syncWorkflowObject: (name) => workflowDocumentWorkflowObject.syncWorkflowObjectName(name),
+		});
 		const workflowDocumentActive = useWorkflowDocumentActive();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
 		const workflowDocumentSharedWithProjects = useWorkflowDocumentSharedWithProjects();
@@ -153,7 +155,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentPinData = useWorkflowDocumentPinData();
 		const workflowDocumentScopes = useWorkflowDocumentScopes();
 		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
-		const workflowDocumentSettings = useWorkflowDocumentSettings();
+		const workflowDocumentSettings = useWorkflowDocumentSettings({
+			syncWorkflowObject: (settings) =>
+				workflowDocumentWorkflowObject.syncWorkflowObjectSettings(settings),
+		});
 		const workflowDocumentParentFolder = useWorkflowDocumentParentFolder();
 		const workflowDocumentUsedCredentials = useWorkflowDocumentUsedCredentials();
 		const workflowDocumentVersionData = useWorkflowDocumentVersionData();
@@ -164,6 +169,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			nodeMetadata: workflowDocumentNodeMetadata,
 			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
 			syncWorkflowObject: (nodes) => workflowDocumentWorkflowObject.syncWorkflowObjectNodes(nodes),
+			unpinNodeData: (name) => workflowDocumentPinData.unpinNodeData(name),
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
@@ -182,22 +188,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 
 		onNodesStateDirty(() => useUIStore().markStateDirty());
 		onConnectionsStateDirty(() => useUIStore().markStateDirty());
-
-		workflowDocumentNodes.onNodesChange((event) => {
-			if (event.action === 'delete' && 'name' in event.payload) {
-				workflowDocumentPinData.unpinNodeData(event.payload.name);
-			}
-		});
-
-		workflowDocumentName.onNameChange(() => {
-			workflowDocumentWorkflowObject.syncWorkflowObjectName(workflowDocumentName.name.value);
-		});
-
-		workflowDocumentSettings.onSettingsChange(() => {
-			workflowDocumentWorkflowObject.syncWorkflowObjectSettings(
-				workflowDocumentSettings.settings.value,
-			);
-		});
 
 		function removeAllNodes() {
 			workflowDocumentNodes.removeAllNodes();
