@@ -15,7 +15,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
-import { SharedWorkflowRepository } from '@n8n/db';
+import { CredentialsEntity, SharedWorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 
 describe('DynamicNodeParametersService', () => {
@@ -143,27 +143,25 @@ describe('DynamicNodeParametersService', () => {
 			jest.restoreAllMocks();
 		});
 
-		it('should not call findCredentialIdsWithScopeForUser when no credentials provided', async () => {
+		it('should not call findCredentialForUser when no credentials provided', async () => {
 			await service.refineResourceIds(user, { credentials: undefined });
-			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 		});
 
-		it('should not call findCredentialIdsWithScopeForUser when credentials object is empty', async () => {
+		it('should not call findCredentialForUser when credentials object is empty', async () => {
 			await service.refineResourceIds(user, { credentials: {} });
-			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 		});
 
-		it('should not call findCredentialIdsWithScopeForUser when all credential entries have no id', async () => {
+		it('should not call findCredentialForUser when all credential entries have no id', async () => {
 			await service.refineResourceIds(user, {
 				credentials: { openAi: { id: null, name: 'My OpenAI' } },
 			});
-			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 		});
 
 		it('should allow request when user has access to all supplied credentials', async () => {
-			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
-				new Set(['cred-1']),
-			);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
 
 			await expect(
 				service.refineResourceIds(user, {
@@ -173,7 +171,7 @@ describe('DynamicNodeParametersService', () => {
 		});
 
 		it('should throw when user does not have access to a credential', async () => {
-			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
 			await expect(
 				service.refineResourceIds(user, {
@@ -183,9 +181,9 @@ describe('DynamicNodeParametersService', () => {
 		});
 
 		it('should throw when any credential in a multi-credential request is inaccessible', async () => {
-			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
-				new Set(['cred-1']),
-			);
+			credentialsFinderService.findCredentialForUser
+				.mockResolvedValueOnce(mock<CredentialsEntity>())
+				.mockResolvedValueOnce(null);
 
 			await expect(
 				service.refineResourceIds(user, {
@@ -198,9 +196,7 @@ describe('DynamicNodeParametersService', () => {
 		});
 
 		it('should allow request when all of multiple credentials are accessible', async () => {
-			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
-				new Set(['cred-1', 'cred-2']),
-			);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
 
 			await expect(
 				service.refineResourceIds(user, {
@@ -213,9 +209,7 @@ describe('DynamicNodeParametersService', () => {
 		});
 
 		it('should skip credential entries without an id when validating', async () => {
-			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
-				new Set(['cred-1']),
-			);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
 
 			await service.refineResourceIds(user, {
 				credentials: {
@@ -224,31 +218,26 @@ describe('DynamicNodeParametersService', () => {
 				},
 			});
 
-			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).toHaveBeenCalledWith(
-				['cred-1'],
-				user,
-				['credential:read'],
-			);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
+				'credential:read',
+			]);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(1);
 		});
 
-		it('should call findCredentialIdsWithScopeForUser with credential:read scope', async () => {
-			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
-				new Set(['cred-1']),
-			);
+		it('should call findCredentialForUser with credential:read scope', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
 
 			await service.refineResourceIds(user, {
 				credentials: { openAi: { id: 'cred-1', name: 'My OpenAI' } },
 			});
 
-			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).toHaveBeenCalledWith(
-				expect.any(Array),
-				user,
-				['credential:read'],
-			);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
+				'credential:read',
+			]);
 		});
 
 		it('should run credential check regardless of whether workflowId is present', async () => {
-			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
 			await expect(
 				service.refineResourceIds(user, {
