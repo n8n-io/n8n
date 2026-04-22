@@ -52,37 +52,68 @@ function isZodSchema(value: unknown): value is ZodType {
  * Native tool nodes mostly expose ZodObject schemas (LangChain's
  * `DynamicStructuredTool` enforces it), but some paths (McpClientTool's raw
  * schema, custom ToolCode schemas) can slip through. Normalize defensively so
- * we never hand Anthropic a root it rejects.
+ * we never hand Anthropic a root it rejects — **without discarding union
+ * shape**, since the per-branch field lists are what the LLM uses to decide
+ * which action to take (discriminated unions are the common case in MCP
+ * tools with `action`-keyed payloads).
  *
  * Strategy:
- *   - `type: 'object'`  → pass through.
- *   - `allOf` of objects → merge their properties/required into one object
- *     (lossless for `z.intersection`-style schemas).
- *   - Anything else     → fall back to a permissive empty object. We can't
- *     faithfully advertise a union/primitive root, but the handler passes the
- *     raw input through to the executor regardless, so the LLM can still send
- *     whatever it chooses.
+ *   - `type: 'object'` — pass through untouched.
+ *   - `allOf` of objects — merge their properties / required into a single
+ *     object (lossless for `z.intersection`).
+ *   - `anyOf` / `oneOf` — hoist `type: 'object'` to the root but keep the
+ *     union. JSON Schema allows both; Anthropic accepts the shape. Each
+ *     member is normalized recursively and non-object members are dropped
+ *     (they can't be represented once the root is `"object"`).
+ *   - Primitive / array root — wrap in a single-property object (`{ input:
+ *     <schema> }`) so the LLM at least sees the inner shape. Matches the
+ *     base LangChain `Tool` convention the handler already uses.
+ *   - Everything else — permissive empty object.
  */
+function isObjectSchema(value: JSONSchema7Definition): value is JSONSchema7 {
+	return typeof value === 'object' && value !== null && value.type === 'object';
+}
+
+function mergeAllOfObjects(members: JSONSchema7[]): JSONSchema7 {
+	const properties: Record<string, JSONSchema7Definition> = {};
+	const required: string[] = [];
+	for (const member of members) {
+		Object.assign(properties, member.properties ?? {});
+		if (Array.isArray(member.required)) required.push(...member.required);
+	}
+	return {
+		type: 'object',
+		properties,
+		...(required.length > 0 && { required: Array.from(new Set(required)) }),
+	};
+}
+
 export function normalizeToObjectSchema(schema: JSONSchema7): JSONSchema7 {
 	if (schema.type === 'object') return schema;
 
 	if (Array.isArray(schema.allOf)) {
-		const objectMembers = schema.allOf.filter(
-			(m): m is JSONSchema7 => typeof m === 'object' && m !== null && m.type === 'object',
-		);
-		if (objectMembers.length > 0) {
-			const properties: Record<string, JSONSchema7Definition> = {};
-			const required: string[] = [];
-			for (const member of objectMembers) {
-				Object.assign(properties, member.properties ?? {});
-				if (Array.isArray(member.required)) required.push(...member.required);
-			}
-			return {
-				type: 'object',
-				properties,
-				...(required.length > 0 && { required: Array.from(new Set(required)) }),
-			};
+		const objectMembers = schema.allOf.filter(isObjectSchema);
+		if (objectMembers.length > 0) return mergeAllOfObjects(objectMembers);
+	}
+
+	for (const key of ['anyOf', 'oneOf'] as const) {
+		const members = schema[key];
+		if (!Array.isArray(members) || members.length === 0) continue;
+		const normalized = members
+			.filter((m): m is JSONSchema7 => typeof m === 'object' && m !== null)
+			.map((m) => normalizeToObjectSchema(m))
+			.filter(isObjectSchema);
+		if (normalized.length > 0) {
+			return { type: 'object', [key]: normalized };
 		}
+	}
+
+	if (schema.type === 'array' || typeof schema.type === 'string') {
+		return {
+			type: 'object',
+			properties: { input: schema },
+			required: ['input'],
+		};
 	}
 
 	return { type: 'object', properties: {} };

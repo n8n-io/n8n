@@ -50,7 +50,8 @@ describe('resolveNodeTool → tool name sanitization', () => {
 describe('normalizeToObjectSchema', () => {
 	// Anthropic's tool `input_schema` must be a top-level `{ type: "object" }`.
 	// `zodToJsonSchema()` emits other roots for unions, intersections, arrays,
-	// and primitive types — normalization guards against that.
+	// and primitive types — normalization lifts them into an object root
+	// without discarding per-branch field guidance.
 
 	it('passes through a valid object schema', () => {
 		const input: JSONSchema7 = {
@@ -61,21 +62,57 @@ describe('normalizeToObjectSchema', () => {
 		expect(normalizeToObjectSchema(input)).toBe(input);
 	});
 
-	it('falls back to an empty object for top-level anyOf (z.union output)', () => {
-		const input: JSONSchema7 = {
-			anyOf: [
-				{ type: 'object', properties: { a: { type: 'string' } } },
-				{ type: 'object', properties: { b: { type: 'number' } } },
-			],
+	it('preserves a top-level anyOf of objects (z.union / z.discriminatedUnion)', () => {
+		// The LLM needs each branch's field list to know what to send —
+		// collapsing to an empty object would strip that information entirely.
+		const memberA: JSONSchema7 = {
+			type: 'object',
+			properties: { action: { type: 'string', enum: ['create'] }, name: { type: 'string' } },
+			required: ['action', 'name'],
 		};
-		expect(normalizeToObjectSchema(input)).toEqual({ type: 'object', properties: {} });
+		const memberB: JSONSchema7 = {
+			type: 'object',
+			properties: { action: { type: 'string', enum: ['delete'] }, id: { type: 'string' } },
+			required: ['action', 'id'],
+		};
+		const input: JSONSchema7 = { anyOf: [memberA, memberB] };
+		expect(normalizeToObjectSchema(input)).toEqual({
+			type: 'object',
+			anyOf: [memberA, memberB],
+		});
 	});
 
-	it('falls back to an empty object for top-level oneOf', () => {
+	it('preserves a top-level oneOf of objects', () => {
+		const memberA: JSONSchema7 = { type: 'object', properties: { a: { type: 'string' } } };
+		const memberB: JSONSchema7 = { type: 'object', properties: { b: { type: 'number' } } };
+		const input: JSONSchema7 = { oneOf: [memberA, memberB] };
+		expect(normalizeToObjectSchema(input)).toEqual({
+			type: 'object',
+			oneOf: [memberA, memberB],
+		});
+	});
+
+	it('normalizes nested non-object union members up to object shape', () => {
+		// z.union([z.string(), z.object({ foo: z.string() })]) → primitive + object
+		// members mixed. The primitive member gets wrapped in { input: <schema> }
+		// so it survives as a valid object branch.
 		const input: JSONSchema7 = {
-			oneOf: [{ type: 'string' }, { type: 'number' }],
+			anyOf: [
+				{ type: 'string' },
+				{ type: 'object', properties: { foo: { type: 'string' } }, required: ['foo'] },
+			],
 		};
-		expect(normalizeToObjectSchema(input)).toEqual({ type: 'object', properties: {} });
+		expect(normalizeToObjectSchema(input)).toEqual({
+			type: 'object',
+			anyOf: [
+				{
+					type: 'object',
+					properties: { input: { type: 'string' } },
+					required: ['input'],
+				},
+				{ type: 'object', properties: { foo: { type: 'string' } }, required: ['foo'] },
+			],
+		});
 	});
 
 	it('merges allOf object members (z.intersection output)', () => {
@@ -117,13 +154,21 @@ describe('normalizeToObjectSchema', () => {
 		expect(normalizeToObjectSchema(input)).toEqual({ type: 'object', properties: {} });
 	});
 
-	it('falls back to an empty object for a top-level array schema', () => {
+	it('wraps a top-level array schema in { input: <schema> }', () => {
 		const input: JSONSchema7 = { type: 'array', items: { type: 'string' } };
-		expect(normalizeToObjectSchema(input)).toEqual({ type: 'object', properties: {} });
+		expect(normalizeToObjectSchema(input)).toEqual({
+			type: 'object',
+			properties: { input: { type: 'array', items: { type: 'string' } } },
+			required: ['input'],
+		});
 	});
 
-	it('falls back to an empty object for a top-level primitive schema', () => {
+	it('wraps a top-level primitive schema in { input: <schema> }', () => {
 		const input: JSONSchema7 = { type: 'string' };
-		expect(normalizeToObjectSchema(input)).toEqual({ type: 'object', properties: {} });
+		expect(normalizeToObjectSchema(input)).toEqual({
+			type: 'object',
+			properties: { input: { type: 'string' } },
+			required: ['input'],
+		});
 	});
 });
