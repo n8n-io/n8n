@@ -15,11 +15,13 @@ import { computed } from 'vue';
 import { N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
+import type { INodeUi } from '@/Interface';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { CustomToolEntry } from '../agent.types';
-import { isToolMissingCredentials } from '../composables/useAgentToolRefAdapter';
+import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import ToolCredsMissingChip from './ToolCredsMissingChip.vue';
 
 const props = defineProps<{
@@ -34,6 +36,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const nodeHelpers = useNodeHelpers();
 
 const tools = computed<AgentJsonToolRef[]>(() => props.config?.tools ?? []);
 
@@ -59,7 +62,14 @@ const rows = computed<ToolRowView[]>(() =>
 			const nt = nodeTypesStore.getNodeType(ref.node.nodeType, ref.node.nodeTypeVersion);
 			const creds = ref.node.credentials ?? {};
 			const firstCred = Object.values(creds)[0];
-			const missing = isToolMissingCredentials(ref, nt);
+			// Route missing-creds detection through the canvas's own validator so
+			// we inherit its handling of `displayOptions`-gated creds, proxy auth
+			// (`nodeCredentialType`), and gateway-managed creds. The simpler
+			// "is every required slot filled" check produced false positives for
+			// nodes whose cred requirement depends on another parameter's value.
+			const node = toolRefToNode(ref);
+			const issues = node && nt ? nodeHelpers.getNodeCredentialIssues(node as INodeUi, nt) : null;
+			const missing = !!issues?.credentials && Object.keys(issues.credentials).length > 0;
 			return {
 				key,
 				ref,

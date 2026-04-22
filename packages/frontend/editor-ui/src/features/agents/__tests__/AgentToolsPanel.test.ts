@@ -30,6 +30,29 @@ vi.mock('vue-router', () => ({
 	RouterLink: { template: '<a><slot /></a>' },
 }));
 
+// Stand-in for the canvas credential validator. The real function walks the
+// full node-type credential description against the current parameter values
+// — we only need enough fidelity to tell "no saved cred for a required slot"
+// apart from "every required slot filled". Tests that exercise richer
+// displayOptions / proxy-auth scenarios stub this per-case.
+vi.mock('@/app/composables/useNodeHelpers', () => ({
+	useNodeHelpers: () => ({
+		getNodeCredentialIssues: (
+			node: { credentials?: Record<string, { id: string | null }> },
+			nodeType: { credentials?: Array<{ name: string; required?: boolean }> } | null,
+		) => {
+			const required = (nodeType?.credentials ?? []).filter((c) => c.required !== false);
+			if (required.length === 0) return null;
+			const saved = node.credentials ?? {};
+			const missing: Record<string, unknown> = {};
+			for (const slot of required) {
+				if (!saved[slot.name]?.id) missing[slot.name] = true;
+			}
+			return Object.keys(missing).length > 0 ? { credentials: missing } : null;
+		},
+	}),
+}));
+
 const SLACK: INodeTypeDescription = {
 	displayName: 'Slack',
 	name: 'n8n-nodes-base.slack',
