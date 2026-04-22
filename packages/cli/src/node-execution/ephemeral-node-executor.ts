@@ -1,8 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ExecuteContext } from 'n8n-core';
+import type { Tool } from '@langchain/core/tools';
+import { ExecuteContext, SupplyDataContext } from 'n8n-core';
 import type {
+	CloseFunction,
 	IExecuteData,
 	INode,
 	INodeCredentialsDetails,
@@ -16,6 +18,7 @@ import {
 	Node,
 	UserError,
 	createEmptyRunExecutionData,
+	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -54,6 +57,35 @@ export interface NodeExecutionResult {
 
 // send and wait requires persistent workflows to handle the wait logic
 const OPERATION_BLACKLIST = [SEND_AND_WAIT_OPERATION, 'dispatchAndWait'];
+
+/**
+ * Two classes of node are legitimate agent tools:
+ *
+ *   1. Standard nodes whose description carries `usableAsTool: true` — the
+ *      node-types resolver can wrap these into a Tool variant on demand
+ *      (`convertNodeToAiTool`), but when invoked by the agent we execute the
+ *      base description directly.
+ *   2. Native tool nodes (e.g. `toolWikipedia`, `toolCalculator`) that declare
+ *      `outputs: [AiTool]` up front. These never carry `usableAsTool` — they
+ *      *are* tools — so a plain `usableAsTool` check rejects them.
+ *
+ * Accept either signal so the agent runtime works for both families.
+ */
+export function isUsableAsAgentTool(description: {
+	usableAsTool?: unknown;
+	outputs?: unknown;
+}): boolean {
+	if (description.usableAsTool) return true;
+	const outputs = description.outputs;
+	if (!Array.isArray(outputs)) return false;
+	return outputs.some((o: unknown) => {
+		if (typeof o === 'string') return o === NodeConnectionTypes.AiTool;
+		if (o && typeof o === 'object' && 'type' in o) {
+			return (o as { type: unknown }).type === NodeConnectionTypes.AiTool;
+		}
+		return false;
+	});
+}
 
 @Service()
 export class EphemeralNodeExecutor {
@@ -160,7 +192,7 @@ export class EphemeralNodeExecutor {
 	): void {
 		const resolved = this.nodeTypes.getByNameAndVersion(nodeType, typeVersion);
 
-		if (!resolved.description.usableAsTool) {
+		if (!isUsableAsAgentTool(resolved.description)) {
 			throw new UserError('Node is not usable as a tool', { extra: { nodeType } });
 		}
 
@@ -178,13 +210,15 @@ export class EphemeralNodeExecutor {
 	}
 
 	/**
-	 * Execute a node directly without persisting a workflow or execution to the DB.
-	 * Mirrors the pattern from WorkflowExecute.executeNode and DynamicNodeParametersService.
+	 * Assemble the shared pieces (node, ephemeral workflow, additionalData,
+	 * execute data) both context classes need. Keeps `executeNodeDirectly` and
+	 * `withSupplyDataTool` from drifting — the setup is identical up to the
+	 * choice of context class.
 	 */
-	private async executeNodeDirectly(
+	private async buildEphemeralContextParts(
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
-	): Promise<NodeExecutionResult> {
+	) {
 		const node: INode = {
 			id: uuid(),
 			name: 'Target Node',
@@ -194,41 +228,48 @@ export class EphemeralNodeExecutor {
 			parameters: tool.nodeParameters,
 			credentials: tool.credentials ?? undefined,
 		};
-
 		const workflow = new Workflow({
 			nodes: [node],
 			connections: {},
 			active: false,
 			nodeTypes: this.nodeTypes,
 		});
-
 		const additionalData = await getBase({ projectId: tool.projectId });
-
 		const runExecutionData = createEmptyRunExecutionData();
+		const inputData: ITaskDataConnections = { main: [inputItems] };
+		const executeData: IExecuteData = { node, data: inputData, source: null };
 		const mode = 'internal' as const;
-		const runIndex = 0;
-		const connectionInputData = inputItems;
-
-		const inputData: ITaskDataConnections = {
-			main: [inputItems],
-		};
-
-		const executeData: IExecuteData = {
+		return {
 			node,
-			data: inputData,
-			source: null,
-		};
-
-		const context = new ExecuteContext(
 			workflow,
-			node,
 			additionalData,
-			mode,
 			runExecutionData,
-			runIndex,
-			connectionInputData,
 			inputData,
 			executeData,
+			mode,
+		};
+	}
+
+	/**
+	 * Execute a node directly without persisting a workflow or execution to the DB.
+	 * Mirrors the pattern from WorkflowExecute.executeNode and DynamicNodeParametersService.
+	 */
+	private async executeNodeDirectly(
+		tool: EphemeralWorkflowToolLike,
+		inputItems: INodeExecutionData[],
+	): Promise<NodeExecutionResult> {
+		const parts = await this.buildEphemeralContextParts(tool, inputItems);
+
+		const context = new ExecuteContext(
+			parts.workflow,
+			parts.node,
+			parts.additionalData,
+			parts.mode,
+			parts.runExecutionData,
+			0,
+			inputItems,
+			parts.inputData,
+			parts.executeData,
 			[],
 		);
 
@@ -286,7 +327,143 @@ export class EphemeralNodeExecutor {
 			nodeParameters: request.nodeParameters,
 			credentials: mergedCredentials,
 		};
+
+		// Native tool nodes (toolWikipedia, toolCalculator, etc.) expose their real
+		// behavior via `supplyData`, which returns a LangChain `Tool`. Calling their
+		// `execute` method bypasses that and loses the LLM's arguments. Pick the
+		// right path based on which method the node implements.
+		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
+		if (typeof nodeType.supplyData === 'function') {
+			return await this.invokeSupplyDataTool(tool, request.inputData);
+		}
+
 		// TODO: for nodes with send and wait operations implement persistent workflows to handle the wait logic
 		return await this.executeNodeDirectly(tool, request.inputData);
+	}
+
+	/**
+	 * Instantiate the LangChain tool that a `supplyData` node exposes, run a
+	 * caller-supplied action against it, and clean up. Both invocation (with
+	 * LLM args) and schema introspection (at tool-registration time) need the
+	 * same setup/teardown, so they share this helper.
+	 */
+	private async withSupplyDataTool<T>(
+		tool: EphemeralWorkflowToolLike,
+		inputItems: INodeExecutionData[],
+		onTool: (langchainTool: Tool) => Promise<T> | T,
+	): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
+		const parts = await this.buildEphemeralContextParts(tool, inputItems);
+		const closeFunctions: CloseFunction[] = [];
+
+		const context = new SupplyDataContext(
+			parts.workflow,
+			parts.node,
+			parts.additionalData,
+			parts.mode,
+			parts.runExecutionData,
+			0,
+			inputItems,
+			parts.inputData,
+			NodeConnectionTypes.AiTool,
+			parts.executeData,
+			closeFunctions,
+		);
+
+		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
+		if (typeof nodeType.supplyData !== 'function') {
+			return { ok: false, error: 'Node does not implement supplyData' };
+		}
+
+		try {
+			const supplyDataResult = await nodeType.supplyData.call(context, 0);
+			const langchainTool = supplyDataResult.response as Tool | undefined;
+
+			if (!langchainTool || typeof langchainTool.invoke !== 'function') {
+				return {
+					ok: false,
+					error: `Node "${tool.nodeType}" did not return a valid LangChain tool`,
+				};
+			}
+
+			return { ok: true, value: await onTool(langchainTool) };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return { ok: false, error: message };
+		} finally {
+			for (const closeFunction of closeFunctions) {
+				try {
+					await closeFunction();
+				} catch (error) {
+					this.logger.warn(`Error closing tool resource: ${String(error)}`);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Run a native tool node (one with `supplyData`) by instantiating its
+	 * LangChain tool and invoking that tool with the LLM's arguments. Mirrors
+	 * the pattern in `scaling/job-processor.ts:invokeTool` but scoped to the
+	 * ephemeral, single-node execution the agent runtime wants.
+	 */
+	private async invokeSupplyDataTool(
+		tool: EphemeralWorkflowToolLike,
+		inputItems: INodeExecutionData[],
+	): Promise<NodeExecutionResult> {
+		// The LLM's structured input is the first inputItem's `json` (see
+		// node-tool-factory.ts). Pass it straight through to the LangChain tool.
+		const toolArgs = (inputItems[0]?.json ?? {}) as Record<string, unknown>;
+
+		const result = await this.withSupplyDataTool(
+			tool,
+			inputItems,
+			async (langchainTool): Promise<unknown> => await langchainTool.invoke(toolArgs),
+		);
+
+		if (!result.ok) {
+			this.logger.debug('supplyData tool invocation failed', {
+				nodeType: tool.nodeType,
+				error: result.error,
+			});
+			return { status: 'error', data: [], error: result.error };
+		}
+
+		return {
+			status: 'success',
+			data: [{ json: { response: result.value as INodeExecutionData['json'] } }],
+		};
+	}
+
+	/**
+	 * Instantiate the LangChain tool a `supplyData` node exposes and return its
+	 * Zod schema (if it's a StructuredTool / DynamicStructuredTool / N8nTool).
+	 * Used by the tool factory at registration time so the schema the LLM sees
+	 * matches what `tool.invoke(args)` will zod-parse against at call time.
+	 *
+	 * Returns `null` when the tool has no structured schema (base `Tool` /
+	 * `DynamicTool` — caller falls back to `{ input: string }`) or when
+	 * introspection fails for any reason (credentials missing, MCP server
+	 * unreachable). Swallowing failures here keeps tool registration robust:
+	 * a bad MCP connection shouldn't prevent the agent from loading.
+	 */
+	async introspectSupplyDataToolSchema(tool: EphemeralWorkflowToolLike): Promise<unknown> {
+		const result = await this.withSupplyDataTool(tool, [], (langchainTool) => {
+			const maybeSchema = (langchainTool as unknown as { schema?: unknown }).schema;
+			return maybeSchema ?? null;
+		});
+
+		if (!result.ok) {
+			// Warn (not debug) so MCP / credential introspection bugs surface in the
+			// normal dev loop — registration continues either way via `null`, but an
+			// invisible failure here has historically been a source of "why is the
+			// LLM being told a different schema than the one it's called against?".
+			this.logger.warn('supplyData tool introspection failed', {
+				nodeType: tool.nodeType,
+				error: result.error,
+			});
+			return null;
+		}
+
+		return result.value;
 	}
 }
