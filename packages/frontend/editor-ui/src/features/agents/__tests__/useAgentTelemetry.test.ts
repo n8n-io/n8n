@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useAgentTelemetry } from './useAgentTelemetry';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 
 const trackMock = vi.fn();
 vi.mock('@/app/composables/useTelemetry', () => ({
@@ -36,16 +36,14 @@ describe('useAgentTelemetry', () => {
 		};
 		useAgentTelemetry().trackSubmittedMessage({
 			agentId: 'ag-1',
-			messageHash: 'abcd1234',
-			messageLength: 2,
+			message: 'hi',
 			mode: 'test',
 			status: 'draft',
 			agentConfig: fingerprint,
 		});
 		expect(trackMock).toHaveBeenCalledWith('User submitted message to agent', {
 			agent_id: 'ag-1',
-			message_hash: 'abcd1234',
-			message_length: 2,
+			message: 'hi',
 			mode: 'test',
 			status: 'draft',
 			agent_config: fingerprint,

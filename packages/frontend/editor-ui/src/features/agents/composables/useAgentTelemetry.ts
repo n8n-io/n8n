@@ -24,16 +24,14 @@ export function useAgentTelemetry() {
 
 	function trackSubmittedMessage(params: {
 		agentId: string;
-		messageHash: string;
-		messageLength: number;
+		message: string;
 		mode: AgentChatMode;
 		status: AgentTelemetryStatus;
 		agentConfig: AgentConfigFingerprint;
 	}) {
 		telemetry.track('User submitted message to agent', {
 			agent_id: params.agentId,
-			message_hash: params.messageHash,
-			message_length: params.messageLength,
+			message: params.message,
 			mode: params.mode,
 			status: params.status,
 			agent_config: params.agentConfig,

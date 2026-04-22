@@ -3,7 +3,7 @@ import {
 	sha256Hex16,
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
-} from './agentTelemetry.utils';
+} from '../composables/agentTelemetry.utils';
 import type { AgentJsonConfig, AgentResource } from '../types';
 
 describe('sha256Hex16', () => {
