@@ -7,13 +7,20 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 const { name } = useCanvasNode();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 const credentialsStore = useCredentialsStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
-const node = computed(() => workflowsStore.workflowObject.getNode(name.value));
+const node = computed(() => workflowDocumentStore.value.getNodeByName(name.value));
 const size = 'small';
 
 const hasResolvableCredential = computed(() => {

@@ -127,8 +127,13 @@ export class MemoryMongoDbChat implements INodeType {
 			);
 		}
 
+		const client = new MongoClient(connectionString, {
+			minPoolSize: 0,
+			maxPoolSize: 1,
+			maxIdleTimeMS: 30000,
+		});
+
 		try {
-			const client = new MongoClient(connectionString);
 			await client.connect();
 
 			const db = client.db(dbName);
@@ -157,6 +162,7 @@ export class MemoryMongoDbChat implements INodeType {
 				response: logWrapper(memory, this),
 			};
 		} catch (error) {
+			void client.close();
 			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${error.message}`);
 		}
 	}

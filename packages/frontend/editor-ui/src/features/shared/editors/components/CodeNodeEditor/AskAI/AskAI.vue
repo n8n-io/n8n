@@ -25,6 +25,10 @@ import {
 	ASK_AI_LOADING_DURATION_MS,
 } from '@/app/constants';
 import type { AskAiRequest } from '@/features/ai/assistant/assistant.types';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 const emit = defineEmits<{
 	submit: [code: string];
 	replaceCode: [code: string];
@@ -90,16 +94,18 @@ function getErrorMessageByStatusCode(statusCode: number, message: string | undef
 
 function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { workflowObject, getNodeByName } = useWorkflowsStore();
+	const { workflowId } = useWorkflowsStore();
 
-	if (!activeNode || !workflowObject) return [];
+	if (!activeNode || !workflowId) return [];
 
-	return workflowObject
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+
+	return workflowDocumentStore
 		.getParentNodesByDepth(activeNode?.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
-		.map((n) => getNodeByName(n.name))
+		.map((n) => workflowDocumentStore.getNodeByName(n.name))
 		.filter((n) => n !== null);
 }
 

@@ -66,6 +66,14 @@ jobs:
     uses: ./.github/workflows/util-ensure-release-candidate-branches.yml
     secrets: inherit
 
+  ensure-correct-latest-version-on-npm:
+    name: Ensure correct latest version on npm
+    if: |
+      inputs.bump == 'minor' ||
+      inputs.track == 'stable'
+    uses: ./.github/workflows/release-set-stable-npm-packages-to-latest.yml
+    secrets: inherit
+
   populate-cloud-with-releases:
     name: 'Populate cloud database with releases'
     uses: ./.github/workflows/release-populate-cloud-with-releases.yml

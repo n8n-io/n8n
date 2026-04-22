@@ -41,9 +41,7 @@ export function useResolvedExpression({
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	const { resolveExpression } = useWorkflowHelpers();
@@ -128,7 +126,7 @@ export function useResolvedExpression({
 			toRef(additionalData),
 			() => workflowsStore.getWorkflowExecution,
 			() => workflowsStore.getWorkflowRunData,
-			() => workflowDocumentStore.value?.name,
+			() => workflowDocumentStore.value.name,
 			targetItem,
 		],
 		debouncedUpdateExpression,

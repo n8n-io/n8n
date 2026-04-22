@@ -1428,6 +1428,50 @@ describe('Request Helper Functions', () => {
 			expect(result).toEqual({ success: true });
 			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
 		});
+
+		test('should NOT retry on token-expired status when oAuth2Options.skipTokenRefresh is true (isN8nRequest path)', async () => {
+			mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+			const error401 = Object.assign(new Error('401'), { response: { status: 401 } });
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(error401);
+
+			await expect(
+				requestOAuth2.call(
+					mockThis,
+					'testOAuth2',
+					{ method: 'GET', url: `${baseUrl}/data` },
+					mockNode,
+					mockAdditionalData,
+					{ skipTokenRefresh: true },
+					true,
+				),
+			).rejects.toThrow('401');
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+
+		test('should NOT retry on token-expired status when oAuth2Options.skipTokenRefresh is true (legacy request path)', async () => {
+			mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+			const error401 = Object.assign(new Error('401'), { statusCode: 401 });
+			mockThis.helpers.request.mockRejectedValueOnce(error401);
+
+			await expect(
+				requestOAuth2.call(
+					mockThis,
+					'testOAuth2',
+					{ method: 'GET', url: `${baseUrl}/data` },
+					mockNode,
+					mockAdditionalData,
+					{ skipTokenRefresh: true },
+					false,
+				),
+			).rejects.toThrow('401');
+			expect(mockThis.helpers.request).toHaveBeenCalledTimes(1);
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('requestOAuth2 - client credentials initial token fetch', () => {

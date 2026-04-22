@@ -20,6 +20,21 @@ describe('ExpressionEngineConfig', () => {
 		});
 	});
 
+	describe('N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT', () => {
+		test('overrides idleTimeout', () => {
+			jest.replaceProperty(process, 'env', { N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT: '60' });
+			const config = Container.get(ExpressionEngineConfig);
+			expect(config.idleTimeout).toBe(60);
+		});
+
+		test('parses "0" as the number 0 (distinct from undefined/unset)', () => {
+			jest.replaceProperty(process, 'env', { N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT: '0' });
+			const config = Container.get(ExpressionEngineConfig);
+			expect(config.idleTimeout).toBe(0);
+			expect(config.idleTimeout).not.toBeUndefined();
+		});
+	});
+
 	describe('N8N_EXPRESSION_ENGINE_TIMEOUT', () => {
 		test('overrides bridgeTimeout', () => {
 			jest.replaceProperty(process, 'env', { N8N_EXPRESSION_ENGINE_TIMEOUT: '1000' });

@@ -1329,9 +1329,18 @@ onBeforeUnmount(() => {
 
 watch(
 	() => node.value?.credentials,
-	() => {
+	(_newCredentials, oldCredentials) => {
 		if (hasRemoteMethod.value && node.value) {
 			void loadRemoteParameterOptions();
+			// Reset options value when credentials change (not on initial load or first assignment)
+			const hadCredentials = oldCredentials !== undefined && Object.keys(oldCredentials).length > 0;
+			if (hadCredentials && props.parameter.type === 'options') {
+				emit('update', {
+					node: node.value.name,
+					name: props.path,
+					value: props.parameter.default ?? '',
+				});
+			}
 		}
 	},
 	{ immediate: true },

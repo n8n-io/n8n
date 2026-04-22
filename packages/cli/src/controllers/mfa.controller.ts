@@ -33,7 +33,7 @@ export class MFAController {
 	async enforceMFA(req: MFA.Enforce) {
 		if (this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv) {
 			throw new ForbiddenError(
-				'MFA enforcement is managed via environment variables and cannot be updated through the API',
+				'MFA enforcement is managed via environment variables and cannot be modified through the API',
 			);
 		}
 
