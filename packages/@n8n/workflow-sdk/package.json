@@ -1,10 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-<<<<<<< HEAD
-  "version": "0.11.1",
-=======
   "version": "0.11.2",
->>>>>>> 8630845cbd (fix(core): Fix fixedCollection validation issues and empty setup cards on instance AI (#28794))
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
