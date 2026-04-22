@@ -466,15 +466,22 @@ export class AgentsController {
 		// so a refresh during a suspended turn still returns the suspended
 		// assistant message (the SDK only saveToMemory's on completion).
 		const memory = await this.agentsBuilderService.getBuilderMessages(agentId);
-		const checkpoint = await this.agentsBuilderService.getOpenCheckpointMessages(agentId);
-		const openSuspensions = await this.agentsBuilderService.getOpenSuspensions(agentId);
+		const checkpoint = await this.agentsBuilderService.findOpenCheckpoint(agentId);
+		const openSuspensions = Object.values(checkpoint?.pendingToolCalls ?? {})
+			.filter((tc) => tc.suspended)
+			.map((tc) => ({
+				toolCallId: tc.toolCallId,
+				runId: tc.runId,
+			}));
 
 		let messages: AgentPersistedMessageDto[];
 		if (!checkpoint) {
 			messages = memory as unknown as AgentPersistedMessageDto[];
 		} else {
 			const memoryIds = new Set(memory.map((m) => (m as { id?: string }).id));
-			const newFromCheckpoint = checkpoint.filter((m) => !memoryIds.has((m as { id?: string }).id));
+			const newFromCheckpoint = checkpoint.messageList.messages.filter(
+				(m) => !memoryIds.has((m as { id?: string }).id),
+			);
 			messages = [...memory, ...newFromCheckpoint] as unknown as AgentPersistedMessageDto[];
 		}
 
