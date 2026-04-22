@@ -8,11 +8,18 @@ import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 const locale = useI18n();
 const favoritesStore = useFavoritesStore();
 
-const { favoriteGroups, activeTabId, onFavoriteProjectClick, onFavoriteWorkflowClick } =
-	useFavoriteNavItems();
+const {
+	favoriteGroups,
+	activeTabId,
+	onFavoriteProjectClick,
+	onFavoriteWorkflowClick,
+	onUnpinFavorite,
+} = useFavoriteNavItems();
 
 const isActive = computed(() =>
-	favoriteGroups.value.some((group) => group.items.some((item) => item.id === activeTabId.value)),
+	favoriteGroups.value.some((group) =>
+		group.items.some((entry) => entry.menuItem.id === activeTabId.value),
+	),
 );
 
 const show = ref(false);
@@ -66,12 +73,30 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 				</N8nText>
 				<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
 					<div v-if="groupIndex > 0" :class="$style.groupSpacer" />
-					<template v-for="item in group.items" :key="item.id">
-						<div v-if="group.type === 'project'" @click="onFavoriteProjectClick(item.id)">
-							<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
-						</div>
-						<div v-else @click="group.type === 'workflow' ? onFavoriteWorkflowClick() : undefined">
-							<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
+					<template v-for="entry in group.items" :key="entry.menuItem.id">
+						<div
+							:class="$style.favoriteItem"
+							@click="
+								group.type === 'project'
+									? onFavoriteProjectClick(entry.resourceId)
+									: group.type === 'workflow'
+										? onFavoriteWorkflowClick()
+										: undefined
+							"
+						>
+							<N8nMenuItem
+								:item="entry.menuItem"
+								:compact="false"
+								:active="activeTabId === entry.menuItem.id"
+							/>
+							<button
+								:class="$style.unpinButton"
+								:aria-label="locale.baseText('favorites.remove')"
+								data-test-id="favorite-unpin-button"
+								@click.stop.prevent="onUnpinFavorite(entry.resourceId, entry.resourceType)"
+							>
+								<N8nIcon icon="x" size="small" />
+							</button>
 						</div>
 					</template>
 				</template>
@@ -107,5 +132,43 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 
 .groupSpacer {
 	height: var(--spacing--4xs);
+}
+
+.favoriteItem {
+	position: relative;
+
+	&:hover .unpinButton,
+	.unpinButton:focus-visible {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	&:hover a[role='menuitem'] {
+		background-color: var(--color--background--light-1);
+		color: var(--color--text--shade-1);
+	}
+}
+
+.unpinButton {
+	position: absolute;
+	right: var(--spacing--4xs);
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--5xs);
+	background: none;
+	border: none;
+	color: var(--color--text--tint-2);
+	cursor: pointer;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.15s ease;
+
+	&:hover,
+	&:focus-visible {
+		color: var(--color--text);
+	}
 }
 </style>
