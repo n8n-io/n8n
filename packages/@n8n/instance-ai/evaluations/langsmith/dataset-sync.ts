@@ -296,7 +296,11 @@ const existingMetadataSchema = z
 	.passthrough();
 
 function hasInputsChanged(existing: unknown, incoming: DatasetExampleInputs): boolean {
-	const e = existingInputsSchema.parse(existing ?? {});
+	// Treat unparseable existing data as changed so we overwrite with fresh
+	// values rather than aborting the whole sync on one malformed row.
+	const parsed = existingInputsSchema.safeParse(existing ?? {});
+	if (!parsed.success) return true;
+	const e = parsed.data;
 	return (
 		e.prompt !== incoming.prompt ||
 		e.testCaseFile !== incoming.testCaseFile ||
@@ -307,7 +311,9 @@ function hasInputsChanged(existing: unknown, incoming: DatasetExampleInputs): bo
 }
 
 function hasMetadataChanged(existing: unknown, incoming: DatasetExampleMetadata): boolean {
-	const e = existingMetadataSchema.parse(existing ?? {});
+	const parsed = existingMetadataSchema.safeParse(existing ?? {});
+	if (!parsed.success) return true;
+	const e = parsed.data;
 	return (
 		e.testCaseFile !== incoming.testCaseFile ||
 		e.complexity !== (incoming.complexity ?? '') ||

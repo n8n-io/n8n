@@ -12,7 +12,7 @@ import { z } from 'zod';
 // ---------------------------------------------------------------------------
 
 export interface CliArgs {
-	/** TimeoutMs is defined per run, not as the total timeout for all the runs */
+	/** TimeoutMs is defined per iteration, not as the total timeout for all iterations */
 	timeoutMs: number;
 	baseUrl: string;
 	email?: string;
@@ -30,8 +30,9 @@ export interface CliArgs {
 	concurrency: number;
 	/** LangSmith experiment name prefix (auto-generated if not set) */
 	experimentName?: string;
-	/** Number of times to run each test case (default: 1) */
-	runs: number;
+	/** Number of iterations to run each test case (default: 1). Each iteration
+	 *  gets a fresh build so pass@k / pass^k capture real builder variance. */
+	iterations: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -50,7 +51,7 @@ const cliArgsSchema = z.object({
 	dataset: z.string().default('instance-ai-workflow-evals'),
 	concurrency: z.number().int().positive().default(16),
 	experimentName: z.string().optional(),
-	runs: z.number().int().positive().default(1),
+	iterations: z.number().int().positive().default(1),
 });
 
 // ---------------------------------------------------------------------------
@@ -73,7 +74,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		dataset: validated.dataset,
 		concurrency: validated.concurrency,
 		experimentName: validated.experimentName,
-		runs: validated.runs,
+		iterations: validated.iterations,
 	};
 }
 
@@ -93,7 +94,7 @@ interface RawArgs {
 	dataset: string;
 	concurrency: number;
 	experimentName?: string;
-	runs: number;
+	iterations: number;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -106,7 +107,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		dataset: 'instance-ai-workflow-evals',
 		concurrency: 16,
 		experimentName: undefined,
-		runs: 1,
+		iterations: 1,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -151,8 +152,8 @@ function parseRawArgs(argv: string[]): RawArgs {
 				i++;
 				break;
 
-			case '--runs':
-				result.runs = parseIntArg(argv, i, '--runs');
+			case '--iterations':
+				result.iterations = parseIntArg(argv, i, '--iterations');
 				i++;
 				break;
 

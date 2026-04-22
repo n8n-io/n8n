@@ -68,15 +68,18 @@ type TargetOutput = Omit<z.infer<typeof targetOutputSchema>, 'evalResult'> & {
 	evalResult?: InstanceAiEvalExecutionResult;
 };
 
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+	return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
 function isEvalResult(v: unknown): v is InstanceAiEvalExecutionResult {
-	if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
-	const obj = v as Record<string, unknown>;
+	if (!isPlainObject(v)) return false;
 	return (
-		typeof obj.nodeResults === 'object' &&
-		obj.nodeResults !== null &&
-		Array.isArray(obj.errors) &&
-		typeof obj.hints === 'object' &&
-		obj.hints !== null
+		typeof v.nodeResults === 'object' &&
+		v.nodeResults !== null &&
+		Array.isArray(v.errors) &&
+		typeof v.hints === 'object' &&
+		v.hints !== null
 	);
 }
 
@@ -324,14 +327,16 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	const experimentPrefix = args.experimentName ?? computeExperimentPrefix();
 
 	logger.info(
-		`Starting evaluate() with concurrency=${String(args.concurrency)}, builds limited to ${String(MAX_CONCURRENT_BUILDS)}, runs=${String(args.runs)}`,
+		`Starting evaluate() with concurrency=${String(args.concurrency)}, builds limited to ${String(MAX_CONCURRENT_BUILDS)}, iterations=${String(args.iterations)}`,
 	);
 
 	const sourceExamples = args.filter
 		? filteredExamplesIterable(lsClient, datasetName, args.filter, logger)
 		: lsClient.listExamples({ datasetName });
 	const evaluateData =
-		args.runs > 1 ? expandExamplesForIterations(sourceExamples, args.runs) : sourceExamples;
+		args.iterations > 1
+			? expandExamplesForIterations(sourceExamples, args.iterations)
+			: sourceExamples;
 
 	try {
 		const evaluateStart = Date.now();
@@ -345,7 +350,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 				filter: args.filter ?? 'all',
 				concurrency: args.concurrency,
 				maxBuilds: MAX_CONCURRENT_BUILDS,
-				runs: args.runs,
+				iterations: args.iterations,
 				...buildCIMetadata(),
 			},
 		});
@@ -357,14 +362,15 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		const allRunResults = reshapeLangSmithRuns(
 			experimentResults.results,
 			testCasesWithFiles,
-			args.runs,
+			args.iterations,
 		);
-		const evaluation = aggregateResults(allRunResults, args.runs);
+		const evaluation = aggregateResults(allRunResults, args.iterations);
 
 		await updateExperimentAggregates({
 			lsClient,
 			experimentName: experimentResults.experimentName,
 			runs: experimentResults.results,
+			evaluation,
 			buildDurations,
 			totalDurationMs,
 			logger,
@@ -432,11 +438,13 @@ async function updateExperimentAggregates(config: {
 	lsClient: Client;
 	experimentName: string;
 	runs: Array<{ run: Run }>;
+	evaluation: MultiRunEvaluation;
 	buildDurations: Map<string, number>;
 	totalDurationMs: number;
 	logger: EvalLogger;
 }): Promise<void> {
-	const { lsClient, experimentName, runs, buildDurations, totalDurationMs, logger } = config;
+	const { lsClient, experimentName, runs, evaluation, buildDurations, totalDurationMs, logger } =
+		config;
 
 	const buildTimes = [...buildDurations.values()];
 	const uniqueBuilds = buildTimes.length;
@@ -449,32 +457,12 @@ async function updateExperimentAggregates(config: {
 	const avgExecMs =
 		execTimes.length > 0 ? execTimes.reduce((sum, d) => sum + d, 0) / execTimes.length : 0;
 
-	// Per-iteration pass rate breakdown, e.g. "80 / 80 / 73" — lets reviewers
-	// spot drift or anomalies between iterations without extra columns.
-	const perIteration = new Map<number, { passed: number; total: number }>();
-	for (const { run } of runs) {
-		const inputs = runInputsSchema.safeParse(run.inputs ?? {});
-		const output = parseTargetOutput(run.outputs);
-		if (!inputs.success || !output) continue;
-		const entry = perIteration.get(inputs.data._iteration) ?? { passed: 0, total: 0 };
-		entry.total++;
-		if (output.passed) entry.passed++;
-		perIteration.set(inputs.data._iteration, entry);
-	}
-	const passRatePerIter = [...perIteration.entries()]
-		.sort(([a], [b]) => a - b)
-		.map(([, { passed, total }]) => {
-			const pct = total > 0 ? Math.round((passed / total) * 100) : 0;
-			return `${String(pct)}%`;
-		})
-		.join(' / ');
-
 	const aggregates = {
 		duration_s: Math.round(totalDurationMs / 100) / 10,
 		avg_build_s: Math.round(avgBuildMs / 100) / 10,
 		avg_exec_s: Math.round(avgExecMs / 100) / 10,
 		unique_builds: uniqueBuilds,
-		pass_rate_per_iter: passRatePerIter,
+		pass_rate_per_iter: computePassRatePerIter(evaluation),
 	};
 
 	try {
@@ -492,10 +480,6 @@ async function updateExperimentAggregates(config: {
 		const msg = error instanceof Error ? error.message : String(error);
 		logger.verbose(`Could not update experiment metadata: ${msg}`);
 	}
-}
-
-function isPlainObject(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
 /**
@@ -526,6 +510,8 @@ async function writePerRunPassMetrics(config: {
 		byExample.set(exampleId, entry);
 	}
 
+	// Individual writes are best-effort: a transient API error on one run
+	// shouldn't block the rest, so we swallow per-promise and keep going.
 	const feedbackWrites: Array<Promise<unknown>> = [];
 	for (const { runIds, passed, total } of byExample.values()) {
 		const passAtKValue = passAtK(total, passed, total);
@@ -538,15 +524,10 @@ async function writePerRunPassMetrics(config: {
 		}
 	}
 
-	try {
-		await Promise.all(feedbackWrites);
-		logger.verbose(
-			`Wrote pass metrics feedback for ${String(byExample.size)} example(s) across ${String(runs.length)} run(s)`,
-		);
-	} catch (error: unknown) {
-		const msg = error instanceof Error ? error.message : String(error);
-		logger.verbose(`Could not write pass metrics feedback: ${msg}`);
-	}
+	await Promise.all(feedbackWrites);
+	logger.verbose(
+		`Wrote pass metrics feedback for ${String(byExample.size)} example(s) across ${String(runs.length)} run(s)`,
+	);
 }
 
 /**
@@ -636,13 +617,13 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 		0,
 	);
 	logger.info(
-		`Running ${String(testCasesWithFiles.length)} test case(s) with ${String(totalScenarios)} scenario(s) × ${String(args.runs)} run(s)`,
+		`Running ${String(testCasesWithFiles.length)} test case(s) with ${String(totalScenarios)} scenario(s) × ${String(args.iterations)} iteration(s)`,
 	);
 
 	const allRunResults: WorkflowTestCaseResult[][] = [];
-	for (let run = 0; run < args.runs; run++) {
-		if (args.runs > 1) {
-			logger.info(`--- Run #${String(run + 1)}/${String(args.runs)} ---`);
+	for (let iter = 0; iter < args.iterations; iter++) {
+		if (args.iterations > 1) {
+			logger.info(`--- Iteration #${String(iter + 1)}/${String(args.iterations)} ---`);
 		}
 		const results = await runWithConcurrency(
 			testCasesWithFiles,
@@ -662,12 +643,60 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 		allRunResults.push(results);
 	}
 
-	return aggregateResults(allRunResults, args.runs);
+	return aggregateResults(allRunResults, args.iterations);
 }
 
 // ---------------------------------------------------------------------------
 // eval-results.json output (same shape as CI PR comment expects)
 // ---------------------------------------------------------------------------
+
+interface AggregateMetrics {
+	/** Number of test cases with at least one successful build across iterations. */
+	built: number;
+	/** Total scenarios across all test cases. */
+	scenariosTotal: number;
+	/** Mean pass@k across scenarios at k = totalRuns (0..1). */
+	passAtK: number;
+	/** Mean pass^k across scenarios at k = totalRuns (0..1). */
+	passHatK: number;
+	/** Index into each scenario's passAtK/passHatK array for k = totalRuns. */
+	kIndex: number;
+	/** Pass rate of each iteration formatted as e.g. "37% / 37% / 37%". */
+	passRatePerIter: string;
+}
+
+function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetrics {
+	const { totalRuns, testCases } = evaluation;
+	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
+	const total = allScenarios.length;
+	const kIndex = Math.max(totalRuns - 1, 0);
+	const built = testCases.filter((tc) => tc.buildSuccessCount > 0).length;
+	const passAtK =
+		total > 0 ? allScenarios.reduce((sum, s) => sum + (s.passAtK[kIndex] ?? 0), 0) / total : 0;
+	const passHatK =
+		total > 0 ? allScenarios.reduce((sum, s) => sum + (s.passHatK[kIndex] ?? 0), 0) / total : 0;
+	return {
+		built,
+		scenariosTotal: total,
+		passAtK,
+		passHatK,
+		kIndex,
+		passRatePerIter: computePassRatePerIter(evaluation),
+	};
+}
+
+/** Pass rate of each iteration formatted as e.g. "37% / 37% / 37%". */
+function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
+	const { totalRuns, testCases } = evaluation;
+	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
+	if (allScenarios.length === 0) return '';
+	const rates: string[] = [];
+	for (let i = 0; i < totalRuns; i++) {
+		const passed = allScenarios.filter((s) => s.runs[i]?.success).length;
+		rates.push(`${String(Math.round((passed / allScenarios.length) * 100))}%`);
+	}
+	return rates.join(' / ');
+}
 
 function writeEvalResults(
 	evaluation: MultiRunEvaluation,
@@ -675,18 +704,7 @@ function writeEvalResults(
 	outputDir?: string,
 ): string {
 	const { totalRuns, testCases } = evaluation;
-	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
-	const totalScenariosCount = allScenarios.length;
-	const kIndex = Math.max(totalRuns - 1, 0);
-
-	const passAtKCount =
-		totalScenariosCount > 0
-			? allScenarios.reduce((sum, s) => sum + (s.passAtK[kIndex] ?? 0), 0)
-			: 0;
-	const passHatKCount =
-		totalScenariosCount > 0
-			? allScenarios.reduce((sum, s) => sum + (s.passHatK[kIndex] ?? 0), 0)
-			: 0;
+	const metrics = computeAggregateMetrics(evaluation);
 
 	const report = {
 		timestamp: new Date().toISOString(),
@@ -694,11 +712,11 @@ function writeEvalResults(
 		totalRuns,
 		summary: {
 			testCases: testCases.length,
-			built: testCases.filter((tc) => tc.buildSuccessCount > 0).length,
-			scenariosTotal: totalScenariosCount,
-			passAtK: totalScenariosCount > 0 ? passAtKCount / totalScenariosCount : 0,
-			passHatK: totalScenariosCount > 0 ? passHatKCount / totalScenariosCount : 0,
-			passRatePerIter: computePassRatePerIter(evaluation),
+			built: metrics.built,
+			scenariosTotal: metrics.scenariosTotal,
+			passAtK: metrics.passAtK,
+			passHatK: metrics.passHatK,
+			passRatePerIter: metrics.passRatePerIter,
 		},
 		testCases: testCases.map((tc) => ({
 			name: tc.testCase.prompt.slice(0, 70),
@@ -708,8 +726,8 @@ function writeEvalResults(
 				name: sa.scenario.name,
 				passCount: sa.passCount,
 				totalRuns,
-				passAtK: sa.passAtK[kIndex] ?? 0,
-				passHatK: sa.passHatK[kIndex] ?? 0,
+				passAtK: sa.passAtK[metrics.kIndex] ?? 0,
+				passHatK: sa.passHatK[metrics.kIndex] ?? 0,
 				runs: sa.runs.map((sr) => ({
 					passed: sr.success,
 					score: sr.score,
@@ -730,19 +748,6 @@ function writeEvalResults(
 	return outputPath;
 }
 
-/** Pass rate of each iteration formatted as e.g. "37% / 37% / 37%". */
-function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
-	const { totalRuns, testCases } = evaluation;
-	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
-	if (allScenarios.length === 0) return '';
-	const rates: string[] = [];
-	for (let i = 0; i < totalRuns; i++) {
-		const passed = allScenarios.filter((s) => s.runs[i]?.success).length;
-		rates.push(`${String(Math.round((passed / allScenarios.length) * 100))}%`);
-	}
-	return rates.join(' / ');
-}
-
 // ---------------------------------------------------------------------------
 // Console summary
 // ---------------------------------------------------------------------------
@@ -750,7 +755,7 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 function printSummary(evaluation: MultiRunEvaluation): void {
 	const { totalRuns, testCases } = evaluation;
 	const multiRun = totalRuns > 1;
-	const kIndex = Math.max(totalRuns - 1, 0);
+	const metrics = computeAggregateMetrics(evaluation);
 
 	console.log('\n=== Workflow Eval Results ===\n');
 	for (const tc of testCases) {
@@ -769,8 +774,8 @@ function printSummary(evaluation: MultiRunEvaluation): void {
 
 		for (const sa of tc.scenarios) {
 			if (multiRun) {
-				const passAtK = Math.round((sa.passAtK[kIndex] ?? 0) * 100);
-				const passHatK = Math.round((sa.passHatK[kIndex] ?? 0) * 100);
+				const passAtK = Math.round((sa.passAtK[metrics.kIndex] ?? 0) * 100);
+				const passHatK = Math.round((sa.passHatK[metrics.kIndex] ?? 0) * 100);
 				console.log(
 					`  ${sa.scenario.name}: ${String(sa.passCount)}/${String(totalRuns)} passed` +
 						` | pass@${String(totalRuns)}: ${String(passAtK)}% | pass^${String(totalRuns)}: ${String(passHatK)}%`,
@@ -794,30 +799,16 @@ function printSummary(evaluation: MultiRunEvaluation): void {
 		console.log('');
 	}
 
-	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
-	const total = allScenarios.length;
-	const built = testCases.filter((tc) => tc.buildSuccessCount > 0).length;
-
 	if (multiRun) {
-		const avgPassAtK =
-			total > 0
-				? Math.round(
-						(allScenarios.reduce((sum, s) => sum + (s.passAtK[kIndex] ?? 0), 0) / total) * 100,
-					)
-				: 0;
-		const avgPassHatK =
-			total > 0
-				? Math.round(
-						(allScenarios.reduce((sum, s) => sum + (s.passHatK[kIndex] ?? 0), 0) / total) * 100,
-					)
-				: 0;
 		console.log(
-			`${String(built)}/${String(testCases.length)} built | pass@${String(totalRuns)}: ${String(avgPassAtK)}% | pass^${String(totalRuns)}: ${String(avgPassHatK)}% | iterations: ${computePassRatePerIter(evaluation)}`,
+			`${String(metrics.built)}/${String(testCases.length)} built | pass@${String(totalRuns)}: ${String(Math.round(metrics.passAtK * 100))}% | pass^${String(totalRuns)}: ${String(Math.round(metrics.passHatK * 100))}% | iterations: ${metrics.passRatePerIter}`,
 		);
 	} else {
+		const allScenarios = testCases.flatMap((tc) => tc.scenarios);
 		const passed = allScenarios.filter((s) => s.runs[0]?.success).length;
+		const total = metrics.scenariosTotal;
 		console.log(
-			`${String(built)}/${String(testCases.length)} built | ${String(passed)}/${String(total)} passed (${String(total > 0 ? Math.round((passed / total) * 100) : 0)}%)`,
+			`${String(metrics.built)}/${String(testCases.length)} built | ${String(passed)}/${String(total)} passed (${String(total > 0 ? Math.round((passed / total) * 100) : 0)}%)`,
 		);
 	}
 }

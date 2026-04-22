@@ -44,6 +44,7 @@ If `LANGSMITH_API_KEY` is set, results are also sent to LangSmith as an experime
 | `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name |
 | `--concurrency` | `16` | Max concurrent scenarios (builds are separately capped at 4) |
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
+| `--iterations` | `1` | Run each test case N times with fresh builds — powers pass@k / pass^k metrics |
 
 ### Docker (without pnpm dev:ai)
 
