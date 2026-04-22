@@ -73,11 +73,23 @@ export class ExecutionRecoveryService {
 					);
 
 					const recipient = await this.getAutodeactivationRecipient(workflow);
-					await this.userManagementMailer.notifyWorkflowAutodeactivated({
+					const { emailSent } = await this.userManagementMailer.notifyWorkflowAutodeactivated({
 						recipient,
 						workflow,
 					});
 
+					if (!emailSent) {
+						this.logger.warn(
+							`Could not send auto-deactivation email for workflow "${workflow.name}" — SMTP is not configured. Users must rely on in-app notification.`,
+							{ workflowId },
+						);
+					}
+
+					// Notify editors that are currently open
+					this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
+
+					// Also notify the next editor session that connects (covers the case where
+					// no browser tab is open at the time of deactivation)
 					this.push.once('editorUiConnected', async () => {
 						await sleep(1000);
 						this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
