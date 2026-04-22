@@ -157,6 +157,87 @@ export interface IConnections {
 }
 
 /**
+ * Minimal node-info shape needed to resolve a node's error-output index.
+ * Accepts either a NodeJSON or a GraphNode instance config, so callers on
+ * both import and export paths can hand theirs off without conversion.
+ */
+interface ErrorIndexNodeInfo {
+	name?: string;
+	type: string;
+	parameters?: IDataObject;
+}
+
+/**
+ * Resolve the output index at which a node's error pin should live in the
+ * modern (main[n]) format. Kept in sync with the NODE_SEMANTICS table in
+ * codegen/semantic-registry.ts — the rule is always `natural output count`,
+ * with 1 as the fallback for community / unknown nodes.
+ */
+export function resolveErrorOutputIndex(type: string, parameters?: IDataObject): number {
+	if (type === 'n8n-nodes-base.if') return 2; // trueBranch + falseBranch
+	if (type === 'n8n-nodes-base.switch') {
+		const rules = parameters?.rules as { rules?: unknown[]; values?: unknown[] } | undefined;
+		const rulesArray = rules?.rules ?? rules?.values;
+		const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
+		return numCases + 1; // cases + fallback
+	}
+	if (type === 'n8n-nodes-base.splitInBatches') return 2; // done + loop
+	if (type === 'n8n-nodes-base.merge') return 1; // single output
+	return 1;
+}
+
+/**
+ * Fold legacy top-level `error` connection entries into the `main` output
+ * array in-place.
+ *
+ * Older n8n workflows serialized error-pin connections under a sibling
+ * `"error"` key next to `"main"` on a source node. The modern format — what
+ * the editor canvas renders and what `onError: 'continueErrorOutput'` exposes
+ * at runtime — puts the error pin as an extra slot at the end of the `main`
+ * array (index 1 for single-output nodes, index 2 for IF, etc.).
+ *
+ * Pass `nodes` when available so the error pin lands at the correct index
+ * for multi-output nodes (IF / Switch / SplitInBatches). Without node info
+ * the helper falls back to index 1, which is right for the common
+ * single-main-output case but wrong for sparse multi-output nodes.
+ *
+ * Applied on both import and export so the SDK only ever hands out the
+ * modern shape, while still accepting legacy workflows as input.
+ */
+export function foldLegacyErrorConnections(
+	connections: IConnections,
+	nodes?: readonly ErrorIndexNodeInfo[],
+): void {
+	const nodeLookup = new Map<string, ErrorIndexNodeInfo>();
+	if (nodes) {
+		for (const n of nodes) {
+			if (n.name) nodeLookup.set(n.name, n);
+		}
+	}
+
+	for (const [nodeName, nodeConns] of Object.entries(connections)) {
+		const errorOutputs = nodeConns.error;
+		if (!Array.isArray(errorOutputs) || errorOutputs.length === 0) continue;
+
+		const errorTargets = errorOutputs[0];
+		delete nodeConns.error;
+		if (!Array.isArray(errorTargets) || errorTargets.length === 0) continue;
+
+		const node = nodeLookup.get(nodeName);
+		const targetIndex = node ? resolveErrorOutputIndex(node.type, node.parameters) : 1;
+
+		const main = Array.isArray(nodeConns.main) ? nodeConns.main : [];
+		// Pad any missing earlier output slots with empty arrays so the error
+		// target lands at its type-correct index (e.g. main[2] for IF even when
+		// neither branch was wired up).
+		while (main.length < targetIndex) main.push([]);
+		const existing = main[targetIndex] ?? [];
+		main[targetIndex] = [...existing, ...errorTargets];
+		nodeConns.main = main;
+	}
+}
+
+/**
  * Normalize workflow connections in-place.
  * Some workflows store connections as flat tuples [nodeName, type, index]
  * instead of the standard {node, type, index} objects. This converts them

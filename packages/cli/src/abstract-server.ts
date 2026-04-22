@@ -137,14 +137,16 @@ export abstract class AbstractServer {
 		const healthPath = this.endpointHealth;
 		const readinessPath = `${healthPath}/readiness`;
 
+		const healthMiddlewares = inDevelopment ? [corsMiddleware] : [];
+
 		// main health check should not care about DB connections
-		this.app.get(healthPath, (_req, res) => {
+		this.app.get(healthPath, ...healthMiddlewares, (_req, res) => {
 			res.send({ status: 'ok' });
 		});
 
 		const { connectionState } = this.dbConnection;
 
-		this.app.get(readinessPath, (_req, res) => {
+		this.app.get(readinessPath, ...healthMiddlewares, (_req, res) => {
 			const { connected, migrated } = connectionState;
 			if (connected && migrated && this.fullyReady) {
 				res.status(200).send({ status: 'ok' });

@@ -1,11 +1,13 @@
 import pytest
 import json
+import types
 from unittest.mock import MagicMock, patch
 
 from src.task_executor import TaskExecutor
 from src.pipe_reader import PipeReader
 from src.errors import TaskCancelledError, TaskKilledError, TaskSubprocessFailedError
 from src.constants import SIGTERM_EXIT_CODE, SIGKILL_EXIT_CODE, PIPE_MSG_PREFIX_LENGTH
+from src.config.security_config import SecurityConfig
 from src.message_types.pipe import (
     PipeResultMessage,
     PipeErrorMessage,
@@ -196,3 +198,18 @@ class TestTaskExecutorLowLevelIO:
 
         with pytest.raises(OSError, match="Write failed"):
             TaskExecutor._write_bytes(999, b"test data")
+
+
+class TestFilterBuiltins:
+    def _make_security_config(self) -> SecurityConfig:
+        return SecurityConfig(
+            stdlib_allow=set(),
+            external_allow=set(),
+            builtins_deny=set(),
+            runner_env_deny=False,
+        )
+
+    def test_returns_mapping_proxy(self):
+        result = TaskExecutor._filter_builtins(self._make_security_config())
+
+        assert isinstance(result, types.MappingProxyType)

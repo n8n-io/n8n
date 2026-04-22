@@ -278,6 +278,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return items;
 	});
 
+	/** True while the run is paused awaiting the user to resolve a confirmation (e.g. workflow setup wizard). */
+	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
+
 	function resolveConfirmation(
 		requestId: string,
 		action: 'approved' | 'denied' | 'deferred',
@@ -538,6 +541,22 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	}
 
 	// --- Actions ---
+
+	/**
+	 * Reset the store to a blank "no active thread" state — used when the user
+	 * lands on the base `/instance-ai` route (fresh page, back button, or the
+	 * AI Assistant nav link). Without this, `currentThreadId` keeps pointing
+	 * at the last thread and the sidebar highlights it alongside the empty
+	 * main view, which is the AI-2408 visual mismatch.
+	 */
+	function clearCurrentThread(): void {
+		closeSSE();
+		resetThreadRuntimeState(null);
+		// Mirror the initial store state: a fresh UUID that doesn't match any
+		// real thread, so the sidebar highlights nothing and the next
+		// `sendMessage` creates a new thread with this id via `syncThread`.
+		currentThreadId.value = uuidv4();
+	}
 
 	function newThread(): string {
 		const newThreadId = uuidv4();
@@ -1037,8 +1056,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsPercentageRemaining,
 		isLowCredits,
 		pendingConfirmations,
+		isAwaitingConfirmation,
 		// Actions
 		newThread,
+		clearCurrentThread,
 		deleteThread,
 		renameThread,
 		getThreadMetadata,

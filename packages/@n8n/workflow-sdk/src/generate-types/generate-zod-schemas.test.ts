@@ -1238,3 +1238,189 @@ describe('mapPropertyToZodSchema with noDataExpression', () => {
 		expect(schema).toBe('stringOrExpression');
 	});
 });
+
+describe('mapPropertyToZodSchema for fixedCollection with field-count constraints', () => {
+	const buildFilters = (typeOptions: NodeProperty['typeOptions']): NodeProperty => ({
+		name: 'filters',
+		displayName: 'Filters',
+		type: 'fixedCollection',
+		default: {},
+		typeOptions,
+		options: [
+			{
+				name: 'conditions',
+				displayName: 'Conditions',
+				values: [{ name: 'keyName', displayName: 'Key', type: 'string', default: '' }],
+			},
+		],
+	});
+
+	it('applies .min() to the array when multipleValues and minRequiredFields are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 1 }),
+		);
+		expect(schema).toContain('conditions: z.array(');
+		expect(schema).toContain(').min(1)');
+	});
+
+	it('applies .max() to the array when multipleValues and maxAllowedFields are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, maxAllowedFields: 3 }),
+		);
+		expect(schema).toContain(').max(3)');
+	});
+
+	it('combines .min() and .max() when both constraints are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 1, maxAllowedFields: 5 }),
+		);
+		expect(schema).toContain('.min(1).max(5)');
+	});
+
+	it('omits .min() when minRequiredFields is 0', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 0 }),
+		);
+		expect(schema).not.toContain('.min(');
+	});
+
+	it('does not apply .min() when multipleValues is false', () => {
+		const schema = mapPropertyToZodSchema(buildFilters({ minRequiredFields: 1 }));
+		expect(schema).not.toContain('z.array(');
+		expect(schema).not.toContain('.min(');
+	});
+});
+
+describe('mapPropertyToZodSchema recursion for nested collection/fixedCollection', () => {
+	const stringLeaf: NodeProperty = {
+		name: 'leaf',
+		displayName: 'Leaf',
+		type: 'string',
+		default: '',
+	};
+
+	const typeOptionsField: NodeProperty = {
+		name: 'type',
+		displayName: 'Type',
+		type: 'options',
+		default: 'qs',
+		options: [
+			{ name: 'Body', value: 'body' },
+			{ name: 'Header', value: 'headers' },
+			{ name: 'Query', value: 'qs' },
+		],
+	};
+
+	it('walks into a fixedCollection nested inside another fixedCollection', () => {
+		const prop: NodeProperty = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'inner',
+							displayName: 'Inner',
+							type: 'fixedCollection',
+							default: {},
+							options: [
+								{
+									name: 'innerGroup',
+									displayName: 'Inner Group',
+									values: [stringLeaf],
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('inner: z.object({');
+		expect(schema).toContain('innerGroup: z.object({');
+		expect(schema).toContain('leaf: stringOrExpression.optional()');
+	});
+
+	it('walks into a fixedCollection nested inside a collection (HTTP pagination shape)', () => {
+		const nestedPagination: NodeProperty = {
+			name: 'pagination',
+			displayName: 'Pagination',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'pagination',
+					displayName: 'Pagination',
+					values: [
+						{
+							name: 'parameters',
+							displayName: 'Parameters',
+							type: 'fixedCollection',
+							default: {},
+							typeOptions: { multipleValues: true },
+							options: [
+								{
+									name: 'parameters',
+									displayName: 'Parameter',
+									values: [typeOptionsField],
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [nestedPagination],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain("z.literal('body')");
+		expect(schema).toContain("z.literal('headers')");
+		expect(schema).toContain("z.literal('qs')");
+		expect(schema).toContain('expressionSchema');
+	});
+
+	it('walks into a collection nested inside a fixedCollection', () => {
+		const prop: NodeProperty = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'inner',
+							displayName: 'Inner',
+							type: 'collection',
+							default: {},
+							options: [stringLeaf],
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('inner: z.object({');
+		expect(schema).toContain('leaf: stringOrExpression.optional()');
+	});
+});
