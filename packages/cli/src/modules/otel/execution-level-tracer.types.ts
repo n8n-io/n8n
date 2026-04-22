@@ -1,4 +1,4 @@
-import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
+import type { ExecutionStatus, WorkflowExecuteMode, INode } from 'n8n-workflow';
 
 import type { TracingContext } from './tracing-context';
 
@@ -17,14 +17,16 @@ export type EndWorkflowParams = {
 	retryOf?: string;
 };
 
+type NodeTracingParams = Pick<INode, 'id' | 'name' | 'type' | 'typeVersion'>;
+
 export type StartNodeParams = {
 	executionId: string;
-	node: { id: string; name: string; type: string; typeVersion: number };
+	node: NodeTracingParams;
 };
 
 export type EndNodeParams = {
 	executionId: string;
-	nodeName: string;
+	node: NodeTracingParams;
 	inputItemCount: number;
 	outputItemCount: number;
 	error?: { message: string; constructor: { name: string }; stack?: string };

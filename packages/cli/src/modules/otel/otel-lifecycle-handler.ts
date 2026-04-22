@@ -21,16 +21,16 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteBefore')
 	async onWorkflowStart(ctx: WorkflowExecuteBeforeContext): Promise<void> {
-		// Sub-workflows: inherit parent's trace context directly (own record is always empty)
-		// Top-level: check own context (webhooks persist traceparent from HTTP headers)
 		const parentExecutionId = ctx.executionData?.parentExecution?.executionId;
 		const tracingContext = parentExecutionId
-			? await this.traceContextService.get(parentExecutionId)
-			: await this.traceContextService.get(ctx.executionId);
+			? // This will only be set when we are a "sub-workflow"
+				await this.traceContextService.get(parentExecutionId)
+			: // This will return "null" if there is no traceparent header in the trigger node. (e.g. webhook)
+				await this.traceContextService.get(ctx.executionId);
 
 		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
-			tracingContext: tracingContext ?? undefined,
+			tracingContext,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -39,9 +39,9 @@ export class OtelLifecycleHandler {
 			},
 		});
 
-		if (spanContext) {
-			await this.traceContextService.persist(ctx.executionId, spanContext);
-		}
+		// Given we have now started a "workflow" we should persist the traceparent - it will change the
+		// "parent-id" part of the traceparent header when we start the `workflow`
+		await this.traceContextService.persist(ctx.executionId, spanContext);
 	}
 
 	@OnLifecycleEvent('workflowExecuteAfter')
@@ -65,18 +65,16 @@ export class OtelLifecycleHandler {
 
 		this.tracer.startNode({
 			executionId: ctx.executionId,
-			node: {
-				id: node.id,
-				name: node.name,
-				type: node.type,
-				typeVersion: node.typeVersion,
-			},
+			node,
 		});
 	}
 
 	@OnLifecycleEvent('nodeExecuteAfter')
 	onNodeEnd(ctx: NodeExecuteAfterContext): void {
 		if (!this.config.includeNodeSpans) return;
+
+		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);
+		if (!node) return;
 
 		const customAttributes = ctx.taskData.metadata?.tracing
 			? Object.fromEntries(
@@ -86,7 +84,7 @@ export class OtelLifecycleHandler {
 
 		this.tracer.endNode({
 			executionId: ctx.executionId,
-			nodeName: ctx.nodeName,
+			node,
 			inputItemCount: countInputItems(ctx),
 			outputItemCount: countOutputItems(ctx.taskData.data),
 			error: ctx.taskData.error ?? undefined,

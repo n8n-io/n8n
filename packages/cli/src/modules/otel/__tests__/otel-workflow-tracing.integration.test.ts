@@ -23,7 +23,10 @@ let executionRepository: ExecutionRepository;
 let savedEnv: Record<string, string | undefined>;
 
 beforeAll(async () => {
-	savedEnv = saveAndSetEnv({ N8N_OTEL_ENABLED: 'true' });
+	savedEnv = saveAndSetEnv({
+		N8N_OTEL_ENABLED: 'true',
+		N8N_OTEL_TRACES_INCLUDE_NODE_SPANS: 'true',
+	});
 	const env = await initOtelTestEnvironment();
 	otel = env.otel;
 	workflowRunner = env.workflowRunner;
@@ -69,5 +72,21 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
 		expect(workflowSpan.status.code).toBe(SpanStatusCode.ERROR);
 		expect(workflowSpan.attributes['n8n.execution.status']).toBe('error');
+	});
+
+	it('should inherit traceId from inbound HTTP traceparent', async () => {
+		const inboundTraceId = '9bf2bd87b5053953e3fa08d8d889494b';
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture());
+		const executionId = await executeWorkflow(workflowRunner, workflow, 'test-project', {
+			mode: 'webhook',
+			tracingContext: {
+				traceparent: `00-${inboundTraceId}-b7ad6b7169203331-01`,
+			},
+		});
+		await waitForExecution(executionRepository, executionId);
+
+		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
+		expect(workflowSpan).toBeDefined();
+		expect(workflowSpan.spanContext().traceId).toBe(inboundTraceId);
 	});
 });

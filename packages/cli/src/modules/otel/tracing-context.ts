@@ -29,19 +29,19 @@ export class TraceContextService {
 	/**
 	 * Get tracing context for an execution from the DB.
 	 */
-	async get(executionId: string): Promise<TracingContext | null> {
+	async get(executionId: string): Promise<TracingContext | undefined> {
 		try {
 			const execution = await this.executionRepository.findOne({
 				where: { id: executionId },
 				select: ['tracingContext'],
 			});
-			return execution?.tracingContext ?? null;
+			return execution?.tracingContext ?? undefined;
 		} catch (error) {
 			this.logger.error('Failed to load tracing context', {
 				executionId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return null;
+			return undefined;
 		}
 	}
 }

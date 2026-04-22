@@ -125,50 +125,50 @@ describe('OtelLifecycleHandler', () => {
 			expect(traceContextService.persist).not.toHaveBeenCalled();
 		});
 	});
-});
 
-describe('onNodeStart / onNodeEnd', () => {
-	const tracer = mock<ExecutionLevelTracer>();
-	const traceContextService = mock<TraceContextService>();
-	const config = mock<OtelConfig>();
+	describe('onNodeStart / onNodeEnd', () => {
+		const tracer = mock<ExecutionLevelTracer>();
+		const traceContextService = mock<TraceContextService>();
+		const config = mock<OtelConfig>();
 
-	beforeEach(() => {
-		jest.clearAllMocks();
-	});
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
 
-	it('should skip node spans when includeNodeSpans is false', () => {
-		config.includeNodeSpans = false;
-		const handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+		it('should skip node spans when includeNodeSpans is false', () => {
+			config.includeNodeSpans = false;
+			const handler = new OtelLifecycleHandler(tracer, traceContextService, config);
 
-		handler.onNodeStart({
-			type: 'nodeExecuteBefore',
-			workflow: {
-				id: 'wf-1',
-				name: 'Test',
-				nodes: [{ id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 }],
-				connections: {},
-			},
-			nodeName: 'Node1',
-			executionId: 'exec-1',
-		} as never);
+			handler.onNodeStart({
+				type: 'nodeExecuteBefore',
+				workflow: {
+					id: 'wf-1',
+					name: 'Test',
+					nodes: [{ id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 }],
+					connections: {},
+				},
+				nodeName: 'Node1',
+				executionId: 'exec-1',
+			} as never);
 
-		handler.onNodeEnd({
-			type: 'nodeExecuteAfter',
-			workflow: { id: 'wf-1', name: 'Test', nodes: [], connections: {} },
-			nodeName: 'Node1',
-			executionId: 'exec-1',
-			taskData: {
-				startTime: 0,
-				executionTime: 10,
-				executionIndex: 0,
-				source: [],
-				data: { main: [[{ json: {} }]] },
-			},
-			executionData: { resultData: { runData: {} } },
-		} as never);
+			handler.onNodeEnd({
+				type: 'nodeExecuteAfter',
+				workflow: { id: 'wf-1', name: 'Test', nodes: [], connections: {} },
+				nodeName: 'Node1',
+				executionId: 'exec-1',
+				taskData: {
+					startTime: 0,
+					executionTime: 10,
+					executionIndex: 0,
+					source: [],
+					data: { main: [[{ json: {} }]] },
+				},
+				executionData: { resultData: { runData: {} } },
+			} as never);
 
-		expect(tracer.startNode).not.toHaveBeenCalled();
-		expect(tracer.endNode).not.toHaveBeenCalled();
+			expect(tracer.startNode).not.toHaveBeenCalled();
+			expect(tracer.endNode).not.toHaveBeenCalled();
+		});
 	});
 });
 
