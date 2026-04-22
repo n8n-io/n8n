@@ -46,9 +46,9 @@ export function formatWorkflowLoopGuidance(
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
 					'Workflow verified successfully with temporary mock data. ' +
-					`Call \`setup-workflow\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
+					`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
 					'to let the user configure credentials, parameters, and triggers through the setup UI. ' +
-					'Do not call `setup-credentials` or `apply-workflow-credentials` — `setup-workflow` handles everything.' +
+					'Do not call `credentials(action="setup")` or `apply-workflow-credentials` — `workflows(action="setup")` handles everything.' +
 					CHECKLIST_DONE_NEEDS_SETUP
 				);
 			}

@@ -92,7 +92,7 @@ describe('report-verification-verdict tool', () => {
 		const result = (await tool.execute!(baseInput, {} as never)) as Record<string, unknown>;
 
 		expect((result as { guidance: string }).guidance).toContain('VERIFY');
-		expect((result as { guidance: string }).guidance).toContain('run-workflow');
+		expect((result as { guidance: string }).guidance).toContain('executions(action="run")');
 	});
 
 	it('returns re-verify guidance when action is repair_verify', async () => {

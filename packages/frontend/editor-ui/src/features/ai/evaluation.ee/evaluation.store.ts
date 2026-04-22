@@ -26,9 +26,7 @@ export const useEvaluationStore = defineStore(
 		const rootStore = useRootStore();
 		const workflowsStore = useWorkflowsStore();
 		const workflowDocumentStore = computed(() =>
-			workflowsStore.workflowId
-				? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-				: undefined,
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 		);
 		const nodeTypesStore = useNodeTypesStore();
 		const settingsStore = useSettingsStore();
@@ -53,13 +51,13 @@ export const useEvaluationStore = defineStore(
 		});
 
 		const evaluationTriggerExists = computed(() => {
-			return (workflowDocumentStore.value?.allNodes ?? []).some(
+			return workflowDocumentStore.value.allNodes.some(
 				(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
 			);
 		});
 
 		function evaluationNodeExist(operation: string) {
-			return (workflowDocumentStore.value?.allNodes ?? []).some((node) => {
+			return workflowDocumentStore.value.allNodes.some((node) => {
 				if (node.type !== EVALUATION_NODE_TYPE) {
 					return false;
 				}

@@ -4,9 +4,7 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, UserError, sleep } from 'n8n-workflow';
-
-import { getBaseHost } from '../../../llms/LmChatAlibabaCloud/alibaba-cloud-base-url';
+import { NodeOperationError, sleep } from 'n8n-workflow';
 
 type RequestParameters = {
 	headers?: IDataObject;
@@ -14,14 +12,6 @@ type RequestParameters = {
 	qs?: IDataObject;
 	option?: IDataObject;
 };
-
-export function getBaseUrl(credentials: IDataObject): string {
-	const region = (credentials.region as string) || 'ap-southeast-1';
-	if (region === 'eu-central-1' && !credentials.workspaceId) {
-		throw new UserError('Workspace ID is required for the Germany (Frankfurt) region');
-	}
-	return getBaseHost(region, credentials.workspaceId as string);
-}
 
 const TERMINAL_STATUSES = ['SUCCEEDED', 'FAILED', 'CANCELED'];
 const DEFAULT_POLL_INTERVAL_MS = 15_000;
@@ -37,8 +27,7 @@ export async function apiRequest(
 
 	const credentials = await this.getCredentials('alibabaCloudApi');
 
-	const baseUrl = getBaseUrl(credentials as IDataObject);
-	const uri = `${baseUrl}${endpoint}`;
+	const uri = `${credentials.url as string}${endpoint}`;
 	const headers = parameters?.headers ?? {};
 
 	const options = {

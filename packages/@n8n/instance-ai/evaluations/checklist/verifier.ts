@@ -25,16 +25,17 @@ const checklistResultSchema = z.object({
 // Public API
 // ---------------------------------------------------------------------------
 
+const MAX_VERIFY_ATTEMPTS = 2;
+
 export async function verifyChecklist(
 	checklist: ChecklistItem[],
 	verificationArtifact: string,
 	_workflowJsons: WorkflowResponse[],
 ): Promise<ChecklistResult[]> {
 	const llmItems = checklist.filter((i) => i.strategy === 'llm');
-	const results: ChecklistResult[] = [];
+	if (llmItems.length === 0) return [];
 
-	if (llmItems.length > 0) {
-		const userMessage = `## Checklist
+	const userMessage = `## Checklist
 
 ${JSON.stringify(llmItems, null, 2)}
 
@@ -44,6 +45,9 @@ ${verificationArtifact}
 
 Verify each checklist item against the artifact above.`;
 
+	const validIds = new Set(llmItems.map((i) => i.id));
+
+	for (let attempt = 0; attempt < MAX_VERIFY_ATTEMPTS; attempt++) {
 		const agent = createEvalAgent('eval-checklist-verifier', {
 			instructions: MOCK_EXECUTION_VERIFY_PROMPT,
 			cache: true,
@@ -51,8 +55,8 @@ Verify each checklist item against the artifact above.`;
 
 		const result = await agent.generate(userMessage);
 
-		const validIds = new Set(llmItems.map((i) => i.id));
 		const parsed = result.structuredOutput as z.infer<typeof checklistResultSchema> | undefined;
+		const results: ChecklistResult[] = [];
 
 		if (parsed?.results) {
 			for (const entry of parsed.results) {
@@ -66,20 +70,19 @@ Verify each checklist item against the artifact above.`;
 						pass: entry.pass,
 						reasoning: entry.reasoning ?? '',
 						strategy: 'llm',
-						failureCategory: entry.failureCategory,
+						failureCategory:
+							entry.failureCategory ?? (!entry.pass ? 'verification_failure' : undefined),
 						rootCause: entry.rootCause,
 					});
 				}
 			}
-		} else {
-			console.warn(
-				'[verifier] structuredOutput returned null — LLM did not produce parseable results',
-			);
+		}
+
+		if (results.length > 0) {
+			results.sort((a, b) => a.id - b.id);
+			return results;
 		}
 	}
 
-	// Sort results by id for deterministic output
-	results.sort((a, b) => a.id - b.id);
-
-	return results;
+	return [];
 }
