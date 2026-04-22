@@ -18,6 +18,62 @@ import type { IAvatar, ILead, ILeadCompany } from './LeadInterface';
 import { userFields, userOperations } from './UserDescription';
 import type { IUser, IUserCompany } from './UserInterface';
 
+async function getIntercomUserContactId(
+	this: IExecuteFunctions,
+	updateBy: string,
+	value: string,
+): Promise<string> {
+	if (updateBy === 'id') {
+		return value;
+	}
+
+	if (updateBy === 'userId') {
+		const response = await intercomApiRequest.call(
+			this,
+			`/contacts/find_by_external_id/${encodeURIComponent(value)}`,
+			'GET',
+		);
+
+		return response.id as string;
+	}
+
+	const response = await intercomApiRequest.call(this, '/contacts/search', 'POST', {
+		query: {
+			field: 'email',
+			operator: '=',
+			value,
+		},
+	});
+
+	const [contact] = (response.data ?? []) as Array<{ id?: string }>;
+
+	if (!contact?.id) {
+		throw new NodeOperationError(this.getNode(), `No Intercom user found for email "${value}"`);
+	}
+
+	return contact.id;
+}
+
+function prepareIntercomUserUpdateBody(body: IUser): IUser {
+	const updateBody: IUser = {
+		...body,
+		role: 'user',
+	};
+
+	if (updateBody.user_id) {
+		updateBody.external_id = updateBody.user_id;
+		delete updateBody.user_id;
+	}
+
+	if (typeof updateBody.avatar === 'object' && updateBody.avatar?.image_url) {
+		updateBody.avatar = updateBody.avatar.image_url;
+	}
+
+	delete updateBody.id;
+
+	return updateBody;
+}
+
 export class Intercom implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Intercom',
@@ -366,21 +422,26 @@ export class Intercom implements INodeType {
 						if (operation === 'update') {
 							const updateBy = this.getNodeParameter('updateBy', 0) as string;
 							const value = this.getNodeParameter('value', i) as string;
-							if (updateBy === 'userId') {
-								body.user_id = value;
-							}
-							if (updateBy === 'id') {
-								body.id = value;
-							}
-							if (updateBy === 'email') {
-								body.email = value;
-							}
-						}
+							const contactId = await getIntercomUserContactId.call(this, updateBy, value);
+							const updateBody = prepareIntercomUserUpdateBody(body);
 
-						try {
-							responseData = await intercomApiRequest.call(this, '/users', 'POST', body, qs);
-						} catch (error) {
-							throw new NodeApiError(this.getNode(), error as JsonObject);
+							try {
+								responseData = await intercomApiRequest.call(
+									this,
+									`/contacts/${contactId}`,
+									'PUT',
+									updateBody,
+									qs,
+								);
+							} catch (error) {
+								throw new NodeApiError(this.getNode(), error as JsonObject);
+							}
+						} else {
+							try {
+								responseData = await intercomApiRequest.call(this, '/users', 'POST', body, qs);
+							} catch (error) {
+								throw new NodeApiError(this.getNode(), error as JsonObject);
+							}
 						}
 					}
 					if (operation === 'get') {
