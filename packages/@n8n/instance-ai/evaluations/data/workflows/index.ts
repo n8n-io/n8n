@@ -29,10 +29,6 @@ function getJsonFiles(filter?: string): string[] {
 	return files.map((f) => join(dir, f));
 }
 
-export function loadWorkflowTestCases(filter?: string): WorkflowTestCase[] {
-	return getJsonFiles(filter).map((f) => parseTestCaseFile(f));
-}
-
 /** Load test cases with their file slugs (for LangSmith dataset sync derived IDs). */
 export function loadWorkflowTestCasesWithFiles(filter?: string): WorkflowTestCaseWithFile[] {
 	return getJsonFiles(filter).map((f) => ({

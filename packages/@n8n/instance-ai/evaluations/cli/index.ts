@@ -405,14 +405,17 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
  * reshape runs back into per-iteration groups afterwards. All N copies share
  * the source example's id, so LangSmith's UI groups them naturally by
  * `reference_example_id` — useful for pass@k visualization.
+ *
+ * The source is buffered into memory once before the first yield: we need to
+ * emit each example N times, and an AsyncIterable can only be consumed once.
  */
 async function* expandExamplesForIterations(
 	source: AsyncIterable<Example>,
-	runs: number,
+	iterations: number,
 ): AsyncIterable<Example> {
 	const cached: Example[] = [];
 	for await (const ex of source) cached.push(ex);
-	for (let i = 0; i < runs; i++) {
+	for (let i = 0; i < iterations; i++) {
 		for (const ex of cached) {
 			yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
 		}
@@ -539,7 +542,7 @@ async function writePerRunPassMetrics(config: {
 function reshapeLangSmithRuns(
 	rows: Array<{ run: Run }>,
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
-	numRuns: number,
+	numIterations: number,
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
@@ -552,7 +555,7 @@ function reshapeLangSmithRuns(
 	}
 
 	const allRunResults: WorkflowTestCaseResult[][] = [];
-	for (let iter = 0; iter < numRuns; iter++) {
+	for (let iter = 0; iter < numIterations; iter++) {
 		const runResults: WorkflowTestCaseResult[] = [];
 		for (const { testCase, fileSlug } of testCasesWithFiles) {
 			const scenarioResults: ScenarioResult[] = [];

@@ -10,7 +10,8 @@ export { N8nClient } from './clients/n8n-client';
 export type { WorkflowResponse, WorkflowNodeResponse, ExecutionDetail } from './clients/n8n-client';
 
 // -- Test case data --
-export { loadWorkflowTestCases } from './data/workflows';
+export { loadWorkflowTestCasesWithFiles } from './data/workflows';
+export type { WorkflowTestCaseWithFile } from './data/workflows';
 
 // -- Credentials --
 export { seedCredentials, cleanupCredentials } from './credentials/seeder';
