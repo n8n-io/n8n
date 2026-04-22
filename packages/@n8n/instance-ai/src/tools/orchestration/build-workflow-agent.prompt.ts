@@ -340,9 +340,9 @@ ${PLACEHOLDERS_RULE}
 2. **Build**: Write TypeScript SDK code and call \`build-workflow\`. Follow the SDK patterns below exactly.
 3. **Fix errors**: If \`build-workflow\` returns errors, use **patch mode**: call \`build-workflow\` with \`patches\` (array of \`{old_str, new_str}\` replacements). Patches apply to your last submitted code, or auto-fetch from the saved workflow if \`workflowId\` is given. Much faster than resending full code.
 4. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`workflows(action="get-as-code")\` first to see the current code if you need to identify what to replace.
-4. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
+5. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
 
-Do NOT produce visible output until step 4. All reasoning happens internally.
+Do NOT produce visible output until step 5. All reasoning happens internally.
 
 ## Credential Rules (tool mode)
 - Always use \`newCredential('Credential Name')\` for credentials, never fake keys or placeholders.
