@@ -57,6 +57,11 @@ const properties: INodeProperties[] = [
 										value: 'text/html',
 									},
 									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Markdown (md)',
+										value: 'text/markdown',
+									},
+									{
 										name: 'MS Word Document',
 										value:
 											'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -73,11 +78,6 @@ const properties: INodeProperties[] = [
 										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 										name: 'Rich Text (rtf)',
 										value: 'application/rtf',
-									},
-									{
-										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										name: 'Markdown (md)',
-										value: 'text/markdown',
 									},
 									{
 										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
