@@ -1,13 +1,8 @@
+import { SECRETS_PROVIDER_KEY_PATTERN } from '@n8n/api-types';
 import get from 'lodash/get';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { getAllKeyPaths } from '@/utils';
-
-/**
- * Regular expression pattern for valid provider keys.
- * Keep this in sync with the regex implemented in CreateSecretsProviderConnectionDto.
- */
-const PROVIDER_KEY_PATTERN = '[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*';
 
 /**
  * Checks if a string value contains an external secret expression.
@@ -43,7 +38,7 @@ export function extractProviderKeysFromExpression(expression: string): string[] 
 		// - $secrets.providerKey['secret']
 		// - $secrets.providerKey["secret"]
 		const dotMatches = expressionContent.matchAll(
-			new RegExp(`\\$secrets\\.(${PROVIDER_KEY_PATTERN})(?=\\.|\\[)`, 'g'),
+			new RegExp(`\\$secrets\\.(${SECRETS_PROVIDER_KEY_PATTERN})(?=\\.|\\[)`, 'g'),
 		);
 		for (const match of dotMatches) {
 			providerKeys.add(match[1]);
@@ -53,7 +48,7 @@ export function extractProviderKeysFromExpression(expression: string): string[] 
 		// - $secrets['providerKey']
 		// - $secrets["providerKey"]
 		const bracketMatches = expressionContent.matchAll(
-			new RegExp(`\\$secrets\\[['"](${PROVIDER_KEY_PATTERN})['"]\\]`, 'g'),
+			new RegExp(`\\$secrets\\[['"](${SECRETS_PROVIDER_KEY_PATTERN})['"]\\]`, 'g'),
 		);
 		for (const match of bracketMatches) {
 			providerKeys.add(match[1]);

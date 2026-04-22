@@ -24,8 +24,8 @@ describe('External secrets utils', () => {
 
 		it('extracts single provider from mixed notation with bracket provider access', () => {
 			expect(
-				extractProviderKeysFromExpression('={{ $secrets["aws-secrets-manager"].secret }}'),
-			).toEqual(['aws-secrets-manager']);
+				extractProviderKeysFromExpression('={{ $secrets["awsSecretsManager"].secret }}'),
+			).toEqual(['awsSecretsManager']);
 		});
 
 		it('extracts multiple providers from same expression', () => {
