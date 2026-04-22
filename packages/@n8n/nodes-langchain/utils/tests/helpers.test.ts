@@ -512,6 +512,19 @@ describe('getSessionId', () => {
 		expect(sessionId).toBe('abc__Memory_1');
 	});
 
+	it('should scope sessionId with node name when node is not among the listed ones', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryDevNull',
+			typeVersion: 1,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('abc__Memory_1');
+	});
+
 	it('should produce distinct sessionIds for two nodes with the same input sessionId', () => {
 		mockCtx.getNodeParameter.mockReturnValue('fromInput');
 		mockCtx.evaluateExpression.mockReturnValue('abc');
