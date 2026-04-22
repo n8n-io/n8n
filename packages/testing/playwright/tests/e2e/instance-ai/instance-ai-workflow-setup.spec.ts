@@ -4,11 +4,15 @@ import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
 
-// Stable names keep recorded traces deterministic across replays.
-// The instance-ai reset fixture wipes all workflows before each test, so there
-// is no cross-test bleed from using fixed names.
+// Stable names keep recorded traces deterministic across replays. The
+// instance-ai reset endpoint wipes threads and workflows between tests, but
+// NOT credentials — so per-test credential names are required. Otherwise a
+// credential created in an earlier test persists into the next test and can
+// turn "exactly one matching Slack credential" into two, breaking confirm
+// mode's auto-resolve precondition.
 const B2_WORKFLOW_NAME = 'B2 Confirm Mode';
-const B2_CREDENTIAL_NAME = 'B2 Confirm Slack';
+const B2_APPLY_CREDENTIAL_NAME = 'B2 Confirm Slack Apply';
+const B2_DEFER_CREDENTIAL_NAME = 'B2 Confirm Slack Defer';
 
 function seededWorkflow(name: string, nodes: IWorkflowBase['nodes']): Partial<IWorkflowBase> {
 	return {
@@ -72,7 +76,7 @@ test.describe(
 			n8n,
 		}) => {
 			await n8n.api.credentials.createCredential({
-				name: B2_CREDENTIAL_NAME,
+				name: B2_APPLY_CREDENTIAL_NAME,
 				type: 'slackApi',
 				data: { accessToken: 'xoxb-seed-confirm' },
 			});
@@ -125,12 +129,12 @@ test.describe(
 
 			const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
 			const slackNode = persisted.nodes.find((n) => n.name === 'Slack');
-			expect(slackNode?.credentials?.slackApi?.name).toBe(B2_CREDENTIAL_NAME);
+			expect(slackNode?.credentials?.slackApi?.name).toBe(B2_APPLY_CREDENTIAL_NAME);
 		});
 
 		test('should defer the whole setup when Later is clicked in confirm mode', async ({ n8n }) => {
 			await n8n.api.credentials.createCredential({
-				name: B2_CREDENTIAL_NAME,
+				name: B2_DEFER_CREDENTIAL_NAME,
 				type: 'slackApi',
 				data: { accessToken: 'xoxb-seed-confirm' },
 			});
