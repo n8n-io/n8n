@@ -21,6 +21,7 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const authenticationMethod = ref<UserManagementAuthenticationMethod | undefined>(undefined);
 	const selectedAuthProtocol = ref<SupportedProtocolType | undefined>(undefined);
+	const ssoManagedByEnv = ref(false);
 
 	const showSsoLoginButton = computed(
 		() =>
@@ -134,8 +135,6 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const isEnterpriseOidcEnabled = ref(false);
 
-	const ssoManagedByEnv = ref(false);
-
 	const getOidcConfig = async () => {
 		const config = await ssoApi.getOidcConfig(rootStore.restApiContext);
 		oidcConfig.value = config;
@@ -216,6 +215,7 @@ export const useSSOStore = defineStore('sso', () => {
 		initialize,
 		selectedAuthProtocol,
 		initializeSelectedProtocol,
+		ssoManagedByEnv,
 
 		saml,
 		samlConfig,
@@ -229,7 +229,6 @@ export const useSSOStore = defineStore('sso', () => {
 
 		oidc,
 		oidcConfig,
-		ssoManagedByEnv,
 		isOidcLoginEnabled,
 		isEnterpriseOidcEnabled,
 		isDefaultAuthenticationOidc,

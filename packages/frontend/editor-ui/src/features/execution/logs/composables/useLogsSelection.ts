@@ -39,9 +39,7 @@ export function useLogsSelection(
 	const canvasStore = useCanvasStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	function syncSelectionToCanvasIfEnabled(value: LogEntry) {
@@ -114,7 +112,7 @@ export function useLogsSelection(
 		[() => uiStore.lastSelectedNode, () => logsStore.isLogSelectionSyncedWithCanvas],
 		([selectedOnCanvas, shouldSync]) => {
 			const selectedNodeId = selectedOnCanvas
-				? (workflowDocumentStore.value?.nodesByName ?? {})[selectedOnCanvas]?.id
+				? workflowDocumentStore.value.nodesByName[selectedOnCanvas]?.id
 				: undefined;
 
 			nodeIdToSelect.value =

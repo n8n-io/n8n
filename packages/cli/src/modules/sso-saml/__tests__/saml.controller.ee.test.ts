@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
+import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
@@ -28,7 +29,14 @@ const authService = mock<AuthService>();
 const samlService = mock<SamlService>();
 const urlService = mock<UrlService>();
 const eventService = mock<EventService>();
-const controller = new SamlController(authService, samlService, urlService, eventService);
+const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({ ssoManagedByEnv: false });
+const controller = new SamlController(
+	authService,
+	samlService,
+	urlService,
+	eventService,
+	instanceSettingsLoaderConfig,
+);
 
 const user = mock<User>({
 	id: '123',
@@ -340,5 +348,34 @@ describe('SAML Login Flow', () => {
 
 			expect(res.redirect).toHaveBeenCalledWith(hostWithoutRedirect);
 		});
+	});
+});
+
+describe('SAML env-managed write protection', () => {
+	const envManagedConfig = mock<InstanceSettingsLoaderConfig>({ ssoManagedByEnv: true });
+	const envManagedController = new SamlController(
+		authService,
+		samlService,
+		urlService,
+		eventService,
+		envManagedConfig,
+	);
+
+	test('configPost should reject writes when managed by env', async () => {
+		const req = mock<AuthenticatedRequest>();
+		const res = mock<Response>();
+
+		await expect(
+			envManagedController.configPost(req, res, { loginEnabled: true } as any),
+		).rejects.toThrow('cannot be modified through the API');
+	});
+
+	test('toggleEnabledPost should reject writes when managed by env', async () => {
+		const req = mock<AuthenticatedRequest>();
+		const res = mock<Response>();
+
+		await expect(
+			envManagedController.toggleEnabledPost(req, res, { loginEnabled: true }),
+		).rejects.toThrow('cannot be modified through the API');
 	});
 });
