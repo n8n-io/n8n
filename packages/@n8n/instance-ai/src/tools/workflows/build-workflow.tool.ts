@@ -137,7 +137,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			// Apply Dagre layout to produce positions matching the FE's tidy-up.
 			// Temporary: remove once the SDK is published with toJSON({ tidyUp: true }).
-			const json = layoutWorkflowJSON(result.workflow);
+			// When updating, preserve existing positions so we don't destroy user layout.
+			const json = layoutWorkflowJSON(result.workflow, {
+				preservePositions: !!workflowId,
+			});
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {

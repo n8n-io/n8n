@@ -300,7 +300,10 @@ export function createSubmitWorkflowTool(
 			// Apply Dagre layout to produce positions matching the FE's tidy-up.
 			// Temporary: until the SDK is published with toJSON({ tidyUp: true }) support,
 			// the sandbox's SDK doesn't have Dagre layout, so we apply it server-side.
-			const json = layoutWorkflowJSON(buildOutput.workflow);
+			// When updating, preserve existing positions so we don't destroy user layout.
+			const json = layoutWorkflowJSON(buildOutput.workflow, {
+				preservePositions: !!workflowId,
+			});
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {

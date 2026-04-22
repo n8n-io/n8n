@@ -660,11 +660,17 @@ export function calculateNodePositionsDagre(
  * This is the entry point for code paths that receive pre-built WorkflowJSON
  * (e.g., sandbox-compiled workflows in instance-ai) and need proper layout
  * before the SDK is published with tidyUp support.
+ *
+ * @param options.preservePositions - Skip layout for nodes that already have positions.
  */
-export function layoutWorkflowJSON(json: WorkflowJSON): WorkflowJSON {
+export function layoutWorkflowJSON(
+	json: WorkflowJSON,
+	options?: { preservePositions?: boolean },
+): WorkflowJSON {
 	const jsonNodes = json.nodes;
 	if (!jsonNodes || jsonNodes.length === 0) return json;
 
+	const preservePositions = options?.preservePositions ?? false;
 	const connections = json.connections ?? {};
 
 	// Build a GraphNode map from WorkflowJSON
@@ -679,7 +685,7 @@ export function layoutWorkflowJSON(json: WorkflowJSON): WorkflowJSON {
 				type: node.type,
 				name: node.name,
 				version: node.typeVersion,
-				config: {},
+				config: preservePositions && node.position ? { position: node.position } : {},
 			} as unknown as GraphNode['instance'],
 			connections: connectionsMap,
 		});

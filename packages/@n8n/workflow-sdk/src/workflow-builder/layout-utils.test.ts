@@ -3,8 +3,12 @@
  */
 
 import { GRID_SIZE, STICKY_NODE_TYPE, NODE_SPACING_X, START_X, DEFAULT_Y } from './constants';
-import { calculateNodePositions, calculateNodePositionsDagre } from './layout-utils';
-import type { GraphNode, ConnectionTarget } from '../types/base';
+import {
+	calculateNodePositions,
+	calculateNodePositionsDagre,
+	layoutWorkflowJSON,
+} from './layout-utils';
+import type { GraphNode, ConnectionTarget, WorkflowJSON } from '../types/base';
 
 // Helper to create connection targets
 function makeTarget(node: string, type: string = 'main', index: number = 0): ConnectionTarget {
@@ -383,5 +387,120 @@ describe('calculateNodePositionsDagre', () => {
 			const positions2 = calculateNodePositionsDagre(nodes2);
 			expect(positions2.has('remote-note')).toBe(false);
 		});
+	});
+});
+
+// ===========================================================================
+// layoutWorkflowJSON Tests
+// ===========================================================================
+
+describe('layoutWorkflowJSON', () => {
+	it('preserves existing positions when preservePositions is true', () => {
+		const json: WorkflowJSON = {
+			name: 'Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [272, 192],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [496, 192],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'Sticky Note',
+					type: STICKY_NODE_TYPE,
+					typeVersion: 1,
+					position: [240, 16],
+					parameters: { content: 'hello' },
+				},
+			],
+			connections: {
+				Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = layoutWorkflowJSON(json, { preservePositions: true });
+
+		for (const node of result.nodes) {
+			const original = json.nodes.find((n) => n.name === node.name)!;
+			expect(node.position).toEqual(original.position);
+		}
+	});
+
+	it('re-layouts all positions when preservePositions is false (default)', () => {
+		const json: WorkflowJSON = {
+			name: 'Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [9999, 9999],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [9999, 9999],
+					parameters: {},
+				},
+			],
+			connections: {
+				Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = layoutWorkflowJSON(json);
+
+		const startPos = result.nodes.find((n) => n.name === 'Start')!.position;
+		const setPos = result.nodes.find((n) => n.name === 'Set')!.position;
+		expect(startPos).not.toEqual([9999, 9999]);
+		expect(setPos).not.toEqual([9999, 9999]);
+	});
+
+	it('applies dagre layout when nodes have no positions', () => {
+		const json = {
+			name: 'Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					parameters: {},
+				},
+			],
+			connections: {
+				Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+			},
+		} as unknown as WorkflowJSON;
+
+		const result = layoutWorkflowJSON(json);
+
+		const startPos = result.nodes.find((n) => n.name === 'Start')!.position;
+		const setPos = result.nodes.find((n) => n.name === 'Set')!.position;
+		expect(startPos).toBeDefined();
+		expect(setPos).toBeDefined();
+		expect(setPos[0]).toBeGreaterThan(startPos[0]);
 	});
 });
