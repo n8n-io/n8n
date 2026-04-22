@@ -74,18 +74,17 @@ export function useWorkflowState() {
 			uiStore.markStateDirty();
 		}
 
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(ws.workflow.id),
+		);
+
 		if (data.removePinData) {
-			if (ws.workflow.id) {
-				const workflowDocumentStore = useWorkflowDocumentStore(
-					createWorkflowDocumentId(ws.workflow.id),
-				);
-				workflowDocumentStore.setPinData({});
-			}
+			workflowDocumentStore.setPinData({});
 		}
 
 		ws.workflow.nodes.splice(0, ws.workflow.nodes.length);
 		ws.workflowObject.setNodes(ws.workflow.nodes);
-		ws.nodeMetadata = {};
+		workflowDocumentStore.setAllNodeMetadata({});
 	}
 
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
@@ -263,7 +262,10 @@ export function useWorkflowState() {
 
 		if (changed) {
 			uiStore.markStateDirty();
-			ws.nodeMetadata[name].parametersLastUpdatedAt = Date.now();
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(ws.workflow.id),
+			);
+			workflowDocumentStore.touchParametersLastUpdatedAt(name);
 		}
 	}
 
@@ -314,7 +316,10 @@ export function useWorkflowState() {
 		const excludeKeys = ['position', 'notes', 'notesInFlow'];
 
 		if (changed && !excludeKeys.includes(updateInformation.key)) {
-			ws.nodeMetadata[ws.workflow.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(ws.workflow.id),
+			);
+			workflowDocumentStore.touchParametersLastUpdatedAt(ws.workflow.nodes[nodeIndex].name);
 		}
 	}
 
@@ -335,18 +340,6 @@ export function useWorkflowState() {
 		const nodeIndex = ws.workflow.nodes.findIndex((node) => node.id === nodeId);
 		if (nodeIndex === -1) return false;
 		return updateNodeAtIndex(nodeIndex, nodeData);
-	}
-
-	/**
-	 * Reset parametersLastUpdatedAt to current timestamp for a node.
-	 * Used to mark a node as "dirty" when its parameters change.
-	 * @deprecated Use `workflowDocumentStore.resetParametersLastUpdatedAt()` instead.
-	 */
-	function resetParametersLastUpdatedAt(nodeName: string): void {
-		if (!ws.nodeMetadata[nodeName]) {
-			ws.nodeMetadata[nodeName] = { pristine: true };
-		}
-		ws.nodeMetadata[nodeName].parametersLastUpdatedAt = Date.now();
 	}
 
 	/** @deprecated Use `workflowDocumentStore.updateNodeProperties()` instead. */
@@ -432,7 +425,6 @@ export function useWorkflowState() {
 		updateNodeAtIndex,
 		updateNodeById,
 		updateNodeProperties,
-		resetParametersLastUpdatedAt,
 
 		// reexport
 		executingNode: workflowStateStore.executingNode,

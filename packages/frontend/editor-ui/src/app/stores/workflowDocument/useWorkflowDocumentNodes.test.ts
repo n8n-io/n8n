@@ -17,13 +17,13 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import {
 	useWorkflowDocumentNodes,
 	type WorkflowDocumentNodesDeps,
 } from './useWorkflowDocumentNodes';
+import { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
@@ -32,17 +32,16 @@ function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 function createDeps(overrides: Partial<WorkflowDocumentNodesDeps> = {}): WorkflowDocumentNodesDeps {
 	return {
 		getNodeType: vi.fn().mockReturnValue(null),
+		nodeMetadata: useWorkflowDocumentNodeMetadata(),
 		...overrides,
 	};
 }
 
 describe('useWorkflowDocumentNodes', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let deps: WorkflowDocumentNodesDeps;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		workflowsStore = useWorkflowsStore();
 		deps = createDeps();
 	});
 
@@ -185,11 +184,25 @@ describe('useWorkflowDocumentNodes', () => {
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.setNodes([createNode({ name: 'A' })]);
 
-			expect(workflowsStore.nodeMetadata).toHaveProperty('A');
+			expect(deps.nodeMetadata.nodeMetadata.value).toHaveProperty('A');
 
 			workflowDocumentNodes.removeAllNodes();
 
-			expect(workflowsStore.nodeMetadata).toEqual({});
+			expect(deps.nodeMetadata.nodeMetadata.value).toEqual({});
+		});
+
+		it('setNodes replaces all metadata to match the new node list', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+			deps.nodeMetadata.touchParametersLastUpdatedAt('A');
+
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'C' })]);
+
+			// Metadata is reset: 'B' removed, 'A' reset to pristine, 'C' added
+			expect(deps.nodeMetadata.nodeMetadata.value).toEqual({
+				A: { pristine: true },
+				C: { pristine: true },
+			});
 		});
 	});
 
@@ -381,10 +394,10 @@ describe('useWorkflowDocumentNodes', () => {
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.setNodes([node]);
 
-			const tsBefore = workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt;
+			const tsBefore = deps.nodeMetadata.getParametersLastUpdate('Target');
 			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'position', value: [300, 400] });
 
-			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBe(tsBefore);
+			expect(deps.nodeMetadata.getParametersLastUpdate('Target')).toBe(tsBefore);
 		});
 
 		it('setNodeValue updates parametersLastUpdatedAt for non-position changes', () => {
@@ -395,27 +408,7 @@ describe('useWorkflowDocumentNodes', () => {
 
 			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'disabled', value: true });
 
-			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBeGreaterThan(0);
-		});
-
-		it('resetParametersLastUpdatedAt updates timestamp', () => {
-			const node = createNode({ name: 'Target' });
-
-			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
-			workflowDocumentNodes.setNodes([node]);
-
-			workflowDocumentNodes.resetParametersLastUpdatedAt('Target');
-
-			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBeGreaterThan(0);
-		});
-
-		it('resetParametersLastUpdatedAt creates metadata entry if missing', () => {
-			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
-
-			workflowDocumentNodes.resetParametersLastUpdatedAt('NewNode');
-
-			expect(workflowsStore.nodeMetadata.NewNode).toBeDefined();
-			expect(workflowsStore.nodeMetadata.NewNode.parametersLastUpdatedAt).toBeGreaterThan(0);
+			expect(deps.nodeMetadata.getParametersLastUpdate('Target') ?? 0).toBeGreaterThan(0);
 		});
 	});
 

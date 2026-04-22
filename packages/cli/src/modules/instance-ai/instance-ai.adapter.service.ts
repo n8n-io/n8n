@@ -1607,6 +1607,9 @@ export class InstanceAiAdapterService {
 					credentials: desc.credentials?.map((c) => ({
 						name: c.name,
 						required: c.required,
+						...(c.displayOptions
+							? { displayOptions: c.displayOptions as Record<string, unknown> }
+							: {}),
 					})),
 					inputs: Array.isArray(desc.inputs) ? desc.inputs.map(String) : [],
 					outputs: Array.isArray(desc.outputs) ? desc.outputs.map(String) : [],

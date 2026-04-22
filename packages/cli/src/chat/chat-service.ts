@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { timingSafeEqual } from 'crypto';
 import { IExecutionResponse } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -78,7 +79,7 @@ export class ChatService {
 	async startSession(req: ChatRequest) {
 		const {
 			ws,
-			query: { sessionId, executionId, isPublic },
+			query: { sessionId, executionId, isPublic, token },
 		} = req;
 
 		if (!ws) {
@@ -90,12 +91,24 @@ export class ChatService {
 			return;
 		}
 
-		const execution = await this.executionManager.checkIfExecutionExists(executionId);
+		const execution = await this.executionManager.findExecution(executionId);
 
 		if (!execution) {
-			ws.send(`Execution with id "${executionId}" does not exist`);
+			ws.send('Connection rejected');
 			ws.close(1008);
 			return;
+		}
+
+		// Skip validation for old executions that lack a resumeToken (backwards compat).
+		if (execution.data?.resumeToken) {
+			const tokenBuf = Buffer.from(token ?? '');
+			const storedBuf = Buffer.from(execution.data.resumeToken);
+			if (!token || tokenBuf.length !== storedBuf.length || !timingSafeEqual(tokenBuf, storedBuf)) {
+				// Same generic message as missing execution — do not leak which check failed
+				ws.send('Connection rejected');
+				ws.close(1008);
+				return;
+			}
 		}
 
 		ws.isAlive = true;
