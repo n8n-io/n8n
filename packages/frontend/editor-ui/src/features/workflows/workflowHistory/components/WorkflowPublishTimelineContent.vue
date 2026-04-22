@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nText, N8nLoading, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
 import dateformat from 'dateformat';
 
@@ -13,7 +14,7 @@ const emit = defineEmits<{
 /** Threshold to filter out transient deactivation/reactivation gaps during version changes */
 const MIN_UNPUBLISHED_DURATION_MS = 2000;
 /** Show a duration badge between entries when the period lasted longer than this */
-const MIN_DURATION_FOR_BADGE_MS = 10 * 60 * 1000;
+const MIN_DURATION_FOR_BADGE_MS = 1 * 60 * 1000;
 
 const props = defineProps<{
 	workflowId: string;
@@ -21,10 +22,15 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
+const usersStore = useUsersStore();
 
 const isLoading = ref(true);
 const events = ref<PublishTimelineEvent[]>([]);
 const adoptionDate = ref<Date | null>(null);
+
+const hasMultipleAuthors = computed(
+	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
+);
 
 const showDeletedVersionsDisclaimer = computed(() => {
 	if (adoptionDate.value === null) return false;
@@ -109,8 +115,6 @@ const periods = computed<TimelinePeriod[]>(() => {
 	});
 });
 
-const hasMultipleAuthors = computed(() => new Set(periods.value.map((x) => x.user)).size > 1);
-
 const isToday = (date: Date) => {
 	const now = new Date();
 	return (
@@ -144,6 +148,7 @@ const loadTimeline = async () => {
 			workflowHistoryStore
 				.getVersionFirstAdoptionDate({ major: 2, minor: 17, patch: 0 })
 				.catch((e) => null),
+			usersStore.fetchUsers({ filter: { isPending: false }, take: 2 }),
 		]);
 		adoptionDate.value = firstAdoptionDate === null ? null : new Date(firstAdoptionDate);
 		events.value = timelineEvents;
