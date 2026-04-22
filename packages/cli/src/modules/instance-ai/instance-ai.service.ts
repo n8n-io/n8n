@@ -1292,6 +1292,7 @@ export class InstanceAiService {
 			abortSignal,
 			taskStorage,
 			researchMode,
+			timeZone: this.defaultTimeZone,
 			browserMcpConfig: this.instanceAiConfig.browserMcp
 				? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
 				: undefined,
@@ -1611,6 +1612,7 @@ export class InstanceAiService {
 			// Make the current user message available to sub-agents (e.g. planner)
 			// since memory.recall() only returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
+			orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
 
 			// Thread attachments into the domain context so parse-file can access them
 			if (attachments && attachments.length > 0) {

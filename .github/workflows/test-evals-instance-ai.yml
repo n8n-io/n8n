@@ -92,6 +92,7 @@ jobs:
           pnpm eval:instance-ai
           --base-url http://localhost:5678
           --verbose
+          --runs 5
           ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
         env:
           N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
@@ -114,11 +115,11 @@ jobs:
           # Build the full comment body with jq
           jq -r '
             "### Instance AI Workflow Eval Results\n\n" +
-            "**\(.summary.built)/\(.summary.testCases) built | \(.summary.scenariosPassed)/\(.summary.scenariosTotal) passed (\(.summary.passRate * 100 | floor)%)**\n\n" +
-            "| Workflow | Build | Passed |\n|---|---|---|\n" +
-            ([.testCases[] | "| \(.name) | \(if .built then "✅" else "❌" end) | \([.scenarios[] | select(.passed)] | length)/\(.scenarios | length) |"] | join("\n")) +
+            "**\(.summary.built)/\(.summary.testCases) built | \(.totalRuns) run(s) | pass@\(.totalRuns): \(.summary.passAtK * 100 | floor)% | pass^\(.totalRuns): \(.summary.passHatK * 100 | floor)%**\n\n" +
+            "| Workflow | Build | pass@\(.totalRuns) | pass^\(.totalRuns) |\n|---|---|---|---|\n" +
+            ([.testCases[] as $tc | "| \($tc.name) | \($tc.buildSuccessCount)/\($tc.totalRuns) | \(([$tc.scenarios[] | .passAtK] | add) / ($tc.scenarios | length) * 100 | floor)% | \(([$tc.scenarios[] | .passHatK] | add) / ($tc.scenarios | length) * 100 | floor)% |"] | join("\n")) +
             "\n\n<details><summary>Failure details</summary>\n\n" +
-            ([.testCases[].scenarios[] | select(.passed == false) | "**\(.name)** \(if .failureCategory then "[\(.failureCategory)]" else "" end)\n> \(.reasoning | .[0:200])\n"] | join("\n")) +
+            ([.testCases[] as $tc | $tc.scenarios[] | select(.passHatK < 1) | "**\($tc.name) / \(.name)** — \(.passCount)/\(.totalRuns) passed" + "\n" + ([.runs[] | select(.passed == false) | "> Run\(if .failureCategory then " [\(.failureCategory)]" else "" end): \(.reasoning | .[0:200])"] | join("\n"))] | join("\n\n")) +
             "\n</details>"
           ' "$RESULTS_FILE" > /tmp/eval-comment.md
 

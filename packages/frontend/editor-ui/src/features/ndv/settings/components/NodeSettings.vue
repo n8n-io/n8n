@@ -149,12 +149,7 @@ if (props.isEmbeddedInCanvas) {
 
 const nodeValid = ref(true);
 
-const initialNode = props.activeNode ?? ndvStore.activeNode;
-const initialHasExecutionData =
-	!!initialNode && !!workflowsStore.getWorkflowRunData?.[initialNode.name]?.length;
-const openPanel = ref<NodeSettingsTab>(
-	props.readOnly && initialHasExecutionData ? 'output' : 'params',
-);
+const openPanel = ref<NodeSettingsTab>('params');
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
@@ -579,16 +574,8 @@ const onFeatureRequestClick = () => {
 	}
 };
 
-watch(node, (newNode, oldNode) => {
+watch(node, () => {
 	setNodeValues();
-
-	// When the active node changes in a read-only view, re-evaluate which
-	// tab to open so nodes with execution data land on 'output' by default.
-	if (newNode?.name !== oldNode?.name && props.readOnly) {
-		const hasExecutionData =
-			!!newNode && !!workflowsStore.getWorkflowRunData?.[newNode.name]?.length;
-		openPanel.value = hasExecutionData ? 'output' : 'params';
-	}
 });
 
 onMounted(async () => {
