@@ -5,10 +5,10 @@ import { readFile } from 'fs/promises';
 
 type Resolvers =
 	| 'environment'
+	| 'roleForServiceAccount'
 	| 'podIdentity'
 	| 'containerMetadata'
-	| 'instanceMetadata'
-	| 'roleForServiceAccount';
+	| 'instanceMetadata';
 type ReturnData = {
 	accessKeyId: string;
 	secretAccessKey: string;
@@ -29,9 +29,10 @@ export const credentialsResolver: Record<Resolvers, () => Promise<ReturnData | n
  * Retrieves AWS credentials from various system sources following the AWS credential chain.
  * Attempts to get credentials in the following order:
  * 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN)
- * 2. EKS Pod Identity (AWS_CONTAINER_CREDENTIALS_FULL_URI)
- * 3. ECS/Fargate container metadata (AWS_CONTAINER_CREDENTIALS_RELATIVE_URI)
- * 4. EC2 instance metadata service
+ * 2. IAM Role for Service Account (AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE)
+ * 3. EKS Pod Identity (AWS_CONTAINER_CREDENTIALS_FULL_URI)
+ * 4. ECS/Fargate container metadata (AWS_CONTAINER_CREDENTIALS_RELATIVE_URI)
+ * 5. EC2 instance metadata service
  */
 export async function getSystemCredentials() {
 	if (!Container.get(SecurityConfig).awsSystemCredentialsAccess) {
@@ -42,10 +43,10 @@ export async function getSystemCredentials() {
 
 	const resolveOrder: Resolvers[] = [
 		'environment',
+		'roleForServiceAccount',
 		'podIdentity',
 		'containerMetadata',
 		'instanceMetadata',
-		'roleForServiceAccount',
 	];
 
 	for (const resolver of resolveOrder) {
@@ -302,7 +303,7 @@ async function getRoleForServiceAccountCredentials() {
 			Version: '2011-06-15',
 		});
 
-		// TODO what about endpoints for sts?
+		// Global STS endpoint; China/GovCloud regions unsupported until region is passed through getSystemCredentials
 		const credentialsResponse = await fetch(`https://sts.amazonaws.com?${qs.toString()}`, {
 			method: 'GET',
 			headers,
@@ -317,7 +318,7 @@ async function getRoleForServiceAccountCredentials() {
 		const credentialsData =
 			data?.AssumeRoleWithWebIdentityResponse?.AssumeRoleWithWebIdentityResult?.Credentials;
 
-		if (!credentialsData || !credentialsData?.AccessKeyId || !credentialsData?.SecretAccessKey) {
+		if (!credentialsData || !credentialsData.AccessKeyId || !credentialsData.SecretAccessKey) {
 			return null;
 		}
 

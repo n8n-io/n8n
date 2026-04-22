@@ -20,10 +20,6 @@ jest.mock('@n8n/config', () => ({
 	SecurityConfig: MockSecurityConfig,
 }));
 
-jest.mock('node:fs/promises', () => ({
-	readFile: jest.fn(),
-}));
-
 jest.mock('fs/promises', () => ({
 	readFile: mockReadFile,
 }));
