@@ -38,6 +38,9 @@ interface AgentExecutor {
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
+		threadId?: string,
+		userId?: string,
+		projectId?: string,
 	): AsyncGenerator<StreamChunk>;
 }
 
@@ -632,7 +635,15 @@ export class AgentChatBridge {
 			}
 
 			// Resume the agent and stream the response
-			const stream = this.agentService.resumeForChat(this.agentId, runId, toolCallId, resumeData);
+			const stream = this.agentService.resumeForChat(
+				this.agentId,
+				runId,
+				toolCallId,
+				resumeData,
+				thread.id,
+				this.n8nUserId,
+				this.n8nProjectId,
+			);
 			await this.consumeStream(stream, thread);
 		} finally {
 			this.activeResumedRuns.delete(runId);
