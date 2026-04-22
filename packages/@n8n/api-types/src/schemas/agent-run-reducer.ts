@@ -137,13 +137,17 @@ function ensureChildren(state: AgentRunState, agentId: string): string[] {
 	return children;
 }
 
-/** Append text to timeline — merges consecutive text entries. */
-function appendTimelineText(timeline: InstanceAiTimelineEntry[], text: string): void {
+/** Append text to timeline — merges consecutive text entries within the same responseId. */
+function appendTimelineText(
+	timeline: InstanceAiTimelineEntry[],
+	text: string,
+	responseId?: string,
+): void {
 	const last = timeline.at(-1);
-	if (last?.type === 'text') {
+	if (last?.type === 'text' && last.responseId === responseId) {
 		last.content += text;
 	} else {
-		timeline.push({ type: 'text', content: text });
+		timeline.push({ type: 'text', content: text, ...(responseId ? { responseId } : {}) });
 	}
 }
 
@@ -198,7 +202,11 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.textContent += event.payload.text;
-				appendTimelineText(ensureTimeline(state, event.agentId), event.payload.text);
+				appendTimelineText(
+					ensureTimeline(state, event.agentId),
+					event.payload.text,
+					event.responseId,
+				);
 			}
 			break;
 		}
@@ -228,6 +236,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				ensureTimeline(state, event.agentId).push({
 					type: 'tool-call',
 					toolCallId: event.payload.toolCallId,
+					...(event.responseId ? { responseId: event.responseId } : {}),
 				});
 			}
 			break;
@@ -278,9 +287,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				ensureChildren(state, event.agentId); // init empty
 				ensureTimeline(state, event.agentId); // init empty
 				ensureToolCallIds(state, event.agentId); // init empty
-				ensureTimeline(state, event.payload.parentId).push({
+				const parentTimeline = ensureTimeline(state, event.payload.parentId);
+				// Inherit responseId from the parent's last entry when not set on the event
+				// (agent-spawned events are emitted from tool code, not the stream executor).
+				const inheritedResponseId = event.responseId ?? parentTimeline.at(-1)?.responseId;
+				parentTimeline.push({
 					type: 'child',
 					agentId: event.agentId,
+					...(inheritedResponseId ? { responseId: inheritedResponseId } : {}),
 				});
 			}
 			break;
@@ -358,13 +372,13 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.textContent += errorText;
-				appendTimelineText(ensureTimeline(state, event.agentId), errorText);
+				appendTimelineText(ensureTimeline(state, event.agentId), errorText, event.responseId);
 			} else {
 				// Fall back to root agent
 				const root = state.agentsById[state.rootAgentId];
 				if (root) {
 					root.textContent += errorText;
-					appendTimelineText(ensureTimeline(state, state.rootAgentId), errorText);
+					appendTimelineText(ensureTimeline(state, state.rootAgentId), errorText, event.responseId);
 				}
 			}
 			break;

@@ -546,6 +546,26 @@ describe('McpClientTool', () => {
 			);
 		});
 
+		it('should close client when MCP server returns no tools', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [] });
+			const closeSpy = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+
+			await expect(
+				new McpClientTool().supplyData.call(
+					mock<ISupplyDataFunctions>({
+						getNode: jest.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+						logger: { debug: jest.fn(), error: jest.fn() },
+						addInputData: jest.fn(() => ({ index: 0 })),
+						addOutputData: jest.fn(),
+					}),
+					0,
+				),
+			).rejects.toThrow('MCP Server returned no tools');
+
+			expect(closeSpy).toHaveBeenCalledTimes(1);
+		});
+
 		it('should call client.close() when closeFunction is invoked', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({

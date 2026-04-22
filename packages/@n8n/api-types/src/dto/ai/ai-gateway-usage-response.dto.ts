@@ -7,7 +7,7 @@ export interface AiGatewayUsageEntry {
 	provider: string;
 	model: string;
 	timestamp: number;
-	creditsDeducted: number;
+	cost: number;
 	inputTokens?: number;
 	outputTokens?: number;
 }

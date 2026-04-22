@@ -1,11 +1,15 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import type { EmbeddingModel, LanguageModel } from 'ai';
+import type * as Undici from 'undici';
 
 import type { ModelConfig } from '../types/sdk/agent';
 
+type FetchFn = typeof globalThis.fetch;
 type CreateProviderFn = (opts?: {
 	apiKey?: string;
 	baseURL?: string;
+	fetch?: FetchFn;
+	headers?: Record<string, string>;
 }) => (model: string) => LanguageModel;
 type CreateEmbeddingProviderFn = (opts?: { apiKey?: string }) => {
 	embeddingModel(model: string): EmbeddingModel;
@@ -13,6 +17,26 @@ type CreateEmbeddingProviderFn = (opts?: { apiKey?: string }) => {
 
 function isLanguageModel(config: unknown): config is LanguageModel {
 	return typeof config === 'object' && config !== null && 'doGenerate' in config;
+}
+
+/**
+ * When HTTP_PROXY / HTTPS_PROXY is set (e.g. in e2e tests with MockServer),
+ * return a fetch function that routes requests through the proxy. The default
+ * globalThis.fetch in Node ≥18 does NOT respect these env vars, so AI SDK
+ * providers would bypass the proxy without this.
+ */
+function getProxyFetch(): FetchFn | undefined {
+	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
+	if (!proxyUrl) return undefined;
+
+	const { ProxyAgent } = require('undici') as typeof Undici;
+	const dispatcher = new ProxyAgent(proxyUrl);
+	return (async (url, init) =>
+		await globalThis.fetch(url, {
+			...init,
+			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
+			dispatcher,
+		})) as FetchFn;
 }
 
 /**
@@ -33,6 +57,7 @@ export function createModel(config: ModelConfig): LanguageModel {
 	const modelId = stripEmpty(typeof config === 'string' ? config : config.id);
 	const apiKey = stripEmpty(typeof config === 'string' ? undefined : config.apiKey);
 	const baseURL = stripEmpty(typeof config === 'string' ? undefined : config.url);
+	const headers = typeof config === 'string' ? undefined : config.headers;
 
 	if (!modelId) {
 		throw new Error('Model ID is required');
@@ -40,31 +65,32 @@ export function createModel(config: ModelConfig): LanguageModel {
 
 	const [provider, ...rest] = modelId.split('/');
 	const modelName = rest.join('/');
+	const fetch = getProxyFetch();
 
 	switch (provider) {
 		case 'anthropic': {
 			const { createAnthropic } = require('@ai-sdk/anthropic') as {
 				createAnthropic: CreateProviderFn;
 			};
-			return createAnthropic({ apiKey, baseURL })(modelName);
+			return createAnthropic({ apiKey, baseURL, fetch, headers })(modelName);
 		}
 		case 'openai': {
 			const { createOpenAI } = require('@ai-sdk/openai') as {
 				createOpenAI: CreateProviderFn;
 			};
-			return createOpenAI({ apiKey, baseURL })(modelName);
+			return createOpenAI({ apiKey, baseURL, fetch, headers })(modelName);
 		}
 		case 'google': {
 			const { createGoogleGenerativeAI } = require('@ai-sdk/google') as {
 				createGoogleGenerativeAI: CreateProviderFn;
 			};
-			return createGoogleGenerativeAI({ apiKey, baseURL })(modelName);
+			return createGoogleGenerativeAI({ apiKey, baseURL, fetch, headers })(modelName);
 		}
 		case 'xai': {
 			const { createXai } = require('@ai-sdk/xai') as {
 				createXai: CreateProviderFn;
 			};
-			return createXai({ apiKey, baseURL })(modelName);
+			return createXai({ apiKey, baseURL, fetch, headers })(modelName);
 		}
 		default:
 			throw new Error(

@@ -51,9 +51,7 @@ export function useWorkflowUpdate() {
 	const nodeHelpers = useNodeHelpers();
 
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	/**
@@ -66,7 +64,7 @@ export function useWorkflowUpdate() {
 	 * triggering maxNodes validation errors for nodes like ChatTrigger.
 	 */
 	function categorizeNodes(workflowData: WorkflowDataUpdate) {
-		const allNodes = workflowDocumentStore.value?.allNodes ?? [];
+		const allNodes = workflowDocumentStore.value.allNodes;
 		const existingNodesById = new Map(allNodes.map((n) => [n.id, n]));
 
 		// Add name+type index for fallback matching when IDs differ
@@ -170,14 +168,14 @@ export function useWorkflowUpdate() {
 
 			// Mark node as dirty if parameters changed
 			if (!isEqual(existing.parameters, updated.parameters)) {
-				workflowDocumentStore.value?.resetParametersLastUpdatedAt(nodeName);
+				workflowDocumentStore.value.touchParametersLastUpdatedAt(nodeName);
 				hasChanges = true;
 			}
 		}
 
 		// Sync state back to store
-		workflowDocumentStore.value?.setNodes(Object.values(workflow.nodes));
-		workflowDocumentStore.value?.setConnections(workflow.connectionsBySourceNode);
+		workflowDocumentStore.value.setNodes(Object.values(workflow.nodes));
+		workflowDocumentStore.value.setConnections(workflow.connectionsBySourceNode);
 		// Revalidate updated nodes to refresh error indicators on canvas
 		for (const { existing } of nodesToUpdate) {
 			const nodeName = renamedNodes.get(existing.id) ?? existing.name;
@@ -244,10 +242,10 @@ export function useWorkflowUpdate() {
 	 * Update connections - remove old, add new
 	 */
 	async function updateConnections(newConnections: IConnections): Promise<void> {
-		const existingConnections = workflowDocumentStore.value?.connectionsBySourceNode ?? {};
+		const existingConnections = workflowDocumentStore.value.connectionsBySourceNode;
 
 		// Convert to canvas format for comparison
-		const allNodes = workflowDocumentStore.value?.allNodes ?? [];
+		const allNodes = workflowDocumentStore.value.allNodes;
 		const existingCanvasConnections = mapLegacyConnectionsToCanvasConnections(
 			existingConnections,
 			allNodes,

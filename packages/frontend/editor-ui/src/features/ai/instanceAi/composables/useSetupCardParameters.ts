@@ -1,10 +1,16 @@
 import type { ComputedRef, Ref } from 'vue';
 import { ref } from 'vue';
+import { hasPlaceholderDeep } from '@n8n/utils';
 import { NodeHelpers, type INodeProperties } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IUpdateInformation } from '@/Interface';
 import { isNestedParam, isParamValueSet, type SetupCard } from '../instanceAiWorkflowSetup.utils';
+
+/** Check if the original node parameter value was a placeholder sentinel. */
+function isOriginalValuePlaceholder(req: SetupCard['nodes'][0], paramName: string): boolean {
+	return hasPlaceholderDeep(req.node.parameters[paramName]);
+}
 
 export function useSetupCardParameters(
 	cards: ComputedRef<SetupCard[]>,
@@ -63,10 +69,6 @@ export function useSetupCardParameters(
 		return getCardParameters(card).filter((p) => !isNestedParam(p));
 	}
 
-	function getCardNestedParameterCount(card: SetupCard): number {
-		return getCardParameters(card).filter(isNestedParam).length;
-	}
-
 	/** Set a parameter value. */
 	function setParamValue(nodeName: string, paramName: string, value: unknown): void {
 		if (!paramValues.value[nodeName]) {
@@ -88,6 +90,19 @@ export function useSetupCardParameters(
 		const canvasNode = workflowsStore.getNodeByName(nodeName);
 		if (canvasNode) {
 			canvasNode.parameters = { ...canvasNode.parameters, [paramName]: parameterData.value };
+		}
+
+		// 3. `workflowsStore.workflowObject` holds a deep copy of the nodes (see
+		// `createWorkflowObject(..., copyData=true)` in `workflows.store.ts`), and
+		// `ParameterInput` reads its node through that copy via
+		// `expressionLocalResolveCtx.workflow.getNode()`. Without syncing, the
+		// per-input issue indicator would keep checking stale parameters.
+		const workflowObjectNode = workflowsStore.workflowObject.getNode(nodeName);
+		if (workflowObjectNode) {
+			workflowObjectNode.parameters = {
+				...workflowObjectNode.parameters,
+				[paramName]: parameterData.value,
+			};
 		}
 	}
 
@@ -112,6 +127,10 @@ export function useSetupCardParameters(
 					if (isParamValueSet(val)) {
 						merged[paramName] = val;
 						hasValues = true;
+					} else if (isOriginalValuePlaceholder(req, paramName)) {
+						// Explicitly send empty string to clear the placeholder sentinel on the backend
+						merged[paramName] = '';
+						hasValues = true;
 					}
 				}
 				if (Object.keys(merged).length > 0) {
@@ -126,7 +145,6 @@ export function useSetupCardParameters(
 		paramValues,
 		getCardParameters,
 		getCardSimpleParameters,
-		getCardNestedParameterCount,
 		setParamValue,
 		onParameterValueChanged,
 		buildNodeParameters,

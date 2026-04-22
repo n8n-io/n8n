@@ -48,7 +48,7 @@ catalog:
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 4.1.1
-  axios: 1.13.5
+  axios: 1.15.0
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
@@ -60,7 +60,7 @@ catalog:
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
-  js-base64: 3.7.2
+  js-base64: 3.7.8
   js-tiktoken: 1.0.21
   jsonrepair: 3.13.2
   jsonwebtoken: 9.0.3
@@ -100,6 +100,7 @@ catalog:
   vm2: ^3.10.5
   xml2js: 0.6.2
   xss: 1.0.15
+  yaml: 2.8.2
   zod: 3.25.67
   zod-to-json-schema: 3.23.3
 

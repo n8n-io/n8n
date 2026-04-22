@@ -48,6 +48,7 @@ jobs:
     # by checking the checkbox in the PR summary.
     if: |
       github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
       !contains(github.event.pull_request.title, '(backport to')
     runs-on: ubuntu-latest
@@ -76,6 +77,7 @@ jobs:
     # Allows for override via '/size-limit-override' comment
     if: |
       github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
       !contains(github.event.pull_request.title, '(backport to')
     runs-on: ubuntu-latest

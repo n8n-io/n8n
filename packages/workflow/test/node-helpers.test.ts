@@ -5275,6 +5275,60 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(expected);
 			});
 		}
+
+		describe('_cnd string operators with undefined property value', () => {
+			const node: INode = { ...testNode };
+			const nodeTypeDescription: INodeTypeDescription = { ...testNodeType };
+
+			const baseParam: INodeProperties = {
+				displayName: 'Test',
+				name: 'test',
+				type: 'string',
+				default: '',
+			};
+
+			test('includes returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { includes: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('startsWith returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { startsWith: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('endsWith returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { endsWith: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('regex returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { regex: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('includes returns true when property matches', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { includes: 'foo' } }] } },
+				};
+				expect(displayParameter({ missingParam: 'foobar' }, param, node, nodeTypeDescription)).toBe(
+					true,
+				);
+			});
+		});
 	});
 
 	describe('makeDescription', () => {
