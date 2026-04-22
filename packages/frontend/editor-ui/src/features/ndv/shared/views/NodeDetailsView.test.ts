@@ -8,6 +8,10 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
@@ -17,7 +21,6 @@ import {
 	defaultNodeDescriptions,
 	mockNodes,
 } from '@/__tests__/mocks';
-import type { Workflow } from 'n8n-workflow';
 import { computed } from 'vue';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
@@ -46,8 +49,8 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
-	workflowsStore.workflowObject = createTestWorkflowObject(workflow);
-	workflowsStore.nodeMetadata[node.name] = { pristine: true };
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.initPristineNodeMetadata(node.name);
 
 	if (isActiveNode) {
 		ndvStore.setActiveNodeName(node.name, 'other');
@@ -59,7 +62,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 	return {
 		pinia,
 		workflow,
-		workflowObject: workflowsStore.workflowObject as Workflow,
+		workflowObject: createTestWorkflowObject(workflow),
 		nodeName: node.name,
 	};
 }

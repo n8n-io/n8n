@@ -29,9 +29,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
 
 type ChatEmbedModalTabValue = 'cdn' | 'vue' | 'react' | 'other';
@@ -61,7 +59,7 @@ const currentTab = ref<ChatEmbedModalTabValue>('cdn');
 
 const webhookNode = computed(() => {
 	for (const type of [CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE]) {
-		const node = (workflowDocumentStore.value?.allNodes ?? []).find((node) => node.type === type);
+		const node = workflowDocumentStore.value.allNodes.find((node) => node.type === type);
 		if (node) {
 			// This has to be kept up-to-date with the mode in the Chat-Trigger node
 			if (type === CHAT_TRIGGER_NODE_TYPE && !node.parameters.public) {

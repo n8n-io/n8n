@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nIcon } from '@n8n/design-system';
 import type { InstanceAiMessage } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
@@ -45,7 +46,12 @@ function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?
 	return { label: i18n.baseText('instanceAi.statusBar.thinking') };
 }
 
-const activity = computed(() => deriveActivity(store.messages));
+const activity = computed(() => {
+	if (store.isAwaitingConfirmation) {
+		return { label: i18n.baseText('instanceAi.statusBar.waitingForInput') };
+	}
+	return deriveActivity(store.messages);
+});
 
 const isVisible = computed(() => store.isStreaming);
 
@@ -57,19 +63,28 @@ const formattedElapsed = computed(() => {
 	return `${String(m)}m ${String(remaining).padStart(2, '0')}s`;
 });
 
+const isCountingElapsed = computed(() => isVisible.value && !store.isAwaitingConfirmation);
+
 watch(isVisible, (visible) => {
 	if (visible) {
 		elapsed.value = 0;
-		timer = setInterval(() => {
-			elapsed.value++;
-		}, 1000);
-	} else {
-		if (timer) {
+	}
+});
+
+watch(
+	isCountingElapsed,
+	(counting) => {
+		if (counting) {
+			timer = setInterval(() => {
+				elapsed.value++;
+			}, 1000);
+		} else if (timer) {
 			clearInterval(timer);
 			timer = null;
 		}
-	}
-});
+	},
+	{ immediate: true },
+);
 
 onUnmounted(() => {
 	if (timer) {
@@ -81,13 +96,25 @@ onUnmounted(() => {
 <template>
 	<div>
 		<Transition name="status-bar">
-			<div v-if="isVisible && activity" :class="$style.bar" data-test-id="instance-ai-status-bar">
-				<span :class="$style.dot" />
+			<div
+				v-if="isVisible && activity"
+				:class="[$style.bar, { [$style.muted]: store.isAwaitingConfirmation }]"
+				data-test-id="instance-ai-status-bar"
+			>
+				<N8nIcon
+					v-if="store.isAwaitingConfirmation"
+					:class="$style.glyph"
+					icon="circle-pause"
+					size="xsmall"
+				/>
+				<span v-else :class="$style.dot" />
 				<span :class="$style.label">{{ activity.label }}</span>
 				<span v-if="activity.detail" :class="$style.separator">&middot;</span>
 				<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
-				<span :class="$style.separator">&middot;</span>
-				<span :class="$style.elapsed">{{ formattedElapsed }}</span>
+				<template v-if="!store.isAwaitingConfirmation">
+					<span :class="$style.separator">&middot;</span>
+					<span :class="$style.elapsed">{{ formattedElapsed }}</span>
+				</template>
 			</div>
 		</Transition>
 	</div>
@@ -102,6 +129,20 @@ onUnmounted(() => {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	pointer-events: none;
+}
+
+.muted {
+	color: var(--color--text--tint-1);
+
+	.label {
+		color: var(--color--text--tint-1);
+		font-weight: var(--font-weight--regular);
+	}
+}
+
+.glyph {
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
 }
 
 .dot {

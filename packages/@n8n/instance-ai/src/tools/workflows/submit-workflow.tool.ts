@@ -148,6 +148,45 @@ export const submitWorkflowInputSchema = z.object({
 	name: z.string().optional().describe('Workflow name (required for new workflows)'),
 });
 
+export const submitWorkflowOutputSchema = z.object({
+	success: z.boolean(),
+	workflowId: z.string().optional(),
+	workflowName: z.string().optional(),
+	/** Node names whose credentials were mocked via pinned data. */
+	mockedNodeNames: z.array(z.string()).optional(),
+	/** Credential types that were mocked (not resolved to real credentials). */
+	mockedCredentialTypes: z.array(z.string()).optional(),
+	/** Map of node name → credential types that were mocked on that node. */
+	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
+	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
+	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
+	errors: z.array(z.string()).optional(),
+	warnings: z.array(z.string()).optional(),
+});
+
+export type SubmitWorkflowInput = z.infer<typeof submitWorkflowInputSchema>;
+export type SubmitWorkflowOutput = z.infer<typeof submitWorkflowOutputSchema>;
+
+/**
+ * Resolve a raw `filePath` tool argument into an absolute path under the sandbox root.
+ * Exported so identity wrappers can key state by the same resolved path the tool uses.
+ */
+export function resolveSandboxWorkflowFilePath(
+	rawFilePath: string | undefined,
+	root: string,
+): string {
+	if (!rawFilePath) {
+		return `${root}/src/workflow.ts`;
+	}
+	if (rawFilePath.startsWith('~/')) {
+		return `${root.replace(/\/workspace$/, '')}/${rawFilePath.slice(2)}`;
+	}
+	if (!rawFilePath.startsWith('/')) {
+		return `${root}/${rawFilePath}`;
+	}
+	return rawFilePath;
+}
+
 export function createSubmitWorkflowTool(
 	context: InstanceAiContext,
 	workspace: Workspace,
@@ -161,43 +200,20 @@ export function createSubmitWorkflowTool(
 			'and saves it to n8n as a draft. Publishing policy lives in the builder prompt ' +
 			'(main workflows wait for the user; sub-workflow chunks may be auto-published).',
 		inputSchema: submitWorkflowInputSchema,
-		outputSchema: z.object({
-			success: z.boolean(),
-			workflowId: z.string().optional(),
-			/** Node names whose credentials were mocked via pinned data. */
-			mockedNodeNames: z.array(z.string()).optional(),
-			/** Credential types that were mocked (not resolved to real credentials). */
-			mockedCredentialTypes: z.array(z.string()).optional(),
-			/** Map of node name → credential types that were mocked on that node. */
-			mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-			/** Verification-only pin data — scoped to this build, never persisted to workflow. */
-			verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
-			errors: z.array(z.string()).optional(),
-			warnings: z.array(z.string()).optional(),
-		}),
+		outputSchema: submitWorkflowOutputSchema,
 		execute: async ({
 			filePath: rawFilePath,
 			workflowId,
 			projectId,
 			name,
-		}: z.infer<typeof submitWorkflowInputSchema>) => {
+		}: SubmitWorkflowInput) => {
 			const permKey = workflowId ? 'updateWorkflow' : 'createWorkflow';
 			if (context.permissions?.[permKey] === 'blocked') {
 				return { success: false, errors: ['Action blocked by admin'] };
 			}
 
-			// Resolve file path: relative paths resolve against workspace root, ~ is expanded
 			const root = await getWorkspaceRoot(workspace);
-			let filePath: string;
-			if (!rawFilePath) {
-				filePath = `${root}/src/workflow.ts`;
-			} else if (rawFilePath.startsWith('~/')) {
-				filePath = `${root.replace(/\/workspace$/, '')}/${rawFilePath.slice(2)}`;
-			} else if (!rawFilePath.startsWith('/')) {
-				filePath = `${root}/${rawFilePath}`;
-			} else {
-				filePath = rawFilePath;
-			}
+			const filePath = resolveSandboxWorkflowFilePath(rawFilePath, root);
 
 			const sourceHash = hashContent(await readFileViaSandbox(workspace, filePath));
 			const reportAttempt = async (
