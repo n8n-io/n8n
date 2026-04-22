@@ -91,6 +91,8 @@ export declare namespace Zammad {
 			sender: 'Agent' | 'Customer' | 'System';
 			type: 'chat' | 'email' | 'fax' | 'note' | 'phone' | 'sms';
 			reply_to: string;
+			to?: string;
+			cc?: string;
 		};
 	};
 }
