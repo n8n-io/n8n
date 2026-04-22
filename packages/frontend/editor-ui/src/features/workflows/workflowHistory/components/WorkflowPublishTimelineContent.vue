@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nText, N8nLoading, N8nIcon, N8nCallout, N8nTooltip } from '@n8n/design-system';
+import { N8nText, N8nLoading, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
 import dateformat from 'dateformat';
 
@@ -11,7 +10,6 @@ const emit = defineEmits<{
 	selectVersion: [versionId: string];
 }>();
 
-const DOWNTIME_DISCLAIMER_CALLOUT = 'publishTimelineDowntimeDisclaimer';
 /** Threshold to filter out transient deactivation/reactivation gaps during version changes */
 const MIN_UNPUBLISHED_DURATION_MS = 2000;
 /** Show a duration badge between entries when the period lasted longer than this */
@@ -24,10 +22,16 @@ const props = defineProps<{
 const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
 
-const { isCalloutDismissed, dismissCallout } = useCalloutHelpers();
 const isLoading = ref(true);
 const events = ref<PublishTimelineEvent[]>([]);
-const showDeletedVersionsDisclaimer = ref(false);
+const adoptionDate = ref<Date | null>(null);
+
+const showDeletedVersionsDisclaimer = computed(() => {
+	if (adoptionDate.value === null) return false;
+
+	const adoptionTime = adoptionDate.value.getTime();
+	return events.value.some((e) => new Date(e.createdAt).getTime() < adoptionTime);
+});
 
 type TimelinePeriod = {
 	status: 'published' | 'unpublished';
@@ -118,7 +122,7 @@ const isToday = (date: Date) => {
 
 const formatDateShort = (date: Date) => {
 	if (isToday(date)) return dateformat(date, 'HH:MM');
-	const format = date.getFullYear() !== new Date().getFullYear() ? 'd mmm yyyy' : 'd mmm';
+	const format = date.getFullYear() !== new Date().getFullYear() ? 'd mmm yyyy' : 'd mmm yyyy';
 	return dateformat(date, format);
 };
 
@@ -141,18 +145,8 @@ const loadTimeline = async () => {
 				.getVersionFirstAdoptionDate({ major: 2, minor: 17, patch: 0 })
 				.catch((e) => null),
 		]);
+		adoptionDate.value = firstAdoptionDate === null ? null : new Date(firstAdoptionDate);
 		events.value = timelineEvents;
-
-		// Show disclaimer if the timeline has events from before the instance adopted v2.18,
-		// since older versions deleted publish history records during version pruning
-		if (!firstAdoptionDate) {
-			showDeletedVersionsDisclaimer.value = true;
-		} else if (timelineEvents.length > 0) {
-			const adoptionTime = new Date(firstAdoptionDate).getTime();
-			showDeletedVersionsDisclaimer.value = timelineEvents.some(
-				(e) => new Date(e.createdAt).getTime() < adoptionTime,
-			);
-		}
 	} finally {
 		isLoading.value = false;
 	}
@@ -163,21 +157,6 @@ onMounted(loadTimeline);
 
 <template>
 	<div :class="$style.content">
-		<N8nCallout
-			v-if="!isCalloutDismissed(DOWNTIME_DISCLAIMER_CALLOUT)"
-			theme="info"
-			:class="$style.disclaimer"
-		>
-			{{ i18n.baseText('workflowHistory.publishTimeline.downtimeDisclaimer') }}
-			<template #trailingContent>
-				<N8nIcon
-					icon="x"
-					size="small"
-					:class="$style.dismissButton"
-					@click="dismissCallout(DOWNTIME_DISCLAIMER_CALLOUT)"
-				/>
-			</template>
-		</N8nCallout>
 		<N8nLoading v-if="isLoading" :rows="4" />
 		<div v-else-if="periods.length === 0" :class="$style.empty">
 			<N8nText>{{ i18n.baseText('workflowHistory.publishTimeline.empty') }}</N8nText>
@@ -272,14 +251,20 @@ onMounted(loadTimeline);
 				</template>
 			</div>
 			<N8nTooltip
-				v-if="showDeletedVersionsDisclaimer"
+				v-if="adoptionDate && showDeletedVersionsDisclaimer"
 				placement="top"
 				:content="
 					i18n.baseText('workflowHistory.publishTimeline.deletedVersionsDisclaimer.tooltip')
 				"
 			>
 				<N8nText size="small" color="text-light" :class="$style.deletedVersionsDisclaimer">
-					{{ i18n.baseText('workflowHistory.publishTimeline.deletedVersionsDisclaimer') }}
+					{{
+						i18n.baseText('workflowHistory.publishTimeline.deletedVersionsDisclaimer', {
+							interpolate: {
+								date: formatDateShort(adoptionDate),
+							},
+						})
+					}}
 					<N8nIcon icon="info" size="small" />
 				</N8nText>
 			</N8nTooltip>
