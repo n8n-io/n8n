@@ -115,8 +115,8 @@ describe('provider tools integration', () => {
 			'stream',
 			{ approved: true },
 			{
-				runId: suspended.runId!,
-				toolCallId: suspended.toolCallId!,
+				runId: suspended.runId,
+				toolCallId: suspended.toolCallId,
 			},
 		);
 		const resumeChunks = await collectStreamChunks(resumeStream.stream);

@@ -58,7 +58,7 @@ describe('tool interrupt integration', () => {
 		const resumedStream = await agent.resume(
 			'stream',
 			{ approved: true },
-			{ runId: suspended.runId!, toolCallId: suspended.toolCallId! },
+			{ runId: suspended.runId, toolCallId: suspended.toolCallId },
 		);
 
 		const resumedChunks = await collectStreamChunks(resumedStream.stream);
@@ -89,7 +89,7 @@ describe('tool interrupt integration', () => {
 		const resumedStream = await agent.resume(
 			'stream',
 			{ approved: false },
-			{ runId: suspended.runId!, toolCallId: suspended.toolCallId! },
+			{ runId: suspended.runId, toolCallId: suspended.toolCallId },
 		);
 
 		const resumedChunks = await collectStreamChunks(resumedStream.stream);
@@ -119,7 +119,7 @@ describe('tool interrupt integration', () => {
 		const stream2 = await agent.resume(
 			'stream',
 			{ approved: true },
-			{ runId: suspended1.runId!, toolCallId: suspended1.toolCallId! },
+			{ runId: suspended1.runId, toolCallId: suspended1.toolCallId },
 		);
 
 		const chunks2 = await collectStreamChunks(stream2.stream);
@@ -136,7 +136,7 @@ describe('tool interrupt integration', () => {
 		const stream3 = await agent.resume(
 			'stream',
 			{ approved: true },
-			{ runId: suspended2.runId!, toolCallId: suspended2.toolCallId! },
+			{ runId: suspended2.runId, toolCallId: suspended2.toolCallId },
 		);
 
 		const chunks3 = await collectStreamChunks(stream3.stream);

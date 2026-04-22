@@ -120,7 +120,7 @@ describe('concurrent tool execution integration', () => {
 			const resumedStream = await agent.resume(
 				'stream',
 				{ approved: true },
-				{ runId: next.runId!, toolCallId: next.toolCallId! },
+				{ runId: next.runId, toolCallId: next.toolCallId },
 			);
 
 			const resumedChunks = await collectStreamChunks(resumedStream.stream);
