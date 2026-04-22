@@ -35,6 +35,7 @@ import { AgentExecutionService } from './agent-execution.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
@@ -74,6 +75,9 @@ export interface ExecuteAgentData {
 	toolCalls: Array<{ toolName: string; input: unknown; result: unknown }>;
 	finishReason: string;
 }
+
+/** Component types that cause rich_interaction to actually pause for user input. */
+const INTERACTIVE_COMPONENT_TYPES = new Set(['button', 'select', 'radio_select']);
 
 @Service()
 export class AgentsService {
@@ -410,15 +414,29 @@ export class AgentsService {
 		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
 			params;
 
-		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
-		try {
-			const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
-			agent.tool(createRichInteractionTool(integrationType));
-		} catch (toolError) {
-			this.logger.warn('Failed to inject rich_interaction tool', {
-				agentId,
-				error: toolError instanceof Error ? toolError.message : String(toolError),
-			});
+		// Inject the rich_interaction tool for ad-hoc UI in chat integrations —
+		// but only if the target platform has at least one interactive component
+		// type. Without button/select/radio_select the handler can't suspend, so
+		// the tool call would produce no user-visible output on the platform and
+		// confuse the agent's state. Draft/editor contexts (no integrationType)
+		// always get the tool.
+		const integration = integrationType
+			? Container.get(ChatIntegrationRegistry).get(integrationType)
+			: undefined;
+		const supportsInteractive =
+			!integration ||
+			integration.supportedComponents.some((c) => INTERACTIVE_COMPONENT_TYPES.has(c));
+
+		if (supportsInteractive) {
+			try {
+				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
+				agent.tool(createRichInteractionTool(integrationType));
+			} catch (toolError) {
+				this.logger.warn('Failed to inject rich_interaction tool', {
+					agentId,
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
 		}
 
 		if (nodeToolsEnabled) {
