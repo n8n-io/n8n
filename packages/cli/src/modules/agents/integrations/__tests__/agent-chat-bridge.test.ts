@@ -106,7 +106,6 @@ describe('AgentChatBridge — consumeStream', () => {
 
 	function makeAgentExecutor(chunks: StreamChunk[]) {
 		return {
-			executeForChat: () => toStream(chunks),
 			executeForChatPublished: () => toStream(chunks),
 			resumeForChat: () => toStream(chunks),
 		};
@@ -173,9 +172,9 @@ describe('AgentChatBridge — consumeStream', () => {
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(3);
-			expect(thread.post.mock.calls[0][0]).toBe('Before suspend. ');
-			expect(thread.post.mock.calls[1][0]).toEqual({ card: { kind: 'card' } });
-			expect(thread.post.mock.calls[2][0]).toBe('After resume.');
+			expect(thread.post).toHaveBeenNthCalledWith(1, 'Before suspend. ');
+			expect(thread.post).toHaveBeenNthCalledWith(2, { card: { kind: 'card' } });
+			expect(thread.post).toHaveBeenNthCalledWith(3, 'After resume.');
 		});
 
 		it('does not post when the buffer is only whitespace', async () => {
