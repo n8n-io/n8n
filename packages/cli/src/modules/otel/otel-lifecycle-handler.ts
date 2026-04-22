@@ -21,9 +21,12 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteBefore')
 	async onWorkflowStart(ctx: WorkflowExecuteBeforeContext): Promise<void> {
-		// For webhooks: tracingContext was persisted at creation from HTTP headers.
-		// For everything else: null — workflow.execute becomes the root span.
-		const tracingContext = await this.traceContextService.get(ctx.executionId);
+		// Sub-workflows: inherit parent's trace context directly (own record is always empty)
+		// Top-level: check own context (webhooks persist traceparent from HTTP headers)
+		const parentExecutionId = ctx.executionData?.parentExecution?.executionId;
+		const tracingContext = parentExecutionId
+			? await this.traceContextService.get(parentExecutionId)
+			: await this.traceContextService.get(ctx.executionId);
 
 		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
@@ -36,9 +39,7 @@ export class OtelLifecycleHandler {
 			},
 		});
 
-		// For root spans (non-webhook), persist the generated traceparent
-		// so the trace is findable via the execution entity.
-		if (!tracingContext && spanContext) {
+		if (spanContext) {
 			await this.traceContextService.persist(ctx.executionId, spanContext);
 		}
 	}

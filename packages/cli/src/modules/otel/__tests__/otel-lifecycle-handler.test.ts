@@ -1,12 +1,176 @@
-import type { NodeExecuteAfterContext } from '@n8n/decorators';
+import type { NodeExecuteAfterContext, WorkflowExecuteBeforeContext } from '@n8n/decorators';
+import { mock } from 'jest-mock-extended';
 import type { IRunExecutionData } from 'n8n-workflow';
 
-import { countInputItems, countOutputItems } from '../otel-lifecycle-handler';
+import type { ExecutionLevelTracer } from '../execution-level-tracer';
+import type { OtelConfig } from '../otel.config';
+import { OtelLifecycleHandler, countInputItems, countOutputItems } from '../otel-lifecycle-handler';
+import type { TracingContext, TraceContextService } from '../tracing-context';
 
 const emptyExecutionData = {
 	resultData: { runData: {}, pinData: {} },
 	executionData: undefined,
 } as unknown as IRunExecutionData;
+
+describe('OtelLifecycleHandler', () => {
+	describe('onWorkflowStart', () => {
+		const tracer = mock<ExecutionLevelTracer>();
+		const traceContextService = mock<TraceContextService>();
+		const config = mock<OtelConfig>();
+		let handler: OtelLifecycleHandler;
+
+		const parentTracingContext: TracingContext = {
+			traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+		};
+
+		const generatedSpanContext: TracingContext = {
+			traceparent: '00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01',
+		};
+
+		const baseCtx: WorkflowExecuteBeforeContext = {
+			type: 'workflowExecuteBefore',
+			workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+			workflowInstance: undefined as never,
+			executionId: 'exec-sub',
+		};
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+			tracer.startWorkflow.mockReturnValue(generatedSpanContext);
+		});
+
+		it('should use own tracingContext when present (webhook case)', async () => {
+			const ownContext: TracingContext = {
+				traceparent: '00-aaaa651916cd43dd8448eb211c80319c-aaaa67aa0ba902b7-01',
+			};
+			traceContextService.get.mockResolvedValueOnce(ownContext);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(traceContextService.get).toHaveBeenCalledTimes(1);
+			expect(traceContextService.get).toHaveBeenCalledWith('exec-sub');
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ tracingContext: ownContext }),
+			);
+		});
+
+		it('should inherit parent tracingContext for sub-workflows', async () => {
+			traceContextService.get.mockResolvedValueOnce(parentTracingContext);
+
+			const ctx: WorkflowExecuteBeforeContext = {
+				...baseCtx,
+				executionData: {
+					parentExecution: { executionId: 'exec-parent', workflowId: 'wf-parent' },
+				} as IRunExecutionData,
+			};
+
+			await handler.onWorkflowStart(ctx);
+
+			expect(traceContextService.get).toHaveBeenCalledTimes(1);
+			expect(traceContextService.get).toHaveBeenCalledWith('exec-parent');
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ tracingContext: parentTracingContext }),
+			);
+		});
+
+		it('should create root span when no own or parent context exists', async () => {
+			traceContextService.get.mockResolvedValue(null);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ tracingContext: undefined }),
+			);
+		});
+
+		it('should not look up parent when executionData has no parentExecution', async () => {
+			traceContextService.get.mockResolvedValueOnce(null);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(traceContextService.get).toHaveBeenCalledTimes(1);
+			expect(traceContextService.get).toHaveBeenCalledWith('exec-sub');
+		});
+
+		it('should always persist generated spanContext', async () => {
+			traceContextService.get.mockResolvedValueOnce(parentTracingContext);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(traceContextService.persist).toHaveBeenCalledWith('exec-sub', generatedSpanContext);
+		});
+
+		it('should persist spanContext for sub-workflows so nested children can inherit', async () => {
+			traceContextService.get.mockResolvedValueOnce(parentTracingContext);
+
+			const ctx: WorkflowExecuteBeforeContext = {
+				...baseCtx,
+				executionData: {
+					parentExecution: { executionId: 'exec-parent', workflowId: 'wf-parent' },
+				} as IRunExecutionData,
+			};
+
+			await handler.onWorkflowStart(ctx);
+
+			expect(traceContextService.persist).toHaveBeenCalledWith('exec-sub', generatedSpanContext);
+		});
+
+		it('should not persist when startWorkflow returns undefined', async () => {
+			tracer.startWorkflow.mockReturnValue(undefined);
+			traceContextService.get.mockResolvedValueOnce(null);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(traceContextService.persist).not.toHaveBeenCalled();
+		});
+	});
+});
+
+describe('onNodeStart / onNodeEnd', () => {
+	const tracer = mock<ExecutionLevelTracer>();
+	const traceContextService = mock<TraceContextService>();
+	const config = mock<OtelConfig>();
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should skip node spans when includeNodeSpans is false', () => {
+		config.includeNodeSpans = false;
+		const handler = new OtelLifecycleHandler(tracer, traceContextService, config);
+
+		handler.onNodeStart({
+			type: 'nodeExecuteBefore',
+			workflow: {
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [{ id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 }],
+				connections: {},
+			},
+			nodeName: 'Node1',
+			executionId: 'exec-1',
+		} as never);
+
+		handler.onNodeEnd({
+			type: 'nodeExecuteAfter',
+			workflow: { id: 'wf-1', name: 'Test', nodes: [], connections: {} },
+			nodeName: 'Node1',
+			executionId: 'exec-1',
+			taskData: {
+				startTime: 0,
+				executionTime: 10,
+				executionIndex: 0,
+				source: [],
+				data: { main: [[{ json: {} }]] },
+			},
+			executionData: { resultData: { runData: {} } },
+		} as never);
+
+		expect(tracer.startNode).not.toHaveBeenCalled();
+		expect(tracer.endNode).not.toHaveBeenCalled();
+	});
+});
 
 describe('countOutputItems', () => {
 	it('should count items across branches', () => {

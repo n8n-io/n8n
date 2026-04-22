@@ -260,39 +260,6 @@ describe('ExecutionLevelTracer', () => {
 			expect(nodeSpan.attributes['n8n.node.custom.llm.model']).toBe('gpt-4o');
 			expect(nodeSpan.attributes['n8n.node.custom.llm.tokens']).toBe('500');
 		});
-
-		it('should skip node spans when includeNodeSpans is false', () => {
-			const noNodeTracer = new ExecutionLevelTracer(
-				makeConfig({ includeNodeSpans: false }),
-				logger,
-			);
-
-			noNodeTracer.startWorkflow({
-				executionId: 'exec-8',
-				tracingContext: inboundTracingContext,
-				workflow: defaultWorkflow,
-			});
-			noNodeTracer.startNode({
-				executionId: 'exec-8',
-				node: { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 },
-			});
-			noNodeTracer.endNode({
-				executionId: 'exec-8',
-				nodeName: 'Node1',
-				inputItemCount: 1,
-				outputItemCount: 1,
-			});
-			noNodeTracer.endWorkflow({
-				executionId: 'exec-8',
-				status: 'success',
-				mode: 'manual',
-				isRetry: false,
-			});
-
-			const spans = otel.getFinishedSpans();
-			expect(spans).toHaveLength(1);
-			expect(spans[0].name).toBe('workflow.execute');
-		});
 	});
 
 	describe('endDanglingNodeSpans', () => {

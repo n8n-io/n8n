@@ -31,7 +31,7 @@ type TrackedSpan = { span: Span; createdAt: number };
 @Service()
 export class ExecutionLevelTracer {
 	private readonly activeWorkflowSpans = new Map<string, TrackedSpan>();
-	private readonly activeNodeSpans = new Map<string, TrackedSpan>();
+	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
 	private readonly tracer = trace.getTracer(TRACER_NAME);
 
 	private evictionTimer: ReturnType<typeof setInterval> | undefined;
@@ -100,8 +100,6 @@ export class ExecutionLevelTracer {
 
 	startNode(params: StartNodeParams): void {
 		try {
-			if (!this.config.includeNodeSpans) return;
-
 			const parentCtx = this.resolveWorkflowSpanContext(params.executionId);
 			const span = this.tracer.startSpan(
 				'node.execute',
@@ -116,10 +114,12 @@ export class ExecutionLevelTracer {
 				parentCtx,
 			);
 
-			this.activeNodeSpans.set(nodeSpanKey(params.executionId, params.node.name), {
-				span,
-				createdAt: Date.now(),
-			});
+			let executionNodes = this.activeNodeSpansByExecutionId.get(params.executionId);
+			if (!executionNodes) {
+				executionNodes = new Map();
+				this.activeNodeSpansByExecutionId.set(params.executionId, executionNodes);
+			}
+			executionNodes.set(params.node.name, { span, createdAt: Date.now() });
 		} catch (error) {
 			this.logger.error('Failed to start node span', {
 				executionId: params.executionId,
@@ -131,10 +131,8 @@ export class ExecutionLevelTracer {
 
 	endNode(params: EndNodeParams): void {
 		try {
-			if (!this.config.includeNodeSpans) return;
-
-			const key = nodeSpanKey(params.executionId, params.nodeName);
-			const tracked = this.activeNodeSpans.get(key);
+			const executionNodes = this.activeNodeSpansByExecutionId.get(params.executionId);
+			const tracked = executionNodes?.get(params.nodeName);
 			if (!tracked) return;
 
 			const { span } = tracked;
@@ -152,7 +150,8 @@ export class ExecutionLevelTracer {
 			}
 
 			span.end();
-			this.activeNodeSpans.delete(key);
+			executionNodes!.delete(params.nodeName);
+			if (executionNodes!.size === 0) this.activeNodeSpansByExecutionId.delete(params.executionId);
 		} catch (error) {
 			this.logger.error('Failed to end node span', {
 				executionId: params.executionId,
@@ -207,8 +206,9 @@ export class ExecutionLevelTracer {
 
 	private findMostSpecificSpan(executionId: string, nodeName?: string): Span | undefined {
 		return (
-			(nodeName ? this.activeNodeSpans.get(nodeSpanKey(executionId, nodeName))?.span : undefined) ??
-			this.activeWorkflowSpans.get(executionId)?.span
+			(nodeName
+				? this.activeNodeSpansByExecutionId.get(executionId)?.get(nodeName)?.span
+				: undefined) ?? this.activeWorkflowSpans.get(executionId)?.span
 		);
 	}
 
@@ -216,28 +216,30 @@ export class ExecutionLevelTracer {
 		const now = Date.now();
 
 		for (const [key, tracked] of this.activeWorkflowSpans) {
-			if (now - tracked.createdAt > SPAN_TTL_MS) {
-				terminateSpan(tracked.span, 'evicted');
-				this.activeWorkflowSpans.delete(key);
-			}
+			if (now - tracked.createdAt <= SPAN_TTL_MS) break;
+			terminateSpan(tracked.span, 'evicted');
+			this.activeWorkflowSpans.delete(key);
 		}
 
-		for (const [key, tracked] of this.activeNodeSpans) {
-			if (now - tracked.createdAt > SPAN_TTL_MS) {
+		for (const [executionId, executionNodes] of this.activeNodeSpansByExecutionId) {
+			for (const [nodeName, tracked] of executionNodes) {
+				if (now - tracked.createdAt <= SPAN_TTL_MS) break;
 				terminateSpan(tracked.span, 'evicted');
-				this.activeNodeSpans.delete(key);
+				executionNodes.delete(nodeName);
 			}
+			if (executionNodes.size === 0) this.activeNodeSpansByExecutionId.delete(executionId);
 		}
 	}
 
 	private endDanglingNodeSpans(executionId: string): void {
-		const prefix = `${executionId}:`;
-		for (const [key, tracked] of this.activeNodeSpans) {
-			if (key.startsWith(prefix)) {
-				terminateSpan(tracked.span, 'workflow_cancelled');
-				this.activeNodeSpans.delete(key);
-			}
+		const executionNodes = this.activeNodeSpansByExecutionId.get(executionId);
+		if (!executionNodes) return;
+
+		for (const [, tracked] of executionNodes) {
+			terminateSpan(tracked.span, 'workflow_cancelled');
 		}
+
+		this.activeNodeSpansByExecutionId.delete(executionId);
 	}
 }
 
@@ -262,10 +264,6 @@ function toTracingParentContext(span: Span): TracingContext | undefined {
 	return carrier.traceparent
 		? { traceparent: carrier.traceparent, tracestate: carrier.tracestate }
 		: undefined;
-}
-
-function nodeSpanKey(executionId: string, nodeName: string): string {
-	return `${executionId}:${nodeName}`;
 }
 
 function terminateSpan(span: Span, reason: string): void {
