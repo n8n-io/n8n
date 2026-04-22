@@ -11,7 +11,8 @@
     "glob": "13.0.6",
     "minimatch": "10.2.4",
     "semver": "7.7.4",
-    "tempfile": "6.0.1"
+    "tempfile": "6.0.1",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "conventional-changelog-angular": "8.3.0"

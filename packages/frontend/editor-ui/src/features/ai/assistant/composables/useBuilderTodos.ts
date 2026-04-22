@@ -6,15 +6,21 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import type { WorkflowValidationIssue } from '@/Interface';
+import {
+	extractPlaceholderLabels,
+	findPlaceholderDetails,
+	formatPlaceholderPath,
+	isPlaceholderValue,
+	type PlaceholderDetail,
+} from '@n8n/utils';
 
-const PLACEHOLDER_PREFIX = '<__PLACEHOLDER';
-const PLACEHOLDER_SUFFIX = '__>';
-const PLACEHOLDER_REGEX = /<__PLACEHOLDER.*?__>/g;
-
-export interface PlaceholderDetail {
-	path: string[];
-	label: string;
-}
+export {
+	extractPlaceholderLabels,
+	findPlaceholderDetails,
+	formatPlaceholderPath,
+	isPlaceholderValue,
+	type PlaceholderDetail,
+};
 
 export interface TodoTrackingItem {
 	type: string;
@@ -29,99 +35,6 @@ export interface TodosTrackingPayload {
 }
 
 /**
- * Extracts the label from a single placeholder string.
- * Handles formats like:
- * - <__PLACEHOLDER_VALUE__label__>
- * - <__PLACEHOLDER__: label__>
- */
-function extractLabelFromPlaceholder(placeholder: string): string {
-	// Remove the prefix and suffix
-	let label = placeholder.slice(PLACEHOLDER_PREFIX.length, -PLACEHOLDER_SUFFIX.length);
-
-	// Handle _VALUE__ prefix if present
-	if (label.startsWith('_VALUE__')) {
-		label = label.slice('_VALUE__'.length);
-	}
-	// Handle __: prefix if present
-	else if (label.startsWith('__:')) {
-		label = label.slice('__:'.length);
-	}
-	// Handle __ prefix for other variations
-	else if (label.startsWith('__')) {
-		label = label.slice('__'.length);
-	}
-
-	return label.trim();
-}
-
-/**
- * Extracts all placeholder labels from a string value.
- * Handles both cases where the entire value is a placeholder and where
- * placeholders are embedded within code (e.g., Code node).
- * Returns an array of labels found.
- */
-export function extractPlaceholderLabels(value: unknown): string[] {
-	if (typeof value !== 'string') return [];
-
-	const labels: string[] = [];
-	const regex = new RegExp(PLACEHOLDER_REGEX.source, 'g');
-	let match;
-
-	while ((match = regex.exec(value)) !== null) {
-		const label = extractLabelFromPlaceholder(match[0]);
-		if (label.length > 0) {
-			labels.push(label);
-		}
-	}
-
-	return labels;
-}
-
-/**
- * Recursively searches through a value (object, array, or primitive) to find
- * all placeholder values and their paths.
- */
-export function findPlaceholderDetails(value: unknown, path: string[] = []): PlaceholderDetail[] {
-	// Check for placeholders in strings (handles both full placeholders and embedded ones)
-	if (typeof value === 'string') {
-		const labels = extractPlaceholderLabels(value);
-		return labels.map((label) => ({ path, label }));
-	}
-
-	if (Array.isArray(value)) {
-		return value.flatMap((item, index) => findPlaceholderDetails(item, [...path, `[${index}]`]));
-	}
-
-	if (value !== null && typeof value === 'object') {
-		return Object.entries(value).flatMap(([key, nested]) =>
-			findPlaceholderDetails(nested, [...path, key]),
-		);
-	}
-
-	return [];
-}
-
-/**
- * Formats a path array into a dot-notation string for display.
- * Array indices are preserved as [N] without leading dots.
- */
-export function formatPlaceholderPath(path: string[]): string {
-	if (path.length === 0) return 'parameters';
-
-	return path
-		.map((segment, index) => (segment.startsWith('[') || index === 0 ? segment : `.${segment}`))
-		.join('');
-}
-
-/**
- * Checks if a value is a placeholder value
- */
-export function isPlaceholderValue(value: unknown): boolean {
-	if (typeof value !== 'string') return false;
-	return !!value.match(PLACEHOLDER_REGEX);
-}
-
-/**
  * Composable for managing workflow todos (validation issues and placeholders)
  * used by the AI builder.
  */
@@ -130,9 +43,7 @@ export function useBuilderTodos() {
 	const locale = useI18n();
 
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	/**
@@ -147,7 +58,7 @@ export function useBuilderTodos() {
 		}
 		visited.add(nodeName);
 
-		const node = workflowDocumentStore.value?.getNodeByName(nodeName);
+		const node = workflowDocumentStore.value.getNodeByName(nodeName);
 
 		// Check if node itself is disabled
 		if (node?.disabled === true) {
@@ -157,8 +68,7 @@ export function useBuilderTodos() {
 		// Check if any parent node (via sub-node connections) is disabled.
 		// Sub-nodes output to their parent via non-main connection types (ai_languageModel, ai_tool, etc).
 		// Skip "main" connections — those are regular workflow links, not sub-node → parent links.
-		const outgoingConnections =
-			workflowDocumentStore.value?.outgoingConnectionsByNodeName(nodeName) ?? {};
+		const outgoingConnections = workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName);
 		for (const connectionType of Object.keys(outgoingConnections)) {
 			if (connectionType === 'main') continue;
 			const connections = outgoingConnections[connectionType];
@@ -190,7 +100,7 @@ export function useBuilderTodos() {
 		}
 		visited.add(nodeName);
 
-		const pinData = workflowDocumentStore.value?.pinData;
+		const pinData = workflowDocumentStore.value.pinData;
 
 		// Check if node has direct pinned data
 		if (pinData?.[nodeName]?.length) {
@@ -200,8 +110,7 @@ export function useBuilderTodos() {
 		// Check if any parent node (via sub-node connections) has pinned data.
 		// Sub-nodes output to their parent via non-main connection types (ai_languageModel, ai_tool, etc).
 		// Skip "main" connections — those are regular workflow links, not sub-node → parent links.
-		const outgoingConnections =
-			workflowDocumentStore.value?.outgoingConnectionsByNodeName(nodeName) ?? {};
+		const outgoingConnections = workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName);
 		for (const connectionType of Object.keys(outgoingConnections)) {
 			if (connectionType === 'main') continue;
 			const connections = outgoingConnections[connectionType];
@@ -228,8 +137,8 @@ export function useBuilderTodos() {
 		// Explicit dependencies to ensure reactivity when parent node state changes.
 		// Vue's computed may not track dependencies accessed in recursive helper functions,
 		// so we access pinData and nodes here to register them as dependencies.
-		const _pinData = workflowDocumentStore.value?.pinData;
-		const _nodes = workflowDocumentStore.value?.allNodes;
+		const _pinData = workflowDocumentStore.value.pinData;
+		const _nodes = workflowDocumentStore.value.allNodes;
 		void _pinData;
 		void _nodes;
 
@@ -249,13 +158,13 @@ export function useBuilderTodos() {
 	const placeholderIssues = computed(() => {
 		// Explicit dependency to ensure reactivity when parent node state changes.
 		// Vue's computed may not track pinData accessed in recursive helper functions.
-		const _pinData = workflowDocumentStore.value?.pinData;
+		const _pinData = workflowDocumentStore.value.pinData;
 		void _pinData;
 
 		const issues: WorkflowValidationIssue[] = [];
 		const seen = new Set<string>();
 
-		for (const node of workflowDocumentStore.value?.allNodes ?? []) {
+		for (const node of workflowDocumentStore.value.allNodes) {
 			if (!node?.parameters) continue;
 
 			// Skip nodes with pinned data - their output is already defined
@@ -312,7 +221,7 @@ export function useBuilderTodos() {
 		if (workflowTodos.value.length > 0) return false;
 
 		// Check if any pinned data exists
-		const pinData = workflowDocumentStore.value?.pinData;
+		const pinData = workflowDocumentStore.value.pinData;
 		if (!pinData || Object.keys(pinData).length === 0) return false;
 
 		// Check base workflow issues that would show if not for pinned data
@@ -326,7 +235,7 @@ export function useBuilderTodos() {
 		if (wouldHaveBaseIssues) return true;
 
 		// Check placeholder issues that would show if not for pinned data
-		for (const node of workflowDocumentStore.value?.allNodes ?? []) {
+		for (const node of workflowDocumentStore.value.allNodes) {
 			if (!node?.parameters) continue;
 			if (!nodeHasPinnedData(node.name)) continue;
 			if (nodeIsDisabled(node.name)) continue;
@@ -351,7 +260,7 @@ export function useBuilderTodos() {
 			placeholders_todo_count,
 			todos: workflowTodos.value.map((todo) => ({
 				type: todo.type,
-				node_type: workflowDocumentStore.value?.getNodeByName(todo.node)?.type,
+				node_type: workflowDocumentStore.value.getNodeByName(todo.node)?.type,
 				label: todo.value,
 			})),
 		};

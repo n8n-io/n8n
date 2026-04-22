@@ -25,6 +25,7 @@ import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 
 import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
+
 const props = withDefaults(
 	defineProps<{
 		executions: ExecutionSummaryWithScopes[];
@@ -56,6 +57,7 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const allVisibleSelected = ref(false);
 const allExistingSelected = ref(false);
 const selectedItems = ref<Record<string, boolean>>({});
+const isInitialLoad = ref(true);
 
 const message = useMessage();
 const toast = useToast();
@@ -95,6 +97,15 @@ watch(
 			handleClearSelection();
 		}
 		adjustSelectionAfterMoreItemsLoaded();
+	},
+);
+
+watch(
+	() => executionsStore.loading,
+	(isLoading, wasLoading) => {
+		if (wasLoading && !isLoading) {
+			isInitialLoad.value = false;
+		}
 	},
 );
 
@@ -422,7 +433,7 @@ const goToUpgrade = () => {
 							@retry-original="retryOriginalExecution"
 							@go-to-upgrade="goToUpgrade"
 						/>
-						<template v-if="executionsStore.loading && !executions.length">
+						<template v-if="isInitialLoad && executionsStore.loading && !executions.length">
 							<tr v-for="item in executionsStore.itemsPerPage" :key="item">
 								<td v-for="col in 9" :key="col">
 									<ElSkeletonItem />

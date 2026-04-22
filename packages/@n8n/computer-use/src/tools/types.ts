@@ -56,6 +56,13 @@ export const RESOURCE_DECISION_KEYS: ResourceDecision[] = [
 	'alwaysDeny',
 ];
 
+/** Reduced option set sent to the n8n instance UI — no persistent allow/deny to avoid fatigue. */
+export const INSTANCE_RESOURCE_DECISION_KEYS: ResourceDecision[] = [
+	'denyOnce',
+	'allowOnce',
+	'allowForSession',
+];
+
 /** Prefix used to signal a gateway confirmation is required (instance mode). */
 export const GATEWAY_CONFIRMATION_REQUIRED_PREFIX = 'GATEWAY_CONFIRMATION_REQUIRED::';
 

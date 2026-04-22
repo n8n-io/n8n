@@ -27,8 +27,12 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	additionalMetadata?: T;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- LanguageModel is semantically distinct from string
-export type ModelConfig = string | { id: string; apiKey?: string; url?: string } | LanguageModel;
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents -- LanguageModel is semantically distinct from string */
+export type ModelConfig =
+	| string
+	| { id: string; apiKey?: string; url?: string; headers?: Record<string, string> }
+	| LanguageModel;
+/* eslint-enable @typescript-eslint/no-redundant-type-constituents */
 
 export interface AgentResult {
 	id?: string;

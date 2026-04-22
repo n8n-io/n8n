@@ -163,14 +163,16 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	// --- Mock store ---
 	const messages = ref<InstanceAiMessage[]>([]) as Ref<InstanceAiMessage[]>;
 	const isStreaming = ref(false);
-	const resourceRegistry = ref(new Map<string, ResourceEntry>());
+	const producedArtifacts = ref(new Map<string, ResourceEntry>());
+	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
 
 	const threadMetadata = new Map<string, Record<string, unknown>>();
 
 	const store = reactive({
 		messages,
 		isStreaming,
-		resourceRegistry,
+		producedArtifacts,
+		resourceNameIndex,
 		currentThreadId: 'thread-1',
 		getThreadMetadata: (threadId: string) => threadMetadata.get(threadId),
 		updateThreadMetadata: async (threadId: string, metadata: Record<string, unknown>) => {
@@ -213,21 +215,34 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	// --- Convenience actions ---
 
 	function registerWorkflow(id: string, name = `Workflow ${id}`) {
-		const next = new Map(store.resourceRegistry);
-		next.set(name.toLowerCase(), { type: 'workflow', id, name });
-		store.resourceRegistry = next;
+		const entry: ResourceEntry = { type: 'workflow', id, name };
+		const nextProduced = new Map(store.producedArtifacts);
+		nextProduced.set(id, entry);
+		store.producedArtifacts = nextProduced;
+		const nextByName = new Map(store.resourceNameIndex);
+		nextByName.set(name.toLowerCase(), entry);
+		store.resourceNameIndex = nextByName;
 	}
 
 	function registerDataTable(id: string, name = `Table ${id}`, projectId?: string) {
-		const next = new Map(store.resourceRegistry);
-		next.set(name.toLowerCase(), { type: 'data-table', id, name, projectId });
-		store.resourceRegistry = next;
+		const entry: ResourceEntry = { type: 'data-table', id, name, projectId };
+		const nextProduced = new Map(store.producedArtifacts);
+		nextProduced.set(id, entry);
+		store.producedArtifacts = nextProduced;
+		const nextByName = new Map(store.resourceNameIndex);
+		nextByName.set(name.toLowerCase(), entry);
+		store.resourceNameIndex = nextByName;
 	}
 
-	function removeResource(key: string) {
-		const next = new Map(store.resourceRegistry);
-		next.delete(key);
-		store.resourceRegistry = next;
+	function removeResource(idOrName: string) {
+		const nextProduced = new Map(store.producedArtifacts);
+		const removed = nextProduced.get(idOrName);
+		nextProduced.delete(idOrName);
+		store.producedArtifacts = nextProduced;
+		const nextByName = new Map(store.resourceNameIndex);
+		if (removed) nextByName.delete(removed.name.toLowerCase());
+		nextByName.delete(idOrName.toLowerCase());
+		store.resourceNameIndex = nextByName;
 	}
 
 	function simulatePushEvent(event: PushMessage) {
@@ -292,8 +307,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 						...msg.agentTree!.toolCalls,
 						makeToolCall({
 							toolCallId: tcId,
-							toolName: 'run-workflow',
-							args: { workflowId },
+							toolName: 'executions',
+							args: { action: 'run', workflowId },
 							result: { executionId },
 						}),
 					],
@@ -310,8 +325,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: tcId,
-								toolName: 'run-workflow',
-								args: { workflowId },
+								toolName: 'executions',
+								args: { action: 'run', workflowId },
 								result: { executionId },
 							}),
 						],
@@ -338,8 +353,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 						}),
 						makeToolCall({
 							toolCallId: `tc-run-${++toolCallCounter}`,
-							toolName: 'run-workflow',
-							args: { workflowId },
+							toolName: 'executions',
+							args: { action: 'run', workflowId },
 							result: { executionId, status },
 						}),
 					],

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { LicenseState } from '@n8n/backend-common';
+import type { PublicApiCredentialResponse } from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -8,9 +9,11 @@ import type express from 'express';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	validCredentialsProperties,
@@ -29,6 +32,7 @@ import {
 	toJsonSchema,
 	updateCredential,
 } from './credentials.service';
+import { toPublicApiCredentialResponse } from './credentials.mapper';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import {
 	publicApiScope,
@@ -37,6 +41,8 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 export = {
 	getCredentials: [
@@ -92,6 +98,48 @@ export = {
 			});
 		},
 	],
+	getCredential: [
+		publicApiScope('credential:read'),
+		projectScope('credential:read', 'credential'),
+		async (
+			req: CredentialRequest.Get,
+			res: express.Response,
+		): Promise<express.Response<PublicApiCredentialResponse>> => {
+			const { id: credentialId } = req.params;
+
+			const credential = await getCredential(credentialId);
+			if (!credential) {
+				throw new NotFoundError('Credential not found');
+			}
+
+			return res.json(toPublicApiCredentialResponse(credential));
+		},
+	],
+	testCredential: [
+		publicApiScope('credential:read'),
+		projectScope('credential:read', 'credential'),
+		async (
+			req: CredentialRequest.Test,
+			res: express.Response<{ status: 'OK' | 'Error'; message: string } | { message: string }>,
+		): Promise<
+			express.Response<{ status: 'OK' | 'Error'; message: string } | { message: string }>
+		> => {
+			const { id: credentialId } = req.params;
+			try {
+				const credentialTestResult = await Container.get(CredentialsService).testById(
+					req.user.id,
+					credentialId,
+				);
+				return res.json(credentialTestResult);
+			} catch (error) {
+				if (error instanceof CredentialNotFoundError) {
+					throw new NotFoundError(error.message);
+				}
+
+				throw error;
+			}
+		},
+	],
 	createCredential: [
 		validCredentialType,
 		validCredentialsProperties,
@@ -99,10 +147,9 @@ export = {
 		async (
 			req: CredentialRequest.Create,
 			res: express.Response,
-		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+		): Promise<express.Response<PublicApiCredentialResponse>> => {
 			const savedCredential = await saveCredential(req.body, req.user);
-
-			return res.json(sanitizeCredentials(savedCredential));
+			return res.json(savedCredential);
 		},
 	],
 	updateCredential: [
@@ -113,42 +160,37 @@ export = {
 		async (
 			req: CredentialRequest.Update,
 			res: express.Response,
-		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+		): Promise<express.Response<PublicApiCredentialResponse>> => {
 			const { id: credentialId } = req.params;
 
 			const existingCredential = await getCredential(credentialId);
 			if (!existingCredential) {
-				return res.status(404).json({ message: 'Credential not found' });
+				throw new NotFoundError('Credential not found');
 			}
 
 			if (req.body.isGlobal !== undefined && req.body.isGlobal !== existingCredential.isGlobal) {
 				if (!Container.get(LicenseState).isSharingLicensed()) {
-					return res.status(403).json({ message: 'You are not licensed for sharing credentials' });
+					throw new ForbiddenError('You are not licensed for sharing credentials');
 				}
 
 				const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
 				if (!canShareGlobally) {
-					return res.status(403).json({
-						message: 'You do not have permission to change global sharing for credentials',
-					});
+					throw new ForbiddenError(
+						'You do not have permission to change global sharing for credentials',
+					);
 				}
 			}
 
 			try {
 				const updatedCredential = await updateCredential(existingCredential, req.user, req.body);
 
-				return res.json(sanitizeCredentials(updatedCredential as CredentialsEntity));
+				return res.json(toPublicApiCredentialResponse(updatedCredential));
 			} catch (error) {
 				if (error instanceof CredentialsIsNotUpdatableError) {
-					return res.status(400).json({ message: error.message });
+					throw new BadRequestError(error.message);
 				}
 
-				if (error instanceof ResponseError) {
-					return res.status(error.httpStatusCode).json({ message: error.message });
-				}
-
-				const message = error instanceof Error ? error.message : 'Unknown error';
-				return res.status(500).json({ message });
+				throw error;
 			}
 		},
 	],
@@ -184,11 +226,11 @@ export = {
 					credential = shared.credentials;
 				}
 			} else {
-				credential = (await getCredential(credentialId)) as CredentialsEntity;
+				credential = (await getCredential(credentialId)) ?? undefined;
 			}
 
 			if (!credential) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			await removeCredential(req.user, credential);
@@ -203,7 +245,7 @@ export = {
 			try {
 				Container.get(CredentialTypes).getByName(credentialTypeName);
 			} catch (error) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const schema = Container.get(CredentialsHelper)

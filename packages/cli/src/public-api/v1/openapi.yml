@@ -9,7 +9,7 @@ info:
   license:
     name: Sustainable Use License
     url: https://github.com/n8n-io/n8n/blob/master/LICENSE.md
-  version: 1.1.0
+  version: 1.1.1
 externalDocs:
   description: n8n API documentation
   url: https://docs.n8n.io/api/
@@ -42,6 +42,8 @@ tags:
     description: API capability discovery
   - name: Insights
     description: Operations about insights
+  - name: Folders
+    description: Operations about folders
 
 paths:
   /audit:
@@ -50,6 +52,8 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.yml'
   /credentials/{id}:
     $ref: './handlers/credentials/spec/paths/credentials.id.yml'
+  /credentials/{id}/test:
+    $ref: './handlers/credentials/spec/paths/credentials.id.test.yml'
   /credentials/schema/{credentialTypeName}:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
   /credentials/{id}/transfer:
@@ -128,6 +132,8 @@ paths:
     $ref: './handlers/discover/spec/paths/discover.yml'
   /insights/summary:
     $ref: './handlers/insights/spec/paths/insights.yml'
+  /projects/{projectId}/folders:
+    $ref: './handlers/folders/spec/paths/folders.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

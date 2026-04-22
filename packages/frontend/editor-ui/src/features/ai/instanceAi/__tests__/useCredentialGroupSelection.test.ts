@@ -3,6 +3,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { computed } from 'vue';
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCredentialGroupSelection } from '../composables/useCredentialGroupSelection';
@@ -46,12 +49,16 @@ function makeCard(overrides: Partial<SetupCard> = {}): SetupCard {
 describe('useCredentialGroupSelection', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let credentialsStore: ReturnType<typeof useCredentialsStore>;
+	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
+	let uiStore: ReturnType<typeof useUIStore>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		workflowsStore = useWorkflowsStore();
 		credentialsStore = useCredentialsStore();
+		nodeTypesStore = useNodeTypesStore();
+		uiStore = useUIStore();
 	});
 
 	describe('initCredGroupSelections', () => {
@@ -225,6 +232,67 @@ describe('useCredentialGroupSelection', () => {
 
 			expect(isFirstCardInCredGroup(card1)).toBe(true);
 			expect(isFirstCardInCredGroup(card2)).toBe(false);
+		});
+	});
+
+	describe('openNewCredentialForSection', () => {
+		function mockNodeTypeWithAuth(authOptions: Array<{ name: string; value: string }>) {
+			const nodeType = {
+				name: 'n8n-nodes-base.slack',
+				properties: [
+					{
+						name: 'authentication',
+						displayName: 'Authentication',
+						type: 'options',
+						default: authOptions[0]?.value ?? '',
+						options: authOptions,
+					},
+				],
+				credentials: [
+					{
+						name: 'slackApi',
+						displayOptions: {
+							show: { authentication: [authOptions[0]?.value ?? ''] },
+						},
+					},
+				],
+			} as unknown as INodeTypeDescription;
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => nodeType);
+		}
+
+		test('passes showAuthOptions=true and the node name when node has multiple auth options', () => {
+			mockNodeTypeWithAuth([
+				{ name: 'API Token', value: 'apiToken' },
+				{ name: 'OAuth2', value: 'oAuth2' },
+			]);
+
+			const card = makeCard({
+				nodes: [makeSetupNode({ credentialType: 'slackApi' })],
+			});
+			const cards = computed(() => [card]);
+			const { openNewCredentialForSection } = useCredentialGroupSelection(cards, vi.fn());
+			const openSpy = vi.spyOn(uiStore, 'openNewCredential');
+
+			openNewCredentialForSection('slackApi', 'slackApi');
+
+			expect(openSpy).toHaveBeenCalledWith('slackApi', true, false, undefined, undefined, 'Slack');
+		});
+
+		test('passes showAuthOptions=false when node has no main auth field', () => {
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => null);
+
+			const card = makeCard({
+				nodes: [makeSetupNode({ credentialType: 'slackApi' })],
+			});
+			const cards = computed(() => [card]);
+			const { openNewCredentialForSection } = useCredentialGroupSelection(cards, vi.fn());
+			const openSpy = vi.spyOn(uiStore, 'openNewCredential');
+
+			openNewCredentialForSection('slackApi', 'slackApi');
+
+			expect(openSpy).toHaveBeenCalledWith('slackApi', false, false, undefined, undefined, 'Slack');
 		});
 	});
 
