@@ -288,7 +288,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					} catch {
 						continue;
 					}
-					handleEvent(event, session);
+					const result = handleEvent(event, session);
+					if (result?.done) break;
 				}
 			}
 		} finally {

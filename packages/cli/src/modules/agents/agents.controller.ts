@@ -1,8 +1,9 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import type { AgentDbMessage, AgentMessage, MessageContent, StreamChunk } from '@n8n/agents';
 import {
 	type AgentBuilderMessagesResponse,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
+	type AgentPersistedMessageContentPart,
 	type AgentPersistedMessageDto,
 	type AgentSseEvent,
 	type ToolSuspendedPayload,
@@ -30,6 +31,36 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { AgentRepository } from './repositories/agent.repository';
 
 type FlushableResponse = Response & { flush?: () => void };
+
+function contentPartToDto(part: MessageContent): AgentPersistedMessageContentPart {
+	const dto: AgentPersistedMessageContentPart = { type: part.type };
+	if ('text' in part && typeof part.text === 'string') dto.text = part.text;
+	if ('toolName' in part && typeof part.toolName === 'string') dto.toolName = part.toolName;
+	if ('toolCallId' in part && typeof part.toolCallId === 'string') {
+		dto.toolCallId = part.toolCallId;
+	}
+	if ('input' in part) dto.input = part.input;
+	if ('result' in part) dto.result = part.result;
+	return dto;
+}
+
+function messageToDto(msg: AgentDbMessage): AgentPersistedMessageDto | null {
+	if (!('role' in msg) || !Array.isArray(msg.content)) return null;
+	return {
+		id: msg.id,
+		role: msg.role,
+		content: msg.content.map(contentPartToDto),
+	};
+}
+
+function messagesToDto(msgs: AgentDbMessage[]): AgentPersistedMessageDto[] {
+	const out: AgentPersistedMessageDto[] = [];
+	for (const m of msgs) {
+		const dto = messageToDto(m);
+		if (dto) out.push(dto);
+	}
+	return out;
+}
 
 /**
  * Set up SSE headers and return a typed `send(event)` helper plus a
@@ -477,13 +508,11 @@ export class AgentsController {
 
 		let messages: AgentPersistedMessageDto[];
 		if (!checkpoint) {
-			messages = memory as unknown as AgentPersistedMessageDto[];
+			messages = messagesToDto(memory);
 		} else {
-			const memoryIds = new Set(memory.map((m) => (m as { id?: string }).id));
-			const newFromCheckpoint = checkpoint.messageList.messages.filter(
-				(m) => !memoryIds.has((m as { id?: string }).id),
-			);
-			messages = [...memory, ...newFromCheckpoint] as unknown as AgentPersistedMessageDto[];
+			const memoryIds = new Set(memory.map((m) => m.id));
+			const newFromCheckpoint = checkpoint.messageList.messages.filter((m) => !memoryIds.has(m.id));
+			messages = messagesToDto([...memory, ...newFromCheckpoint]);
 		}
 
 		return { messages, openSuspensions };
@@ -506,7 +535,7 @@ export class AgentsController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const messages = await this.agentsService.getTestChatMessages(agentId, req.user.id);
-		return messages as unknown as AgentPersistedMessageDto[];
+		return messagesToDto(messages);
 	}
 
 	@Delete('/:agentId/chat/messages')

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import { N8nText } from '@n8n/design-system';
+import { N8nText, N8nIcon } from '@n8n/design-system';
 import type {
 	AskLlmResume,
 	ChatHubConversationModel,
