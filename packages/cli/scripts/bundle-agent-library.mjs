@@ -48,35 +48,13 @@ export async function buildAgentLibraryBundle({ silent = false } = {}) {
 		platform: 'node',
 		write: false,
 		treeShaking: true,
-		// Stub out Node built-ins, native modules, and heavy packages the isolate
-		// cannot use (no filesystem, no sockets, no child processes inside V8).
-		external: [
-			'node:*',
-			'pg',
-			'better-sqlite3',
-			'@libsql/client',
-			'ajv',
-			'child_process',
-			'fs',
-			'path',
-			'os',
-			'net',
-			'http',
-			'https',
-			'tls',
-			'stream',
-			'crypto',
-			'events',
-			'util',
-			'buffer',
-			'url',
-			'querystring',
-			'cross-spawn',
-			'@modelcontextprotocol/*',
-			'@ai-sdk/*',
-			'@opentelemetry/*',
-			'langsmith/*',
-		],
+		// The shim only pulls in `sdk/tool` (+ zod), which is pure JS with no
+		// Node built-in or native deps — esbuild currently externalises nothing.
+		// `node:*` stays as a safety net so that if some future transitive dep
+		// picks up a `node:<builtin>` import, esbuild marks it external rather
+		// than trying to bundle a built-in (which would blow up inside the
+		// isolate, which has no Node globals anyway).
+		external: ['node:*'],
 		define: {
 			'process.env.NODE_ENV': '"production"',
 		},
