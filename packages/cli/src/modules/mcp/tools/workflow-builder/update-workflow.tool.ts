@@ -7,6 +7,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { CODE_BUILDER_VALIDATE_TOOL, MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
@@ -79,6 +80,7 @@ export const createUpdateWorkflowTool = (
 	nodeTypes: NodeTypes,
 	credentialsService: CredentialsService,
 	sharedWorkflowRepository: SharedWorkflowRepository,
+	collaborationService: CollaborationService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -118,6 +120,8 @@ export const createUpdateWorkflowTool = (
 				['workflow:update'],
 				workflowFinderService,
 			);
+
+			await collaborationService.ensureWorkflowEditable(existingWorkflow.id);
 
 			const { ParseValidateHandler, stripImportStatements } = await import(
 				'@n8n/ai-workflow-builder'
@@ -176,6 +180,8 @@ export const createUpdateWorkflowTool = (
 				aiBuilderAssisted: true,
 				source: 'n8n-mcp',
 			});
+
+			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;
