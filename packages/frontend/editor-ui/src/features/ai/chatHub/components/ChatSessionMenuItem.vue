@@ -120,7 +120,15 @@ watch(
 			/>
 		</template>
 		<template #icon>
-			<ChatAgentAvatar :agent="agent" size="sm" />
+			<ChatAgentAvatar :agent="agent" size="sm" :class="$style.avatar" />
 		</template>
 	</ChatSidebarLink>
 </template>
+
+<style lang="scss" module>
+.avatar {
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	min-width: var(--spacing--lg);
+}
+</style>

@@ -1,0 +1,52 @@
+{
+	"name": "Webhook publish with wait node no conflicts",
+	"nodes": [
+		{
+			"parameters": {
+				"path": "ed3b98bb-78c4-4cad-98ce-386eef1a4f92",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [368, 240],
+			"id": "8e006fb7-c2d6-4799-9feb-14032cb11293",
+			"name": "Webhook",
+			"webhookId": "dd3b98bb-78c4-4cad-98ce-386eef1a4f92"
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"options": {
+					"webhookSuffix": "some-suffix"
+				}
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [608, 240],
+			"id": "b4da7ce5-4af6-413a-808f-b2aeee8ed684",
+			"name": "Wait",
+			"webhookId": "44a04fa2-9595-4d5e-b1b0-11c761a2a1c2"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": true,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "2b5d2b15-f24c-4674-9cc3-de22e4e839d4",
+	"meta": {},
+	"id": "DqXH1byI5mUqu1F3",
+	"tags": []
+}

@@ -3,8 +3,9 @@
 exports[`N8nCanvasThinkingPill > renders canvas thinking pill correctly 1`] = `
 <div>
   <div
-    class="thinkingPill"
+    class="pill"
   >
+    
     <div
       class="iconWrapper"
     >
@@ -43,11 +44,18 @@ exports[`N8nCanvasThinkingPill > renders canvas thinking pill correctly 1`] = `
         </defs>
       </svg>
     </div>
+    
     <span
       class="text"
     >
-      Working... 
-      <!--v-if-->
+      
+      <div
+        class="wrapper"
+      >
+        Working... 
+        <!--v-if-->
+      </div>
+      
     </span>
   </div>
 </div>

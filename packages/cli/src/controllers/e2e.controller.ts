@@ -18,7 +18,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { inE2ETests } from '@/constants';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
@@ -27,6 +26,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { ExecutionsConfig } from '@n8n/config';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -111,6 +111,7 @@ export class E2EController {
 		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
 		[LICENSE_FEATURES.ASK_AI]: false,
 		[LICENSE_FEATURES.AI_CREDITS]: false,
+		[LICENSE_FEATURES.AI_GATEWAY]: false,
 		[LICENSE_FEATURES.FOLDERS]: false,
 		[LICENSE_FEATURES.INSIGHTS_VIEW_SUMMARY]: false,
 		[LICENSE_FEATURES.INSIGHTS_VIEW_DASHBOARD]: false,
@@ -119,8 +120,12 @@ export class E2EController {
 		[LICENSE_FEATURES.OIDC]: false,
 		[LICENSE_FEATURES.MFA_ENFORCEMENT]: false,
 		[LICENSE_FEATURES.WORKFLOW_DIFFS]: false,
+		[LICENSE_FEATURES.NAMED_VERSIONS]: false,
 		[LICENSE_FEATURES.CUSTOM_ROLES]: false,
 		[LICENSE_FEATURES.AI_BUILDER]: false,
+		[LICENSE_FEATURES.PERSONAL_SPACE_POLICY]: false,
+		[LICENSE_FEATURES.TOKEN_EXCHANGE]: false,
+		[LICENSE_FEATURES.DATA_REDACTION]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
@@ -130,6 +135,7 @@ export class E2EController {
 		[LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT]: -1,
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]: 0,
 		[LICENSE_QUOTAS.AI_CREDITS]: 0,
+		[LICENSE_QUOTAS.AI_GATEWAY_BUDGET]: 0,
 		[LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS]: 7,
 		[LICENSE_QUOTAS.INSIGHTS_RETENTION_MAX_AGE_DAYS]: 30,
 		[LICENSE_QUOTAS.INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS]: 180,
@@ -147,6 +153,8 @@ export class E2EController {
 		[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT]:
 			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.TEAM_PROJECT_LIMIT],
 		[LICENSE_QUOTAS.AI_CREDITS]: E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.AI_CREDITS],
+		[LICENSE_QUOTAS.AI_GATEWAY_BUDGET]:
+			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.AI_GATEWAY_BUDGET],
 
 		[LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS]:
 			E2EController.numericFeaturesDefaults[LICENSE_QUOTAS.INSIGHTS_MAX_HISTORY_DAYS],
@@ -166,10 +174,10 @@ export class E2EController {
 		private readonly cacheService: CacheService,
 		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly eventBus: MessageEventBus,
 		private readonly userRepository: UserRepository,
 		private readonly frontendService: FrontendService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -263,6 +271,24 @@ export class E2EController {
 		};
 	}
 
+	/**
+	 * Trigger garbage collection for memory profiling in performance tests.
+	 * Requires Node.js to be started with --expose-gc flag.
+	 */
+	@Post('/gc', { skipAuth: true })
+	triggerGarbageCollection() {
+		if (typeof global.gc === 'function') {
+			// Call GC twice to allow for more reclaimation
+			global.gc();
+			global.gc();
+			return { success: true, message: 'Garbage collection triggered' };
+		}
+		return {
+			success: false,
+			message: 'Garbage collection not available. Ensure Node.js is started with --expose-gc flag.',
+		};
+	}
+
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;
@@ -280,9 +306,11 @@ export class E2EController {
 	}
 
 	private async resetLogStreaming() {
-		for (const id in this.eventBus.destinations) {
-			await this.eventBus.removeDestination(id, false);
-			await this.eventBus.deleteDestination(id);
+		const destinations = await this.logStreamingDestinationsService.findDestination();
+		for (const destination of destinations) {
+			if (destination.id) {
+				await this.logStreamingDestinationsService.removeDestination(destination.id, false);
+			}
 		}
 	}
 

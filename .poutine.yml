@@ -4,6 +4,10 @@
 # This file defines skip rules for known-safe patterns.
 # Add new entries only after security review.
 
+# Custom rules for additional security checks
+include:
+  - path: .github/poutine-rules
+
 skip:
   # === SELF-HOSTED RUNNERS ===
   # We use Blacksmith (trusted CI provider) for self-hosted runners.
@@ -44,10 +48,10 @@ skip:
       - .github/workflows/sbom-generation-callable.yml
       # Uses merge commit SHA from GitHub - the code has already been reviewed
       # and merged, not arbitrary PR code.
-      - .github/workflows/linting-reusable.yml
+      - .github/workflows/test-linting-reusable.yml
       # Uses merge commit SHA from GitHub - the code has already been reviewed
       # and merged, not arbitrary PR code.
-      - .github/workflows/units-tests-reusable.yml
+      - .github/workflows/test-unit-reusable.yml
       # Permission-gated: only maintainers (admin/write/maintain) can trigger
       # via /test-workflows comment. Verified in test-workflows-pr-comment.yml.
       - .github/workflows/test-workflows-callable.yml

@@ -1,5 +1,4 @@
 import type { User } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
 import z from 'zod';
 
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -10,8 +9,11 @@ import type {
 } from '../mcp.types';
 import { workflowDetailsOutputSchema } from './schemas';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
+import { getMcpWorkflow } from './workflow-validation.utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { RoleService } from '@/services/role.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -33,6 +35,8 @@ export const createWorkflowDetailsTool = (
 	credentialsService: CredentialsService,
 	endpoints: WebhookEndpoints,
 	telemetry: Telemetry,
+	roleService: RoleService,
+	projectService: ProjectService,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'get_workflow_details',
@@ -48,7 +52,7 @@ export const createWorkflowDetailsTool = (
 				openWorldHint: false, // Works with internal n8n data only
 			},
 		},
-		handler: async ({ workflowId }) => {
+		handler: async ({ workflowId }: { workflowId: string }) => {
 			const parameters = { workflowId };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
 				user_id: user.id,
@@ -63,6 +67,8 @@ export const createWorkflowDetailsTool = (
 					workflowFinderService,
 					credentialsService,
 					endpoints,
+					roleService,
+					projectService,
 					{ workflowId },
 				);
 
@@ -101,20 +107,35 @@ export async function getWorkflowDetails(
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
 	endpoints: WebhookEndpoints,
+	roleService: RoleService,
+	projectService: ProjectService,
 	{ workflowId }: { workflowId: string },
 ): Promise<WorkflowDetailsResult> {
-	const workflow = await workflowFinderService.findWorkflowForUser(
+	const workflow = await getMcpWorkflow(
 		workflowId,
 		user,
 		['workflow:read'],
+		workflowFinderService,
 		{ includeActiveVersion: true },
 	);
-	if (!workflow || workflow.isArchived || !workflow.settings?.availableInMCP) {
-		throw new UserError('Workflow not found');
-	}
 
-	const nodes = workflow.activeVersion?.nodes ?? [];
-	const connections = workflow.activeVersion?.connections ?? {};
+	// Compute user scopes for this workflow
+	const projectRelations = await projectService.getProjectRelationsForUser(user);
+	const workflowWithScopes = roleService.addScopes(workflow, user, projectRelations);
+	const scopes = workflowWithScopes.scopes ?? [];
+	const canExecute = scopes.includes('workflow:execute');
+
+	const nodes = workflow.nodes ?? [];
+	const connections = workflow.connections ?? {};
+	const activeVersion =
+		workflow.activeVersionId && workflow.activeVersion
+			? {
+					nodes: (workflow.activeVersion.nodes ?? []).map(
+						({ credentials: _credentials, ...node }) => node,
+					),
+					connections: workflow.activeVersion.connections ?? {},
+				}
+			: null;
 
 	const supportedTriggers = Object.keys(SUPPORTED_MCP_TRIGGERS);
 	const triggers = nodes.filter(
@@ -135,16 +156,20 @@ export async function getWorkflowDetails(
 		active: workflow.activeVersionId !== null,
 		isArchived: workflow.isArchived,
 		versionId: workflow.versionId,
+		activeVersionId: workflow.activeVersionId,
 		triggerCount: workflow.triggerCount,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
 		settings: workflow.settings ?? null,
 		connections,
 		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
+		activeVersion,
 		tags: (workflow.tags ?? []).map((tag) => ({ id: tag.id, name: tag.name })),
 		meta: workflow.meta ?? null,
 		parentFolderId: workflow.parentFolder?.id ?? null,
 		description: workflow.description ?? undefined,
+		scopes,
+		canExecute,
 	};
 
 	return { workflow: sanitizedWorkflow, triggerInfo: triggerNotice };

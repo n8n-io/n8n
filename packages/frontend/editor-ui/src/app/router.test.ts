@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import router from '@/app/router';
+import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -125,12 +125,50 @@ describe('router', () => {
 		],
 		['/settings/ldap', VIEWS.WORKFLOWS, []],
 		['/settings/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
+		['/settings/security', VIEWS.WORKFLOWS, []],
+		['/settings/security', VIEWS.SECURITY_SETTINGS, ['securitySettings:manage']],
 	])(
 		'should resolve %s to %s with %s user permissions',
 		async (path, name, scopes) => {
 			const rbacStore = useRBACStore();
 
 			settingsStore.settings.communityNodesEnabled = true;
+			rbacStore.setGlobalScopes(scopes);
+
+			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		10000,
+	);
+
+	test.each<[string, RouteRecordName, Scope[]]>([
+		['/settings/resolvers', VIEWS.WORKFLOWS, []],
+		[
+			'/settings/resolvers',
+			VIEWS.WORKFLOWS,
+			['credentialResolver:read', 'credentialResolver:list'],
+		],
+		[
+			'/settings/resolvers',
+			VIEWS.RESOLVERS,
+			[
+				'credentialResolver:read',
+				'credentialResolver:list',
+				'credentialResolver:create',
+				'credentialResolver:update',
+				'credentialResolver:delete',
+			],
+		],
+	])(
+		'should resolve %s to %s with %s user permissions (resolvers)',
+		async (path, name, scopes) => {
+			const rbacStore = useRBACStore();
+
+			settingsStore.settings.activeModules = ['dynamic-credentials'];
+			settingsStore.settings.envFeatureFlags = {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			} as typeof settingsStore.settings.envFeatureFlags;
 			rbacStore.setGlobalScopes(scopes);
 
 			await router.push(path);
@@ -147,5 +185,17 @@ describe('router', () => {
 		settingsStore.settings.hideUsagePage = hideUsagePage;
 		await router.push('/settings');
 		expect(router.currentRoute.value.name).toBe(name);
+	});
+
+	test('should set props: true for PROJECT_ROLE_SETTINGS route', () => {
+		const settingsRoute = routes.find((route) => route.path === '/settings');
+		const projectRolesRoute = settingsRoute?.children?.find(
+			(child) => child.path === 'project-roles',
+		);
+		const editRoleRoute = projectRolesRoute?.children?.find(
+			(child) => child.name === VIEWS.PROJECT_ROLE_SETTINGS,
+		);
+		expect(editRoleRoute?.props).toBe(true);
+		expect(editRoleRoute?.path).toBe('edit/:roleSlug');
 	});
 });

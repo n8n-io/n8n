@@ -101,7 +101,7 @@ const sampleItems = [
 ];
 
 export default {
-	title: 'Molecules/CommandBar',
+	title: 'Core/CommandBar',
 	component: N8nCommandBar,
 	argTypes: {
 		placeholder: {
@@ -118,6 +118,9 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: { component: 'A searchable command palette for quickly executing actions.' },
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

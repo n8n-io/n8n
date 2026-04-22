@@ -2,7 +2,7 @@ import { createRouter, createMemoryHistory } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { createProjectListItem } from '../__tests__/utils';
+import { createProjectListItem, createTestProject } from '../__tests__/utils';
 import ProjectsNavigation from './ProjectNavigation.vue';
 import { useProjectsStore } from '../projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -93,6 +93,7 @@ describe('ProjectsNavigation', () => {
 	it('should show "Projects" title and Personal project when the feature is enabled', async () => {
 		projectsStore.teamProjectsLimit = -1;
 		projectsStore.myProjects = [...personalProjects, ...teamProjects];
+		projectsStore.personalProject = createTestProject({ type: 'personal' });
 
 		const { getAllByTestId, getByTestId, queryByText } = renderComponent({
 			props: {
@@ -133,6 +134,7 @@ describe('ProjectsNavigation', () => {
 	it('should show Personal project when folders are enabled but projects are disabled', async () => {
 		projectsStore.teamProjectsLimit = 0;
 		settingsStore.isFoldersFeatureEnabled = true;
+		projectsStore.personalProject = createTestProject({ type: 'personal' });
 
 		const { queryByText, getByTestId, queryByTestId } = renderComponent({
 			props: {
@@ -149,6 +151,7 @@ describe('ProjectsNavigation', () => {
 
 	it('should show project icons when the menu is collapsed', async () => {
 		projectsStore.teamProjectsLimit = -1;
+		projectsStore.personalProject = createTestProject({ type: 'personal' });
 
 		const { getByTestId } = renderComponent({
 			props: {

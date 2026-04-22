@@ -12,6 +12,7 @@ import path from 'node:path';
 
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from '../dist/errors';
 import { LazyPackageDirectoryLoader } from '../dist/nodes-loader/lazy-package-directory-loader';
+import { TestDataNode } from './test-data-node';
 
 /** This rewrites the nodes/credentials source path to load the typescript code instead of the compiled javascript code */
 const fixSourcePath = (loadInfo: LoadingDetails) => {
@@ -23,7 +24,22 @@ const fixSourcePath = (loadInfo: LoadingDetails) => {
 export class LoadNodesAndCredentials {
 	private loaders: Record<string, LazyPackageDirectoryLoader> = {};
 
-	readonly known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
+	private directNodes: Record<string, LoadedClass<INodeType>> = {
+		'n8n-nodes-testing.testData': {
+			type: new TestDataNode(),
+			sourcePath: __filename,
+		},
+	};
+
+	readonly known: KnownNodesAndCredentials = {
+		nodes: {
+			'n8n-nodes-testing.testData': {
+				className: 'TestDataNode',
+				sourcePath: __filename,
+			},
+		},
+		credentials: {},
+	};
 
 	readonly loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
 
@@ -85,6 +101,11 @@ export class LoadNodesAndCredentials {
 	}
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
+		const directNode = this.directNodes[fullNodeType];
+		if (directNode) {
+			return directNode;
+		}
+
 		const [packageName, nodeType] = fullNodeType.split('.');
 		const { loaders } = this;
 		const loader = loaders[packageName];

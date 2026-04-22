@@ -192,11 +192,9 @@ describe('useReadyToRunStore', () => {
 				// Expected to throw
 			}
 
-			expect(mockShowError).toHaveBeenCalledWith(
-				error,
-				'freeAi.credits.showError.claim.title',
-				'freeAi.credits.showError.claim.message',
-			);
+			expect(mockShowError).toHaveBeenCalledWith(error, 'freeAi.credits.showError.claim.title', {
+				message: 'freeAi.credits.showError.claim.message',
+			});
 		});
 	});
 
@@ -377,6 +375,32 @@ describe('useReadyToRunStore', () => {
 			await expect(store.claimCreditsAndOpenWorkflow('card')).rejects.toThrow(
 				'Failed to create workflow',
 			);
+		});
+	});
+
+	describe('isReadyToRunTemplateId', () => {
+		it('should return true for ready-to-run-ai-workflow', () => {
+			expect(store.isReadyToRunTemplateId('ready-to-run-ai-workflow')).toBe(true);
+		});
+
+		it('should return true for ready-to-run-ai-workflow-v5', () => {
+			expect(store.isReadyToRunTemplateId('ready-to-run-ai-workflow-v5')).toBe(true);
+		});
+
+		it('should return true for ready-to-run-ai-workflow-v6', () => {
+			expect(store.isReadyToRunTemplateId('ready-to-run-ai-workflow-v6')).toBe(true);
+		});
+
+		it('should return false for other template IDs', () => {
+			expect(store.isReadyToRunTemplateId('some-other-template')).toBe(false);
+		});
+
+		it('should return false for undefined', () => {
+			expect(store.isReadyToRunTemplateId(undefined)).toBe(false);
+		});
+
+		it('should return false for empty string', () => {
+			expect(store.isReadyToRunTemplateId('')).toBe(false);
 		});
 	});
 

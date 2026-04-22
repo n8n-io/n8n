@@ -217,7 +217,9 @@ describe('Gemini Node image edit', () => {
 		const result = await execute.call(executeFunctions, 0);
 
 		expect(result[0]?.binary?.enhanced?.mimeType).toBe('image/jpeg');
+		expect(result[0]?.binary?.enhanced?.fileName).toBe('image.jpg');
 		expect(result[0]?.json?.mimeType).toBe('image/jpeg');
+		expect(result[0]?.json?.fileName).toBe('image.jpg');
 	});
 
 	it('should handle empty images array when no valid binary property names', async () => {

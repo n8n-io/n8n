@@ -189,7 +189,12 @@ async function onConnectionStateChange() {
 						:provider="provider"
 						@change="onConnectionStateChange"
 					/>
-					<N8nButton type="primary" :loading="saving" :disabled="!canSave && !saving" @click="save">
+					<N8nButton
+						variant="solid"
+						:loading="saving"
+						:disabled="!canSave && !saving"
+						@click="save"
+					>
 						{{
 							i18n.baseText(
 								`settings.externalSecrets.provider.buttons.${saving ? 'saving' : 'save'}`,

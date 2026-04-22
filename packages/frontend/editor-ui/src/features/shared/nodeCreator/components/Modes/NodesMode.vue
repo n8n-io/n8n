@@ -16,7 +16,6 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	HITL_SUBCATEGORY,
-	PRE_BUILT_AGENTS_COLLECTION,
 } from '@/app/constants';
 
 import type { BaseTextKey } from '@n8n/i18n';
@@ -29,7 +28,6 @@ import {
 	prepareCommunityNodeDetailsViewStack,
 	transformNodeType,
 	getRootSearchCallouts,
-	getActiveViewCallouts,
 	shouldShowCommunityNodeDetails,
 	getHumanInTheLoopActions,
 } from '../../nodeCreator.utils';
@@ -47,6 +45,7 @@ import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -58,10 +57,10 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const calloutHelpers = useCalloutHelpers();
+const { isRagStarterCalloutVisible, openSampleWorkflowTemplate } = useCalloutHelpers();
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
-const { pushViewStack, popViewStack, isAiSubcategoryView } = useViewStacks();
+const { pushViewStack, popViewStack, isAiSubcategoryView, isHitlSubcategoryView } = useViewStacks();
 const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -69,6 +68,7 @@ const { registerKeyHook } = useKeyboardNavigation();
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
 
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
 
@@ -76,7 +76,7 @@ const moreFromCommunity = computed(() => {
 	return filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
 		activeViewStack.value.search ?? '',
-		isAiSubcategoryView(activeViewStack.value),
+		isAiSubcategoryView(activeViewStack.value) || isHitlSubcategoryView(activeViewStack.value),
 	);
 });
 
@@ -105,17 +105,6 @@ function getFilteredActions(
 }
 
 function onSelected(item: INodeCreateElement) {
-	if (item.key === PRE_BUILT_AGENTS_COLLECTION) {
-		void calloutHelpers.openPreBuiltAgentsCollection({
-			telemetry: {
-				source: 'nodeCreator',
-				section: activeViewStack.value.title,
-			},
-			resetStacks: false,
-		});
-		return;
-	}
-
 	if (item.type === 'subcategory') {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
@@ -140,6 +129,9 @@ function onSelected(item: INodeCreateElement) {
 			baseFilter: baseSubcategoriesFilter,
 			itemsMapper: subcategoriesMapper,
 			sections: item.properties.sections,
+			items: item.properties.items,
+			hideActions: item.properties.hideActions,
+			actionsFilter: item.properties.actionsFilter,
 		});
 
 		onSubcategorySelected({
@@ -148,16 +140,27 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'node') {
+		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
 		let nodeActions = getFilteredActions(item, actions);
+		const notInstalledCommunityNode =
+			isCommunityPackageName(item.key) && !useNodeTypesStore().getIsNodeInstalled(item.key);
+		const nodeIcon = getNodeIconSource(
+			item.properties,
+			null,
+			workflowDocumentStore?.value?.getExpressionHandler() ?? null,
+		);
 
-		if (shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value)) {
+		if (
+			shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value) ||
+			notInstalledCommunityNode
+		) {
 			if (!nodeActions.length) {
 				nodeActions = getFilteredActions(item, communityNodesAndActions.value.actions);
 			}
 
 			const viewStack = prepareCommunityNodeDetailsViewStack(
 				item,
-				getNodeIconSource(item.properties),
+				nodeIcon,
 				activeViewStack.value.rootView,
 				nodeActions,
 			);
@@ -165,8 +168,6 @@ function onSelected(item: INodeCreateElement) {
 			pushViewStack(viewStack);
 			return;
 		}
-
-		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
 
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {
@@ -192,7 +193,7 @@ function onSelected(item: INodeCreateElement) {
 		pushViewStack({
 			subcategory: item.properties.displayName,
 			title: item.properties.displayName,
-			nodeIcon: getNodeIconSource(item.properties),
+			nodeIcon,
 			rootView: activeViewStack.value.rootView,
 			hasSearch: true,
 			mode: 'actions',
@@ -235,7 +236,7 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'openTemplate') {
-		calloutHelpers.openSampleWorkflowTemplate(item.properties.templateId, {
+		openSampleWorkflowTemplate(item.properties.templateId, {
 			telemetry: {
 				source: 'nodeCreator',
 				section: activeViewStack.value.title,
@@ -282,13 +283,8 @@ function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
 
 const globalCallouts = computed<INodeCreateElement[]>(() => [
 	...getRootSearchCallouts(activeViewStack.value.search ?? '', {
-		isRagStarterCalloutVisible: calloutHelpers.isRagStarterCalloutVisible.value,
+		isRagStarterCalloutVisible: isRagStarterCalloutVisible.value,
 	}),
-	...getActiveViewCallouts(
-		activeViewStack.value.title,
-		calloutHelpers.isPreBuiltAgentsCalloutVisible.value,
-		calloutHelpers.getPreBuiltAgentNodeCreatorItems(),
-	),
 ]);
 
 function arrowLeft() {

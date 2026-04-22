@@ -35,6 +35,10 @@ export class RunDataPanel {
 		return this.root.getByTestId('ndv-search');
 	}
 
+	getSearchContainer() {
+		return this.root.getByTestId('ndv-search-container');
+	}
+
 	getDataContainer() {
 		return this.root.getByTestId('ndv-data-container');
 	}
@@ -65,6 +69,10 @@ export class RunDataPanel {
 
 	getTbodyCell(row: number, col: number) {
 		return this.root.locator('table tbody tr').nth(row).locator('td').nth(col);
+	}
+
+	getTbodyCellLink(row: number, col: number) {
+		return this.getTbodyCell(row, col).locator('a');
 	}
 
 	getTableCellSpan(row: number, col: number, dataName: string) {
@@ -115,12 +123,28 @@ export class RunDataPanel {
 		return this.root.getByTestId('related-execution-link');
 	}
 
+	getHoveringItems() {
+		return this.root.getByTestId('hovering-item');
+	}
+
 	getNodeErrorMessageHeader(): Locator {
 		return this.root.getByTestId('node-error-message');
 	}
 
 	async toggleInputRunLinking() {
 		await this.root.getByTestId('link-run').click();
+	}
+
+	getNoInputDataMessage() {
+		return this.root.getByText('No input data');
+	}
+
+	getContentEditableEditor() {
+		return this.root.locator('[contenteditable="true"]');
+	}
+
+	getFirstLink() {
+		return this.root.locator('a').first();
 	}
 
 	async switchDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema' | 'binary'): Promise<void> {

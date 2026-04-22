@@ -1,5 +1,5 @@
 // services/api-helper.ts
-import type { APIRequestContext } from '@playwright/test';
+import { request, type APIRequestContext } from '@playwright/test';
 import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
@@ -11,11 +11,15 @@ import {
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
+import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
+import { McpApiHelper } from './mcp-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
+import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
-import { UserApiHelper } from './user-api-helper';
+import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
 import { WorkflowApiHelper } from './workflow-api-helper';
@@ -44,38 +48,48 @@ export class ApiHelpers {
 	request: APIRequestContext;
 	workflows: WorkflowApiHelper;
 	webhooks: WebhookApiHelper;
+	mcp: McpApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
+	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
+	externalSecrets: ExternalSecretsApiHelper;
 	users: UserApiHelper;
 	tags: TagApiHelper;
 	roles: RoleApiHelper;
 	sourceControl: SourceControlApiHelper;
 
+	publicApi: PublicApiHelper;
+
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
+		this.mcp = new McpApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
+		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
+		this.externalSecrets = new ExternalSecretsApiHelper(this);
 		this.users = new UserApiHelper(this);
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
 		this.sourceControl = new SourceControlApiHelper(this);
+
+		this.publicApi = new PublicApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
 
 	/**
-	 * Setup test environment based on test tags (recommended approach)
+	 * Setup test environment based on test tags
 	 * @param tags - Array of test tags (e.g., ['@db:reset', '@auth:owner'])
 	 * @param memberIndex - Which member to use (if auth role is 'member')
 	 *
 	 * Examples:
-	 * - ['@db:reset'] = reset DB, manual signin required
 	 * - ['@db:reset', '@auth:owner'] = reset DB + signin as owner
 	 * - ['@auth:admin'] = signin as admin (no reset)
+	 * - ['@auth:none'] = no signin (unauthenticated)
 	 */
 	async setupFromTags(tags: string[], memberIndex: number = 0): Promise<LoginResponseData | null> {
 		const shouldReset = this.shouldResetDatabase(tags);
@@ -96,6 +110,14 @@ export class ApiHelpers {
 
 		// No setup required
 		return null;
+	}
+
+	/**
+	 * Check if database should be reset based on tags
+	 */
+	private shouldResetDatabase(tags: string[]): boolean {
+		const lowerTags = tags.map((tag) => tag.toLowerCase());
+		return lowerTags.includes(DB_TAGS.RESET.toLowerCase());
 	}
 
 	/**
@@ -219,6 +241,18 @@ export class ApiHelpers {
 		await this.setFeature(feature, true);
 	}
 
+	/**
+	 * Enable all project features (sharing, folders, advancedPermissions, projectRoles)
+	 * Use this in API-only tests - the n8n fixture enables these via withProjectFeatures()
+	 */
+	async enableProjectFeatures(): Promise<void> {
+		await this.enableFeature('sharing');
+		await this.enableFeature('folders');
+		await this.enableFeature('advancedPermissions');
+		await this.enableFeature('projectRole:admin');
+		await this.enableFeature('projectRole:editor');
+	}
+
 	async disableFeature(feature: string): Promise<void> {
 		await this.setFeature(feature, false);
 	}
@@ -227,10 +261,16 @@ export class ApiHelpers {
 		await this.setQuota('maxTeamProjects', value);
 	}
 
-	async get(path: string, params?: URLSearchParams) {
-		const response = await this.request.get(path, { params });
-		const { data } = await response.json();
-		return data;
+	/**
+	 * Create an isolated API context for a specific user.
+	 * Returns an ApiHelpers instance logged in as the specified user.
+	 * Use this for API-only operations without needing a browser context.
+	 */
+	async createApiForUser(user: Pick<TestUser, 'email' | 'password'>): Promise<ApiHelpers> {
+		const userContext = await request.newContext();
+		const userApi = new ApiHelpers(userContext);
+		await userApi.login({ email: user.email, password: user.password });
+		return userApi;
 	}
 
 	/**
@@ -287,42 +327,6 @@ export class ApiHelpers {
 	}
 
 	/**
-	 * Create a webhook destination for log streaming.
-	 * Requires the logStreaming feature to be enabled.
-	 *
-	 * @param config - Webhook destination configuration
-	 * @returns Created destination data
-	 */
-	async createWebhookDestination(config: {
-		url: string;
-		method?: 'POST' | 'GET' | 'PUT' | 'PATCH';
-		label?: string;
-		subscribedEvents?: string[];
-		sendPayload?: boolean;
-	}): Promise<{ id: string }> {
-		const response = await this.request.post('/rest/eventbus/destination', {
-			data: {
-				__type: '$$MessageEventBusDestinationWebhook',
-				url: config.url,
-				method: config.method ?? 'POST',
-				label: config.label ?? 'Webhook Destination',
-				subscribedEvents: config.subscribedEvents ?? ['*'], // All events
-				sendPayload: config.sendPayload ?? true,
-			},
-		});
-
-		if (!response.ok()) {
-			throw new TestError(
-				`Failed to create webhook destination: ${response.status()} ${await response.text()}`,
-			);
-		}
-
-		const result = await response.json();
-		// Handle both direct response and {data: ...} wrapped response
-		return result.data ?? result;
-	}
-
-	/**
 	 * Delete a log streaming destination.
 	 *
 	 * @param id - Destination ID to delete
@@ -368,6 +372,55 @@ export class ApiHelpers {
 		const result = await response.json();
 		// Handle both direct response and {data: ...} wrapped response
 		return result.data ?? result;
+	}
+
+	/**
+	 * Delete all log streaming destinations.
+	 */
+	async deleteAllLogStreamingDestinations(): Promise<void> {
+		const destinations = await this.getLogStreamingDestinations();
+		for (const destination of destinations) {
+			await this.deleteLogStreamingDestination(destination.id);
+		}
+	}
+
+	// ===== MCP API KEY METHODS =====
+
+	/**
+	 * Rotate the MCP API key for the authenticated user.
+	 * Creates a new API key and invalidates the old one.
+	 *
+	 * @returns The new MCP API key data
+	 */
+	async rotateMcpApiKey(): Promise<{ id: string; apiKey: string; userId: string }> {
+		const response = await this.request.post('/rest/mcp/api-key/rotate');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to rotate MCP API key: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
+	 * Enable or disable MCP access for the instance.
+	 * Uses the MCP settings endpoint to toggle access.
+	 *
+	 * @param enabled - Whether MCP access should be enabled
+	 */
+	async setMcpAccess(enabled: boolean): Promise<void> {
+		const response = await this.request.patch('/rest/mcp/settings', {
+			data: { mcpAccessEnabled: enabled },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to set MCP access: ${response.status()} ${await response.text()}`,
+			);
+		}
 	}
 
 	// ===== PRIVATE METHODS =====
@@ -425,14 +478,9 @@ export class ApiHelpers {
 
 	// ===== TAG PARSING METHODS =====
 
-	private shouldResetDatabase(tags: string[]): boolean {
-		const lowerTags = tags.map((tag) => tag.toLowerCase());
-		return lowerTags.includes(DB_TAGS.RESET.toLowerCase());
-	}
-
 	/**
 	 * Get the role from the tags
-	 * @param tags - Array of test tags (e.g., ['@db:reset', '@auth:owner'])
+	 * @param tags - Array of test tags (e.g., ['@auth:owner'])
 	 * @returns The role from the tags, or 'owner' if no role is found
 	 */
 	getRoleFromTags(tags: string[]): UserRole | null {

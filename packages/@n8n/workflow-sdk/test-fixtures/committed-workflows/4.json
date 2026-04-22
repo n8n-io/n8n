@@ -1,0 +1,170 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.UNKNOWNmanualTrigger",
+			"typeVersion": 1,
+			"position": [-144, -32],
+			"id": "b445e696-84a8-4d35-9896-4e4a54d66408",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"id": "aa0b8601-7f57-41b3-a5fa-55b42573205b"
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "8c7d2880-a941-44b0-9224-ce24ae1c8dd1",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "9ca86178-0def-484c-aa67-31d2177fcb2b",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.UNKNOWNswitch",
+			"typeVersion": 3.4,
+			"position": [208, 0],
+			"id": "d677abca-72ef-454a-a269-5fe12747d97a",
+			"name": "Switch"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.UNKNOWNset",
+			"typeVersion": 3.4,
+			"position": [416, 0],
+			"id": "78e2ebe5-3f6c-4aa1-af52-777e598513db",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.UNKNOWNmerge",
+			"typeVersion": 3.2,
+			"position": [608, 64],
+			"id": "3938eefa-69bd-4e95-a8ba-bf13f873d8d8",
+			"name": "Merge"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "5b397bc122efafc165b2a6e67d5e8d75b8138f0d24d6352fac713e4845b002a6"
+	}
+}

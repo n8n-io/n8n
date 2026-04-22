@@ -27,6 +27,23 @@ describe('containsExpression', () => {
 		expect(containsExpression('={{ 1 + 1 }}')).toBe(false);
 		expect(containsExpression('={{ "static value" }}')).toBe(false);
 	});
+
+	it('should return true for multi-line expressions with $variable pattern', () => {
+		expect(containsExpression('={{ "text\nwith newlines" + $json.field }}')).toBe(true);
+		expect(
+			containsExpression('={{ "Company: " + $json.companies + "\n\nDetails: " + $json.info }}'),
+		).toBe(true);
+	});
+
+	it('should return true for multi-line expressions with $(...) pattern', () => {
+		expect(
+			containsExpression('={{ "Header\n" + $(\'Node1\').first().json.value + "\nFooter" }}'),
+		).toBe(true);
+	});
+
+	it('should return false for multi-line expressions without references', () => {
+		expect(containsExpression('={{ "static\nmultiline\nvalue" }}')).toBe(false);
+	});
 });
 
 describe('nodeParametersContainExpression', () => {

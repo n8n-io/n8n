@@ -156,7 +156,11 @@ function onLogout() {
 							<span :class="$style.divider" />
 							<N8nMenuItem
 								:data-test-id="'main-sidebar-log-out'"
-								:item="{ id: 'sign-out', label: 'Sign out', icon: 'door-open' }"
+								:item="{
+									id: 'sign-out',
+									label: i18n.baseText('auth.signout'),
+									icon: 'door-open',
+								}"
 								@click="onLogout"
 							/>
 						</div>
@@ -219,11 +223,5 @@ function onLogout() {
 	border-bottom: var(--border);
 	margin-bottom: var(--spacing--3xs);
 	background-color: var(--color--border);
-}
-
-@media screen and (max-height: 470px) {
-	:global(#help) {
-		display: none;
-	}
 }
 </style>

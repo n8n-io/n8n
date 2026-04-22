@@ -48,8 +48,8 @@ const handleAllow = async () => {
 
 const handleDeny = async () => {
 	try {
-		const response = await consentStore.approveConsent(false);
-		window.location.href = response.redirectUrl;
+		await consentStore.approveConsent(false);
+		window.location.href = window.BASE_PATH ?? '/';
 	} catch (err) {
 		toast.showError(err, i18n.baseText('oauth.consentView.error.deny'));
 	}
@@ -132,7 +132,7 @@ onMounted(async () => {
 				></N8nNotice>
 				<div :class="$style['button-group']">
 					<N8nButton
-						type="tertiary"
+						variant="subtle"
 						:data-test-id="'consent-deny-button'"
 						:size="'large'"
 						:loading="loading"
@@ -142,7 +142,7 @@ onMounted(async () => {
 						{{ i18n.baseText('generic.deny') }}
 					</N8nButton>
 					<N8nButton
-						type="primary"
+						variant="solid"
 						:data-test-id="'consent-allow-button'"
 						:size="'large'"
 						:loading="loading"

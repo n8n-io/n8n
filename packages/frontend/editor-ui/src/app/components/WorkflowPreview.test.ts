@@ -111,6 +111,7 @@ describe('WorkflowPreview', () => {
 					workflow,
 					canOpenNDV: true,
 					hideNodeIssues: false,
+					suppressNotifications: false,
 					projectId: 'test-project-id',
 				}),
 				'*',
@@ -222,6 +223,7 @@ describe('WorkflowPreview', () => {
 					workflow,
 					canOpenNDV: true,
 					hideNodeIssues: false,
+					suppressNotifications: false,
 					projectId: 'test-project-id',
 				}),
 				'*',
@@ -259,6 +261,7 @@ describe('WorkflowPreview', () => {
 					workflow,
 					canOpenNDV: false,
 					hideNodeIssues: false,
+					suppressNotifications: false,
 					projectId: 'test-project-id',
 				}),
 				'*',
@@ -303,6 +306,88 @@ describe('WorkflowPreview', () => {
 		await waitFor(() => {
 			expect(console.error).not.toHaveBeenCalled();
 			expect(emitted()).toEqual({});
+		});
+	});
+
+	describe('hideControls prop', () => {
+		it('should include hideControls=true in iframe src when hideControls prop is true', () => {
+			const { container } = renderComponent({
+				pinia,
+				props: {
+					hideControls: true,
+				},
+			});
+
+			const iframe = container.querySelector('iframe');
+			expect(iframe?.getAttribute('src')).toContain('hideControls=true');
+		});
+
+		it('should not include hideControls param when hideControls prop is false', () => {
+			const { container } = renderComponent({
+				pinia,
+				props: {
+					hideControls: false,
+				},
+			});
+
+			const iframe = container.querySelector('iframe');
+			expect(iframe?.getAttribute('src')).not.toContain('hideControls');
+		});
+	});
+
+	describe('canExecute prop', () => {
+		it('should include canExecute=true in iframe src when canExecute prop is true', () => {
+			const { container } = renderComponent({
+				pinia,
+				props: {
+					canExecute: true,
+				},
+			});
+
+			const iframe = container.querySelector('iframe');
+			expect(iframe?.getAttribute('src')).toContain('canExecute=true');
+		});
+
+		it('should not include canExecute param when canExecute prop is false', () => {
+			const { container } = renderComponent({
+				pinia,
+				props: {
+					canExecute: false,
+				},
+			});
+
+			const iframe = container.querySelector('iframe');
+			expect(iframe?.getAttribute('src')).not.toContain('canExecute');
+		});
+
+		it('should include both hideControls and canExecute when both are true', () => {
+			const { container } = renderComponent({
+				pinia,
+				props: {
+					hideControls: true,
+					canExecute: true,
+				},
+			});
+
+			const iframe = container.querySelector('iframe');
+			const src = iframe?.getAttribute('src') ?? '';
+			expect(src).toContain('hideControls=true');
+			expect(src).toContain('canExecute=true');
+		});
+	});
+
+	describe('ready event', () => {
+		it('should emit ready event when iframe sends n8nReady command', async () => {
+			const { emitted } = renderComponent({
+				pinia,
+				props: {},
+			});
+
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(emitted().ready).toBeDefined();
+			});
 		});
 	});
 });

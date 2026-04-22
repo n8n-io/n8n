@@ -17,7 +17,7 @@ import {
 } from './constants';
 import { UserError } from './errors';
 import { ApplicationError } from '@n8n/errors';
-import { Expression } from './expression';
+import { WorkflowExpression } from './workflow-expression';
 import { getGlobalState } from './global-state';
 import type {
 	IConnections,
@@ -69,7 +69,7 @@ export class Workflow {
 
 	nodeTypes: INodeTypes;
 
-	expression: Expression;
+	expression: WorkflowExpression;
 
 	active: boolean;
 
@@ -131,7 +131,7 @@ export class Workflow {
 
 		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 
-		this.expression = new Expression(this);
+		this.expression = new WorkflowExpression(this);
 	}
 
 	// Save nodes in workflow as object to be able to get the nodes easily by their name.

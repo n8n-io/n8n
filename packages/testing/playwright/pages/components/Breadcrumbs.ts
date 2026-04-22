@@ -22,10 +22,6 @@ export class Breadcrumbs {
 		return this.page.getByTestId('home-project');
 	}
 
-	getHiddenBreadcrumb(resourceName: string) {
-		return this.getHiddenBreadcrumbs().filter({ hasText: resourceName });
-	}
-
 	getActionToggleDropdown(resourceName: string) {
 		return this.page.getByTestId('action-toggle-dropdown').getByTestId(`action-${resourceName}`);
 	}

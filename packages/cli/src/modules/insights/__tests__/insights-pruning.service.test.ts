@@ -39,6 +39,7 @@ describe('InsightsPruningService', () => {
 			jest.useRealTimers();
 			insightsPruningService.stopPruningTimer();
 			jest.restoreAllMocks();
+			jest.clearAllMocks();
 		});
 
 		test('pruning timeout is scheduled on start and rescheduled after each run', async () => {

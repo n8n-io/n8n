@@ -17,7 +17,8 @@ export class SplitOut implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Split Out',
 		name: 'splitOut',
-		icon: 'file:splitOut.svg',
+		icon: 'node:split-out',
+		iconColor: 'violet',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,
@@ -27,6 +28,14 @@ export class SplitOut implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.aggregate',
+					relationHint: 'Reverse operation - combine items back',
+				},
+			],
+		},
 		properties: [
 			{
 				displayName: 'Fields To Split Out',

@@ -56,11 +56,10 @@ function prevItem() {
 				@update:model-value="updateItemIndex"
 			></N8nInputNumber>
 			<N8nIconButton
+				variant="ghost"
 				data-test-id="inline-expression-editor-item-prev"
 				icon="chevron-left"
-				type="tertiary"
-				text
-				size="mini"
+				size="xsmall"
 				:disabled="!canSelectPrevItem"
 				@click="prevItem"
 			></N8nIconButton>
@@ -70,11 +69,10 @@ function prevItem() {
 					<div>{{ i18n.baseText('parameterInput.hoverTableItemTip') }}</div>
 				</template>
 				<N8nIconButton
+					variant="ghost"
 					data-test-id="inline-expression-editor-item-next"
 					icon="chevron-right"
-					type="tertiary"
-					text
-					size="mini"
+					size="xsmall"
 					:disabled="!canSelectNextItem"
 					@click="nextItem"
 				></N8nIconButton>

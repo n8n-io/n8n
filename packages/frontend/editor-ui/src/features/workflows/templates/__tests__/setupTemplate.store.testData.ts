@@ -33,6 +33,9 @@ export const newFullOneNodeTemplate = (node: IWorkflowTemplateNode): ITemplatesW
 	categories: [],
 	user: {
 		username: faker.internet.userName(),
+		name: faker.person.fullName(),
+		avatar: faker.image.avatar(),
+		verified: true,
 	},
 	workflowInfo: {
 		nodeCount: 1,

@@ -1,5 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
+import {
+	SettingsRepository,
+	StatisticsNames,
+	WorkflowRepository,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	ExecutionStatus,
@@ -72,6 +77,8 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly ownershipService: OwnershipService,
 		private readonly userService: UserService,
 		private readonly eventService: EventService,
+		private readonly settingsRepository: SettingsRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -90,6 +97,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 	async workflowExecutionCompleted(workflowData: IWorkflowBase, runData: IRun): Promise<void> {
 		// Determine the name of the statistic
 		const isSuccess = runData.status === 'success';
+		const isError = runData.status === 'error' || runData.status === 'crashed';
 		const manualExecution = runData.mode === 'manual';
 		const chatExecution = runData.mode === 'chat';
 
@@ -103,12 +111,14 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const isRootExecution =
 			isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 
+		// Only record statistics for terminal statuses (success, error, crashed)
+		// Skip non-terminal statuses like waiting, running, new, etc.
 		if (isSuccess) {
-			if (manualExecution) name = StatisticsNames.manualSuccess;
-			else name = StatisticsNames.productionSuccess;
+			name = manualExecution ? StatisticsNames.manualSuccess : StatisticsNames.productionSuccess;
+		} else if (isError) {
+			name = manualExecution ? StatisticsNames.manualError : StatisticsNames.productionError;
 		} else {
-			if (manualExecution) name = StatisticsNames.manualError;
-			else name = StatisticsNames.productionError;
+			return;
 		}
 
 		// Get the workflow id
@@ -120,6 +130,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				name,
 				workflowId,
 				isRootExecution,
+				workflowData.name,
 			);
 
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
@@ -145,8 +156,51 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 					userId,
 				});
 			}
+
+			if (name === StatisticsNames.productionError && upsertResult === 'insert') {
+				// Check if this is the first production failure and if error workflows are configured
+				const instanceHadProductionFailure = await this.settingsRepository.findByKey(
+					'instance.firstProductionFailure',
+				);
+
+				if (
+					!instanceHadProductionFailure &&
+					!(await this.workflowRepository.hasAnyWorkflowsWithErrorWorkflow())
+				) {
+					// This is the first production failure ever on this instance
+					const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+
+					// Get owner: personal project owner if available, otherwise instance owner
+					let owner =
+						project.type === 'personal'
+							? await this.ownershipService.getPersonalProjectOwnerCached(project.id)
+							: null;
+
+					owner ??= await this.ownershipService.getInstanceOwner();
+
+					// Store the flag to prevent future emissions
+					await this.settingsRepository.save({
+						key: 'instance.firstProductionFailure',
+						value: JSON.stringify({
+							workflowId,
+							projectId: project.id,
+							userId: owner.id,
+							timestamp: runData.startedAt.getTime(),
+						}),
+						loadOnStartup: false,
+					});
+
+					// Emit the event
+					this.eventService.emit('instance-first-production-workflow-failed', {
+						projectId: project.id,
+						workflowId,
+						workflowName: workflowData.name,
+						userId: owner.id,
+					});
+				}
+			}
 		} catch (error) {
-			this.logger.debug('Unable to fire first workflow success telemetry event');
+			this.logger.debug('Unable to fire first workflow telemetry event');
 		}
 	}
 

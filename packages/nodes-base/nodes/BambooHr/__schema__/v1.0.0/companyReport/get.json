@@ -6,10 +6,19 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "fullName1": {
+                        "type": "string"
+                    },
                     "fullName2": {
                         "type": "string"
                     },
+                    "hireDate": {
+                        "type": "string"
+                    },
                     "id": {
+                        "type": "string"
+                    },
+                    "payRate": {
                         "type": "string"
                     }
                 }
@@ -33,5 +42,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

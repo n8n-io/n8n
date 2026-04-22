@@ -82,7 +82,7 @@
 		"Request body error": [
 			{
 				"json": {
-					"error": "JSON parameter needs to be valid JSON"
+					"error": "The value in the \"JSON Body\" field is not valid JSON"
 				}
 			}
 		],

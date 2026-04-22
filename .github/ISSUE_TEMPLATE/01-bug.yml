@@ -66,7 +66,7 @@ body:
     id: nodejs-version
     attributes:
       label: Node.js Version
-      placeholder: ex. 22.16.0
+      placeholder: ex. 24.0.0
     validations:
       required: true
   - type: dropdown
@@ -76,8 +76,6 @@ body:
       options:
         - SQLite (default)
         - PostgreSQL
-        - MySQL
-        - MariaDB
       default: 0
     validations:
       required: true

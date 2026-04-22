@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 
 import type {
+	CredentialResolutionResult,
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from '../credential-resolution-provider.interface';
@@ -53,7 +54,7 @@ describe('DynamicCredentialsProxy', () => {
 		it('should return static data when no provider is set and credential is not resolvable', async () => {
 			const result = await proxy.resolveIfNeeded(credentialMetadata, staticData);
 
-			expect(result).toBe(staticData);
+			expect(result).toEqual({ data: staticData, isDynamic: false });
 			expect(mockLogger.warn).not.toHaveBeenCalled();
 		});
 
@@ -70,14 +71,17 @@ describe('DynamicCredentialsProxy', () => {
 		});
 
 		it('should delegate to provider when set', async () => {
-			const dynamicData = { token: 'dynamic-token' };
-			mockResolverProvider.resolveIfNeeded.mockResolvedValue(dynamicData);
+			const dynamicResult: CredentialResolutionResult = {
+				data: { token: 'dynamic-token' },
+				isDynamic: true,
+			};
+			mockResolverProvider.resolveIfNeeded.mockResolvedValue(dynamicResult);
 
 			proxy.setResolverProvider(mockResolverProvider);
 
 			const result = await proxy.resolveIfNeeded(credentialMetadata, staticData);
 
-			expect(result).toBe(dynamicData);
+			expect(result).toBe(dynamicResult);
 			expect(mockResolverProvider.resolveIfNeeded).toHaveBeenCalledWith(
 				credentialMetadata,
 				staticData,
@@ -92,9 +96,14 @@ describe('DynamicCredentialsProxy', () => {
 				establishedAt: Date.now(),
 				source: 'manual',
 			};
-			const workflowSettings: IWorkflowSettings = { executionTimeout: 300 };
+			const workflowSettings: IWorkflowSettings = {
+				executionTimeout: 300,
+			};
 
-			mockResolverProvider.resolveIfNeeded.mockResolvedValue(staticData);
+			mockResolverProvider.resolveIfNeeded.mockResolvedValue({
+				data: staticData,
+				isDynamic: false,
+			});
 			proxy.setResolverProvider(mockResolverProvider);
 
 			await proxy.resolveIfNeeded(

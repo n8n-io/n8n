@@ -1,0 +1,23 @@
+name: 'Sec: CI Checks'
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: GitHub ref to scan.
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  poutine-scan:
+    name: Poutine Security Scan
+    uses: ./.github/workflows/sec-poutine-reusable.yml
+    with:
+      ref: ${{ inputs.ref }}
+    secrets: inherit
+
+  # Future security checks can be added here:
+  # - dependency-scan:
+  # - secret-detection:
+  # - container-scan:

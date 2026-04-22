@@ -134,4 +134,17 @@ describe('Test Webhook Node', () => {
 			});
 		});
 	});
+
+	describe('sensitiveOutputFields', () => {
+		it('declares authorization and cookie headers as sensitive', () => {
+			const node = new Webhook();
+			expect(node.description.sensitiveOutputFields).toContain('headers.authorization');
+			expect(node.description.sensitiveOutputFields).toContain('headers.cookie');
+		});
+
+		it('does not mark other headers as sensitive', () => {
+			const node = new Webhook();
+			expect(node.description.sensitiveOutputFields).not.toContain('headers.content-type');
+		});
+	});
 });

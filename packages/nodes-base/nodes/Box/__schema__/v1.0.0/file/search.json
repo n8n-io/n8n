@@ -47,6 +47,9 @@
                 }
             }
         },
+        "folder_upload_email": {
+            "type": "null"
+        },
         "id": {
             "type": "string"
         },
@@ -96,10 +99,16 @@
         "parent": {
             "type": "object",
             "properties": {
+                "etag": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "sequence_id": {
                     "type": "string"
                 },
                 "type": {
@@ -151,5 +160,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

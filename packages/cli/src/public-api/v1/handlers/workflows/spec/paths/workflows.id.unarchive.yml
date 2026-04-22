@@ -1,0 +1,25 @@
+post:
+  x-eov-operation-id: unarchiveWorkflow
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Unarchive a workflow
+  description: |
+    Restores an archived workflow.
+
+    Requires API key scope `workflow:delete`.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+  responses:
+    '200':
+      description: Unarchived workflow
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflow.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
