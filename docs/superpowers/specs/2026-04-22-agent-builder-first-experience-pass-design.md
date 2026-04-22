@@ -55,10 +55,16 @@ Delete:
 - The `AgentBuilderProgress` import and its `<AgentBuilderProgress>` render block.
 - The `onBuildDone` handler (returning to home is no longer required — the user stays in the build chat and can keep iterating).
 - The `buildPrompt` ref (replaced by `initialPrompt`).
-- The `isBuilding` ref — the existing `isBuildChatStreaming` already covers streaming state for the build chat panel.
 - The `AgentBuilderProgress.vue` file itself.
 
-Keep: the `v-if="mode !== 'building'"` guard on the radio-button toggle is no longer needed; the toggle is always visible in chat mode. This means a user in a fresh-build chat can switch to Test, which (per existing `setChatMode` logic) kicks them back to home — acceptable and intuitive.
+Keep:
+- The `isBuilding` ref (or merge with `isBuildChatStreaming`) — still needed by the settings sidebar's `:building` prop.
+- `v-if="mode !== 'building'"` is removed; the Test/Build radio toggle shows in chat mode by default.
+
+**Preventing accidental first-build cancellation.**
+`setChatMode('test')` in `AgentBuilderView.vue:198` kicks the user back to home when there's no session, which unmounts the build panel — and `AgentChatPanel.vue:92` aborts any in-flight stream on unmount. Today, that's hidden because the `'building'` mode hides the toggle entirely. Removing the mode exposes this as a "switch cancels the build" bug.
+
+Mitigation — disable the Test option of the radio toggle while a first build is streaming AND there is no active session. `N8nRadioButtons` supports a per-option `disabled` flag; compute `options` so the `test` option is disabled when `isBuildChatStreaming.value && !effectiveSessionId.value && chatMode.value === 'build'`. Hover tooltip: "Available once the build produces an agent to test." This matches the current implicit behavior (toggle hidden during build) and is less surprising than an interrupt.
 
 **Behavior change:** After the first build completes, the user stays in the Build chat panel instead of being returned to home. This matches the Build-tab flow and is the consistency the user asked for.
 
@@ -162,43 +168,111 @@ const builder = new Agent('agent-builder')
 
 Conservative `maxUses: 5` per turn. Web search costs Anthropic credits per call; this cap prevents run-away research loops. We can lift it later if it's too constraining.
 
-### 4. Empty-instructions guard in `write_config`
+### 4. Empty-instructions guard on both builder write paths
 
 **File:** `packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts`
 
-After zod validation succeeds, before calling `updateConfig`, reject empty-instruction writes:
+The guard has to cover every way the builder can land the agent in an empty-instructions state. The builder has two write paths:
+
+- `write_config` — replaces the whole config.
+- `patch_config` — applies RFC 6902 ops; a `replace` or `add` at `/instructions` with `""` would silently land.
+
+Extract a shared helper and call it from both tool handlers:
 
 ```ts
-if (!zodResult.data.instructions.trim()) {
-  return {
-    ok: false,
-    errors: [{
-      path: '/instructions',
-      message:
-        'Refusing to write an agent with empty instructions. Ask the user what the agent should do before calling write_config again.',
-    }],
-  };
+const EMPTY_INSTRUCTIONS_ERROR = {
+  path: '/instructions',
+  message:
+    'Refusing to write an agent with empty instructions. Ask the user what ' +
+    'the agent should do before calling write_config or patch_config again.',
+} as const;
+
+function rejectIfEmptyInstructions(config: AgentJsonConfig):
+  | { ok: false; errors: ConfigValidationError[] }
+  | null {
+  if (!config.instructions.trim()) {
+    return { ok: false, errors: [EMPTY_INSTRUCTIONS_ERROR] };
+  }
+  return null;
 }
 ```
 
-This is a safety net — the prompt change is the primary defence. Returning a structured error means the builder sees the refusal and can act on it without a crash.
+- In `write_config`: after zod validation succeeds, call `rejectIfEmptyInstructions(zodResult.data)` and return its result if non-null.
+- In `patch_config`: after zod validation of the patched document, call the same helper on `zodResult.data` and return its result if non-null. For `patch_config`, surface the refusal with `stage: 'schema'` so the builder sees it as a validation-shaped failure, consistent with other post-patch rejections.
 
-Note: we deliberately do NOT add `.min(1)` to the zod schema, because agents start life with empty instructions (initial creation path). The guard lives in the tool handler so initial agent creation is unaffected.
+**Deliberately NOT addressed here:** the direct config-save path (`AgentsService.updateConfig` / the sidebar JSON editor) still accepts empty `instructions` because the schema only requires `z.string()`. If a user manually clears instructions via the sidebar, the "broken agent" banner from §5 tells them what's missing. That's intentional — §5 is the user-facing safety net for non-builder write paths. The guard's job is narrowly to keep the builder from producing broken agents without user intent.
+
+No change to `AgentJsonConfigSchema` — adding `.min(1)` would break the legitimate empty-instructions creation state of a fresh agent, where the sidebar renders the empty field for the user (or the builder) to fill in.
 
 ### 5. Frontend error handling for broken agents
 
+**Transport reality.** Both agent endpoints are SSE, not JSON (`agents.controller.ts:281` for chat, `:385` for build). Headers are flushed before execution starts, so a JSON error body is no longer an option. The existing error contract is a single SSE `data.error` event (`agents.controller.ts:313`, consumed in `useAgentChatStream.ts:224`), which the frontend currently renders inline as `"Error: <message>"` on the assistant message bubble. We extend that same contract — no new protocol.
+
 **Files:**
-- `packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue` (or the chat composable it uses)
-- `packages/cli/src/modules/agents/agents.controller.ts` (chat endpoint — to ensure the backend returns a structured error, not a 500 without a message)
+- `packages/cli/src/modules/agents/agents.controller.ts` — emit a structured SSE error event before starting the stream when the agent is misconfigured.
+- `packages/cli/src/modules/agents/agents.service.ts` — add a `validateAgentIsRunnable(agentId, projectId)` helper that returns the list of missing/invalid fields. Called at the top of the chat path.
+- `packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts` — recognise the structured error, expose it on a new `fatalError` ref.
+- `packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue` — render a banner when `fatalError` is set; suppress the inline error message for this case.
 
-When the chat endpoint fails because the agent config is broken (missing model, missing credential, empty instructions), the frontend should show a clear error banner in place of (or above) the chat stream, naming what's missing and suggesting the user either finish configuring the agent or switch to Build.
+**Backend — structured SSE error event.**
 
-Implementation outline (verify during build):
-- The chat endpoint catches config-validation errors from `AgentsService` and returns a stable shape: `{ error: 'agent_misconfigured', message: string, missing: string[] }`. Any existing generic error path becomes a plain `500` with text.
-- The chat composable (`useAgentChat` or equivalent inside `AgentChatPanel`) exposes an `error` ref. When it's set, render a dismissible error banner at the top of the messages area.
-- The error banner links the user to the Build tab ("Ask the builder to finish setting this up") via `setChatMode('build')`.
+Extend the SSE event shape with optional structured fields. Current shape (in the `catch` at `agents.controller.ts:311-314`):
+```ts
+send({ error: errorMessage });
+```
+New shape for misconfiguration, emitted BEFORE `executeForChat` runs:
+```ts
+send({
+  error: 'This agent is not ready to run yet.',
+  errorCode: 'agent_misconfigured',
+  missing: string[],  // e.g. ['instructions', 'model', 'credential']
+});
+res.end();
+return;
+```
+Keep `error: string` for compatibility — every consumer already reads it. The new `errorCode` and `missing` are additive.
 
-If the existing chat path already surfaces a generic error, we extend it; we don't introduce a second error system.
+The existing catch block that wraps `executeForChat` stays as-is for runtime errors; only the pre-flight misconfiguration check is new. Applied to both `chat` and `build` endpoints, but in practice it only matters for `chat` — the builder is always runnable because it uses an env-var key and has its own prompt/tools.
+
+`validateAgentIsRunnable(agentId, projectId)` returns `{ missing: string[] }` derived from the persisted config:
+- `instructions` → empty or whitespace-only string.
+- `model` → missing or fails the `AgentJsonConfigSchema` model regex.
+- `credential` → `credential` name is set but doesn't resolve to a real credential in the project (skip if `credential` is unset; the runtime falls back to env).
+
+**Frontend — recognise the structured event.**
+
+In `useAgentChatStream.ts` around line 224, extend the `data.error` handler. Today it appends to the assistant message. After the change:
+
+```ts
+if (typeof data.error === 'string') {
+  if (data.errorCode === 'agent_misconfigured') {
+    fatalError.value = {
+      message: data.error,
+      missing: Array.isArray(data.missing) ? (data.missing as string[]) : [],
+    };
+    // Suppress the inline error bubble for this case.
+  } else {
+    ensureMsg();
+    assistantMsg.content += `\n\nError: ${data.error}`;
+    assistantMsg.status = 'error';
+  }
+}
+```
+
+Expose `fatalError` from the composable alongside `messages`, `isStreaming`, etc.
+
+**Frontend — banner UI.**
+
+In `AgentChatPanel.vue`, when `fatalError.value` is truthy, render a banner above the message list with:
+- A short explanation ("This agent needs configuration before it can run.").
+- A list of what's missing (joined from `fatalError.missing`, humanised — `instructions` → "Instructions", `credential` → "Credential", etc.).
+- A "Finish setup in Build" action that clears `fatalError` and calls the view's `setChatMode('build')` via an event (`@open-build`).
+
+Show the banner in both `chat` and `build` endpoints (for `build` it should in practice never fire, but the branch keeps the component uniform).
+
+Dismiss semantics: the banner clears automatically when the user sends a new message (the next stream resets `fatalError`). No explicit dismiss button — if the user has read it and wants to ignore it, their next action will clear it.
+
+**Scope.** Only misconfiguration triggers the banner. Generic runtime errors (provider failure, network) keep the existing inline-error path.
 
 ### 6. Builder model upgrade
 
@@ -226,13 +300,15 @@ Folded into the prompt rewrite in §2:
 ## Testing plan
 
 Unit:
-- `agents-builder-tools.service.spec.ts` — add a test that `write_config` rejects empty instructions.
+- `agents-builder-tools.service.spec.ts` — assert `write_config` AND `patch_config` reject empty/whitespace `instructions`; patch_config refusal surfaces under `stage: 'schema'`.
 - `agents-builder-prompts.spec.ts` (if it exists, else create) — assert the prompt contains the conversation-mode gate and the research section.
+- `agents.service.spec.ts` — `validateAgentIsRunnable` returns expected `missing` lists for empty instructions, invalid model, unresolved credential.
+- `useAgentChatStream.spec.ts` — when the stream emits `{ error, errorCode: 'agent_misconfigured', missing: [...] }`, `fatalError` is set and no inline error bubble is added.
 
 Manual/UI:
-- Create a fresh agent → type "build me a gmail-to-slack notifier" on the home screen → expect to land in the Build chat panel, not the progress UI.
+- Create a fresh agent → type "build me a gmail-to-slack notifier" on the home screen → expect to land in the Build chat panel, not the progress UI; the Test option of the radio toggle is disabled while the build streams.
 - Create a fresh agent → type "hi" → expect a conversational reply asking what the agent should do, NOT a config write.
-- Manually save a broken agent config (e.g. clear `instructions` via the sidebar) → chat from the Test tab → expect a clear error banner naming what's missing, not a silent failure.
+- Manually save a broken agent config (e.g. clear `instructions` via the sidebar) → chat from the Test tab → expect the misconfigured banner naming "Instructions", with a "Finish setup in Build" action.
 - On a built agent, ask the builder about a random API → expect it to use web search if it's unfamiliar.
 
 ## Risk & rollout
