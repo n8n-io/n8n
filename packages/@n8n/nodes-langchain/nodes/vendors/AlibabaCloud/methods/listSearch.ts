@@ -2,7 +2,14 @@ import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow'
 
 import { apiRequest } from '../transport';
 
+type DashScopeModel = { model?: string; model_name?: string; id?: string; name?: string };
+
 const PAGE_SIZE = 100;
+
+function extractModelId(item: DashScopeModel | string): string | undefined {
+	if (typeof item === 'string') return item;
+	return item.model ?? item.model_name ?? item.id;
+}
 
 async function baseModelSearch(
 	this: ILoadOptionsFunctions,
@@ -12,15 +19,20 @@ async function baseModelSearch(
 	const allIds: string[] = [];
 
 	for (let page = 1; ; page++) {
-		const response = (await apiRequest.call(this, 'GET', '/api/v1/models', {
+		const response = await apiRequest.call(this, 'GET', '/api/v1/models', {
 			qs: { page_no: page, page_size: PAGE_SIZE },
-		})) as { data: Array<{ id: string }> };
+		});
 
-		const items = response.data ?? [];
+		const output = (response?.output ?? response) as Record<string, unknown>;
+		const items = (output?.models ?? output?.data ?? output?.list ?? output?.items ?? []) as
+			| DashScopeModel[]
+			| string[];
+
 		if (!items.length) break;
 
 		for (const item of items) {
-			if (item.id) allIds.push(item.id);
+			const id = extractModelId(item);
+			if (id) allIds.push(id);
 		}
 
 		if (items.length < PAGE_SIZE) break;

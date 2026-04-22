@@ -29,7 +29,7 @@ describe('AlibabaCloud listSearch', () => {
 
 	const setupMockModels = (models: string[]) => {
 		mockApiRequest.mockResolvedValue({
-			data: models.map((m) => ({ id: m })),
+			data: models.map((m) => ({ model: m, name: m })),
 		});
 	};
 
@@ -144,10 +144,10 @@ describe('AlibabaCloud listSearch', () => {
 
 			mockApiRequest
 				.mockResolvedValueOnce({
-					data: page1Models.map((m) => ({ id: m })),
+					data: page1Models.map((m) => ({ model: m, name: m })),
 				})
 				.mockResolvedValueOnce({
-					data: page2Models.map((m) => ({ id: m })),
+					data: page2Models.map((m) => ({ model: m, name: m })),
 				});
 
 			const result = await textModelSearch.call(mockLoadOptionsFunctions);
