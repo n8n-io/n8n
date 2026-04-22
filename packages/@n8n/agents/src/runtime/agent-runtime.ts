@@ -171,6 +171,22 @@ interface ToolCallBatchResult {
 	pending: Record<string, PendingToolCall>;
 }
 
+/** Shared input for the private generate/stream loops. */
+interface LoopContext {
+	list: AgentMessageList;
+	options?: RunOptions & ExecutionOptions;
+	runId: string;
+	pendingResume?: PendingResume;
+}
+
+/** Shared input for the tool-call batch iterators. */
+interface ToolBatchContext {
+	toolMap: Map<string, BuiltTool>;
+	list: AgentMessageList;
+	runId: string;
+	telemetry?: BuiltTelemetry;
+}
+
 /**
  * Core agent execution engine using the Vercel AI SDK directly.
  *
@@ -228,7 +244,7 @@ export class AgentRuntime {
 		let list: AgentMessageList | undefined = undefined;
 		try {
 			list = await this.initRun(input, options);
-			const rawResult = await this.runGenerateLoop(list, options, runId, undefined);
+			const rawResult = await this.runGenerateLoop({ list, options, runId });
 			return this.finalizeGenerate(rawResult, list, runId);
 		} catch (error) {
 			await this.flushTelemetry(options);
@@ -259,7 +275,7 @@ export class AgentRuntime {
 			return { runId, stream: makeErrorStream(error) };
 		}
 
-		return { runId, stream: this.startStreamLoop(list, options, runId, undefined) };
+		return { runId, stream: this.startStreamLoop({ list, options, runId }) };
 	}
 
 	/**
@@ -335,12 +351,12 @@ export class AgentRuntime {
 			await this.setListWorkingMemoryConfig(list, state.persistence);
 
 			if (method === 'generate') {
-				const rawResult = await this.runGenerateLoop(
+				const rawResult = await this.runGenerateLoop({
 					list,
-					resumeOptions,
-					options.runId,
+					options: resumeOptions,
+					runId: options.runId,
 					pendingResume,
-				);
+				});
 				if (!rawResult.pendingSuspend) {
 					await this.cleanupRun(options.runId);
 				}
@@ -349,7 +365,12 @@ export class AgentRuntime {
 
 			return {
 				runId: options.runId,
-				stream: this.startStreamLoop(list, resumeOptions, options.runId, pendingResume),
+				stream: this.startStreamLoop({
+					list,
+					options: resumeOptions,
+					runId: options.runId,
+					pendingResume,
+				}),
 			};
 		} catch (error) {
 			const isAbort = this.eventBus.isAborted;
@@ -597,21 +618,9 @@ export class AgentRuntime {
 		};
 	}
 
-	/**
-	 * Core generate loop using generateText (non-streaming).
-	 *
-	 * @param list - Message list for this turn. Grows during the loop via addResponse().
-	 * @param options - Run options for memory persistence.
-	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
-	 *   to execute before the first LLM call.
-	 * @param runId - The pre-generated runId for this run (reused on resume).
-	 */
-	private async runGenerateLoop(
-		list: AgentMessageList,
-		options: (RunOptions & ExecutionOptions) | undefined,
-		runId: string,
-		pendingResume?: PendingResume,
-	): Promise<GenerateResult> {
+	/** Core generate loop using generateText (non-streaming). */
+	private async runGenerateLoop(ctx: LoopContext): Promise<GenerateResult> {
+		const { list, options, runId, pendingResume } = ctx;
 		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
 			this.buildLoopContext({ ...options, persistence: options?.persistence });
 
@@ -623,14 +632,10 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
+		const toolCtx: ToolBatchContext = { toolMap, list, runId, telemetry: runTelemetry };
+
 		if (pendingResume) {
-			const batch = await this.iteratePendingToolCallsConcurrent(
-				pendingResume,
-				toolMap,
-				list,
-				runId,
-				runTelemetry,
-			);
+			const batch = await this.iteratePendingToolCallsConcurrent({ ...toolCtx, pendingResume });
 
 			for (const r of batch.results) {
 				toolCallSummary.push(r.toolEntry);
@@ -700,13 +705,10 @@ export class AgentRuntime {
 				break;
 			}
 
-			const batch = await this.iterateToolCallsConcurrent(
-				result.toolCalls,
-				toolMap,
-				list,
-				runId,
-				runTelemetry,
-			);
+			const batch = await this.iterateToolCallsConcurrent({
+				...toolCtx,
+				toolCalls: result.toolCalls,
+			});
 
 			for (const r of batch.results) {
 				toolCallSummary.push(r.toolEntry);
@@ -778,54 +780,32 @@ export class AgentRuntime {
 	/**
 	 * Wire up a ReadableStream and start the stream loop asynchronously.
 	 * Returns the readable side immediately; the loop runs in the background.
-	 *
-	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
-	 *   to execute before the first LLM stream starts.
-	 * @param runId - The pre-generated runId for this run.
 	 */
-	private startStreamLoop(
-		list: AgentMessageList,
-		options: (RunOptions & ExecutionOptions) | undefined,
-		runId: string,
-		pendingResume?: PendingResume,
-	): ReadableStream<StreamChunk> {
+	private startStreamLoop(ctx: LoopContext): ReadableStream<StreamChunk> {
+		const { options, runId } = ctx;
 		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
 		const writer = writable.getWriter();
 
-		this.runStreamLoop(list, options, writer, runId, pendingResume).catch(
-			async (error: unknown) => {
-				await this.flushTelemetry(options);
-				await this.cleanupRun(runId);
-				try {
-					await writer.write({ type: 'error', error });
-					await writer.write({ type: 'finish', finishReason: 'error' });
-					await writer.close();
-				} catch {
-					writer.abort(error).catch(() => {});
-				}
-			},
-		);
+		this.runStreamLoop({ ...ctx, writer }).catch(async (error: unknown) => {
+			await this.flushTelemetry(options);
+			await this.cleanupRun(runId);
+			try {
+				await writer.write({ type: 'error', error });
+				await writer.write({ type: 'finish', finishReason: 'error' });
+				await writer.close();
+			} catch {
+				writer.abort(error).catch(() => {});
+			}
+		});
 
 		return readable;
 	}
 
-	/**
-	 * Core stream loop using streamText.
-	 *
-	 * @param list - Message list for this turn. Grows during the loop via addResponse().
-	 * @param options - Run options for memory persistence.
-	 * @param writer - Stream writer to emit StreamChunks to the consumer.
-	 * @param pendingResume - When resuming a suspended run, contains the pending tool calls
-	 *   to execute before the first LLM call.
-	 * @param runId - The pre-generated runId for this run (reused on resume).
-	 */
+	/** Core stream loop using streamText. */
 	private async runStreamLoop(
-		list: AgentMessageList,
-		options: (RunOptions & ExecutionOptions) | undefined,
-		writer: WritableStreamDefaultWriter<StreamChunk>,
-		runId: string,
-		pendingResume?: PendingResume,
+		ctx: LoopContext & { writer: WritableStreamDefaultWriter<StreamChunk> },
 	): Promise<void> {
+		const { list, options, runId, pendingResume, writer } = ctx;
 		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
 			this.buildLoopContext({ ...options, persistence: options?.persistence });
 
@@ -855,15 +835,13 @@ export class AgentRuntime {
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
+		const toolCtx: ToolBatchContext = { toolMap, list, runId, telemetry: runTelemetry };
 		if (pendingResume) {
 			try {
-				const batch = await this.iteratePendingToolCallsConcurrent(
+				const batch = await this.iteratePendingToolCallsConcurrent({
+					...toolCtx,
 					pendingResume,
-					toolMap,
-					list,
-					runId,
-					runTelemetry,
-				);
+				});
 
 				for (const r of batch.results) {
 					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
@@ -975,13 +953,7 @@ export class AgentRuntime {
 			const toolCalls = await result.toolCalls;
 
 			try {
-				const batch = await this.iterateToolCallsConcurrent(
-					toolCalls,
-					toolMap,
-					list,
-					runId,
-					runTelemetry,
-				);
+				const batch = await this.iterateToolCallsConcurrent({ ...toolCtx, toolCalls });
 
 				if (await handleAbort()) return;
 
@@ -1227,17 +1199,16 @@ export class AgentRuntime {
 	 * even if one throws, then re-throws the first error.
 	 */
 	private async iterateToolCallsConcurrent(
-		toolCalls: Array<{
-			toolCallId: string;
-			toolName: string;
-			input: unknown;
-			providerExecuted?: boolean;
-		}>,
-		toolMap: Map<string, BuiltTool>,
-		list: AgentMessageList,
-		runId: string,
-		resolvedTelemetry?: BuiltTelemetry,
+		ctx: ToolBatchContext & {
+			toolCalls: Array<{
+				toolCallId: string;
+				toolName: string;
+				input: unknown;
+				providerExecuted?: boolean;
+			}>;
+		},
 	): Promise<ToolCallBatchResult> {
+		const { toolCalls, toolMap, list, runId, telemetry: resolvedTelemetry } = ctx;
 		const executableCalls = toolCalls.filter((tc) => !tc.providerExecuted);
 		const executableCallsById = new Map(executableCalls.map((tc) => [tc.toolCallId, tc]));
 		const unexecutedIds = new Set(executableCalls.map((tc) => tc.toolCallId));
@@ -1358,12 +1329,9 @@ export class AgentRuntime {
 	 * Returns a `ToolCallBatchResult` — the caller handles persistence.
 	 */
 	private async iteratePendingToolCallsConcurrent(
-		pendingResume: PendingResume,
-		toolMap: Map<string, BuiltTool>,
-		list: AgentMessageList,
-		runId: string,
-		resolvedTelemetry?: BuiltTelemetry,
+		ctx: ToolBatchContext & { pendingResume: PendingResume },
 	): Promise<ToolCallBatchResult> {
+		const { pendingResume, toolMap, list, runId, telemetry: resolvedTelemetry } = ctx;
 		const resumedId = pendingResume.resumeToolCallId;
 		const resumedEntry = pendingResume.pendingToolCalls[resumedId];
 		if (!resumedEntry) {
@@ -1454,13 +1422,13 @@ export class AgentRuntime {
 
 		// Execute unexecuted tools via iterateToolCallsConcurrent
 		if (unexecuted.length > 0) {
-			const batch = await this.iterateToolCallsConcurrent(
-				unexecuted,
+			const batch = await this.iterateToolCallsConcurrent({
+				toolCalls: unexecuted,
 				toolMap,
 				list,
 				runId,
-				resolvedTelemetry,
-			);
+				telemetry: resolvedTelemetry,
+			});
 			results.push(...batch.results);
 			suspensions.push(...batch.suspensions);
 			errors.push(...batch.errors);

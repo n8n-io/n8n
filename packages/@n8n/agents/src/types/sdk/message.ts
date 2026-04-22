@@ -90,7 +90,7 @@ export type ContentToolCall = ContentMetadata & {
 	/**
 	 * The identifier of the tool call. It must be unique across all tool calls.
 	 */
-	toolCallId?: string;
+	toolCallId: string;
 
 	/**
 	 * The name of the tool that should be called.
