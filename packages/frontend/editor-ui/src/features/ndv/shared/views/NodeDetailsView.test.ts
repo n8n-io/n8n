@@ -8,6 +8,10 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
@@ -45,7 +49,8 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
-	workflowsStore.nodeMetadata[node.name] = { pristine: true };
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.initPristineNodeMetadata(node.name);
 
 	if (isActiveNode) {
 		ndvStore.setActiveNodeName(node.name, 'other');

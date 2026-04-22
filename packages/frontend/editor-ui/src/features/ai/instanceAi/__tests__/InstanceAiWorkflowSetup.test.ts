@@ -10,6 +10,7 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -636,6 +637,163 @@ describe('InstanceAiWorkflowSetup', () => {
 			// Card with backend-tested credential and unchanged selection should show complete
 			expect(getByTestId('instance-ai-workflow-setup-step-check')).toBeTruthy();
 		});
+
+		it('suppresses credential-test check icon when parameter issues remain', async () => {
+			const requests = [
+				makeSetupNodeWithCredentials('telegramApi', [{ id: 'cred-1', name: 'Telegram Cred' }], {
+					isAutoApplied: true,
+					credentialTestResult: { success: true },
+					parameterIssues: { chatId: ['Parameter "Chat ID" is required.'] },
+					node: {
+						id: 'node-1',
+						name: 'Telegram',
+						type: 'n8n-nodes-base.telegram',
+						typeVersion: 1,
+						parameters: { resource: 'message', operation: 'sendMessage' },
+						position: [0, 0],
+						credentials: { telegramApi: { id: 'cred-1', name: 'Telegram Cred' } },
+					},
+				}),
+			];
+
+			const { queryByTestId } = await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// The small credential-test check icon must not render while the card still
+			// has pending parameter work — users read it as "step complete".
+			expect(queryByTestId('instance-ai-workflow-setup-cred-check')).toBeNull();
+		});
+	});
+
+	describe('node parameter defaults hydration on mount', () => {
+		it('fills hidden node-type parameter defaults into fetched workflow nodes before setWorkflow', async () => {
+			const nodeName = 'Google Sheets Trigger';
+			vi.mocked(fetchWorkflowApi).mockResolvedValueOnce({
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'node-1',
+						name: nodeName,
+						type: 'n8n-nodes-base.googleSheetsTrigger',
+						typeVersion: 1,
+						parameters: {
+							documentId: { __rl: true, mode: 'list', value: '' },
+							event: 'rowAdded',
+						},
+						position: [0, 0],
+					},
+				],
+				connections: {},
+				active: false,
+				versionId: 'v1',
+				createdAt: '',
+				updatedAt: '',
+			} as unknown as Awaited<ReturnType<typeof fetchWorkflowApi>>);
+
+			const nodeTypesStore = useNodeTypesStore();
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => ({
+				name: 'n8n-nodes-base.googleSheetsTrigger',
+				displayName: 'Google Sheets Trigger',
+				group: ['trigger'],
+				version: 1,
+				defaults: {},
+				inputs: [],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'hidden',
+						default: 'triggerOAuth2',
+					},
+					{
+						displayName: 'Event',
+						name: 'event',
+						type: 'options',
+						options: [{ name: 'Row Added', value: 'rowAdded' }],
+						default: 'rowAdded',
+					},
+				],
+			}));
+
+			const workflowsStore = useWorkflowsStore();
+			const setWorkflowSpy = vi.spyOn(workflowsStore, 'setWorkflow');
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack Cred' }]),
+			];
+
+			await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			expect(setWorkflowSpy).toHaveBeenCalled();
+			const firstCall = setWorkflowSpy.mock.calls[0][0];
+			expect(firstCall.nodes[0].parameters).toEqual(
+				expect.objectContaining({
+					authentication: 'triggerOAuth2',
+					event: 'rowAdded',
+				}),
+			);
+		});
+
+		it('skips default hydration for nodes whose node type is unknown', async () => {
+			vi.mocked(fetchWorkflowApi).mockResolvedValueOnce({
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Unknown',
+						type: 'custom.unknown',
+						typeVersion: 1,
+						parameters: { foo: 'bar' },
+						position: [0, 0],
+					},
+				],
+				connections: {},
+				active: false,
+				versionId: 'v1',
+				createdAt: '',
+				updatedAt: '',
+			} as unknown as Awaited<ReturnType<typeof fetchWorkflowApi>>);
+
+			const nodeTypesStore = useNodeTypesStore();
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => null);
+
+			const workflowsStore = useWorkflowsStore();
+			const setWorkflowSpy = vi.spyOn(workflowsStore, 'setWorkflow');
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack Cred' }]),
+			];
+
+			await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			const firstCall = setWorkflowSpy.mock.calls[0][0];
+			expect(firstCall.nodes[0].parameters).toEqual({ foo: 'bar' });
+		});
 	});
 
 	describe('NDV parameter fallback', () => {
@@ -703,6 +861,136 @@ describe('InstanceAiWorkflowSetup', () => {
 					nodeParameters: { [nodeName]: { channel: '#general' } },
 				}),
 			);
+		});
+	});
+
+	describe('degenerate param-only cards', () => {
+		it('does not render a card and auto-applies when the only issue is a nested param (fixedCollection)', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => ({
+				name: 'n8n-nodes-base.dataTable',
+				properties: [
+					{
+						name: 'filters',
+						displayName: 'Filters',
+						type: 'fixedCollection',
+						default: {},
+					},
+				],
+			}));
+
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.getNodeByName = vi.fn().mockReturnValue({
+				id: 'node-1',
+				name: 'DataTable',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			});
+
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+
+			const requests = [
+				makeSetupNode({
+					node: {
+						id: 'node-1',
+						name: 'DataTable',
+						type: 'n8n-nodes-base.dataTable',
+						typeVersion: 1,
+						parameters: {},
+						position: [0, 0],
+					},
+					parameterIssues: { filters: ['Filters are required'] },
+				}),
+			];
+
+			const { queryByTestId } = await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// No wizard card should render — the nested-only issue is handed back to the AI on apply
+			expect(queryByTestId('instance-ai-workflow-setup-card')).toBeNull();
+
+			// Auto-apply kicks in so the backend can re-analyze and retry via partial/skippedNodes
+			await waitFor(() => {
+				expect(confirmSpy).toHaveBeenCalledWith(
+					'req-1',
+					true,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					expect.objectContaining({ action: 'apply' }),
+				);
+			});
+		});
+
+		it('renders a card for mixed issues when at least one is a simple param', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => ({
+				name: 'n8n-nodes-base.dataTable',
+				properties: [
+					{
+						name: 'tableName',
+						displayName: 'Table Name',
+						type: 'string',
+						default: '',
+					},
+					{
+						name: 'filters',
+						displayName: 'Filters',
+						type: 'fixedCollection',
+						default: {},
+					},
+				],
+			}));
+
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.getNodeByName = vi.fn().mockReturnValue({
+				id: 'node-1',
+				name: 'DataTable',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			});
+
+			const requests = [
+				makeSetupNode({
+					node: {
+						id: 'node-1',
+						name: 'DataTable',
+						type: 'n8n-nodes-base.dataTable',
+						typeVersion: 1,
+						parameters: {},
+						position: [0, 0],
+					},
+					parameterIssues: {
+						tableName: ['Table Name is required'],
+						filters: ['Filters are required'],
+					},
+				}),
+			];
+
+			const { getByTestId } = await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			expect(getByTestId('instance-ai-workflow-setup-card')).toBeTruthy();
 		});
 	});
 
