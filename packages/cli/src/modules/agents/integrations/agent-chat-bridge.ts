@@ -237,17 +237,17 @@ export class AgentChatBridge {
 	}
 
 	// ---------------------------------------------------------------------------
-	// Stream consumer — dispatches between streaming and buffered strategies
+	// Stream consumer
 	// ---------------------------------------------------------------------------
 
 	/**
 	 * Consume the agent stream and post to the thread.
 	 *
-	 * Two strategies — selected per integration via the `disableStreaming` flag:
-	 *   • streaming (default): pipe text deltas as an AsyncIterable<string> to
-	 *     `thread.post()`. Chat SDK renders incrementally (post-and-edit).
-	 *   • buffered: accumulate text/reasoning deltas into a string and post once
-	 *     per flush event. Used by Telegram to avoid edit_message rate limits.
+	 * Default: pipe text deltas as an AsyncIterable<string> to `thread.post()`
+	 * so Chat SDK can render incrementally (post-and-edit). Integrations that
+	 * set `disableStreaming` short-circuit to `consumeStreamBuffered`, which
+	 * accumulates deltas into a string and posts them as a single message per
+	 * flush event (used by Telegram to avoid `editMessageText` rate limits).
 	 *
 	 * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
 	 * `error`) flush any pending text first, then get handled in order.
@@ -258,19 +258,9 @@ export class AgentChatBridge {
 	): Promise<void> {
 		if (this.disableStreaming) {
 			await this.consumeStreamBuffered(stream, thread);
-		} else {
-			await this.consumeStreamStreaming(stream, thread);
+			return;
 		}
-	}
 
-	/**
-	 * Streaming consumer — pipes text deltas through an AsyncIterable so the Chat
-	 * SDK can edit the posted message incrementally.
-	 */
-	private async consumeStreamStreaming(
-		stream: AsyncGenerator<StreamChunk>,
-		thread: ChatThread,
-	): Promise<void> {
 		// Controller for the text stream iterable that Chat SDK consumes.
 		// These are reassigned inside `createTextIterable()` (called transitively
 		// by `ensureStreamingPost()`). TypeScript cannot track mutations through
