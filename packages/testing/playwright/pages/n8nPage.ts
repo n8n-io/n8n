@@ -78,10 +78,10 @@ export class n8nPage {
 	readonly chatHubChat: ChatHubChatPage;
 	readonly chatHubPersonalAgents: ChatHubPersonalAgentsPage;
 	readonly chatHubSettings: ChatHubSettingsPage;
-	readonly instanceAi: InstanceAiPage;
 	readonly chatHubWorkflowAgents: ChatHubWorkflowAgentsPage;
 	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
+	readonly instanceAi: InstanceAiPage;
 	readonly interactions: InteractionsPage;
 	readonly keycloakLogin: KeycloakLoginPage;
 	readonly mfaLogin: MfaLoginPage;
@@ -158,10 +158,10 @@ export class n8nPage {
 		this.chatHubChat = new ChatHubChatPage(page);
 		this.chatHubPersonalAgents = new ChatHubPersonalAgentsPage(page);
 		this.chatHubSettings = new ChatHubSettingsPage(page);
-		this.instanceAi = new InstanceAiPage(page);
 		this.chatHubWorkflowAgents = new ChatHubWorkflowAgentsPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
+		this.instanceAi = new InstanceAiPage(page);
 		this.interactions = new InteractionsPage(page);
 		this.keycloakLogin = new KeycloakLoginPage(page);
 		this.mfaLogin = new MfaLoginPage(page);

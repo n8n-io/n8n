@@ -724,7 +724,9 @@ function createDataTableAdapterForTests(overrides?: {
 	};
 
 	const mockDataTableRepository = {
-		findOneByOrFail: jest.fn().mockResolvedValue({ id: 'dt-1', projectId: 'team-project-id' }),
+		findOneByOrFail: jest
+			.fn()
+			.mockResolvedValue({ id: 'dt-1', name: 'Orders', projectId: 'team-project-id' }),
 	};
 
 	const mockSourceControlPreferencesService = {
@@ -844,6 +846,63 @@ describe('createDataTableAdapter', () => {
 			const { adapter } = createDataTableAdapterForTests();
 
 			await expect(adapter.getSchema('dt-1')).rejects.toThrow('Data table "dt-1" not found');
+		});
+	});
+
+	describe('mutation result metadata', () => {
+		it('insertRows returns dataTableId, tableName, and projectId', async () => {
+			const { adapter, mockDataTableService } = createDataTableAdapterForTests();
+			(mockDataTableService as unknown as Record<string, jest.Mock>).insertRows = jest
+				.fn()
+				.mockResolvedValue(5);
+
+			const result = await adapter.insertRows('dt-1', [{ col: 'val' }]);
+
+			expect(result).toEqual({
+				insertedCount: 5,
+				dataTableId: 'dt-1',
+				tableName: 'Orders',
+				projectId: 'team-project-id',
+			});
+		});
+
+		it('updateRows returns dataTableId, tableName, and projectId', async () => {
+			const { adapter, mockDataTableService } = createDataTableAdapterForTests();
+			(mockDataTableService as unknown as Record<string, jest.Mock>).updateRows = jest
+				.fn()
+				.mockResolvedValue([{ id: 'row-1' }, { id: 'row-2' }]);
+
+			const result = await adapter.updateRows(
+				'dt-1',
+				{ type: 'and', filters: [{ columnName: 'status', condition: 'eq', value: 'pending' }] },
+				{ status: 'done' },
+			);
+
+			expect(result).toEqual({
+				updatedCount: 2,
+				dataTableId: 'dt-1',
+				tableName: 'Orders',
+				projectId: 'team-project-id',
+			});
+		});
+
+		it('deleteRows returns dataTableId, tableName, and projectId', async () => {
+			const { adapter, mockDataTableService } = createDataTableAdapterForTests();
+			(mockDataTableService as unknown as Record<string, jest.Mock>).deleteRows = jest
+				.fn()
+				.mockResolvedValue([{ id: 'row-1' }]);
+
+			const result = await adapter.deleteRows('dt-1', {
+				type: 'and',
+				filters: [{ columnName: 'id', condition: 'eq', value: 'row-1' }],
+			});
+
+			expect(result).toEqual({
+				deletedCount: 1,
+				dataTableId: 'dt-1',
+				tableName: 'Orders',
+				projectId: 'team-project-id',
+			});
 		});
 	});
 

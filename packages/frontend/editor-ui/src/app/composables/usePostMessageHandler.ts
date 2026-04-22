@@ -1,5 +1,7 @@
 import { nextTick, type ShallowRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { useRoute } from 'vue-router';
+import { VIEWS } from '@/app/constants';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
@@ -10,6 +12,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { buildExecutionResponseFromSchema } from '@/features/execution/executions/executions.utils';
@@ -40,11 +43,13 @@ export function usePostMessageHandler({
 	const uiStore = useUIStore();
 	const projectsStore = useProjectsStore();
 	const executionsStore = useExecutionsStore();
+	const credentialsStore = useCredentialsStore();
 	const rootStore = useRootStore();
 	const externalHooks = useExternalHooks();
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 
+	const route = useRoute();
 	const workflowsStore = useWorkflowsStore();
 	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
 	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore);
@@ -81,12 +86,24 @@ export function usePostMessageHandler({
 		if (json.projectId) {
 			await projectsStore.fetchAndSetProject(json.projectId);
 		}
+
+		// On the demo route, override the workflow ID to 'demo' so the page
+		// doesn't reference a real workflow — unless canExecute is enabled,
+		// in which case the real ID is needed for execution API calls.
+		if (route.name === VIEWS.DEMO && route.query.canExecute !== 'true') {
+			json.workflow.id = 'demo';
+		}
+
 		await importWorkflowExact(json);
 
 		// importWorkflowExact → resetWorkspace resets activeExecutionId to undefined,
-		// which causes the iframe to reject push execution events. Re-set to null so
-		// the iframe stays receptive to incoming execution push events.
-		if (window !== window.parent) {
+		// which causes the iframe to reject push execution events relayed from the
+		// parent. Re-set to null so the iframe stays receptive — but only when
+		// canExecute is disabled. When canExecute is enabled, leave it as undefined
+		// so the run button isn't disabled (isWorkflowRunning treats null as
+		// "execution starting"). The user-triggered execution flow will handle
+		// activeExecutionId itself.
+		if (window !== window.parent && route.query.canExecute !== 'true') {
 			workflowState.setActiveExecutionId(null);
 		}
 
@@ -115,6 +132,8 @@ export function usePostMessageHandler({
 		if (!data) {
 			return;
 		}
+
+		await credentialsStore.fetchAllCredentialsForWorkflow({ workflowId: data.workflowData.id });
 
 		const wfId = workflowsStore.workflowId;
 		if (wfId) {
@@ -160,6 +179,12 @@ export function usePostMessageHandler({
 		if (!workflow?.nodes || !workflow?.connections) {
 			canvasStore.stopLoading();
 			throw new Error('Invalid workflow object');
+		}
+
+		// Execution previews always use 'demo' ID — they display pre-computed
+		// results and never need real execution API calls.
+		if (window !== window.parent) {
+			json.workflow.id = 'demo';
 		}
 
 		if (json.projectId) {

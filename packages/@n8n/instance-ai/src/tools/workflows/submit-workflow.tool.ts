@@ -8,12 +8,14 @@
 
 import { createTool } from '@mastra/core/tools';
 import type { Workspace } from '@mastra/core/workspace';
+import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { validateWorkflow, layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
+import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
@@ -36,6 +38,8 @@ export interface SubmitWorkflowAttempt {
 	mockedCredentialsByNode?: Record<string, string[]>;
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData?: Record<string, Array<Record<string, unknown>>>;
+	/** Whether any node parameters contain unresolved placeholder values. */
+	hasUnresolvedPlaceholders?: boolean;
 	errors?: string[];
 }
 
@@ -144,6 +148,45 @@ export const submitWorkflowInputSchema = z.object({
 	name: z.string().optional().describe('Workflow name (required for new workflows)'),
 });
 
+export const submitWorkflowOutputSchema = z.object({
+	success: z.boolean(),
+	workflowId: z.string().optional(),
+	workflowName: z.string().optional(),
+	/** Node names whose credentials were mocked via pinned data. */
+	mockedNodeNames: z.array(z.string()).optional(),
+	/** Credential types that were mocked (not resolved to real credentials). */
+	mockedCredentialTypes: z.array(z.string()).optional(),
+	/** Map of node name → credential types that were mocked on that node. */
+	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
+	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
+	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
+	errors: z.array(z.string()).optional(),
+	warnings: z.array(z.string()).optional(),
+});
+
+export type SubmitWorkflowInput = z.infer<typeof submitWorkflowInputSchema>;
+export type SubmitWorkflowOutput = z.infer<typeof submitWorkflowOutputSchema>;
+
+/**
+ * Resolve a raw `filePath` tool argument into an absolute path under the sandbox root.
+ * Exported so identity wrappers can key state by the same resolved path the tool uses.
+ */
+export function resolveSandboxWorkflowFilePath(
+	rawFilePath: string | undefined,
+	root: string,
+): string {
+	if (!rawFilePath) {
+		return `${root}/src/workflow.ts`;
+	}
+	if (rawFilePath.startsWith('~/')) {
+		return `${root.replace(/\/workspace$/, '')}/${rawFilePath.slice(2)}`;
+	}
+	if (!rawFilePath.startsWith('/')) {
+		return `${root}/${rawFilePath}`;
+	}
+	return rawFilePath;
+}
+
 export function createSubmitWorkflowTool(
 	context: InstanceAiContext,
 	workspace: Workspace,
@@ -157,38 +200,15 @@ export function createSubmitWorkflowTool(
 			'and saves it to n8n as a draft. The workflow must be explicitly published via ' +
 			'publish-workflow before it will run on its triggers in production.',
 		inputSchema: submitWorkflowInputSchema,
-		outputSchema: z.object({
-			success: z.boolean(),
-			workflowId: z.string().optional(),
-			/** Node names whose credentials were mocked via pinned data. */
-			mockedNodeNames: z.array(z.string()).optional(),
-			/** Credential types that were mocked (not resolved to real credentials). */
-			mockedCredentialTypes: z.array(z.string()).optional(),
-			/** Map of node name → credential types that were mocked on that node. */
-			mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-			/** Verification-only pin data — scoped to this build, never persisted to workflow. */
-			verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
-			errors: z.array(z.string()).optional(),
-			warnings: z.array(z.string()).optional(),
-		}),
+		outputSchema: submitWorkflowOutputSchema,
 		execute: async ({
 			filePath: rawFilePath,
 			workflowId,
 			projectId,
 			name,
-		}: z.infer<typeof submitWorkflowInputSchema>) => {
-			// Resolve file path: relative paths resolve against workspace root, ~ is expanded
+		}: SubmitWorkflowInput) => {
 			const root = await getWorkspaceRoot(workspace);
-			let filePath: string;
-			if (!rawFilePath) {
-				filePath = `${root}/src/workflow.ts`;
-			} else if (rawFilePath.startsWith('~/')) {
-				filePath = `${root.replace(/\/workspace$/, '')}/${rawFilePath.slice(2)}`;
-			} else if (!rawFilePath.startsWith('/')) {
-				filePath = `${root}/${rawFilePath}`;
-			} else {
-				filePath = rawFilePath;
-			}
+			const filePath = resolveSandboxWorkflowFilePath(rawFilePath, root);
 
 			const sourceHash = hashContent(await readFileViaSandbox(workspace, filePath));
 			const reportAttempt = async (
@@ -301,6 +321,12 @@ export function createSubmitWorkflowTool(
 			// Unresolved credentials are mocked via pinned data when available.
 			const mockResult = await resolveCredentials(json, workflowId, context, credentialMap);
 
+			// Strip credential entries that are no longer valid for the current
+			// parameters. Resolution above (and the LLM itself) can re-emit stale
+			// references between turns; without this, setup analysis would surface
+			// a credential request for a node that no longer needs one.
+			await stripStaleCredentialsFromWorkflow(context, json);
+
 			// Ensure webhook nodes have a webhookId so n8n registers clean paths
 			// (e.g., "{uuid}/dashboard" instead of "{workflowId}/{encodedNodeName}/dashboard").
 			// The SDK's toJSON() doesn't emit webhookId, so we inject it here.
@@ -346,6 +372,10 @@ export function createSubmitWorkflowTool(
 				(n) => n.type?.endsWith?.('Trigger') || n.type?.endsWith?.('trigger'),
 			);
 			const triggerNodeTypes = triggers.map((t) => t.type).filter(Boolean);
+
+			// Scan node parameters for unresolved placeholder values
+			const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
+
 			await reportAttempt({
 				success: true,
 				workflowId: savedId,
@@ -359,6 +389,7 @@ export function createSubmitWorkflowTool(
 					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 						? mockResult.verificationPinData
 						: undefined,
+				hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 			});
 			return {
 				success: true,

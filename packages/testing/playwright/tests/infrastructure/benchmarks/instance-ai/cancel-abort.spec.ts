@@ -40,7 +40,7 @@ test.describe(
 						await page.goto('/instance-ai');
 						await ai.getContainer().waitFor({ state: 'visible', timeout: 15_000 });
 						await ai.getChatInput().waitFor({ state: 'visible', timeout: 10_000 });
-						await ai.getNewThreadButton().click();
+						await ai.sidebar.getNewThreadButton().click();
 						await page.waitForURL(/\/instance-ai\/[0-9a-f-]+/, { timeout: 10_000 });
 
 						const threadId = page.url().match(/\/instance-ai\/([0-9a-f-]+)/)?.[1];

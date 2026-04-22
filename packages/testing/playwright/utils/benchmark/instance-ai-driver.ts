@@ -110,7 +110,7 @@ export class InstanceAiDriver {
 				await ai.getChatInput().waitFor({ state: 'visible', timeout: 10_000 });
 
 				// Create thread (click new chat, wait for URL)
-				await ai.getNewThreadButton().click();
+				await ai.sidebar.getNewThreadButton().click();
 				await page.waitForURL(/\/instance-ai\/[0-9a-f-]+/, { timeout: 10_000 });
 				const threadId = this.extractThreadId(page);
 				this.createdThreadIds.push(threadId);

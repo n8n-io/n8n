@@ -4,25 +4,22 @@ import { extend, extendOptional } from '../extensions/extend';
 
 import { SafeObject, SafeError, ExpressionError } from './safe-globals';
 import { createDeepLazyProxy } from './lazy-proxy';
-import { resetDataProxies } from './reset';
+import { buildContext } from './context';
 import { __prepareForTransfer } from './serialize';
 
 // Augment globalThis with runtime properties
 declare global {
 	namespace globalThis {
-		// Callbacks from bridge (ivm.Reference)
-		var __getValueAtPath: any;
-		var __getArrayElement: any;
-		var __callFunctionAtPath: any;
-
-		// Data container
-		var __data: Record<string, unknown>;
-
 		// Proxy creator function
 		var createDeepLazyProxy: (basePath?: string[]) => any;
 
-		// Reset function (Step 3)
-		var resetDataProxies: () => void;
+		// Context builder (closure-scoped alternative to resetDataProxies)
+		var buildContext: (
+			getValueAtPath: any,
+			getArrayElement: any,
+			callFunctionAtPath: any,
+			timezone?: string,
+		) => Record<string, unknown>;
 
 		// Safe wrappers
 		var SafeObject: typeof Object;
@@ -35,31 +32,6 @@ declare global {
 		var __prepareForTransfer: (value: unknown) => unknown;
 		var extend: typeof import('../extensions/extend').extend;
 		var extendOptional: typeof import('../extensions/extend').extendOptional;
-
-		// Workflow data exposed for expression access
-		var $json: unknown;
-		var $binary: unknown;
-		var $input: unknown;
-		var $node: unknown;
-		var $parameter: unknown;
-		var $workflow: unknown;
-		var $prevNode: unknown;
-		var $data: unknown;
-		var $env: unknown;
-		var $runIndex: number | undefined;
-		var $itemIndex: number | undefined;
-		var $now: import('luxon').DateTime;
-		var $today: import('luxon').DateTime;
-		var $items: unknown;
-		var $execution: unknown;
-		var $vars: unknown;
-		var $secrets: unknown;
-		var $executionId: string | undefined;
-		var $resumeWebhookUrl: string | undefined;
-		var $webhookId: string | undefined;
-		var $nodeId: string | undefined;
-		var $nodeVersion: number | undefined;
-		var $: (nodeName: string) => unknown;
 	}
 }
 
@@ -83,8 +55,5 @@ globalThis.SafeError = SafeError;
 (globalThis as any).ExpressionError = ExpressionError;
 
 globalThis.createDeepLazyProxy = createDeepLazyProxy;
-globalThis.resetDataProxies = resetDataProxies;
+globalThis.buildContext = buildContext;
 globalThis.__prepareForTransfer = __prepareForTransfer;
-
-// Initialize empty __data object (populated by resetDataProxies before each evaluation)
-globalThis.__data = {};
