@@ -416,7 +416,10 @@ describe('EphemeralNodeExecutor', () => {
 			});
 
 			expect(result).toBeNull();
-			expect(logger.debug).toHaveBeenCalledWith(
+			// Warn-level so MCP/credential introspection bugs surface in dev — a
+			// silent failure here would let the LLM be told a different schema
+			// than the one it's invoked against.
+			expect(logger.warn).toHaveBeenCalledWith(
 				'supplyData tool introspection failed',
 				expect.objectContaining({ error: 'MCP server unreachable' }),
 			);

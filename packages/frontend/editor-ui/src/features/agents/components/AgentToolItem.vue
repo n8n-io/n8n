@@ -10,10 +10,13 @@
  * Kept as a sibling component so Chat Hub's list item remains untouched.
  */
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
+
+import ToolConnectedBadge from './ToolConnectedBadge.vue';
+import ToolCredsMissingChip from './ToolCredsMissingChip.vue';
 
 const props = defineProps<{
 	nodeType: INodeTypeDescription;
@@ -64,27 +67,15 @@ const displayName = computed(() => {
 
 		<div :class="$style.actions">
 			<template v-if="mode === 'configured'">
-				<span
+				<ToolCredsMissingChip
 					v-if="missingCredentials"
-					:class="$style.credsWarning"
 					data-test-id="agent-tool-add-credentials-chip"
-				>
-					<N8nIcon icon="triangle-alert" :size="14" />
-					<span>{{ i18n.baseText('agents.tools.addCredentials') }}</span>
-				</span>
-				<div v-else :class="$style.connectedBadge">
-					<N8nIcon icon="check" :size="14" />
-					<span>{{ i18n.baseText('agents.tools.connected') }}</span>
-				</div>
+					@click="emit('configure')"
+				/>
+				<ToolConnectedBadge v-else />
 
 				<N8nTooltip :content="i18n.baseText('agents.tools.configure')">
-					<N8nIconButton
-						icon="settings"
-						variant="ghost"
-						text
-						:class="$style.actionButton"
-						@click="emit('configure')"
-					/>
+					<N8nIconButton icon="settings" variant="ghost" text @click="emit('configure')" />
 				</N8nTooltip>
 			</template>
 
@@ -140,26 +131,5 @@ const displayName = computed(() => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
-}
-
-.connectedBadge {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--md);
-}
-
-.credsWarning {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--5xs) var(--spacing--2xs);
-	background-color: var(--color--warning--tint-2);
-	color: var(--color--warning--shade-1);
-	border-radius: var(--radius);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
 }
 </style>

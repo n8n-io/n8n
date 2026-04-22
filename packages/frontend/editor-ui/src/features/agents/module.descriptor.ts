@@ -23,10 +23,6 @@ const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
 const NewAgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/NewAgentView.vue');
-const AgentToolsModalDemo = async (): Promise<unknown> =>
-	await import('@/features/agents/views/AgentToolsModalDemo.vue');
-const AgentToolsPanelDemo = async (): Promise<unknown> =>
-	await import('@/features/agents/views/AgentToolsPanelDemo.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',
@@ -111,24 +107,6 @@ export const AgentsModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'custom'],
 			},
 		},
-		// Iterative-UI-development harness only — skipped in production builds,
-		// never linked from the app. Used by `.tmp/out-*.png` vs Figma pixel diffs.
-		...(import.meta.env.DEV
-			? [
-					{
-						name: 'AgentToolsModalDemo',
-						path: '/ui-demo/agent-tools-modal',
-						component: AgentToolsModalDemo,
-						meta: { layout: 'auth' as const },
-					},
-					{
-						name: 'AgentToolsPanelDemo',
-						path: '/ui-demo/agent-tools-sidebar',
-						component: AgentToolsPanelDemo,
-						meta: { layout: 'auth' as const },
-					},
-				]
-			: []),
 	],
 	projectTabs: {
 		overview: [

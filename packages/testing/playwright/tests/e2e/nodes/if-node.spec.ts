@@ -41,7 +41,13 @@ test.describe(
 		test('should correctly evaluate conditions', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('Test_workflow_filter.json');
 
-			await n8n.canvas.clickExecuteWorkflowButton();
+			// Wait for the execution to finish + the success notification to appear
+			// before opening branch nodes. Without this, the output panel can race
+			// with a still-running execution and show its empty ("No output data")
+			// state, which is what caused this test to flake in CI.
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
 
 			await n8n.canvas.openNode('Then');
 			await expect(n8n.ndv.outputPanel.get()).toContainText('3 items');

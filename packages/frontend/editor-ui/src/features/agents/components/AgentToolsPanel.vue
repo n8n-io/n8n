@@ -15,11 +15,14 @@ import { computed } from 'vue';
 import { N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
+import type { INodeUi } from '@/Interface';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { CustomToolEntry } from '../agent.types';
-import { isToolMissingCredentials } from '../composables/useAgentToolRefAdapter';
+import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
+import ToolCredsMissingChip from './ToolCredsMissingChip.vue';
 
 const props = defineProps<{
 	config: AgentJsonConfig | null;
@@ -33,6 +36,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const nodeHelpers = useNodeHelpers();
 
 const tools = computed<AgentJsonToolRef[]>(() => props.config?.tools ?? []);
 
@@ -58,7 +62,12 @@ const rows = computed<ToolRowView[]>(() =>
 			const nt = nodeTypesStore.getNodeType(ref.node.nodeType, ref.node.nodeTypeVersion);
 			const creds = ref.node.credentials ?? {};
 			const firstCred = Object.values(creds)[0];
-			const missing = isToolMissingCredentials(ref, nt);
+			// Build an INode and run it through the canvas's credential validator so
+			// the sidebar's "missing creds" chip tracks the same rules the canvas
+			// uses for its red border (displayOptions, proxy auth, gateway creds).
+			const node = toolRefToNode(ref);
+			const issues = node && nt ? nodeHelpers.getNodeCredentialIssues(node as INodeUi, nt) : null;
+			const missing = !!issues?.credentials && Object.keys(issues.credentials).length > 0;
 			return {
 				key,
 				ref,
@@ -141,16 +150,12 @@ function removeTool(ref: AgentJsonToolRef) {
 				<div :class="$style.actions">
 					<!-- Missing-creds chip is the primary CTA to fix the tool.
 						 Always visible so the row communicates its broken state. -->
-					<button
+					<ToolCredsMissingChip
 						v-if="row.missingCredentials"
-						type="button"
-						:class="$style.credsWarning"
+						variant="pill"
 						data-test-id="agent-sidebar-add-credentials-chip"
 						@click="emit('configure', row.ref)"
-					>
-						<N8nIcon icon="triangle-alert" :size="14" />
-						<span>{{ i18n.baseText('agents.tools.addCredentials') }}</span>
-					</button>
+					/>
 
 					<!-- Gear is hidden on missing-creds rows because the chip already opens
 						 the same config modal — showing both would duplicate the CTA. -->
@@ -285,25 +290,6 @@ function removeTool(ref: AgentJsonToolRef) {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	flex-shrink: 0;
-}
-
-.credsWarning {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--5xs) var(--spacing--2xs);
-	background-color: var(--color--warning--tint-2);
-	color: var(--color--warning--shade-1);
-	border-radius: 99px;
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	white-space: nowrap;
-	border: none;
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--color--warning--tint-1);
-	}
 }
 
 .gearBtn,

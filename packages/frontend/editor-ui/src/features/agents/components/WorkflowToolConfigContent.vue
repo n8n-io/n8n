@@ -14,7 +14,7 @@
  * trigger type — we don't configure it here.
  */
 import { ref, watch } from 'vue';
-import { N8nInput, N8nText } from '@n8n/design-system';
+import { N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { AgentJsonToolRef } from '../types';
@@ -89,14 +89,11 @@ defineExpose({
 		</div>
 
 		<div :class="$style.field">
-			<label :class="[$style.label, $style.checkboxLabel]">
-				<input
-					v-model="allOutputs"
-					type="checkbox"
-					data-test-id="agent-workflow-tool-all-outputs"
-				/>
-				<span>{{ i18n.baseText('agents.toolConfig.workflow.allOutputs') }}</span>
-			</label>
+			<N8nCheckbox
+				v-model="allOutputs"
+				:label="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
+				data-test-id="agent-workflow-tool-all-outputs"
+			/>
 			<N8nText size="xsmall" color="text-light">
 				{{ i18n.baseText('agents.toolConfig.workflow.allOutputs.hint') }}
 			</N8nText>
@@ -122,13 +119,5 @@ defineExpose({
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
-}
-
-.checkboxLabel {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	font-weight: var(--font-weight--regular);
-	cursor: pointer;
 }
 </style>

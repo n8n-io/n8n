@@ -3,7 +3,6 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
 import type { IWorkflowDb } from '@/Interface';
 import {
-	isToolMissingCredentials,
 	nodeTypeToNewToolRef,
 	toBaseNodeType,
 	toolRefToNode,
@@ -289,52 +288,6 @@ describe('useAgentToolRefAdapter', () => {
 				position: [0, 0],
 			};
 			expect(updateToolRefFromNode(workflowRef, node)).toBe(workflowRef);
-		});
-	});
-
-	describe('isToolMissingCredentials()', () => {
-		const ref = (credentials?: Record<string, { id: string; name: string }>): AgentJsonToolRef => ({
-			type: 'node',
-			name: 'Slack',
-			node: {
-				nodeType: 'n8n-nodes-base.slack',
-				nodeTypeVersion: 1,
-				credentials,
-			},
-		});
-
-		it('returns false when the node declares no credentials', () => {
-			const nt = makeNodeType({ credentials: [] });
-			expect(isToolMissingCredentials(ref(), nt)).toBe(false);
-		});
-
-		it('returns false when all required credentials are saved', () => {
-			const nt = makeNodeType({ credentials: [{ name: 'slackApi', required: true }] });
-			expect(isToolMissingCredentials(ref({ slackApi: { id: 'c', name: 'x' } }), nt)).toBe(false);
-		});
-
-		it('returns true when a required credential has no saved entry', () => {
-			const nt = makeNodeType({ credentials: [{ name: 'slackApi', required: true }] });
-			expect(isToolMissingCredentials(ref(), nt)).toBe(true);
-		});
-
-		it('treats missing `required` as required (default true)', () => {
-			const nt = makeNodeType({ credentials: [{ name: 'slackApi' }] });
-			expect(isToolMissingCredentials(ref(), nt)).toBe(true);
-		});
-
-		it('ignores credentials explicitly marked required: false', () => {
-			const nt = makeNodeType({ credentials: [{ name: 'slackApi', required: false }] });
-			expect(isToolMissingCredentials(ref(), nt)).toBe(false);
-		});
-
-		it('returns false for non-node tool refs', () => {
-			const nt = makeNodeType({ credentials: [{ name: 'slackApi', required: true }] });
-			expect(isToolMissingCredentials({ type: 'workflow', workflow: 'w-1' }, nt)).toBe(false);
-		});
-
-		it('returns false when the node type cannot be resolved', () => {
-			expect(isToolMissingCredentials(ref(), null)).toBe(false);
 		});
 	});
 

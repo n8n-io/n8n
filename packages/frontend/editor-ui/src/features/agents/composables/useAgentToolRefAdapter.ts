@@ -171,22 +171,6 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
 }
 
 /**
- * A node-type tool is missing credentials when the underlying node declares
- * at least one required credential type but the tool ref has no matching
- * saved credential entry.
- */
-export function isToolMissingCredentials(
-	ref: AgentJsonToolRef,
-	nodeType: INodeTypeDescription | null,
-): boolean {
-	if (ref.type !== 'node' || !ref.node || !nodeType) return false;
-	const required = (nodeType.credentials ?? []).filter((c) => c.required !== false);
-	if (required.length === 0) return false;
-	const saved = ref.node.credentials ?? {};
-	return required.some((c) => !saved[c.name] || !saved[c.name].id);
-}
-
-/**
  * Build a new `AgentJsonToolRef` of type `workflow` from the user's chosen
  * workflow. Persists the workflow's **name** (not id) on `ref.workflow`
  * because the backend's `buildWorkflowTool` looks workflows up by name scoped
@@ -200,6 +184,19 @@ export function workflowToNewToolRef(workflow: IWorkflowDb): AgentJsonToolRef {
 		description: workflow.description ?? '',
 		allOutputs: false,
 	};
+}
+
+/**
+ * Collect the display names of every tool in the list, optionally excluding
+ * the one currently being edited. Feeds the config form's name-uniqueness
+ * check from both the sidebar gear path and the tools-modal connect / gear
+ * paths so they stay in sync.
+ */
+export function getExistingToolNames(
+	tools: AgentJsonToolRef[],
+	exclude?: AgentJsonToolRef,
+): string[] {
+	return tools.filter((t) => t !== exclude && t.name).map((t) => t.name as string);
 }
 
 /** Merge edits from the workflow config form back into the ref. */

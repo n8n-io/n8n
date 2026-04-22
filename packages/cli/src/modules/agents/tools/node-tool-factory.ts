@@ -17,6 +17,23 @@ export interface NodeToolFactoryContext {
 	projectId: string;
 }
 
+/**
+ * Shape the config's credential map for the executor. Both introspection (at
+ * tool-registration time) and invocation (at LLM-call time) need to hand the
+ * executor a `Record<slot, { id, name }>`, and both want to drop entries whose
+ * credential hasn't been persisted yet (no id).
+ */
+function toExecutorCredentials(
+	credentials: Extract<AgentJsonToolConfig, { type: 'node' }>['node']['credentials'],
+): Record<string, { id: string; name: string }> | undefined {
+	if (!credentials) return undefined;
+	const out: Record<string, { id: string; name: string }> = {};
+	for (const [slot, ref] of Object.entries(credentials)) {
+		if (ref.id) out[slot] = { id: ref.id, name: ref.name };
+	}
+	return Object.keys(out).length > 0 ? out : undefined;
+}
+
 function isZodSchema(value: unknown): value is ZodType {
 	return (
 		typeof value === 'object' &&
@@ -65,14 +82,7 @@ async function resolveInputSchema(
 				nodeType: toolSchema.node.nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
-				credentials: toolSchema.node.credentials
-					? Object.fromEntries(
-							Object.entries(toolSchema.node.credentials).map(([slot, ref]) => [
-								slot,
-								{ id: ref.id, name: ref.name },
-							]),
-						)
-					: null,
+				credentials: toExecutorCredentials(toolSchema.node.credentials) ?? null,
 			});
 
 			if (isZodSchema(introspected)) {
@@ -119,19 +129,11 @@ export async function resolveNodeTool(
 		.description(toolSchema.description ?? `Execute the ${toolSchema.node.nodeType} node`)
 		.input(await resolveInputSchema(toolSchema, ctx))
 		.handler(async (input: Record<string, unknown>) => {
-			const credentialDetails: Record<string, { id: string; name: string }> = {};
-			for (const [slot, ref] of Object.entries(toolSchema.node.credentials ?? {})) {
-				if (ref.id) {
-					credentialDetails[slot] = { id: ref.id, name: ref.name };
-				}
-			}
-
 			return await ctx.executor.executeInline({
 				nodeType: toolSchema.node.nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
-				credentialDetails:
-					Object.keys(credentialDetails).length > 0 ? credentialDetails : undefined,
+				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
 				inputData: [{ json: input as IDataObject }],
 				projectId: ctx.projectId,
 			});

@@ -1,52 +1,26 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import Modal from '@/app/components/Modal.vue';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
-import {
-	N8nHeading,
-	N8nIcon,
-	N8nIconButton,
-	N8nInput,
-	N8nText,
-	N8nTooltip,
-	N8nButton,
-} from '@n8n/design-system';
+import { N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
-	NodeConnectionTypes,
-	SCHEDULE_TRIGGER_NODE_TYPE,
-	type INode,
-	type INodeTypeDescription,
-} from 'n8n-workflow';
-
-// Keep in sync with `SUPPORTED_TRIGGERS` in
-// `packages/cli/src/modules/agents/tools/workflow-tool-factory.ts`. Workflows
-// without one of these triggers fail backend compatibility validation on save,
-// so filter them out of the Available list up front.
-const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
-	MANUAL_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-];
+import { NodeConnectionTypes, type INode, type INodeTypeDescription } from 'n8n-workflow';
+import { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from '@n8n/api-types';
 import nodePopularity from 'virtual:node-popularity-data';
 
 import AgentToolItem from './AgentToolItem.vue';
+import WorkflowToolRow from './WorkflowToolRow.vue';
 
-import type { IWorkflowDb } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { AgentJsonToolRef } from '../types';
 import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
-	isToolMissingCredentials,
+	getExistingToolNames,
 	nodeTypeToNewToolRef,
 	toolRefToNode,
 	workflowToNewToolRef,
@@ -67,6 +41,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const nodeHelpers = useNodeHelpers();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
@@ -130,11 +105,13 @@ onMounted(async () => {
 	try {
 		const workflows = await workflowsListStore.searchWorkflows({
 			projectId: props.data.projectId,
-			triggerNodeTypes: SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
+			triggerNodeTypes: [...SUPPORTED_WORKFLOW_TOOL_TRIGGERS],
 		});
 		workflowsListStore.setWorkflows(workflows);
-	} catch {
-		// Non-fatal — the Available list just stays workflow-free.
+	} catch (error) {
+		// Non-fatal — render without the Workflows section. Log so a flaky fetch
+		// doesn't masquerade as "no workflows available".
+		console.warn('[AgentToolsModal] failed to load workflows for project', error);
 	}
 });
 
@@ -166,11 +143,16 @@ const configuredTools = computed<ConfiguredToolView[]>(() => {
 		if (!node) continue;
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (!nodeType) continue;
+		// Reuse the same credential-validation chain the canvas uses to paint its
+		// red border — respects displayOptions, proxy auth, and gateway-managed
+		// creds so a tool in our list flags missing creds iff the equivalent
+		// canvas node would.
+		const issues = nodeHelpers.getNodeCredentialIssues(node as INodeUi, nodeType);
 		out.push({
 			ref,
 			node,
 			nodeType,
-			missingCredentials: isToolMissingCredentials(ref, nodeType),
+			missingCredentials: !!issues?.credentials && Object.keys(issues.credentials).length > 0,
 		});
 	}
 	return out;
@@ -240,13 +222,11 @@ const filteredAvailableWorkflows = computed(() => {
 function openConfigForNewRef(newRef: AgentJsonToolRef) {
 	// Connect → open the config panel first. The ref only enters workingTools
 	// once the user hits Save, so a cancelled config leaves the list untouched.
-	const existingToolNames = workingTools.value.filter((t) => t.name).map((t) => t.name as string);
-
 	uiStore.openModalWithData({
 		name: AGENT_TOOL_CONFIG_MODAL_KEY,
 		data: {
 			toolRef: newRef,
-			existingToolNames,
+			existingToolNames: getExistingToolNames(workingTools.value),
 			onConfirm: (savedRef: AgentJsonToolRef) => {
 				workingTools.value = [...workingTools.value, savedRef];
 				toolTelemetry.trackAdded(savedRef);
@@ -268,15 +248,11 @@ function handleAddWorkflow(workflow: IWorkflowDb) {
 
 function handleConfigureTool(toolRef: AgentJsonToolRef) {
 	// Node name collision check feeds the shared form's uniqueness logic.
-	const existingToolNames = workingTools.value
-		.filter((t) => t !== toolRef && t.name)
-		.map((t) => t.name as string);
-
 	uiStore.openModalWithData({
 		name: AGENT_TOOL_CONFIG_MODAL_KEY,
 		data: {
 			toolRef,
-			existingToolNames,
+			existingToolNames: getExistingToolNames(workingTools.value, toolRef),
 			onConfirm: (updatedRef: AgentJsonToolRef) => {
 				workingTools.value = workingTools.value.map((t) => (t === toolRef ? updatedRef : t));
 				toolTelemetry.trackEdited(updatedRef);
@@ -332,46 +308,16 @@ function commit() {
 							mode="configured"
 							@configure="handleConfigureTool(tool.ref)"
 						/>
-						<div
+						<WorkflowToolRow
 							v-for="(wf, index) in filteredConfiguredWorkflows"
 							:key="wf.ref.id ?? `wf-${index}`"
-							:class="$style.workflowRow"
-							data-test-id="agent-tools-connected-workflow-row"
-						>
-							<div :class="$style.workflowLabel">
-								<div :class="$style.workflowIconWrapper">
-									<N8nIcon icon="workflow" :size="20" :class="$style.workflowIcon" />
-								</div>
-								<div :class="$style.workflowTextWrapper">
-									<N8nText size="small" color="text-dark" :class="$style.workflowName">
-										{{ wf.name }}
-									</N8nText>
-									<N8nText
-										v-if="wf.description"
-										size="small"
-										color="text-light"
-										:class="$style.workflowDescription"
-									>
-										{{ wf.description }}
-									</N8nText>
-								</div>
-							</div>
-							<div :class="$style.workflowActions">
-								<div :class="$style.connectedBadge">
-									<N8nIcon icon="check" :size="14" />
-									<span>{{ i18n.baseText('agents.tools.connected') }}</span>
-								</div>
-								<N8nTooltip :content="i18n.baseText('agents.tools.configure')">
-									<N8nIconButton
-										icon="settings"
-										variant="ghost"
-										text
-										data-test-id="agent-tools-connected-workflow-configure"
-										@click="handleConfigureTool(wf.ref)"
-									/>
-								</N8nTooltip>
-							</div>
-						</div>
+							mode="configured"
+							:name="wf.name"
+							:description="wf.description"
+							row-test-id="agent-tools-connected-workflow-row"
+							configure-test-id="agent-tools-connected-workflow-configure"
+							@configure="handleConfigureTool(wf.ref)"
+						/>
 					</div>
 				</div>
 
@@ -403,34 +349,15 @@ function commit() {
 						}}
 					</N8nHeading>
 					<div :class="$style.toolsList" data-test-id="agent-tools-available-workflows-list">
-						<div
+						<WorkflowToolRow
 							v-for="workflow in filteredAvailableWorkflows"
 							:key="workflow.id"
-							:class="$style.workflowRow"
-							data-test-id="agent-tools-available-workflow-row"
-						>
-							<div :class="$style.workflowLabel">
-								<div :class="$style.workflowIconWrapper">
-									<N8nIcon icon="workflow" :size="20" :class="$style.workflowIcon" />
-								</div>
-								<div :class="$style.workflowTextWrapper">
-									<N8nText size="small" color="text-dark" :class="$style.workflowName">
-										{{ workflow.name }}
-									</N8nText>
-									<N8nText
-										v-if="workflow.description"
-										size="small"
-										color="text-light"
-										:class="$style.workflowDescription"
-									>
-										{{ workflow.description }}
-									</N8nText>
-								</div>
-							</div>
-							<N8nButton variant="subtle" size="small" @click="handleAddWorkflow(workflow)">
-								{{ i18n.baseText('agents.tools.connect') }}
-							</N8nButton>
-						</div>
+							mode="available"
+							:name="workflow.name"
+							:description="workflow.description"
+							row-test-id="agent-tools-available-workflow-row"
+							@add="handleAddWorkflow(workflow)"
+						/>
 					</div>
 				</div>
 
@@ -491,69 +418,6 @@ function commit() {
 .toolsList {
 	display: flex;
 	flex-direction: column;
-}
-
-.workflowRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--sm) 0;
-}
-
-.workflowLabel {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	min-width: 0;
-	flex: 1;
-}
-
-.workflowIconWrapper {
-	flex-shrink: 0;
-	width: 32px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.workflowIcon {
-	color: var(--color--primary);
-}
-
-.workflowTextWrapper {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
-}
-
-.workflowName {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.workflowDescription {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.workflowActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
-}
-
-.connectedBadge {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--md);
 }
 
 .emptyState {

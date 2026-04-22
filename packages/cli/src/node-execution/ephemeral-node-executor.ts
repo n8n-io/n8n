@@ -210,13 +210,15 @@ export class EphemeralNodeExecutor {
 	}
 
 	/**
-	 * Execute a node directly without persisting a workflow or execution to the DB.
-	 * Mirrors the pattern from WorkflowExecute.executeNode and DynamicNodeParametersService.
+	 * Assemble the shared pieces (node, ephemeral workflow, additionalData,
+	 * execute data) both context classes need. Keeps `executeNodeDirectly` and
+	 * `withSupplyDataTool` from drifting — the setup is identical up to the
+	 * choice of context class.
 	 */
-	private async executeNodeDirectly(
+	private async buildEphemeralContextParts(
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
-	): Promise<NodeExecutionResult> {
+	) {
 		const node: INode = {
 			id: uuid(),
 			name: 'Target Node',
@@ -226,41 +228,48 @@ export class EphemeralNodeExecutor {
 			parameters: tool.nodeParameters,
 			credentials: tool.credentials ?? undefined,
 		};
-
 		const workflow = new Workflow({
 			nodes: [node],
 			connections: {},
 			active: false,
 			nodeTypes: this.nodeTypes,
 		});
-
 		const additionalData = await getBase({ projectId: tool.projectId });
-
 		const runExecutionData = createEmptyRunExecutionData();
+		const inputData: ITaskDataConnections = { main: [inputItems] };
+		const executeData: IExecuteData = { node, data: inputData, source: null };
 		const mode = 'internal' as const;
-		const runIndex = 0;
-		const connectionInputData = inputItems;
-
-		const inputData: ITaskDataConnections = {
-			main: [inputItems],
-		};
-
-		const executeData: IExecuteData = {
+		return {
 			node,
-			data: inputData,
-			source: null,
-		};
-
-		const context = new ExecuteContext(
 			workflow,
-			node,
 			additionalData,
-			mode,
 			runExecutionData,
-			runIndex,
-			connectionInputData,
 			inputData,
 			executeData,
+			mode,
+		};
+	}
+
+	/**
+	 * Execute a node directly without persisting a workflow or execution to the DB.
+	 * Mirrors the pattern from WorkflowExecute.executeNode and DynamicNodeParametersService.
+	 */
+	private async executeNodeDirectly(
+		tool: EphemeralWorkflowToolLike,
+		inputItems: INodeExecutionData[],
+	): Promise<NodeExecutionResult> {
+		const parts = await this.buildEphemeralContextParts(tool, inputItems);
+
+		const context = new ExecuteContext(
+			parts.workflow,
+			parts.node,
+			parts.additionalData,
+			parts.mode,
+			parts.runExecutionData,
+			0,
+			inputItems,
+			parts.inputData,
+			parts.executeData,
 			[],
 		);
 
@@ -343,41 +352,20 @@ export class EphemeralNodeExecutor {
 		inputItems: INodeExecutionData[],
 		onTool: (langchainTool: Tool) => Promise<T> | T,
 	): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
-		const node: INode = {
-			id: uuid(),
-			name: 'Target Node',
-			type: tool.nodeType,
-			typeVersion: tool.nodeTypeVersion,
-			position: [0, 0],
-			parameters: tool.nodeParameters,
-			credentials: tool.credentials ?? undefined,
-		};
-
-		const workflow = new Workflow({
-			nodes: [node],
-			connections: {},
-			active: false,
-			nodeTypes: this.nodeTypes,
-		});
-
-		const additionalData = await getBase({ projectId: tool.projectId });
-		const runExecutionData = createEmptyRunExecutionData();
-		const mode = 'internal' as const;
-		const inputData: ITaskDataConnections = { main: [inputItems] };
-		const executeData: IExecuteData = { node, data: inputData, source: null };
+		const parts = await this.buildEphemeralContextParts(tool, inputItems);
 		const closeFunctions: CloseFunction[] = [];
 
 		const context = new SupplyDataContext(
-			workflow,
-			node,
-			additionalData,
-			mode,
-			runExecutionData,
+			parts.workflow,
+			parts.node,
+			parts.additionalData,
+			parts.mode,
+			parts.runExecutionData,
 			0,
 			inputItems,
-			inputData,
+			parts.inputData,
 			NodeConnectionTypes.AiTool,
-			executeData,
+			parts.executeData,
 			closeFunctions,
 		);
 
@@ -465,7 +453,11 @@ export class EphemeralNodeExecutor {
 		});
 
 		if (!result.ok) {
-			this.logger.debug('supplyData tool introspection failed', {
+			// Warn (not debug) so MCP / credential introspection bugs surface in the
+			// normal dev loop — registration continues either way via `null`, but an
+			// invisible failure here has historically been a source of "why is the
+			// LLM being told a different schema than the one it's called against?".
+			this.logger.warn('supplyData tool introspection failed', {
 				nodeType: tool.nodeType,
 				error: result.error,
 			});

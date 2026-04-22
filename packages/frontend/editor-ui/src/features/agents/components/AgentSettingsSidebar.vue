@@ -11,6 +11,7 @@ import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { CustomToolEntry } from '../agent.types';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
+import { getExistingToolNames } from '../composables/useAgentToolRefAdapter';
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import { CHATHUB_TO_CATALOG, CATALOG_TO_CHATHUB } from '../provider-mapping';
 import AgentPublishButton from './AgentPublishButton.vue';
@@ -20,13 +21,6 @@ import AgentIntegrationsPanel from './AgentIntegrationsPanel.vue';
 import AgentConfigJsonEditor from './AgentConfigJsonEditor.vue';
 import AgentCustomToolsList from './AgentCustomToolsList.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-
-const toolCount = computed(() => Object.keys(props.agentTools).length);
-
-const locale = useI18n();
-const usersStore = useUsersStore();
-const chatStore = useChatStore();
-const uiStore = useUIStore();
 
 const props = defineProps<{
 	config: AgentJsonConfig | null;
@@ -46,6 +40,13 @@ const emit = defineEmits<{
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 }>();
+
+const toolCount = computed(() => Object.keys(props.agentTools).length);
+
+const locale = useI18n();
+const usersStore = useUsersStore();
+const chatStore = useChatStore();
+const uiStore = useUIStore();
 
 // --- Model & credential state (reusing ChatHub infrastructure) ---
 const { credentialsByProvider, selectCredential } = useChatCredentials(
@@ -155,15 +156,11 @@ function openToolsModal() {
 
 function openToolConfigModal(toolRef: AgentJsonToolRef) {
 	const currentTools = (props.config?.tools ?? []) as AgentJsonToolRef[];
-	const existingToolNames = currentTools
-		.filter((t) => t !== toolRef && t.name)
-		.map((t) => t.name as string);
-
 	uiStore.openModalWithData({
 		name: AGENT_TOOL_CONFIG_MODAL_KEY,
 		data: {
 			toolRef,
-			existingToolNames,
+			existingToolNames: getExistingToolNames(currentTools, toolRef),
 			onConfirm: (updatedRef: AgentJsonToolRef) => {
 				const updatedTools = currentTools.map((t) => (t === toolRef ? updatedRef : t));
 				emit('update:config', { tools: updatedTools });

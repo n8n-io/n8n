@@ -9,6 +9,7 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
 export type * from './agents';
+export { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from './agents';
 export * from './instance-registry-types';
 export {
 	chatHubConversationModelSchema,

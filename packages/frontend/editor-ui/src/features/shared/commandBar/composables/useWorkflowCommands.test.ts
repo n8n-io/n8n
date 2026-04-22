@@ -21,7 +21,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
 vi.mock('@/app/composables/useCanvasOperations');
-vi.mock('@/app/composables/useWorkflowHelpers');
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),

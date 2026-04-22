@@ -9,7 +9,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
-import { MODAL_CONFIRM, MODAL_CANCEL, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { MODAL_CONFIRM, MODAL_CANCEL, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -265,7 +265,10 @@ function scheduleAutosave() {
 				autosaveInFlight = null;
 			}
 		})();
-	}, getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE));
+		// Shorter than the workflow canvas' 1500ms autosave: the publish button's
+		// "enabled" state is gated on the save landing, so a longer wait makes the
+		// UI feel laggy right after an edit.
+	}, getDebounceTime(500));
 }
 
 async function settleAutosave() {

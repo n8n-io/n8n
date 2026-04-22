@@ -14,11 +14,7 @@ import type { AgentJsonToolRef } from '../types';
  * snake_case) — see `features/agents/views/AgentBuilderView.vue`.
  */
 
-type ToolType = 'node' | 'workflow' | 'custom';
-
-function toolTypeOf(ref: AgentJsonToolRef): ToolType {
-	return ref.type;
-}
+type ToolType = AgentJsonToolRef['type'];
 
 /** Identifier payload — node_type for node tools, workflow name for workflow tools. */
 function identityProps(ref: AgentJsonToolRef): Record<string, GenericValue> {
@@ -51,7 +47,7 @@ export function useAgentToolTelemetry(agentId?: string) {
 		telemetry.track(
 			'User added agent tool',
 			withAgent({
-				tool_type: toolTypeOf(ref),
+				tool_type: ref.type,
 				has_approval: ref.requireApproval ?? false,
 				...identityProps(ref),
 			}),
@@ -62,7 +58,7 @@ export function useAgentToolTelemetry(agentId?: string) {
 	function trackEdited(ref: AgentJsonToolRef) {
 		telemetry.track(
 			'User edited agent tool',
-			withAgent({ tool_type: toolTypeOf(ref), ...identityProps(ref) }),
+			withAgent({ tool_type: ref.type, ...identityProps(ref) }),
 		);
 	}
 
@@ -70,7 +66,7 @@ export function useAgentToolTelemetry(agentId?: string) {
 	function trackRemoved(ref: AgentJsonToolRef) {
 		telemetry.track(
 			'User removed agent tool',
-			withAgent({ tool_type: toolTypeOf(ref), ...identityProps(ref) }),
+			withAgent({ tool_type: ref.type, ...identityProps(ref) }),
 		);
 	}
 
