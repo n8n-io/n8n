@@ -369,8 +369,12 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		// Fire-and-forget: never surface LangSmith errors to the UI.
-		void this.instanceAiService.submitLangsmithFeedback(req.user, threadId, responseId, payload);
+		// Fire-and-forget: never surface LangSmith errors to the UI. The service
+		// logs its own failures; the .catch here guards against unhandled
+		// rejections from paths not wrapped internally (e.g. DB lookups).
+		void this.instanceAiService
+			.submitLangsmithFeedback(req.user, threadId, responseId, payload)
+			.catch(() => {});
 		return { ok: true };
 	}
 
