@@ -93,10 +93,16 @@ type TextEndFn = () => void;
  * 2. `onSubscribedMessage` — follow-up messages in subscribed threads
  * 3. `onAction` — button clicks for HITL resume flow
  *
- * Streaming strategy (Phase 1 — collect-and-post):
- * Text chunks are accumulated in a buffer. When a non-text event arrives
- * (suspension, message, error, finish), the buffer is flushed as a markdown
- * post. This sacrifices real-time streaming but ensures correct ordering.
+ * Stream consumption has two strategies, selected per integration via the
+ * `disableStreaming` flag on `AgentChatIntegration`:
+ *   • streaming (default, e.g. Slack): text deltas are piped as an
+ *     AsyncIterable<string> into `thread.post()` so Chat SDK can render
+ *     incrementally (post-and-edit).
+ *   • buffered (Telegram): deltas accumulate into a string and are posted as
+ *     a single message per flush event, avoiding `editMessageText` rate limits.
+ *
+ * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
+ * `error`) flush any pending text before being handled, preserving ordering.
  */
 export class AgentChatBridge {
 	/** Short-lived set of run IDs that have been resumed to prevent double resumption */
