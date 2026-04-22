@@ -117,7 +117,7 @@ export class LmChatMoonshot implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'kimi-k2.5',
+				default: 'kimi-k2.6',
 			},
 			{
 				displayName: 'Options',
