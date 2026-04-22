@@ -51,7 +51,7 @@ const INTERNAL_BLOCK_PATTERN =
 	/<(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)[\s\S]*?<\/(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)>/g;
 
 const processedContent = computed(() => {
-	const registry = store.resourceRegistry;
+	const registry = store.resourceNameIndex;
 
 	// Strip internal protocol blocks the LLM may have echoed
 	let result = props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim();
@@ -149,10 +149,15 @@ function enhanceResourceLinks(): void {
 		if (resourceMatch) {
 			const [, type, id] = resourceMatch;
 
-			// Look up registry entry (needed for projectId on data-table links)
+			// Look up registry entry (needed for projectId on data-table links).
+			// Search the name index because it contains both produced and listed
+			// resources — a user may click through to a data table the agent
+			// only referenced via a list call.
 			const registryEntry =
 				type === 'data-table'
-					? [...store.resourceRegistry.values()].find((r) => r.type === 'data-table' && r.id === id)
+					? [...store.resourceNameIndex.values()].find(
+							(r) => r.type === 'data-table' && r.id === id,
+						)
 					: undefined;
 
 			// Swap href to the real app URL (used for Cmd+click / new tab)

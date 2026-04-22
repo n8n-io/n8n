@@ -1,0 +1,142 @@
+name: 'Test: Instance AI Exec Evals'
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'GitHub branch to test'
+        required: false
+        type: string
+        default: 'master'
+      filter:
+        description: 'Filter test cases by name (e.g. "contact-form")'
+        required: false
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test'
+        required: false
+        default: 'master'
+      filter:
+        description: 'Filter test cases by name (e.g. "contact-form")'
+        required: false
+        default: ''
+
+jobs:
+  run-evals:
+    name: 'Run Evals'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm build'
+
+      - name: Build Docker image
+        run: pnpm build:docker
+        env:
+          INCLUDE_TEST_CONTROLLER: 'true'
+
+      - name: Start n8n container
+        run: |
+          docker run -d --name n8n-eval \
+            -e E2E_TESTS=true \
+            -e N8N_ENABLED_MODULES=instance-ai \
+            -e N8N_AI_ENABLED=true \
+            -e N8N_INSTANCE_AI_MODEL_API_KEY=${{ secrets.EVALS_ANTHROPIC_KEY }} \
+            -e N8N_LICENSE_ACTIVATION_KEY=${{ secrets.N8N_LICENSE_ACTIVATION_KEY }} \
+            -e N8N_LICENSE_CERT=${{ secrets.N8N_LICENSE_CERT }} \
+            -e N8N_ENCRYPTION_KEY=${{ secrets.N8N_ENCRYPTION_KEY }} \
+            -p 5678:5678 \
+            n8nio/n8n:local
+          echo "Waiting for n8n to be ready..."
+          for i in $(seq 1 60); do
+            if curl -s http://localhost:5678/healthz/readiness -o /dev/null -w "%{http_code}" | grep -q 200; then
+              echo "n8n ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::n8n failed to start within 60s"
+          docker logs n8n-eval --tail 30
+          exit 1
+
+      - name: Create test user
+        run: |
+          curl -sf -X POST http://localhost:5678/rest/e2e/reset \
+            -H "Content-Type: application/json" \
+            -d '{
+              "owner":{"email":"nathan@n8n.io","password":"PlaywrightTest123","firstName":"Eval","lastName":"Owner"},
+              "admin":{"email":"admin@n8n.io","password":"PlaywrightTest123","firstName":"Admin","lastName":"User"},
+              "members":[],
+              "chat":{"email":"chat@n8n.io","password":"PlaywrightTest123","firstName":"Chat","lastName":"User"}
+            }'
+
+      - name: Run Instance AI Evals
+        continue-on-error: true
+        working-directory: packages/@n8n/instance-ai
+        run: >-
+          pnpm eval:instance-ai
+          --base-url http://localhost:5678
+          --verbose
+          --runs 5
+          ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
+        env:
+          N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+
+      - name: Stop n8n container
+        if: ${{ always() }}
+        run: docker stop n8n-eval && docker rm n8n-eval || true
+
+      - name: Post eval results to PR
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RESULTS_FILE="packages/@n8n/instance-ai/eval-results.json"
+          if [ ! -f "$RESULTS_FILE" ]; then
+            echo "No eval results file found"
+            exit 0
+          fi
+
+          # Build the full comment body with jq
+          jq -r '
+            "### Instance AI Workflow Eval Results\n\n" +
+            "**\(.summary.built)/\(.summary.testCases) built | \(.totalRuns) run(s) | pass@\(.totalRuns): \(.summary.passAtK * 100 | floor)% | pass^\(.totalRuns): \(.summary.passHatK * 100 | floor)%**\n\n" +
+            "| Workflow | Build | pass@\(.totalRuns) | pass^\(.totalRuns) |\n|---|---|---|---|\n" +
+            ([.testCases[] as $tc | "| \($tc.name) | \($tc.buildSuccessCount)/\($tc.totalRuns) | \(([$tc.scenarios[] | .passAtK] | add) / ($tc.scenarios | length) * 100 | floor)% | \(([$tc.scenarios[] | .passHatK] | add) / ($tc.scenarios | length) * 100 | floor)% |"] | join("\n")) +
+            "\n\n<details><summary>Failure details</summary>\n\n" +
+            ([.testCases[] as $tc | $tc.scenarios[] | select(.passHatK < 1) | "**\($tc.name) / \(.name)** — \(.passCount)/\(.totalRuns) passed" + "\n" + ([.runs[] | select(.passed == false) | "> Run\(if .failureCategory then " [\(.failureCategory)]" else "" end): \(.reasoning | .[0:200])"] | join("\n"))] | join("\n\n")) +
+            "\n</details>"
+          ' "$RESULTS_FILE" > /tmp/eval-comment.md
+
+          # Find and update existing eval comment, or create new one
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            --jq '.[] | select(.body | startswith("### Instance AI Workflow Eval")) | .id' | tail -1)
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" -X PATCH -F body=@/tmp/eval-comment.md
+          else
+            gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/eval-comment.md
+          fi
+
+      - name: Upload Results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: instance-ai-workflow-eval-results
+          path: packages/@n8n/instance-ai/eval-results.json
+          retention-days: 14

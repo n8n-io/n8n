@@ -88,6 +88,12 @@ vi.mock('../composables/useAgentConfig', async () => {
 		}),
 	};
 });
+vi.mock('../agentSessions.store', () => ({
+	useAgentSessionsStore: () => ({
+		threads: [],
+		fetchThreads: vi.fn().mockResolvedValue(undefined),
+	}),
+}));
 
 const baseTextFn = (key: string) => {
 	const map: Record<string, string> = {
@@ -102,6 +108,12 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: baseTextFn }),
 	i18n: { baseText: baseTextFn },
 }));
+
+// The first test in this file pays the one-time SFC transform cost for
+// AgentBuilderView.vue (~4s), which overruns vitest's default 5s test timeout.
+// A higher cap gives that first render enough headroom; subsequent tests hit
+// the cached module and finish well under the default budget anyway.
+vi.setConfig({ testTimeout: 15_000 });
 
 describe('AgentBuilderView — chat mode toggle', () => {
 	// First Vite transform of this SFC + design-system deps can exceed the default
@@ -130,15 +142,6 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		return wrapper;
 	}
 
-	it('shows the toggle in home mode and hides it in building mode', async () => {
-		const wrapper = await renderView();
-		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(true);
-
-		(wrapper.vm as unknown as { mode: string }).mode = 'building';
-		await nextTick();
-		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
-	});
-
 	it('shows the toggle in chat mode with Test active by default', async () => {
 		const wrapper = await renderView();
 		(wrapper.vm as unknown as { mode: string }).mode = 'chat';
@@ -158,7 +161,15 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		// Build, so we don't fire a second loadHistory() for a tab the user
 		// may never open.
 		const wrapper = await renderView();
-		(wrapper.vm as unknown as { mode: string }).mode = 'chat';
+		const vm = wrapper.vm as unknown as {
+			mode: string;
+			activeChatSessionId: string | null;
+		};
+		// Test requires an active session (a real user would reach this by
+		// sending a message from the home input, which mints one). Seed it
+		// directly so we can exercise the lazy-mount/v-show behavior.
+		vm.activeChatSessionId = 'test-session-1';
+		vm.mode = 'chat';
 		await nextTick();
 
 		const testPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]');

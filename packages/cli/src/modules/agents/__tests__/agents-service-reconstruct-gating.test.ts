@@ -15,6 +15,7 @@ import type { UrlService } from '@/services/url.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
@@ -55,6 +56,7 @@ function makeService(agentsToolsService: AgentsToolsService): AgentsService {
 		mock<EphemeralNodeExecutor>(),
 		agentsToolsService,
 		mock<N8nMemory>(),
+		mock<AgentExecutionService>(),
 		mock<AgentPublishedVersionRepository>(),
 	);
 }

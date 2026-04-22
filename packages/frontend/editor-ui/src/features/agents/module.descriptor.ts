@@ -5,14 +5,23 @@ import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
+	AGENT_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
 	NEW_AGENT_VIEW,
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
 
 const AgentsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentsListView.vue');
+const AgentView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentView.vue');
 const AgentBuilderView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentBuilderView.vue');
+const AgentSessionsListView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentSessionsListView.vue');
+const AgentSessionTimelineView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentSessionTimelineView.vue');
 const NewAgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/NewAgentView.vue');
 const SettingsAgentBuilderView = async (): Promise<unknown> =>
@@ -42,14 +51,31 @@ export const AgentsModule: FrontendModuleDescription = {
 			},
 		},
 		{
-			name: AGENT_BUILDER_VIEW,
+			name: AGENT_VIEW,
 			path: 'agents/:agentId',
-			props: true,
-			component: AgentBuilderView,
+			component: AgentView,
 			meta: {
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],
 			},
+			children: [
+				{
+					name: AGENT_BUILDER_VIEW,
+					path: '',
+					props: true,
+					component: AgentBuilderView,
+				},
+				{
+					name: AGENT_SESSIONS_LIST_VIEW,
+					path: 'sessions',
+					component: AgentSessionsListView,
+				},
+				{
+					name: AGENT_SESSION_DETAIL_VIEW,
+					path: 'sessions/:threadId',
+					component: AgentSessionTimelineView,
+				},
+			],
 		},
 		{
 			name: NEW_AGENT_VIEW,

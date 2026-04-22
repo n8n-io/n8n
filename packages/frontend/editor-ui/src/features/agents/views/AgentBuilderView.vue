@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { N8nActionDropdown, N8nIcon, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
@@ -13,9 +13,10 @@ import { MODAL_CONFIRM, MODAL_CANCEL, DEBOUNCE_TIME, getDebounceTime } from '@/a
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
-import { PROJECT_AGENTS } from '../constants';
+import { PROJECT_AGENTS, AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentBuilderSettingsStore } from '../agentBuilderSettings.store';
+import { useAgentSessionsStore } from '../agentSessions.store';
 import { agentsEventBus } from '../agents.eventBus';
 import AgentBuilderProgress from '../components/AgentBuilderProgress.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -30,6 +31,7 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const message = useMessage();
+const sessionsStore = useAgentSessionsStore();
 const { showError } = useToast();
 const builderSettingsStore = useAgentBuilderSettingsStore();
 
@@ -56,6 +58,32 @@ const agentIcon = ref<IconOrEmoji>({ type: 'icon', value: 'robot' });
 const agent = ref<AgentResource | null>(null);
 const updatedAt = ref<string>('');
 const initialPrompt = ref<string | undefined>(undefined);
+const continueSessionId = computed(() => route.query.continueSessionId as string | undefined);
+/**
+ * Ephemeral session id for the in-tab "current chat". Set when the user starts
+ * a new chat from the home input; cleared when they hit the back button in the
+ * chat sub-header. Persists across Test/Build toggles so both views stay bound
+ * to the same thread, per product requirement.
+ */
+const activeChatSessionId = ref<string | null>(null);
+/**
+ * The session id whichever panel should be bound to — URL-supplied
+ * (continueSessionId) takes precedence over the in-tab ephemeral one.
+ */
+const effectiveSessionId = computed<string | undefined>(
+	() => continueSessionId.value ?? activeChatSessionId.value ?? undefined,
+);
+const sessionThread = computed(() => {
+	const id = effectiveSessionId.value;
+	if (!id) return undefined;
+	return sessionsStore.threads.find((t) => t.id === id);
+});
+const sessionTitle = computed(() => {
+	const thread = sessionThread.value;
+	if (!thread) return undefined;
+	return thread.title ?? `Session ${thread.sessionNumber}`;
+});
+const sessionEmoji = computed(() => sessionThread.value?.emoji ?? undefined);
 const buildPrompt = ref<string>('');
 const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle');
 
@@ -117,15 +145,24 @@ async function updateDescription(description: string) {
 }
 
 function startChat(msg: string) {
+	// Starting a fresh chat must never inherit a stale continue-session from a
+	// previous URL — otherwise the new conversation would keep appending to the
+	// old thread.
+	if (continueSessionId.value) clearContinueSessionParam();
 	if (isBuilt.value) {
-		// Agent already built — go straight into the chat experience.
+		// Mint a fresh thread id for the ephemeral session. Test and Build
+		// remain visually linked via `chatModeOpened` (v-show) — Build doesn't
+		// share the thread, it uses its own per-agent builder history.
+		activeChatSessionId.value = crypto.randomUUID();
 		initialPrompt.value = msg;
+		chatMode.value = 'test';
 		mode.value = 'chat';
-		// Clear once the panel has mounted and consumed the prop, so a later
-		// remount (e.g. toggling between Build/Test) doesn't replay the message.
-		void nextTick(() => {
-			initialPrompt.value = undefined;
-		});
+		// Intentionally do NOT clear initialPrompt here. The chat panel reads
+		// it in onMounted, but the <Transition mode="out-in"> animates the home
+		// view out before the chat panel mounts — clearing on nextTick wipes
+		// the prompt before onMounted runs, so the first message never gets
+		// sent. onMounted runs only once per mount (the panel's :key binds to
+		// the session id, not chatMode), so there's no replay risk on toggle.
 		telemetry.track('User started agent chat', { agent_id: agentId.value });
 		return;
 	}
@@ -138,6 +175,22 @@ function startChat(msg: string) {
 	telemetry.track('User started agent build', { agent_id: agentId.value });
 }
 
+/**
+ * Back button handler for the chat sub-header. Discards the in-tab ephemeral
+ * session (and the URL continueSessionId, if present) and returns the user to
+ * the home screen so subsequent Test/Build toggles don't re-open the old chat.
+ */
+function onBackFromChat() {
+	if (continueSessionId.value) clearContinueSessionParam();
+	activeChatSessionId.value = null;
+	chatModeOpened.value = { test: false, build: false };
+	chatMode.value = 'test';
+	mode.value = 'home';
+	// Refresh so the recent-sessions list on the home screen picks up any
+	// threads the just-ended chat created on the backend.
+	void sessionsStore.fetchThreads(projectId.value, agentId.value);
+}
+
 function onBuildStreamingChange(streaming: boolean) {
 	isBuilding.value = streaming;
 }
@@ -147,13 +200,21 @@ function onBuildChatStreamingChange(streaming: boolean) {
 }
 
 function setChatMode(next: ChatMode) {
-	const chatModeChanged = chatMode.value !== next;
-	const enteringChat = mode.value !== 'chat';
-	if (!chatModeChanged && !enteringChat) return;
+	if (chatMode.value === next) return;
 	chatMode.value = next;
-	if (enteringChat) {
+
+	// Build uses per-agent history, no session id required — clicking Build
+	// drops straight into the builder panel. Test, by contrast, needs an
+	// active session: home is its landing page, so clicking Test without a
+	// session either stays on home or kicks back to home from a session-less
+	// chat mode (e.g. they were in Build with no session).
+	if (next === 'build' && mode.value !== 'chat') {
 		mode.value = 'chat';
+	} else if (next === 'test' && mode.value === 'chat' && !effectiveSessionId.value) {
+		mode.value = 'home';
+		chatModeOpened.value = { test: false, build: false };
 	}
+
 	telemetry.track('User switched agent chat mode', {
 		agent_id: agentId.value,
 		mode: next,
@@ -166,9 +227,10 @@ const chatModeOptions = computed(() => [
 ]);
 
 function onBuildDone() {
-	// Build stream finished. Let the fade-out animation play, then drop the
-	// user straight into the chat experience with the newly built agent.
-	mode.value = 'chat';
+	// Build finished. Return to home so the user can explicitly start a chat
+	// (which will mint a fresh session) rather than being dropped into a stale
+	// or empty Test view.
+	mode.value = 'home';
 }
 
 async function saveConfig(): Promise<void> {
@@ -249,6 +311,13 @@ async function onHeaderAction(action: string) {
 	}
 }
 
+function openSession(threadId: string) {
+	void router.push({
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value, threadId },
+	});
+}
+
 function onPublished(updated: AgentResource) {
 	agent.value = updated;
 }
@@ -305,6 +374,7 @@ async function initialize() {
 	mode.value = 'home';
 	chatMode.value = 'test';
 	chatModeOpened.value = { test: false, build: false };
+	activeChatSessionId.value = null;
 	isBuilding.value = false;
 	isBuildChatStreaming.value = false;
 	agentIcon.value = { type: 'icon', value: 'robot' };
@@ -321,10 +391,11 @@ async function initialize() {
 
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
+	void sessionsStore.fetchThreads(projectId.value, agentId.value);
 
-	if (config.value?.instructions?.trim()) {
-		mode.value = 'chat';
-	}
+	// Always land on the home screen. Users enter chat mode by sending a
+	// message, picking a recent session, clicking the Test/Build toggle, or
+	// via a `continueSessionId` URL param — each of which sets `mode` explicitly.
 
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
@@ -335,6 +406,19 @@ async function initialize() {
 
 watch(agentId, initialize, { immediate: true });
 
+// Only react to the arrival of a session id — clearing the param is always
+// accompanied by an explicit `mode` assignment from the caller (exitContinueMode,
+// startChat), so auto-resetting to 'home' here would race and override those.
+watch(
+	continueSessionId,
+	(id) => {
+		if (id) {
+			mode.value = 'chat';
+		}
+	},
+	{ immediate: true },
+);
+
 watch(
 	[mode, chatMode],
 	([m, cm]) => {
@@ -344,6 +428,23 @@ watch(
 	},
 	{ immediate: true },
 );
+
+function clearContinueSessionParam() {
+	const { continueSessionId: _dropped, ...rest } = route.query;
+	void router.replace({ query: rest });
+}
+
+function exitContinueMode() {
+	clearContinueSessionParam();
+	mode.value = 'home';
+}
+
+function onContinueLoaded(count: number) {
+	// Only kick back to home for a URL-supplied session that turned out to be
+	// empty/stale. Ephemeral in-tab sessions always start empty and fill in as
+	// the user chats, so the zero-count signal is expected there.
+	if (count === 0 && continueSessionId.value) exitContinueMode();
+}
 </script>
 
 <template>
@@ -385,6 +486,14 @@ watch(
 				</N8nRadioButtons>
 				<div :class="$style.mainHeaderRight">
 					<button
+						v-if="mode === 'chat'"
+						:class="$style.toggleBtn"
+						data-testid="new-chat"
+						@click="onBackFromChat"
+					>
+						<N8nIcon icon="message-circle-plus" :size="16" />
+					</button>
+					<button
 						:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
 						data-testid="toggle-settings"
 						@click="settingsVisible = !settingsVisible"
@@ -409,11 +518,13 @@ watch(
 						:agent-icon="agentIcon"
 						:project-id="projectId"
 						:agent-id="agentId"
+						:sessions="sessionsStore.threads"
 						:show-recent="isBuilt"
 						@send-message="startChat"
 						@update:name="updateName"
 						@update:description="updateDescription"
 						@update:icon="agentIcon = $event"
+						@select-session="openSession"
 					/>
 					<AgentBuilderProgress
 						v-else-if="mode === 'building'"
@@ -425,21 +536,29 @@ watch(
 						@update:streaming="onBuildStreamingChange"
 						@done="onBuildDone"
 					/>
-					<div v-else key="chat" :class="$style.chatHost">
+					<div v-else-if="mode === 'chat'" key="chat" :class="$style.chatHost">
 						<!--
 							v-if on `chatModeOpened` lazy-mounts each panel the first time
 							its tab is activated; v-show then preserves state (messages,
 							input, scroll) without re-firing loadHistory on every toggle.
+							Test additionally requires an active session id — Build is
+							per-agent and needs no session.
 						-->
 						<AgentChatPanel
-							v-if="chatModeOpened.test"
+							v-if="chatModeOpened.test && effectiveSessionId"
 							v-show="chatMode === 'test'"
+							:key="`test-${effectiveSessionId}`"
 							:project-id="projectId"
 							:agent-id="agentId"
 							mode="inline"
 							endpoint="chat"
 							:initial-message="initialPrompt"
+							:continue-session-id="effectiveSessionId"
+							:session-title="sessionTitle"
+							:session-emoji="sessionEmoji"
 							@config-updated="onConfigUpdated"
+							@continue-loaded="onContinueLoaded"
+							@back="onBackFromChat"
 						/>
 						<AgentChatPanel
 							v-if="chatModeOpened.build"
@@ -450,6 +569,7 @@ watch(
 							endpoint="build"
 							@config-updated="onConfigUpdated"
 							@update:streaming="onBuildChatStreamingChange"
+							@back="onBackFromChat"
 						/>
 						<AgentBuilderUnconfiguredEmptyState
 							v-if="chatModeOpened.build && !isBuilderConfigured"

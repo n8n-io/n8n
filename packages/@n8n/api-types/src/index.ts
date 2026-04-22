@@ -251,9 +251,9 @@ export {
 } from './schemas/community-package.schema';
 
 export {
-	publicApiCreatedCredentialSchema,
-	type PublicApiCreatedCredential,
-} from './schemas/credential-created.schema';
+	publicApiCredentialResponseSchema,
+	type PublicApiCredentialResponse,
+} from './schemas/credential-response.schema';
 
 export {
 	instanceAiEventTypeSchema,

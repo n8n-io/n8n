@@ -78,6 +78,7 @@ describe('AgentsService', () => {
 			mock(),
 			mock(),
 			n8nMemory,
+			mock(),
 			agentPublishedVersionRepository,
 		);
 	});
@@ -254,11 +255,11 @@ describe('AgentsService', () => {
 		});
 	});
 
-	describe('getChatMessages', () => {
+	describe('getTestChatMessages', () => {
 		it('scopes the memory lookup to the caller via resourceId', async () => {
 			n8nMemory.getMessages.mockResolvedValue([]);
 
-			await service.getChatMessages(agentId, userId);
+			await service.getTestChatMessages(agentId, userId);
 
 			expect(n8nMemory.getMessages).toHaveBeenCalledWith(chatThreadId(agentId), {
 				resourceId: userId,
@@ -269,15 +270,15 @@ describe('AgentsService', () => {
 			const persisted = [{ id: 'm1' }, { id: 'm2' }];
 			n8nMemory.getMessages.mockResolvedValue(persisted as never);
 
-			const result = await service.getChatMessages(agentId, userId);
+			const result = await service.getTestChatMessages(agentId, userId);
 
 			expect(result).toBe(persisted);
 		});
 	});
 
-	describe('clearChatMessages', () => {
+	describe('clearTestChatMessages', () => {
 		it('deletes only the caller’s messages on the shared test-chat thread', async () => {
-			await service.clearChatMessages(agentId, userId);
+			await service.clearTestChatMessages(agentId, userId);
 
 			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId), userId);
 			// Must not wipe the thread row — other users share it.
@@ -285,9 +286,9 @@ describe('AgentsService', () => {
 		});
 	});
 
-	describe('clearAllChatMessages', () => {
+	describe('clearAllTestChatMessages', () => {
 		it('deletes every message and the thread row itself', async () => {
-			await service.clearAllChatMessages(agentId);
+			await service.clearAllTestChatMessages(agentId);
 
 			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
 			// Second arg must be absent — undefined means "all users".

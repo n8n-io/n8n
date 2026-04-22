@@ -2,7 +2,12 @@ import type { LanguageModel } from 'ai';
 
 import { createModel } from '../runtime/model-factory';
 
-type ProviderOpts = { apiKey?: string; baseURL?: string; fetch?: typeof globalThis.fetch };
+type ProviderOpts = {
+	apiKey?: string;
+	baseURL?: string;
+	fetch?: typeof globalThis.fetch;
+	headers?: Record<string, string>;
+};
 
 // All providers are mocked via jest.mock so require() inside the registry entries
 // returns these stubs instead of the real packages.
@@ -13,6 +18,7 @@ jest.mock('@ai-sdk/anthropic', () => ({
 		apiKey: opts?.apiKey,
 		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
+		headers: opts?.headers,
 		specificationVersion: 'v3',
 	}),
 }));
@@ -24,6 +30,7 @@ jest.mock('@ai-sdk/openai', () => ({
 		apiKey: opts?.apiKey,
 		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
+		headers: opts?.headers,
 		specificationVersion: 'v3',
 	}),
 }));
@@ -216,6 +223,18 @@ describe('createModel', () => {
 		const model = createModel('openai/gpt-4o') as unknown as Record<string, unknown>;
 		expect(model.fetch).toBeInstanceOf(Function);
 		expect(mockProxyAgent).toHaveBeenCalledWith('http://proxy:9090');
+	});
+
+	it('should forward custom headers to the provider factory', () => {
+		const model = createModel({
+			id: 'anthropic/claude-sonnet-4-5',
+			apiKey: 'sk-test',
+			headers: { 'x-proxy-auth': 'Bearer abc', 'anthropic-beta': 'tools-2024' },
+		}) as unknown as Record<string, unknown>;
+		expect(model.headers).toEqual({
+			'x-proxy-auth': 'Bearer abc',
+			'anthropic-beta': 'tools-2024',
+		});
 	});
 
 	it('should prefer HTTPS_PROXY over HTTP_PROXY', () => {

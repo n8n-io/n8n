@@ -11,7 +11,6 @@ import {
 import type { ModelConfig } from '../types/sdk/agent';
 
 type FetchFn = typeof globalThis.fetch;
-
 type CreateEmbeddingProviderFn = (opts?: { apiKey?: string }) => {
 	embeddingModel(model: string): EmbeddingModel;
 };

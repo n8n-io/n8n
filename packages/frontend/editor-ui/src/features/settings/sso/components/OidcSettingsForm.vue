@@ -24,7 +24,7 @@ const message = useMessage();
 
 const savingForm = ref<boolean>(false);
 const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
-const isOverrideActive = computed(() => ssoStore.ssoManagedByEnv);
+const isSsoManagedByEnv = computed(() => ssoStore.ssoManagedByEnv);
 
 const discoveryEndpoint = ref('');
 const clientId = ref('');
@@ -216,7 +216,7 @@ const onTest = async () => {
 };
 
 const hasUnsavedChanges = computed(
-	() => !cannotSaveOidcSettings.value && !savingForm.value && !isOverrideActive.value,
+	() => !cannotSaveOidcSettings.value && !savingForm.value && !isSsoManagedByEnv.value,
 );
 
 defineExpose({ hasUnsavedChanges, onSave: onOidcSettingsSave });
@@ -242,7 +242,7 @@ onMounted(async () => {
 				<label>Discovery Endpoint</label>
 				<N8nInput
 					:model-value="discoveryEndpoint"
-					:disabled="isOverrideActive"
+					:disabled="isSsoManagedByEnv"
 					type="text"
 					data-test-id="oidc-discovery-endpoint"
 					placeholder="https://accounts.google.com/.well-known/openid-configuration"
@@ -254,7 +254,7 @@ onMounted(async () => {
 				<label>Client ID</label>
 				<N8nInput
 					:model-value="clientId"
-					:disabled="isOverrideActive"
+					:disabled="isSsoManagedByEnv"
 					type="text"
 					data-test-id="oidc-client-id"
 					@update:model-value="(v: string) => (clientId = v)"
@@ -267,7 +267,7 @@ onMounted(async () => {
 				<label>Client Secret</label>
 				<N8nInput
 					:model-value="clientSecret"
-					:disabled="isOverrideActive"
+					:disabled="isSsoManagedByEnv"
 					type="password"
 					data-test-id="oidc-client-secret"
 					@update:model-value="(v: string) => (clientSecret = v)"
@@ -281,7 +281,7 @@ onMounted(async () => {
 				<label>Prompt</label>
 				<N8nSelect
 					:model-value="prompt"
-					:disabled="isOverrideActive"
+					:disabled="isSsoManagedByEnv"
 					data-test-id="oidc-prompt"
 					@update:model-value="handlePromptChange"
 				>
@@ -302,7 +302,7 @@ onMounted(async () => {
 				v-model:mapping-method="mappingMethod"
 				v-model:legacy-value="userRoleProvisioning"
 				auth-protocol="oidc"
-				:disabled="isOverrideActive"
+				:disabled="isSsoManagedByEnv"
 			/>
 			<RoleMappingRuleEditor
 				v-if="mappingMethod === 'rules_in_n8n'"
@@ -325,7 +325,7 @@ onMounted(async () => {
 				<N8nInput
 					:model-value="authenticationContextClassReference"
 					type="textarea"
-					:disabled="isOverrideActive"
+					:disabled="isSsoManagedByEnv"
 					data-test-id="oidc-authentication-context-class-reference"
 					placeholder="mfa, phrh, pwd"
 					@update:model-value="(v: string) => (authenticationContextClassReference = v)"
@@ -347,7 +347,7 @@ onMounted(async () => {
 						:model-value="ssoStore.isOidcLoginEnabled ? 'enabled' : 'disabled'"
 						size="medium"
 						data-test-id="sso-oidc-toggle"
-						:disabled="isOverrideActive"
+						:disabled="isSsoManagedByEnv"
 						@update:model-value="ssoStore.isOidcLoginEnabled = $event === 'enabled'"
 					>
 						<template #prefix>
@@ -362,7 +362,7 @@ onMounted(async () => {
 
 		<div :class="$style.buttons">
 			<N8nButton
-				v-if="!isOverrideActive"
+				v-if="!isSsoManagedByEnv"
 				data-test-id="sso-oidc-save"
 				size="large"
 				:loading="savingForm"

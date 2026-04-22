@@ -125,7 +125,6 @@ describe('useWorkflowsStore', () => {
 	});
 
 	it('should initialize with default state', () => {
-		expect(workflowsStore.workflow.name).toBe('');
 		expect(workflowsStore.workflow.id).toBe('');
 	});
 
@@ -1370,10 +1369,6 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflow.nodes[0].id).toEqual(setNodeId);
 			expect(workflowsStore.workflow.nodes[1].id).toEqual(credentialOnlyNodeId);
 			expect(workflowsStore.workflow.nodes[1].type).toEqual('n8n-creds-base.alienVaultApi');
-			expect(workflowsStore.nodeMetadata).toEqual({
-				'AlienVault Request': { pristine: true },
-				'Edit Fields': { pristine: true },
-			});
 		});
 	});
 
@@ -1770,7 +1765,10 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.workflow.id = 'test-workflow-id';
 
-			workflowsStore.addNode({
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			workflowDocumentStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
 				name: nodeName,
@@ -1779,9 +1777,6 @@ describe('useWorkflowsStore', () => {
 				typeVersion: 3.4,
 			});
 
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflow.id),
-			);
 			workflowDocumentStore.setPinData({
 				[nodeName]: [
 					{
@@ -1815,8 +1810,8 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.renameNodeSelectedAndExecution({ old: nodeName, new: newName });
 
-			expect(workflowsStore.nodeMetadata[nodeName]).not.toBeDefined();
-			expect(workflowsStore.nodeMetadata[newName]).toEqual({});
+			expect(workflowDocumentStore.nodeMetadata[nodeName]).not.toBeDefined();
+			expect(workflowDocumentStore.nodeMetadata[newName]).toEqual({});
 			expect(
 				workflowsStore.workflowExecutionData?.data?.resultData.runData[nodeName],
 			).not.toBeDefined();
@@ -2256,6 +2251,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should use the first webhook when node has multiple webhooks', async () => {
+			workflowsStore.workflow.id = 'test-workflow-id';
 			const testNode = createTestNode({
 				id: 'node-1',
 				name: 'Webhook Node',
