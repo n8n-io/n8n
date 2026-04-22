@@ -215,6 +215,27 @@ describe('useWorkflowInitialization', () => {
 		expect(initializedWorkflowId.value).toBeUndefined();
 	});
 
+	it('returns to the last opened workflow when another workflow fails to open', async () => {
+		mockRoute.params = { name: 'wf-2' };
+		mockWorkflowsListStore.fetchWorkflow.mockRejectedValue(new Error('boom'));
+
+		const { initializeWorkflow, initializedWorkflowId } = useWorkflowInitialization(
+			{} as WorkflowState,
+		);
+		initializedWorkflowId.value = 'wf-1';
+		await initializeWorkflow();
+
+		expect(mockToast.showError).toHaveBeenCalledWith(
+			expect.any(Error),
+			'openWorkflow.workflowNotFoundError',
+		);
+		expect(mockRouter.replace).toHaveBeenCalledWith({
+			name: VIEWS.WORKFLOW,
+			params: { name: 'wf-1' },
+		});
+		expect(initializedWorkflowId.value).toBe('wf-1');
+	});
+
 	it('keeps redirecting to the not-found view on a 404 error', async () => {
 		mockWorkflowsListStore.fetchWorkflow.mockRejectedValue({ httpStatusCode: 404 });
 

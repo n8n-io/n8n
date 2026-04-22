@@ -337,6 +337,13 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			}
 
 			toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
+
+			if (initializedWorkflowId.value && initializedWorkflowId.value !== workflowId.value) {
+				return await router.replace({
+					name: VIEWS.WORKFLOW,
+					params: { name: initializedWorkflowId.value },
+				});
+			}
 		} finally {
 			uiStore.nodeViewInitialized = true;
 			if (didOpenWorkflow) {
