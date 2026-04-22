@@ -1273,6 +1273,9 @@ importers:
 
   packages/@n8n/decorators:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/constants':
         specifier: workspace:*
         version: link:../constants

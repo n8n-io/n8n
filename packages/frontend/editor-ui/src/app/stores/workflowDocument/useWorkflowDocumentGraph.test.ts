@@ -30,13 +30,17 @@ import {
 } from './useWorkflowDocumentNodes';
 import { useWorkflowDocumentConnections } from './useWorkflowDocumentConnections';
 import { useWorkflowDocumentGraph } from './useWorkflowDocumentGraph';
+import { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
 }
 
 function createNodesDeps(): WorkflowDocumentNodesDeps {
-	return { getNodeType: vi.fn().mockReturnValue(null) };
+	return {
+		getNodeType: vi.fn().mockReturnValue(null),
+		nodeMetadata: useWorkflowDocumentNodeMetadata(),
+	};
 }
 
 describe('useWorkflowDocumentGraph', () => {
