@@ -12,9 +12,6 @@
  *   - Node tools round-trip via `updateToolRefFromNode` so fields the form
  *     doesn't know about (`inputSchema`, etc.) are preserved.
  *   - Workflow tools round-trip via `updateWorkflowToolRef`.
- *
- * Outer tabs: Configure (the per-type form) and Permissions (stubbed — the
- * scope/permissions registry is deferred per AGENT-26 spec).
  */
 import { computed, ref } from 'vue';
 import Modal from '@/app/components/Modal.vue';
@@ -22,9 +19,8 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 import WorkflowToolConfigContent from './WorkflowToolConfigContent.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nButton, N8nIcon, N8nInlineTextEdit, N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInlineTextEdit } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { ITab } from '@/Interface';
 import type { INode } from 'n8n-workflow';
 
 import type { AgentJsonToolRef } from '../types';
@@ -62,14 +58,6 @@ const nodeName = ref(initialName.value);
 /** Gate the modal render — for node tools we need a resolvable node; workflow
  *  tools always render since their data is self-contained in the ref. */
 const canRender = computed(() => isWorkflowTool.value || initialNode.value !== null);
-
-type ConfigTab = 'configure' | 'permissions';
-const activeTab = ref<ConfigTab>('configure');
-
-const tabOptions = computed<Array<ITab<ConfigTab>>>(() => [
-	{ label: i18n.baseText('agents.toolConfig.tabs.configure'), value: 'configure' },
-	{ label: i18n.baseText('agents.toolConfig.tabs.permissions'), value: 'permissions' },
-]);
 
 function closeDialog() {
 	uiStore.closeModal(props.modalName);
@@ -144,14 +132,7 @@ function handleNodeNameUpdate(name: string) {
 		</template>
 		<template #content>
 			<div :class="$style.contentWrapper">
-				<N8nTabs
-					:model-value="activeTab"
-					:options="tabOptions"
-					:class="$style.tabs"
-					@update:model-value="activeTab = $event"
-				/>
-
-				<div v-show="activeTab === 'configure'" :class="$style.configureTab">
+				<div :class="$style.configureTab">
 					<WorkflowToolConfigContent
 						v-if="isWorkflowTool"
 						ref="workflowContentRef"
@@ -167,16 +148,6 @@ function handleNodeNameUpdate(name: string) {
 						@update:valid="handleValidUpdate"
 						@update:node-name="handleNodeNameUpdate"
 					/>
-				</div>
-
-				<div
-					v-show="activeTab === 'permissions'"
-					:class="$style.permissionsTab"
-					data-test-id="agent-tool-config-permissions-tab"
-				>
-					<N8nText color="text-light">
-						{{ i18n.baseText('agents.toolConfig.permissions.comingSoon') }}
-					</N8nText>
 				</div>
 			</div>
 		</template>
@@ -245,20 +216,10 @@ function handleNodeNameUpdate(name: string) {
 	}
 }
 
-.tabs {
-	flex-shrink: 0;
-	margin-bottom: var(--spacing--sm);
-	padding-right: var(--spacing--lg);
-}
-
 .configureTab {
 	display: flex;
 	flex: 1;
 	min-height: 0;
 	flex-direction: column;
-}
-
-.permissionsTab {
-	padding: var(--spacing--md) var(--spacing--lg) var(--spacing--md) 0;
 }
 </style>

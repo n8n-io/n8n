@@ -163,15 +163,13 @@ describe('AgentToolConfigModal', () => {
 		expect(getByTestId('node-tool-settings-content')).toBeTruthy();
 	});
 
-	it('renders both outer tabs (Configure + Permissions)', () => {
-		const { getByText } = renderModal();
-		expect(getByText('agents.toolConfig.tabs.configure')).toBeTruthy();
-		expect(getByText('agents.toolConfig.tabs.permissions')).toBeTruthy();
-	});
-
-	it('renders a placeholder in the Permissions tab', () => {
-		const { getByTestId } = renderModal();
-		expect(getByTestId('agent-tool-config-permissions-tab')).toBeTruthy();
+	it('does not render the removed Configure / Permissions outer tabs', () => {
+		// The stubbed Permissions tab (and its sibling "Configure" tab label) were
+		// dropped — the modal renders the content form directly now.
+		const { queryByText, queryByTestId } = renderModal();
+		expect(queryByText('agents.toolConfig.tabs.configure')).toBeNull();
+		expect(queryByText('agents.toolConfig.tabs.permissions')).toBeNull();
+		expect(queryByTestId('agent-tool-config-permissions-tab')).toBeNull();
 	});
 
 	it('disables Save until the content emits valid=true', async () => {

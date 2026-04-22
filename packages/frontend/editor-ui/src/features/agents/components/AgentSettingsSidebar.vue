@@ -212,6 +212,36 @@ function toggleSection(section: string) {
 	expandedSections.value[section] = !expandedSections.value[section];
 }
 
+// Auto-expand "Tools" once if the agent already has configured tools — users
+// shouldn't need to click to see what's there. Only fires on the first
+// transition to >0 so manual collapse afterwards sticks.
+let autoExpandedTools = false;
+watch(
+	() => (props.config?.tools ?? []).length,
+	(count) => {
+		if (!autoExpandedTools && count > 0) {
+			expandedSections.value.tools = true;
+			autoExpandedTools = true;
+		}
+	},
+	{ immediate: true },
+);
+
+// Integrations status is async — `AgentIntegrationsPanel` fetches on mount
+// and emits `update:connected-triggers` with the current list. Mirror the
+// one-shot auto-expand behaviour: expand "Triggers" the first time we learn
+// the agent has any connected integration, and don't force it re-open on
+// later state changes. The list itself is also re-emitted upward so the
+// builder view can telemetry-track config edits.
+let autoExpandedTriggers = false;
+function onTriggerConnectedTriggers(triggers: string[]) {
+	if (!autoExpandedTriggers && triggers.length > 0) {
+		expandedSections.value.triggers = true;
+		autoExpandedTriggers = true;
+	}
+	emit('update:connected-triggers', triggers);
+}
+
 // Auto-expand the config editor while the builder is actively writing to it.
 watch(
 	() => props.building,
@@ -312,14 +342,18 @@ watch(
 							}}</N8nText>
 						</div>
 					</button>
-					<div v-if="expandedSections.triggers" :class="$style.sectionContent">
+					<!--
+						v-show (not v-if) so the integrations panel mounts + fetches even
+						while the section is collapsed. That lets it emit `connected-count`
+						so the sidebar can auto-expand the section on load when the agent
+						already has integrations configured.
+					-->
+					<div v-show="expandedSections.triggers" :class="$style.sectionContent">
 						<AgentIntegrationsPanel
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
-							@update:connected-triggers="
-								(list: string[]) => emit('update:connected-triggers', list)
-							"
+							@update:connected-triggers="onTriggerConnectedTriggers"
 							@trigger-added="(payload) => emit('trigger-added', payload)"
 						/>
 					</div>

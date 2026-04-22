@@ -235,13 +235,19 @@ describe('AgentSettingsSidebar', () => {
 		expect(wrapper.find('[data-testid="config-json-stub"]').exists()).toBe(true);
 	});
 
-	it('expands Triggers section to show integrations panel', async () => {
+	it('toggles the Triggers section visibility when the header is clicked', async () => {
+		// The integrations panel is always mounted (v-show, not v-if) so it can
+		// fetch status + emit `connected-count` before the user expands the
+		// section — the visibility of its wrapper is what toggles.
 		const wrapper = await renderComponent();
-		expect(wrapper.find('[data-testid="integrations-panel-stub"]').exists()).toBe(false);
+		const panel = wrapper.find('[data-testid="integrations-panel-stub"]');
+		expect(panel.exists()).toBe(true);
+		const wrapperDiv = panel.element.parentElement as HTMLElement;
+		expect(wrapperDiv.style.display).toBe('none');
 
 		const triggersHeader = wrapper.findAll('button').find((b) => b.text().includes('Triggers'));
 		await triggersHeader?.trigger('click');
-		expect(wrapper.find('[data-testid="integrations-panel-stub"]').exists()).toBe(true);
+		expect(wrapperDiv.style.display).not.toBe('none');
 	});
 
 	it('expands Advanced section to show memory panel', async () => {
