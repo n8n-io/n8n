@@ -48,7 +48,7 @@ const cliArgsSchema = z.object({
 	keepWorkflows: z.boolean().default(false),
 	outputDir: z.string().optional(),
 	dataset: z.string().default('instance-ai-workflow-evals'),
-	concurrency: z.number().int().positive().default(99),
+	concurrency: z.number().int().positive().default(16),
 	experimentName: z.string().optional(),
 	runs: z.number().int().positive().default(1),
 });
@@ -104,7 +104,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		keepWorkflows: false,
 		outputDir: undefined,
 		dataset: 'instance-ai-workflow-evals',
-		concurrency: 99,
+		concurrency: 16,
 		experimentName: undefined,
 		runs: 1,
 	};

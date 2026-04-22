@@ -69,14 +69,25 @@ type TargetOutput = Omit<z.infer<typeof targetOutputSchema>, 'evalResult'> & {
 };
 
 function isEvalResult(v: unknown): v is InstanceAiEvalExecutionResult {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
+	if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+	const obj = v as Record<string, unknown>;
+	return (
+		typeof obj.nodeResults === 'object' &&
+		obj.nodeResults !== null &&
+		Array.isArray(obj.errors) &&
+		typeof obj.hints === 'object' &&
+		obj.hints !== null
+	);
 }
 
-function parseTargetOutput(raw: unknown): TargetOutput {
-	const parsed = targetOutputSchema.parse(raw ?? {});
+/** Safe-parse a run's outputs. Returns `undefined` if the row is malformed
+ *  so callers can skip it instead of aborting the whole iteration. */
+function parseTargetOutput(raw: unknown): TargetOutput | undefined {
+	const parsed = targetOutputSchema.safeParse(raw ?? {});
+	if (!parsed.success) return undefined;
 	return {
-		...parsed,
-		evalResult: isEvalResult(parsed.evalResult) ? parsed.evalResult : undefined,
+		...parsed.data,
+		evalResult: isEvalResult(parsed.data.evalResult) ? parsed.data.evalResult : undefined,
 	};
 }
 
@@ -281,6 +292,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 
 	const feedbackExtractor = ({ run }: { run: Run }): EvaluationResult[] => {
 		const output = parseTargetOutput(run.outputs);
+		if (!output) return [];
 		// 'none' for passed scenarios so the column shows a full categorical
 		// breakdown instead of blank cells.
 		const failureCategory = output.passed ? 'none' : (output.failureCategory ?? 'unknown');
@@ -431,7 +443,9 @@ async function updateExperimentAggregates(config: {
 	const avgBuildMs =
 		uniqueBuilds > 0 ? buildTimes.reduce((sum, d) => sum + d, 0) / uniqueBuilds : 0;
 
-	const execTimes = runs.map(({ run }) => parseTargetOutput(run.outputs).execDurationMs);
+	const execTimes = runs
+		.map(({ run }) => parseTargetOutput(run.outputs)?.execDurationMs)
+		.filter((ms): ms is number => typeof ms === 'number');
 	const avgExecMs =
 		execTimes.length > 0 ? execTimes.reduce((sum, d) => sum + d, 0) / execTimes.length : 0;
 
@@ -439,12 +453,13 @@ async function updateExperimentAggregates(config: {
 	// spot drift or anomalies between iterations without extra columns.
 	const perIteration = new Map<number, { passed: number; total: number }>();
 	for (const { run } of runs) {
-		const inputs = runInputsSchema.parse(run.inputs ?? {});
+		const inputs = runInputsSchema.safeParse(run.inputs ?? {});
 		const output = parseTargetOutput(run.outputs);
-		const entry = perIteration.get(inputs._iteration) ?? { passed: 0, total: 0 };
+		if (!inputs.success || !output) continue;
+		const entry = perIteration.get(inputs.data._iteration) ?? { passed: 0, total: 0 };
 		entry.total++;
 		if (output.passed) entry.passed++;
-		perIteration.set(inputs._iteration, entry);
+		perIteration.set(inputs.data._iteration, entry);
 	}
 	const passRatePerIter = [...perIteration.entries()]
 		.sort(([a], [b]) => a - b)
@@ -465,9 +480,9 @@ async function updateExperimentAggregates(config: {
 	try {
 		const project = await lsClient.readProject({ projectName: experimentName });
 		// `updateProject` replaces `extra` wholesale — preserve it so auto-set
-		// fields (splits, etc.) survive.
-		const existingExtra = (project.extra ?? {}) as Record<string, unknown>;
-		const existingMetadata = (existingExtra.metadata ?? {}) as Record<string, unknown>;
+		// fields (splits, etc.) survive. Narrow via typeof guards rather than `as`.
+		const existingExtra = isPlainObject(project.extra) ? project.extra : {};
+		const existingMetadata = isPlainObject(existingExtra.metadata) ? existingExtra.metadata : {};
 		await lsClient.updateProject(project.id, {
 			projectExtra: existingExtra,
 			metadata: { ...existingMetadata, ...aggregates },
@@ -477,6 +492,10 @@ async function updateExperimentAggregates(config: {
 		const msg = error instanceof Error ? error.message : String(error);
 		logger.verbose(`Could not update experiment metadata: ${msg}`);
 	}
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+	return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
 /**
@@ -499,6 +518,7 @@ async function writePerRunPassMetrics(config: {
 		const exampleId = run.reference_example_id;
 		if (!exampleId) continue;
 		const output = parseTargetOutput(run.outputs);
+		if (!output) continue;
 		const entry = byExample.get(exampleId) ?? { runIds: [], passed: 0, total: 0 };
 		entry.runIds.push(run.id);
 		entry.total++;
@@ -544,8 +564,9 @@ function reshapeLangSmithRuns(
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
 	const byKey = new Map<string, Run>();
 	for (const { run } of rows) {
-		const inputs = runInputsSchema.parse(run.inputs ?? {});
-		const key = `${String(inputs._iteration)}/${inputs.testCaseFile}/${inputs.scenarioName}`;
+		const inputs = runInputsSchema.safeParse(run.inputs ?? {});
+		if (!inputs.success) continue;
+		const key = `${String(inputs.data._iteration)}/${inputs.data.testCaseFile}/${inputs.data.scenarioName}`;
 		byKey.set(key, run);
 	}
 
@@ -560,16 +581,16 @@ function reshapeLangSmithRuns(
 
 			for (const scenario of testCase.scenarios) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
-				if (!run) {
+				const output = run ? parseTargetOutput(run.outputs) : undefined;
+				if (!run || !output) {
 					scenarioResults.push({
 						scenario,
 						success: false,
 						score: 0,
-						reasoning: 'No run result for this scenario',
+						reasoning: run ? 'Malformed run output — skipped' : 'No run result for this scenario',
 					});
 					continue;
 				}
-				const output = parseTargetOutput(run.outputs);
 				if (output.buildSuccess) workflowBuildSuccess = true;
 				if (output.workflowId) workflowId = output.workflowId;
 				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;

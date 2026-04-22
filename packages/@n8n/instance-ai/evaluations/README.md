@@ -42,7 +42,7 @@ If `LANGSMITH_API_KEY` is set, results are also sent to LangSmith as an experime
 | `--timeout-ms` | `600000` | Per-test-case timeout |
 | `--output-dir` | cwd | Where to write `eval-results.json` |
 | `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name |
-| `--concurrency` | `99` | Max concurrent scenarios (builds are separately capped at 4) |
+| `--concurrency` | `16` | Max concurrent scenarios (builds are separately capped at 4) |
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
 
 ### Docker (without pnpm dev:ai)
