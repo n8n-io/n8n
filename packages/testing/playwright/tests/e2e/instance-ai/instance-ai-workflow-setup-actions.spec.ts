@@ -78,6 +78,18 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Instance AI' }],
 	},
 	() => {
+		// Trace replay state (active slug, loaded events, in-memory thread state)
+		// lives per-main-process in `InstanceAiService`. In multi-main mode the
+		// fixture's `/test/reset` and `/test/tool-trace` only configure one main;
+		// requests load-balanced to the other main run against unconfigured state
+		// and the setup card never renders.
+		test.beforeEach(({}, testInfo) => {
+			test.skip(
+				testInfo.project.name.includes('multi-main'),
+				'Setup wizard actions are not yet stable in multi-main mode',
+			);
+		});
+
 		// B3 — Full wizard navigation + apply persistence. The HTTP Request card
 		// needs a URL; the Slack card comes pre-credentialed so we can focus
 		// the test on the apply payload (URL edit + existing cred) persisting
