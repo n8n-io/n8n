@@ -130,6 +130,19 @@ export function useRoleMappingRules() {
 	async function save() {
 		isLoading.value = true;
 		try {
+			// Defensive re-sync: the server may have removed rules between the
+			// last loadRules() and now (for example, a provisioning config
+			// patch with deleteProjectRules=true wipes all project rules).
+			// Dropping those stale IDs from the local tracking sets prevents
+			// editor.save() from issuing PATCH/DELETE calls against rules that
+			// no longer exist — which would return 404.
+			const freshServerRules = await api.listRules();
+			const freshServerIds = new Set(freshServerRules.map((r) => r.id));
+			serverRuleIds = new Set([...serverRuleIds].filter((id) => freshServerIds.has(id)));
+			serverProjectRuleIds = new Set(
+				[...serverProjectRuleIds].filter((id) => freshServerIds.has(id)),
+			);
+
 			const allLocalRules = [...instanceRules.value, ...projectRules.value];
 			const localRuleIds = new Set(allLocalRules.map((r) => r.id));
 			const rulePayload = (r: RoleMappingRuleResponse) => ({

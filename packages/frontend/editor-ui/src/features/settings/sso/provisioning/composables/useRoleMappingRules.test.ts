@@ -222,6 +222,37 @@ describe('useRoleMappingRules', () => {
 			expect(composable.instanceRules.value).toHaveLength(1);
 		});
 
+		it('prevents save() from PATCHing a stale server-backed project rule that backend has deleted', async () => {
+			// Scenario: editor loaded a project rule p1 at init. Backend then
+			// deleted p1 out-of-band (via config patch deleteProjectRules or curl).
+			// Editor state still references p1 but user is in instance_and_project
+			// mode and triggers a save. The defensive resync in save() should
+			// spot that p1 is gone and skip the PATCH call — preventing 404.
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules)
+				.mockResolvedValueOnce([
+					makeRule({ id: 'i1', type: 'instance', order: 0 }),
+					makeRule({ id: 'p1', type: 'project', order: 0, projectIds: ['proj-1'] }),
+				])
+				// Second call (defensive resync inside save) returns only the instance rule
+				.mockResolvedValueOnce([makeRule({ id: 'i1', type: 'instance', order: 0 })])
+				// Third call (post-save loadRules) same fresh state
+				.mockResolvedValueOnce([makeRule({ id: 'i1', type: 'instance', order: 0 })]);
+
+			await composable.loadRules();
+
+			// Editor state still has p1 — user did NOT call discardProjectRules
+			expect(composable.projectRules.value).toHaveLength(1);
+
+			await composable.save();
+
+			// The 404-causing PATCH must not fire for the deleted project rule
+			expect(roleMappingRuleApi.updateRoleMappingRule).not.toHaveBeenCalledWith(
+				expect.anything(),
+				'p1',
+				expect.anything(),
+			);
+		});
+
 		it('prevents save() from trying to DELETE or UPDATE project rules that the backend already removed', async () => {
 			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
 				makeRule({ id: 'i1', type: 'instance', order: 0 }),
