@@ -75,17 +75,23 @@ interface ThreadStatus {
 export class N8nClient {
 	private sessionCookie?: string;
 
-	constructor(private readonly baseUrl: string) {}
+	constructor(readonly baseUrl: string) {}
 
 	// -- Auth ----------------------------------------------------------------
+
+	/** Set the session cookie directly (for sharing across workers). */
+	setSessionCookie(cookie: string): void {
+		this.sessionCookie = cookie;
+	}
 
 	/**
 	 * Authenticate with the n8n instance via POST /rest/login.
 	 * Captures the `n8n-auth` cookie for subsequent requests.
 	 */
 	async login(email?: string, password?: string): Promise<void> {
-		const loginEmail = email ?? process.env.N8N_EVAL_EMAIL ?? 'admin@n8n.io';
-		const loginPassword = password ?? process.env.N8N_EVAL_PASSWORD ?? 'password';
+		// Defaults match the E2E test owner created by the E2E_TESTS=true bootstrap
+		const loginEmail = email ?? process.env.N8N_EVAL_EMAIL ?? 'nathan@n8n.io';
+		const loginPassword = password ?? process.env.N8N_EVAL_PASSWORD ?? 'PlaywrightTest123';
 
 		await this.fetch('/rest/login', {
 			method: 'POST',

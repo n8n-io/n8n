@@ -27,6 +27,7 @@ jobs:
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
       performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
+      instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -70,6 +71,12 @@ jobs:
               packages/testing/playwright/utils/performance-helper.ts
               packages/testing/containers/**
               .github/workflows/test-e2e-performance-reusable.yml
+            instance-ai-workflow-eval:
+              packages/@n8n/instance-ai/src/**
+              packages/@n8n/instance-ai/evaluations/**
+              packages/cli/src/modules/instance-ai/**
+              packages/core/src/execution-engine/eval-mock-helpers.ts
+              .github/workflows/test-evals-instance-ai*.yml
             db:
               packages/cli/src/databases/**
               packages/cli/src/modules/*/database/**
@@ -194,6 +201,18 @@ jobs:
     uses: ./.github/workflows/test-workflow-scripts-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  instance-ai-workflow-evals:
+    name: Instance AI Workflow Evals
+    needs: install-and-build
+    if: >-
+      needs.install-and-build.outputs.instance_ai_workflow_eval == 'true' &&
+      github.repository == 'n8n-io/n8n' &&
+      (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
+    uses: ./.github/workflows/test-evals-instance-ai.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
   # This job is required by GitHub branch protection rules.

@@ -28,6 +28,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { ExternalHooks } from '@/external-hooks';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import * as checkAccess from '@/permissions.ee/check-access';
@@ -790,6 +791,103 @@ describe('CredentialsService', () => {
 				level: 'error',
 				tags: { credentialType: credentialEntity.type },
 			});
+		});
+	});
+
+	describe('testById', () => {
+		it('throws CredentialNotFoundError when credential does not exist', async () => {
+			credentialsFinderService.findCredentialById.mockResolvedValue(null);
+
+			await expect(service.testById(ownerUser.id, 'missing-credential')).rejects.toThrow(
+				CredentialNotFoundError,
+			);
+			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+		});
+
+		it('decrypts stored credential and calls credentials tester', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Test Credential',
+				type: 'githubApi',
+			});
+			const decryptedData = { accessToken: 'secret-token' } as ICredentialDataDecryptedObject;
+			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
+
+			credentialsFinderService.findCredentialById.mockResolvedValue(storedCredential);
+			credentialsTester.testCredentials.mockResolvedValue(testResult);
+			jest.spyOn(service, 'decrypt').mockReturnValue(decryptedData);
+
+			const result = await service.testById(ownerUser.id, storedCredential.id);
+
+			expect(credentialsFinderService.findCredentialById).toHaveBeenCalledWith(storedCredential.id);
+			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
+			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(
+				ownerUser.id,
+				storedCredential.type,
+				{
+					id: storedCredential.id,
+					name: storedCredential.name,
+					type: storedCredential.type,
+					data: decryptedData,
+				},
+			);
+			expect(result).toEqual(testResult);
+		});
+	});
+
+	describe('testWithCredentials', () => {
+		it('throws CredentialNotFoundError when user cannot access credential', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+			await expect(
+				service.testWithCredentials(ownerUser, {
+					id: 'missing-credential',
+					name: 'Missing Credential',
+					type: 'githubApi',
+					data: {},
+				}),
+			).rejects.toThrow(CredentialNotFoundError);
+			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+		});
+
+		it('prepares merged credentials and runs test', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Stored Credential',
+				type: 'githubApi',
+			});
+			const decryptedData = { accessToken: 'stored-token' } as ICredentialDataDecryptedObject;
+			const unredactedData = { accessToken: 'live-token' } as ICredentialDataDecryptedObject;
+			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			jest.spyOn(service, 'decrypt').mockReturnValue(decryptedData);
+			jest.spyOn(service, 'replaceCredentialContentsForSharee').mockResolvedValue(undefined);
+			jest.spyOn(service, 'getCredentialTypeProperties').mockReturnValue([]);
+			jest.spyOn(service, 'unredact').mockReturnValue(unredactedData);
+			credentialsTester.testCredentials.mockResolvedValue(testResult);
+
+			const payload = {
+				id: 'credential-id',
+				name: 'Stored Credential',
+				type: 'githubApi',
+				data: { accessToken: '***' },
+			};
+
+			const result = await service.testWithCredentials(ownerUser, payload);
+
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				payload.id,
+				ownerUser,
+				['credential:read'],
+			);
+			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
+			expect(service.unredact).toHaveBeenCalledWith(payload.data, decryptedData, []);
+			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(ownerUser.id, payload.type, {
+				...payload,
+				data: unredactedData,
+			});
+			expect(result).toEqual(testResult);
 		});
 	});
 
