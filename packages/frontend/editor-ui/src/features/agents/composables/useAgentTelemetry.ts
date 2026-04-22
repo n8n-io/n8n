@@ -1,3 +1,4 @@
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
@@ -18,8 +19,19 @@ export function useAgentTelemetry() {
 
 	const common = () => ({ session_id: rootStore.pushRef });
 
+	// Telemetry is best-effort: every track call is wrapped so a RudderStack
+	// failure can never surface to a caller (and never takes down a critical
+	// path like publish or save).
+	function safeTrack(event: string, props: ITelemetryTrackProperties) {
+		try {
+			telemetry.track(event, props);
+		} catch {
+			// Swallow — telemetry must not break user-facing flows.
+		}
+	}
+
 	function trackClickedNewAgent(source: 'button' | 'dropdown') {
-		telemetry.track('User clicked new agent', { source, ...common() });
+		safeTrack('User clicked new agent', { source, ...common() });
 	}
 
 	function trackSubmittedMessage(params: {
@@ -29,7 +41,7 @@ export function useAgentTelemetry() {
 		status: AgentTelemetryStatus;
 		agentConfig: AgentConfigFingerprint;
 	}) {
-		telemetry.track('User submitted message to agent', {
+		safeTrack('User submitted message to agent', {
 			agent_id: params.agentId,
 			message: params.message,
 			mode: params.mode,
@@ -45,7 +57,7 @@ export function useAgentTelemetry() {
 		configVersion: string;
 		status: AgentTelemetryStatus;
 	}) {
-		telemetry.track('User edited agent config', {
+		safeTrack('User edited agent config', {
 			agent_id: params.agentId,
 			part: params.part,
 			config_version: params.configVersion,
@@ -61,7 +73,7 @@ export function useAgentTelemetry() {
 		configVersion: string;
 		status: AgentTelemetryStatus;
 	}) {
-		telemetry.track('User added trigger to agent', {
+		safeTrack('User added trigger to agent', {
 			agent_id: params.agentId,
 			trigger_type: params.triggerType,
 			triggers: params.triggers,
@@ -78,7 +90,7 @@ export function useAgentTelemetry() {
 		configVersion: string;
 		status: AgentTelemetryStatus;
 	}) {
-		telemetry.track('User added tools to agent', {
+		safeTrack('User added tools to agent', {
 			agent_id: params.agentId,
 			tool_added: params.toolAdded,
 			tools: params.tools,
@@ -89,7 +101,7 @@ export function useAgentTelemetry() {
 	}
 
 	function trackPublishedAgent(params: { agentId: string; configVersion: string }) {
-		telemetry.track('User published agent', {
+		safeTrack('User published agent', {
 			agent_id: params.agentId,
 			config_version: params.configVersion,
 			status: 'production' as const,
@@ -98,7 +110,7 @@ export function useAgentTelemetry() {
 	}
 
 	function trackUnpublishedAgent(params: { agentId: string }) {
-		telemetry.track('User unpublished agent', {
+		safeTrack('User unpublished agent', {
 			agent_id: params.agentId,
 			status: 'draft' as const,
 			...common(),

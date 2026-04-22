@@ -100,23 +100,40 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		};
 	}
 
-	function emitEditedEvents(parts: AgentConfigPart[], s: EditSnapshot) {
-		if (parts.length === 0) return;
+	/**
+	 * Compute the agent's `config_version` fingerprint asynchronously, then hand
+	 * it to `emit`. Centralizes the async-IIFE + try/catch boilerplate that
+	 * every fingerprint-bearing event would otherwise duplicate. `crypto.subtle`
+	 * can throw in insecure contexts, so failures are swallowed — individual
+	 * track calls are already wrapped inside `useAgentTelemetry`.
+	 */
+	function withFingerprint(
+		config: AgentJsonConfig | null,
+		triggers: string[],
+		emit: (configVersion: string) => void,
+	) {
 		void (async () => {
 			try {
-				const fp = await buildAgentConfigFingerprint(s.config, s.connectedTriggers);
-				for (const part of parts) {
-					agentTelemetry.trackEditedConfig({
-						agentId: s.agentId,
-						part,
-						configVersion: fp.config_version,
-						status: s.status,
-					});
-				}
+				const fp = await buildAgentConfigFingerprint(config, triggers);
+				emit(fp.config_version);
 			} catch {
-				// Telemetry is best-effort — swallow fingerprint/track failures.
+				// Swallow — telemetry is best-effort.
 			}
 		})();
+	}
+
+	function emitEditedEvents(parts: AgentConfigPart[], s: EditSnapshot) {
+		if (parts.length === 0) return;
+		withFingerprint(s.config, s.connectedTriggers, (configVersion) => {
+			for (const part of parts) {
+				agentTelemetry.trackEditedConfig({
+					agentId: s.agentId,
+					part,
+					configVersion,
+					status: s.status,
+				});
+			}
+		});
 	}
 
 	function recordConfigEdit(updates: Partial<AgentJsonConfig>) {
@@ -150,20 +167,15 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 
 	function trackTriggerAdded(payload: { triggerType: string; triggers: string[] }) {
 		const s = snapshot();
-		void (async () => {
-			try {
-				const fp = await buildAgentConfigFingerprint(s.config, payload.triggers);
-				agentTelemetry.trackAddedTrigger({
-					agentId: s.agentId,
-					triggerType: payload.triggerType,
-					triggers: payload.triggers,
-					configVersion: fp.config_version,
-					status: s.status,
-				});
-			} catch {
-				// Telemetry is best-effort — swallow fingerprint/track failures.
-			}
-		})();
+		withFingerprint(s.config, payload.triggers, (configVersion) => {
+			agentTelemetry.trackAddedTrigger({
+				agentId: s.agentId,
+				triggerType: payload.triggerType,
+				triggers: payload.triggers,
+				configVersion,
+				status: s.status,
+			});
+		});
 	}
 
 	/** Capture the current tool list as the baseline for future `trackToolsAdded` diffs. */
@@ -182,22 +194,17 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		previousTools = current;
 		if (added.length === 0) return;
 		const s = snapshot();
-		void (async () => {
-			try {
-				const fp = await buildAgentConfigFingerprint(s.config, s.connectedTriggers);
-				for (const toolAdded of added) {
-					agentTelemetry.trackAddedTools({
-						agentId: s.agentId,
-						toolAdded,
-						tools: current,
-						configVersion: fp.config_version,
-						status: s.status,
-					});
-				}
-			} catch {
-				// Telemetry is best-effort — swallow fingerprint/track failures.
+		withFingerprint(s.config, s.connectedTriggers, (configVersion) => {
+			for (const toolAdded of added) {
+				agentTelemetry.trackAddedTools({
+					agentId: s.agentId,
+					toolAdded,
+					tools: current,
+					configVersion,
+					status: s.status,
+				});
 			}
-		})();
+		});
 	}
 
 	function trackNameEdited() {
@@ -214,17 +221,12 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	 * `publishAgent` directly instead of going through `useAgentPublish`.
 	 */
 	function trackPublished(publishedSchema: AgentJsonConfig | null | undefined) {
-		void (async () => {
-			try {
-				const fp = await buildAgentConfigFingerprint(publishedSchema ?? null, []);
-				agentTelemetry.trackPublishedAgent({
-					agentId: deps.agentId.value,
-					configVersion: fp.config_version,
-				});
-			} catch {
-				// Swallow — the agent is already published.
-			}
-		})();
+		withFingerprint(publishedSchema ?? null, [], (configVersion) => {
+			agentTelemetry.trackPublishedAgent({
+				agentId: deps.agentId.value,
+				configVersion,
+			});
+		});
 	}
 
 	/**

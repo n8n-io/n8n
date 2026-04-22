@@ -28,19 +28,18 @@ export function useAgentPublish() {
 		publishing.value = true;
 		try {
 			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
-			// Telemetry is best-effort and must never surface as a publish failure.
-			// `buildAgentConfigFingerprint` uses `crypto.subtle.digest`, which throws in
-			// insecure contexts; the RudderStack track call can also fail. We derive
-			// the fingerprint from the server's response (`publishedVersion.schema`)
-			// so `config_version` reflects what was actually published regardless of
-			// the caller — list-card publishes don't have access to the live draft.
-			// Triggers are intentionally omitted: they live outside AgentJsonConfig
-			// and aren't part of the published schema.
+			// Derive the fingerprint from the server's response so `config_version`
+			// reflects what was actually published regardless of the caller —
+			// list-card publishes don't have access to the live draft. Triggers
+			// are intentionally omitted: they live outside AgentJsonConfig and
+			// aren't part of the published schema. `crypto.subtle.digest` can
+			// throw in insecure contexts — swallow so telemetry never surfaces
+			// as a publish failure. `trackPublishedAgent` itself is already safe.
 			try {
 				const fp = await buildAgentConfigFingerprint(updated.publishedVersion?.schema ?? null, []);
 				agentTelemetry.trackPublishedAgent({ agentId, configVersion: fp.config_version });
 			} catch {
-				// Swallow — the agent is already published.
+				// Swallow fingerprint failures.
 			}
 			showMessage({ title: locale.baseText('agents.publish.toast.published'), type: 'success' });
 			return updated;
@@ -68,13 +67,7 @@ export function useAgentPublish() {
 		publishing.value = true;
 		try {
 			const updated = await unpublishAgent(rootStore.restApiContext, projectId, agentId);
-			// Telemetry is best-effort — don't let a track failure surface as an
-			// unpublish failure to the user.
-			try {
-				agentTelemetry.trackUnpublishedAgent({ agentId });
-			} catch {
-				// Swallow — the agent is already unpublished.
-			}
+			agentTelemetry.trackUnpublishedAgent({ agentId });
 			showMessage({ title: locale.baseText('agents.publish.toast.unpublished'), type: 'success' });
 			return updated;
 		} catch (error) {
