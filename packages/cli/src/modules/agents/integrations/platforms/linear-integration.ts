@@ -9,17 +9,14 @@ type LinearAuth = { kind: 'apiKey'; token: string } | { kind: 'accessToken'; tok
 /**
  * Linear platform integration.
  *
- * Linear issues are the threads and issue comments are the messages. Linear
- * comments have no interactive UI surface, so this integration omits
- * `supportedComponents` entirely — `AgentsService` reads the absence as
- * "skip the rich_interaction tool for this platform" and the agent responds
- * with normal markdown replies instead of offering dead-end cards.
+ * Linear comments have no interactive UI surface, so this integration omits
+ * `supportedComponents` entirely.
  *
  * Mention detection in the Chat SDK is a literal string match on
  * `@<adapter.userName>` in the comment body. The adapter defaults `userName` to
- * `'linear-bot'`, which nobody types in Linear's UI, so `createAdapter`
- * eagerly fetches the bot user's Linear display name via GraphQL and passes
- * it in — that way `@AgentName`-style mentions fire `onNewMention` as expected.
+ * `'linear-bot'`, so `createAdapter` eagerly fetches the bot user's
+ * Linear display name via GraphQL and passes it in —
+ * that way `@AgentName`-style mentions fire `onNewMention` as expected.
  */
 @Service()
 export class LinearIntegration extends AgentChatIntegration {
@@ -35,9 +32,9 @@ export class LinearIntegration extends AgentChatIntegration {
 		const auth = this.extractAuth(ctx.credential);
 		const webhookSecret = this.extractSigningSecret(ctx.credential);
 		const userName = await this.fetchDisplayName(auth);
+
 		const { createLinearAdapter } = await loadLinearAdapter();
-		// Default mode is 'comments' — simpler setup, supports edit/delete.
-		// Agent-sessions mode can be opted into later via a credential flag.
+
 		return createLinearAdapter({
 			...(auth.kind === 'apiKey' ? { apiKey: auth.token } : { accessToken: auth.token }),
 			webhookSecret,
@@ -89,8 +86,7 @@ export class LinearIntegration extends AgentChatIntegration {
 	/**
 	 * Personal API keys go in as a bare `Authorization: <key>` header; OAuth
 	 * access tokens need `Authorization: Bearer <token>`. Returns undefined on
-	 * any failure — the adapter falls back to its default `linear-bot` name and
-	 * users can still set LINEAR_BOT_USERNAME as an override.
+	 * any failure — the adapter falls back to its default `linear-bot` name.
 	 */
 	private async fetchDisplayName(auth: LinearAuth): Promise<string | undefined> {
 		const authHeader = auth.kind === 'accessToken' ? `Bearer ${auth.token}` : auth.token;
@@ -101,14 +97,17 @@ export class LinearIntegration extends AgentChatIntegration {
 				body: JSON.stringify({ query: '{ viewer { displayName } }' }),
 			});
 			if (!resp.ok) return undefined;
+
 			const json = (await resp.json()) as {
 				data?: { viewer?: { displayName?: string } };
 			};
+
 			return json.data?.viewer?.displayName;
 		} catch (error) {
 			this.logger.debug(
 				`[LinearIntegration] viewer lookup failed: ${error instanceof Error ? error.message : String(error)}`,
 			);
+
 			return undefined;
 		}
 	}
