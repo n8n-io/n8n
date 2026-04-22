@@ -187,6 +187,28 @@ describe('AgentPublishButton', () => {
 		expect(publishAgent).not.toHaveBeenCalled();
 	});
 
+	it('treats publish as successful when telemetry fingerprinting throws', async () => {
+		const { publishAgent } = await import('../composables/useAgentApi');
+		const { buildAgentConfigFingerprint } = await import('../composables/agentTelemetry.utils');
+		const { useToast } = await import('@/app/composables/useToast');
+		const updatedAgent = createAgent({ publishedVersion });
+		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
+		vi.mocked(buildAgentConfigFingerprint).mockRejectedValueOnce(
+			new Error('crypto.subtle unavailable'),
+		);
+
+		const agent = createAgent({ publishedVersion: null });
+		const wrapper = await renderComponent({ agent });
+		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+		await flushPromises();
+
+		// Success path ran all the way through — no error toast, published event emitted.
+		const toast = useToast();
+		expect(toast.showError).not.toHaveBeenCalled();
+		expect(toast.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
+	});
+
 	// Dropdown — publish action
 	it('calls publishAgent via dropdown Publish action', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');

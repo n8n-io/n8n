@@ -32,8 +32,15 @@ export function useAgentPublish() {
 		publishing.value = true;
 		try {
 			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
-			const fp = await buildAgentConfigFingerprint(context.config, context.connectedTriggers);
-			agentTelemetry.trackPublishedAgent({ agentId, configVersion: fp.config_version });
+			// Telemetry is best-effort and must never surface as a publish failure.
+			// `buildAgentConfigFingerprint` uses `crypto.subtle.digest`, which throws in
+			// insecure contexts; the RudderStack track call can also fail.
+			try {
+				const fp = await buildAgentConfigFingerprint(context.config, context.connectedTriggers);
+				agentTelemetry.trackPublishedAgent({ agentId, configVersion: fp.config_version });
+			} catch {
+				// Swallow — the agent is already published.
+			}
 			showMessage({ title: locale.baseText('agents.publish.toast.published'), type: 'success' });
 			return updated;
 		} catch (error) {
@@ -60,7 +67,13 @@ export function useAgentPublish() {
 		publishing.value = true;
 		try {
 			const updated = await unpublishAgent(rootStore.restApiContext, projectId, agentId);
-			agentTelemetry.trackUnpublishedAgent({ agentId });
+			// Telemetry is best-effort — don't let a track failure surface as an
+			// unpublish failure to the user.
+			try {
+				agentTelemetry.trackUnpublishedAgent({ agentId });
+			} catch {
+				// Swallow — the agent is already unpublished.
+			}
 			showMessage({ title: locale.baseText('agents.publish.toast.unpublished'), type: 'success' });
 			return updated;
 		} catch (error) {

@@ -494,11 +494,16 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 			if (!localConfig.value) return;
 			await saveConfig();
 			await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
-			const fp = await buildAgentConfigFingerprint(localConfig.value, connectedTriggers.value);
-			agentTelemetry.trackPublishedAgent({
-				agentId: agentId.value,
-				configVersion: fp.config_version,
-			});
+			// Telemetry is best-effort and must never surface as a publish failure.
+			try {
+				const fp = await buildAgentConfigFingerprint(localConfig.value, connectedTriggers.value);
+				agentTelemetry.trackPublishedAgent({
+					agentId: agentId.value,
+					configVersion: fp.config_version,
+				});
+			} catch {
+				// Swallow — the agent is already published.
+			}
 		} catch (error) {
 			showError(error, locale.baseText('agents.builder.unsavedPublish.error'));
 			return; // stay on page
