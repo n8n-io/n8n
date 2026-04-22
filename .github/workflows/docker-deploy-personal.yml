@@ -1,0 +1,67 @@
+name: 'Docker: Personal Deploy'
+
+on:
+  workflow_dispatch:
+    inputs:
+      n8n_version:
+        description: 'Tag/version Docker a publier (ex: branch-master, dev, 1.100.1)'
+        required: false
+        type: string
+      release_type:
+        description: 'Type de release pour les images Docker'
+        required: false
+        type: choice
+        default: branch
+        options:
+          - branch
+          - dev
+          - stable
+          - nightly
+      push_enabled:
+        description: 'Push des images vers les registries'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: personal-docker-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    name: Authorize personal deploy
+    runs-on: ubuntu-latest
+    outputs:
+      allowed: ${{ steps.check.outputs.allowed }}
+    steps:
+      - name: Check actor and owner
+        id: check
+        run: |
+          if [[ "${{ github.repository_owner }}" == "exaland" && "${{ github.actor }}" == "exaland" ]]; then
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+            echo "Authorized actor: ${{ github.actor }}"
+          else
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+            echo "Unauthorized actor: ${{ github.actor }}"
+            echo "This workflow is restricted to exaland on exaland/n8n."
+          fi
+
+      - name: Fail when unauthorized
+        if: steps.check.outputs.allowed != 'true'
+        run: |
+          echo "Deployment denied: only exaland can run this workflow in exaland/n8n."
+          exit 1
+
+  deploy:
+    name: Build and push Docker images
+    needs: authorize
+    if: needs.authorize.outputs.allowed == 'true'
+    uses: ./.github/workflows/docker-build-push.yml
+    with:
+      n8n_version: ${{ inputs.n8n_version != '' && inputs.n8n_version || format('branch-{0}', github.ref_name) }}
+      release_type: ${{ inputs.release_type }}
+      push_enabled: ${{ inputs.push_enabled }}
+    secrets: inherit
