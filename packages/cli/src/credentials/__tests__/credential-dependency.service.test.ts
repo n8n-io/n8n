@@ -51,14 +51,14 @@ describe('CredentialDependencyService', () => {
 				credentialId: 'cred-1',
 				decryptedCredentialData: {
 					apiKey: '={{ $secrets.vault.apiKey }}',
-					token: '={{ $secrets["aws-secrets-manager"].token }}',
+					token: '={{ $secrets["awsSecretsManager"].token }}',
 				},
 				entityManager,
 			});
 
 			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([
 				'vault',
-				'aws-secrets-manager',
+				'awsSecretsManager',
 			]);
 			expect(credentialDependencyRepository.upsertDependenciesForCredential).toHaveBeenCalledWith({
 				credentialId: 'cred-1',
@@ -97,14 +97,14 @@ describe('CredentialDependencyService', () => {
 				credentialId: 'cred-1',
 				decryptedCredentialData: {
 					apiKey: '={{ $secrets.vault.apiKey }}',
-					token: '={{ $secrets["aws-secrets-manager"].token }}',
+					token: '={{ $secrets["awsSecretsManager"].token }}',
 				},
 				entityManager,
 			});
 
 			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([
 				'vault',
-				'aws-secrets-manager',
+				'awsSecretsManager',
 			]);
 			expect(credentialDependencyRepository.syncDependenciesForCredential).toHaveBeenCalledWith({
 				credentialId: 'cred-1',

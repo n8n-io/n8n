@@ -244,9 +244,9 @@ describe('Credentials Validation', () => {
 			accessCheckService = mock<SecretsProviderAccessCheckService>();
 		});
 
-		it('should handle provider name with hyphens and numbers', async () => {
+		it('should handle provider name with letters and numbers', async () => {
 			const data = {
-				apiKey: '={{ $secrets.my-provider-123.key }}',
+				apiKey: '={{ $secrets.myProvider123.key }}',
 			};
 
 			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
@@ -256,7 +256,7 @@ describe('Credentials Validation', () => {
 			).resolves.toBeUndefined();
 
 			expect(accessCheckService.isProviderAvailableInProject).toHaveBeenCalledWith(
-				'my-provider-123',
+				'myProvider123',
 				projectId,
 			);
 		});
