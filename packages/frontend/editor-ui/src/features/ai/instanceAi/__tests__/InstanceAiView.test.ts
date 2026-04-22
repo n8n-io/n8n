@@ -118,20 +118,25 @@ describe('InstanceAiView', () => {
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
 	});
 
-	it('does not reconnect when direct hydration is stale', async () => {
+	it('clears the current thread when mounted on the base route (AI-2408)', async () => {
+		// Default setup has store.currentThreadId = 'thread-1'. Rendering the
+		// view WITHOUT a `threadId` prop simulates landing on /instance-ai
+		// (fresh load, back button, or AI Assistant nav link). The view must
+		// reset the store so the sidebar doesn't keep highlighting 'thread-1'
+		// alongside the empty main view.
 		store.sseState = 'disconnected';
-		store.loadHistoricalMessages.mockResolvedValue('stale');
 
 		renderView();
 
 		await vi.waitFor(() => {
-			expect(store.loadHistoricalMessages).toHaveBeenCalledWith('thread-1');
+			expect(store.clearCurrentThread).toHaveBeenCalled();
 		});
+		expect(store.loadHistoricalMessages).not.toHaveBeenCalled();
 		expect(store.loadThreadStatus).not.toHaveBeenCalled();
 		expect(store.connectSSE).not.toHaveBeenCalled();
 	});
 
-	it('reconnects on same-thread re-entry when hydration is skipped', async () => {
+	it('reconnects on same-thread re-entry (thread route, SSE disconnected)', async () => {
 		store.currentThreadId = 'thread-1';
 		store.sseState = 'disconnected';
 		store.hasMessages = true;
@@ -146,7 +151,9 @@ describe('InstanceAiView', () => {
 		] as typeof store.messages;
 		store.loadHistoricalMessages.mockResolvedValue('skipped');
 
-		renderView();
+		// Render WITH the threadId prop — this is the thread-route re-entry
+		// path (user lands on /instance-ai/thread-1 after SSE was torn down).
+		renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
 			expect(store.loadHistoricalMessages).toHaveBeenCalledWith('thread-1');

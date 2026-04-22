@@ -115,7 +115,11 @@ export interface NodeDescription extends NodeSummary {
 		default?: unknown;
 		options?: Array<{ name: string; value: string | number | boolean }>;
 	}>;
-	credentials?: Array<{ name: string; required?: boolean }>;
+	credentials?: Array<{
+		name: string;
+		required?: boolean;
+		displayOptions?: Record<string, unknown>;
+	}>;
 	inputs: string[];
 	outputs: string[];
 	webhooks?: unknown[];
