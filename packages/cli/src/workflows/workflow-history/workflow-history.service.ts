@@ -262,7 +262,6 @@ export class WorkflowHistoryService {
 			versionId: e.versionId,
 			event: e.event,
 			createdAt: e.createdAt,
-			userId: e.userId,
 			user: e.user,
 			versionName: e.workflowHistory?.name ?? null,
 		}));

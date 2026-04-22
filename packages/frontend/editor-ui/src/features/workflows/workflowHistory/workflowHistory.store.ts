@@ -123,7 +123,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		major: number;
 		minor: number;
 		patch: number;
-	}): Promise<string | null> => getFirstAdoptionDate(rootStore.restApiContext, version);
+	}): Promise<string | null> => await getFirstAdoptionDate(rootStore.restApiContext, version);
 
 	return {
 		getWorkflowHistory,
