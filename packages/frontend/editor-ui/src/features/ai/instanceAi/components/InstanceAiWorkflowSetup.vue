@@ -9,11 +9,11 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
@@ -57,7 +57,6 @@ const credentialsStore = useCredentialsStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
-const ndvStore = useNDVStore();
 
 // ---------------------------------------------------------------------------
 // Composable wiring — order matters for dependencies
@@ -109,7 +108,6 @@ _initCredGroupSelections();
 const {
 	paramValues: _paramValues,
 	getCardSimpleParameters,
-	getCardNestedParameterCount,
 	onParameterValueChanged,
 	buildNodeParameters,
 } = useSetupCardParameters(cards, trackedParamNames, cardHasParamWork);
@@ -166,6 +164,7 @@ const {
 	isPartial,
 	isApplying,
 	applyError,
+	handleApply,
 	handleContinue,
 	handleLater,
 	handleTestTrigger,
@@ -350,7 +349,7 @@ onUnmounted(() => {
 	stopCreateListener();
 	if (previousWorkflow) {
 		const prevDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(previousWorkflow.id));
-		prevDocStore.setWorkflow(previousWorkflow);
+		prevDocStore.hydrate(previousWorkflow);
 	}
 });
 
@@ -400,7 +399,7 @@ onMounted(async () => {
 
 		previousWorkflow = { ...workflowsStore.workflow };
 		const targetDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowData.id));
-		targetDocStore.setWorkflow(workflowData);
+		targetDocStore.hydrate(workflowData);
 	} catch (error) {
 		console.warn('Failed to fetch workflow for Instance AI setup', error);
 	}
@@ -408,6 +407,15 @@ onMounted(async () => {
 	if (!isMounted) return;
 
 	isStoreReady.value = true;
+
+	// No renderable cards — every outstanding issue is nested (e.g. empty
+	// fixedCollection) and has no inline editor in this wizard. Apply with
+	// what we have so the backend's re-analyze loop can hand unresolved
+	// issues back to the AI via `partial` / `skippedNodes`.
+	if (props.setupRequests.length > 0 && cards.value.length === 0) {
+		void handleApply();
+		return;
+	}
 
 	const testedIds = new Set<string>();
 	for (const card of cards.value) {
@@ -467,12 +475,9 @@ function isTriggerOnly(card: SetupCard): boolean {
 	return isTriggerOnlyUtil(card, cardHasParamWork);
 }
 
-function useCredentialIcon(card: SetupCard): boolean {
-	return shouldUseCredentialIcon(card, cardHasParamWork);
-}
-
-function openNdv(card: SetupCard): void {
-	ndvStore.setActiveNodeName(card.nodes[0].node.name, 'other');
+function getCardNodeType(card: SetupCard) {
+	const node = card.nodes[0].node;
+	return nodeTypesStore.getNodeType(node.type, node.typeVersion);
 }
 
 const nodeNames = computed(() => {
@@ -514,11 +519,11 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 					<ul :class="$style.confirmList">
 						<li v-for="card in cards" :key="card.id" :class="$style.confirmItem">
 							<CredentialIcon
-								v-if="useCredentialIcon(card)"
+								v-if="shouldUseCredentialIcon(card)"
 								:credential-type-name="card.credentialType!"
 								:size="14"
 							/>
-							<N8nIcon v-else icon="check" size="xsmall" :class="$style.success" />
+							<NodeIcon v-else :node-type="getCardNodeType(card)" :size="14" />
 							<N8nText size="small">{{ getCardTitle(card) }}</N8nText>
 						</li>
 					</ul>
@@ -563,11 +568,11 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 				<!-- Header -->
 				<header :class="$style.header">
 					<CredentialIcon
-						v-if="useCredentialIcon(currentCard)"
+						v-if="shouldUseCredentialIcon(currentCard)"
 						:credential-type-name="currentCard.credentialType!"
 						:size="16"
 					/>
-					<N8nIcon v-else icon="play" size="small" />
+					<NodeIcon v-else :node-type="getCardNodeType(currentCard)" :size="16" />
 					<N8nText :class="$style.title" size="medium" color="text-dark" bold>
 						{{ getCardTitle(currentCard) }}
 					</N8nText>
@@ -580,7 +585,8 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						:class="$style.loading"
 					/>
 					<N8nIcon
-						v-else-if="getCredTestIcon(currentCard) === 'check'"
+						v-else-if="getCredTestIcon(currentCard) === 'check' && !cardHasParamWork(currentCard)"
+						data-test-id="instance-ai-workflow-setup-cred-check"
 						icon="check"
 						size="small"
 						:class="$style.success"
@@ -666,23 +672,6 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
 						@value-changed="onParameterValueChanged(currentCard, $event)"
 					/>
-
-					<!-- Link to configure complex parameters in NDV -->
-					<N8nLink
-						v-if="cardHasParamWork(currentCard) && getCardNestedParameterCount(currentCard) > 0"
-						data-test-id="instance-ai-workflow-setup-configure-link"
-						:underline="true"
-						theme="text"
-						size="medium"
-						@click="openNdv(currentCard)"
-					>
-						{{
-							i18n.baseText('instanceAi.workflowSetup.configureParameters' as BaseTextKey, {
-								adjustToNumber: getCardNestedParameterCount(currentCard),
-								interpolate: { count: String(getCardNestedParameterCount(currentCard)) },
-							})
-						}}
-					</N8nLink>
 				</div>
 
 				<!-- Listening callout for webhook triggers -->
