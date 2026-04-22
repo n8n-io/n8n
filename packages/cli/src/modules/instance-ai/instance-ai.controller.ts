@@ -1,5 +1,6 @@
 import {
 	InstanceAiConfirmRequestDto,
+	InstanceAiFeedbackRequestDto,
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
@@ -354,6 +355,22 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.cancelRun(threadId);
+		return { ok: true };
+	}
+
+	@Post('/feedback/:threadId/:responseId')
+	@GlobalScope('instanceAi:message')
+	async feedback(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('responseId') responseId: string,
+		@Body payload: InstanceAiFeedbackRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		// Fire-and-forget: never surface LangSmith errors to the UI.
+		void this.instanceAiService.submitLangsmithFeedback(req.user, threadId, responseId, payload);
 		return { ok: true };
 	}
 

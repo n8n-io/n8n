@@ -10,8 +10,10 @@ export {
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
 	releaseTraceClient,
+	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } from './tracing/langsmith-tracing';
+export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
 export {
 	IdRemapper,
 	TraceIndex,

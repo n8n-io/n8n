@@ -57,6 +57,25 @@ export async function postCancel(context: IRestApiContext, threadId: string): Pr
 }
 
 /**
+ * POST /instance-ai/feedback/:threadId/:responseId -> { ok: true }
+ * Annotate the LangSmith trace for this response with a thumbs-up/down rating
+ * and optional text comment. Idempotent: re-submitting upserts the record.
+ */
+export async function postFeedback(
+	context: IRestApiContext,
+	threadId: string,
+	responseId: string,
+	payload: { rating: 'up' | 'down'; comment?: string },
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/feedback/${threadId}/${responseId}`,
+		payload,
+	);
+}
+
+/**
  * POST /instance-ai/chat/:threadId/tasks/:taskId/cancel -> 200 OK
  * Cancel a specific background task.
  */
