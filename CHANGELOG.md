@@ -1,3 +1,11 @@
+## [1.123.33](https://github.com/n8n-io/n8n/compare/n8n@1.123.32...n8n@1.123.33) (2026-04-22)
+
+
+### Bug Fixes
+
+* **core:** Enforce credential access checks in dynamic node parameter requests ([#28862](https://github.com/n8n-io/n8n/issues/28862)) ([e67b44b](https://github.com/n8n-io/n8n/commit/e67b44b0e05b272419a171bf947ab01e2f7f4826))
+
+
 ## [1.123.32](https://github.com/n8n-io/n8n/compare/n8n@1.123.31...n8n@1.123.32) (2026-04-22)
 
 
