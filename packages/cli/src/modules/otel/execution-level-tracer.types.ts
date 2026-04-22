@@ -4,7 +4,14 @@ import type { TracingContext } from './tracing-context';
 
 export type StartWorkflowParams = {
 	executionId: string;
+	/** Parent context — incoming webhook traceparent or parent sub-workflow span. */
 	tracingContext?: TracingContext;
+	/**
+	 * Continuation link target — used by `workflowExecuteResume` to associate
+	 * the post-resume root with the pre-wait root without making it a child
+	 * of an already-ended span. Rendered as `span.links` in OTel.
+	 */
+	linkTo?: TracingContext;
 	workflow: { id: string; name: string; versionId?: string; nodeCount: number };
 };
 

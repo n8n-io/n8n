@@ -137,7 +137,7 @@ describe('OtelLifecycleHandler', () => {
 			tracer.startWorkflow.mockReturnValue(resumedSpanContext);
 		});
 
-		it('should start a new span parented to the execution’s own persisted context', async () => {
+		it('should start a new root span linked to the pre-wait origin and not overwrite the persisted origin', async () => {
 			traceContextService.get.mockResolvedValueOnce(prePauseContext);
 
 			await handler.onWorkflowResume({
@@ -152,10 +152,15 @@ describe('OtelLifecycleHandler', () => {
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({
 					executionId: 'exec-resume',
-					tracingContext: prePauseContext,
+					linkTo: prePauseContext,
 				}),
 			);
-			expect(traceContextService.persist).toHaveBeenCalledWith('exec-resume', resumedSpanContext);
+			// The post-resume call should NOT carry a parent context — it's a new root.
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.not.objectContaining({ tracingContext: expect.anything() }),
+			);
+			// Origin stays authoritative; subsequent resumes should link to it too.
+			expect(traceContextService.persist).not.toHaveBeenCalled();
 		});
 	});
 

@@ -154,7 +154,7 @@ describe('ExecutionLevelTracer', () => {
 			});
 		});
 
-		it('should retain tracked workflow span across a waiting endWorkflow', () => {
+		it('should clear the tracked workflow span on a waiting endWorkflow', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-waiting',
 				tracingContext: inboundTracingContext,
@@ -167,23 +167,13 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			// After a waiting end, the workflow span is still tracked — outbound
-			// propagation should still find it.
+			// A waiting end closes the pre-wait span. The post-resume span is
+			// re-created by the `workflowExecuteResume` lifecycle handler
+			// (which calls startWorkflow again), so nothing should remain
+			// tracked for this executionId between end and resume.
 			const headers: Record<string, string> = {};
 			tracer.injectTraceHeaders('exec-waiting', undefined, headers);
-			expect(headers.traceparent).toBeDefined();
-
-			// A terminal end should remove it.
-			tracer.endWorkflow({
-				executionId: 'exec-waiting',
-				status: 'success',
-				mode: 'manual',
-				isRetry: false,
-			});
-
-			const afterHeaders: Record<string, string> = {};
-			tracer.injectTraceHeaders('exec-waiting', undefined, afterHeaders);
-			expect(afterHeaders.traceparent).toBeUndefined();
+			expect(headers.traceparent).toBeUndefined();
 		});
 
 		it('should no-op when endWorkflow is called for an unknown executionId', () => {

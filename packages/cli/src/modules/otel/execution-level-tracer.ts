@@ -40,6 +40,7 @@ export class ExecutionLevelTracer {
 	startWorkflow(params: StartWorkflowParams) {
 		try {
 			const parentCtx = this.parseTraceParentHeaders(params.tracingContext);
+			const links = this.buildContinuationLinks(params.linkTo);
 			const span = this.tracer.startSpan(
 				'workflow.execute',
 				{
@@ -50,6 +51,7 @@ export class ExecutionLevelTracer {
 						[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
 						[ATTR.EXECUTION_ID]: params.executionId,
 					},
+					links,
 				},
 				parentCtx,
 			);
@@ -93,9 +95,7 @@ export class ExecutionLevelTracer {
 			});
 			throw error;
 		} finally {
-			if (params.status !== 'waiting') {
-				this.activeWorkflowSpans.delete(params.executionId);
-			}
+			this.activeWorkflowSpans.delete(params.executionId);
 		}
 	}
 
@@ -200,6 +200,19 @@ export class ExecutionLevelTracer {
 		return tracingContext
 			? propagation.extract(context.active(), tracingContext)
 			: context.active();
+	}
+
+	private buildContinuationLinks(linkTo?: TracingContext) {
+		if (!linkTo) return undefined;
+		const extracted = propagation.extract(context.active(), linkTo);
+		const spanContext = trace.getSpanContext(extracted);
+		if (!spanContext) return undefined;
+		return [
+			{
+				context: spanContext,
+				attributes: { [ATTR.CONTINUATION_REASON]: 'resume' },
+			},
+		];
 	}
 
 	private findWorkflowSpanContext(executionId: string) {

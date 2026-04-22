@@ -47,16 +47,18 @@ export class OtelLifecycleHandler {
 
 	/**
 	 * Fired instead of `workflowExecuteBefore` when an execution resumes after a wait.
-	 * We start a fresh workflow span parented to the span we persisted pre-wait so
-	 * the resumed phase shares the original trace id and appears as a child in the tree.
+	 * The post-resume phase is its own root span, associated with the pre-wait origin
+	 * via an OTel span link (not parent-child — the origin span has already ended).
+	 * We intentionally do not overwrite the persisted origin, so any subsequent resume
+	 * on the same execution links back to the same origin rather than forming a chain.
 	 */
 	@OnLifecycleEvent('workflowExecuteResume')
 	async onWorkflowResume(ctx: WorkflowExecuteResumeContext): Promise<void> {
-		const tracingContext = await this.traceContextService.get(ctx.executionId);
+		const origin = await this.traceContextService.get(ctx.executionId);
 
-		const spanContext = this.tracer.startWorkflow({
+		this.tracer.startWorkflow({
 			executionId: ctx.executionId,
-			tracingContext,
+			linkTo: origin,
 			workflow: {
 				id: ctx.workflow.id,
 				name: ctx.workflow.name,
@@ -64,8 +66,6 @@ export class OtelLifecycleHandler {
 				nodeCount: ctx.workflow.nodes.length,
 			},
 		});
-
-		await this.traceContextService.persist(ctx.executionId, spanContext);
 	}
 
 	@OnLifecycleEvent('workflowExecuteAfter')
