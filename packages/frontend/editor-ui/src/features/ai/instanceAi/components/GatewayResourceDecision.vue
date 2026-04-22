@@ -107,7 +107,7 @@ async function confirm(decision: string) {
 			<N8nButton
 				v-if="denyPrimary"
 				variant="outline"
-				size="small"
+				size="medium"
 				:label="denyPrimary.label"
 				data-test-id="gateway-decision-deny"
 				@click="confirm(denyPrimary.decision)"
