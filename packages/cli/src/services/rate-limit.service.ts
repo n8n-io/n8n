@@ -7,6 +7,7 @@ import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import assert from 'node:assert';
 import type { ZodTypeAny } from 'zod';
 import type { ZodClass } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
 
 const defaultLimits: Required<RateLimiterLimits> = {
 	limit: 5,
@@ -65,8 +66,8 @@ export class RateLimitService {
 		return expressRateLimit({
 			limit: config.limit ?? defaultLimits.limit,
 			windowMs: config.windowMs ?? defaultLimits.windowMs,
-			keyGenerator: (req: Request) => this.extractUserIdentifier(req),
-			skip: (req: Request) => {
+			keyGenerator: (req: AuthenticatedRequest) => this.extractUserIdentifier(req),
+			skip: (req: AuthenticatedRequest) => {
 				const identifier = this.extractUserIdentifier(req);
 				return identifier.startsWith('skip:');
 			},
@@ -91,7 +92,7 @@ export class RateLimitService {
 		return `body:${value}`;
 	}
 
-	private extractUserIdentifier(req: Request): string {
+	private extractUserIdentifier(req: AuthenticatedRequest): string {
 		return `user:${req.user?.id}`;
 	}
 }

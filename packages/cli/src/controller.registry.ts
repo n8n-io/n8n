@@ -27,6 +27,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { send } from '@/response-helper';
 import { CorsService } from './services/cors-service';
 import { inProduction } from '@n8n/backend-common';
+import { isAuthenticatedRequest } from '@n8n/db';
 
 @Service()
 export class ControllerRegistry {
@@ -219,6 +220,7 @@ export class ControllerRegistry {
 
 	private createScopedMiddleware(accessScope: AccessScope): RequestHandler {
 		return async (req, res, next) => {
+			if (!isAuthenticatedRequest(req)) throw new UnauthenticatedError();
 			if (!req.user) throw new UnauthenticatedError();
 
 			const { scope, globalOnly } = accessScope;

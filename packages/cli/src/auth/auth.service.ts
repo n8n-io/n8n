@@ -326,7 +326,7 @@ export class AuthService {
 
 	async resolveJwt(
 		token: string,
-		req: Request,
+		req: AuthenticatedRequest,
 		res: Response,
 	): Promise<[User, { usedMfa: boolean }]> {
 		const { user, jwtPayload } = await this.validateToken(token);

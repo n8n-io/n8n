@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { NextFunction, Request, Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -27,6 +27,7 @@ import { CredentialResolutionError } from '../errors/credential-resolution.error
 import { CredentialResolverNotConfiguredError } from '../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../errors/missing-execution-context.error';
+import { AuthenticatedRequest } from '@n8n/db';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -250,7 +251,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	getDynamicCredentialsEndpointsMiddleware() {
 		const { endpointAuthToken } = this.dynamicCredentialConfig;
 		if (!endpointAuthToken?.trim()) {
-			return (req: Request, res: Response, next: NextFunction) => {
+			return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 				// If a user was authenticated for this request, we allow access irrelevant of the static authentication
 				if (req.user) {
 					return next();
@@ -270,7 +271,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			'x-authorization',
 		)!;
 
-		return (req: Request, res: Response, next: NextFunction) => {
+		return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
 			// If a user was authenticated for this request, we allow access irrelevant of the static authentication
 			if (req.user) {
 				return next();

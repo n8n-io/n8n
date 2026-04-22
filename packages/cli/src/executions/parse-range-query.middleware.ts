@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import { validate } from 'jsonschema';
 import type { JsonObject } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -10,13 +10,18 @@ import {
 	allowedExecutionsQueryFilterFields as ALLOWED_FILTER_FIELDS,
 	schemaGetExecutionsQueryFilter as SCHEMA,
 } from './execution.service';
+import type { ExecutionRequest } from './execution.types';
 
 const isValid = (arg: JsonObject) => validate(arg, SCHEMA).valid;
 
 /**
  * Middleware to parse the query string in a request to retrieve a range of execution summaries.
  */
-export const parseRangeQuery = (req: Request, res: Response, next: NextFunction) => {
+export const parseRangeQuery = (
+	req: ExecutionRequest.GetMany,
+	res: Response,
+	next: NextFunction,
+) => {
 	const { limit, firstId, lastId } = req.query;
 
 	try {

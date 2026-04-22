@@ -1,4 +1,4 @@
-import type { Request } from 'express';
+import type { AuthenticatedRequest } from '@n8n/db';
 
 /**
  * A single authentication strategy for the public API.
@@ -12,5 +12,5 @@ import type { Request } from 'express';
  *           (and req.tokenGrant if applicable) before returning.
  */
 export interface AuthStrategy {
-	authenticate(req: Request): Promise<boolean | null>;
+	authenticate(req: AuthenticatedRequest): Promise<boolean | null>;
 }
