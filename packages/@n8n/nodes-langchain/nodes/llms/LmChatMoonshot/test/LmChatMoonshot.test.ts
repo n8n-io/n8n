@@ -63,7 +63,7 @@ describe('LmChatMoonshot', () => {
 				displayName: 'Moonshot Kimi Chat Model',
 				name: 'lmChatMoonshot',
 				group: ['transform'],
-				version: [1],
+				version: [1, 1.1],
 			});
 		});
 
