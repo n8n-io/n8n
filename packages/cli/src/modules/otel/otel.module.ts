@@ -15,9 +15,6 @@ export class OtelModule implements ModuleInterface {
 		const { OtelService } = await import('./otel.service');
 		Container.get(OtelService).init();
 
-		const { ExecutionLevelTracer } = await import('./execution-level-tracer');
-		Container.get(ExecutionLevelTracer).startEvictionTimer();
-
 		// Importing the lifecycle handler triggers @OnLifecycleEvent registration
 		await import('./otel-lifecycle-handler');
 	}

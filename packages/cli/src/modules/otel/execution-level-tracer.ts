@@ -20,8 +20,6 @@ import { ATTR } from './otel.constants';
 import type { TracingContext } from './tracing-context';
 
 const TRACER_NAME = 'n8n-workflow';
-const EVICTION_INTERVAL_MS = 10 * 60 * 1000;
-const SPAN_TTL_MS = 90 * 60 * 1000;
 function isError(status: ExecutionStatus): boolean {
 	return status === 'error' || status === 'crashed';
 }
@@ -33,8 +31,6 @@ export class ExecutionLevelTracer {
 	private readonly activeWorkflowSpans = new Map<string, TrackedSpan>();
 	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
 	private readonly tracer = trace.getTracer(TRACER_NAME);
-
-	private evictionTimer: ReturnType<typeof setInterval> | undefined;
 
 	constructor(
 		private readonly config: OtelConfig,
@@ -197,18 +193,6 @@ export class ExecutionLevelTracer {
 		}
 	}
 
-	startEvictionTimer(): void {
-		this.evictionTimer = setInterval(() => this.evictStaleSpans(), EVICTION_INTERVAL_MS);
-		this.evictionTimer.unref();
-	}
-
-	stopEvictionTimer(): void {
-		if (this.evictionTimer) {
-			clearInterval(this.evictionTimer);
-			this.evictionTimer = undefined;
-		}
-	}
-
 	private parseTraceParentHeaders(tracingContext?: TracingContext) {
 		return tracingContext
 			? propagation.extract(context.active(), tracingContext)
@@ -226,25 +210,6 @@ export class ExecutionLevelTracer {
 				? this.activeNodeSpansByExecutionId.get(executionId)?.get(nodeName)?.span
 				: undefined) ?? this.activeWorkflowSpans.get(executionId)?.span
 		);
-	}
-
-	private evictStaleSpans(): void {
-		const now = Date.now();
-
-		for (const [key, tracked] of this.activeWorkflowSpans) {
-			if (now - tracked.createdAt <= SPAN_TTL_MS) break;
-			terminateSpan(tracked.span, 'evicted');
-			this.activeWorkflowSpans.delete(key);
-		}
-
-		for (const [executionId, executionNodes] of this.activeNodeSpansByExecutionId) {
-			for (const [nodeName, tracked] of executionNodes) {
-				if (now - tracked.createdAt <= SPAN_TTL_MS) break;
-				terminateSpan(tracked.span, 'evicted');
-				executionNodes.delete(nodeName);
-			}
-			if (executionNodes.size === 0) this.activeNodeSpansByExecutionId.delete(executionId);
-		}
 	}
 
 	private endDanglingNodeSpans(executionId: string): void {
