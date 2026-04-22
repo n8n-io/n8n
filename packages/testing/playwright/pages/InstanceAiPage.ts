@@ -171,6 +171,80 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-workflow-setup-card');
 	}
 
+	getWorkflowSetupConfirmCard(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-confirm');
+	}
+
+	getWorkflowSetupReviewDetailsLink(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-review-details');
+	}
+
+	getWorkflowSetupStepCounter(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-step-counter');
+	}
+
+	getWorkflowSetupPrevButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-prev');
+	}
+
+	getWorkflowSetupNextButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-next');
+	}
+
+	/** Later button — works in both confirm mode and full wizard. */
+	getWorkflowSetupLaterButton(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-later');
+	}
+
+	/** Apply / Continue button — works in both confirm mode and full wizard. */
+	getWorkflowSetupApplyButton(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-apply-button');
+	}
+
+	getWorkflowSetupTestTriggerButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-test-trigger');
+	}
+
+	getWorkflowSetupCredentialButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-credential-button');
+	}
+
+	getWorkflowSetupCredCheck(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-cred-check');
+	}
+
+	getWorkflowSetupStepCheck(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-step-check');
+	}
+
+	getWorkflowSetupNodesHint(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-nodes-hint');
+	}
+
+	getWorkflowSetupListeningCallout(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-listening-callout');
+	}
+
+	getWorkflowSetupErrorBanner(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-error-banner');
+	}
+
+	getWorkflowSetupApplyingState(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-applying');
+	}
+
+	getWorkflowSetupDeferredState(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-deferred');
+	}
+
+	getWorkflowSetupPartialState(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-partial');
+	}
+
+	getWorkflowSetupAppliedState(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-applied');
+	}
+
 	getWorkflowSetupParameterIssues(): Locator {
 		return this.getWorkflowSetupCard().getByTestId('parameter-issues');
 	}

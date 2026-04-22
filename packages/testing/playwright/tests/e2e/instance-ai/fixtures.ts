@@ -75,6 +75,31 @@ export const test = base.extend<InstanceAiFixtures>({
 
 			await services.proxy.clearAllExpectations();
 
+			// Install a success response for Slack's `users.profile.get` — the
+			// backend's `POST /credentials/test` endpoint calls this when testing
+			// a Slack API credential. Seed tokens in these tests are intentionally
+			// fake, so hitting the real Slack API returns `invalid_auth` and the
+			// frontend's `buildNodeCredentials` then drops the credential from
+			// the apply payload (see `getEffectiveCredTestResult` in
+			// `useCredentialTesting.ts`). By registering this mock FIRST (before
+			// `loadExpectations`), mockserver's FIFO matching serves it ahead of
+			// any stale recorded Slack response.
+			await services.proxy.createExpectation({
+				httpRequest: { method: 'GET', path: '/api/users.profile.get' },
+				httpResponse: {
+					statusCode: 200,
+					headers: { 'Content-Type': ['application/json'] },
+					body: JSON.stringify({
+						ok: true,
+						profile: {
+							real_name: 'E2E Test User',
+							email: 'e2e@example.test',
+						},
+					}),
+				},
+				times: { unlimited: true },
+			});
+
 			// Wipe instance-ai threads, per-thread in-memory state, background tasks,
 			// and user workflows so the orchestrator's `list-workflows` tool can't see
 			// leftovers from a prior test and contaminate this test's recorded responses.
