@@ -23,6 +23,7 @@ import {
 	getNumberColumnFilterOptions,
 	getDateColumnFilterOptions,
 	isOversizedValue,
+	isUnsafeNumberValue,
 } from './columnUtils';
 import {
 	ADD_ROW_ROW_ID,
@@ -58,6 +59,35 @@ describe('columnUtils', () => {
 			expect(isOversizedValue(null)).toBe(false);
 			expect(isOversizedValue(undefined)).toBe(false);
 			expect(isOversizedValue({ key: 'value' })).toBe(false);
+		});
+	});
+
+	describe('isUnsafeNumberValue', () => {
+		it('should return false for non-number values', () => {
+			expect(isUnsafeNumberValue('9007199254740993')).toBe(false);
+			expect(isUnsafeNumberValue(null)).toBe(false);
+			expect(isUnsafeNumberValue(undefined)).toBe(false);
+			expect(isUnsafeNumberValue(true)).toBe(false);
+		});
+
+		it('should return false for numbers within the safe range', () => {
+			expect(isUnsafeNumberValue(0)).toBe(false);
+			expect(isUnsafeNumberValue(42)).toBe(false);
+			expect(isUnsafeNumberValue(-42.5)).toBe(false);
+			expect(isUnsafeNumberValue(Number.MAX_SAFE_INTEGER)).toBe(false);
+			expect(isUnsafeNumberValue(-Number.MAX_SAFE_INTEGER)).toBe(false);
+		});
+
+		it('should return true for numbers beyond the safe range', () => {
+			expect(isUnsafeNumberValue(Number.MAX_SAFE_INTEGER + 1)).toBe(true);
+			expect(isUnsafeNumberValue(-(Number.MAX_SAFE_INTEGER + 1))).toBe(true);
+			expect(isUnsafeNumberValue(1e20)).toBe(true);
+		});
+
+		it('should return true for non-finite numbers', () => {
+			expect(isUnsafeNumberValue(Infinity)).toBe(true);
+			expect(isUnsafeNumberValue(-Infinity)).toBe(true);
+			expect(isUnsafeNumberValue(NaN)).toBe(true);
 		});
 	});
 
