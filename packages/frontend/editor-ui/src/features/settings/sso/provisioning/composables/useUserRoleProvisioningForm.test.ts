@@ -292,18 +292,43 @@ describe('useUserRoleProvisioningForm', () => {
 			);
 		});
 
-		it('should skip save when nothing changed', async () => {
+		it('should skip save when nothing changed and effective assignment is instance_and_project', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: true,
+					scopesProvisionProjectRoles: true,
+				}),
+			);
+
+			const { formValue, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
+
+			// Don't change anything — stored is instance_and_project, no cleanup needed
+			await saveProvisioningConfig(false);
+
+			expect(provisioningApi.saveProvisioningConfig).not.toHaveBeenCalled();
+		});
+
+		it('sends deleteProjectRules even when config is unchanged, to clean stale server-side project rules', async () => {
+			// User is on 'instance_role' (instance + idp) and re-saves without changing anything.
+			// storedHasProjectRules could be stale if the editor previously created project rules,
+			// so the cleanup flag must still fire to guarantee the server matches the UI intent.
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
+			);
+			vi.mocked(provisioningApi.saveProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
 
 			const { formValue, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
 			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
 
-			// Don't change anything
 			await saveProvisioningConfig(false);
 
-			expect(provisioningApi.saveProvisioningConfig).not.toHaveBeenCalled();
+			expect(provisioningApi.saveProvisioningConfig).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ deleteProjectRules: true }),
+			);
 		});
 	});
 
@@ -504,7 +529,11 @@ describe('useUserRoleProvisioningForm', () => {
 			);
 		});
 
-		it('omits deleteProjectRules when stored state had no project rules', async () => {
+		it('always sends deleteProjectRules when effective assignment is not instance_and_project', async () => {
+			// Robustness guarantee: we can't trust storedHasProjectRules to be fresh
+			// (editor saves can create project rules without touching the composable's
+			// ref), so the cleanup flag always fires when the user isn't on
+			// instance_and_project. Backend deleteAllOfType is idempotent.
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
@@ -517,6 +546,35 @@ describe('useUserRoleProvisioningForm', () => {
 			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
 
 			roleAssignment.value = 'manual';
+			await saveProvisioningConfig(false);
+
+			expect(provisioningApi.saveProvisioningConfig).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ deleteProjectRules: true }),
+			);
+		});
+
+		it('omits deleteProjectRules when effective assignment stays instance_and_project', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: true,
+					scopesProvisionProjectRoles: true,
+				}),
+			);
+			vi.mocked(provisioningApi.saveProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: true,
+					scopesProvisionProjectRoles: true,
+					scopesUseExpressionMapping: true,
+				}),
+			);
+
+			const { formValue, mappingMethod, saveProvisioningConfig } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
+
+			// Change only the mapping method, keep roleAssignment at instance_and_project
+			mappingMethod.value = 'rules_in_n8n';
 			await saveProvisioningConfig(false);
 
 			expect(provisioningApi.saveProvisioningConfig).toHaveBeenCalledTimes(1);

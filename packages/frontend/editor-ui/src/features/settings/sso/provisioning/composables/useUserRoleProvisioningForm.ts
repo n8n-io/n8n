@@ -127,17 +127,20 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 			? 'idp'
 			: mappingMethod.value;
 
+		// Whenever the effective assignment isn't 'instance_and_project', any project
+		// mapping rules on the server are stale and must be cleaned up. We send this
+		// flag even when the config appears unchanged because storedHasProjectRules
+		// can be out of sync (e.g. rules were created via the editor after load).
+		const shouldDeleteProjectRules = effectiveRoleAssignment !== 'instance_and_project';
+
 		const stored = storedValues.value;
-		if (
+		const configUnchanged =
 			effectiveRoleAssignment === stored.roleAssignment &&
-			effectiveMappingMethod === stored.mappingMethod
-		) {
+			effectiveMappingMethod === stored.mappingMethod;
+
+		if (configUnchanged && !shouldDeleteProjectRules) {
 			return;
 		}
-
-		const shouldDeleteProjectRules =
-			stored.roleAssignment === 'instance_and_project' &&
-			effectiveRoleAssignment !== 'instance_and_project';
 
 		await provisioningStore.saveProvisioningConfig({
 			...getProvisioningConfigFromDropdowns(effectiveRoleAssignment, effectiveMappingMethod),
