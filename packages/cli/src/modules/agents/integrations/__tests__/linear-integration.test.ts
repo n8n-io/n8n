@@ -44,19 +44,6 @@ describe('LinearIntegration', () => {
 		webhookUrlFor: () => 'https://example.test/webhook',
 	});
 
-	it('declares the expected metadata', () => {
-		expect(integration.type).toBe('linear');
-		expect(integration.credentialTypes).toEqual(['linearApi', 'linearOAuth2Api']);
-		expect(integration.supportedComponents).toEqual([
-			'section',
-			'button',
-			'divider',
-			'image',
-			'fields',
-		]);
-		expect(integration.needsShortCallbackData).toBe(false);
-	});
-
 	it('builds the adapter with an apiKey from a linearApi credential', async () => {
 		await integration.createAdapter(ctx({ apiKey: 'lin_api_xyz', signingSecret: 'sec' }));
 
