@@ -91,15 +91,12 @@ export class CredentialModal extends BaseModal {
 
 	/**
 	 * Wait for save to fully complete.
-	 * After saving (and optional credential testing), the button becomes
-	 * disabled (no unsaved changes) and is no longer loading
+	 * After saving (and optional credential testing), the button shows "Saved" label.
 	 */
 	async waitForSaveComplete(): Promise<void> {
-		const btn = this.getSaveButton().locator('button');
-		await expect(async () => {
-			await expect(btn).toBeDisabled();
-			await expect(btn).not.toHaveAttribute('aria-busy', 'true');
-		}).toPass({ timeout: 10000 });
+		await expect(this.getSaveButton().getByText('Saved', { exact: true })).toBeVisible({
+			timeout: 10000,
+		});
 	}
 
 	async save(): Promise<void> {
