@@ -12,6 +12,7 @@ export class WorkflowStartHandler implements SpanHandler<WorkflowExecuteBeforeCo
 		const span = tracer.startSpan('workflow.execute', {
 			attributes: {
 				[ATTR.WORKFLOW_ID]: ctx.workflow.id,
+				[ATTR.WORKFLOW_VERSION_ID]: ctx.workflow.versionId,
 				[ATTR.WORKFLOW_NAME]: ctx.workflow.name,
 				[ATTR.WORKFLOW_NODE_COUNT]: ctx.workflow.nodes.length,
 				[ATTR.EXECUTION_ID]: ctx.executionId,

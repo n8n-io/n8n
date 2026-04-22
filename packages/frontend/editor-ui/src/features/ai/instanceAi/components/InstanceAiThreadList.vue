@@ -1,11 +1,17 @@
 <script lang="ts" setup>
 import { getRelativeDate } from '@/features/ai/chatHub/chat.utils';
-import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nIcon,
+	N8nIconButton,
+	N8nText,
+	N8nScrollArea,
+} from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { INSTANCE_AI_THREAD_VIEW } from '../constants';
+import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 const store = useInstanceAiStore();
@@ -56,17 +62,22 @@ const groupedThreads = computed(() => {
 });
 
 function handleNewThread() {
-	const threadId = store.newThread();
-	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+	if (!store.hasMessages) return;
+	store.newThread();
+	void router.push({ name: INSTANCE_AI_VIEW });
 }
 
 async function handleDeleteThread(threadId: string) {
 	const { wasActive } = await store.deleteThread(threadId);
 	if (wasActive) {
-		void router.push({
-			name: INSTANCE_AI_THREAD_VIEW,
-			params: { threadId: store.currentThreadId },
-		});
+		if (store.threads.length > 0) {
+			void router.push({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: store.currentThreadId },
+			});
+		} else {
+			void router.push({ name: INSTANCE_AI_VIEW });
+		}
 	}
 }
 
@@ -117,7 +128,7 @@ function handleThreadAction(action: string, threadId: string) {
 		</button>
 
 		<!-- Thread list -->
-		<div :class="$style.threadList">
+		<N8nScrollArea :class="$style.threadList">
 			<template v-if="groupedThreads.length > 0">
 				<div v-for="group in groupedThreads" :key="group.label" :class="$style.group">
 					<N8nText :class="$style.groupLabel" tag="div" size="small" color="text-light">
@@ -176,7 +187,7 @@ function handleThreadAction(action: string, threadId: string) {
 					{{ i18n.baseText('instanceAi.sidebar.noThreads') }}
 				</N8nText>
 			</div>
-		</div>
+		</N8nScrollArea>
 	</div>
 </template>
 
@@ -184,9 +195,8 @@ function handleThreadAction(action: string, threadId: string) {
 .container {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
-	border-right: var(--border);
-	background: var(--color--background--light-2);
+	flex: 1;
+	min-height: 0;
 }
 
 .newChatButton {
@@ -221,8 +231,8 @@ function handleThreadAction(action: string, threadId: string) {
 
 .threadList {
 	flex: 1;
-	overflow-y: auto;
-	padding: var(--spacing--4xs);
+	min-height: 0;
+	padding: var(--spacing--2xs);
 }
 
 .group {
@@ -242,6 +252,7 @@ function handleThreadAction(action: string, threadId: string) {
 .threadItem {
 	display: flex;
 	align-items: center;
+	height: 32px;
 	border-radius: var(--radius);
 	transition: background-color 0.1s ease;
 
@@ -262,7 +273,8 @@ function handleThreadAction(action: string, threadId: string) {
 	gap: var(--spacing--3xs);
 	flex: 1;
 	min-width: 0;
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	height: 100%;
+	padding: 0 var(--spacing--xs);
 	color: var(--color--text) !important;
 	text-decoration: none !important;
 	outline: none;
@@ -282,7 +294,7 @@ function handleThreadAction(action: string, threadId: string) {
 }
 
 .threadLinkActive {
-	background-color: var(--color--background--light-1);
+	// Active background handled by .threadItem.active
 }
 
 .threadIcon {

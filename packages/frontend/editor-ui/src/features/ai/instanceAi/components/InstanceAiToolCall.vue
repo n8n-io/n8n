@@ -2,7 +2,8 @@
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed, ref } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
@@ -20,11 +21,11 @@ const isOpen = ref(false);
 
 const displayName = computed(() => {
 	const { toolName, args } = props.toolCall;
-	const label = getToolLabel(toolName);
-	if (toolName === 'web-search' && typeof args.query === 'string') {
+	const label = getToolLabel(toolName, args as Record<string, unknown>);
+	if (toolName === 'research' && args.action === 'web-search' && typeof args.query === 'string') {
 		return `${label}: "${args.query}"`;
 	}
-	if (toolName === 'fetch-url' && typeof args.url === 'string') {
+	if (toolName === 'research' && args.action === 'fetch-url' && typeof args.url === 'string') {
 		return `${label}: ${args.url}`;
 	}
 	return label;
@@ -74,7 +75,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 			</div>
 			<N8nIcon :icon="isOpen ? 'chevron-up' : 'chevron-down'" size="small" />
 		</CollapsibleTrigger>
-		<CollapsibleContent :class="$style.content">
+		<AnimatedCollapsibleContent :class="$style.content">
 			<div :class="$style.section">
 				<div :class="$style.sectionLabel">{{ i18n.baseText('instanceAi.toolCall.input') }}</div>
 				<ToolResultJson :value="props.toolCall.args" />
@@ -89,14 +90,18 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 				<div :class="$style.sectionLabel">
 					{{ i18n.baseText('instanceAi.toolCall.output') }}
 				</div>
-				<ToolResultRenderer :result="props.toolCall.result" :tool-name="props.toolCall.toolName" />
+				<ToolResultRenderer
+					:result="props.toolCall.result"
+					:tool-name="props.toolCall.toolName"
+					:tool-args="props.toolCall.args"
+				/>
 			</div>
 			<div v-else-if="props.toolCall.isLoading" :class="$style.section">
 				<div :class="$style.sectionLabel">
 					{{ i18n.baseText('instanceAi.toolCall.running') }}
 				</div>
 			</div>
-		</CollapsibleContent>
+		</AnimatedCollapsibleContent>
 
 		<!-- Compact pending indicator — full confirmation UI is in the top-level panel -->
 		<div v-if="showConfirmation" :class="$style.pendingIndicator">

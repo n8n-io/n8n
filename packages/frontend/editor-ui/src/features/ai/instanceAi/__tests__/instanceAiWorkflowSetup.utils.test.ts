@@ -142,6 +142,20 @@ describe('isParamValueSet', () => {
 	test('returns true for non-empty resource locator', () => {
 		expect(isParamValueSet({ __rl: true, value: 'some-id', mode: 'list' })).toBe(true);
 	});
+
+	test('returns false for placeholder sentinel string', () => {
+		expect(isParamValueSet('<__PLACEHOLDER_VALUE__your_email__>')).toBe(false);
+	});
+
+	test('returns false for resource locator with placeholder sentinel value', () => {
+		expect(
+			isParamValueSet({
+				__rl: true,
+				value: '<__PLACEHOLDER_VALUE__channel_name__>',
+				mode: 'list',
+			}),
+		).toBe(false);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -259,15 +273,16 @@ describe('isTriggerOnly', () => {
 });
 
 describe('shouldUseCredentialIcon', () => {
-	const noParamWork = () => false;
-
-	test('returns true when card has credential and is not trigger-only', () => {
-		const card = makeCard({ credentialType: 'slackApi', isTrigger: false });
-		expect(shouldUseCredentialIcon(card, noParamWork)).toBe(true);
+	test('returns true for multi-node credential-grouping cards', () => {
+		const card = makeCard({
+			credentialType: 'googleOAuth2Api',
+			nodes: [makeSetupNode(), makeSetupNode(), makeSetupNode()],
+		});
+		expect(shouldUseCredentialIcon(card)).toBe(true);
 	});
 
-	test('returns false when card has no credential', () => {
-		const card = makeCard({ credentialType: undefined });
-		expect(shouldUseCredentialIcon(card, noParamWork)).toBe(false);
+	test('returns false for single-node cards', () => {
+		const card = makeCard({ credentialType: 'slackApi', nodes: [makeSetupNode()] });
+		expect(shouldUseCredentialIcon(card)).toBe(false);
 	});
 });

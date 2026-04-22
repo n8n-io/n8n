@@ -27,6 +27,39 @@ Read these docs before starting any implementation:
 - `docs/sandboxing.md` — Daytona/local sandbox providers, workspace lifecycle, builder loop
 - `docs/configuration.md` — environment variables, minimal setup, storage, event bus
 
+## E2E Testing
+
+Tests live in `packages/testing/playwright/tests/e2e/instance-ai/`.
+
+### Local-build mode (no docker, no recording — hits real Anthropic API)
+
+```bash
+cd packages/testing/playwright
+export ANTHROPIC_API_KEY=sk-ant-...
+pnpm test:local:instance-ai                  # full suite
+pnpm test:local:instance-ai --grep "preview" # single test
+```
+
+Each run gets a random port + throwaway DB — safe to run in parallel, never
+touches `~/.n8n`. This mode does **not** record proxy expectations; it
+bypasses the proxy stack entirely and calls Anthropic directly.
+
+### Recording expectations (docker required)
+
+To record (or re-record) proxy expectations for CI replay, run in container
+mode with a real key. This captures LLM traffic + tool traces into
+`expectations/instance-ai/<test-slug>/`:
+
+```bash
+pnpm build:docker   # from repo root — build the local n8n image first
+cd packages/testing/playwright
+ANTHROPIC_API_KEY=sk-ant-... pnpm test:container:sqlite tests/e2e/instance-ai --workers 1
+```
+
+Commit the regenerated `expectations/` files alongside the test.
+
+See `docs/e2e-tests.md` for the full recording/replay architecture.
+
 ## Key Conventions
 
 - **Event schema**: `{ type, runId, agentId, payload? }` — defined in `streaming-protocol.md`
