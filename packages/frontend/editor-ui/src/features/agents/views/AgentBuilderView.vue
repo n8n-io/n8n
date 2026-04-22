@@ -121,6 +121,14 @@ watch(
 );
 
 /**
+ * Baseline used to detect real trigger changes. The integrations panel emits
+ * its current connected list whenever it runs `fetchStatus()`, which includes
+ * the harmless panel-mount refresh. We only want to fire `User edited agent
+ * config` (part: 'triggers') when the list actually differs.
+ */
+const triggersTelemetryBaseline = ref<string[]>([]);
+
+/**
  * Eagerly fetch connected trigger types so telemetry fingerprints are accurate
  * even if the user never opens the Triggers section of the settings sidebar.
  * Keep the hardcoded list in sync with AgentIntegrationsPanel.integrationConfigs.
@@ -139,10 +147,27 @@ async function loadInitialConnectedTriggers() {
 			.filter((t) => knownTriggerTypes.includes(t))
 			.sort();
 		connectedTriggers.value = connected;
+		triggersTelemetryBaseline.value = connected;
 	} catch {
 		// Non-fatal — leave connectedTriggers as-is; the sidebar emit will
 		// correct the value once the user expands the Triggers section.
 	}
+}
+
+function areStringListsEqual(a: string[], b: string[]): boolean {
+	if (a.length !== b.length) return false;
+	for (let i = 0; i < a.length; i++) {
+		if (a[i] !== b[i]) return false;
+	}
+	return true;
+}
+
+function onConnectedTriggersUpdate(list: string[]) {
+	const changed = !areStringListsEqual(triggersTelemetryBaseline.value, list);
+	connectedTriggers.value = list;
+	triggersTelemetryBaseline.value = list;
+	if (!changed) return;
+	emitEditedConfigTelemetry(['triggers']);
 }
 
 async function fetchAgent() {
@@ -166,6 +191,7 @@ async function updateName(name: string) {
 			localConfig.value.name = updated.name;
 		}
 		agentsEventBus.emit('agentUpdated');
+		emitEditedConfigTelemetry(['name']);
 	}
 }
 
@@ -177,6 +203,7 @@ async function updateDescription(description: string) {
 		agent.value = updated;
 		agentDescription.value = updated.description ?? null;
 		updatedAt.value = updated.updatedAt;
+		emitEditedConfigTelemetry(['description']);
 	}
 }
 
@@ -467,6 +494,11 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 			if (!localConfig.value) return;
 			await saveConfig();
 			await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
+			const fp = await buildAgentConfigFingerprint(localConfig.value, connectedTriggers.value);
+			agentTelemetry.trackPublishedAgent({
+				agentId: agentId.value,
+				configVersion: fp.config_version,
+			});
 		} catch (error) {
 			showError(error, locale.baseText('agents.builder.unsavedPublish.error'));
 			return; // stay on page
@@ -490,6 +522,8 @@ async function initialize() {
 	initialPrompt.value = undefined;
 	buildPrompt.value = '';
 	localConfig.value = null;
+	connectedTriggers.value = [];
+	triggersTelemetryBaseline.value = [];
 	saveStatus.value = 'idle';
 
 	await fetchAgent();
@@ -705,7 +739,7 @@ function onContinueLoaded(count: number) {
 			@update:config="onConfigFieldUpdate"
 			@published="onPublished"
 			@unpublished="onUnpublished"
-			@update:connected-triggers="(list: string[]) => (connectedTriggers = list)"
+			@update:connected-triggers="onConnectedTriggersUpdate"
 		/>
 	</div>
 </template>
