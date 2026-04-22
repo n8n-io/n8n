@@ -39,6 +39,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
+	const { markStateDirty } = uiStore;
 
 	const pageRedirectionHelper = usePageRedirectionHelper();
 
@@ -129,6 +130,10 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 				}
 			}
 		});
+
+		// Mark workflow dirty so it gets saved before execution.
+		// Without this, the backend loads stale pinData from the DB.
+		markStateDirty();
 
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.debug.title'),
