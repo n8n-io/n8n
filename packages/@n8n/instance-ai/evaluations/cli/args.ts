@@ -12,6 +12,7 @@ import { z } from 'zod';
 // ---------------------------------------------------------------------------
 
 export interface CliArgs {
+	/** TimeoutMs is defined per run, not as the total timeout for all the runs */
 	timeoutMs: number;
 	baseUrl: string;
 	email?: string;
@@ -29,6 +30,8 @@ export interface CliArgs {
 	concurrency: number;
 	/** LangSmith experiment name prefix (auto-generated if not set) */
 	experimentName?: string;
+	/** Number of times to run each test case (default: 1) */
+	runs: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -47,6 +50,7 @@ const cliArgsSchema = z.object({
 	dataset: z.string().default('instance-ai-workflow-evals'),
 	concurrency: z.number().int().positive().default(99),
 	experimentName: z.string().optional(),
+	runs: z.number().int().positive().default(1),
 });
 
 // ---------------------------------------------------------------------------
@@ -69,6 +73,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		dataset: validated.dataset,
 		concurrency: validated.concurrency,
 		experimentName: validated.experimentName,
+		runs: validated.runs,
 	};
 }
 
@@ -88,6 +93,7 @@ interface RawArgs {
 	dataset: string;
 	concurrency: number;
 	experimentName?: string;
+	runs: number;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -100,6 +106,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		dataset: 'instance-ai-workflow-evals',
 		concurrency: 99,
 		experimentName: undefined,
+		runs: 1,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -141,6 +148,11 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--output-dir':
 				result.outputDir = nextArg(argv, i, '--output-dir');
+				i++;
+				break;
+
+			case '--runs':
+				result.runs = parseIntArg(argv, i, '--runs');
 				i++;
 				break;
 

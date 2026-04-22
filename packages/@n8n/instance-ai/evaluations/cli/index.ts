@@ -18,11 +18,13 @@ import pLimit from 'p-limit';
 import { join } from 'path';
 import { z } from 'zod';
 
+import { aggregateResults } from './aggregator';
 import { parseCliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { N8nClient } from '../clients/n8n-client';
 import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
+import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { createLogger } from '../harness/logger';
 import type { EvalLogger } from '../harness/logger';
 import {
@@ -36,7 +38,12 @@ import {
 import { syncDataset, type DatasetExampleInputs } from '../langsmith/dataset-sync';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeWorkflowReport } from '../report/workflow-report';
-import type { ScenarioResult, TestScenario, WorkflowTestCaseResult } from '../types';
+import type {
+	MultiRunEvaluation,
+	ScenarioResult,
+	TestScenario,
+	WorkflowTestCaseResult,
+} from '../types';
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
@@ -102,11 +109,11 @@ async function main(): Promise<void> {
 	try {
 		const hasLangSmith = Boolean(process.env.LANGSMITH_API_KEY);
 
-		let results: CollectedResult[];
+		let evaluation: MultiRunEvaluation;
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
-			results = await runWithLangSmith({
+			evaluation = await runWithLangSmith({
 				args,
 				client,
 				preRunWorkflowIds,
@@ -116,7 +123,7 @@ async function main(): Promise<void> {
 			});
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			results = await runDirectLoop({
+			evaluation = await runDirectLoop({
 				args,
 				client,
 				preRunWorkflowIds,
@@ -127,11 +134,11 @@ async function main(): Promise<void> {
 		}
 
 		const totalDuration = Date.now() - startTime;
-		const outputPath = writeEvalResults(results, totalDuration, args.outputDir);
+		const outputPath = writeEvalResults(evaluation, totalDuration, args.outputDir);
 		console.log(`Results: ${outputPath}`);
-		const htmlPath = writeWorkflowReport(reshapeForReport(results));
+		const htmlPath = writeWorkflowReport(evaluation.testCases.map((tc) => tc.runs[0]));
 		console.log(`Report:  ${htmlPath}`);
-		printSummary(results);
+		printSummary(evaluation);
 	} finally {
 		await cleanupCredentials(client, seedResult.credentialIds).catch(() => {});
 	}
@@ -150,7 +157,7 @@ interface RunConfig {
 	seedResult: { seededTypes: string[]; credentialIds: string[] };
 }
 
-async function runWithLangSmith(config: RunConfig): Promise<CollectedResult[]> {
+async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> {
 	const { args, client, preRunWorkflowIds, claimedWorkflowIds, logger } = config;
 
 	const lsClient = new Client();
@@ -294,7 +301,7 @@ async function runWithLangSmith(config: RunConfig): Promise<CollectedResult[]> {
 	const experimentPrefix = args.experimentName ?? computeExperimentPrefix();
 
 	logger.info(
-		`Starting evaluate() with concurrency=${String(args.concurrency)}, builds limited to ${String(MAX_CONCURRENT_BUILDS)}`,
+		`Starting evaluate() with concurrency=${String(args.concurrency)}, builds limited to ${String(MAX_CONCURRENT_BUILDS)}, runs=${String(args.runs)}`,
 	);
 
 	const evaluateData = args.filter
@@ -308,11 +315,13 @@ async function runWithLangSmith(config: RunConfig): Promise<CollectedResult[]> {
 			evaluators: [feedbackExtractor],
 			experimentPrefix,
 			maxConcurrency: args.concurrency,
+			numRepetitions: args.runs,
 			client: lsClient,
 			metadata: {
 				filter: args.filter ?? 'all',
 				concurrency: args.concurrency,
 				maxBuilds: MAX_CONCURRENT_BUILDS,
+				runs: args.runs,
 				...buildCIMetadata(),
 			},
 		});
@@ -330,7 +339,13 @@ async function runWithLangSmith(config: RunConfig): Promise<CollectedResult[]> {
 			logger,
 		});
 
-		return collectResultsFromExperiment(experimentResults.results);
+		const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
+		const allRunResults = reshapeLangSmithRuns(
+			experimentResults.results,
+			testCasesWithFiles,
+			args.runs,
+		);
+		return aggregateResults(allRunResults, args.runs);
 	} finally {
 		if (!args.keepWorkflows) {
 			await Promise.all(
@@ -405,17 +420,93 @@ async function updateExperimentAggregates(config: {
 	}
 }
 
+/**
+ * Convert LangSmith's flat `Run[]` into the `WorkflowTestCaseResult[][]` shape
+ * the aggregator expects (outer: runs, inner: test cases). Groups by
+ * (testCaseFile, scenarioName), then reconstructs per-iteration test case
+ * results. Scenarios with no matching run get a build_failure stub.
+ */
+function reshapeLangSmithRuns(
+	rows: Array<{ run: Run }>,
+	testCasesWithFiles: WorkflowTestCaseWithFile[],
+	numRuns: number,
+): WorkflowTestCaseResult[][] {
+	const byKey = new Map<string, Run[]>();
+	for (const { run } of rows) {
+		const inputs = runInputsSchema.parse(run.inputs ?? {});
+		const key = `${inputs.testCaseFile}/${inputs.scenarioName}`;
+		const group = byKey.get(key) ?? [];
+		group.push(run);
+		byKey.set(key, group);
+	}
+	for (const group of byKey.values()) {
+		group.sort(
+			(a, b) =>
+				new Date(a.start_time as string | number).getTime() -
+				new Date(b.start_time as string | number).getTime(),
+		);
+	}
+
+	const allRunResults: WorkflowTestCaseResult[][] = [];
+	for (let iter = 0; iter < numRuns; iter++) {
+		const runResults: WorkflowTestCaseResult[] = [];
+		for (const { testCase, fileSlug } of testCasesWithFiles) {
+			const scenarioResults: ScenarioResult[] = [];
+			let workflowBuildSuccess = false;
+			let workflowId: string | undefined;
+			let buildError: string | undefined;
+
+			for (const scenario of testCase.scenarios) {
+				const runs = byKey.get(`${fileSlug}/${scenario.name}`);
+				const run = runs?.[iter];
+				if (!run) {
+					scenarioResults.push({
+						scenario,
+						success: false,
+						score: 0,
+						reasoning: 'No run result for this scenario',
+					});
+					continue;
+				}
+				const output = parseTargetOutput(run.outputs);
+				if (output.buildSuccess) workflowBuildSuccess = true;
+				if (output.workflowId) workflowId = output.workflowId;
+				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
+				scenarioResults.push({
+					scenario,
+					success: output.passed,
+					evalResult: output.evalResult,
+					score: output.score,
+					reasoning: output.reasoning,
+					failureCategory: output.failureCategory,
+					rootCause: output.rootCause,
+				});
+			}
+
+			runResults.push({
+				testCase,
+				workflowBuildSuccess,
+				workflowId,
+				scenarioResults,
+				buildError,
+			});
+		}
+		allRunResults.push(runResults);
+	}
+	return allRunResults;
+}
+
 // ---------------------------------------------------------------------------
 // Direct mode: simple loop, no LangSmith dependency
 // ---------------------------------------------------------------------------
 
-async function runDirectLoop(config: RunConfig): Promise<CollectedResult[]> {
+async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 	const { args, client, preRunWorkflowIds, claimedWorkflowIds, logger, seedResult } = config;
 
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases found in evaluations/data/workflows/');
-		return [];
+		return { totalRuns: 0, testCases: [] };
 	}
 
 	const totalScenarios = testCasesWithFiles.reduce(
@@ -423,151 +514,33 @@ async function runDirectLoop(config: RunConfig): Promise<CollectedResult[]> {
 		0,
 	);
 	logger.info(
-		`Running ${String(testCasesWithFiles.length)} test case(s) with ${String(totalScenarios)} scenario(s)`,
+		`Running ${String(testCasesWithFiles.length)} test case(s) with ${String(totalScenarios)} scenario(s) × ${String(args.runs)} run(s)`,
 	);
 
-	const results = await runWithConcurrency(
-		testCasesWithFiles,
-		async ({ testCase, fileSlug }) => ({
-			fileSlug,
-			result: await runWorkflowTestCase({
-				client,
-				testCase,
-				timeoutMs: args.timeoutMs,
-				seededCredentialTypes: seedResult.seededTypes,
-				preRunWorkflowIds,
-				claimedWorkflowIds,
-				logger,
-				keepWorkflows: args.keepWorkflows,
-			}),
-		}),
-		MAX_CONCURRENT_BUILDS,
-	);
-
-	return collectResultsFromTestCases(results);
-}
-
-// ---------------------------------------------------------------------------
-// Results collection (both paths produce the same CollectedResult[])
-// ---------------------------------------------------------------------------
-
-interface CollectedResult {
-	testCaseFile: string;
-	prompt: string;
-	scenarioName: string;
-	buildSuccess: boolean;
-	buildError?: string;
-	workflowId?: string;
-	passed: boolean;
-	score: number;
-	reasoning: string;
-	failureCategory?: string;
-	rootCause?: string;
-	execErrors: string[];
-	evalResult?: InstanceAiEvalExecutionResult;
-}
-
-function collectResultsFromExperiment(rows: Array<{ run: Run }>): CollectedResult[] {
-	return rows.map((row) => {
-		const output = parseTargetOutput(row.run.outputs);
-		const inputs = runInputsSchema.parse(row.run.inputs ?? {});
-		return {
-			testCaseFile: inputs.testCaseFile,
-			prompt: inputs.prompt,
-			scenarioName: inputs.scenarioName,
-			buildSuccess: output.buildSuccess,
-			buildError: output.buildSuccess ? undefined : output.reasoning,
-			workflowId: output.workflowId,
-			passed: output.passed,
-			score: output.score,
-			reasoning: output.reasoning,
-			failureCategory: output.failureCategory,
-			rootCause: output.rootCause,
-			execErrors: output.execErrors,
-			evalResult: output.evalResult,
-		};
-	});
-}
-
-function collectResultsFromTestCases(
-	entries: Array<{ result: WorkflowTestCaseResult; fileSlug: string }>,
-): CollectedResult[] {
-	return entries.flatMap(({ result: r, fileSlug }) => {
-		const base = {
-			testCaseFile: fileSlug,
-			prompt: r.testCase.prompt,
-			buildSuccess: r.workflowBuildSuccess,
-			buildError: r.buildError,
-			workflowId: r.workflowId,
-		};
-
-		if (!r.workflowBuildSuccess || r.scenarioResults.length === 0) {
-			return r.testCase.scenarios.map(
-				(s): CollectedResult => ({
-					...base,
-					scenarioName: s.name,
-					passed: false,
-					score: 0,
-					reasoning: r.buildError ?? 'Build failed',
-					failureCategory: 'build_failure',
-					execErrors: r.buildError ? [r.buildError] : [],
-				}),
-			);
+	const allRunResults: WorkflowTestCaseResult[][] = [];
+	for (let run = 0; run < args.runs; run++) {
+		if (args.runs > 1) {
+			logger.info(`--- Run #${String(run + 1)}/${String(args.runs)} ---`);
 		}
-
-		return r.scenarioResults.map(
-			(sr): CollectedResult => ({
-				...base,
-				scenarioName: sr.scenario.name,
-				passed: sr.success,
-				score: sr.score,
-				reasoning: sr.reasoning,
-				failureCategory: sr.failureCategory,
-				rootCause: sr.rootCause,
-				execErrors: sr.evalResult?.errors ?? [],
-				evalResult: sr.evalResult,
-			}),
+		const results = await runWithConcurrency(
+			testCasesWithFiles,
+			async ({ testCase }) =>
+				await runWorkflowTestCase({
+					client,
+					testCase,
+					timeoutMs: args.timeoutMs,
+					seededCredentialTypes: seedResult.seededTypes,
+					preRunWorkflowIds,
+					claimedWorkflowIds,
+					logger,
+					keepWorkflows: args.keepWorkflows,
+				}),
+			MAX_CONCURRENT_BUILDS,
 		);
-	});
-}
-
-function reshapeForReport(collectedResults: CollectedResult[]): WorkflowTestCaseResult[] {
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles();
-	const byFile = new Map<string, CollectedResult[]>();
-	for (const cr of collectedResults) {
-		const group = byFile.get(cr.testCaseFile) ?? [];
-		group.push(cr);
-		byFile.set(cr.testCaseFile, group);
+		allRunResults.push(results);
 	}
 
-	const output: WorkflowTestCaseResult[] = [];
-	for (const { testCase, fileSlug } of testCasesWithFiles) {
-		const group = byFile.get(fileSlug);
-		if (!group || group.length === 0) continue;
-		const first = group[0];
-		const scenarioResults: ScenarioResult[] = group.map((cr) => ({
-			scenario: testCase.scenarios.find((s) => s.name === cr.scenarioName) ?? {
-				name: cr.scenarioName,
-				description: '',
-				dataSetup: '',
-				successCriteria: '',
-			},
-			success: cr.passed,
-			evalResult: cr.evalResult,
-			score: cr.score,
-			reasoning: cr.reasoning,
-			failureCategory: cr.failureCategory,
-			rootCause: cr.rootCause,
-		}));
-		output.push({
-			testCase,
-			workflowBuildSuccess: first.buildSuccess,
-			workflowId: first.workflowId,
-			scenarioResults,
-			buildError: first.buildError,
-		});
-	}
-	return output;
+	return aggregateResults(allRunResults, args.runs);
 }
 
 // ---------------------------------------------------------------------------
@@ -575,47 +548,56 @@ function reshapeForReport(collectedResults: CollectedResult[]): WorkflowTestCase
 // ---------------------------------------------------------------------------
 
 function writeEvalResults(
-	results: CollectedResult[],
+	evaluation: MultiRunEvaluation,
 	duration: number,
 	outputDir?: string,
 ): string {
-	const byTestCase = new Map<string, CollectedResult[]>();
-	for (const r of results) {
-		const key = r.testCaseFile || r.prompt.slice(0, 70);
-		const group = byTestCase.get(key) ?? [];
-		group.push(r);
-		byTestCase.set(key, group);
-	}
+	const { totalRuns, testCases } = evaluation;
+	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
+	const totalScenariosCount = allScenarios.length;
+	const kIndex = Math.max(totalRuns - 1, 0);
 
-	const passed = results.filter((r) => r.passed).length;
-	const testCaseEntries = [...byTestCase.entries()].map(([name, scenarios]) => ({
-		name,
-		built: scenarios.some((s) => s.buildSuccess),
-		buildError: scenarios.find((s) => !s.buildSuccess)?.buildError,
-		workflowId: scenarios.find((s) => s.workflowId)?.workflowId,
-		scenarios: scenarios.map((s) => ({
-			name: s.scenarioName,
-			passed: s.passed,
-			score: s.score,
-			reasoning: s.reasoning,
-			failureCategory: s.failureCategory,
-			rootCause: s.rootCause,
-			execErrors: s.execErrors,
-			evalResult: s.evalResult,
-		})),
-	}));
+	const passAtKCount =
+		totalScenariosCount > 0
+			? allScenarios.reduce((sum, s) => sum + (s.passAtK[kIndex] ?? 0), 0)
+			: 0;
+	const passHatKCount =
+		totalScenariosCount > 0
+			? allScenarios.reduce((sum, s) => sum + (s.passHatK[kIndex] ?? 0), 0)
+			: 0;
 
 	const report = {
 		timestamp: new Date().toISOString(),
 		duration,
+		totalRuns,
 		summary: {
-			testCases: testCaseEntries.length,
-			built: testCaseEntries.filter((tc) => tc.built).length,
-			scenariosTotal: results.length,
-			scenariosPassed: passed,
-			passRate: results.length > 0 ? passed / results.length : 0,
+			testCases: testCases.length,
+			built: testCases.filter((tc) => tc.buildSuccessCount > 0).length,
+			scenariosTotal: totalScenariosCount,
+			passAtK: totalScenariosCount > 0 ? passAtKCount / totalScenariosCount : 0,
+			passHatK: totalScenariosCount > 0 ? passHatKCount / totalScenariosCount : 0,
 		},
-		testCases: testCaseEntries,
+		testCases: testCases.map((tc) => ({
+			name: tc.testCase.prompt.slice(0, 70),
+			buildSuccessCount: tc.buildSuccessCount,
+			totalRuns,
+			scenarios: tc.scenarios.map((sa) => ({
+				name: sa.scenario.name,
+				passCount: sa.passCount,
+				totalRuns,
+				passAtK: sa.passAtK[kIndex] ?? 0,
+				passHatK: sa.passHatK[kIndex] ?? 0,
+				runs: sa.runs.map((sr) => ({
+					passed: sr.success,
+					score: sr.score,
+					reasoning: sr.reasoning,
+					failureCategory: sr.failureCategory,
+					rootCause: sr.rootCause,
+					execErrors: sr.evalResult?.errors ?? [],
+					evalResult: sr.evalResult,
+				})),
+			})),
+		})),
 	};
 
 	const targetDir = outputDir ?? process.cwd();
@@ -629,45 +611,79 @@ function writeEvalResults(
 // Console summary
 // ---------------------------------------------------------------------------
 
-function printSummary(results: CollectedResult[]): void {
-	const byTestCase = new Map<string, CollectedResult[]>();
-	for (const r of results) {
-		const key = r.testCaseFile || r.prompt.slice(0, 70);
-		const group = byTestCase.get(key) ?? [];
-		group.push(r);
-		byTestCase.set(key, group);
-	}
+function printSummary(evaluation: MultiRunEvaluation): void {
+	const { totalRuns, testCases } = evaluation;
+	const multiRun = totalRuns > 1;
+	const kIndex = Math.max(totalRuns - 1, 0);
 
 	console.log('\n=== Workflow Eval Results ===\n');
-	for (const [name, scenarios] of byTestCase) {
-		const built = scenarios.some((s) => s.buildSuccess);
-		const buildStatus = built ? 'BUILT' : 'BUILD FAILED';
-		const workflowId = scenarios.find((s) => s.workflowId)?.workflowId;
-		console.log(`${name}`);
-		console.log(`  Workflow: ${buildStatus}${workflowId ? ` (${workflowId})` : ''}`);
+	for (const tc of testCases) {
+		console.log(`${tc.testCase.prompt.slice(0, 70)}...`);
 
-		for (const s of scenarios) {
-			const icon = s.passed ? '\u2713' : '\u2717';
-			const category = s.failureCategory ? ` [${s.failureCategory}]` : '';
-			console.log(
-				`  ${icon} ${s.scenarioName}: ${s.passed ? 'PASS' : 'FAIL'}${category} (${String(s.score * 100)}%)`,
-			);
-			if (!s.passed) {
-				if (s.execErrors.length > 0) {
-					console.log(`    Error: ${s.execErrors.join('; ').slice(0, 200)}`);
+		if (multiRun) {
+			console.log(`  Build: ${String(tc.buildSuccessCount)}/${String(totalRuns)} runs`);
+		} else {
+			const r = tc.runs[0];
+			const buildStatus = r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
+			console.log(`  Workflow: ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
+			if (r.buildError) {
+				console.log(`  Error: ${r.buildError.slice(0, 200)}`);
+			}
+		}
+
+		for (const sa of tc.scenarios) {
+			if (multiRun) {
+				const passAtK = Math.round((sa.passAtK[kIndex] ?? 0) * 100);
+				const passHatK = Math.round((sa.passHatK[kIndex] ?? 0) * 100);
+				console.log(
+					`  ${sa.scenario.name}: ${String(sa.passCount)}/${String(totalRuns)} passed` +
+						` | pass@${String(totalRuns)}: ${String(passAtK)}% | pass^${String(totalRuns)}: ${String(passHatK)}%`,
+				);
+			} else {
+				const sr = sa.runs[0];
+				const icon = sr.success ? '✓' : '✗';
+				const category = sr.failureCategory ? ` [${sr.failureCategory}]` : '';
+				console.log(
+					`  ${icon} ${sr.scenario.name}: ${sr.success ? 'PASS' : 'FAIL'}${category} (${String(sr.score * 100)}%)`,
+				);
+				if (!sr.success) {
+					const execErrors = sr.evalResult?.errors ?? [];
+					if (execErrors.length > 0) {
+						console.log(`    Error: ${execErrors.join('; ').slice(0, 200)}`);
+					}
+					console.log(`    Diagnosis: ${sr.reasoning.slice(0, 200)}`);
 				}
-				console.log(`    Diagnosis: ${s.reasoning.slice(0, 200)}`);
 			}
 		}
 		console.log('');
 	}
 
-	const passed = results.filter((r) => r.passed).length;
-	const builtCount = new Set(results.filter((r) => r.buildSuccess).map((r) => r.testCaseFile)).size;
-	const totalTestCases = new Set(results.map((r) => r.testCaseFile)).size;
-	console.log(
-		`${String(builtCount)}/${String(totalTestCases)} built | ${String(passed)}/${String(results.length)} passed (${String(results.length > 0 ? Math.round((passed / results.length) * 100) : 0)}%)`,
-	);
+	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
+	const total = allScenarios.length;
+	const built = testCases.filter((tc) => tc.buildSuccessCount > 0).length;
+
+	if (multiRun) {
+		const avgPassAtK =
+			total > 0
+				? Math.round(
+						(allScenarios.reduce((sum, s) => sum + (s.passAtK[kIndex] ?? 0), 0) / total) * 100,
+					)
+				: 0;
+		const avgPassHatK =
+			total > 0
+				? Math.round(
+						(allScenarios.reduce((sum, s) => sum + (s.passHatK[kIndex] ?? 0), 0) / total) * 100,
+					)
+				: 0;
+		console.log(
+			`${String(built)}/${String(testCases.length)} built | pass@${String(totalRuns)}: ${String(avgPassAtK)}% | pass^${String(totalRuns)}: ${String(avgPassHatK)}%`,
+		);
+	} else {
+		const passed = allScenarios.filter((s) => s.runs[0]?.success).length;
+		console.log(
+			`${String(built)}/${String(testCases.length)} built | ${String(passed)}/${String(total)} passed (${String(total > 0 ? Math.round((passed / total) * 100) : 0)}%)`,
+		);
+	}
 }
 
 main().catch((error) => {

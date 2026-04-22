@@ -637,6 +637,38 @@ describe('InstanceAiWorkflowSetup', () => {
 			// Card with backend-tested credential and unchanged selection should show complete
 			expect(getByTestId('instance-ai-workflow-setup-step-check')).toBeTruthy();
 		});
+
+		it('suppresses credential-test check icon when parameter issues remain', async () => {
+			const requests = [
+				makeSetupNodeWithCredentials('telegramApi', [{ id: 'cred-1', name: 'Telegram Cred' }], {
+					isAutoApplied: true,
+					credentialTestResult: { success: true },
+					parameterIssues: { chatId: ['Parameter "Chat ID" is required.'] },
+					node: {
+						id: 'node-1',
+						name: 'Telegram',
+						type: 'n8n-nodes-base.telegram',
+						typeVersion: 1,
+						parameters: { resource: 'message', operation: 'sendMessage' },
+						position: [0, 0],
+						credentials: { telegramApi: { id: 'cred-1', name: 'Telegram Cred' } },
+					},
+				}),
+			];
+
+			const { queryByTestId } = await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// The small credential-test check icon must not render while the card still
+			// has pending parameter work — users read it as "step complete".
+			expect(queryByTestId('instance-ai-workflow-setup-cred-check')).toBeNull();
+		});
 	});
 
 	describe('node parameter defaults hydration on mount', () => {
