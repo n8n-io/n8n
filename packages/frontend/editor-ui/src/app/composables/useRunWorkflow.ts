@@ -59,14 +59,13 @@ import { chatEventBus } from '@n8n/chat/event-buses';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
-import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useChat } from '@n8n/chat/composables';
 import type { WorkflowObjectAccessors } from '../types';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
-	workflowState?: WorkflowState;
 }) {
 	const workflowHelpers = useWorkflowHelpers();
 	const i18n = useI18n();
@@ -80,7 +79,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
+	const workflowState = injectWorkflowState();
 
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
