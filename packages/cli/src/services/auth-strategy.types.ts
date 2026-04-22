@@ -1,4 +1,10 @@
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { ApiKeyAudience } from '@n8n/api-types';
+import type { AuthenticatedRequest, TokenGrant } from '@n8n/db';
+
+export type AuthStrategyOptions = {
+	audience?: ApiKeyAudience;
+	issuer?: string;
+};
 
 /**
  * A single authentication strategy for the public API.
@@ -13,4 +19,10 @@ import type { AuthenticatedRequest } from '@n8n/db';
  */
 export interface AuthStrategy {
 	authenticate(req: AuthenticatedRequest): Promise<boolean | null>;
+
+	/**
+	 * This builds the token grant based on the authentication token.
+	 * @param token
+	 */
+	buildTokenGrant(token: string, options?: AuthStrategyOptions): Promise<TokenGrant | false | null>;
 }

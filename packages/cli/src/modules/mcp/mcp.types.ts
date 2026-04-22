@@ -126,5 +126,6 @@ export type TelemetryAuthContext = {
 
 export type UserWithContext = {
 	user: User | null;
+	actor?: User;
 	context?: TelemetryAuthContext;
 };

@@ -205,14 +205,6 @@ function createApiRouter(
 export const loadPublicApiVersions = async (
 	publicApiEndpoint: string,
 ): Promise<{ apiRouters: express.Router[]; apiLatestVersion: number }> => {
-	// Register auth strategies in priority order. The registry evaluates them
-	// sequentially — the first strategy that returns a non-null result wins.
-	// API key auth is registered first so existing behavior is preserved.
-	// Additional strategies (e.g. scoped JWT from the token-exchange module)
-	// can be appended later during their own module initialization.
-	const registry = Container.get(AuthStrategyRegistry);
-	registry.register(Container.get(ApiKeyAuthStrategy));
-
 	const folders = await fs.readdir(__dirname);
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
 
