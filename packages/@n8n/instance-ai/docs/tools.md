@@ -26,11 +26,11 @@ for approval before execution starts.
 {
   id: string;          // Stable identifier used by dependency edges
   title: string;       // Short user-facing task title
-  kind: 'delegate' | 'build-workflow-with-agent' | 'manage-data-tables' | 'research';
+  kind: 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
   spec: string;        // Detailed executor briefing for this task
   deps: string[];      // Task IDs that must succeed before this task can start
   tools?: string[];    // Required tool subset for delegate tasks
-  workflowId?: string; // Existing workflow ID to modify (build-workflow-with-agent tasks only)
+  workflowId?: string; // Existing workflow ID to modify (build-workflow tasks only)
 }
 ```
 
@@ -43,7 +43,7 @@ for approval before execution starts.
 - On denial: returns feedback for the LLM to revise the plan
 
 **Task kinds** map to preconfigured sub-agents:
-- `build-workflow-with-agent` → sandbox workflow builder agent
+- `build-workflow` → workflow builder agent (sandbox or tool mode)
 - `manage-data-tables` → data table agent (all `*-data-table*` tools)
 - `research` → research agent (web-search + fetch-url)
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
@@ -99,11 +99,15 @@ the builder runs detached from the orchestrator.
 
 **Returns**: `{ result: string }` — contains task ID for background tracking.
 
-The builder runs in a sandbox workspace (`N8N_INSTANCE_AI_SANDBOX_ENABLED=true`):
-the agent writes TypeScript to `~/workspace/src/workflow.ts`, runs `tsc` for
-validation, and calls `submit-workflow`. It gets filesystem and `execute_command`
-tools from the workspace. Max 30 steps, publishes events to the event bus,
-non-blocking.
+**Two modes** (selected based on sandbox availability):
+
+- **Sandbox mode** (`N8N_INSTANCE_AI_SANDBOX_ENABLED=true`): agent writes TypeScript
+  to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and calls `submit-workflow`.
+  Gets filesystem and `execute_command` tools from the workspace.
+- **Tool mode** (fallback): agent uses string-based `build-workflow` tool with
+  `get-node-type-definition`, `get-workflow-as-code`, `search-nodes`.
+
+Both modes: max 30 steps, publishes events to the event bus, non-blocking.
 
 **Sandbox-only tools** (not in `createAllTools`, only available to the builder):
 - `submit-workflow` — reads TypeScript from sandbox, parses/validates, resolves credentials, saves
@@ -226,6 +230,22 @@ existing workflow for modification.
 | `workflowId` | string | yes | Workflow ID |
 
 **Returns**: TypeScript code string representing the workflow.
+
+### `build-workflow`
+
+Submit workflow code (TypeScript SDK) for parsing, validation, and saving. Two
+modes: full code submission or `str_replace` patches against the last-submitted
+code.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `code` | string | conditional | Full TypeScript SDK code |
+| `patches` | array | conditional | `str_replace` patches against last-submitted code |
+
+**Returns**: `{ workflowId, nodes, errors? }`
+
+**Behavior**: Validates TypeScript SDK code via `parseAndValidate()`, generates
+workflow JSON, applies layout engine positioning, resolves credentials.
 
 ### `delete-workflow`
 
