@@ -109,6 +109,10 @@ onMounted(async () => {
 						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.executeWorkflows') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.executionDetails') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.createUpdateWorkflows') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.createDataTables') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.searchProjectsAndFolders') }}</li>
 					</ul>
 					<p :class="$style['docs-link']">
 						<span
