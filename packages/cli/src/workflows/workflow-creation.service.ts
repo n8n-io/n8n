@@ -17,6 +17,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { NodeTypes } from '@/node-types';
@@ -61,6 +62,7 @@ export class WorkflowCreationService {
 			autosaved?: boolean;
 			uiContext?: string;
 			publicApi?: boolean;
+			source?: WorkflowActionSource;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -70,6 +72,7 @@ export class WorkflowCreationService {
 			autosaved = false,
 			uiContext,
 			publicApi = false,
+			source = 'ui',
 		} = options;
 
 		// Ensure workflow is created as inactive
@@ -234,6 +237,7 @@ export class WorkflowCreationService {
 			projectId: project.id,
 			projectType: project.type,
 			uiContext,
+			source,
 		});
 
 		return savedWorkflow;

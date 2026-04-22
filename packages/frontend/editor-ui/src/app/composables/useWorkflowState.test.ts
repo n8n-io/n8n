@@ -8,14 +8,22 @@ import {
 } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
 import { createRunExecutionData } from 'n8n-workflow';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let workflowState: WorkflowState;
 	beforeEach(() => {
 		setActivePinia(createPinia());
 
 		workflowsStore = useWorkflowsStore();
+		workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflow.id),
+		);
 		workflowState = useWorkflowState();
 	});
 
@@ -82,7 +90,9 @@ describe('useWorkflowState', () => {
 	});
 	describe('setNodeParameters', () => {
 		beforeEach(() => {
-			workflowsStore.setNodes([createTestNode({ name: 'a', parameters: { p: 1, q: true } })]);
+			workflowDocumentStore.setNodes([
+				createTestNode({ name: 'a', parameters: { p: 1, q: true } }),
+			]);
 		});
 
 		it('should set node parameters', () => {
@@ -102,17 +112,17 @@ describe('useWorkflowState', () => {
 		});
 
 		it('should not update last parameter update time if parameters are set to the same value', () => {
-			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
+			expect(workflowDocumentStore.getParametersLastUpdate('a')).toEqual(undefined);
 
 			workflowState.setNodeParameters({ name: 'a', value: { p: 1, q: true } });
 
-			expect(workflowsStore.getParametersLastUpdate('a')).toEqual(undefined);
+			expect(workflowDocumentStore.getParametersLastUpdate('a')).toEqual(undefined);
 		});
 	});
 	describe('setNodeValue()', () => {
 		it('should update a node', () => {
 			const nodeName = 'Edit Fields';
-			workflowsStore.addNode({
+			workflowDocumentStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
 				name: nodeName,
@@ -121,14 +131,12 @@ describe('useWorkflowState', () => {
 				typeVersion: 3.4,
 			});
 
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
+			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toBe(undefined);
 
 			workflowState.setNodeValue({ name: 'Edit Fields', key: 'executeOnce', value: true });
 
 			expect(workflowsStore.workflow.nodes[0].executeOnce).toBe(true);
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
-				expect.any(Number),
-			);
+			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toEqual(expect.any(Number));
 		});
 	});
 
@@ -136,7 +144,7 @@ describe('useWorkflowState', () => {
 		it('should NOT update parametersLastUpdatedAt', () => {
 			const nodeName = 'Edit Fields';
 			const nodeId = '554c7ff4-7ee2-407c-8931-e34234c5056a';
-			workflowsStore.addNode({
+			workflowDocumentStore.addNode({
 				parameters: {},
 				id: nodeId,
 				name: nodeName,
@@ -145,12 +153,12 @@ describe('useWorkflowState', () => {
 				typeVersion: 3.4,
 			});
 
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
+			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toBe(undefined);
 
 			workflowState.setNodePositionById(nodeId, [0, 0]);
 
 			expect(workflowsStore.workflow.nodes[0].position).toStrictEqual([0, 0]);
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
+			expect(workflowDocumentStore.getParametersLastUpdate(nodeName)).toBe(undefined);
 		});
 	});
 	describe('updateNodeAtIndex', () => {
@@ -243,55 +251,6 @@ describe('useWorkflowState', () => {
 			const result = workflowState.updateNodeById('node-1', { name: 'First Node' });
 
 			expect(result).toBe(false);
-		});
-	});
-
-	describe('resetParametersLastUpdatedAt', () => {
-		it('should set parametersLastUpdatedAt on existing metadata', () => {
-			const nodeName = 'Test Node';
-			workflowsStore.addNode({
-				parameters: {},
-				id: 'test-node-id',
-				name: nodeName,
-				type: 'n8n-nodes-base.set',
-				position: [0, 0],
-				typeVersion: 1,
-			});
-
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBeUndefined();
-
-			workflowState.resetParametersLastUpdatedAt(nodeName);
-
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
-				expect.any(Number),
-			);
-		});
-
-		it('should create metadata if it does not exist', () => {
-			const nodeName = 'New Node Without Metadata';
-			// Node metadata doesn't exist yet
-			expect(workflowsStore.nodeMetadata[nodeName]).toBeUndefined();
-
-			workflowState.resetParametersLastUpdatedAt(nodeName);
-
-			expect(workflowsStore.nodeMetadata[nodeName]).toBeDefined();
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
-				expect.any(Number),
-			);
-		});
-
-		it('should preserve existing metadata properties when updating', () => {
-			const nodeName = 'Node With Existing Metadata';
-			workflowsStore.nodeMetadata[nodeName] = {
-				pristine: true,
-			};
-
-			workflowState.resetParametersLastUpdatedAt(nodeName);
-
-			expect(workflowsStore.nodeMetadata[nodeName].pristine).toBe(true);
-			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
-				expect.any(Number),
-			);
 		});
 	});
 });

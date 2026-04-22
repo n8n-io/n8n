@@ -1,0 +1,11 @@
+type: object
+additionalProperties: false
+required:
+  - name
+properties:
+  name:
+    type: string
+    example: My Folder
+  parentFolderId:
+    type: string
+    example: abc123
