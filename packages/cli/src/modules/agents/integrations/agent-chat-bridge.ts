@@ -105,6 +105,9 @@ export class AgentChatBridge {
 	/** Store for shortening callback data on platforms with size limits (Telegram) */
 	private readonly callbackStore?: CallbackStore;
 
+	/** When true, buffer deltas and post as a single message (see integration flag). */
+	private readonly disableStreaming: boolean;
+
 	constructor(
 		private readonly bot: ChatBot,
 		private readonly agentId: string,
@@ -120,6 +123,7 @@ export class AgentChatBridge {
 		if (integration?.needsShortCallbackData) {
 			this.callbackStore = new CallbackStore();
 		}
+		this.disableStreaming = integration?.disableStreaming ?? false;
 		this.registerHandlers();
 	}
 
@@ -227,20 +231,37 @@ export class AgentChatBridge {
 	}
 
 	// ---------------------------------------------------------------------------
-	// Stream consumer — collect-and-post strategy
+	// Stream consumer — dispatches between streaming and buffered strategies
 	// ---------------------------------------------------------------------------
 
 	/**
-	 * Consume the agent stream and post to the thread with real-time streaming.
+	 * Consume the agent stream and post to the thread.
 	 *
-	 * Text deltas are piped as an AsyncIterable<string> to thread.post(),
-	 * which Chat SDK renders incrementally (post-and-edit pattern).
+	 * Two strategies — selected per integration via the `disableStreaming` flag:
+	 *   • streaming (default): pipe text deltas as an AsyncIterable<string> to
+	 *     `thread.post()`. Chat SDK renders incrementally (post-and-edit).
+	 *   • buffered: accumulate text/reasoning deltas into a string and post once
+	 *     per flush event. Used by Telegram to avoid edit_message rate limits.
 	 *
-	 * When a non-text event arrives (suspension, custom message, error),
-	 * the current text stream is terminated, the event is handled, and a
-	 * new text stream starts for subsequent text deltas.
+	 * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
+	 * `error`) flush any pending text first, then get handled in order.
 	 */
 	private async consumeStream(
+		stream: AsyncGenerator<StreamChunk>,
+		thread: ChatThread,
+	): Promise<void> {
+		if (this.disableStreaming) {
+			await this.consumeStreamBuffered(stream, thread);
+		} else {
+			await this.consumeStreamStreaming(stream, thread);
+		}
+	}
+
+	/**
+	 * Streaming consumer — pipes text deltas through an AsyncIterable so the Chat
+	 * SDK can edit the posted message incrementally.
+	 */
+	private async consumeStreamStreaming(
 		stream: AsyncGenerator<StreamChunk>,
 		thread: ChatThread,
 	): Promise<void> {
@@ -358,6 +379,58 @@ export class AgentChatBridge {
 		}
 
 		await endStreamingPost();
+	}
+
+	/**
+	 * Buffered consumer — accumulates text/reasoning deltas and posts them as a
+	 * single message per flush. Used when the integration disables streaming
+	 * (e.g. Telegram).
+	 */
+	private async consumeStreamBuffered(
+		stream: AsyncGenerator<StreamChunk>,
+		thread: ChatThread,
+	): Promise<void> {
+		let buffer = '';
+
+		const flushBuffer = async () => {
+			const text = buffer;
+			buffer = '';
+			if (!text.trim()) return;
+			try {
+				await thread.post(text);
+			} catch (postError: unknown) {
+				this.logger.error('[AgentChatBridge] Buffered post failed', {
+					error: postError instanceof Error ? postError.message : String(postError),
+				});
+			}
+		};
+
+		for await (const chunk of stream) {
+			switch (chunk.type) {
+				case 'text-delta':
+					buffer += chunk.delta;
+					break;
+				case 'reasoning-delta':
+					buffer += `_${chunk.delta}_`;
+					break;
+				case 'tool-call-suspended':
+					await flushBuffer();
+					await this.handleSuspension(chunk, thread);
+					break;
+				case 'message':
+					await flushBuffer();
+					await this.handleMessage(chunk, thread);
+					break;
+				case 'error':
+					await flushBuffer();
+					await this.postErrorToThread(thread, chunk.error);
+					break;
+				default:
+					break;
+			}
+		}
+
+		await flushBuffer();
 	}
 
 	// ---------------------------------------------------------------------------
