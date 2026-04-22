@@ -46,16 +46,21 @@ function isReplanContext(context: OrchestrationContext): boolean {
 }
 
 /**
- * Returns true when the thread already has a planned-task graph — meaning
+ * Returns true when the thread has a non-terminal planned-task graph — meaning
  * `create-tasks` is being called as a revision (after user rejection of a
- * previous plan) or follow-up, not as initial planning. The guard should not
- * fire in these cases because a planner cycle has already run for this thread.
+ * previous plan) or a mid-flight follow-up, not as initial planning. The guard
+ * should not fire in these cases because a planner cycle has already run for
+ * this thread and is still in progress. Terminal graphs (`completed`,
+ * `cancelled`) must not bypass the guard — a fresh user request on a long-
+ * lived thread needs to go through `plan` for discovery, same as any first
+ * request.
  */
 async function threadHasExistingPlan(context: OrchestrationContext): Promise<boolean> {
 	if (!context.plannedTaskService) return false;
 	try {
 		const graph = await context.plannedTaskService.getGraph(context.threadId);
-		return graph !== null;
+		if (!graph) return false;
+		return graph.status === 'active' || graph.status === 'awaiting_replan';
 	} catch {
 		return false;
 	}

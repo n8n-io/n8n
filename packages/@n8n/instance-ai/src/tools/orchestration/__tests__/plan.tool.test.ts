@@ -153,6 +153,28 @@ describe('createPlanTool — replan-only guard', () => {
 		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
 	});
 
+	it('still rejects initial planning when the stored plan is terminal (completed)', async () => {
+		// Long-lived thread: a prior plan finished. A fresh user request must not
+		// bypass the planner-discovery guard just because a stale graph sits in
+		// storage.
+		const context = createMockContext({
+			currentUserMessage: 'Build me a new, unrelated workflow',
+			plannedTaskService: makePlannedTaskService({
+				getGraph: jest.fn().mockResolvedValue({
+					threadId: 'test-thread',
+					status: 'completed',
+					tasks: [],
+				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
+			}),
+		});
+		const tool = createPlanTool(context) as unknown as Executable;
+
+		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend: jest.fn() } });
+
+		expect(out.result).toMatch(/^Error: `create-tasks` is for replanning only/);
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
+	});
+
 	it('allows calls when the host marked the run as a replan follow-up', async () => {
 		const context = createMockContext({
 			currentUserMessage: 'Continue',

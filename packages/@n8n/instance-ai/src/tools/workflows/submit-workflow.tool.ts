@@ -207,11 +207,6 @@ export function createSubmitWorkflowTool(
 			projectId,
 			name,
 		}: SubmitWorkflowInput) => {
-			const permKey = workflowId ? 'updateWorkflow' : 'createWorkflow';
-			if (context.permissions?.[permKey] === 'blocked') {
-				return { success: false, errors: ['Action blocked by admin'] };
-			}
-
 			const root = await getWorkspaceRoot(workspace);
 			const filePath = resolveSandboxWorkflowFilePath(rawFilePath, root);
 
@@ -225,6 +220,13 @@ export function createSubmitWorkflowTool(
 					...attempt,
 				});
 			};
+
+			const permKey = workflowId ? 'updateWorkflow' : 'createWorkflow';
+			if (context.permissions?.[permKey] === 'blocked') {
+				const errors = ['Action blocked by admin'];
+				await reportAttempt({ success: false, errors });
+				return { success: false, errors };
+			}
 
 			// Execute the TS file in the sandbox via tsx to produce WorkflowJSON.
 			// Node.js module resolution handles local imports naturally (no manual bundling).
