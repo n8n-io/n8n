@@ -22,7 +22,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
-import { N8nButton, N8nHeading, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -453,7 +453,7 @@ const onSelect = (action: string) => {
 						</div>
 					</template>
 				</div>
-				<N8nIcon
+				<N8nIconButton
 					v-if="isTeamProject"
 					:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
 					:icon="favoriteIcon"
@@ -546,11 +546,11 @@ const onSelect = (action: string) => {
 	cursor: pointer;
 	color: var(--color--text--tint-2);
 	margin-top: var(--spacing--5xs);
-	margin-left: var(--spacing--2xs);
-	opacity: 0.6;
+	margin-left: var(--spacing--3xs);
+	opacity: 0.8;
 
 	&.favoriteBtnActive {
-		color: var(--color--warning);
+		color: var(--color--yellow-500);
 	}
 }
 
