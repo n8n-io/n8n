@@ -371,3 +371,207 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Gap 5 — resolveWorkflowReferences: scope checks on credentials and data tables
+// ---------------------------------------------------------------------------
+
+describe('resolveWorkflowReferences — scope checks', () => {
+	const workflowWithRefs = {
+		id: 'wf-1',
+		nodes: [
+			{
+				id: 'n1',
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: { slackApi: { id: 'cred-ok', name: 'Prod' } },
+			},
+			{
+				id: 'n2',
+				name: 'Gmail',
+				type: 'n8n-nodes-base.gmail',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: { gmailOAuth2: { id: 'cred-denied', name: 'Stale' } },
+			},
+			{
+				id: 'n3',
+				name: 'Data Table (by id)',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { dataTableId: { mode: 'id', value: 'dt-id-ok' } },
+			},
+			{
+				id: 'n4',
+				name: 'Data Table (id denied)',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { dataTableId: { mode: 'id', value: 'dt-id-denied' } },
+			},
+			{
+				id: 'n5',
+				name: 'Data Table (by name)',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { dataTableId: { mode: 'name', value: 'Customers' } },
+			},
+			{
+				id: 'n6',
+				name: 'Data Table (name denied)',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { dataTableId: { mode: 'name', value: 'Secrets' } },
+			},
+		],
+	};
+
+	beforeEach(() => {
+		workflowFinderService.findWorkflowForUser.mockReset();
+		credentialsFinderService.findCredentialForUser.mockReset();
+		ownershipService.getWorkflowProjectCached.mockReset();
+		dataTableRepository.findOneBy.mockReset();
+		dataTableService.getManyAndCount.mockReset();
+		userHasScopesMock.mockReset();
+	});
+
+	it('returns an empty reference set when the workflow is not accessible', async () => {
+		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.getWorkflowReferences!('wf-1');
+
+		expect(result).toEqual({
+			workflowId: 'wf-1',
+			referencedDataTables: [],
+			appliedCredentials: [],
+		});
+		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
+			'workflow:read',
+		]);
+		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+	});
+
+	it('drops credentials the user cannot read', async () => {
+		workflowFinderService.findWorkflowForUser.mockResolvedValue(workflowWithRefs as never);
+		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+		credentialsFinderService.findCredentialForUser.mockImplementation(async (id) =>
+			id === 'cred-ok' ? ({ id, name: 'Prod', type: 'slackApi' } as never) : null,
+		);
+		userHasScopesMock.mockResolvedValue(false);
+		dataTableService.getManyAndCount.mockResolvedValue({ data: [], count: 0 } as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.getWorkflowReferences!('wf-1');
+
+		expect(result.appliedCredentials).toEqual([
+			{ id: 'cred-ok', name: 'Prod', credentialType: 'slackApi' },
+		]);
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+			'cred-denied',
+			user,
+			['credential:read'],
+		);
+	});
+
+	it('drops id-referenced data tables the user cannot read', async () => {
+		workflowFinderService.findWorkflowForUser.mockResolvedValue({
+			...workflowWithRefs,
+			nodes: workflowWithRefs.nodes.filter((n) => n.parameters?.dataTableId?.mode === 'id'),
+		} as never);
+		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+		userHasScopesMock.mockImplementation(
+			async (_user, _scopes, _ar, resource) => resource?.dataTableId === 'dt-id-ok',
+		);
+		dataTableRepository.findOneBy.mockImplementation(async (where) => {
+			const id = (where as { id: string }).id;
+			return id === 'dt-id-ok'
+				? ({ id, name: 'Allowed Table', projectId: 'proj-1' } as never)
+				: (null as never);
+		});
+		dataTableService.getManyAndCount.mockResolvedValue({ data: [], count: 0 } as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.getWorkflowReferences!('wf-1');
+
+		expect(result.referencedDataTables).toEqual([
+			{ id: 'dt-id-ok', name: 'Allowed Table', projectId: 'proj-1' },
+		]);
+		expect(dataTableRepository.findOneBy).not.toHaveBeenCalledWith({ id: 'dt-id-denied' });
+	});
+
+	it('drops name-referenced data tables the user cannot read', async () => {
+		workflowFinderService.findWorkflowForUser.mockResolvedValue({
+			...workflowWithRefs,
+			nodes: workflowWithRefs.nodes.filter((n) => n.parameters?.dataTableId?.mode === 'name'),
+		} as never);
+		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+		dataTableService.getManyAndCount.mockResolvedValue({
+			data: [
+				{ id: 'dt-name-ok', name: 'Customers', projectId: 'proj-1' },
+				{ id: 'dt-name-denied', name: 'Secrets', projectId: 'proj-1' },
+			],
+			count: 2,
+		} as never);
+		userHasScopesMock.mockImplementation(
+			async (_user, _scopes, _ar, resource) => resource?.dataTableId === 'dt-name-ok',
+		);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.getWorkflowReferences!('wf-1');
+
+		expect(result.referencedDataTables).toEqual([
+			{ id: 'dt-name-ok', name: 'Customers', projectId: 'proj-1' },
+		]);
+		expect(userHasScopesMock).toHaveBeenCalledWith(user, ['dataTable:read'], false, {
+			dataTableId: 'dt-name-denied',
+		});
+	});
+
+	it('prefers the id-path entry when the same table resolves via both id and name', async () => {
+		const nodes = [
+			{
+				id: 'n-id',
+				name: 'By id',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { dataTableId: { mode: 'id', value: 'dt-dup' } },
+			},
+			{
+				id: 'n-name',
+				name: 'By name',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { dataTableId: { mode: 'name', value: 'Customers' } },
+			},
+		];
+		workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-1', nodes } as never);
+		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+		userHasScopesMock.mockResolvedValue(true);
+		dataTableRepository.findOneBy.mockResolvedValue({
+			id: 'dt-dup',
+			name: 'Customers',
+			projectId: 'proj-1',
+		} as never);
+		dataTableService.getManyAndCount.mockResolvedValue({
+			data: [{ id: 'dt-dup', name: 'Customers', projectId: 'proj-1' }],
+			count: 1,
+		} as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.getWorkflowReferences!('wf-1');
+
+		expect(result.referencedDataTables).toEqual([
+			{ id: 'dt-dup', name: 'Customers', projectId: 'proj-1' },
+		]);
+	});
+});

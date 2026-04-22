@@ -275,16 +275,21 @@ export class InstanceAiAdapterService {
 					filter: { projectId: project.id },
 				});
 				const byName = new Map(tables.map((t) => [t.name, t]));
-				for (const name of dataTableNameRefs) {
-					const match = byName.get(name);
-					if (match && !dataTablesById.has(match.id)) {
+				await Promise.all(
+					dataTableNameRefs.map(async (name) => {
+						const match = byName.get(name);
+						if (!match || dataTablesById.has(match.id)) return;
+						const allowed = await userHasScopes(user, ['dataTable:read'], false, {
+							dataTableId: match.id,
+						});
+						if (!allowed) return;
 						dataTablesById.set(match.id, {
 							id: match.id,
 							name: match.name,
 							projectId: project.id,
 						});
-					}
-				}
+					}),
+				);
 			} catch {
 				// fallback lookup failed — leave tables empty
 			}
