@@ -173,11 +173,15 @@ function parseRawArgs(argv: string[]): RawArgs {
 				break;
 
 			default:
-				// Fail loudly on unknown flags
+				// Fail loudly on unknown flags. Strip any =value payload before
+				// echoing and drop positional values entirely — raw CLI input
+				// may contain secrets (e.g. --password=... or an accidentally
+				// pasted token) that would otherwise leak into terminal/CI logs.
 				if (arg.startsWith('--')) {
-					throw new Error(`Unknown flag: ${arg}`);
+					const flagName = arg.split('=', 1)[0];
+					throw new Error(`Unknown flag: ${flagName}`);
 				}
-				throw new Error(`Unexpected positional argument: ${arg}`);
+				throw new Error('Unexpected positional argument');
 		}
 	}
 
@@ -200,7 +204,8 @@ function parseIntArg(argv: string[], currentIndex: number, flagName: string): nu
 	const raw = nextArg(argv, currentIndex, flagName);
 	const parsed = parseInt(raw, 10);
 	if (Number.isNaN(parsed)) {
-		throw new Error(`Invalid integer for ${flagName}: ${raw}`);
+		// Don't echo raw — a bad shell expansion could leak a secret here.
+		throw new Error(`Invalid integer for ${flagName}`);
 	}
 	return parsed;
 }
