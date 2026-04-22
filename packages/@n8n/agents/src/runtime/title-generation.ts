@@ -1,4 +1,4 @@
-import { generateText } from 'ai';
+import { generateText, type LanguageModel } from 'ai';
 
 import type { BuiltMemory, TitleGenerationConfig } from '../types';
 import { createFilteredLogger } from './logger';
@@ -10,12 +10,82 @@ const logger = createFilteredLogger();
 
 const DEFAULT_TITLE_INSTRUCTIONS = [
 	'- you will generate a short title based on the first message a user begins a conversation with',
-	"- the title should be a summary of the user's message",
+	'- the title should describe what the user asked for, not what an assistant might reply',
 	'- 1 to 5 words, no more than 80 characters',
 	'- use sentence case (e.g. "Conversation title" instead of "Conversation Title")',
 	'- do not use quotes, colons, or markdown formatting',
 	'- the entire text you return will be used directly as the title, so respond with the title only',
 ].join('\n');
+
+const TRIVIAL_MESSAGE_MAX_CHARS = 15;
+const TRIVIAL_MESSAGE_MAX_WORDS = 3;
+const MAX_TITLE_LENGTH = 80;
+
+/**
+ * Whether a user message has too little substance to title a conversation
+ * (e.g. "hey", "hello"). For these, the LLM tends to hallucinate an
+ * assistant-voice reply as the title — better to signal "defer, not enough
+ * signal yet" so the caller can retry once more context accumulates.
+ */
+function isTrivialMessage(message: string): boolean {
+	const normalized = message.trim();
+	if (normalized.length <= TRIVIAL_MESSAGE_MAX_CHARS) return true;
+	const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+	return wordCount <= TRIVIAL_MESSAGE_MAX_WORDS;
+}
+
+function sanitizeTitle(raw: string): string {
+	// Strip <think>...</think> blocks (e.g. from DeepSeek R1)
+	let title = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+	// Strip markdown heading prefixes and inline emphasis markers
+	title = title
+		.replace(/^#{1,6}\s+/, '')
+		.replace(/\*+/g, '')
+		.trim();
+	// Strip surrounding quotes
+	title = title.replace(/^["']|["']$/g, '').trim();
+	if (title.length > MAX_TITLE_LENGTH) {
+		const truncated = title.slice(0, MAX_TITLE_LENGTH);
+		const lastSpace = truncated.lastIndexOf(' ');
+		title = (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated) + '\u2026';
+	}
+	return title;
+}
+
+/**
+ * Generate a sanitized thread title from a user message using an LLM.
+ *
+ * Returns `null` on empty input or empty LLM output. For trivial messages
+ * (e.g. greetings), returns the sanitized message itself without calling
+ * the LLM — this avoids the failure mode where the model responds with
+ * an assistant-voice reply as the title.
+ */
+export async function generateTitleFromMessage(
+	model: LanguageModel,
+	userMessage: string,
+	opts?: { instructions?: string },
+): Promise<string | null> {
+	const trimmed = userMessage.trim();
+	if (!trimmed) return null;
+
+	if (isTrivialMessage(trimmed)) {
+		return null;
+	}
+
+	const result = await generateText({
+		model,
+		messages: [
+			{ role: 'system', content: opts?.instructions ?? DEFAULT_TITLE_INSTRUCTIONS },
+			{ role: 'user', content: trimmed },
+		],
+	});
+
+	const raw = result.text?.trim();
+	if (!raw) return null;
+
+	const title = sanitizeTitle(raw);
+	return title || null;
+}
 
 /**
  * Generate a title for a thread if it doesn't already have one.
@@ -49,28 +119,9 @@ export async function generateThreadTitle(opts: {
 
 		const titleModelId = opts.titleConfig.model ?? opts.agentModel;
 		const titleModel = createModel(titleModelId);
-		const instructions = opts.titleConfig.instructions ?? DEFAULT_TITLE_INSTRUCTIONS;
-
-		const result = await generateText({
-			model: titleModel,
-			messages: [
-				{ role: 'system', content: instructions },
-				{ role: 'user', content: userText },
-			],
+		const title = await generateTitleFromMessage(titleModel, userText, {
+			instructions: opts.titleConfig.instructions,
 		});
-
-		let title = result.text?.trim();
-		if (!title) return;
-
-		// Strip <think>...</think> blocks (e.g. from DeepSeek R1)
-		title = title.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-		if (!title) return;
-
-		// Strip markdown heading prefixes and inline formatting
-		title = title
-			.replace(/^#{1,6}\s+/, '')
-			.replace(/\*+/g, '')
-			.trim();
 		if (!title) return;
 
 		await opts.memory.saveThread({

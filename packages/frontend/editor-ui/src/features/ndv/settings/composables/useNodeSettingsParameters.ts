@@ -60,9 +60,7 @@ const stripPublicDisplayCondition = (parameter: INodeProperties): INodePropertie
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
@@ -152,15 +150,15 @@ export function useNodeSettingsParameters() {
 			value: nodeParameters,
 		};
 
-		const connections = workflowDocumentStore.value?.connectionsBySourceNode ?? {};
+		const connections = workflowDocumentStore.value.connectionsBySourceNode;
 
 		const updatedConnections = updateDynamicConnections(node, connections, parameterData);
 
 		if (updatedConnections) {
-			workflowDocumentStore.value?.setConnections(updatedConnections);
+			workflowDocumentStore.value.setConnections(updatedConnections);
 		}
 
-		workflowDocumentStore.value?.setNodeParameters(updateInformation);
+		workflowDocumentStore.value.setNodeParameters(updateInformation);
 
 		void externalHooks.run('nodeSettings.valueChanged', {
 			parameterPath,

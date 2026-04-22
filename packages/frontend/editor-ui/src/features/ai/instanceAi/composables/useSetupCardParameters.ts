@@ -95,6 +95,19 @@ export function useSetupCardParameters(
 		if (canvasNode) {
 			canvasNode.parameters = { ...canvasNode.parameters, [paramName]: parameterData.value };
 		}
+
+		// 3. `workflowsStore.workflowObject` holds a deep copy of the nodes (see
+		// `createWorkflowObject(..., copyData=true)` in `workflows.store.ts`), and
+		// `ParameterInput` reads its node through that copy via
+		// `expressionLocalResolveCtx.workflow.getNode()`. Without syncing, the
+		// per-input issue indicator would keep checking stale parameters.
+		const workflowObjectNode = workflowsStore.workflowObject.getNode(nodeName);
+		if (workflowObjectNode) {
+			workflowObjectNode.parameters = {
+				...workflowObjectNode.parameters,
+				[paramName]: parameterData.value,
+			};
+		}
 	}
 
 	/** Build nodeParameters from paramValues + store node (for NDV-edited params). */

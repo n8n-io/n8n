@@ -33,7 +33,10 @@ jest.mock('../../memory/memory-config', () => ({
 
 jest.mock('../../tools', () => ({
 	createAllTools: jest.fn((context: { runLabel?: string }) => ({
-		'list-workflows': { id: `list-${context.runLabel ?? 'unknown'}` },
+		workflows: { id: `workflows-${context.runLabel ?? 'unknown'}` },
+	})),
+	createOrchestratorDomainTools: jest.fn((context: { runLabel?: string }) => ({
+		workflows: { id: `workflows-${context.runLabel ?? 'unknown'}` },
 	})),
 	createOrchestrationTools: jest.fn((context: { runId: string }) => ({
 		plan: { id: `plan-${context.runId}` },
@@ -56,10 +59,6 @@ jest.mock('../sanitize-mcp-schemas', () => ({
 
 jest.mock('../system-prompt', () => ({
 	getSystemPrompt: jest.fn().mockReturnValue('system prompt'),
-}));
-
-jest.mock('../tool-access', () => ({
-	getOrchestratorDomainTools: jest.fn((tools: Record<string, unknown>) => tools),
 }));
 
 const { createInstanceAgent } =

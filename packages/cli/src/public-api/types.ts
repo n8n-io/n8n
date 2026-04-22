@@ -171,6 +171,8 @@ export declare namespace CredentialRequest {
 		{ limit?: number; cursor?: string; offset?: number }
 	>;
 
+	type Get = AuthenticatedRequest<{ id: string }>;
+
 	type Create = AuthenticatedRequest<
 		{},
 		{},
@@ -191,6 +193,8 @@ export declare namespace CredentialRequest {
 		},
 		{}
 	>;
+
+	type Test = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 
 	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
