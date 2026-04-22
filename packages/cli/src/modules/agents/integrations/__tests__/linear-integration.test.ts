@@ -29,7 +29,7 @@ describe('LinearIntegration', () => {
 
 		fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
 			ok: true,
-			json: async () => ({ data: { viewer: { displayName: 'Eugene' } } }),
+			json: async () => ({ data: { viewer: { displayName: 'AgentName' } } }),
 		} as Response);
 	});
 
@@ -63,7 +63,7 @@ describe('LinearIntegration', () => {
 		expect(createLinearAdapter).toHaveBeenCalledWith({
 			apiKey: 'lin_api_xyz',
 			webhookSecret: 'sec',
-			userName: 'Eugene',
+			userName: 'AgentName',
 		});
 		expect(fetchSpy.mock.calls[0][1]).toMatchObject({
 			headers: { Authorization: 'lin_api_xyz' },
@@ -81,7 +81,7 @@ describe('LinearIntegration', () => {
 		expect(createLinearAdapter).toHaveBeenCalledWith({
 			accessToken: 'oauth_token',
 			webhookSecret: 'sec',
-			userName: 'Eugene',
+			userName: 'AgentName',
 		});
 		expect(fetchSpy.mock.calls[0][1]).toMatchObject({
 			headers: { Authorization: 'Bearer oauth_token' },

@@ -22,7 +22,7 @@ type LinearAuth = { kind: 'apiKey'; token: string } | { kind: 'accessToken'; tok
  * `@<adapter.userName>` in the comment body. The adapter defaults `userName` to
  * `'linear-bot'`, which nobody types in Linear's UI, so `createAdapter`
  * eagerly fetches the bot user's Linear display name via GraphQL and passes
- * it in — that way `@Eugene`-style mentions fire `onNewMention` as expected.
+ * it in — that way `@AgentName`-style mentions fire `onNewMention` as expected.
  */
 @Service()
 export class LinearIntegration extends AgentChatIntegration {
