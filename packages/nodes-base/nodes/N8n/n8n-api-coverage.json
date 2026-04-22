@@ -8,6 +8,9 @@
 		"GET /credentials": {
 			"status": "gap"
 		},
+		"GET /credentials/{id}": {
+			"status": "gap"
+		},
 		"POST /credentials": {
 			"status": "covered",
 			"nodeOperation": "credential:create"
@@ -24,6 +27,9 @@
 			"nodeOperation": "credential:getSchema"
 		},
 		"PUT /credentials/{id}/transfer": {
+			"status": "gap"
+		},
+		"POST /credentials/{id}/test": {
 			"status": "gap"
 		},
 		"GET /community-packages": {
@@ -191,9 +197,6 @@
 			"status": "gap"
 		},
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
-			"status": "gap"
-		},
-		"GET /insights/summary": {
 			"status": "gap"
 		},
 		"POST /projects": {

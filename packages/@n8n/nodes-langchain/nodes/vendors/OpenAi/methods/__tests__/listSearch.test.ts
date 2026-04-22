@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import * as transport from '../../transport';
-import { modelSearch } from '../listSearch';
+import { imageGenerateModelSearch, modelSearch } from '../listSearch';
 
 jest.mock('../../transport');
 
@@ -82,5 +82,50 @@ describe('modelSearch', () => {
 				{ name: 'WHISPER-1', value: 'whisper-1' },
 			]);
 		});
+	});
+});
+
+describe('imageGenerateModelSearch', () => {
+	let mockContext: jest.Mocked<ILoadOptionsFunctions>;
+
+	beforeEach(() => {
+		mockContext = {} as unknown as jest.Mocked<ILoadOptionsFunctions>;
+		jest.clearAllMocks();
+	});
+
+	it('should return only image generation models (dall-e and gpt-image)', async () => {
+		(transport.apiRequest as jest.Mock).mockResolvedValue({
+			data: [
+				{ id: 'dall-e-2' },
+				{ id: 'dall-e-3' },
+				{ id: 'gpt-image-1' },
+				{ id: 'gpt-image-1-mini' },
+				{ id: 'gpt-4o' },
+				{ id: 'whisper-1' },
+				{ id: 'tts-1' },
+			],
+		});
+
+		const result = await imageGenerateModelSearch.call(mockContext);
+
+		expect(result.results).toEqual([
+			{ name: 'DALL-E-2', value: 'dall-e-2' },
+			{ name: 'DALL-E-3', value: 'dall-e-3' },
+			{ name: 'GPT-IMAGE-1', value: 'gpt-image-1' },
+			{ name: 'GPT-IMAGE-1-MINI', value: 'gpt-image-1-mini' },
+		]);
+	});
+
+	it('should filter results by search term', async () => {
+		(transport.apiRequest as jest.Mock).mockResolvedValue({
+			data: [{ id: 'dall-e-2' }, { id: 'dall-e-3' }, { id: 'gpt-image-1' }],
+		});
+
+		const result = await imageGenerateModelSearch.call(mockContext, 'dall');
+
+		expect(result.results).toEqual([
+			{ name: 'DALL-E-2', value: 'dall-e-2' },
+			{ name: 'DALL-E-3', value: 'dall-e-3' },
+		]);
 	});
 });
