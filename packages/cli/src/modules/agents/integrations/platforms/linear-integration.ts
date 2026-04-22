@@ -10,8 +10,7 @@ type LinearAuth = { kind: 'apiKey'; token: string } | { kind: 'accessToken'; tok
  * Linear platform integration.
  *
  * Linear issues are the threads and issue comments are the messages. Linear
- * comments have no interactive UI surface (buttons render as non-clickable
- * bold markdown, selects aren't rendered at all), so this integration omits
+ * comments have no interactive UI surface, so this integration omits
  * `supportedComponents` entirely — `AgentsService` reads the absence as
  * "skip the rich_interaction tool for this platform" and the agent responds
  * with normal markdown replies instead of offering dead-end cards.

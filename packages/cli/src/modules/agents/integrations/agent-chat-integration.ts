@@ -32,7 +32,7 @@ export abstract class AgentChatIntegration {
 	 * Omit to signal that the platform has no rich_interaction surface — the
 	 * tool won't be injected into agents targeting this platform.
 	 */
-	readonly supportedComponents?: readonly string[];
+	readonly supportedComponents?: string[];
 
 	/** User-facing description used by `createRichInteractionTool`. */
 	readonly description?: string;
