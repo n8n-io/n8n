@@ -9,9 +9,9 @@ export type AgentConfirmationModalData = {
 	description: string;
 	confirmButtonText: string;
 	cancelButtonText: string;
-	onConfirm?: () => boolean | Promise<boolean | void> | void;
-	onCancel?: () => Promise<void> | void;
-	onClose?: () => boolean | Promise<boolean | void> | void;
+	onConfirm?: () => unknown | Promise<unknown>;
+	onCancel?: () => unknown | Promise<unknown>;
+	onClose?: () => unknown | Promise<unknown>;
 };
 
 const props = defineProps<{
