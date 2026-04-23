@@ -25,6 +25,7 @@ import * as path from 'path';
 // eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
 import {
 	generateSingleVersionSchemaFile,
+	isPropertyOptional,
 	planSplitVersionSchemaFiles,
 } from './generate-zod-schemas';
 import { checkConditions } from '../validation/display-options';
@@ -806,28 +807,6 @@ function quotePropertyName(name: string): string {
 		return `'${name.replace(/'/g, "\\'")}'`;
 	}
 	return name;
-}
-
-/**
- * Determine if a property should be optional in the generated type.
- * A property is optional if it's not required OR if it has a default value.
- * Properties with defaults can be omitted - the default will be used at runtime.
- */
-function isPropertyOptional(prop: NodeProperty): boolean {
-	const hasDefault = 'default' in prop && prop.default !== undefined;
-	// A fixedCollection with minRequiredFields > 0 cannot satisfy the
-	// constraint via its default (typically `{}`), so the property itself
-	// must be present — overrides the hasDefault shortcut.
-	const minRequired = prop.typeOptions?.minRequiredFields;
-	if (
-		prop.type === 'fixedCollection' &&
-		prop.typeOptions?.multipleValues === true &&
-		typeof minRequired === 'number' &&
-		minRequired > 0
-	) {
-		return false;
-	}
-	return !prop.required || hasDefault;
 }
 
 /**
