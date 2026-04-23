@@ -12,8 +12,10 @@ import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { useI18n } from '@n8n/i18n';
 
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
 import type { AgentJsonConfig } from '../types';
+import { tryParseConfig } from './agentSectionEditor.utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -41,14 +43,14 @@ function configToDoc(cfg: AgentJsonConfig | null): string {
 }
 
 const debouncedSave = useDebounceFn((text: string) => {
-	try {
-		const parsed = JSON.parse(text) as AgentJsonConfig;
+	const result = tryParseConfig(text);
+	if (result.ok) {
 		parseError.value = '';
-		emit('update:config', parsed);
-	} catch {
+		emit('update:config', result.value);
+	} else {
 		parseError.value = i18n.baseText('agents.builder.editor.invalidJson');
 	}
-}, 800);
+}, getDebounceTime(DEBOUNCE_TIME.API.RESOURCE_SEARCH));
 
 function createEditor(doc: string) {
 	if (!container.value) return;
@@ -84,13 +86,19 @@ watch(
 	() => props.config,
 	(next) => {
 		if (!view) return;
+		// Don't stomp on the user's in-progress edit. An external config update
+		// (e.g. the builder streaming a new config) while the user is typing
+		// would otherwise replace their buffer mid-keystroke.
+		if (view.hasFocus) return;
 		const nextDoc = configToDoc(next);
 		if (view.state.doc.toString() === nextDoc) return;
 		isProgrammatic = true;
 		view.dispatch({
 			changes: { from: 0, to: view.state.doc.length, insert: nextDoc },
+			selection: view.state.selection,
 		});
 		isProgrammatic = false;
+		parseError.value = '';
 	},
 	{ deep: true },
 );

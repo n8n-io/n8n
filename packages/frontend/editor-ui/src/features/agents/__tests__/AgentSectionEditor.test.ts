@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import AgentSectionEditor from '../components/AgentSectionEditor.vue';
+import { tryParseConfig } from '../components/agentSectionEditor.utils';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
@@ -28,5 +29,15 @@ describe('AgentSectionEditor', () => {
 		const wrapper = mount(AgentSectionEditor, { props: { config: null } });
 		await nextTick();
 		expect(wrapper.find('[data-testid="agent-section-editor"]').exists()).toBe(true);
+	});
+});
+
+describe('tryParseConfig', () => {
+	it('returns ok:true for valid JSON', () => {
+		expect(tryParseConfig('{"a":1}')).toEqual({ ok: true, value: { a: 1 } });
+	});
+
+	it('returns ok:false for invalid JSON', () => {
+		expect(tryParseConfig('not json')).toEqual({ ok: false });
 	});
 });
