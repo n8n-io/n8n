@@ -1,4 +1,11 @@
-import type { IConnectedNode, IConnection, INode, NodeConnectionType } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	type IConnectedNode,
+	type IConnection,
+	type INode,
+	type INodeConnection,
+	type NodeConnectionType,
+} from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 // --- Composable ---
@@ -77,12 +84,26 @@ export function useWorkflowDocumentGraph() {
 		return workflowsStore.workflowObject.getStartNode(destinationNode);
 	}
 
+	function getParentMainInputNode(node: INode): INode {
+		return workflowsStore.workflowObject.getParentMainInputNode(node);
+	}
+
+	function getNodeConnectionIndexes(
+		nodeName: string,
+		parentNodeName: string,
+		type: NodeConnectionType = NodeConnectionTypes.Main,
+	): INodeConnection | undefined {
+		return workflowsStore.workflowObject.getNodeConnectionIndexes(nodeName, parentNodeName, type);
+	}
+
 	return {
 		// Graph traversal
 		getParentNodes,
 		getChildNodes,
 		getParentNodesByDepth,
 		getConnectionsBetweenNodes,
+		getParentMainInputNode,
+		getNodeConnectionIndexes,
 		getConnectedNodes,
 
 		// Node lookup

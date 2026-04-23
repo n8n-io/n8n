@@ -41,6 +41,36 @@ describe('SSO store', () => {
 		},
 	);
 
+	describe('OIDC callbackUrl after re-initialization', () => {
+		it('should populate callbackUrl when re-initialized with authenticated settings', () => {
+			// Simulate public settings (before login) — no callbackUrl
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as UserManagementAuthenticationMethod,
+				config: {
+					oidc: { loginEnabled: false, loginUrl: 'http://localhost:5678/rest/sso/oidc/login' },
+				},
+				features: { saml: false, ldap: false, oidc: true },
+			});
+
+			expect(ssoStore.oidc.callbackUrl).toBe('');
+
+			// Simulate authenticated settings (after login) — includes callbackUrl
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as UserManagementAuthenticationMethod,
+				config: {
+					oidc: {
+						loginEnabled: false,
+						loginUrl: 'http://localhost:5678/rest/sso/oidc/login',
+						callbackUrl: 'http://localhost:5678/rest/sso/oidc/callback',
+					},
+				},
+				features: { saml: false, ldap: false, oidc: true },
+			});
+
+			expect(ssoStore.oidc.callbackUrl).toBe('http://localhost:5678/rest/sso/oidc/callback');
+		});
+	});
+
 	describe('Protocol Selection Initialization', () => {
 		beforeEach(() => {
 			setActivePinia(createPinia());

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -27,12 +27,15 @@
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "dependencies": {
     "n8n-workflow": "workspace:*",
     "xss": "catalog:",
-    "zod": "catalog:",
     "@n8n/permissions": "workspace:*"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
   }
 }

@@ -79,14 +79,14 @@ export function useWorkflowSaving({
 			cancel?: () => Promise<void>;
 		} = {},
 	) {
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 
 		if (
 			!uiStore.stateIsDirty ||
-			workflowDocumentStore?.isArchived ||
-			!getResourcePermissions(workflowDocumentStore?.scopes ?? []).workflow.update
+			workflowDocumentStore.isArchived ||
+			!getResourcePermissions(workflowDocumentStore.scopes).workflow.update
 		) {
 			next();
 			return;
@@ -140,7 +140,7 @@ export function useWorkflowSaving({
 		next(
 			router.resolve({
 				name: VIEWS.WORKFLOW,
-				params: { name: workflowsStore.workflow.id },
+				params: { name: workflowsStore.workflowId },
 			}),
 		);
 	}

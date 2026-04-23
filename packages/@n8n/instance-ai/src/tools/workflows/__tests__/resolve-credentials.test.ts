@@ -232,6 +232,48 @@ describe('resolveCredentials', () => {
 		});
 	});
 
+	describe('existing workflow takes priority over credential map', () => {
+		it('preserves the existing credential on an edit even when the map has a different credential of the same type', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.openAi',
+						typeVersion: 1,
+						position: [0, 0],
+						credentials: { openAiApi: undefined as unknown as { id: string; name: string } },
+					},
+				],
+			});
+
+			const existingWorkflow = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.openAi',
+						typeVersion: 1,
+						position: [0, 0],
+						credentials: { openAiApi: { id: 'user-chosen-id', name: 'My OpenAI' } },
+					},
+				],
+			});
+
+			const credMap: CredentialMap = new Map([
+				['openAiApi', { id: 'some-other-id', name: 'Other OpenAI' }],
+			]);
+
+			const ctx = createMockContext(existingWorkflow);
+			const result = await resolveCredentials(json, 'wf-123', ctx, credMap);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[0].credentials).toEqual({
+				openAiApi: { id: 'user-chosen-id', name: 'My OpenAI' },
+			});
+		});
+	});
+
 	describe('credential map takes priority over mocking', () => {
 		it('uses credential map even when pinData exists', async () => {
 			const json = makeWorkflow({

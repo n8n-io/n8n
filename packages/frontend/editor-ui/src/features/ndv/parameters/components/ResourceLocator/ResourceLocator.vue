@@ -295,7 +295,7 @@ const currentRequestParams = computed(() => {
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
 		projectId: projectsStore.currentProjectId,
-		workflowId: workflowsStore.workflow.id,
+		workflowId: workflowsStore.workflowId,
 	};
 });
 
@@ -525,6 +525,28 @@ watch(
 	(currentValue, oldValue) => {
 		const isUpdated = oldValue !== null && currentValue !== null && oldValue !== currentValue;
 		// Reset value if dependent parameters change
+		if (
+			isUpdated &&
+			props.modelValue &&
+			isResourceLocatorValue(props.modelValue) &&
+			props.modelValue.value !== ''
+		) {
+			emit('update:modelValue', {
+				...props.modelValue,
+				cachedResultName: '',
+				cachedResultUrl: '',
+				value: '',
+			});
+		}
+	},
+);
+
+watch(
+	() => stringify(props.node?.credentials ?? {}),
+	(currentValue, oldValue) => {
+		const emptyCredentials = stringify({});
+		const isUpdated =
+			oldValue !== undefined && oldValue !== emptyCredentials && currentValue !== oldValue;
 		if (
 			isUpdated &&
 			props.modelValue &&
@@ -813,7 +835,7 @@ async function loadResources() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflow.id,
+			workflowId: workflowsStore.workflowId,
 		};
 
 		if (params.filter) {

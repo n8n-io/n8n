@@ -25,16 +25,18 @@ const checklistResultSchema = z.object({
 // Public API
 // ---------------------------------------------------------------------------
 
+const MAX_VERIFY_ATTEMPTS = 2;
+const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
+
 export async function verifyChecklist(
 	checklist: ChecklistItem[],
 	verificationArtifact: string,
 	_workflowJsons: WorkflowResponse[],
 ): Promise<ChecklistResult[]> {
 	const llmItems = checklist.filter((i) => i.strategy === 'llm');
-	const results: ChecklistResult[] = [];
+	if (llmItems.length === 0) return [];
 
-	if (llmItems.length > 0) {
-		const userMessage = `## Checklist
+	const userMessage = `## Checklist
 
 ${JSON.stringify(llmItems, null, 2)}
 
@@ -44,15 +46,33 @@ ${verificationArtifact}
 
 Verify each checklist item against the artifact above.`;
 
+	const validIds = new Set(llmItems.map((i) => i.id));
+
+	for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt++) {
 		const agent = createEvalAgent('eval-checklist-verifier', {
 			instructions: MOCK_EXECUTION_VERIFY_PROMPT,
 			cache: true,
 		}).structuredOutput(checklistResultSchema);
 
-		const result = await agent.generate(userMessage);
+		const abortController = new AbortController();
+		const timer = setTimeout(
+			() =>
+				abortController.abort(new Error(`verifier timed out after ${VERIFY_ATTEMPT_TIMEOUT_MS}ms`)),
+			VERIFY_ATTEMPT_TIMEOUT_MS,
+		);
+		let result;
+		try {
+			result = await agent.generate(userMessage, { abortSignal: abortController.signal });
+		} catch (error: unknown) {
+			const msg = error instanceof Error ? error.message : String(error);
+			console.warn(`[verifier] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} failed: ${msg}`);
+			continue;
+		} finally {
+			clearTimeout(timer);
+		}
 
-		const validIds = new Set(llmItems.map((i) => i.id));
 		const parsed = result.structuredOutput as z.infer<typeof checklistResultSchema> | undefined;
+		const results: ChecklistResult[] = [];
 
 		if (parsed?.results) {
 			for (const entry of parsed.results) {
@@ -66,20 +86,24 @@ Verify each checklist item against the artifact above.`;
 						pass: entry.pass,
 						reasoning: entry.reasoning ?? '',
 						strategy: 'llm',
-						failureCategory: entry.failureCategory,
+						failureCategory:
+							entry.failureCategory ?? (!entry.pass ? 'verification_failure' : undefined),
 						rootCause: entry.rootCause,
 					});
 				}
 			}
-		} else {
-			console.warn(
-				'[verifier] structuredOutput returned null — LLM did not produce parseable results',
-			);
 		}
+
+		if (results.length > 0) {
+			results.sort((a, b) => a.id - b.id);
+			return results;
+		}
+
+		console.warn(
+			`[verifier] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} produced no parseable results`,
+		);
 	}
 
-	// Sort results by id for deterministic output
-	results.sort((a, b) => a.id - b.id);
-
-	return results;
+	console.warn(`[verifier] exhausted ${MAX_VERIFY_ATTEMPTS} attempts, returning empty result`);
+	return [];
 }

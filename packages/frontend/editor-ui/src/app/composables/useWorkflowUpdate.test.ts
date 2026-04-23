@@ -36,7 +36,7 @@ const mockDocumentStore = vi.hoisted(() => ({
 	setName: vi.fn(),
 	setNodes: vi.fn(),
 	setConnections: vi.fn(),
-	resetParametersLastUpdatedAt: vi.fn(),
+	touchParametersLastUpdatedAt: vi.fn(),
 	setPinData: vi.fn(),
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
 	getNodeByName: vi.fn().mockReturnValue(null),
@@ -51,7 +51,7 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 
 // Mock useWorkflowState - using hoisted for proper initialization
 const mockWorkflowState = vi.hoisted(() => ({
-	resetParametersLastUpdatedAt: vi.fn(),
+	touchParametersLastUpdatedAt: vi.fn(),
 }));
 vi.mock('@/app/composables/useWorkflowState', () => ({
 	injectWorkflowState: vi.fn(() => mockWorkflowState),
@@ -100,7 +100,7 @@ describe('useWorkflowUpdate', () => {
 		vi.mocked(mockDocumentStore.setName).mockClear();
 		vi.mocked(mockDocumentStore.setNodes).mockClear();
 		vi.mocked(mockDocumentStore.setConnections).mockClear();
-		vi.mocked(mockDocumentStore.resetParametersLastUpdatedAt).mockClear();
+		vi.mocked(mockDocumentStore.touchParametersLastUpdatedAt).mockClear();
 		vi.mocked(mockDocumentStore.setPinData).mockClear();
 		vi.mocked(mockDocumentStore.getPinDataSnapshot).mockReturnValue({});
 		vi.mocked(mockDocumentStore.getNodeByName).mockReturnValue(null);
@@ -605,7 +605,7 @@ describe('useWorkflowUpdate', () => {
 					connections: {},
 				});
 
-				expect(mockDocumentStore.resetParametersLastUpdatedAt).toHaveBeenCalledWith('HTTP Request');
+				expect(mockDocumentStore.touchParametersLastUpdatedAt).toHaveBeenCalledWith('HTTP Request');
 			});
 
 			it('should not mark node as dirty when parameters are unchanged', async () => {
@@ -640,7 +640,7 @@ describe('useWorkflowUpdate', () => {
 					connections: {},
 				});
 
-				expect(mockDocumentStore.resetParametersLastUpdatedAt).not.toHaveBeenCalled();
+				expect(mockDocumentStore.touchParametersLastUpdatedAt).not.toHaveBeenCalled();
 			});
 		});
 
