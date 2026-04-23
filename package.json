@@ -120,7 +120,7 @@
       "google-gax": "^4.3.7",
       "ws": ">=8.17.1",
       "brace-expansion@1": "1.1.12",
-      "brace-expansion@2": "2.0.3",
+      "brace-expansion@2": "5.0.5",
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
       "form-data": "4.0.4",
