@@ -100,7 +100,7 @@ catalog:
   vm2: ^3.10.5
   xml2js: 0.6.2
   xss: 1.0.15
-  yaml: 2.8.2
+  yaml: 2.8.3
   zod: 3.25.67
   zod-to-json-schema: 3.23.3
 
@@ -176,3 +176,5 @@ minimumReleaseAgeExclude:
   - multer
   - simple-git
   - underscore
+  - protobufjs
+  - follow-redirects
