@@ -57,7 +57,12 @@ const sections = computed<SectionDescriptor[]>(() => {
 </script>
 
 <template>
-	<div :class="$style.tree" data-testid="agent-config-tree">
+	<div
+		:class="$style.tree"
+		:aria-label="i18n.baseText('agents.builder.tree.ariaLabel')"
+		role="list"
+		data-testid="agent-config-tree"
+	>
 		<div v-if="sections.length === 0" data-testid="agent-config-tree-empty" :class="$style.empty">
 			<N8nText size="small" color="text-light">{{
 				i18n.baseText('agents.builder.tree.empty')

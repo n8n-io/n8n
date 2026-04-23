@@ -5699,6 +5699,7 @@
 	"agents.builder.sections.tools": "Tools",
 	"agents.builder.sections.triggers": "Triggers",
 	"agents.builder.editor.invalidJson": "Invalid JSON",
+	"agents.builder.tree.ariaLabel": "Config sections",
 	"agents.builder.tree.empty": "No sections yet",
 	"agents.builder.quickActions.run": "Run now",
 	"agents.builder.quickActions.edit": "Edit config",
