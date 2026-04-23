@@ -93,6 +93,9 @@ export const defaultSettings: FrontendSettings = {
 		saml: { loginEnabled: false, loginLabel: '' },
 		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
 	},
+	logStreaming: {
+		managedByEnv: false,
+	},
 	telemetry: {
 		enabled: false,
 	},
