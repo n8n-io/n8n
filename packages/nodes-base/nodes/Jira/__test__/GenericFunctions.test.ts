@@ -1,7 +1,11 @@
 import { type DeepMockProxy, mockDeep } from 'jest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
-import { handlePagination, jiraSoftwareCloudApiRequestAllItems } from '../GenericFunctions';
+import {
+	handlePagination,
+	jiraSoftwareCloudApiRequestAllItems,
+	type jiraSoftwareCloudApiRequest,
+} from '../GenericFunctions';
 
 describe('Jira -> GenericFunctions', () => {
 	describe('jiraSoftwareCloudApiRequestAllItems', () => {
@@ -57,7 +61,7 @@ describe('Jira -> GenericFunctions', () => {
 
 	describe('jiraSoftwareCloudApiRequest credential routing', () => {
 		let mockExecuteFunctions: DeepMockProxy<IExecuteFunctions>;
-		let jiraSoftwareCloudApiRequest: typeof import('../GenericFunctions').jiraSoftwareCloudApiRequest;
+		let jiraSoftwareCloudApiRequest: jiraSoftwareCloudApiRequest;
 
 		beforeEach(async () => {
 			jest.resetModules();
