@@ -18,6 +18,7 @@ import {
 	postCancel,
 	postCancelTask,
 	postConfirmation,
+	postFeedback,
 	getInstanceAiCredits,
 } from './instanceAi.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -160,16 +161,25 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const gatewayDirectory = computed(() => instanceAiSettingsStore.gatewayDirectory);
 	const activeDirectory = computed(() => gatewayDirectory.value);
 
-	// Resource registry — maps known resource names to their types & IDs
+	// Resource registry — two collections derived from tool-call results:
+	//   * producedArtifacts: resources the agent built/created/mutated (panel).
+	//   * resourceNameIndex: every named resource seen, keyed by lowercased name
+	//     (markdown linking).
 	const workflowsListStore = useWorkflowsListStore();
-	const { registry: resourceRegistry } = useResourceRegistry(
+	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 	);
 
 	// Response feedback — rateability selector + submission
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
-		useResponseFeedback({ messages, currentThreadId, telemetry });
+		useResponseFeedback({
+			messages,
+			currentThreadId,
+			telemetry,
+			postFeedback: async (threadId, responseId, payload) =>
+				await postFeedback(rootStore.restApiContext, threadId, responseId, payload),
+		});
 
 	/** The latest task list, preferring explicit tasks-update events over tree snapshots. */
 	const currentTasks = computed(
@@ -274,6 +284,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 		return items;
 	});
+
+	/** True while the run is paused awaiting the user to resolve a confirmation (e.g. workflow setup wizard). */
+	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
 
 	function resolveConfirmation(
 		requestId: string,
@@ -535,6 +548,22 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	}
 
 	// --- Actions ---
+
+	/**
+	 * Reset the store to a blank "no active thread" state — used when the user
+	 * lands on the base `/instance-ai` route (fresh page, back button, or the
+	 * AI Assistant nav link). Without this, `currentThreadId` keeps pointing
+	 * at the last thread and the sidebar highlights it alongside the empty
+	 * main view, which is the AI-2408 visual mismatch.
+	 */
+	function clearCurrentThread(): void {
+		closeSSE();
+		resetThreadRuntimeState(null);
+		// Mirror the initial store state: a fresh UUID that doesn't match any
+		// real thread, so the sidebar highlights nothing and the next
+		// `sendMessage` creates a new thread with this id via `syncThread`.
+		currentThreadId.value = uuidv4();
+	}
 
 	function newThread(): string {
 		const newThreadId = uuidv4();
@@ -1027,14 +1056,17 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		activeDirectory,
 		contextualSuggestion,
 		currentTasks,
-		resourceRegistry,
+		producedArtifacts,
+		resourceNameIndex,
 		rateableResponseId,
 		creditsRemaining,
 		creditsPercentageRemaining,
 		isLowCredits,
 		pendingConfirmations,
+		isAwaitingConfirmation,
 		// Actions
 		newThread,
+		clearCurrentThread,
 		deleteThread,
 		renameThread,
 		getThreadMetadata,

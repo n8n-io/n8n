@@ -87,9 +87,7 @@ const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	workflowId.value
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
 const assistantStore = useAssistantStore();
 const settingsStore = useSettingsStore();
@@ -191,7 +189,7 @@ const showExecuteMessage = computed(() => {
 
 	return (
 		!builderStore.streaming &&
-		(workflowDocumentStore.value?.allNodes ?? []).length > 0 &&
+		workflowDocumentStore.value.allNodes.length > 0 &&
 		builderStore.hasMessages &&
 		!hasErrorAfterUpdate &&
 		!hasTaskAbortedAfterUpdate &&
@@ -210,7 +208,7 @@ const thinkingCompletionMessage = computed(() =>
 );
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
-	if (builderStore.hasMessages || (workflowDocumentStore.value?.allNodes ?? []).length > 0) {
+	if (builderStore.hasMessages || workflowDocumentStore.value.allNodes.length > 0) {
 		return undefined;
 	}
 	return shuffle(WORKFLOW_SUGGESTIONS);
@@ -400,7 +398,7 @@ async function onUserMessage(content: string) {
 	accumulatedNodeIdsToTidyUp.value = [];
 
 	// If the workflow is empty, set the initial generation flag
-	const isInitialGeneration = (workflowDocumentStore.value?.allNodes ?? []).length === 0;
+	const isInitialGeneration = workflowDocumentStore.value.allNodes.length === 0;
 
 	await builderStore.sendChatMessage({
 		text: content,
@@ -459,7 +457,7 @@ async function onWorkflowExecuted() {
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
 	const errorNodeType = errorNodeName
-		? workflowDocumentStore.value?.getNodeByName(errorNodeName)?.type
+		? workflowDocumentStore.value.getNodeByName(errorNodeName)?.type
 		: undefined;
 
 	if (!executionData) {
@@ -514,7 +512,7 @@ async function onWorkflowExecuted() {
 async function onExecuteWithMockData() {
 	builderStore.applyGeneratedPinData();
 
-	const triggerNode = (workflowDocumentStore.value?.allNodes ?? []).find((node) =>
+	const triggerNode = workflowDocumentStore.value.allNodes.find((node) =>
 		nodeTypesStore.isTriggerNode(node.type),
 	);
 
@@ -611,10 +609,7 @@ watch(
 			return;
 		}
 
-		if (
-			builderStore.initialGeneration &&
-			(workflowDocumentStore.value?.allNodes ?? []).length > 0
-		) {
+		if (builderStore.initialGeneration && workflowDocumentStore.value.allNodes.length > 0) {
 			builderStore.initialGeneration = false;
 		}
 

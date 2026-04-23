@@ -25,6 +25,7 @@ export type {
 } from './ai/ai-gateway-usage-response.dto';
 
 export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
+export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';

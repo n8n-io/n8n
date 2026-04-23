@@ -1409,9 +1409,10 @@ describe('RunData', () => {
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
+		const testWorkflowId = workflowId ?? 'test-workflow';
+		workflowsStore.workflow.id = testWorkflowId;
+
 		if (pinnedData) {
-			const testWorkflowId = workflowId ?? 'test-workflow';
-			workflowsStore.workflow.id = testWorkflowId;
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(testWorkflowId),
 			);

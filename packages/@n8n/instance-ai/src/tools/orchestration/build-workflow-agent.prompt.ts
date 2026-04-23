@@ -27,15 +27,29 @@ import {
 	WORKFLOW_SDK_PATTERNS,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
-// ── Shared placeholder guidance (single source of truth) ────────────────────
+import { ASK_USER_FALLBACK, PLACEHOLDERS_RULE } from '../../agent/shared-prompts';
 
-// prettier-ignore
-const PLACEHOLDER_RULE =
-	"**Do NOT use `placeholder()` for discoverable resources** (spreadsheet IDs, calendar IDs, channel IDs, folder IDs) — resolve real IDs via `explore-node-resources` or create them via setup workflows. For **user-provided values** that cannot be discovered or created (email recipients, phone numbers, custom URLs, notification targets), use `placeholder('descriptive hint')` so the setup wizard prompts the user after the build. Never hardcode fake values like `user@example.com`.";
+// ── Shared output discipline (single source of truth) ──────────────────────
 
-// prettier-ignore
-const PLACEHOLDER_ESCALATION =
-	'When the user says "send me", "email me", "notify me", or similar and you don\'t know their specific address, use `placeholder(\'Your email address\')` for the recipient field rather than hardcoding a fake address like `user@example.com`. The setup wizard will collect this from the user after the build.';
+const BUILDER_OUTPUT_DISCIPLINE = `## Output Discipline
+- Your text output is visible to the user. Be concise and natural.
+- Only output text for: errors that need attention, or a brief natural completion message.
+- No emojis, no filler phrases, no markdown headers in your text output.
+- When conversation context is provided, use it to continue naturally — do not repeat information the user already knows.
+
+### No narration (critical)
+Do NOT announce what you're about to do. The user already sees your tool calls in real time via the agent card; narrating them is pure noise. Stay silent while working; speak only on completion or when blocked.
+
+BAD (do not write anything like this):
+  - "I'll build this family AI assistant for Telegram. Let me start by discovering credentials and resources..."
+  - "I'll start by reading the current workflow code and looking up the correct Linear node type definition."
+  - "I don't see any pinData — let me check if there's something embedded in the workflow..."
+  - "Let me look up the Slack channel IDs now."
+
+GOOD (one-line, only on completion or block):
+  - "Family AI assistant workflow ready — uses Telegram, OpenAI, and your shopping list data table."
+  - "Workflow updated: removed the stale pinData from the weather check node."
+  - "Blocked: the Linear API credential is missing and the setup wizard is needed before I can continue."`;
 
 // ── Shared SDK reference sections ────────────────────────────────────────────
 
@@ -43,7 +57,7 @@ const SDK_CODE_RULES = `## SDK Code Rules
 
 - Do NOT specify node positions — they are auto-calculated by the layout engine.
 - For credentials, see the credential rules in your specific workflow process section below.
-- ${PLACEHOLDER_RULE}
+- For placeholders, see the ## Placeholders section.
 - Use \`expr('{{ $json.field }}')\` for n8n expressions. Variables MUST be inside \`{{ }}\`.
 - Do NOT use \`as const\` assertions — the workflow parser only supports JavaScript syntax, not TypeScript-only features. Just use plain string literals.
 - Use string values directly for discriminator fields like \`resource\` and \`operation\` (e.g., \`resource: 'message'\` not \`resource: 'message' as const\`).
@@ -51,7 +65,13 @@ const SDK_CODE_RULES = `## SDK Code Rules
 - **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.
 - **IF node combinator** must be \`'and'\` or \`'or'\` (not \`'any'\` or \`'all'\`).`;
 
-const BUILDER_SPECIFIC_PATTERNS = `## Critical Patterns (Common Mistakes)
+// The AI Agent subnode example below differs by mode:
+//   tool mode  → `newCredential('OpenAI')`
+//   sandbox    → raw `{ id, name }` object (newCredential() serializes to undefined)
+function buildBuilderSpecificPatterns(mode: 'tool' | 'sandbox'): string {
+	const openAiCredExample =
+		mode === 'sandbox' ? "{ id: 'credId', name: 'OpenAI account' }" : "newCredential('OpenAI')";
+	return `## Critical Patterns (Common Mistakes)
 
 **Pay attention to @builderHint annotations in search results and type definitions** — these provide critical guidance on how to correctly configure node parameters. Write them out as notes when reviewing — they prevent common configuration mistakes.
 
@@ -72,7 +92,7 @@ const model = languageModel({
   config: {
     name: 'OpenAI Chat Model',
     parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' } },
-    credentials: { openAiApi: newCredential('OpenAI') }
+    credentials: { openAiApi: ${openAiCredExample} }
   }
 });
 
@@ -207,189 +227,7 @@ export default workflow('id', 'name')
 
 ### Web App (SPA served from a webhook)
 
-Serve a single-page application from an n8n webhook. The workflow fetches data, then renders a full HTML page with a client-side framework.
-
-<web_app_pattern>
-**Architecture:** Webhook (responseNode) -> Code node (build HTML) -> Respond with text/html
-
-**File-based HTML (REQUIRED for pages > ~50 lines):**
-Write the HTML to a separate file (e.g., \`chunks/dashboard.html\`), then in the SDK TypeScript code use \`readFileSync\` + \`JSON.stringify\` to safely embed it in a Code node. This eliminates ALL escaping problems:
-
-1. Write your full HTML (with CSS, JS, Alpine.js/Tailwind) to \`chunks/page.html\`
-2. In \`src/workflow.ts\`: \`const htmlTemplate = readFileSync(join(__dirname, '../chunks/page.html'), 'utf8');\`
-3. Use \`JSON.stringify(htmlTemplate)\` to create a safe JS string literal for the Code node's jsCode
-4. For data injection, embed a \`__DATA_PLACEHOLDER__\` token in the HTML and replace it at runtime
-
-**NEVER embed large HTML directly in jsCode** — not as template literals, not as arrays of quoted lines. Both break for real-world pages (20KB+). Always use the file-based pattern.
-
-**For small static HTML (< 50 lines):** You may inline as an array of quoted strings + \`.join('\\n')\`, but still prefer the file-based approach.
-
-**Data injection patterns:**
-- Static page (no server data): embed HTML directly, no placeholder needed
-- Dynamic data: put \`<script id="__data" type="application/json">__DATA_PLACEHOLDER__</script>\` in the HTML. At runtime, the Code node replaces \`__DATA_PLACEHOLDER__\` with base64-encoded JSON. Client-side: \`JSON.parse(atob(document.getElementById('__data').textContent))\`
-- Do NOT place bare \`{{ $json... }}\` inside an HTML string parameter
-
-**Multi-route SPA (dashboard with API endpoints):**
-Use multiple webhooks in one workflow — one serves the HTML page, others serve JSON API endpoints. The HTML's JavaScript uses \`fetch()\` to call sibling webhook paths.
-
-**Default stack:** Alpine.js + Tailwind CSS via CDN. No build step, works in a single HTML file.
-
-**Respond correctly:** Use respondToWebhook with respondWith: "text", put the HTML in responseBody via expression, and set Content-Type header.
-</web_app_pattern>
-
-#### Example: Multi-route dashboard with DataTable API
-
-**chunks/dashboard.html** — the full HTML page (write this file first):
-\`\`\`html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
-</head>
-<body class="bg-gray-50 min-h-screen p-8">
-  <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
-  <div x-data="app()" x-init="loadItems()">
-    <template x-for="item in items" :key="item.id">
-      <div class="bg-white rounded-lg shadow p-4 mb-3 flex items-center gap-3">
-        <input type="checkbox" :checked="item.completed" @change="toggle(item)">
-        <span x-text="item.title" :class="item.completed && 'line-through text-gray-400'"></span>
-      </div>
-    </template>
-    <form @submit.prevent="addItem()" class="mt-4 flex gap-2">
-      <input x-model="newTitle" placeholder="New item..." class="border rounded px-3 py-2 flex-1">
-      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Add</button>
-    </form>
-  </div>
-  <!-- Server data injected at runtime (base64-encoded JSON) -->
-  <script id="__data" type="application/json">__DATA_PLACEHOLDER__</script>
-  <script>
-    function app() {
-      return {
-        items: JSON.parse(atob(document.getElementById('__data').textContent)),
-        newTitle: '',
-        async toggle(item) {
-          await fetch('/webhook/app/items/toggle', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ id: item.id, completed: !item.completed })
-          });
-          item.completed = !item.completed;
-        },
-        async addItem() {
-          if (!this.newTitle.trim()) return;
-          const res = await fetch('/webhook/app/items/add', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ title: this.newTitle })
-          });
-          const created = await res.json();
-          this.items.push(created);
-          this.newTitle = '';
-        },
-        loadItems() { /* items already loaded from __data */ }
-      };
-    }
-  </script>
-</body>
-</html>
-\`\`\`
-
-**src/workflow.ts** — the workflow with 4 webhook routes:
-\`\`\`javascript
-import { workflow, node, trigger, expr } from '@n8n/workflow-sdk';
-import { readFileSync } from 'fs';
-import { join } from 'path';
-
-// Read the HTML template at build time — eliminates all escaping issues
-const htmlTemplate = readFileSync(join(__dirname, '../chunks/dashboard.html'), 'utf8');
-
-// ── Webhooks ──────────────────────────────────────────────
-const pageWebhook = trigger({
-  type: 'n8n-nodes-base.webhook', version: 2.1,
-  config: { name: 'GET /app', parameters: { httpMethod: 'GET', path: 'app', responseMode: 'responseNode', options: {} } }
-});
-const getItemsWebhook = trigger({
-  type: 'n8n-nodes-base.webhook', version: 2.1,
-  config: { name: 'GET /app/items', parameters: { httpMethod: 'GET', path: 'app/items', responseMode: 'responseNode', options: {} } }
-});
-const toggleWebhook = trigger({
-  type: 'n8n-nodes-base.webhook', version: 2.1,
-  config: { name: 'POST /app/items/toggle', parameters: { httpMethod: 'POST', path: 'app/items/toggle', responseMode: 'responseNode', options: {} } }
-});
-const addWebhook = trigger({
-  type: 'n8n-nodes-base.webhook', version: 2.1,
-  config: { name: 'POST /app/items/add', parameters: { httpMethod: 'POST', path: 'app/items/add', responseMode: 'responseNode', options: {} } }
-});
-
-// ── Route 1: Serve HTML page with pre-loaded data ─────────
-const fetchAllItems = node({
-  type: 'n8n-nodes-base.dataTable', version: 1.1,
-  config: { name: 'Fetch Items', parameters: { resource: 'row', operation: 'get', dataTableId: { __rl: true, mode: 'name', value: 'items' }, returnAll: true, options: {} } }
-});
-const aggregateItems = node({
-  type: 'n8n-nodes-base.aggregate', version: 1,
-  config: { name: 'Aggregate', parameters: { aggregate: 'aggregateAllItemData', destinationFieldName: 'data', options: {} } }
-});
-// JSON.stringify in the SDK code creates a safe JS string literal — no escaping issues
-const buildPage = node({
-  type: 'n8n-nodes-base.code', version: 2,
-  config: {
-    name: 'Build Page',
-    parameters: {
-      mode: 'runOnceForAllItems',
-      jsCode: 'var data = $input.all()[0].json.data || [];\\n'
-        + 'var encoded = Buffer.from(JSON.stringify(data)).toString("base64");\\n'
-        + 'var html = ' + JSON.stringify(htmlTemplate) + '.replace("__DATA_PLACEHOLDER__", encoded);\\n'
-        + 'return [{ json: { html: html } }];'
-    }
-  }
-});
-const respondHtml = node({
-  type: 'n8n-nodes-base.respondToWebhook', version: 1.1,
-  config: { name: 'Respond HTML', parameters: { respondWith: 'text', responseBody: expr('{{ $json.html }}'), options: { responseHeaders: { entries: [{ name: 'Content-Type', value: 'text/html; charset=utf-8' }] } } } }
-});
-
-// ── Route 2: GET items as JSON ────────────────────────────
-const fetchItemsJson = node({
-  type: 'n8n-nodes-base.dataTable', version: 1.1,
-  config: { name: 'Get Items JSON', parameters: { resource: 'row', operation: 'get', dataTableId: { __rl: true, mode: 'name', value: 'items' }, returnAll: true, options: {} } }
-});
-const respondItems = node({
-  type: 'n8n-nodes-base.respondToWebhook', version: 1.1,
-  config: { name: 'Respond Items', parameters: { respondWith: 'allEntries', options: {} } }
-});
-
-// ── Route 3: Toggle item completion ───────────────────────
-const updateItem = node({
-  type: 'n8n-nodes-base.dataTable', version: 1.1,
-  config: { name: 'Update Item', parameters: { resource: 'row', operation: 'update', dataTableId: { __rl: true, mode: 'name', value: 'items' }, matchingColumns: ['id'], columns: { mappingMode: 'defineBelow', value: { id: expr('{{ $json.body.id }}'), completed: expr('{{ $json.body.completed }}') }, schema: [{ id: 'id', displayName: 'id', required: false, defaultMatch: true, display: true, type: 'string', canBeUsedToMatch: true }, { id: 'completed', displayName: 'completed', required: false, defaultMatch: false, display: true, type: 'boolean', canBeUsedToMatch: false }] }, options: {} } }
-});
-const respondToggle = node({
-  type: 'n8n-nodes-base.respondToWebhook', version: 1.1,
-  config: { name: 'Respond Toggle', parameters: { respondWith: 'allEntries', options: {} } }
-});
-
-// ── Route 4: Add new item ─────────────────────────────────
-const insertItem = node({
-  type: 'n8n-nodes-base.dataTable', version: 1.1,
-  config: { name: 'Insert Item', parameters: { resource: 'row', operation: 'insert', dataTableId: { __rl: true, mode: 'name', value: 'items' }, columns: { mappingMode: 'defineBelow', value: { title: expr('{{ $json.body.title }}'), completed: false }, schema: [{ id: 'title', displayName: 'title', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true }, { id: 'completed', displayName: 'completed', required: false, defaultMatch: false, display: true, type: 'boolean', canBeUsedToMatch: false }] }, options: {} } }
-});
-const respondAdd = node({
-  type: 'n8n-nodes-base.respondToWebhook', version: 1.1,
-  config: { name: 'Respond Add', parameters: { respondWith: 'allEntries', options: {} } }
-});
-
-// ── Wire it all together ──────────────────────────────────
-export default workflow('id', 'Item Dashboard')
-  .add(pageWebhook).to(fetchAllItems).to(aggregateItems).to(buildPage).to(respondHtml)
-  .add(getItemsWebhook).to(fetchItemsJson).to(respondItems)
-  .add(toggleWebhook).to(updateItem).to(respondToggle)
-  .add(addWebhook).to(insertItem).to(respondAdd);
-\`\`\`
-
-**Key takeaway:** \`JSON.stringify(htmlTemplate)\` at build time produces a perfectly escaped JS string. The Code node's jsCode is just 4 lines. No escaping problems, no matter how large the HTML.
+When the workflow serves HTML from a webhook (dashboards, admin UIs, custom forms), call \`templates(action="best-practices", technique="web_app")\` for the full file-based HTML pattern, data-injection recipe, multi-route architecture, and a complete multi-route dashboard example. Embedding large HTML inline in Code nodes breaks at ~20KB — always use the file-based pattern from the guide.
 
 ### Google Sheets — documentId and sheetName (RLC fields)
 
@@ -408,7 +246,7 @@ documentId: 'YOUR_SPREADSHEET_ID',  // Not an RLC object
 // WRONG — expr() wrapper
 documentId: expr('{{ "spreadsheetId" }}'),  // RLC fields don't use expressions
 \`\`\`
-Always use the IDs from \`explore-node-resources\` results inside the RLC \`value\` field.
+Always use the IDs from \`nodes(action="explore-resources")\` results inside the RLC \`value\` field.
 
 ### AI Tool Connection Patterns
 ${AI_TOOL_PATTERNS}
@@ -418,61 +256,101 @@ ${CONNECTION_CHANGING_PARAMETERS}
 
 ### Baseline Flow Control Nodes
 ${BASELINE_FLOW_CONTROL}`;
+}
+
+const BUILDER_SPECIFIC_PATTERNS_TOOL = buildBuilderSpecificPatterns('tool');
+const BUILDER_SPECIFIC_PATTERNS_SANDBOX = buildBuilderSpecificPatterns('sandbox');
 
 // ── Composed SDK rules from shared + local sources ───────────────────────────
 
-const SDK_RULES_AND_PATTERNS = [
-	SDK_CODE_RULES,
-	WORKFLOW_RULES,
-	'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
-	'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
-	'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
-	'## Node-Specific Configuration Guides',
-	IF_NODE_GUIDE.content,
-	SWITCH_NODE_GUIDE.content,
-	SET_NODE_GUIDE.content,
-	HTTP_REQUEST_GUIDE.content,
-	TOOL_NODES_GUIDE.content,
-	EMBEDDING_NODES_GUIDE.content,
-	RESOURCE_LOCATOR_GUIDE.content,
-	BUILDER_SPECIFIC_PATTERNS,
-].join('\n\n');
+// Sandbox-mode variant of WORKFLOW_RULES: rule 1 (credentials) uses raw {id, name}
+// objects because `submit-workflow` runs the code natively via tsx and expects that
+// form. Rules 2 and 3 are mode-agnostic and mirror the shared WORKFLOW_RULES.
+const SANDBOX_WORKFLOW_RULES = `Follow these rules strictly when generating workflows:
+
+1. **Always use raw credential objects from \`credentials(action="list")\`**
+   - Wire credentials as \`{ id, name }\` objects returned by \`credentials(action="list")\`
+   - NEVER use placeholder strings, fake API keys, or hardcoded auth values
+   - Example: \`credentials: { slackApi: { id: 'yXYBqho73obh58ZS', name: 'Slack Bot' } }\`
+   - The key (e.g. \`slackApi\`) is the credential **type** from the node type definition
+
+2. **Handle empty outputs with \`alwaysOutputData: true\`**
+   - Nodes that query data (Data Table get, Google Sheets lookup, HTTP Request, etc.) may return 0 items
+   - When a node returns 0 items, all downstream nodes are SKIPPED — the workflow chain breaks silently
+   - Set \`alwaysOutputData: true\` on any node whose output feeds downstream nodes and might return empty results
+   - Common cases: fresh/empty Data Tables, filtered queries, conditional lookups, API searches with no matches
+   - Example: \`config: { ..., alwaysOutputData: true }\`
+
+3. **Use \`executeOnce: true\` for single-execution nodes**
+   - When a node receives N items but should only execute once (not N times), set \`executeOnce: true\`
+   - Common cases: sending a summary notification, generating a report, calling an API that doesn't need per-item execution
+   - Example: \`config: { ..., executeOnce: true }\``;
+
+function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
+	// Shared WORKFLOW_SDK_PATTERNS uses `newCredential('X')` throughout. That
+	// form is correct for tool mode but serializes to undefined in sandbox mode
+	// (see submit-workflow.tool.ts — `NewCredentialImpl.toJSON() === undefined`).
+	// Prepend an override note when composing for sandbox so the LLM substitutes
+	// raw `{id, name}` objects in the shared examples below.
+	const sandboxOverride =
+		mode === 'sandbox'
+			? "> **Sandbox credential override**: The SDK pattern examples below use `newCredential('X')`. " +
+				"In sandbox mode, replace every `newCredential('X')` with the raw `{ id, name }` object from " +
+				'`credentials(action="list")`. `newCredential()` serializes to `undefined` in sandbox and will ' +
+				'silently drop credentials from the saved workflow.'
+			: null;
+	return [
+		SDK_CODE_RULES,
+		mode === 'sandbox' ? SANDBOX_WORKFLOW_RULES : WORKFLOW_RULES,
+		...(sandboxOverride ? [sandboxOverride] : []),
+		'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
+		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
+		'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
+		'## Node-Specific Configuration Guides',
+		IF_NODE_GUIDE.content,
+		SWITCH_NODE_GUIDE.content,
+		SET_NODE_GUIDE.content,
+		HTTP_REQUEST_GUIDE.content,
+		TOOL_NODES_GUIDE.content,
+		EMBEDDING_NODES_GUIDE.content,
+		RESOURCE_LOCATOR_GUIDE.content,
+		mode === 'sandbox' ? BUILDER_SPECIFIC_PATTERNS_SANDBOX : BUILDER_SPECIFIC_PATTERNS_TOOL,
+	].join('\n\n');
+}
+
+const SDK_RULES_AND_PATTERNS_TOOL = composeSdkRulesAndPatterns('tool');
+const SDK_RULES_AND_PATTERNS_SANDBOX = composeSdkRulesAndPatterns('sandbox');
 
 // ── Original tool-based builder prompt ───────────────────────────────────────
 
 export const BUILDER_AGENT_PROMPT = `You are an expert n8n workflow builder. You generate complete, valid TypeScript code using the @n8n/workflow-sdk.
 
-## Output Discipline
-- Your text output is visible to the user. Be concise but natural.
-- Do NOT narrate your process ("I'll build this step by step", "Let me start by"). Just do the work.
-- No emojis, no filler phrases, no markdown headers in your text output.
-- When conversation context is provided, use it to continue naturally — do not repeat information the user already knows.
-- Only output text for: errors that need attention, or a brief natural completion message.
+${BUILDER_OUTPUT_DISCIPLINE}
 
 ## Repair Strategy
 When called with failure details for an existing workflow, start from the pre-loaded code — do not re-discover node types already present.
 
 ## Escalation
-- If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
-- Do NOT retry the same failing approach more than twice — ask the user instead.
-- ${PLACEHOLDER_ESCALATION}
+${ASK_USER_FALLBACK}
+
+${PLACEHOLDERS_RULE}
 
 ## Mandatory Process
-1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`get-suggested-nodes\` first for curated recommendations. Then use \`search-nodes\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`get-node-type-definition\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Pay attention to @builderHint annotations** in search results and type definitions — they prevent common configuration mistakes.
+1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`nodes(action="suggested")\` first for curated recommendations. Then use \`nodes(action="search")\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`nodes(action="type-definition")\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Pay attention to @builderHint annotations** in search results and type definitions — they prevent common configuration mistakes.
 2. **Build**: Write TypeScript SDK code and call \`build-workflow\`. Follow the SDK patterns below exactly.
 3. **Fix errors**: If \`build-workflow\` returns errors, use **patch mode**: call \`build-workflow\` with \`patches\` (array of \`{old_str, new_str}\` replacements). Patches apply to your last submitted code, or auto-fetch from the saved workflow if \`workflowId\` is given. Much faster than resending full code.
-4. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`get-workflow-as-code\` first to see the current code if you need to identify what to replace.
-4. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
+4. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`workflows(action="get-as-code")\` first to see the current code if you need to identify what to replace.
+5. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
 
-Do NOT produce visible output until step 4. All reasoning happens internally.
+Do NOT produce visible output until step 5. All reasoning happens internally.
 
-## Credential Rules
+## Credential Rules (tool mode)
 - Always use \`newCredential('Credential Name')\` for credentials, never fake keys or placeholders.
-- NEVER use raw credential objects like \`{ id: '...', name: '...' }\`.
+- NEVER use raw credential objects like \`{ id: '...', name: '...' }\` — that form is for sandbox mode only.
 - When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
 - Unresolved credentials (where the user chose mock data or no credential is available) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
 
-${SDK_RULES_AND_PATTERNS}
+${SDK_RULES_AND_PATTERNS_TOOL}
 `;
 
 // ── Sandbox-based builder prompt ─────────────────────────────────────────────
@@ -480,12 +358,7 @@ ${SDK_RULES_AND_PATTERNS}
 export function createSandboxBuilderAgentPrompt(workspaceRoot: string): string {
 	return `You are an expert n8n workflow builder working inside a sandbox with real TypeScript tooling. You write workflow code as files and use \`tsc\` for validation.
 
-## Output Discipline
-- Your text output is visible to the user. Be concise but natural.
-- Do NOT narrate your process ("I'll build this step by step", "Let me start by"). Just do the work.
-- No emojis, no filler phrases, no markdown headers in your text output.
-- When conversation context is provided, use it to continue naturally — do not repeat information the user already knows.
-- Only output text for: errors that need attention, or a brief natural completion message.
+${BUILDER_OUTPUT_DISCIPLINE}
 
 ## Workspace Layout
 
@@ -589,11 +462,11 @@ Supported input types: \`string\`, \`number\`, \`boolean\`, \`array\`, \`object\
 ### Step 2: Submit and test the chunk
 
 1. Write the chunk file, then submit it: \`submit-workflow\` with the chunk file path.
-   - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`run-workflow\` without publishing. However, they must be **published** via \`publish-workflow\` before the parent workflow can call them in production (trigger-based) executions.
-2. Run the chunk: \`run-workflow\` with \`inputData\` matching the trigger schema.
+   - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`executions(action="run")\` without publishing. However, they must be **published** via \`workflows(action="publish")\` before the parent workflow can call them in production (trigger-based) executions.
+2. Run the chunk: \`executions(action="run")\` with \`inputData\` matching the trigger schema.
    - **Webhook workflows**: \`inputData\` IS the request body — do NOT wrap it in \`{ body: ... }\`. The system automatically places \`inputData\` into \`{ headers, query, body: inputData }\`. So to test a webhook expecting \`{ title: "Hello" }\`, pass \`inputData: { title: "Hello" }\`. Inside the workflow, the data arrives at \`$json.body.title\`.
    - **Event-based triggers** (e.g. Linear Trigger, GitHub Trigger, Slack Trigger): pass \`inputData\` matching what the trigger would normally emit. The system injects it as the trigger node's output — e.g. \`inputData: { action: "create", data: { id: "123", title: "Test issue" } }\` for a Linear Trigger. No need to rebuild the workflow with a Manual Trigger.
-3. If it fails, use \`debug-execution\` to investigate, fix, and re-submit.
+3. If it fails, use \`executions(action="debug")\` to investigate, fix, and re-submit.
 
 ### Step 3: Compose chunks in the main workflow
 
@@ -640,13 +513,13 @@ Replace \`CHUNK_WORKFLOW_ID\` with the actual ID returned by \`submit-workflow\`
 - **Complex workflows** (5+ nodes, multiple integrations): Decompose into chunks.
   Build, test, and compose. Each chunk is reusable across workflows.
 
+${PLACEHOLDERS_RULE}
+
 ## Setup Workflows (Create Missing Resources)
 
-${PLACEHOLDER_RULE}
+When \`nodes(action="explore-resources")\` returns no results for a required resource:
 
-When \`explore-node-resources\` returns no results for a required resource:
-
-1. Use \`search-nodes\` and \`get-node-type-definition\` to find the "create" operation for that resource type
+1. Use \`nodes(action="search")\` and \`nodes(action="type-definition")\` to find the "create" operation for that resource type
 2. Build a one-shot setup workflow in \`chunks/setup-<resource>.ts\` using a manual trigger + the create node
 3. Submit and run it — extract the created resource ID from the execution result
 4. Use that real resource ID in the main workflow
@@ -657,9 +530,7 @@ When \`explore-node-resources\` returns no results for a required resource:
 When called with failure details for an existing workflow, start from the pre-loaded code — do not re-discover node types already present.
 
 ## Escalation
-- If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
-- Do NOT retry the same failing approach more than twice — ask the user instead.
-- ${PLACEHOLDER_ESCALATION}
+${ASK_USER_FALLBACK}
 
 ## Sandbox Isolation
 
@@ -669,7 +540,7 @@ When called with failure details for an existing workflow, start from the pre-lo
 - You CANNOT find or use n8n API keys — they do not exist in the sandbox environment
 - Do NOT spend time searching for API keys, config files, environment variables, or process info — none of it is accessible
 
-**All interaction with n8n is through the provided tools:** \`submit-workflow\`, \`run-workflow\`, \`debug-execution\`, \`get-execution\`, \`list-credentials\`, \`test-credential\`, \`explore-node-resources\`, \`publish-workflow\`, \`unpublish-workflow\`, \`list-data-tables\`, \`create-data-table\`, \`get-data-table-schema\`, etc. These tools communicate with n8n internally — no HTTP required.
+**All interaction with n8n is through the provided tools:** \`submit-workflow\`, \`executions(action="run" | "debug" | "get")\`, \`credentials(action="list" | "test")\`, \`nodes(action="explore-resources")\`, \`workflows(action="publish" | "unpublish")\`, \`data-tables(action="list" | "create" | "schema")\`, etc. These tools communicate with n8n internally — no HTTP required.
 
 ## Sandbox-Specific Rules
 
@@ -677,9 +548,9 @@ When called with failure details for an existing workflow, start from the pre-lo
 - **For large HTML, use the file-based pattern.** Write HTML to \`chunks/page.html\`, then \`readFileSync\` + \`JSON.stringify\` in your SDK code. NEVER embed large HTML directly in jsCode — it will break. See the web_app_pattern section.
 - **Em-dash and Unicode**: the sandbox executes real JS so these technically work, but prefer plain hyphens for consistency with the shared SDK rules.
 
-## Credentials
+## Credentials (sandbox mode)
 
-Call \`list-credentials\` early. Each credential has an \`id\`, \`name\`, and \`type\`. Wire them into nodes like this:
+Sandbox mode uses **raw credential objects** (not \`newCredential()\`). Call \`credentials(action="list")\` early. Each credential has an \`id\`, \`name\`, and \`type\`. Wire them into nodes like this:
 
 \`\`\`typescript
 credentials: {
@@ -687,13 +558,13 @@ credentials: {
 }
 \`\`\`
 
-The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`list-credentials\`.
+The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`credentials(action="list")\`.
 
-If the required credential type is not in \`list-credentials\` results, call \`search-credential-types\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
+If the required credential type is not in \`credentials(action="list")\` results, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
 
 ## Data Tables
 
-n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). Always call \`get-data-table-schema\` before using a data table in workflow code to get the real column names.
+n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). Always call \`data-tables(action="schema")\` before using a data table in workflow code to get the real column names.
 
 ## CRITICAL RULES
 
@@ -701,31 +572,31 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 - **Complex workflows (5+ nodes, 2+ integrations) MUST use the Compositional Workflow Pattern.** Decompose into sub-workflows, test each independently, then compose. Do NOT write everything in a single workflow.
 - **If you edit code after submitting, you MUST call \`submit-workflow\` again before doing anything else (verify, run, or finish).** The system tracks file hashes — if the file changed since the last submit, your work is discarded. The sequence is always: edit → submit → then verify/run/finish.
 - **Follow the runtime verification instructions in your briefing.** If the briefing says verification is required, do not stop after a successful submit.
-- **Do NOT call \`publish-workflow\`.** Publishing is the user's decision after they have tested the workflow. Your job ends at a successful submit.
+- **Do NOT call \`workflows(action="publish")\`.** Publishing is the user's decision after they have tested the workflow. Your job ends at a successful submit.
 
 ## Mandatory Process
 
 ### For simple workflows (< 5 nodes, single integration):
 
-1. **Discover credentials**: Call \`list-credentials\`. Note each credential's \`id\`, \`name\`, and \`type\`. You'll wire these into nodes as \`credentials: { credType: { id, name } }\`. If a required credential doesn't exist, mention it in your summary.
+1. **Discover credentials**: Call \`credentials(action="list")\`. Note each credential's \`id\`, \`name\`, and \`type\`. You'll wire these into nodes as \`credentials: { credType: { id, name } }\`. If a required credential doesn't exist, mention it in your summary.
 
 2. **Discover nodes**:
-   a. If the workflow fits a known category (notification, data_persistence, chatbot, scheduling, data_transformation, data_extraction, document_processing, form_input, content_generation, triage, scraping_and_research), call \`get-suggested-nodes\` first — it returns curated node recommendations with pattern hints and configuration notes. **Pay attention to the notes** — they prevent common configuration mistakes.
-   b. For well-known utility nodes, skip \`search-nodes\` and use \`get-node-type-definition\` directly:
+   a. If the workflow fits a known category (notification, data_persistence, chatbot, scheduling, data_transformation, data_extraction, document_processing, form_input, content_generation, triage, scraping_and_research), call \`nodes(action="suggested")\` first — it returns curated node recommendations with pattern hints and configuration notes. **Pay attention to the notes** — they prevent common configuration mistakes.
+   b. For well-known utility nodes, skip \`nodes(action="search")\` and use \`nodes(action="type-definition")\` directly:
       - \`n8n-nodes-base.code\`, \`n8n-nodes-base.merge\`, \`n8n-nodes-base.set\`, \`n8n-nodes-base.if\`
       - \`n8n-nodes-base.removeDuplicates\`, \`n8n-nodes-base.httpRequest\`, \`n8n-nodes-base.switch\`
       - \`n8n-nodes-base.aggregate\`, \`n8n-nodes-base.splitOut\`, \`n8n-nodes-base.filter\`
-   c. Use \`search-nodes\` for service-specific nodes not covered above. Use short service names: "Gmail", "Slack", not "send email SMTP". Results include \`discriminators\` (available resources/operations) — use these when calling \`get-node-type-definition\`. **Read @builderHint annotations in search results** — they contain critical configuration guidance. Or grep the catalog:
+   c. Use \`nodes(action="search")\` for service-specific nodes not covered above. Use short service names: "Gmail", "Slack", not "send email SMTP". Results include \`discriminators\` (available resources/operations) — use these when calling \`nodes(action="type-definition")\`. **Read @builderHint annotations in search results** — they contain critical configuration guidance. Or grep the catalog:
    \`\`\`
    execute_command: grep -i "gmail" ${workspaceRoot}/node-types/index.txt
    \`\`\`
 
-3. **Get node schemas**: Call \`get-node-type-definition\` with ALL the node IDs you need in a single call (up to 5). For nodes with discriminators (from search results), include the \`resource\` and \`operation\` fields. **Read the definitions carefully** — they contain exact parameter names, types, required fields, valid enum values, credential types, displayOptions conditions, and \`@builderHint\` annotations with critical configuration guidance.
-   **Important**: Only call \`get-node-type-definition\` for nodes you will actually use in the workflow. Do not speculatively fetch definitions "just in case". If a definition returns empty or an error, do not retry — proceed with the information from \`search-nodes\` results instead.
+3. **Get node schemas**: Call \`nodes(action="type-definition")\` with ALL the node IDs you need in a single call (up to 5). For nodes with discriminators (from search results), include the \`resource\` and \`operation\` fields. **Read the definitions carefully** — they contain exact parameter names, types, required fields, valid enum values, credential types, displayOptions conditions, and \`@builderHint\` annotations with critical configuration guidance.
+   **Important**: Only call \`nodes(action="type-definition")\` for nodes you will actually use in the workflow. Do not speculatively fetch definitions "just in case". If a definition returns empty or an error, do not retry — proceed with the information from \`nodes(action="search")\` results instead.
 
-4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For EACH one, call \`explore-node-resources\` with the node type, method name, and the matching credential from step 1 to discover real resource IDs.
+4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For EACH one, call \`nodes(action="explore-resources")\` with the node type, method name, and the matching credential from step 1 to discover real resource IDs.
    - **This is mandatory for: calendars, spreadsheets, channels, folders, models, databases, and any other list-based parameter.** Do NOT assume values like "primary", "default", or "General" — always look up the real ID.
-   - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`explore-node-resources\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
+   - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`nodes(action="explore-resources")\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
    - **Never use \`placeholder()\` or fake IDs for discoverable resources.** Create them via a setup workflow instead (see "Setup Workflows" section). For user-provided values, follow the placeholder rules in "SDK Code Rules".
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
@@ -750,12 +621,12 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
 
 1. **Discover credentials** (same as above).
 2. **Discover nodes and get schemas** (same as above).
-3. **Resolve real resource IDs** (same as above — call \`explore-node-resources\` for EVERY parameter with \`searchListMethod\` or \`loadOptionsMethod\`). Never assume IDs like "primary" or "default". If a resource doesn't exist, build a setup workflow to create it.
+3. **Resolve real resource IDs** (same as above — call \`nodes(action="explore-resources")\` for EVERY parameter with \`searchListMethod\` or \`loadOptionsMethod\`). Never assume IDs like "primary" or "default". If a resource doesn't exist, build a setup workflow to create it.
 4. **Decompose** the workflow into logical chunks. Each chunk is a standalone sub-workflow with 2-4 nodes covering one capability (e.g., "fetch and format weather data", "generate AI recommendation", "store to data table").
 5. **For each chunk**:
    a. Write the chunk to \`${workspaceRoot}/chunks/<name>.ts\` with an \`executeWorkflowTrigger\` and explicit input schema.
    b. Run tsc.
-   c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Test via \`run-workflow\` (no publish needed for manual runs).
+   c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Test via \`executions(action="run")\` (no publish needed for manual runs).
    d. Fix if needed (max 2 submission fix attempts per chunk).
 6. **Write the main workflow** in \`${workspaceRoot}/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
 7. **Submit** the main workflow.
@@ -768,9 +639,9 @@ When modifying an existing workflow, the current code is **already pre-loaded** 
 - Read it with \`read_file\` to see the current code
 - Edit using \`edit_file\` for targeted changes or \`write_file\` for full rewrites (always use absolute paths)
 - Run tsc → submit-workflow with the \`workflowId\`
-- Do NOT call \`get-workflow-as-code\` — the file is already populated
+- Do NOT call \`workflows(action="get-as-code")\` — the file is already populated
 
-${SDK_RULES_AND_PATTERNS}
+${SDK_RULES_AND_PATTERNS_SANDBOX}
 `;
 }
 

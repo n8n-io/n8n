@@ -10,8 +10,10 @@ export {
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
 	releaseTraceClient,
+	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } from './tracing/langsmith-tracing';
+export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
 export {
 	IdRemapper,
 	TraceIndex,
@@ -50,7 +52,7 @@ export type {
 	ThreadPatch,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
-export { truncateToTitle, generateThreadTitle } from './memory/title-utils';
+export { truncateToTitle, generateTitleForRun } from './memory/title-utils';
 export { McpClientManager } from './mcp/mcp-client-manager';
 export { mapMastraChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';

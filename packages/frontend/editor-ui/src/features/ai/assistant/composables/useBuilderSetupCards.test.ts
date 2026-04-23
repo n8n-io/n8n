@@ -34,11 +34,11 @@ vi.mock('@/features/ai/assistant/builder.store', () => ({
 }));
 
 const mockUnpinNodeData = vi.fn();
+const mockTouchPinnedDataLastRemovedAt = vi.fn();
 const mockAllNodes = ref<INodeUi[]>([]);
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
 		workflowId: 'test-workflow-id',
-		nodeMetadata: {} as Record<string, { pinnedDataLastRemovedAt?: number }>,
 		get allNodes() {
 			return mockAllNodes.value;
 		},
@@ -49,6 +49,11 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => ({
 		pinData: {},
 		unpinNodeData: mockUnpinNodeData,
+		touchPinnedDataLastRemovedAt: mockTouchPinnedDataLastRemovedAt,
+		allNodes: [],
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
 	}),
 	createWorkflowDocumentId: (id: string) => id,
 }));

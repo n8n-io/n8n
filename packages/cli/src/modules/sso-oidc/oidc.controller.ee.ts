@@ -1,6 +1,6 @@
 import { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
@@ -9,7 +9,7 @@ import { Request, Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { OidcInstanceSettingsLoader } from '@/instance-settings-loader/loaders/oidc.instance-settings-loader';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
@@ -25,7 +25,7 @@ export class OidcController {
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly oidcSettingsLoader: OidcInstanceSettingsLoader,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
 
 	@Get('/config')
@@ -47,9 +47,9 @@ export class OidcController {
 		_res: Response,
 		@Body payload: OidcConfigDto,
 	) {
-		if (this.oidcSettingsLoader.isConfiguredByEnv()) {
-			throw new BadRequestError(
-				'OIDC configuration is managed via environment variables and cannot be modified through the UI',
+		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
+			throw new ForbiddenError(
+				'OIDC configuration is managed via environment variables and cannot be modified through the API',
 			);
 		}
 		await this.oidcService.updateConfig(payload);
