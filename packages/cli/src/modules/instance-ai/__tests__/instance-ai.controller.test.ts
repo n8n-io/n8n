@@ -22,6 +22,7 @@ jest.mock('../eval/execution.service', () => ({
 }));
 
 import type {
+	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequestDto,
@@ -44,14 +45,15 @@ import type { Scope } from '@n8n/permissions';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Push } from '@/push';
+import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
+import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
@@ -78,6 +80,7 @@ describe('InstanceAiController', () => {
 	const eventBus = mock<InProcessEventBus>();
 	const moduleRegistry = mock<ModuleRegistry>();
 	const push = mock<Push>();
+	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
 		instanceAi: { gatewayApiKey: 'static-key' },
 		editorBaseUrl: 'http://localhost:5678',
@@ -92,6 +95,7 @@ describe('InstanceAiController', () => {
 		eventBus,
 		moduleRegistry,
 		push,
+		urlService,
 		globalConfig,
 	);
 
@@ -479,6 +483,51 @@ describe('InstanceAiController', () => {
 				globalOnly: true,
 			});
 		});
+
+		it('should disconnect all gateways when enabled is set to false', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			instanceAiService.disconnectAllGateways.mockReturnValue(['user-a', 'user-b']);
+			const payload = { enabled: false } as InstanceAiAdminSettingsUpdateRequest;
+
+			await controller.updateAdminSettings(req, res, payload);
+
+			expect(instanceAiService.disconnectAllGateways).toHaveBeenCalled();
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'instanceAiGatewayStateChanged',
+					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+				}),
+				['user-a', 'user-b'],
+			);
+		});
+
+		it('should disconnect all gateways when localGatewayDisabled is set to true', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			instanceAiService.disconnectAllGateways.mockReturnValue(['user-c']);
+			const payload = { localGatewayDisabled: true } as InstanceAiAdminSettingsUpdateRequest;
+
+			await controller.updateAdminSettings(req, res, payload);
+
+			expect(instanceAiService.disconnectAllGateways).toHaveBeenCalled();
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'instanceAiGatewayStateChanged',
+				}),
+				['user-c'],
+			);
+		});
+
+		it('should not disconnect gateways when enabling features', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			const payload = {
+				enabled: true,
+				localGatewayDisabled: false,
+			} as InstanceAiAdminSettingsUpdateRequest;
+
+			await controller.updateAdminSettings(req, res, payload);
+
+			expect(instanceAiService.disconnectAllGateways).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getUserPreferences', () => {
@@ -693,12 +742,13 @@ describe('InstanceAiController', () => {
 
 		it('should return token and command', async () => {
 			instanceAiService.generatePairingToken.mockReturnValue('pairing-token');
+			urlService.getInstanceBaseUrl.mockReturnValue('https://myinstance.n8n.cloud');
 
 			const result = await controller.createGatewayLink(req);
 
 			expect(result).toEqual({
 				token: 'pairing-token',
-				command: 'npx @n8n/computer-use http://localhost:5678 pairing-token',
+				command: 'npx @n8n/computer-use https://myinstance.n8n.cloud pairing-token',
 			});
 			expect(instanceAiService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
 		});
@@ -712,12 +762,13 @@ describe('InstanceAiController', () => {
 			expect(scopeOf('gatewayInit')).toBeUndefined();
 		});
 
-		it('should initialize gateway with valid key and body', () => {
+		it('should initialize gateway with valid key and body', async () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			instanceAiService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/home/user' });
+			const payload = { rootPath: '/home/user', tools: [], toolCategories: [] };
 
-			const result = controller.gatewayInit(gatewayReq);
+			const result = await controller.gatewayInit(gatewayReq, res, payload);
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.initGateway).toHaveBeenCalledWith(
@@ -738,50 +789,102 @@ describe('InstanceAiController', () => {
 			);
 		});
 
-		it('should return sessionKey when pairing token is consumed', () => {
+		it('should return sessionKey when pairing token is consumed', async () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			instanceAiService.consumePairingToken.mockReturnValue('new-session-key');
 			const gatewayReq = makeGatewayReq('pairing-token', { rootPath: '/tmp' });
 
-			const result = controller.gatewayInit(gatewayReq);
+			const result = await controller.gatewayInit(gatewayReq, res, {
+				rootPath: '/tmp',
+				tools: [],
+				toolCategories: [],
+			});
 
 			expect(result).toEqual({ ok: true, sessionKey: 'new-session-key' });
 		});
 
-		it('should accept static env var key', () => {
+		it('should accept static env var key', async () => {
 			instanceAiService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('static-key', { rootPath: '/tmp' });
 
-			const result = controller.gatewayInit(gatewayReq);
+			const result = await controller.gatewayInit(gatewayReq, res, {
+				rootPath: '/tmp',
+				tools: [],
+				toolCategories: [],
+			});
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.initGateway).toHaveBeenCalledWith('env-gateway', expect.anything());
 		});
 
-		it('should throw ForbiddenError with missing API key', () => {
+		it('should throw ForbiddenError with missing API key', async () => {
 			const gatewayReq = makeGatewayReq(undefined, { rootPath: '/tmp' });
 
-			expect(() => controller.gatewayInit(gatewayReq)).toThrow(ForbiddenError);
+			await expect(
+				controller.gatewayInit(gatewayReq, res, {
+					rootPath: '/tmp',
+					tools: [],
+					toolCategories: [],
+				}),
+			).rejects.toThrow(ForbiddenError);
 		});
 
-		it('should throw ForbiddenError with invalid API key', () => {
+		it('should throw ForbiddenError with invalid API key', async () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(undefined);
 			const gatewayReq = makeGatewayReq('wrong-key', { rootPath: '/tmp' });
 
-			expect(() => controller.gatewayInit(gatewayReq)).toThrow(ForbiddenError);
-		});
-
-		it('should throw BadRequestError when body fails schema validation', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			const gatewayReq = makeGatewayReq('session-key', { unexpected: 123 });
-
-			expect(() => controller.gatewayInit(gatewayReq)).toThrow(BadRequestError);
+			await expect(
+				controller.gatewayInit(gatewayReq, res, {
+					rootPath: '/tmp',
+					tools: [],
+					toolCategories: [],
+				}),
+			).rejects.toThrow(ForbiddenError);
 		});
 	});
 
 	describe('gatewayEvents', () => {
+		const makeGatewayReq = (key: string) =>
+			({
+				headers: { 'x-gateway-key': key },
+				once: jest.fn(),
+			}) as unknown as Request;
+
+		const makeFlushableRes = () => {
+			const res = {
+				setHeader: jest.fn(),
+				flushHeaders: jest.fn(),
+				write: jest.fn(),
+				flush: jest.fn(),
+				once: jest.fn(),
+			};
+			return res as unknown as Parameters<typeof controller.gatewayEvents>[1];
+		};
+
 		it('should have no access scope (skipAuth)', () => {
 			expect(scopeOf('gatewayEvents')).toBeUndefined();
+		});
+
+		it('should reject with ForbiddenError when the gateway has not been initialized', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getLocalGateway.mockReturnValue(mock<LocalGateway>({ isConnected: false }));
+
+			await expect(
+				controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes()),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(instanceAiService.clearDisconnectTimer).not.toHaveBeenCalled();
+		});
+
+		it('should clear a pending disconnect timer when SSE reconnects while still connected', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			const gateway = mock<LocalGateway>({ isConnected: true });
+			gateway.onRequest.mockReturnValue(() => {});
+			instanceAiService.getLocalGateway.mockReturnValue(gateway);
+
+			await controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes());
+
+			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
 		});
 	});
 
@@ -798,7 +901,9 @@ describe('InstanceAiController', () => {
 			instanceAiService.resolveGatewayRequest.mockReturnValue(true);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
-			const result = controller.gatewayResponse(gatewayReq, res, 'req-1');
+			const result = controller.gatewayResponse(gatewayReq, res, 'req-1', {
+				result: { content: [] },
+			});
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.resolveGatewayRequest).toHaveBeenCalledWith(
@@ -814,14 +919,9 @@ describe('InstanceAiController', () => {
 			instanceAiService.resolveGatewayRequest.mockReturnValue(false);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
-			expect(() => controller.gatewayResponse(gatewayReq, res, 'req-1')).toThrow(NotFoundError);
-		});
-
-		it('should throw BadRequestError when body fails schema validation', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			const gatewayReq = makeGatewayReq('session-key', { result: 'not-an-object' });
-
-			expect(() => controller.gatewayResponse(gatewayReq, res, 'req-1')).toThrow(BadRequestError);
+			expect(() =>
+				controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } }),
+			).toThrow(NotFoundError);
 		});
 	});
 
@@ -870,7 +970,7 @@ describe('InstanceAiController', () => {
 				body: { result: { content: [] } },
 			} as unknown as Request;
 
-			controller.gatewayResponse(gatewayReq, res, 'req-1');
+			controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } });
 
 			// validateGatewayApiKey receives 'key1' (the first element)
 			expect(instanceAiService.getUserIdForApiKey).toHaveBeenCalledWith('key1');

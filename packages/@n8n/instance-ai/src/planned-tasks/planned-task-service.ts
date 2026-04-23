@@ -56,6 +56,23 @@ function isSuccess(task: PlannedTaskRecord): boolean {
 	return task.status === 'succeeded';
 }
 
+function collectDependents(graph: PlannedTaskGraph, rootId: string): Set<string> {
+	const dependents = new Set<string>();
+	const queue = [rootId];
+
+	while (queue.length > 0) {
+		const current = queue.shift()!;
+		for (const task of graph.tasks) {
+			if (task.deps.includes(current) && !dependents.has(task.id)) {
+				dependents.add(task.id);
+				queue.push(task.id);
+			}
+		}
+	}
+
+	return dependents;
+}
+
 function updateTaskRecord(
 	graph: PlannedTaskGraph,
 	taskId: string,
@@ -136,14 +153,36 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		taskId: string,
 		update: { error?: string; finishedAt?: number },
 	): Promise<PlannedTaskGraph | null> {
-		return await this.storage.update(threadId, (graph) =>
-			updateTaskRecord(graph, taskId, (task) => ({
-				...task,
-				status: 'failed',
-				error: update.error ?? task.error ?? 'Unknown error',
-				finishedAt: update.finishedAt ?? Date.now(),
-			})),
-		);
+		return await this.storage.update(threadId, (graph) => {
+			const failedTask = graph.tasks.find((task) => task.id === taskId);
+			if (!failedTask) return graph;
+
+			const dependents = collectDependents(graph, taskId);
+			const finishedAt = update.finishedAt ?? Date.now();
+			const failureError = update.error ?? failedTask.error ?? 'Unknown error';
+
+			const tasks = graph.tasks.map<PlannedTaskRecord>((task) => {
+				if (task.id === taskId) {
+					return {
+						...task,
+						status: 'failed',
+						error: failureError,
+						finishedAt,
+					};
+				}
+				if (dependents.has(task.id) && (task.status === 'planned' || task.status === 'running')) {
+					return {
+						...task,
+						status: 'cancelled',
+						error: `Cancelled: dependency "${taskId}" failed`,
+						finishedAt,
+					};
+				}
+				return task;
+			});
+
+			return { ...graph, tasks };
+		});
 	}
 
 	async markCancelled(

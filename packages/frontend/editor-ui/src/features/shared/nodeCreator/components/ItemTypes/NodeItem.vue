@@ -194,13 +194,15 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		@dragend="onDragEnd"
 	>
 		<template #icon>
-			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
-			<NodeIcon
-				:class="$style.nodeIcon"
-				:node-type="nodeType"
-				:size="nodeListIconSize"
-				color-default="var(--color--foreground--shade-2)"
-			/>
+			<div :class="$style.iconWrapper">
+				<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
+				<NodeIcon
+					:class="$style.nodeIcon"
+					:node-type="nodeType"
+					:size="nodeListIconSize"
+					color-default="var(--color--foreground--shade-2)"
+				/>
+			</div>
 		</template>
 
 		<template v-if="isOfficial" #extraDetails>
@@ -264,6 +266,13 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	user-select: none;
 }
 
+.iconWrapper {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
 .nodeIcon {
 	z-index: 2;
 }
@@ -272,9 +281,11 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	background-color: var(--node-type--supplemental--color--background);
 	border-radius: 50%;
 	height: 40px;
-	position: absolute;
-	transform: translate(-7px, -7px);
 	width: 40px;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
 	z-index: 1;
 }
 

@@ -104,6 +104,110 @@ describe('credGroupKey', () => {
 		});
 		expect(credGroupKey(req)).toContain('httpBasicAuth:http:');
 	});
+
+	test('groups two non-HTTP nodes sharing a credential type under one key', () => {
+		const slackA = makeSetupNode({
+			credentialType: 'slackApi',
+			node: {
+				name: 'Slack A',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2,
+				parameters: {},
+				position: [0, 0] as [number, number],
+				id: 'a',
+			},
+		});
+		const slackB = makeSetupNode({
+			credentialType: 'slackApi',
+			node: {
+				name: 'Slack B',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2,
+				parameters: {},
+				position: [0, 0] as [number, number],
+				id: 'b',
+			},
+		});
+		expect(credGroupKey(slackA)).toBe(credGroupKey(slackB));
+	});
+
+	test('splits HTTP Request nodes with different static URLs even for same credential type', () => {
+		const httpA = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP A',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: 'https://a.example.com' },
+				position: [0, 0] as [number, number],
+				id: 'a',
+			},
+		});
+		const httpB = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP B',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: 'https://b.example.com' },
+				position: [0, 0] as [number, number],
+				id: 'b',
+			},
+		});
+		expect(credGroupKey(httpA)).not.toBe(credGroupKey(httpB));
+	});
+
+	test('groups HTTP Request nodes with the same static URL and credential type', () => {
+		const httpA = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP A',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: 'https://api.example.com' },
+				position: [0, 0] as [number, number],
+				id: 'a',
+			},
+		});
+		const httpB = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP B',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: 'https://api.example.com' },
+				position: [0, 0] as [number, number],
+				id: 'b',
+			},
+		});
+		expect(credGroupKey(httpA)).toBe(credGroupKey(httpB));
+	});
+
+	test('splits HTTP Request nodes with expression URLs regardless of string equality', () => {
+		const exprA = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP A',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: '={{ $json.url }}' },
+				position: [0, 0] as [number, number],
+				id: 'a',
+			},
+		});
+		const exprB = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP B',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: '={{ $json.url }}' },
+				position: [0, 0] as [number, number],
+				id: 'b',
+			},
+		});
+		expect(credGroupKey(exprA)).not.toBe(credGroupKey(exprB));
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -141,6 +245,20 @@ describe('isParamValueSet', () => {
 
 	test('returns true for non-empty resource locator', () => {
 		expect(isParamValueSet({ __rl: true, value: 'some-id', mode: 'list' })).toBe(true);
+	});
+
+	test('returns false for placeholder sentinel string', () => {
+		expect(isParamValueSet('<__PLACEHOLDER_VALUE__your_email__>')).toBe(false);
+	});
+
+	test('returns false for resource locator with placeholder sentinel value', () => {
+		expect(
+			isParamValueSet({
+				__rl: true,
+				value: '<__PLACEHOLDER_VALUE__channel_name__>',
+				mode: 'list',
+			}),
+		).toBe(false);
 	});
 });
 
@@ -259,15 +377,16 @@ describe('isTriggerOnly', () => {
 });
 
 describe('shouldUseCredentialIcon', () => {
-	const noParamWork = () => false;
-
-	test('returns true when card has credential and is not trigger-only', () => {
-		const card = makeCard({ credentialType: 'slackApi', isTrigger: false });
-		expect(shouldUseCredentialIcon(card, noParamWork)).toBe(true);
+	test('returns true for multi-node credential-grouping cards', () => {
+		const card = makeCard({
+			credentialType: 'googleOAuth2Api',
+			nodes: [makeSetupNode(), makeSetupNode(), makeSetupNode()],
+		});
+		expect(shouldUseCredentialIcon(card)).toBe(true);
 	});
 
-	test('returns false when card has no credential', () => {
-		const card = makeCard({ credentialType: undefined });
-		expect(shouldUseCredentialIcon(card, noParamWork)).toBe(false);
+	test('returns false for single-node cards', () => {
+		const card = makeCard({ credentialType: 'slackApi', nodes: [makeSetupNode()] });
+		expect(shouldUseCredentialIcon(card)).toBe(false);
 	});
 });

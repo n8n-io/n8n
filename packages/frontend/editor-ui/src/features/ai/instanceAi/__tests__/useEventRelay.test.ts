@@ -126,15 +126,19 @@ describe('useEventRelay', () => {
 			expect(relay).toHaveBeenCalledWith(nodeEvent);
 		});
 
-		test('does not forward when execution is finished', async () => {
+		test('relays executionFinished when execution appears already finished', async () => {
 			setup({ activeWfId: 'wf-1' });
 
+			// Vue may coalesce ref updates so the watcher fires for the first time
+			// with the execution already finished (prev status is undefined).
+			// The relay should still send executionFinished.
 			workflowExecutions.value = new Map([
 				['wf-1', createExecState('wf-1', 'exec-1', 'success', [])],
 			]);
 			await nextTick();
 
-			expect(relay).not.toHaveBeenCalled();
+			expect(relay).toHaveBeenCalledTimes(1);
+			expect(relay.mock.calls[0][0].type).toBe('executionFinished');
 		});
 
 		test('does not forward when active workflow does not match', async () => {

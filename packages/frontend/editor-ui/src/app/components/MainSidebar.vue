@@ -52,7 +52,7 @@ const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleC
 	useSidebarLayout();
 
 const { settingsItems } = useSettingsItems();
-const { fetchCredits, isEnabled: isAiGatewayEnabled } = useAiGateway();
+const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
 
 // Component data
 const basePath = ref('');
@@ -226,7 +226,7 @@ watch(isCollapsed, () => {
 
 onMounted(() => {
 	basePath.value = rootStore.baseUrl;
-	if (isAiGatewayEnabled.value) void fetchCredits();
+	if (isAiGatewayEnabled.value) void fetchWallet();
 
 	void nextTick(() => {
 		checkOverflow();

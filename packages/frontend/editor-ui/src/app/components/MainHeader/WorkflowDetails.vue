@@ -512,7 +512,7 @@ $--header-spacing: 20px;
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--md);
+	gap: var(--spacing--4xs);
 	flex-wrap: nowrap;
 }
 

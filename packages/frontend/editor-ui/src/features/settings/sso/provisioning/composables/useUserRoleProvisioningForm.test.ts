@@ -307,97 +307,92 @@ describe('useUserRoleProvisioningForm', () => {
 		});
 	});
 
-	describe('shouldPromptUserToConfirmUserRoleProvisioningChange', () => {
-		it('should return false when disabling SSO', async () => {
+	describe('roleAssignmentTransition', () => {
+		it('should return none when dropdown has not changed', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
 
-			const { shouldPromptUserToConfirmUserRoleProvisioningChange } =
-				useUserRoleProvisioningForm('oidc');
-
-			const result = shouldPromptUserToConfirmUserRoleProvisioningChange({
-				currentLoginEnabled: true,
-				loginEnabledFormValue: false,
-			});
-
-			expect(result).toEqual(false);
-		});
-
-		it('should return false when enabling SSO without provisioning enabled', async () => {
-			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
-				mockProvisioningConfig({ scopesProvisionInstanceRole: false }),
-			);
-
-			const { shouldPromptUserToConfirmUserRoleProvisioningChange } =
-				useUserRoleProvisioningForm('oidc');
-
-			const result = shouldPromptUserToConfirmUserRoleProvisioningChange({
-				currentLoginEnabled: false,
-				loginEnabledFormValue: true,
-			});
-
-			expect(result).toEqual(false);
-		});
-
-		it('should return true when enabling SSO with user role provisioning enabled', async () => {
-			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
-				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
-			);
-			const { formValue, shouldPromptUserToConfirmUserRoleProvisioningChange } =
-				useUserRoleProvisioningForm('oidc');
+			const { formValue, roleAssignmentTransition } = useUserRoleProvisioningForm('oidc');
 			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
 
-			const result = shouldPromptUserToConfirmUserRoleProvisioningChange({
-				currentLoginEnabled: false,
-				loginEnabledFormValue: true,
-			});
-
-			expect(result).toEqual(true);
+			expect(roleAssignmentTransition.value).toBe('none');
 		});
 
-		it('should return true when changing provisioning setting while SSO is active', async () => {
+		it('should return backup when changing from manual to SSO option', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({}),
+			);
+
+			const { formValue, roleAssignment, roleAssignmentTransition } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('disabled'));
+
+			roleAssignment.value = 'instance';
+
+			expect(roleAssignmentTransition.value).toBe('backup');
+		});
+
+		it('should return backup when changing between SSO options', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
-			const { roleAssignment, formValue, shouldPromptUserToConfirmUserRoleProvisioningChange } =
+
+			const { formValue, roleAssignment, roleAssignmentTransition } =
 				useUserRoleProvisioningForm('oidc');
 			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
 
 			roleAssignment.value = 'instance_and_project';
 
-			const result = shouldPromptUserToConfirmUserRoleProvisioningChange({
-				currentLoginEnabled: true,
-				loginEnabledFormValue: true,
-			});
-
-			expect(result).toEqual(true);
+			expect(roleAssignmentTransition.value).toBe('backup');
 		});
 
-		it('should return true when enabling SSO with expression_based provisioning enabled', async () => {
+		it('should return backup when changing mapping method', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
-				mockProvisioningConfig({
-					scopesProvisionInstanceRole: false,
-					scopesProvisionProjectRoles: false,
-				}),
+				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
-			const {
-				roleAssignment,
-				mappingMethod,
-				formValue,
-				shouldPromptUserToConfirmUserRoleProvisioningChange,
-			} = useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('disabled'));
+
+			const { formValue, mappingMethod, roleAssignmentTransition } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+
+			mappingMethod.value = 'rules_in_n8n';
+
+			expect(roleAssignmentTransition.value).toBe('backup');
+		});
+
+		it('should return switchToManual when changing from SSO option to manual', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
+			);
+
+			const { formValue, roleAssignment, roleAssignmentTransition } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+
+			roleAssignment.value = 'manual';
+
+			expect(roleAssignmentTransition.value).toBe('switchToManual');
+		});
+	});
+
+	describe('revertRoleAssignment', () => {
+		it('should reset dropdown to stored values', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
+			);
+
+			const { formValue, roleAssignment, mappingMethod, revertRoleAssignment } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
 
 			roleAssignment.value = 'instance_and_project';
 			mappingMethod.value = 'rules_in_n8n';
 
-			const result = shouldPromptUserToConfirmUserRoleProvisioningChange({
-				currentLoginEnabled: false,
-				loginEnabledFormValue: true,
-			});
+			revertRoleAssignment();
 
-			expect(result).toEqual(true);
+			expect(roleAssignment.value).toBe('instance');
+			expect(mappingMethod.value).toBe('idp');
 		});
 	});
 });

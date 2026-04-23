@@ -539,7 +539,7 @@ defineExpose({
 						:class="$style.groupButtonLeft"
 						:loading="autoSaveForPublish"
 						:disabled="!publishButtonConfig.enabled || shouldDisablePublishButton"
-						variant="subtle"
+						variant="ghost"
 						data-test-id="workflow-open-publish-modal-button"
 						@click="onPublishButtonClick"
 					>
@@ -573,8 +573,9 @@ defineExpose({
 					<template #activator>
 						<N8nIconButton
 							:class="$style.groupButtonRight"
-							variant="subtle"
+							variant="ghost"
 							icon="chevron-down"
+							:disabled="!publishButtonConfig.enabled || shouldDisablePublishButton"
 							:aria-label="i18n.baseText('node.moreActions')"
 							data-test-id="version-menu-button"
 						/>
@@ -613,11 +614,13 @@ defineExpose({
 .publishButtonWrapper {
 	position: relative;
 	display: inline-flex;
-	margin-right: var(--spacing--2xs);
+	margin-inline: var(--spacing--2xs);
 }
 
 .buttonGroup {
 	display: inline-flex;
+	border: var(--border);
+	border-radius: var(--radius--3xs);
 }
 
 .groupButtonLeft,
@@ -635,6 +638,7 @@ defineExpose({
 .groupButtonRight {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+	border-left: var(--border);
 }
 
 .buttonGroup:has(.groupButtonLeft:not(:disabled):hover) .groupButtonRight {

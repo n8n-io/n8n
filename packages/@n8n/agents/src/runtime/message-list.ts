@@ -17,6 +17,8 @@ export interface WorkingMemoryContext {
 	structured: boolean;
 	/** The current persisted state, or null if not yet loaded. Falls back to template. */
 	state: string | null;
+	/** Custom instruction text. When absent the default instruction is used. */
+	instruction?: string;
 }
 
 /**
@@ -144,10 +146,11 @@ export class AgentMessageList {
 			const wmInstruction = buildWorkingMemoryInstruction(
 				this.workingMemory.template,
 				this.workingMemory.structured,
+				this.workingMemory.instruction,
 			);
 			const wmState = this.workingMemory.state ?? this.workingMemory.template;
 			systemPrompt +=
-				wmInstruction + '\n\nCurrent working memory state:\n```\n' + wmState + '\n```';
+				wmInstruction + '\n\nCurrent working memory state:\n```\n' + wmState + '\n```\n';
 		}
 
 		const systemMessage: ModelMessage = instructionProviderOptions

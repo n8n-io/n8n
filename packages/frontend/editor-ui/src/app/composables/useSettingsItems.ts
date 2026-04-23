@@ -17,7 +17,7 @@ export function useSettingsItems() {
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
-	const { creditsRemaining } = useAiGateway();
+	const { balance } = useAiGateway();
 	const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
@@ -64,9 +64,9 @@ export function useSettingsItems() {
 					settingsStore.isAiGatewayEnabled && canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
 				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
 				creditsTag:
-					creditsRemaining.value !== undefined
-						? i18n.baseText('aiGateway.credentialMode.creditsShort', {
-								interpolate: { count: String(creditsRemaining.value) },
+					balance.value !== undefined
+						? i18n.baseText('aiGateway.wallet.balanceRemaining', {
+								interpolate: { balance: `$${Number(balance.value).toFixed(2)}` },
 							})
 						: undefined,
 			},

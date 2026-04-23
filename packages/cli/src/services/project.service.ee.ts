@@ -591,7 +591,10 @@ export class ProjectService {
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			where.type = 'team';
+			// if we're not checking specific projects, restrict to team projects
+			if (!projectIds) {
+				where.type = 'team';
+			}
 			where.projectRelations = {
 				role: In(projectRoles),
 				userId: user.id,

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -23,7 +23,8 @@
       "require": "./dist/index.js",
       "import": "./src/index.ts",
       "types": "./dist/index.d.ts"
-    }
+    },
+    "./evaluations": "./evaluations/index.ts"
   },
   "dependencies": {
     "@daytonaio/sdk": "0.149.0",

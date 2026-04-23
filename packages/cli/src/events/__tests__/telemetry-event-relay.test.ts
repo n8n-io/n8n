@@ -1119,6 +1119,7 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 				project_id: 'project123',
 				project_type: 'personal',
+				source: 'ui',
 			});
 		});
 
@@ -1176,6 +1177,109 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 				project_id: 'project123',
 				project_type: 'personal',
+				source: 'ui',
+			});
+		});
+
+		it('should track on `workflow-activated` event with source', () => {
+			const event: RelayEventMap['workflow-activated'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflowId: 'workflow123',
+				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				publicApi: true,
+				source: 'api',
+			};
+
+			eventService.emit('workflow-activated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User activated workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				public_api: true,
+				source: 'api',
+			});
+		});
+
+		it('should default source to ui on `workflow-activated` event', () => {
+			const event: RelayEventMap['workflow-activated'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflowId: 'workflow123',
+				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-activated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User activated workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				public_api: false,
+				source: 'ui',
+			});
+		});
+
+		it('should track on `workflow-deactivated` event with source', () => {
+			const event: RelayEventMap['workflow-deactivated'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflowId: 'workflow123',
+				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				publicApi: true,
+				deactivatedVersionId: 'version-abc-123',
+				source: 'n8n-mcp',
+			};
+
+			eventService.emit('workflow-deactivated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deactivated workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				public_api: true,
+				deactivated_version_id: 'version-abc-123',
+				source: 'n8n-mcp',
+			});
+		});
+
+		it('should default source to ui on `workflow-deactivated` event', () => {
+			const event: RelayEventMap['workflow-deactivated'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflowId: 'workflow123',
+				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				publicApi: false,
+				deactivatedVersionId: null,
+			};
+
+			eventService.emit('workflow-deactivated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deactivated workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				public_api: false,
+				deactivated_version_id: null,
+				source: 'ui',
 			});
 		});
 
@@ -1303,6 +1407,7 @@ describe('TelemetryEventRelay', () => {
 				ai_builder_assisted: false,
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
+				source: 'ui',
 			});
 		});
 
@@ -1351,6 +1456,7 @@ describe('TelemetryEventRelay', () => {
 				credential_resolver_id: 'resolver-123',
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
+				source: 'ui',
 			});
 		});
 
