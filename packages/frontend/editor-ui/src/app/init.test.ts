@@ -134,6 +134,40 @@ describe('Init', () => {
 			});
 		});
 
+		it('should re-initialize ssoStore in login hook with authenticated settings', async () => {
+			const saml = { loginEnabled: false, loginLabel: '' };
+			const ldap = { loginEnabled: false, loginLabel: '' };
+			const oidc = {
+				loginEnabled: false,
+				loginUrl: 'http://localhost:5678/rest/sso/oidc/login',
+				callbackUrl: 'http://localhost:5678/rest/sso/oidc/callback',
+			};
+
+			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Oidc;
+			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc] = true;
+
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+			});
+
+			await initializeCore();
+
+			// ssoStore.initialize should be called twice:
+			// once during initializeCore and once during the login hook
+			expect(ssoStore.initialize).toHaveBeenCalledTimes(2);
+			expect(ssoStore.initialize).toHaveBeenLastCalledWith({
+				authenticationMethod: UserManagementAuthenticationMethod.Oidc,
+				managedByEnv: false,
+				config: { managedByEnv: false, saml, ldap, oidc },
+				features: {
+					saml: false,
+					ldap: false,
+					oidc: true,
+				},
+			});
+		});
+
 		it('should initialize ssoStore with settings SSO configuration', async () => {
 			const saml = { loginEnabled: true, loginLabel: '' };
 			const ldap = { loginEnabled: false, loginLabel: '' };

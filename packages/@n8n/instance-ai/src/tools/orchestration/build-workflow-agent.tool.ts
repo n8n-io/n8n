@@ -44,10 +44,8 @@ import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
-import {
-	createSubmitWorkflowTool,
-	type SubmitWorkflowAttempt,
-} from '../workflows/submit-workflow.tool';
+import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
+import { type SubmitWorkflowAttempt } from '../workflows/submit-workflow.tool';
 
 /** Trigger types that cannot be test-fired programmatically (need an external request). */
 const UNTESTABLE_TRIGGERS = new Set([
@@ -120,32 +118,64 @@ Your job is done when ONE of these is true:
 ### Submit discipline
 
 **Every file edit MUST be followed by submit-workflow before you do anything else.**
-The system tracks file hashes. If you edit the code and then call run-workflow or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/run.
+The system tracks file hashes. If you edit the code and then call \`executions(action="run")\` or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/run.
 
 ### Verification
 
 - If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
-- Otherwise call run-workflow to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
-- If verification fails, call debug-execution, fix the code, re-submit, and retry once
+- Otherwise call \`executions(action="run")\` to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
+- If verification fails, call \`executions(action="debug")\`, fix the code, re-submit, and retry once
 - If the same failure signature repeats, stop and explain the block
 
 ### Resource discovery
 
 Before writing code that uses external services, **resolve real resource IDs**:
-- Call explore-node-resources for any parameter with searchListMethod (calendars, spreadsheets, channels, models, etc.)
+- Call \`nodes(action="explore-resources")\` for any parameter with searchListMethod (calendars, spreadsheets, channels, models, etc.)
 - Do NOT use "primary", "default", or any assumed identifier — look up the actual value
-- Call get-suggested-nodes early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
+- Call \`nodes(action="suggested")\` early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
 - Check @builderHint annotations in node type definitions for critical configuration guidance
 
 ### Publishing
 
-Do NOT call \`publish-workflow\` for the main workflow. Publishing is the user's decision after testing. Your job ends at a successful submit. The only exception is sub-workflows in the compositional pattern — those must be published so the parent workflow can reference them.
+Do NOT call \`workflows(action="publish")\` for the main workflow. Publishing is the user's decision after testing. Your job ends at a successful submit. The only exception is sub-workflows in the compositional pattern — those must be published so the parent workflow can reference them.
 `;
 
 function hashContent(content: string | null): string {
 	return createHash('sha256')
 		.update(content ?? '', 'utf8')
 		.digest('hex');
+}
+
+/**
+ * When the builder's stream errors mid-run, recover a successful-submit outcome
+ * from the submit-attempt history so the orchestrator doesn't redo a build that
+ * already produced a workflow. Scans in reverse so a later failed submit for
+ * the main path cannot mask an earlier success. Returns undefined when nothing
+ * was successfully submitted yet — the caller should rethrow in that case.
+ */
+export function resultFromPostStreamError(input: {
+	error: unknown;
+	submitAttempts: SubmitWorkflowAttempt[];
+	mainWorkflowPath: string;
+	workItemId: string;
+	taskId: string;
+}): BackgroundTaskResult | undefined {
+	let attempt: SubmitWorkflowAttempt | undefined;
+	for (let i = input.submitAttempts.length - 1; i >= 0; i--) {
+		const a = input.submitAttempts[i];
+		if (a.filePath === input.mainWorkflowPath && a.success) {
+			attempt = a;
+			break;
+		}
+	}
+	if (!attempt) return undefined;
+
+	const errorText = input.error instanceof Error ? input.error.message : String(input.error);
+	const text = `Workflow ${attempt.workflowId} submitted successfully. A later step failed: ${errorText}`;
+	return {
+		text,
+		outcome: buildOutcome(input.workItemId, input.taskId, attempt, text),
+	};
 }
 
 export interface StartBuildWorkflowAgentInput {
@@ -192,6 +222,7 @@ export async function startBuildWorkflowAgentTask(
 			'credentials',
 			'executions',
 			'data-tables',
+			'templates',
 			'ask-user',
 		];
 
@@ -212,6 +243,7 @@ export async function startBuildWorkflowAgentTask(
 			'nodes',
 			'workflows',
 			'data-tables',
+			'templates',
 			'ask-user',
 			...(context.researchMode ? ['research'] : []),
 		];
@@ -301,6 +333,9 @@ export async function startBuildWorkflowAgentTask(
 			await withTraceContextActor(traceContext, async () => {
 				let builderWs: BuilderWorkspace | undefined;
 				const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
+				// Append-only history so a later failed submit for the main path
+				// cannot mask an earlier successful submit during post-error recovery.
+				const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
 				try {
 					if (useSandbox) {
 						builderWs = await factory.create(subAgentId, domainContext);
@@ -312,9 +347,13 @@ export async function startBuildWorkflowAgentTask(
 							try {
 								const json = await domainContext.workflowService.getAsWorkflowJSON(workflowId);
 								let rawCode = generateWorkflowCode(json);
+								// Preserve the original id so credentials stay bound across saves.
+								// Stripping the id forced resolution through resolveCredentials,
+								// which does last-write-wins by credential type when a user has
+								// multiple credentials of the same type.
 								rawCode = rawCode.replace(
-									/newCredential\('([^']*)',\s*'[^']*'\)/g,
-									"newCredential('$1')",
+									/newCredential\('([^']*)',\s*'([^']*)'\)/g,
+									"{ id: '$2', name: '$1' }",
 								);
 								const code = `${SDK_IMPORT_STATEMENT}\n\n${rawCode}`;
 								if (workspace.filesystem) {
@@ -328,12 +367,14 @@ export async function startBuildWorkflowAgentTask(
 						}
 
 						const mainWorkflowPath = `${root}/src/workflow.ts`;
-						builderTools['submit-workflow'] = createSubmitWorkflowTool(
-							domainContext,
+						builderTools['submit-workflow'] = createIdentityEnforcedSubmitWorkflowTool({
+							context: domainContext,
 							workspace,
-							credMap,
-							async (attempt) => {
+							credentialMap: credMap,
+							root,
+							onAttempt: async (attempt) => {
 								submitAttempts.set(attempt.filePath, attempt);
+								submitAttemptHistory.push(attempt);
 								if (attempt.filePath !== mainWorkflowPath || !context.workflowTaskService) {
 									return;
 								}
@@ -349,7 +390,7 @@ export async function startBuildWorkflowAgentTask(
 									),
 								);
 							},
-						);
+						});
 
 						const tracedBuilderTools = traceSubAgentTools(
 							context,
@@ -383,38 +424,51 @@ export async function startBuildWorkflowAgentTask(
 						registerWithMastra(subAgentId, subAgent, context.storage);
 
 						const traceParent = getTraceParentRun();
-						const hitlResult = await withTraceParentContext(traceParent, async () => {
-							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-							const stream = await subAgent.stream(briefing, {
-								maxSteps: MAX_STEPS.BUILDER,
-								abortSignal: signal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-								...(llmStepTraceHooks?.executionOptions ?? {}),
+						let finalText: string;
+						try {
+							const hitlResult = await withTraceParentContext(traceParent, async () => {
+								const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
+								const stream = await subAgent.stream(briefing, {
+									maxSteps: MAX_STEPS.BUILDER,
+									abortSignal: signal,
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
+									},
+									...(llmStepTraceHooks?.executionOptions ?? {}),
+								});
+
+								return await consumeStreamWithHitl({
+									agent: subAgent,
+									stream: stream as {
+										runId?: string;
+										fullStream: AsyncIterable<unknown>;
+										text: Promise<string>;
+									},
+									runId: context.runId,
+									agentId: subAgentId,
+									eventBus: context.eventBus,
+									logger: context.logger,
+									threadId: context.threadId,
+									abortSignal: signal,
+									waitForConfirmation: context.waitForConfirmation,
+									drainCorrections,
+									waitForCorrection,
+									llmStepTraceHooks,
+								});
 							});
 
-							return await consumeStreamWithHitl({
-								agent: subAgent,
-								stream: stream as {
-									runId?: string;
-									fullStream: AsyncIterable<unknown>;
-									text: Promise<string>;
-								},
-								runId: context.runId,
-								agentId: subAgentId,
-								eventBus: context.eventBus,
-								logger: context.logger,
-								threadId: context.threadId,
-								abortSignal: signal,
-								waitForConfirmation: context.waitForConfirmation,
-								drainCorrections,
-								waitForCorrection,
-								llmStepTraceHooks,
+							finalText = await hitlResult.text;
+						} catch (error) {
+							const recovered = resultFromPostStreamError({
+								error,
+								submitAttempts: submitAttemptHistory,
+								mainWorkflowPath,
+								workItemId,
+								taskId,
 							});
-						});
-
-						const finalText = await hitlResult.text;
+							if (recovered) return recovered;
+							throw error;
+						}
 
 						const mainWorkflowAttempt = submitAttempts.get(mainWorkflowPath);
 						const currentMainWorkflow = await readFileViaSandbox(workspace, mainWorkflowPath);

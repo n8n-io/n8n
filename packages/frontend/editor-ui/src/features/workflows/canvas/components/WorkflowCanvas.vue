@@ -25,6 +25,7 @@ const props = withDefaults(
 		showFallbackNodes?: boolean;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		canExecute?: boolean;
 		executing?: boolean;
 		suppressInteraction?: boolean;
 		initialViewport?: ViewportTransform | null;
@@ -154,6 +155,7 @@ defineExpose({
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"
+				:can-execute="canExecute"
 				:executing="executing"
 				:suppress-interaction="suppressInteraction"
 				:initial-viewport="initialViewport"

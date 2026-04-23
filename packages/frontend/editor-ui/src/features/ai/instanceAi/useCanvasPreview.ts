@@ -87,7 +87,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		const result: ArtifactTab[] = [];
 		const liveExecMap = workflowExecutions?.value;
 		const historicalExecMap = historicalExecutions.value;
-		for (const entry of store.resourceRegistry.values()) {
+		for (const entry of store.producedArtifacts.values()) {
 			if (entry.type === 'workflow' || entry.type === 'data-table') {
 				// Live push event state takes priority over historical message data.
 				// Historical data already has stale executions filtered out.
@@ -225,7 +225,13 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 	watch(
 		() => route.params.threadId,
-		() => {
+		(threadId, oldThreadId) => {
+			// Skip if this is the initial route setup (e.g. URL updated from
+			// /instance-ai to /instance-ai/:threadId after the first message)
+			if (!oldThreadId) return;
+			// Skip if the thread ID hasn't actually changed
+			if (threadId === oldThreadId) return;
+
 			wasCanvasOpenBeforeSwitch.value = isPreviewVisible.value;
 			pendingRestore.value = true;
 			activeTabId.value = null;

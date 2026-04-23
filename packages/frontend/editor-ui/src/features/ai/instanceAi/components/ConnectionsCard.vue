@@ -38,7 +38,7 @@ const addItems = computed(() => {
 	const added = new Set(connections.value.map((c) => c.type));
 	return baseAddItems.filter((item) => {
 		if (added.has(item.id)) return false;
-		if (store.isLocalGatewayDisabled) return false;
+		if (store.isLocalGatewayDisabledByAdmin) return false;
 		return true;
 	});
 });
@@ -57,8 +57,8 @@ async function openModal(type: ConnectionType) {
 	// daemon probing/polling.
 	if (
 		type === 'computer-use' &&
-		!store.isLocalGatewayDisabled &&
-		store.isLocalGatewayDisabledForUser
+		!store.isLocalGatewayDisabledByAdmin &&
+		store.isLocalGatewayDisabled
 	) {
 		await store.persistLocalGatewayPreference(false);
 	}
@@ -122,7 +122,7 @@ async function handleRemove(type: ConnectionType) {
 				:label="i18n.baseText('instanceAi.connections.empty.cta')"
 				variant="outline"
 				size="small"
-				:disabled="store.isLocalGatewayDisabled"
+				:disabled="store.isLocalGatewayDisabledByAdmin"
 				data-test-id="instance-ai-connections-empty-cta"
 				@click="openModal('computer-use')"
 			/>

@@ -1,84 +1,67 @@
 <script lang="ts" setup>
-import { computed, ref, onUnmounted, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { ElCheckbox } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { canManageInstanceAi } from '../instanceAiPermissions';
-import ComputerUseSetupContent from './modals/ComputerUseSetupContent.vue';
+import { INSTANCE_AI_VIEW } from '../constants';
 
 const props = defineProps<{ modalName: string }>();
 
 const router = useRouter();
 const i18n = useI18n();
 const uiStore = useUIStore();
-const pushConnectionStore = usePushConnectionStore();
 const telemetry = useTelemetry();
 const instanceAiSettingsStore = useInstanceAiSettingsStore();
 
 const choice = ref<'enable' | 'disable' | null>(null);
+const computerUseEnabled = ref(!(instanceAiSettingsStore.settings?.localGatewayDisabled ?? true));
 const isEnabled = computed(() => choice.value === 'enable');
 const hasChosen = computed(() => choice.value !== null);
 const isSaving = ref(false);
-const step = ref<'intro' | 'gateway'>('intro');
 
-async function selectChoice(value: 'enable' | 'disable') {
+function selectChoice(value: 'enable' | 'disable') {
 	if (isSaving.value) return;
 	choice.value = value;
+}
+
+function dismiss() {
+	telemetry.track('AI Assistant opt-in modal dismissed', {
+		choice: choice?.value,
+	});
+	uiStore.closeModal(props.modalName);
+}
+
+async function onConfirm() {
+	if (isSaving.value) return;
 	isSaving.value = true;
 	try {
-		await instanceAiSettingsStore.persistEnabled(value === 'enable');
+		instanceAiSettingsStore.setField('enabled', choice.value === 'enable');
+		if (isEnabled.value) {
+			instanceAiSettingsStore.setField('localGatewayDisabled', !computerUseEnabled.value);
+		}
+		await instanceAiSettingsStore.save();
+		telemetry.track('AI Assistant opt-in modal choice confirmed', {
+			choice: choice?.value,
+			enabled: isEnabled?.value,
+		});
+		void instanceAiSettingsStore.persistOptinModalDismissed();
+		dismiss();
+		if (isEnabled.value) {
+			void router.push({ name: INSTANCE_AI_VIEW });
+		}
 	} finally {
 		isSaving.value = false;
 	}
 }
 
-function dismiss() {
-	telemetry.track('n8n Agent opt-in modal dismissed', {
-		step: step?.value,
-		choice: choice?.value,
-		gatewayConnected: instanceAiSettingsStore?.isGatewayConnected,
-	});
-	uiStore.closeModal(props.modalName);
-}
-
-function goToGatewayStep() {
-	step.value = 'gateway';
-	pushConnectionStore.pushConnect();
-	instanceAiSettingsStore.startGatewayPushListener();
-	void instanceAiSettingsStore.fetchGatewayStatus();
-	telemetry.track('n8n Agent opt-in modal gateway step entered', {
-		choice: choice.value,
-	});
-}
-
-function onGatewayStepCompleted() {
-	telemetry.track('n8n Agent opt-in modal gateway step completed', {
-		choice: choice?.value,
-		gatewayConnected: instanceAiSettingsStore?.isGatewayConnected,
-		skipped: !instanceAiSettingsStore?.isGatewayConnected,
-	});
-	dismiss();
-	if (isEnabled.value) {
-		void router.push('/instance-ai');
-	}
-}
-
-function onStep1Confirm() {
-	telemetry.track('n8n Agent opt-in modal choice confirmed', {
-		choice: choice?.value,
-		enabled: isEnabled?.value,
-	});
-	void instanceAiSettingsStore.persistOptinModalDismissed();
-	if (isEnabled.value) {
-		goToGatewayStep();
-	} else {
-		dismiss();
-	}
+function handleComputerUseToggle() {
+	computerUseEnabled.value = !computerUseEnabled.value;
 }
 
 watch(
@@ -95,26 +78,20 @@ onMounted(() => {
 		uiStore.closeModal(props.modalName);
 		return;
 	}
-	telemetry.track('n8n Agent opt-in modal shown');
-});
-
-onUnmounted(() => {
-	instanceAiSettingsStore.stopGatewayPushListener();
-	pushConnectionStore.pushDisconnect();
+	telemetry.track('AI Assistant opt-in modal shown');
 });
 </script>
 
 <template>
 	<Modal
 		:name="props.modalName"
-		:show-close="step === 'gateway'"
 		:close-on-click-modal="false"
-		:close-on-press-escape="step === 'gateway'"
+		:close-on-press-escape="false"
 		custom-class="instance-ai-welcome-modal"
 		width="540"
 	>
 		<template #content>
-			<div v-if="step === 'intro'" :class="$style.body">
+			<div :class="$style.body">
 				<div :class="$style.heroIcon">
 					<N8nIcon icon="sparkles" :size="34" color="text-base" />
 				</div>
@@ -190,6 +167,22 @@ onUnmounted(() => {
 					</div>
 				</div>
 
+				<div v-if="isEnabled" :class="$style.computerUseRow" @click="handleComputerUseToggle">
+					<ElCheckbox
+						:class="$style.computerUseCheckbox"
+						:model-value="computerUseEnabled"
+						data-test-id="instance-ai-welcome-modal-computer-use-toggle"
+					/>
+					<div :class="$style.computerUseLabels">
+						<N8nText bold size="medium">
+							{{ i18n.baseText('settings.n8nAgent.computerUse.label') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('settings.n8nAgent.computerUse.description') }}
+						</N8nText>
+					</div>
+				</div>
+
 				<div :class="$style.footer">
 					<N8nText size="small" color="text-light" :class="$style.disclaimer">
 						{{ i18n.baseText('instanceAi.welcomeModal.disclaimer') }}
@@ -200,7 +193,8 @@ onUnmounted(() => {
 					<N8nButton
 						variant="solid"
 						size="large"
-						:disabled="!hasChosen"
+						:disabled="!hasChosen || isSaving"
+						:loading="isSaving"
 						:label="
 							isEnabled
 								? i18n.baseText('instanceAi.welcomeModal.enable')
@@ -208,23 +202,7 @@ onUnmounted(() => {
 						"
 						:class="$style.continueButton"
 						data-test-id="instance-ai-welcome-modal-confirm"
-						@click="onStep1Confirm()"
-					/>
-				</div>
-			</div>
-
-			<div v-else :class="$style.gatewayStep">
-				<ComputerUseSetupContent />
-				<div :class="$style.gatewayActions">
-					<N8nButton
-						:variant="instanceAiSettingsStore.isGatewayConnected ? 'solid' : 'outline'"
-						size="large"
-						:label="
-							instanceAiSettingsStore.isGatewayConnected
-								? i18n.baseText('instanceAi.welcomeModal.gateway.done')
-								: i18n.baseText('instanceAi.welcomeModal.gateway.skip')
-						"
-						@click="onGatewayStepCompleted()"
+						@click="onConfirm()"
 					/>
 				</div>
 			</div>
@@ -375,6 +353,35 @@ onUnmounted(() => {
 	text-align: left;
 }
 
+.computerUseRow {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: var(--spacing--sm);
+	border: 1px solid var(--border-color--strong);
+	border-radius: var(--radius--xs);
+	background: var(--color--foreground--tint-2);
+	cursor: pointer;
+	user-select: none;
+}
+
+:global(body[data-theme='dark']) .computerUseRow {
+	background: rgba(255, 255, 255, 0.03);
+	border-color: rgba(255, 255, 255, 0.14);
+}
+
+.computerUseCheckbox {
+	flex-shrink: 0;
+	margin-top: 2px;
+	pointer-events: none;
+}
+
+.computerUseLabels {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
 .footer {
 	display: flex;
 	align-items: flex-end;
@@ -394,17 +401,6 @@ onUnmounted(() => {
 
 .continueButton {
 	min-width: 170px;
-}
-
-.gatewayStep {
-	display: flex;
-	flex-direction: column;
-}
-
-.gatewayActions {
-	display: flex;
-	justify-content: flex-end;
-	padding: 0 var(--spacing--md) var(--spacing--md);
 }
 </style>
 

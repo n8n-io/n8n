@@ -73,15 +73,21 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const gatewayToolCategories = ref<ToolCategory[]>([]);
 	const isGatewayConnected = computed(() => gatewayConnected.value);
 	const activeDirectory = computed(() => gatewayDirectory.value);
-	const isLocalGatewayDisabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled === true,
+	const isInstanceAiDisabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.enabled !== true,
+	);
+	const isLocalGatewayDisabledByAdmin = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled !== false,
 	);
 	/** Whether the local gateway is effectively disabled (admin override OR user preference). */
-	const isLocalGatewayDisabledForUser = computed(
-		() => isLocalGatewayDisabled.value || (preferences.value?.localGatewayDisabled ?? false),
+	const isLocalGatewayDisabled = computed(
+		() => isLocalGatewayDisabledByAdmin.value || preferences.value?.localGatewayDisabled === true,
 	);
 	const isProxyEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.proxyEnabled === true,
+	);
+	const isCloudManaged = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.cloudManaged === true,
 	);
 
 	const isDirty = computed(() => {
@@ -96,9 +102,10 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		const prev = ms['instance-ai'];
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
-			localGatewayDisabled: prev?.localGatewayDisabled ?? false,
+			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
 			proxyEnabled: prev?.proxyEnabled ?? false,
 			optinModalDismissed: adminRes.optinModalDismissed,
+			cloudManaged: prev?.cloudManaged ?? false,
 		};
 		settingsStore.moduleSettings = {
 			...ms,
@@ -252,7 +259,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const connections = computed<SidebarConnection[]>(() => {
 		const result: SidebarConnection[] = [];
 
-		if (!isLocalGatewayDisabledForUser.value) {
+		if (!isLocalGatewayDisabled.value) {
 			result.push({
 				type: 'computer-use',
 				name: gatewayDirectory.value ?? i18n.baseText('instanceAi.connections.add.computerUse'),
@@ -441,6 +448,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	async function fetchSetupCommand(): Promise<void> {
+		if (isLocalGatewayDisabled.value) return;
 		try {
 			const result = await createGatewayLink(rootStore.restApiContext);
 			setupCommand.value = result.command;
@@ -464,7 +472,15 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	async function refreshModuleSettings(): Promise<void> {
-		await settingsStore.getModuleSettings();
+		const promises: Array<Promise<unknown>> = [settingsStore.getModuleSettings()];
+		if (!preferences.value) {
+			promises.push(
+				fetchPreferences(rootStore.restApiContext).then((p) => {
+					preferences.value = p;
+				}),
+			);
+		}
+		await Promise.all(promises);
 	}
 
 	return {
@@ -499,11 +515,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		gatewayHostIdentifier,
 		gatewayToolCategories,
 		activeDirectory,
+		isInstanceAiDisabled,
 		isLocalGatewayDisabled,
-		isLocalGatewayDisabledForUser,
+		isLocalGatewayDisabledByAdmin,
 		isProxyEnabled,
 		fetchGatewayStatus,
 		connectLocalGateway,
+		isCloudManaged,
 		startGatewayPushListener,
 		stopGatewayPushListener,
 		fetchSetupCommand,

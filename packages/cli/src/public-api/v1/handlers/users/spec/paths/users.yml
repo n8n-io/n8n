@@ -7,6 +7,7 @@ get:
   description: Retrieve all users from your instance. Only available for the instance owner.
   parameters:
     - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/offset.yml'
     - $ref: '../../../../shared/spec/parameters/cursor.yml'
     - $ref: '../schemas/parameters/includeRole.yml'
     - name: projectId

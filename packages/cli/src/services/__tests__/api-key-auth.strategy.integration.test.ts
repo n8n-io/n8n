@@ -4,7 +4,6 @@ import { ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
-import type { InstanceSettings } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
 import { createOwnerWithApiKey } from '@test-integration/db/users';
@@ -33,10 +32,7 @@ const mockReqWithoutApiKey = (path: string, method: string): AuthenticatedReques
 	return req;
 };
 
-const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
-
-const jwtService = new JwtService(instanceSettings, mock());
-
+let jwtService: JwtService;
 let strategy: ApiKeyAuthStrategy;
 
 describe('ApiKeyAuthStrategy', () => {
@@ -46,6 +42,7 @@ describe('ApiKeyAuthStrategy', () => {
 
 	beforeAll(async () => {
 		await testDb.init();
+		jwtService = Container.get(JwtService);
 		strategy = new ApiKeyAuthStrategy(Container.get(ApiKeyRepository), jwtService);
 	});
 

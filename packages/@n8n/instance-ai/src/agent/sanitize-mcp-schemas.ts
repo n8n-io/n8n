@@ -141,6 +141,14 @@ export function sanitizeZodType(schema: z.ZodTypeAny, strict = false): z.ZodType
 				// Non-strict: combine with action context for external MCP tools
 				const combined = withDesc.map((d) => `For "${d.action}": ${d.description}`).join('. ');
 				mergedShape[fieldName] = sanitizedField.describe(combined);
+			} else if (entries.length < actionMeta.length) {
+				// Field appears in a subset of variants. Annotate with an action hint so
+				// the model binds the (now-flattened-optional) field to the right actions
+				// and stops cross-mixing fields between sibling actions.
+				const actionList = entries.map((e) => `"${e.action}"`).join(', ');
+				const baseDesc = withDesc[0]?.description;
+				const merged = baseDesc ? `For ${actionList}: ${baseDesc}` : `Only for ${actionList}`;
+				mergedShape[fieldName] = sanitizedField.describe(merged);
 			} else {
 				mergedShape[fieldName] = sanitizedField;
 			}

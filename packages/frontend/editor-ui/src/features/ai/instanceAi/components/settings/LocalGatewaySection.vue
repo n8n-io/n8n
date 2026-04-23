@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { N8nTooltip, N8nIconButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { N8nHeading, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
@@ -10,7 +10,32 @@ import { useSettingsField } from './useSettingsField';
 const i18n = useI18n();
 const { store } = useSettingsField();
 
-const isLocalGatewayDisabled = computed(() => store.preferences?.localGatewayDisabled ?? false);
+const isLocalGatewayDisabledForUser = computed(() => {
+	if (store.preferencesDraft.localGatewayDisabled !== undefined)
+		return store.preferencesDraft.localGatewayDisabled;
+	return store.preferences?.localGatewayDisabled ?? false;
+});
+
+async function handleUserToggle(value: boolean | string | number) {
+	const enabling = Boolean(value);
+	store.setPreferenceField('localGatewayDisabled', !enabling);
+	await store.save();
+	if (enabling && !store.setupCommand) {
+		void store.fetchSetupCommand();
+	}
+}
+
+const copied = ref(false);
+const displayCommand = computed(() => store.setupCommand ?? 'npx @n8n/computer-use');
+
+async function copyCommand() {
+	if (!store.setupCommand) return;
+	await navigator.clipboard.writeText(store.setupCommand);
+	copied.value = true;
+	setTimeout(() => {
+		copied.value = false;
+	}, 2000);
+}
 
 const CATEGORY_META: Record<string, { icon: IconName; labelKey: BaseTextKey }> = {
 	filesystem: { icon: 'folder-open', labelKey: 'instanceAi.filesystem.category.filesystem' },
@@ -64,6 +89,44 @@ const displayCategories = computed(() => {
 	}
 	return result.sort((a, b) => Number(b.enabled) - Number(a.enabled));
 });
+
+const shouldShowSetup = computed(
+	() =>
+		!store.isGatewayConnected &&
+		!store.isLocalGatewayDisabledByAdmin &&
+		!isLocalGatewayDisabledForUser.value,
+);
+
+watch(
+	shouldShowSetup,
+	(show) => {
+		if (show && !store.setupCommand) {
+			void store.fetchSetupCommand();
+		}
+	},
+	{ immediate: true },
+);
+
+const shouldMonitorConnection = computed(
+	() => !store.isLocalGatewayDisabledByAdmin && !isLocalGatewayDisabledForUser.value,
+);
+
+watch(
+	shouldMonitorConnection,
+	(monitor) => {
+		if (monitor) {
+			store.startGatewayPushListener();
+			void store.fetchGatewayStatus();
+		} else {
+			store.stopGatewayPushListener();
+		}
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	store.stopGatewayPushListener();
+});
 </script>
 
 <template>
@@ -78,20 +141,21 @@ const displayCategories = computed(() => {
 				</N8nText>
 			</div>
 			<ElSwitch
-				:model-value="!isLocalGatewayDisabled"
-				:disabled="store.isLocalGatewayDisabled"
-				@update:model-value="store.persistLocalGatewayPreference(!$event)"
+				:model-value="!store.isLocalGatewayDisabledByAdmin && !isLocalGatewayDisabledForUser"
+				:disabled="store.isLocalGatewayDisabledByAdmin"
+				@update:model-value="handleUserToggle"
 			/>
 		</div>
 
-		<div v-if="store.isLocalGatewayDisabled" :class="$style.warningRow">
+		<div v-if="store.isLocalGatewayDisabledByAdmin" :class="$style.warningRow">
 			<N8nIcon icon="triangle-alert" size="small" />
 			<N8nText size="small" color="text-light">
 				{{ i18n.baseText('settings.n8nAgent.computerUse.disabled.warning') }}
 			</N8nText>
 		</div>
 
-		<template v-if="!store.isLocalGatewayDisabledForUser">
+		<template v-if="!isLocalGatewayDisabledForUser && !store.isLocalGatewayDisabledByAdmin">
+			<!-- Gateway connected -->
 			<div v-if="store.isGatewayConnected" :class="$style.connectedBlock">
 				<div :class="$style.statusRow">
 					<span :class="[$style.dot, $style.dotConnected]" />
@@ -237,8 +301,62 @@ const displayCategories = computed(() => {
 	background: var(--color--success);
 }
 
-.connectRow {
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0.4;
+	}
+}
+
+.connectingRow {
 	display: flex;
-	justify-content: flex-start;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.spinner {
+	width: 14px;
+	height: 14px;
+	border: 2px solid var(--color--foreground);
+	border-top-color: var(--color--primary);
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.setupBlock {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs);
+	background: var(--color--foreground--tint-2);
+	border-radius: var(--radius--lg);
+}
+
+.commandBlock {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	background: var(--color--background);
+	border-radius: var(--radius);
+	border: var(--border);
+}
+
+.commandText {
+	flex: 1;
+	font-size: var(--font-size--3xs);
+	font-family: monospace;
+	word-break: break-all;
+	color: var(--color--text);
 }
 </style>
