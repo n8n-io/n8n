@@ -14,8 +14,8 @@ import type {
 	SwitchCaseBuilder,
 } from '../../types/base';
 import { isNodeChain, isNodeInstance } from '../../types/base';
-import { assertPlainObject } from '../validation-helpers';
 import { isIfElseBuilder, isSwitchCaseBuilder } from '../node-builders/node-builder';
+import { assertPlainObject } from '../validation-helpers';
 
 /**
  * Internal split in batches node implementation
