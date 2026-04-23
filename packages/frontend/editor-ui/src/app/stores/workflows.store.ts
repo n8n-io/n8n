@@ -1321,7 +1321,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodeHasOutputConnection,
 		isNodeInOutgoingNodeConnections,
 		getNodeByName,
-		getNodeById,
 		getNodesByIds,
 		getExecutionDataById,
 		getNodeTypes,
