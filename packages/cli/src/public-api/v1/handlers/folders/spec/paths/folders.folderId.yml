@@ -4,7 +4,7 @@ delete:
   tags:
     - Folders
   summary: Delete a folder
-  description: Delete a folder within a project. When `transferToFolderId` is provided, workflows and sub-folders are moved to the target folder before deletion. When omitted, workflows are moved to the project root and archived, and subfolders are flattened.
+  description: Delete a folder within a project. When `transferToFolderId` is provided, workflows and sub-folders are moved to the target folder before deletion. When omitted, workflows are moved to the project root and archived, and child folders are deleted.
   parameters:
     - name: projectId
       in: path
