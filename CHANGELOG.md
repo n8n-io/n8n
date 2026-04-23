@@ -1,3 +1,11 @@
+## [1.123.34](https://github.com/n8n-io/n8n/compare/n8n@1.123.33...n8n@1.123.34) (2026-04-23)
+
+
+### Bug Fixes
+
+* Fix 50 critical issues in handlebars, lodash, @microsoft/api-extractor and 20 more ([#28927](https://github.com/n8n-io/n8n/issues/28927)) ([caa65d8](https://github.com/n8n-io/n8n/commit/caa65d8e9b7dd87f20f766d7e53f0f6cc6c63769))
+
+
 ## [1.123.33](https://github.com/n8n-io/n8n/compare/n8n@1.123.32...n8n@1.123.33) (2026-04-22)
 
 

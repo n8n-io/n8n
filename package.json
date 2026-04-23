@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.123.33",
+  "version": "1.123.34",
   "private": true,
   "engines": {
     "node": ">=22.16",
