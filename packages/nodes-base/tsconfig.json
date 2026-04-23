@@ -1,5 +1,5 @@
 {
-	"extends": ["@n8n/typescript-config/modern/tsconfig.json"],
+	"extends": "../@n8n/typescript-config/modern/tsconfig.json",
 	"compilerOptions": {
 		"paths": {
 			"@credentials/*": ["./credentials/*"],
@@ -17,6 +17,7 @@
 		"module": "commonjs",
 		// TODO: "moduleResolution" to be removed when we migrate to vitest
 		"moduleResolution": "node",
+		"ignoreDeprecations": "6.0",
 		"noImplicitReturns": false,
 		"useUnknownInCatchVariables": false,
 		"isolatedModules": false,
