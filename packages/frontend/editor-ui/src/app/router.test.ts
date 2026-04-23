@@ -221,6 +221,29 @@ describe('router', () => {
 			await router.push('/resource-center');
 			expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
 		});
+
+		test('waits for delayed flag hydration before allowing enrolled users through', async () => {
+			const posthog = usePostHog();
+			const hasPendingFeatureFlagsSpy = vi
+				.spyOn(posthog, 'hasPendingFeatureFlags')
+				.mockReturnValue(true);
+			const waitForFeatureFlagsSpy = vi
+				.spyOn(posthog, 'waitForFeatureFlags')
+				.mockImplementation(async () => {
+					posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+					return null;
+				});
+
+			try {
+				await router.push('/resource-center');
+
+				expect(waitForFeatureFlagsSpy).toHaveBeenCalledTimes(1);
+				expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
+			} finally {
+				waitForFeatureFlagsSpy.mockRestore();
+				hasPendingFeatureFlagsSpy.mockRestore();
+			}
+		});
 	});
 
 	test('should set props: true for PROJECT_ROLE_SETTINGS route', () => {

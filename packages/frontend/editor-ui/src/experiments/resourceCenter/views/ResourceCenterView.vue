@@ -91,19 +91,21 @@ const buildTemplateResourceItem = (
 	template: ITemplatesWorkflowFull,
 	section: ResourceSection,
 	title: string,
-): ResourceItem => ({
-	id: template.id,
-	type: 'template' as const,
-	title,
-	description: template.description ?? '',
-	section,
-	templateId: template.id,
-	nodeTypes: getTemplateCardNodeTypes(template),
-	nodeCount: template.nodes?.length,
-	setupTime: template.nodes
-		? `${Math.max(5, Math.ceil((template.nodes.length / 3) * 5))} min`
-		: undefined,
-});
+): ResourceItem => {
+	const nodeCount = template.workflowInfo.nodeCount;
+
+	return {
+		id: template.id,
+		type: 'template' as const,
+		title,
+		description: template.description ?? '',
+		section,
+		templateId: template.id,
+		nodeTypes: getTemplateCardNodeTypes(template),
+		nodeCount,
+		setupTime: `${Math.max(5, Math.ceil((nodeCount / 3) * 5))} min`,
+	};
+};
 
 const buildOrderedSectionItems = (
 	content: OrderedSectionResource[],

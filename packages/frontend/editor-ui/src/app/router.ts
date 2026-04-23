@@ -129,6 +129,36 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 	return false;
 }
 
+const RESOURCE_CENTER_FLAG_WAIT_TIMEOUT = 2000;
+
+const waitForPendingFeatureFlags = async (posthogStore: ReturnType<typeof usePostHog>) => {
+	let timeoutId: number | undefined;
+
+	await Promise.race([
+		posthogStore.waitForFeatureFlags(),
+		new Promise<void>((resolve) => {
+			timeoutId = window.setTimeout(resolve, RESOURCE_CENTER_FLAG_WAIT_TIMEOUT);
+		}),
+	]);
+
+	if (timeoutId !== undefined) {
+		window.clearTimeout(timeoutId);
+	}
+};
+
+const allowResourceCenterRoute = (
+	posthogStore: ReturnType<typeof usePostHog>,
+	next: NavigationGuardNext,
+) => {
+	if (
+		posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name) === RESOURCE_CENTER_EXPERIMENT.variant
+	) {
+		next();
+	} else {
+		next({ name: VIEWS.HOMEPAGE });
+	}
+};
+
 export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
@@ -253,14 +283,23 @@ export const routes: RouteRecordRaw[] = [
 		},
 		beforeEnter: (_to, _from, next) => {
 			const posthogStore = usePostHog();
+
 			if (
 				posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name) ===
 				RESOURCE_CENTER_EXPERIMENT.variant
 			) {
 				next();
-			} else {
-				next({ name: VIEWS.HOMEPAGE });
+				return;
 			}
+
+			if (!posthogStore.hasPendingFeatureFlags()) {
+				next({ name: VIEWS.HOMEPAGE });
+				return;
+			}
+
+			void waitForPendingFeatureFlags(posthogStore).then(() => {
+				allowResourceCenterRoute(posthogStore, next);
+			});
 		},
 	},
 

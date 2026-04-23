@@ -31,7 +31,7 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('vue-router')>();
+	const actual = await importOriginal();
 
 	return {
 		...actual,
@@ -49,7 +49,7 @@ const renderComponent = createComponentRenderer(ResourceCenterView, {
 				props: ['item'],
 				emits: ['click'],
 				template:
-					'<button data-testid="resource-card" type="button" @click="$emit(\'click\')">{{ item.title }}</button>',
+					'<button data-testid="resource-card" type="button" @click="$emit(\'click\')"><span>{{ item.title }}</span><span v-if="item.nodeCount !== undefined" data-testid="resource-card-node-count">{{ item.nodeCount }}</span><span v-if="item.setupTime" data-testid="resource-card-setup-time">{{ item.setupTime }}</span></button>',
 			},
 			ResourceFeatureCard: {
 				props: ['item', 'tone'],
@@ -82,6 +82,10 @@ describe('ResourceCenterView', () => {
 					nodes: [
 						{ name: 'HTTP Request', type: 'n8n-nodes-base.httpRequest', icon: 'file:http.svg' },
 					],
+					workflowInfo: {
+						nodeCount: 7,
+						nodeTypes: {},
+					},
 				},
 			])
 			.mockResolvedValueOnce([
@@ -95,6 +99,10 @@ describe('ResourceCenterView', () => {
 							icon: 'file:manual.svg',
 						},
 					],
+					workflowInfo: {
+						nodeCount: 2,
+						nodeTypes: {},
+					},
 				},
 			]);
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
@@ -156,5 +164,22 @@ describe('ResourceCenterView', () => {
 			name: 'template',
 			params: { id: 10427 },
 		});
+	});
+
+	it('uses workflow metadata for template card node counts and setup time', async () => {
+		renderComponent();
+
+		const inspirationSection = (await screen.findByText('Get Inspired')).closest('section');
+		expect(inspirationSection).toBeDefined();
+
+		const inspirationCards = await within(inspirationSection!).findAllByRole('button');
+		const templateCard = inspirationCards[0];
+
+		expect(
+			templateCard.querySelector('[data-testid="resource-card-node-count"]'),
+		).toHaveTextContent('7');
+		expect(
+			templateCard.querySelector('[data-testid="resource-card-setup-time"]'),
+		).toHaveTextContent('12 min');
 	});
 });
