@@ -7,6 +7,7 @@ import type {
 	INodeTypeDescription,
 	ISupplyDataFunctions,
 	SupplyData,
+	INodeProperties,
 } from 'n8n-workflow';
 
 import { getAdditionalOptions } from '../gemini-common/additional-options';
@@ -23,6 +24,61 @@ function errorDescriptionMapper(error: NodeError) {
 
 	return error.description ?? 'Unknown error';
 }
+
+const modelRLC: INodeProperties = {
+	displayName: 'Model',
+	name: 'modelName',
+	type: 'options',
+	description:
+		'The model which will generate the completion. <a href="https://developers.generativeai.google/api/rest/generativelanguage/models/list">Learn more</a>.',
+	typeOptions: {
+		loadOptions: {
+			routing: {
+				request: {
+					method: 'GET',
+					url: '/v1beta/models',
+				},
+				output: {
+					postReceive: [
+						{
+							type: 'rootProperty',
+							properties: {
+								property: 'models',
+							},
+						},
+						{
+							type: 'filter',
+							properties: {
+								pass: "={{ !$responseItem.name.includes('embedding') }}",
+							},
+						},
+						{
+							type: 'setKeyValue',
+							properties: {
+								name: '={{$responseItem.name}}',
+								value: '={{$responseItem.name}}',
+								description: '={{$responseItem.description}}',
+							},
+						},
+						{
+							type: 'sort',
+							properties: {
+								key: 'name',
+							},
+						},
+					],
+				},
+			},
+		},
+	},
+	routing: {
+		send: {
+			type: 'body',
+			property: 'model',
+		},
+	},
+	default: 'models/gemini-2.5-flash',
+};
 export class LmChatGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Gemini Chat Model',
@@ -30,7 +86,7 @@ export class LmChatGoogleGemini implements INodeType {
 		name: 'lmChatGoogleGemini',
 		icon: 'file:google.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Chat Model Google Gemini',
 		defaults: {
 			name: 'Google Gemini Chat Model',
@@ -67,58 +123,21 @@ export class LmChatGoogleGemini implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
-				displayName: 'Model',
-				name: 'modelName',
-				type: 'options',
-				description:
-					'The model which will generate the completion. <a href="https://developers.generativeai.google/api/rest/generativelanguage/models/list">Learn more</a>.',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/v1beta/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'models',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											pass: "={{ !$responseItem.name.includes('embedding') }}",
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.name}}',
-											value: '={{$responseItem.name}}',
-											description: '={{$responseItem.description}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
+				...modelRLC,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { eq: 1 } }],
 					},
 				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'model',
+			},
+			{
+				...modelRLC,
+				default: 'models/gemini-3-flash-preview',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
 					},
 				},
-				default: 'models/gemini-2.5-flash',
 			},
 			// thinking budget not supported in @langchain/google-genai
 			// as it utilises the old google generative ai SDK
