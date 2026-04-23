@@ -43,32 +43,10 @@ function isZodSchema(value: unknown): value is ZodType {
 }
 
 /**
- * Anthropic's tool-registration API requires `input_schema` to be a top-level
- * `{ type: "object" }`. `zodToJsonSchema()` happily produces other roots:
- *   - `z.union` / `z.discriminatedUnion` → top-level `anyOf`
- *   - `z.intersection` / `.and()`        → top-level `allOf`
- *   - `z.array` / primitives             → `type: 'array' | 'string' | ...`
- *
- * Native tool nodes mostly expose ZodObject schemas (LangChain's
- * `DynamicStructuredTool` enforces it), but some paths (McpClientTool's raw
- * schema, custom ToolCode schemas) can slip through. Normalize defensively so
- * we never hand Anthropic a root it rejects — **without discarding union
- * shape**, since the per-branch field lists are what the LLM uses to decide
- * which action to take (discriminated unions are the common case in MCP
- * tools with `action`-keyed payloads).
- *
- * Strategy:
- *   - `type: 'object'` — pass through untouched.
- *   - `allOf` of objects — merge their properties / required into a single
- *     object (lossless for `z.intersection`).
- *   - `anyOf` / `oneOf` — hoist `type: 'object'` to the root but keep the
- *     union. JSON Schema allows both; Anthropic accepts the shape. Each
- *     member is normalized recursively and non-object members are dropped
- *     (they can't be represented once the root is `"object"`).
- *   - Primitive / array root — wrap in a single-property object (`{ input:
- *     <schema> }`) so the LLM at least sees the inner shape. Matches the
- *     base LangChain `Tool` convention the handler already uses.
- *   - Everything else — permissive empty object.
+ * Coerce any `zodToJsonSchema` output into a top-level `{ type: "object" }`
+ * without dropping field guidance — Anthropic rejects any other root, but
+ * simply flattening unions would strip the per-branch shapes the LLM relies
+ * on. See the branches below for the per-shape handling.
  */
 function isObjectSchema(value: JSONSchema7Definition): value is JSONSchema7 {
 	return typeof value === 'object' && value !== null && value.type === 'object';
@@ -154,41 +132,44 @@ async function resolveInputSchema(
 	const hasProps = Object.keys(properties).length > 0;
 	if (hasProps) return configured as JSONSchema7;
 
+	let nodeType;
 	try {
-		const nodeType = Container.get(NodeTypes).getByNameAndVersion(
+		nodeType = Container.get(NodeTypes).getByNameAndVersion(
 			toolSchema.node.nodeType,
 			toolSchema.node.nodeTypeVersion,
 		);
-		if (typeof nodeType.supplyData === 'function') {
-			const introspected = await ctx.executor.introspectSupplyDataToolSchema({
-				projectId: ctx.projectId,
-				nodeType: toolSchema.node.nodeType,
-				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
-				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
-				credentials: toExecutorCredentials(toolSchema.node.credentials) ?? null,
-			});
-
-			if (isZodSchema(introspected)) {
-				return normalizeToObjectSchema(zodToJsonSchema(introspected) as JSONSchema7);
-			}
-
-			return {
-				type: 'object',
-				properties: {
-					input: {
-						type: 'string',
-						description:
-							toolSchema.description ??
-							nodeType.description.description ??
-							`The query or input text to pass to ${toolSchema.node.nodeType}.`,
-					},
-				},
-				required: ['input'],
-			};
-		}
 	} catch {
 		// If the node type can't be resolved here, fall through — the executor
 		// will surface a clearer error at invocation time.
+		return configured ?? { type: 'object', properties: {} };
+	}
+
+	if (typeof nodeType.supplyData === 'function') {
+		const introspected = await ctx.executor.introspectSupplyDataToolSchema({
+			projectId: ctx.projectId,
+			nodeType: toolSchema.node.nodeType,
+			nodeTypeVersion: toolSchema.node.nodeTypeVersion,
+			nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
+			credentials: toExecutorCredentials(toolSchema.node.credentials) ?? null,
+		});
+
+		if (isZodSchema(introspected)) {
+			return normalizeToObjectSchema(zodToJsonSchema(introspected) as JSONSchema7);
+		}
+
+		return {
+			type: 'object',
+			properties: {
+				input: {
+					type: 'string',
+					description:
+						toolSchema.description ??
+						nodeType.description.description ??
+						`The query or input text to pass to ${toolSchema.node.nodeType}.`,
+				},
+			},
+			required: ['input'],
+		};
 	}
 
 	return configured ?? { type: 'object', properties: {} };
