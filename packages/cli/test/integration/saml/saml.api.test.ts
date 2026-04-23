@@ -795,8 +795,8 @@ describe('SAML SSO provisioning', () => {
 	});
 
 	beforeEach(() => {
-		originalEnvFlag = process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
-		process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = 'true';
+		originalEnvFlag = process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING;
+		process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING = 'true';
 
 		const provisioningService = Container.get(ProvisioningService);
 		// @ts-expect-error - provisioningConfig is private
@@ -807,9 +807,9 @@ describe('SAML SSO provisioning', () => {
 
 	afterEach(async () => {
 		if (originalEnvFlag === undefined) {
-			delete process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+			delete process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING;
 		} else {
-			process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = originalEnvFlag;
+			process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING = originalEnvFlag;
 		}
 
 		const provisioningService = Container.get(ProvisioningService);

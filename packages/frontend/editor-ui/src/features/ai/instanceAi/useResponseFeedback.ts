@@ -32,14 +32,29 @@ interface UseResponseFeedbackOptions {
 	messages: Ref<InstanceAiMessage[]>;
 	currentThreadId: Ref<string>;
 	telemetry: { track: (event: string, props?: ITelemetryTrackProperties) => void };
+	/**
+	 * Optional remote callback invoked alongside telemetry to annotate the
+	 * LangSmith trace for the rated response. Fire-and-forget: errors are
+	 * swallowed so a LangSmith outage never blocks the UI.
+	 */
+	postFeedback?: (
+		threadId: string,
+		responseId: string,
+		payload: { rating: 'up' | 'down'; comment?: string },
+	) => Promise<void>;
 }
 
 export function useResponseFeedback({
 	messages,
 	currentThreadId,
 	telemetry,
+	postFeedback,
 }: UseResponseFeedbackOptions) {
 	const feedbackByResponseId = ref<Record<string, RatingFeedback>>({});
+	// Tracks the last-known rating per response for LangSmith upsert merging.
+	// Kept separate from `feedbackByResponseId` which only records submitted
+	// (non-pending) feedback for UI state.
+	const ratingByResponseId = new Map<string, 'up' | 'down'>();
 
 	/**
 	 * Computes the one currently rateable response identity for the thread.
@@ -121,11 +136,31 @@ export function useResponseFeedback({
 				...payload,
 			};
 		}
+
+		if (payload.rating) {
+			ratingByResponseId.set(responseId, payload.rating);
+		}
+
+		// Fan out to LangSmith trace annotation. Fire-and-forget: merge the
+		// remembered rating with any new comment text so the backend can upsert a
+		// single feedback record regardless of which signal arrived first.
+		if (postFeedback) {
+			const rating = payload.rating ?? ratingByResponseId.get(responseId);
+			if (rating) {
+				void postFeedback(currentThreadId.value, responseId, {
+					rating,
+					...(payload.feedback !== undefined ? { comment: payload.feedback } : {}),
+				}).catch(() => {
+					// Intentionally swallowed — LangSmith outages must never break the UI.
+				});
+			}
+		}
 	}
 
 	/** Clear all feedback state (e.g. on thread switch). */
 	function resetFeedback(): void {
 		feedbackByResponseId.value = {};
+		ratingByResponseId.clear();
 	}
 
 	return {

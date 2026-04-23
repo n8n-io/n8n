@@ -19,7 +19,32 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-for
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-form --keep-workflows --verbose
 ```
 
-Results are printed to the console and written to `eval-results.json`.
+### Outputs
+
+Every run produces three artifacts:
+
+- **Console** — live progress, per-scenario pass/fail with `[failure_category]` tag, and a grouped summary at the end.
+- **`eval-results.json`** — structured results in the current working directory. Consumed by the CI PR comment.
+- **`.data/workflow-eval-report.html`** — rich debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, and verifier reasoning. Self-contained HTML you can open in a browser.
+
+If `LANGSMITH_API_KEY` is set, results are also sent to LangSmith as an experiment for historical comparison.
+
+### CLI flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--verbose` | `false` | Log build/execute/verify timing and SSE events |
+| `--filter` | — | Filter test cases by filename substring (e.g. `contact-form`) |
+| `--keep-workflows` | `false` | Don't delete built workflows after the run |
+| `--base-url` | `http://localhost:5678` | n8n instance URL |
+| `--email` | E2E test owner | Override login email (also via `N8N_EVAL_EMAIL`) |
+| `--password` | E2E test owner | Override login password (also via `N8N_EVAL_PASSWORD`) |
+| `--timeout-ms` | `600000` | Per-test-case timeout |
+| `--output-dir` | cwd | Where to write `eval-results.json` |
+| `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name |
+| `--concurrency` | `16` | Max concurrent scenarios (builds are separately capped at 4) |
+| `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
+| `--iterations` | `1` | Run each test case N times with fresh builds — powers pass@k / pass^k metrics |
 
 ### Docker (without pnpm dev:ai)
 
@@ -36,6 +61,11 @@ docker run -d --name n8n-eval \
   -p 5678:5678 \
   n8nio/n8n:local
 
+# Seed the test user
+curl -sf -X POST http://localhost:5678/rest/e2e/reset \
+  -H "Content-Type: application/json" \
+  -d '{"owner":{"email":"nathan@n8n.io","password":"PlaywrightTest123","firstName":"Eval","lastName":"Owner"},"admin":{"email":"admin@n8n.io","password":"PlaywrightTest123","firstName":"Admin","lastName":"User"},"members":[],"chat":{"email":"chat@n8n.io","password":"PlaywrightTest123","firstName":"Chat","lastName":"User"}}'
+
 # Run evals against it
 pnpm eval:instance-ai --base-url http://localhost:5678 --verbose
 ```
@@ -44,17 +74,19 @@ pnpm eval:instance-ai --base-url http://localhost:5678 --verbose
 
 Evals run automatically on PRs that change Instance AI code (path-filtered). The CI workflow starts a single Docker container and runs the CLI against it. See `.github/workflows/test-evals-instance-ai.yml`.
 
-The eval job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts.
+The eval job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts. When `LANGSMITH_API_KEY` is set (via the `EVALS_LANGSMITH_API_KEY` secret), the run also lands as an experiment in LangSmith with commit SHA + branch tagged.
 
 ### Environment variables
-
-Set these in `.env.local`:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | Yes | Anthropic API key for the Instance AI agent, mock generation, and verification |
 | `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
 | `N8N_EVAL_PASSWORD` | No | n8n login password (defaults to E2E test owner) |
+| `LANGSMITH_API_KEY` | No | Enables LangSmith experiment tracking + tracing. Without it, the CLI still runs and writes JSON/HTML. |
+| `LANGSMITH_ENDPOINT` | No | LangSmith region endpoint (`https://api.smith.langchain.com` for US, `https://eu.api.smith.langchain.com` for EU) |
+| `LANGSMITH_REVISION_ID` | No | Commit SHA to tag the experiment with (set automatically in CI) |
+| `LANGSMITH_BRANCH` | No | Branch name to tag the experiment with (set automatically in CI) |
 | `CONTEXT7_API_KEY` | No | Context7 API key for higher rate limits on API doc lookups. Free tier is 1,000 req/month |
 
 ## How it works
@@ -68,11 +100,15 @@ Each test run:
 
 ### What gets mocked
 
-- **Mocked nodes** — any node that makes HTTP requests (Gmail, Slack, Google Sheets, HTTP Request, etc.). The request is intercepted before it leaves the process. An LLM generates the response.
-- **Pinned nodes** — trigger/start nodes get LLM-generated input data injected as pin data
-- **Real nodes** — logic nodes (Code, Set, Merge, Filter, Sort, IF, Switch) execute their actual code on the mocked/pinned data
+- **Mocked nodes** — any node that makes HTTP requests (Gmail, Slack, Google Sheets, HTTP Request, Notion, etc.). The request is intercepted before it leaves the process. An LLM generates the response.
+- **Pinned nodes** — nodes that don't go through the HTTP layer: trigger/webhook nodes, LangChain/AI nodes (they use SDKs directly), database nodes. These receive LLM-generated data as pin data.
+- **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute their actual code on the mocked/pinned data.
 
-No real credentials or API connections are needed.
+No real credentials or API connections are needed. ~95% of node types are covered; the main gaps are binary-data nodes (file attachments, image generation) and streaming nodes.
+
+## LangSmith integration
+
+When `LANGSMITH_API_KEY` is set, each run is recorded as a LangSmith experiment against the `instance-ai-workflow-evals` dataset (synced from the JSON files before each run). Experiments against the same dataset can be compared side-by-side to spot regressions.
 
 ## Adding test cases
 
@@ -128,13 +164,15 @@ When a scenario fails, the verifier categorizes the root cause:
 ```
 evaluations/
 ├── index.ts              # Public API
-├── cli/                  # CLI entry point and args parsing
+├── cli/                  # CLI entry point, arg parsing, CI metadata
 ├── clients/              # n8n REST + SSE clients
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
 ├── data/workflows/       # Test case JSON files
 ├── harness/              # Runner: buildWorkflow, executeScenario, cleanupBuild
+├── langsmith/            # Dataset sync + experiment setup
 ├── outcome/              # SSE event parsing, workflow discovery
+├── report/               # HTML report generator
 └── system-prompts/       # LLM prompts for verification
 
 packages/cli/src/modules/instance-ai/eval/
@@ -149,6 +187,8 @@ packages/cli/src/modules/instance-ai/eval/
 ## Known limitations
 
 - **LangChain/AI nodes** — use their own SDKs, not intercepted by the HTTP mock layer. These nodes will fail with credential errors. Use pin data for these.
+- **Binary / file nodes** — media attachments, image generation, file downloads. Mock metadata works but realistic binary content is out of scope.
+- **Streaming nodes** — our mock returns complete responses, not streams.
 - **GraphQL APIs** — response shape depends on the query, not just the endpoint. Quality depends on the LLM knowing the API schema.
 - **Context7 quota** — free tier is 1,000 requests/month, 60/hour. A full suite run uses ~100 requests. When quota is exceeded, the LLM falls back to its training data.
 - **Non-determinism** — the agent builds different workflows each run. Pass rates vary between 40-65%.
