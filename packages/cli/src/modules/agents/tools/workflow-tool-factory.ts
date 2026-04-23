@@ -1,5 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents';
+import { INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES } from '@n8n/api-types';
 import type { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from '@n8n/api-types';
 import type {
 	ExecutionRepository,
@@ -58,11 +59,7 @@ const _assertSupportedTriggersInSync: Record<
 > = SUPPORTED_TRIGGERS;
 void _assertSupportedTriggersInSync;
 
-const INCOMPATIBLE_NODE_TYPES = new Set([
-	'n8n-nodes-base.wait',
-	'n8n-nodes-base.form',
-	'n8n-nodes-base.respondToWebhook',
-]);
+const INCOMPATIBLE_NODE_TYPES = new Set<string>(INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES);
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_RESULT_CHARS = 20_000;

@@ -1,4 +1,18 @@
 <script setup lang="ts">
+/**
+ * Shared "configure a node-as-tool" form.
+ *
+ * Renders a two-sub-tab view (Parameters + node Settings) over an `INode`,
+ * wired to `ParameterInputList` + `NodeCredentials`. Emits validity and name
+ * changes so any container (Chat Hub modal, Agents modal, etc.) can drive a
+ * Save/Cancel footer.
+ *
+ * Context marker: we provide `ChatHubToolContextKey` here so the parameter
+ * form suppresses features that don't apply when a node is being configured
+ * as an LLM tool outside a workflow canvas (see `ParameterOptions`,
+ * `ParameterInputFull`). The key name is historical — treat it as the
+ * "node-as-tool config" marker; it applies equally to Chat Hub and Agents.
+ */
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -153,7 +167,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 
 	// Minimal workflow containing only this node for parameter resolution
 	const workflow = new Workflow({
-		id: 'chat-tool-workflow',
+		id: 'node-tool-workflow',
 		name: 'Tool Configuration',
 		nodes: [node.value],
 		connections: {},

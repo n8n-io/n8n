@@ -28,6 +28,19 @@ export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
 	FORM_TRIGGER_NODE_TYPE,
 ] as const;
 
+/**
+ * Node types in a workflow's body that disqualify it from being used as an
+ * agent tool (execution model can't handle pause/respond-style nodes). Single
+ * source of truth for the backend `validateCompatibility` check in
+ * `workflow-tool-factory.ts` and the frontend pre-check in
+ * `AgentToolsModal.vue` so the two sides can't drift.
+ */
+export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
+	'n8n-nodes-base.wait',
+	'n8n-nodes-base.form',
+	'n8n-nodes-base.respondToWebhook',
+] as const;
+
 export interface NodeToolConfig {
 	nodeType: string;
 	nodeTypeVersion: number;

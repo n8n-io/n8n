@@ -6,7 +6,7 @@ import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
 import {
 	connectIntegration,
 	disconnectIntegration,
@@ -82,6 +82,7 @@ const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, CredentialOption[]>>({});
 const loadingMap = ref<Record<string, boolean>>({});
 const errorMessages = ref<Record<string, string>>({});
+const errorIsConflict = ref<Record<string, boolean>>({});
 const credentialsLoading = ref(false);
 const copied = ref(false);
 const showManifest = ref(false);
@@ -144,6 +145,7 @@ const slackAppManifest = computed(() =>
 					bot: [
 						'app_mentions:read',
 						'assistant:write',
+						'channels:history',
 						'channels:join',
 						'channels:manage',
 						'channels:read',
@@ -151,12 +153,15 @@ const slackAppManifest = computed(() =>
 						'chat:write.customize',
 						'files:read',
 						'files:write',
+						'groups:read',
 						'im:history',
 						'im:read',
 						'im:write',
 						'mpim:read',
 						'mpim:write',
+						'search:read.public',
 						'users:read',
+						'users:read.email',
 					],
 				},
 				pkce_enabled: false,
@@ -248,6 +253,7 @@ async function onConnect(type: string) {
 	if (!credId) return;
 	loadingMap.value[type] = true;
 	errorMessages.value[type] = '';
+	errorIsConflict.value[type] = false;
 	try {
 		await connectIntegration(
 			rootStore.restApiContext,
@@ -272,6 +278,7 @@ async function onConnect(type: string) {
 					? String((e as { message: unknown }).message)
 					: 'Failed to connect';
 		errorMessages.value[type] = msg;
+		errorIsConflict.value[type] = e instanceof ResponseError && e.httpStatusCode === 409;
 	} finally {
 		loadingMap.value[type] = false;
 	}
@@ -422,7 +429,7 @@ onMounted(async () => {
 					<N8nText v-if="hasError(config.type)" :class="$style.errorText" size="small">
 						{{ errorMessages[config.type] }}
 						<a
-							v-if="selectedCredentials[config.type]"
+							v-if="selectedCredentials[config.type] && !errorIsConflict[config.type]"
 							:class="$style.link"
 							href="#"
 							@click.prevent="onEditCredential(config.type)"

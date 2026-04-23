@@ -15,7 +15,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { MODAL_CONFIRM, MODAL_CANCEL, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { MODAL_CONFIRM, MODAL_CANCEL, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -338,12 +338,18 @@ function scheduleAutosave() {
 				// failed edit, so the next successful autosave will persist it.
 				// Clearing here would drop telemetry for edits that do end up
 				// saved on the retry.
+				// Surface backend validation errors (e.g. incompatible workflow-tool
+				// triggers or body nodes) so the user isn't left wondering why their
+				// edit didn't stick.
 				showError(error, locale.baseText('agents.builder.saveError'));
 			} finally {
 				autosaveInFlight = null;
 			}
 		})();
-	}, getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE));
+		// Shorter than the workflow canvas' 1500ms autosave: the publish button's
+		// "enabled" state is gated on the save landing, so a longer wait makes the
+		// UI feel laggy right after an edit.
+	}, getDebounceTime(500));
 }
 
 async function settleAutosave() {
