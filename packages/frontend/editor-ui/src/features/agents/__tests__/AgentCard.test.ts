@@ -11,6 +11,17 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgent: vi.fn(),
 }));
 
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackPublishedAgent: vi.fn(),
+		trackUnpublishedAgent: vi.fn(),
+	}),
+}));
+
+vi.mock('../composables/agentTelemetry.utils', () => ({
+	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({ config_version: 'v-test' }),
+}));
+
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
 }));

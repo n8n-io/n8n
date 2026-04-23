@@ -31,8 +31,11 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentExecutionService } from './agent-execution.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
+import { ExecutionRecorder } from './execution-recorder';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
@@ -85,7 +88,14 @@ export class AgentsService {
 		{ agent: agents.Agent; agentId: string; userId?: string }
 	>(30 * Time.minutes.toMilliseconds);
 
-	/** Build a cache key that includes the user and platform so different contexts get isolated runtimes. */
+	/**
+	 * Stash of user messages for suspended tool calls.
+	 * When executeForChat suspends, we store the original message here so
+	 * resumeForChat can record it against the execution.
+	 */
+	private readonly pendingUserMessages = new Map<string, string>();
+
+	/** Build a cache key that includes the user and integration type so different contexts get isolated runtimes. */
 	private runtimeKey(agentId: string, userId?: string, integrationType?: string): string {
 		const parts = [agentId];
 		if (userId) parts.push(userId);
@@ -132,6 +142,7 @@ export class AgentsService {
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly n8nMemory: N8nMemory,
+		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 	) {}
 
@@ -301,7 +312,7 @@ export class AgentsService {
 		// Swallow errors — the agent is already gone; best-effort cleanup.
 		// Log at warn level so orphaned rows are observable in production.
 		try {
-			await this.clearAllChatMessages(agentId);
+			await this.clearAllTestChatMessages(agentId);
 		} catch (error) {
 			this.logger.warn('Failed to clear test chat on agent delete', {
 				agentId,
@@ -332,6 +343,11 @@ export class AgentsService {
 			}
 		}
 		return undefined;
+	}
+
+	/** Return persisted chat messages for a given session/thread. */
+	async getChatMessages(threadId: string) {
+		return await this.n8nMemory.getMessages(threadId);
 	}
 
 	private getMemoryFactory(): MemoryFactory {
@@ -376,7 +392,10 @@ export class AgentsService {
 
 			if (ref.type === 'node') {
 				const { resolveNodeTool } = await import('./tools/node-tool-factory');
-				return resolveNodeTool(ref, { executor: this.ephemeralNodeExecutor, projectId });
+				return await resolveNodeTool(ref, {
+					executor: this.ephemeralNodeExecutor,
+					projectId,
+				});
 			}
 
 			return null;
@@ -395,15 +414,30 @@ export class AgentsService {
 		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
 			params;
 
-		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
-		try {
-			const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
-			agent.tool(createRichInteractionTool(integrationType));
-		} catch (toolError) {
-			this.logger.warn('Failed to inject rich_interaction tool', {
-				agentId,
-				error: toolError instanceof Error ? toolError.message : String(toolError),
-			});
+		// Inject the rich_interaction tool only for platforms that can actually
+		// render its suspend/resume HITL cards. Two gates:
+		//   - A registered integration in ChatIntegrationRegistry. The in-app
+		//     test chat uses `integrationType = 'chat'`, which isn't registered,
+		//     and the compile/validate path passes no integrationType at all —
+		//     neither has a bridge to render the card or resume the suspended
+		//     turn, so letting the model call the tool there would hang the
+		//     agent.
+		//   - The integration must declare `supportedComponents`. Platforms
+		//     that omit it (e.g. Linear) have explicitly opted out of
+		//     rich_interaction.
+		const integration = integrationType
+			? Container.get(ChatIntegrationRegistry).get(integrationType)
+			: undefined;
+		if (integration && integration.supportedComponents !== undefined) {
+			try {
+				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
+				agent.tool(createRichInteractionTool(integrationType));
+			} catch (toolError) {
+				this.logger.warn('Failed to inject rich_interaction tool', {
+					agentId,
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
 		}
 
 		if (nodeToolsEnabled) {
@@ -440,6 +474,9 @@ export class AgentsService {
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
+		threadId?: string,
+		userId?: string,
+		projectId?: string,
 	): AsyncGenerator<StreamChunk> {
 		const runtime = this.findRuntimeForAgent(agentId);
 		if (!runtime) {
@@ -457,6 +494,8 @@ export class AgentsService {
 			throw new UserError(`Checkpoint ${runId} not found and cannot be resumed`);
 		}
 
+		const recorder = new ExecutionRecorder();
+
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
@@ -467,11 +506,91 @@ export class AgentsService {
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
+				recorder.record(value);
 				yield value;
 			}
 		} finally {
 			reader.releaseLock();
 		}
+
+		// Always record resumed executions — even if they suspend again (chained HITL).
+		// Don't repeat the original user message — the pre-suspension execution already has it.
+		if (threadId && userId && projectId) {
+			if (!recorder.suspended) {
+				this.pendingUserMessages.delete(agentId);
+			}
+			const messageRecord = recorder.getMessageRecord();
+			void this.agentExecutionService
+				.recordMessage({
+					threadId,
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userId,
+					userMessage: '',
+					record: messageRecord,
+					hitlStatus: 'resumed',
+				})
+				.catch((error) => {
+					this.logger.warn('Failed to record resumed agent execution', {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+		}
+	}
+
+	/**
+	 * Check whether an agent has the minimum config it needs to be run.
+	 * Returns the list of missing/invalid fields, if any.
+	 *
+	 * `missing` items correspond to user-facing concepts:
+	 *   - "instructions": empty or whitespace-only instructions string
+	 *   - "model":        missing model or one that fails the provider/model regex
+	 *   - "credential":   credential name is set in config but doesn't resolve to
+	 *                     a real credential in the project
+	 */
+	async validateAgentIsRunnable(
+		agentId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): Promise<{ missing: string[] }> {
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) {
+			return { missing: ['agent'] };
+		}
+		const config = agentEntity.schema as unknown as AgentJsonConfig | null;
+		const missing: string[] = [];
+
+		if (!config) {
+			return { missing: ['instructions', 'model'] };
+		}
+
+		if (!config.instructions || !config.instructions.trim()) {
+			missing.push('instructions');
+		}
+
+		const modelSchema = AgentJsonConfigSchema.shape.model;
+		if (!config.model || !modelSchema.safeParse(config.model).success) {
+			missing.push('model');
+		}
+
+		if (config.credential) {
+			try {
+				const credentialName = config.credential;
+				const creds = await credentialProvider.list();
+				const exists = creds.some(
+					(c) => c.id === credentialName || c.name.toLowerCase() === credentialName.toLowerCase(),
+				);
+				if (!exists) missing.push('credential');
+			} catch {
+				// If listing fails (e.g. permissions), don't flag as misconfigured —
+				// the runtime will surface the real error path on execute.
+			}
+		}
+
+		return { missing };
 	}
 
 	/**
@@ -511,7 +630,15 @@ export class AgentsService {
 			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		}
 
-		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId);
+		yield* this.streamChatResponse(
+			runtime.agent,
+			agentId,
+			message,
+			threadId,
+			userId,
+			projectId,
+			integrationType,
+		);
 	}
 
 	/**
@@ -520,7 +647,7 @@ export class AgentsService {
 	 * each message is tagged with the originating user's id as resourceId, so
 	 * we filter here to give every user their own private conversation view.
 	 */
-	async getChatMessages(agentId: string, userId: string) {
+	async getTestChatMessages(agentId: string, userId: string) {
 		return await this.n8nMemory.getMessages(chatThreadId(agentId), { resourceId: userId });
 	}
 
@@ -528,12 +655,12 @@ export class AgentsService {
 	 * Clear the current user's test-chat messages for an agent. The thread row
 	 * stays so other users' histories on the same thread are preserved.
 	 */
-	async clearChatMessages(agentId: string, userId: string) {
+	async clearTestChatMessages(agentId: string, userId: string) {
 		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId), userId);
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
-	async clearAllChatMessages(agentId: string) {
+	async clearAllTestChatMessages(agentId: string) {
 		const threadId = chatThreadId(agentId);
 		await this.n8nMemory.deleteMessagesByThread(threadId);
 		await this.n8nMemory.deleteThread(threadId);
@@ -581,12 +708,22 @@ export class AgentsService {
 			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		}
 
-		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId);
+		yield* this.streamChatResponse(
+			runtime.agent,
+			agentId,
+			message,
+			threadId,
+			userId,
+			projectId,
+			integrationType,
+		);
 	}
 
 	/**
-	 * Read from an agent's streaming response and yield each chunk.
-	 * Logs `tool-call-suspended` chunks so we can observe human-in-the-loop pauses.
+	 * Read from an agent's streaming response, record it, and yield each chunk.
+	 * Logs `tool-call-suspended` chunks so we can observe human-in-the-loop pauses,
+	 * and persists the full message record via `AgentExecutionService` so chat
+	 * history shows up in the executions view.
 	 */
 	private async *streamChatResponse(
 		agentInstance: agents.Agent,
@@ -594,7 +731,11 @@ export class AgentsService {
 		message: string,
 		threadId: string,
 		userId: string,
+		projectId: string,
+		source?: string,
 	): AsyncGenerator<StreamChunk> {
+		const recorder = new ExecutionRecorder();
+
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { threadId, resourceId: userId },
 		});
@@ -604,6 +745,7 @@ export class AgentsService {
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
+				recorder.record(value);
 				if (value.type === 'tool-call-suspended') {
 					this.logger.info('Chat: tool-call-suspended chunk received', {
 						agentId,
@@ -616,6 +758,33 @@ export class AgentsService {
 		} finally {
 			reader.releaseLock();
 		}
+
+		// Always record — even if suspended, the pre-suspension response text
+		// and tool calls are valuable. Usage/model will be null for suspended runs.
+		if (recorder.suspended) {
+			this.pendingUserMessages.set(agentId, message);
+		}
+
+		const messageRecord = recorder.getMessageRecord();
+		void this.agentExecutionService
+			.recordMessage({
+				threadId,
+				agentId,
+				agentName: agentInstance.name,
+				projectId,
+				userId,
+				userMessage: message,
+				record: messageRecord,
+				hitlStatus: recorder.suspended ? 'suspended' : undefined,
+				source,
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to record agent execution', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
 	}
 
 	/**
@@ -853,22 +1022,14 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		// Store tool code + descriptor
+		// Store tool code + descriptor. Registering the tool in the agent config
+		// (adding `{ type: "custom", id }` to `schema.tools`) is the caller's
+		// responsibility — typically via a follow-up patch_config / write_config —
+		// so this method does not touch `entity.schema`.
 		entity.tools = {
 			...entity.tools,
 			[toolId]: { code, descriptor },
 		};
-
-		// Add to config tools array if not already present
-		if (entity.schema) {
-			const tools = entity.schema.tools ?? [];
-			const alreadyLinked = tools.some(
-				(t: AgentJsonToolConfig) => t.type === 'custom' && 'id' in t && t.id === toolId,
-			);
-			if (!alreadyLinked) {
-				entity.schema.tools = [...tools, { type: 'custom' as const, id: toolId }];
-			}
-		}
 
 		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);

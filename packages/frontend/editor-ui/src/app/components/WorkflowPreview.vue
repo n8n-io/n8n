@@ -22,6 +22,7 @@ const props = withDefaults(
 		focusOnLoad?: boolean;
 		hideControls?: boolean;
 		suppressNotifications?: boolean;
+		canExecute?: boolean;
 	}>(),
 	{
 		loading: false,
@@ -36,6 +37,7 @@ const props = withDefaults(
 		focusOnLoad: true,
 		hideControls: false,
 		suppressNotifications: false,
+		canExecute: false,
 	},
 );
 
@@ -58,10 +60,15 @@ const scrollY = ref(0);
 
 const iframeSrc = computed(() => {
 	const basePath = `${window.BASE_PATH ?? '/'}workflows/demo`;
+	const params = new URLSearchParams();
 	if (props.hideControls) {
-		return `${basePath}?hideControls=true`;
+		params.set('hideControls', 'true');
 	}
-	return basePath;
+	if (props.canExecute) {
+		params.set('canExecute', 'true');
+	}
+	const qs = params.toString();
+	return qs ? `${basePath}?${qs}` : basePath;
 });
 
 const showPreview = computed(() => {

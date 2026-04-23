@@ -190,6 +190,7 @@ defineExpose({ relayPushEvent });
 			:workflow="workflow"
 			:execution-id="props.executionId ?? undefined"
 			:can-open-ndv="true"
+			:can-execute="true"
 			:hide-controls="false"
 			:suppress-notifications="true"
 			loader-type="spinner"

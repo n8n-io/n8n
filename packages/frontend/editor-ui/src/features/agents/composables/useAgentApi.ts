@@ -247,6 +247,19 @@ export const getChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	threadId: string,
+): Promise<AgentPersistedMessageDto[]> => {
+	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
+	);
+};
+
+export const getTestChatMessages = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
 ): Promise<AgentPersistedMessageDto[]> => {
 	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
 		context,
@@ -255,7 +268,7 @@ export const getChatMessages = async (
 	);
 };
 
-export const clearChatMessages = async (
+export const clearTestChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,

@@ -4,6 +4,7 @@ import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
 import type { BuiltTool } from './tool';
+import type { ProviderId, ProviderCredentials } from '../../runtime/provider-credentials';
 import type { AgentEvent, AgentEventHandler } from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
@@ -27,8 +28,20 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	additionalMetadata?: T;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- LanguageModel is semantically distinct from string
-export type ModelConfig = string | { id: string; apiKey?: string; url?: string } | LanguageModel;
+/**
+ * Typed model config for known providers — gives IDE autocompletion for
+ * provider-specific credential fields based on the model id prefix.
+ */
+export type TypedModelConfig = {
+	[P in ProviderId]: { id: `${P}/${string}` } & ProviderCredentials<P>;
+}[ProviderId];
+
+export type ModelConfig =
+	| string
+	| TypedModelConfig
+	| { id: string; [k: string]: unknown }
+	// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- LanguageModel is semantically distinct from string
+	| LanguageModel;
 
 export interface AgentResult {
 	id?: string;
@@ -84,6 +97,16 @@ export type StreamChunk = ContentMetadata &
 				id?: string;
 		  }
 		| {
+				/**
+				 * Emitted just before a tool handler starts executing. Pairs with the
+				 * subsequent tool-result message chunk to let consumers show a
+				 * mid-flight indicator between "LLM picked a tool" and "result arrived".
+				 */
+				type: 'tool-execution-start';
+				toolCallId: string;
+				toolName: string;
+		  }
+		| {
 				type: 'tool-call-suspended';
 				runId?: string;
 				toolCallId?: string;
@@ -92,6 +115,10 @@ export type StreamChunk = ContentMetadata &
 				suspendPayload?: unknown;
 				/** JSON Schema describing the shape of data to send when resuming. */
 				resumeSchema?: JsonSchema7Type;
+		  }
+		| {
+				type: 'working-memory-update';
+				content: string;
 		  }
 	);
 

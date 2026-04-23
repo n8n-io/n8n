@@ -75,6 +75,7 @@ const {
 	mockWorkflowDocumentStore: {
 		updateNodeProperties: vi.fn(),
 		getNodeByName: vi.fn(),
+		getStartNode: vi.fn(),
 		pinData: {} as Record<string, unknown>,
 	},
 	mockNodeHelpers: {
@@ -680,7 +681,7 @@ describe('useNodeExecution', () => {
 
 		it('should open chat for chat child nodes when chat trigger has no data', async () => {
 			mockWorkflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
-			mockWorkflowsStore.workflowObject.getStartNode.mockReturnValue({
+			mockWorkflowDocumentStore.getStartNode.mockReturnValue({
 				name: 'Chat Trigger',
 				type: CHAT_TRIGGER_NODE_TYPE,
 			});

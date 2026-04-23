@@ -8,7 +8,7 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
-export type * from './agents';
+export * from './agents';
 export * from './instance-registry-types';
 export {
 	chatHubConversationModelSchema,
@@ -251,9 +251,9 @@ export {
 } from './schemas/community-package.schema';
 
 export {
-	publicApiCreatedCredentialSchema,
-	type PublicApiCreatedCredential,
-} from './schemas/credential-created.schema';
+	publicApiCredentialResponseSchema,
+	type PublicApiCredentialResponse,
+} from './schemas/credential-response.schema';
 
 export {
 	instanceAiEventTypeSchema,

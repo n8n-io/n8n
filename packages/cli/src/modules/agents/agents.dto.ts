@@ -13,6 +13,7 @@ export class UpdateAgentDto extends Z.class({
 
 export class AgentChatMessageDto extends Z.class({
 	message: z.string().min(1),
+	sessionId: z.string().min(1).optional(),
 }) {}
 
 export class AgentIntegrationDto extends Z.class({

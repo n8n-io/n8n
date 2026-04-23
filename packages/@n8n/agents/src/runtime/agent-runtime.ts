@@ -57,6 +57,7 @@ import {
 } from './tool-adapter';
 import { buildWorkingMemoryTool } from './working-memory';
 import { AgentEvent } from '../types/runtime/event';
+import type { AgentEventData } from '../types/runtime/event';
 import type {
 	AgentPersistenceOptions,
 	ExecutionOptions,
@@ -749,7 +750,7 @@ export class AgentRuntime {
 		await this.flushTelemetry(options);
 
 		if (this.config.titleGeneration && options?.persistence?.threadId && this.config.memory) {
-			void generateThreadTitle({
+			const titlePromise = generateThreadTitle({
 				memory: this.config.memory,
 				threadId: options.persistence.threadId,
 				resourceId: options.persistence.resourceId,
@@ -757,6 +758,9 @@ export class AgentRuntime {
 				agentModel: this.config.model,
 				turnDelta: list.turnDelta(),
 			});
+			if (this.config.titleGeneration.sync) {
+				await titlePromise;
+			}
 		}
 
 		return {
@@ -787,8 +791,27 @@ export class AgentRuntime {
 		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
 		const writer = writable.getWriter();
 
-		this.runStreamLoop(list, options, writer, pendingResume, runId).catch(
-			async (error: unknown) => {
+		// Bridge tool-execution lifecycle events into the stream so consumers
+		// can show a mid-flight indicator between the LLM's tool-call message
+		// and the eventual tool-result message. Writer queues writes in order
+		// so the fire-and-forget is safe.
+		const onToolExecutionStart = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.ToolExecutionStart) return;
+			// Swallow rejections: if the writer is already closed/errored (e.g.
+			// an abort raced ahead of the subscription cleanup) there is nothing
+			// useful to do with the chunk.
+			writer
+				.write({
+					type: 'tool-execution-start',
+					toolCallId: data.toolCallId,
+					toolName: data.toolName,
+				})
+				.catch(() => {});
+		};
+		this.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+
+		this.runStreamLoop(list, options, writer, pendingResume, runId)
+			.catch(async (error: unknown) => {
 				await this.flushTelemetry(options);
 				await this.cleanupRun(runId);
 				try {
@@ -798,8 +821,10 @@ export class AgentRuntime {
 				} catch {
 					writer.abort(error).catch(() => {});
 				}
-			},
-		);
+			})
+			.finally(() => {
+				this.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+			});
 
 		return readable;
 	}
@@ -1043,7 +1068,7 @@ export class AgentRuntime {
 			await this.saveToMemory(list, options);
 
 			if (this.config.titleGeneration && options?.persistence && this.config.memory) {
-				void generateThreadTitle({
+				const titlePromise = generateThreadTitle({
 					memory: this.config.memory,
 					threadId: options.persistence.threadId,
 					resourceId: options.persistence.resourceId,
@@ -1051,6 +1076,9 @@ export class AgentRuntime {
 					agentModel: this.config.model,
 					turnDelta: list.turnDelta(),
 				});
+				if (this.config.titleGeneration.sync) {
+					await titlePromise;
+				}
 			}
 
 			await this.cleanupRun(runId);
@@ -1604,8 +1632,9 @@ export class AgentRuntime {
 		const aiTools = toAiSdkTools(allUserTools);
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
+		const model = createModel(this.config.model);
 		return {
-			model: createModel(this.config.model),
+			model,
 			toolMap: buildToolMap(allUserTools),
 			aiTools: allTools,
 			providerOptions: this.buildCallProviderOptions(execOptions?.providerOptions),

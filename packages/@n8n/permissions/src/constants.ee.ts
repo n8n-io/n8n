@@ -71,7 +71,7 @@ export const API_KEY_RESOURCES = {
 	project: ['create', 'update', 'delete', 'list'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete', 'enforceMfa'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'stop'] as const,
-	credential: ['create', 'update', 'move', 'delete', 'list'] as const,
+	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,

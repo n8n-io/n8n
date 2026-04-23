@@ -1,4 +1,4 @@
-import { Agent, Memory } from '@n8n/agents';
+import { Agent, Memory, providerTools } from '@n8n/agents';
 import type { CredentialProvider, StreamChunk } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -13,12 +13,6 @@ import type { AgentJsonConfig } from '../json-config/agent-json-config';
 function builderThreadId(agentId: string): string {
 	return `builder:${agentId}`;
 }
-
-/**
- * Synthetic credential name used when the builder is driven by an env-var API
- * key. Kept private so it never collides with user-defined credential names.
- */
-const ENV_BUILDER_CREDENTIAL_NAME = '__builder_env_anthropic__';
 
 /** Read an Anthropic key from env, preferring the n8n-specific variable. */
 function readEnvAnthropicKey(): string | null {
@@ -75,19 +69,7 @@ export class AgentsBuilderService {
 			);
 		}
 
-		const builderCredentialName = ENV_BUILDER_CREDENTIAL_NAME;
-		const builderModel = 'anthropic/claude-sonnet-4-5';
-		const builderProvider: CredentialProvider = {
-			async resolve(name) {
-				if (name === ENV_BUILDER_CREDENTIAL_NAME) {
-					return { apiKey: envAnthropicKey };
-				}
-				return await credentialProvider.resolve(name);
-			},
-			async list() {
-				return await credentialProvider.list();
-			},
-		};
+		const builderModel = 'anthropic/claude-sonnet-4-6';
 
 		const currentConfig = agent.schema as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
@@ -105,11 +87,10 @@ export class AgentsBuilderService {
 		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
 
 		const builder = new Agent('agent-builder')
-			.model(builderModel)
-			.credential(builderCredentialName)
-			.credentialProvider(builderProvider)
+			.model({ id: builderModel, apiKey: envAnthropicKey })
 			.instructions(instructions)
-			.memory(builderMemory);
+			.memory(builderMemory)
+			.providerTool(providerTools.anthropicWebSearch({ maxUses: 5 }));
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);

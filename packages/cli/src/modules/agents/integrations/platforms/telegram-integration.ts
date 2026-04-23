@@ -12,10 +12,17 @@ import { loadTelegramAdapter } from '../esm-loader';
 /**
  * Telegram platform integration.
  *
- * Telegram's Bot API caps callback_data at 64 bytes, so {@link needsShortCallbackData}
- * is true — the bridge stores full payloads in a CallbackStore and emits short
- * 8-char keys as button IDs. The adapter runs in webhook mode when a public
- * `WEBHOOK_URL` is configured, otherwise it falls back to polling for local dev.
+ * Two capability flags are enabled here because of Telegram constraints:
+ * - {@link needsShortCallbackData} — `callback_data` is capped at 64 bytes, so the
+ *   bridge stores full payloads in a CallbackStore and emits short 8-char keys as
+ *   button IDs.
+ * - {@link disableStreaming} — streaming Markdown edits are unstable: intermediate
+ *   frames carry half-formed markup that Telegram rejects or renders inconsistently.
+ *   The bridge buffers agent output and posts it as a single message per flush,
+ *   guaranteeing well-formed Markdown on every post.
+ *
+ * The adapter runs in webhook mode when a public `WEBHOOK_URL` is configured,
+ * otherwise it falls back to polling for local dev.
  */
 @Service()
 export class TelegramIntegration extends AgentChatIntegration {
@@ -31,6 +38,8 @@ export class TelegramIntegration extends AgentChatIntegration {
 		"The user's response (button click) is returned to you.";
 
 	readonly needsShortCallbackData = true;
+
+	readonly disableStreaming = true;
 
 	constructor(
 		private readonly logger: Logger,

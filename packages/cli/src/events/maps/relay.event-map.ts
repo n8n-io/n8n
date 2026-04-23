@@ -16,6 +16,8 @@ import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-
 
 import type { AiEventMap } from './ai.event-map';
 
+export type WorkflowActionSource = 'ui' | 'api' | 'n8n-mcp' | 'n8n-ai';
+
 export type UserLike = {
 	id: string;
 	email?: string;
@@ -79,6 +81,7 @@ export type RelayEventMap = {
 		projectId: string;
 		projectType: string;
 		uiContext?: string;
+		source?: WorkflowActionSource;
 	};
 
 	'workflow-deleted': {
@@ -106,6 +109,7 @@ export type RelayEventMap = {
 		previousWorkflow?: IWorkflowDb;
 		aiBuilderAssisted?: boolean;
 		settingsChanged?: Record<string, { from: JsonValue; to: JsonValue }>;
+		source?: WorkflowActionSource;
 	};
 
 	'workflow-activated': {
@@ -113,6 +117,7 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
+		source?: WorkflowActionSource;
 	};
 
 	'workflow-deactivated': {
@@ -121,6 +126,7 @@ export type RelayEventMap = {
 		workflow: IWorkflowDb;
 		publicApi: boolean;
 		deactivatedVersionId: string | null;
+		source?: WorkflowActionSource;
 	};
 
 	'workflow-pre-execute': {

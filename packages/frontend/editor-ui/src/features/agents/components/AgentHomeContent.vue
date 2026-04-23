@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { N8nIconPicker, N8nText } from '@n8n/design-system';
+import { truncate } from '@n8n/utils';
+import { N8nIcon, N8nIconPicker, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import type { ExecutionThread } from '@/features/agents/composables/useAgentThreadsApi';
 
 const locale = useI18n();
 
@@ -14,6 +16,7 @@ const props = withDefaults(
 		agentIcon: IconOrEmoji;
 		projectId: string;
 		agentId: string;
+		sessions?: ExecutionThread[];
 		showRecent?: boolean;
 	}>(),
 	{
@@ -26,7 +29,19 @@ const emit = defineEmits<{
 	'update:name': [name: string];
 	'update:description': [description: string];
 	'update:icon': [icon: IconOrEmoji];
+	'select-session': [threadId: string];
 }>();
+
+function timeAgo(dateStr: string): string {
+	const diff = Date.now() - new Date(dateStr).getTime();
+	const minutes = Math.floor(diff / 60000);
+	if (minutes < 1) return 'just now';
+	if (minutes < 60) return `${minutes}m ago`;
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return `${hours}h ago`;
+	const days = Math.floor(hours / 24);
+	return `${days}d ago`;
+}
 
 const inputText = ref('');
 const editingName = ref(false);
@@ -148,14 +163,31 @@ function submitMessage() {
 
 		<div v-if="showRecent" :class="$style.recent">
 			<div :class="$style.recentHeader">
-				<N8nText size="small" color="text-light" bold>{{
-					locale.baseText('agents.home.recent')
-				}}</N8nText>
+				<N8nText size="small" color="text-light" bold
+					>{{ locale.baseText('agents.home.recent') }}
+				</N8nText>
 			</div>
-			<div :class="$style.emptyState">
+			<div v-if="!sessions?.length" :class="$style.emptyState">
 				<N8nText size="small" color="text-light">
 					{{ locale.baseText('agents.home.emptyState') }}
 				</N8nText>
+			</div>
+			<div
+				v-for="session in sessions"
+				v-else
+				:key="session.id"
+				:class="$style.sessionItem"
+				@click="emit('select-session', session.id)"
+			>
+				<span v-if="session.emoji" :class="$style.sessionEmoji">{{ session.emoji }}</span>
+				<N8nIcon v-else icon="message-square" :class="$style.sessionIcon" />
+				<span :class="$style.sessionText">
+					<strong>{{ truncate(session.title ?? `Session ${session.sessionNumber}`, 30) }}</strong>
+					<span v-if="session.firstMessage" :class="$style.sessionMessage">{{
+						truncate(session.firstMessage, 60)
+					}}</span>
+				</span>
+				<span :class="$style.sessionTime">{{ timeAgo(session.updatedAt) }}</span>
 			</div>
 		</div>
 	</div>
@@ -265,11 +297,57 @@ function submitMessage() {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: var(--spacing--xs);
+	margin-bottom: var(--spacing--3xs);
 }
 
 .emptyState {
 	text-align: center;
 	padding: var(--spacing--lg) 0;
+}
+
+.sessionItem {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--3xs) 0;
+	border-radius: var(--radius--lg);
+	cursor: pointer;
+	transition: background-color 0.15s;
+
+	&:hover {
+		background-color: var(--color--foreground--tint-2);
+	}
+}
+
+.sessionEmoji {
+	font-size: var(--font-size--md);
+	flex-shrink: 0;
+}
+
+.sessionIcon {
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
+}
+
+.sessionText {
+	flex: 1;
+	min-width: 0;
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+	color: var(--color--text--tint-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.sessionMessage {
+	margin-left: var(--spacing--2xs);
+}
+
+.sessionTime {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	white-space: nowrap;
+	flex-shrink: 0;
 }
 </style>

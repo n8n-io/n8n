@@ -12,6 +12,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsService } = await import('./agents.service');
 		Container.get(AgentsService);
 
+		const { AgentExecutionService } = await import('./agent-execution.service');
+		Container.get(AgentExecutionService);
+
 		const { AgentPublishedVersionRepository } = await import(
 			'./repositories/agent-published-version.repository'
 		);
@@ -27,9 +30,11 @@ export class AgentsModule implements ModuleInterface {
 		const { ChatIntegrationRegistry } = await import('./integrations/agent-chat-integration');
 		const { SlackIntegration } = await import('./integrations/platforms/slack-integration');
 		const { TelegramIntegration } = await import('./integrations/platforms/telegram-integration');
+		const { LinearIntegration } = await import('./integrations/platforms/linear-integration');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
+		registry.register(Container.get(LinearIntegration));
 
 		// Warm the node catalog so the agent runtime can attach search/execute tools
 		// synchronously on each agent reconstruction. The underlying init is idempotent.
@@ -62,6 +67,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity');
+		const { ExecutionThread } = await import('./entities/execution-thread.entity');
 		const { AgentPublishedVersion } = await import('./entities/agent-published-version.entity');
 
 		return [
@@ -70,6 +76,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentResourceEntity,
 			AgentThreadEntity,
 			AgentMessageEntity,
+			ExecutionThread,
 			AgentPublishedVersion,
 		];
 	}

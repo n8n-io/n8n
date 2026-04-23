@@ -1121,4 +1121,219 @@ describe('CredentialsHelper', () => {
 			expect(call[3]).toBeUndefined(); // workflowSettings
 		});
 	});
+
+	describe('credential isolation per workflow (GHC-7550)', () => {
+		const credentialType = 'communityApi';
+
+		const credentialDataA = { apiKey: 'key_account_A', accountId: 'pn_A' };
+		const credentialDataB = { apiKey: 'key_account_B', accountId: 'pn_B' };
+
+		const credEntityA = {
+			id: 'cred-aaa',
+			name: 'Account A Credential',
+			type: credentialType,
+			data: cipher.encrypt(credentialDataA),
+			isResolvable: false,
+			resolverId: null,
+		} as CredentialsEntity;
+
+		const credEntityB = {
+			id: 'cred-bbb',
+			name: 'Account B Credential',
+			type: credentialType,
+			data: cipher.encrypt(credentialDataB),
+			isResolvable: false,
+			resolverId: null,
+		} as CredentialsEntity;
+
+		const additionalData = {
+			executionContext: undefined,
+			workflowSettings: undefined,
+			rootExecutionMode: 'manual',
+		} as any;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			dynamicCredentialProxy.setResolverProvider(undefined as any);
+
+			credentialsRepository.findOneByOrFail.mockImplementation(async (query: any) => {
+				if (query.id === 'cred-aaa' && query.type === credentialType) return credEntityA;
+				if (query.id === 'cred-bbb' && query.type === credentialType) return credEntityB;
+				throw new EntityNotFoundError(CredentialsEntity, query);
+			});
+		});
+
+		test('should return correct data for credential A when queried with ID A', async () => {
+			const result = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual(credentialDataA);
+			expect(result.apiKey).toBe('key_account_A');
+			expect(result.accountId).toBe('pn_A');
+		});
+
+		test('should return correct data for credential B when queried with ID B', async () => {
+			const result = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-bbb', name: 'Account B Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual(credentialDataB);
+			expect(result.apiKey).toBe('key_account_B');
+			expect(result.accountId).toBe('pn_B');
+		});
+
+		test('should isolate credentials when resolved sequentially (A then B then A)', async () => {
+			const resultA1 = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			const resultB = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-bbb', name: 'Account B Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			const resultA2 = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(resultA1.apiKey).toBe('key_account_A');
+			expect(resultB.apiKey).toBe('key_account_B');
+			expect(resultA2.apiKey).toBe('key_account_A');
+			expect(resultA1).toEqual(resultA2);
+			expect(resultA1).not.toEqual(resultB);
+		});
+
+		test('should isolate credentials in production mode (non-manual)', async () => {
+			const prodAdditionalData = {
+				executionContext: undefined,
+				workflowSettings: undefined,
+				rootExecutionMode: undefined,
+			} as any;
+
+			const resultA = await credentialsHelper.getDecrypted(
+				prodAdditionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'trigger',
+				undefined,
+				true,
+			);
+
+			const resultB = await credentialsHelper.getDecrypted(
+				prodAdditionalData,
+				{ id: 'cred-bbb', name: 'Account B Credential' },
+				credentialType,
+				'trigger',
+				undefined,
+				true,
+			);
+
+			expect(resultA.apiKey).toBe('key_account_A');
+			expect(resultB.apiKey).toBe('key_account_B');
+		});
+
+		test('should isolate credentials when resolved concurrently', async () => {
+			const [resultA, resultB] = await Promise.all([
+				credentialsHelper.getDecrypted(
+					additionalData,
+					{ id: 'cred-aaa', name: 'Account A Credential' },
+					credentialType,
+					'manual',
+					undefined,
+					true,
+				),
+				credentialsHelper.getDecrypted(
+					additionalData,
+					{ id: 'cred-bbb', name: 'Account B Credential' },
+					credentialType,
+					'manual',
+					undefined,
+					true,
+				),
+			]);
+
+			expect(resultA.apiKey).toBe('key_account_A');
+			expect(resultB.apiKey).toBe('key_account_B');
+		});
+
+		test('should use credential ID for lookup, not credential name', async () => {
+			await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(credentialsRepository.findOneByOrFail).toHaveBeenCalledWith({
+				id: 'cred-aaa',
+				type: credentialType,
+			});
+		});
+
+		test('credential B save should not affect subsequent resolution of credential A', async () => {
+			const resultA_before = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			// Simulate saving credential B with updated data (re-encrypt with new values)
+			const updatedDataB = { apiKey: 'key_account_B_UPDATED', accountId: 'pn_B_UPDATED' };
+			credEntityB.data = cipher.encrypt(updatedDataB);
+
+			const resultA_after = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-aaa', name: 'Account A Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(resultA_before.apiKey).toBe('key_account_A');
+			expect(resultA_after.apiKey).toBe('key_account_A');
+			expect(resultA_before).toEqual(resultA_after);
+
+			// Verify B returns updated data
+			const resultB = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'cred-bbb', name: 'Account B Credential' },
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+			expect(resultB.apiKey).toBe('key_account_B_UPDATED');
+		});
+	});
 });

@@ -254,9 +254,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const ndvStore = useNDVStore();
 	const route = useRoute();
@@ -546,7 +544,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return;
 		}
 
-		const workflowName = workflowDocumentStore.value?.name ?? '';
+		const workflowName = workflowDocumentStore.value.name;
 
 		const titleKey =
 			completionType === 'workflow-ready'
@@ -639,7 +637,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Update page title on completion. We show Done when the user is not on the page
 		// Browser notifications are only shown when the tab is hidden
 		if (document.hidden) {
-			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'AI_DONE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value.name, 'AI_DONE');
 			if (!wasAborted && userMessageId) {
 				const completionType = hasWorkflowUpdateInCurrentBatch(userMessageId)
 					? 'workflow-ready'
@@ -647,7 +645,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				notifyOnCompletion(completionType);
 			}
 		} else {
-			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'IDLE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value.name, 'IDLE');
 		}
 	}
 
@@ -724,7 +722,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Updates page title to show AI is building (skip for help questions)
 		if (!isHelpStreaming.value) {
-			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'AI_BUILDING');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value.name, 'AI_BUILDING');
 		}
 	}
 
@@ -853,11 +851,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			}
 		}
 
-		const versionId = workflowDocumentStore.value?.versionId;
+		const versionId = workflowDocumentStore.value.versionId;
 		if (!versionId) return undefined;
 		// Use workflow updatedAt as version timestamp
 		// might not be the same as "version.createdAt" but close enough
-		if (!workflowDocumentStore.value?.updatedAt) return undefined;
+		if (!workflowDocumentStore.value.updatedAt) return undefined;
 
 		// Verify the versionId actually exists in workflow history.
 		// The backend only creates history entries when nodes/connections change,
@@ -878,7 +876,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			const saved = await workflowSaver.saveCurrentWorkflow();
 			if (!saved) return undefined;
 
-			const versionId = workflowDocumentStore.value?.versionId;
+			const versionId = workflowDocumentStore.value.versionId;
 			if (!versionId) return undefined;
 
 			return await verifyVersionExists(versionId);
@@ -1008,7 +1006,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
-			nodesForSchema: Object.keys(workflowDocumentStore.value?.nodesByName ?? {}),
+			nodesForSchema: Object.keys(workflowDocumentStore.value.nodesByName),
 			mode: modeForPayload,
 			isPlanModeEnabled: isPlanModeAvailable.value,
 			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,
@@ -1220,7 +1218,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					if (i < userMsgRevertIds.length - 1) {
 						postModVersionIds.push(userMsgRevertIds[i + 1]);
 					} else {
-						const currentVersionId = workflowDocumentStore.value?.versionId;
+						const currentVersionId = workflowDocumentStore.value.versionId;
 						if (currentVersionId) {
 							postModVersionIds.push(currentVersionId);
 						}
@@ -1345,10 +1343,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name) ===
 					CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
 				if (isPinDataEnabled) {
-					const workflowDocumentStore = workflowsStore.workflowId
-						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-						: undefined;
-					const pinData = workflowDocumentStore?.getPinDataSnapshot();
+					const workflowDocumentStore = useWorkflowDocumentStore(
+						createWorkflowDocumentId(workflowsStore.workflowId),
+					);
+					const pinData = workflowDocumentStore.getPinDataSnapshot();
 					if (pinData && Object.keys(pinData).length > 0) {
 						generatedPinData.value = pinData;
 						pinDataApplied.value = true;
@@ -1395,13 +1393,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function unpinAllNodes() {
-		const pinData = workflowDocumentStore.value?.pinData;
+		const pinData = workflowDocumentStore.value.pinData;
 		if (!pinData) return;
 		for (const nodeName of Object.keys(pinData)) {
-			workflowDocumentStore.value?.unpinNodeData(nodeName);
-			if (workflowsStore.nodeMetadata[nodeName]) {
-				workflowsStore.nodeMetadata[nodeName].pinnedDataLastRemovedAt = Date.now();
-			}
+			workflowDocumentStore.value.unpinNodeData(nodeName);
+			workflowDocumentStore.value.touchPinnedDataLastRemovedAt(nodeName);
 		}
 		uiStore.markStateDirty();
 	}
@@ -1434,14 +1430,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function clearExistingWorkflow() {
-		workflowDocumentStore.value?.removeAllConnections();
-		workflowDocumentStore.value?.removeAllNodes();
+		workflowDocumentStore.value.removeAllConnections();
+		workflowDocumentStore.value.removeAllNodes();
 	}
 
 	function getWorkflowSnapshot() {
 		return JSON.stringify({
-			nodes: workflowDocumentStore.value?.allNodes ?? [],
-			connections: workflowDocumentStore.value?.connectionsBySourceNode ?? {},
+			nodes: workflowDocumentStore.value.allNodes,
+			connections: workflowDocumentStore.value.connectionsBySourceNode,
 		});
 	}
 
@@ -1522,7 +1518,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Only applies when the chat is fresh (no messages) so it doesn't interfere
 	// with an active conversation.
 	watch(
-		[() => workflowsStore.workflowId, () => (workflowDocumentStore.value?.allNodes ?? []).length],
+		[() => workflowsStore.workflowId, () => workflowDocumentStore.value.allNodes.length],
 		([, nodesCount]) => {
 			if (chatMessages.value.length > 0) return;
 			if (!isPlanModeAvailable.value) return;
@@ -1607,12 +1603,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// version id is important to update, because otherwise the next time user saves,
 		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
-		workflowDocumentStore.value?.setVersionData({
+		workflowDocumentStore.value.setVersionData({
 			versionId: updatedWorkflow.versionId,
-			name: workflowDocumentStore.value?.versionData?.name ?? null,
-			description: workflowDocumentStore.value?.versionData?.description ?? null,
+			name: workflowDocumentStore.value.versionData?.name ?? null,
+			description: workflowDocumentStore.value.versionData?.description ?? null,
 		});
-		workflowDocumentStore.value?.setUpdatedAt(updatedWorkflow.updatedAt);
+		workflowDocumentStore.value.setUpdatedAt(updatedWorkflow.updatedAt);
 
 		// 2. Find the next user message after the version card to truncate backend session
 		const versionCardIndex = chatMessages.value.findIndex((msg) => msg.id === versionCardId);
@@ -1660,7 +1656,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function clearDoneIndicatorTitle() {
 		if (documentTitle.getDocumentState() === 'AI_DONE') {
-			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'IDLE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value.name, 'IDLE');
 		}
 	}
 

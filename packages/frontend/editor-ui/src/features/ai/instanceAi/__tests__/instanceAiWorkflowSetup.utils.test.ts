@@ -273,15 +273,16 @@ describe('isTriggerOnly', () => {
 });
 
 describe('shouldUseCredentialIcon', () => {
-	const noParamWork = () => false;
-
-	test('returns true when card has credential and is not trigger-only', () => {
-		const card = makeCard({ credentialType: 'slackApi', isTrigger: false });
-		expect(shouldUseCredentialIcon(card, noParamWork)).toBe(true);
+	test('returns true for multi-node credential-grouping cards', () => {
+		const card = makeCard({
+			credentialType: 'googleOAuth2Api',
+			nodes: [makeSetupNode(), makeSetupNode(), makeSetupNode()],
+		});
+		expect(shouldUseCredentialIcon(card)).toBe(true);
 	});
 
-	test('returns false when card has no credential', () => {
-		const card = makeCard({ credentialType: undefined });
-		expect(shouldUseCredentialIcon(card, noParamWork)).toBe(false);
+	test('returns false for single-node cards', () => {
+		const card = makeCard({ credentialType: 'slackApi', nodes: [makeSetupNode()] });
+		expect(shouldUseCredentialIcon(card)).toBe(false);
 	});
 });

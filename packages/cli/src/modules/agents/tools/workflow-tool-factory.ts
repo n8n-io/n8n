@@ -1,5 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents';
+import type { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from '@n8n/api-types';
 import type {
 	ExecutionRepository,
 	UserRepository,
@@ -34,6 +35,12 @@ import type { AgentJsonToolConfig } from '../json-config/agent-json-config';
 // Constants
 // ---------------------------------------------------------------------------
 
+/**
+ * Map a supported trigger node type to the input-schema key the workflow tool
+ * builds against. Keys are sourced from `SUPPORTED_WORKFLOW_TOOL_TRIGGERS` in
+ * `@n8n/api-types` so the backend compatibility check and the frontend
+ * Available list can't drift.
+ */
 const SUPPORTED_TRIGGERS: Record<string, string> = {
 	[MANUAL_TRIGGER_NODE_TYPE]: 'manual',
 	[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: 'executeWorkflow',
@@ -41,6 +48,15 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 	[SCHEDULE_TRIGGER_NODE_TYPE]: 'schedule',
 	[FORM_TRIGGER_NODE_TYPE]: 'form',
 };
+
+// Compile-time check: `SUPPORTED_TRIGGERS` must cover every trigger the shared
+// list declares. Adding a trigger to `SUPPORTED_WORKFLOW_TOOL_TRIGGERS` without
+// adding its input-schema mapping here will fail this assertion.
+const _assertSupportedTriggersInSync: Record<
+	(typeof SUPPORTED_WORKFLOW_TOOL_TRIGGERS)[number],
+	string
+> = SUPPORTED_TRIGGERS;
+void _assertSupportedTriggersInSync;
 
 const INCOMPATIBLE_NODE_TYPES = new Set([
 	'n8n-nodes-base.wait',

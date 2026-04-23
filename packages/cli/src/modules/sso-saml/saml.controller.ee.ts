@@ -9,7 +9,9 @@ import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { UrlService } from '@/services/url.service';
@@ -37,6 +39,7 @@ export class SamlController {
 		private readonly samlService: SamlService,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
 
 	@Get('/metadata', { skipAuth: true })
@@ -66,6 +69,11 @@ export class SamlController {
 	@Post('/config', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
 	async configPost(_req: AuthenticatedRequest, _res: Response, @Body payload: SamlPreferences) {
+		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
+			throw new ForbiddenError(
+				'SSO configuration is managed via environment variables and cannot be modified through the API',
+			);
+		}
 		const result = await this.samlService.setSamlPreferences(payload);
 		if (!result) return;
 		return {
@@ -84,6 +92,11 @@ export class SamlController {
 		res: Response,
 		@Body { loginEnabled }: SamlToggleDto,
 	) {
+		if (this.instanceSettingsLoaderConfig.ssoManagedByEnv) {
+			throw new ForbiddenError(
+				'SSO configuration is managed via environment variables and cannot be modified through the API',
+			);
+		}
 		await this.samlService.setSamlPreferences({ loginEnabled });
 		return res.sendStatus(200);
 	}

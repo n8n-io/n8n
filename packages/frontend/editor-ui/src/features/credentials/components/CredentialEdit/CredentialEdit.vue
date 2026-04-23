@@ -31,6 +31,10 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -125,8 +129,21 @@ const useCustomOAuth = ref(false);
 const pendingAuthType = ref<string | null>(null);
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
 
+const workflowDocumentStore = computed(() =>
+	workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined,
+);
+
+const contextNode = computed<INode | null>(() => {
+	if (ndvStore.activeNode) return ndvStore.activeNode;
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const fallbackName = isCredentialModalState(modalState) ? modalState.nodeName : undefined;
+	return fallbackName ? (workflowDocumentStore.value?.getNodeByName(fallbackName) ?? null) : null;
+});
+
 const activeNodeType = computed(() => {
-	const activeNode = ndvStore.activeNode;
+	const activeNode = contextNode.value;
 
 	if (activeNode) {
 		return nodeTypesStore.getNodeType(activeNode.type, activeNode.typeVersion);
@@ -871,8 +888,8 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	}
 
 	const appliedAuthType = pendingAuthType.value;
-	if (appliedAuthType && ndvStore.activeNode) {
-		updateNodeAuthType(workflowsStore.workflowId, ndvStore.activeNode, appliedAuthType);
+	if (appliedAuthType && contextNode.value) {
+		updateNodeAuthType(workflowsStore.workflowId, contextNode.value, appliedAuthType);
 		pendingAuthType.value = null;
 	}
 
@@ -1477,6 +1494,7 @@ const { width } = useElementSize(credNameRef);
 						:managed-oauth-available="managedOAuthAvailable"
 						:use-custom-oauth="useCustomOAuth"
 						:is-quick-connect-mode="isQuickConnectMode"
+						:context-node="contextNode"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@quick-connect="onQuickConnect"

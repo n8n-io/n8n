@@ -9,6 +9,7 @@
 import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import crypto from 'node:crypto';
 
+import { type EvalLogger } from './logger';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
@@ -22,7 +23,6 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
-import { type EvalLogger } from './logger';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -54,12 +54,15 @@ interface WorkflowTestCaseConfig {
 	keepWorkflows: boolean;
 }
 
+/**
+ * All-in-one test case runner: build workflow + run all scenarios + cleanup.
+ * Used by the CLI. The split API (buildWorkflow + executeScenario + cleanupBuild)
+ * is available for custom orchestration (e.g. LangSmith evaluate).
+ */
 export async function runWorkflowTestCase(
 	config: WorkflowTestCaseConfig,
 ): Promise<WorkflowTestCaseResult> {
 	const { client, testCase, logger } = config;
-	const threadId = `eval-${crypto.randomUUID()}`;
-	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs > 0 ? config.timeoutMs : DEFAULT_TIMEOUT_MS;
 
 	const result: WorkflowTestCaseResult = {
@@ -68,25 +71,110 @@ export async function runWorkflowTestCase(
 		scenarioResults: [],
 	};
 
+	const build = await buildWorkflow({
+		client,
+		prompt: testCase.prompt,
+		timeoutMs,
+		preRunWorkflowIds: config.preRunWorkflowIds,
+		claimedWorkflowIds: config.claimedWorkflowIds,
+		logger,
+	});
+
+	if (!build.success || !build.workflowId) {
+		result.buildError = build.error;
+		return result;
+	}
+
+	result.workflowBuildSuccess = true;
+	result.workflowId = build.workflowId;
+	result.workflowJson = build.workflowJsons[0];
+
+	const scenarioStart = Date.now();
+	result.scenarioResults = await runWithConcurrency(
+		testCase.scenarios,
+		async (scenario) => {
+			try {
+				return await executeScenario(
+					client,
+					build.workflowId!,
+					scenario,
+					build.workflowJsons,
+					logger,
+				);
+			} catch (error: unknown) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+				return {
+					scenario,
+					success: false,
+					score: 0,
+					reasoning: `Error: ${errorMessage}`,
+				} satisfies ScenarioResult;
+			}
+		},
+		MAX_CONCURRENT_SCENARIOS,
+	);
+
+	const scenarioMs = Date.now() - scenarioStart;
+	logger.info(
+		`  Scenarios done: ${String(result.scenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]`,
+	);
+
+	if (!config.keepWorkflows) {
+		await cleanupBuild(client, build, logger);
+	}
+
+	return result;
+}
+
+// ---------------------------------------------------------------------------
+// Split API: build once, run scenarios independently
+// ---------------------------------------------------------------------------
+
+export interface BuildResult {
+	success: boolean;
+	workflowId?: string;
+	workflowJsons: WorkflowResponse[];
+	error?: string;
+	/** IDs to pass to cleanupBuild() */
+	createdWorkflowIds: string[];
+	createdDataTableIds: string[];
+}
+
+export interface BuildWorkflowConfig {
+	client: N8nClient;
+	prompt: string;
+	timeoutMs?: number;
+	preRunWorkflowIds: Set<string>;
+	claimedWorkflowIds: Set<string>;
+	logger: EvalLogger;
+}
+
+/**
+ * Build a workflow via Instance AI. Returns the workflow ID for use with
+ * executeScenario(). Call cleanupBuild() when done.
+ */
+export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
+	const { client, prompt, logger } = config;
+	const threadId = `eval-${crypto.randomUUID()}`;
+	const startTime = Date.now();
+	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+
 	const abortController = new AbortController();
 	const events: CapturedEvent[] = [];
 	const approvedRequests = new Set<string>();
 
 	try {
-		// 1. Send prompt to Instance AI and wait for workflow to be built (ONCE)
-		logger.info(`  Building workflow: "${truncate(testCase.prompt, 60)}"`);
+		const buildStart = Date.now();
+		logger.info(`  Building workflow: "${truncate(prompt, 60)}"`);
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
-			() => {
-				// SSE errors are non-fatal — workflow discovery falls back to event-based approach
-			},
+			() => {},
 		);
 
 		await delay(SSE_SETTLE_DELAY_MS);
+		await client.sendMessage(threadId, prompt);
 
-		await client.sendMessage(threadId, testCase.prompt);
-
-		// Wait with shorter timeout for scenario mode
 		await waitForAllActivity({
 			client,
 			threadId,
@@ -100,14 +188,13 @@ export async function runWorkflowTestCase(
 		abortController.abort();
 		await ssePromise.catch(() => {});
 
-		// 2. Capture the built workflow
 		let threadMessages;
 		try {
 			threadMessages = await client.getThreadMessages(threadId);
 		} catch {
-			logger.verbose(`[${threadId}] Thread messages unavailable — using SSE events only`);
-			threadMessages = { messages: [] as never[] };
+			threadMessages = { messages: [] };
 		}
+
 		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
 		const eventOutcome = extractOutcomeFromEvents(events);
 		const outcome = await buildAgentOutcome(
@@ -126,7 +213,6 @@ export async function runWorkflowTestCase(
 		}
 
 		if (outcome.workflowsCreated.length === 0) {
-			// Extract error information from SSE events and thread messages
 			const toolErrors = events
 				.filter((e) => e.type === 'tool-error')
 				.map((e) => {
@@ -160,85 +246,87 @@ export async function runWorkflowTestCase(
 						? `Agent response: ${agentText.slice(0, 500)}`
 						: 'No workflow produced — no error details captured';
 
-			result.buildError = buildError;
-			logger.warn(`  No workflow created for: "${truncate(testCase.prompt, 60)}"`);
-			logger.warn(`  ${buildError.slice(0, 200)}`);
-			return result;
+			return {
+				success: false,
+				error: buildError,
+				workflowJsons: [],
+				createdWorkflowIds: [],
+				createdDataTableIds: outcome.dataTablesCreated,
+			};
 		}
 
-		result.workflowBuildSuccess = true;
-		result.workflowId = outcome.workflowsCreated[0].id;
-		result.workflowJson = outcome.workflowJsons[0];
-
+		const buildMs = Date.now() - buildStart;
 		logger.info(
-			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes)`,
+			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]`,
 		);
 
-		// 3. Run scenarios with bounded concurrency to avoid API rate limits
-		const workflowId = outcome.workflowsCreated[0].id;
+		return {
+			success: true,
+			workflowId: outcome.workflowsCreated[0].id,
+			workflowJsons: outcome.workflowJsons,
+			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
+			createdDataTableIds: outcome.dataTablesCreated,
+		};
+	} catch (error: unknown) {
+		abortController.abort();
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+			workflowJsons: [],
+			createdWorkflowIds: [],
+			createdDataTableIds: [],
+		};
+	}
+}
 
-		for (const scenario of testCase.scenarios) {
-			logger.info(`    Scenario: ${scenario.name}`);
+/**
+ * Execute a single scenario against a pre-built workflow and verify the result.
+ */
+export async function executeScenario(
+	client: N8nClient,
+	workflowId: string,
+	scenario: TestScenario,
+	workflowJsons: WorkflowResponse[],
+	logger: EvalLogger,
+): Promise<ScenarioResult> {
+	return await runScenario(client, scenario, workflowId, workflowJsons, logger);
+}
+
+/**
+ * Clean up workflows and data tables created during a build.
+ */
+export async function cleanupBuild(
+	client: N8nClient,
+	build: BuildResult,
+	logger: EvalLogger,
+): Promise<void> {
+	for (const id of build.createdWorkflowIds) {
+		try {
+			await client.deleteWorkflow(id);
+		} catch {
+			// Best-effort cleanup
 		}
+	}
 
-		result.scenarioResults = await runWithConcurrency(
-			testCase.scenarios,
-			async (scenario) => {
+	if (build.createdDataTableIds.length > 0) {
+		try {
+			const projectId = await client.getPersonalProjectId();
+			for (const dtId of build.createdDataTableIds) {
 				try {
-					return await runScenario(client, scenario, workflowId, outcome.workflowJsons, logger);
-				} catch (error: unknown) {
-					const errorMessage = error instanceof Error ? error.message : String(error);
-					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-					return {
-						scenario,
-						success: false,
-						score: 0,
-						reasoning: `Error: ${errorMessage}`,
-					} satisfies ScenarioResult;
-				}
-			},
-			MAX_CONCURRENT_SCENARIOS,
-		);
-
-		// 4. Cleanup — delete workflows created during build (unless --keep-workflows)
-		if (!config.keepWorkflows) {
-			for (const wf of outcome.workflowsCreated) {
-				try {
-					await client.deleteWorkflow(wf.id);
+					await client.deleteDataTable(projectId, dtId);
 				} catch {
 					// Best-effort cleanup
 				}
 			}
+			logger.verbose(`  Cleaned up ${String(build.createdDataTableIds.length)} data table(s)`);
+		} catch {
+			// Non-fatal — project ID lookup may fail
 		}
-
-		// Clean up data tables created during this run
-		if (outcome.dataTablesCreated.length > 0) {
-			try {
-				const projectId = await client.getPersonalProjectId();
-				for (const dtId of outcome.dataTablesCreated) {
-					try {
-						await client.deleteDataTable(projectId, dtId);
-					} catch {
-						// Best-effort cleanup
-					}
-				}
-				logger.verbose(`  Cleaned up ${String(outcome.dataTablesCreated.length)} data table(s)`);
-			} catch {
-				// Non-fatal — project ID lookup may fail
-			}
-		}
-	} catch (error: unknown) {
-		abortController.abort();
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		result.buildError = errorMessage;
-		logger.error(`  Build failed: ${errorMessage}`);
 	}
-
-	return result;
 }
 
 // ---------------------------------------------------------------------------
-// Scenario execution
+// Scenario execution (internal)
 // ---------------------------------------------------------------------------
 
 async function runScenario(
@@ -248,13 +336,15 @@ async function runScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 ): Promise<ScenarioResult> {
+	const execStart = Date.now();
 	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup);
+	const execMs = Date.now() - execStart;
 
-	logger.verbose(
-		`    [${scenario.name}] Execution ${evalResult.executionId}: ${evalResult.success ? 'success' : 'failed'}` +
-			` (${Object.keys(evalResult.nodeResults).length} nodes, ${evalResult.errors.length} errors)`,
+	logger.info(
+		`    [${scenario.name}] exec=${String(Math.round(execMs / 1000))}s (${Object.keys(evalResult.nodeResults).length} nodes)`,
 	);
 
+	const verifyStart = Date.now();
 	const verificationArtifact = buildVerificationArtifact(scenario, evalResult, workflowJsons);
 
 	const scenarioChecklist: ChecklistItem[] = [
@@ -272,16 +362,20 @@ async function runScenario(
 		workflowJsons,
 	);
 
+	const verifyMs = Date.now() - verifyStart;
 	const passed = verificationResults.length > 0 && verificationResults[0].pass;
 	const result = verificationResults[0];
-	const reasoning = result?.reasoning ?? 'No verification result';
-	const failureCategory = result?.failureCategory;
+	const reasoning = result?.reasoning ?? 'No verification result — LLM verifier returned empty';
+	const failureCategory = result?.failureCategory ?? (result ? undefined : 'verification_failure');
 	const rootCause = result?.rootCause;
 
 	const categoryLabel = failureCategory ? ` [${failureCategory}]` : '';
 	logger.info(
-		`    [${scenario.name}] ${passed ? 'PASS' : 'FAIL'}${categoryLabel}: ${reasoning.slice(0, 100)}`,
+		`    [${scenario.name}] ${passed ? 'PASS' : 'FAIL'}${categoryLabel} verify=${String(Math.round(verifyMs / 1000))}s`,
 	);
+	if (!passed) {
+		logger.info(`    [${scenario.name}] ${reasoning}`);
+	}
 
 	return {
 		scenario,

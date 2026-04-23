@@ -3,6 +3,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CredentialProvider,
+	ModelConfig,
 	ToolDescriptor,
 	JSONObject,
 } from '@n8n/agents';
@@ -13,6 +14,8 @@ import type {
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
 } from './agent-json-config';
+import { mapCredentialForProvider } from './credential-field-mapping';
+import { resolveProviderToolName } from './provider-tool-aliases';
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -29,7 +32,7 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
 	toolExecutor: ToolExecutor;
-	credentialProvider?: CredentialProvider;
+	credentialProvider: CredentialProvider;
 	/** Resolves workflow/node tool refs into BuiltTool instances. */
 	resolveTool?: ToolResolver;
 	/** Memory backend factories keyed by storage preset name. */
@@ -50,28 +53,21 @@ export async function buildFromJson(
 ): Promise<Agent> {
 	const agent = new Agent(config.name);
 
-	// Model: supports both "provider/model-name" string format and
-	// { provider, name } object format (from AgentSchema)
-	const modelValue = config.model as string | { provider?: string | null; name?: string | null };
-	if (typeof modelValue === 'object' && modelValue !== null) {
-		const provider = modelValue.provider ?? '';
-		const name = modelValue.name ?? '';
-		agent.model(provider ? `${provider}/${name}` : name);
+	// Derive the provider prefix for credential field remapping.
+	const slashIdx = config.model.indexOf('/');
+	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
+
+	// Resolve credentials upfront and embed them directly in the model config
+	// object so createModel() receives the full set of fields it needs.
+	if (config.credential) {
+		const raw = await options.credentialProvider.resolve(config.credential);
+		const mapped = mapCredentialForProvider(providerPrefix, raw);
+		agent.model({ id: config.model, ...mapped } as ModelConfig);
 	} else {
-		const slashIdx = modelValue.indexOf('/');
-		if (slashIdx !== -1) {
-			agent.model(modelValue.slice(0, slashIdx), modelValue.slice(slashIdx + 1));
-		} else {
-			agent.model(modelValue);
-		}
+		agent.model(config.model);
 	}
 
-	if (config.credential) agent.credential(config.credential);
 	agent.instructions(config.instructions);
-
-	if (options.credentialProvider) {
-		agent.credentialProvider(options.credentialProvider);
-	}
 
 	// Tools
 	if (config.tools) {
@@ -86,7 +82,8 @@ export async function buildFromJson(
 	// Provider tools
 	if (config.providerTools) {
 		for (const [name, args] of Object.entries(config.providerTools)) {
-			agent.providerTool({ name: name as `${string}.${string}`, args });
+			const resolved = resolveProviderToolName(name);
+			agent.providerTool({ name: resolved as `${string}.${string}`, args });
 		}
 	}
 
@@ -194,6 +191,8 @@ async function applyMemoryFromConfig(
 	if (memoryConfig.semanticRecall) {
 		memory.semanticRecall(memoryConfig.semanticRecall);
 	}
+
+	memory.titleGeneration({ sync: true });
 
 	agent.memory(memory);
 }
