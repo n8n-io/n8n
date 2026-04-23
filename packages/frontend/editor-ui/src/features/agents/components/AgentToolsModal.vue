@@ -22,6 +22,7 @@ import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	getExistingToolNames,
 	nodeTypeToNewToolRef,
+	replaceToolRefInList,
 	toolRefToNode,
 	workflowToNewToolRef,
 } from '../composables/useAgentToolRefAdapter';
@@ -253,7 +254,11 @@ function handleConfigureTool(toolRef: AgentJsonToolRef) {
 			toolRef,
 			existingToolNames: getExistingToolNames(workingTools.value, toolRef),
 			onConfirm: (updatedRef: AgentJsonToolRef) => {
-				workingTools.value = workingTools.value.map((t) => (t === toolRef ? updatedRef : t));
+				// Match by stable `id` (with reference fallback for legacy refs)
+				// against `workingTools` at confirm time — the array may have
+				// been reassigned by the `props.data.tools` watch while the modal
+				// was open, making any snapshot-captured references stale.
+				workingTools.value = replaceToolRefInList(workingTools.value, toolRef, updatedRef);
 				toolTelemetry.trackEdited(updatedRef);
 				commit();
 			},
