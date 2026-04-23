@@ -395,7 +395,7 @@ export class HttpRequestV3 implements INodeType {
 						accumulator[cur.name] = {
 							value: uploadData,
 							options: {
-								filename: binaryData.fileName,
+								filename: binaryData.fileName ?? 'file',
 								contentType: binaryData.mimeType,
 								...(knownLength !== undefined && { knownLength }),
 							},
