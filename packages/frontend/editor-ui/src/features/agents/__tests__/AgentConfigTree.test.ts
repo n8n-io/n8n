@@ -1,7 +1,8 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import AgentConfigTree from '../components/AgentConfigTree.vue';
+import type { AgentJsonConfig } from '../types';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
@@ -11,7 +12,7 @@ describe('AgentConfigTree', () => {
 	it('renders one entry per top-level key of the config, in insertion order', () => {
 		const wrapper = mount(AgentConfigTree, {
 			props: {
-				config: { model: {}, instructions: '', tools: [] },
+				config: { model: {}, instructions: '', tools: [] } as unknown as AgentJsonConfig,
 				selectedKey: null,
 			},
 		});
@@ -22,7 +23,7 @@ describe('AgentConfigTree', () => {
 
 	it('emits select when an entry is clicked', async () => {
 		const wrapper = mount(AgentConfigTree, {
-			props: { config: { model: {}, tools: [] }, selectedKey: null },
+			props: { config: { model: {}, tools: [] } as unknown as AgentJsonConfig, selectedKey: null },
 		});
 		await wrapper.find('[data-key="tools"]').trigger('click');
 		expect(wrapper.emitted('select')?.[0]).toEqual(['tools']);
@@ -30,7 +31,7 @@ describe('AgentConfigTree', () => {
 
 	it('renders an empty state when the config has no keys', () => {
 		const wrapper = mount(AgentConfigTree, {
-			props: { config: {}, selectedKey: null },
+			props: { config: {} as unknown as AgentJsonConfig, selectedKey: null },
 		});
 		expect(wrapper.findAll('[data-testid="agent-config-tree-item"]')).toHaveLength(0);
 		expect(wrapper.find('[data-testid="agent-config-tree-empty"]').exists()).toBe(true);
@@ -45,7 +46,7 @@ describe('AgentConfigTree', () => {
 
 	it('renders unknown keys with a humanized label and generic icon', () => {
 		const wrapper = mount(AgentConfigTree, {
-			props: { config: { customThing: {} }, selectedKey: null },
+			props: { config: { customThing: {} } as unknown as AgentJsonConfig, selectedKey: null },
 		});
 		const item = wrapper.find('[data-key="customThing"]');
 		expect(item.exists()).toBe(true);
@@ -54,7 +55,10 @@ describe('AgentConfigTree', () => {
 
 	it('marks the selected entry with aria-pressed', () => {
 		const wrapper = mount(AgentConfigTree, {
-			props: { config: { model: {}, tools: [] }, selectedKey: 'tools' },
+			props: {
+				config: { model: {}, tools: [] } as unknown as AgentJsonConfig,
+				selectedKey: 'tools',
+			},
 		});
 		expect(wrapper.find('[data-key="tools"]').attributes('aria-pressed')).toBe('true');
 		expect(wrapper.find('[data-key="model"]').attributes('aria-pressed')).toBe('false');

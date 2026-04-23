@@ -5,9 +5,13 @@
  * (PR2 wires it into the section editor).
  */
 import { computed } from 'vue';
+import type { ComponentProps } from 'vue-component-type-helpers';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import type { AgentJsonConfig } from '../types';
+
+type IconProp = ComponentProps<typeof N8nIcon>['icon'];
 
 const props = defineProps<{
 	config: AgentJsonConfig | null;
@@ -21,10 +25,10 @@ const i18n = useI18n();
 interface SectionDescriptor {
 	key: string;
 	label: string;
-	icon: string;
+	icon: IconProp;
 }
 
-const KNOWN_SECTIONS: Record<string, { i18nKey: string; icon: string }> = {
+const KNOWN_SECTIONS: Record<string, { i18nKey: BaseTextKey; icon: IconProp }> = {
 	model: { i18nKey: 'agents.builder.sections.model', icon: 'brain' }, // 'cpu' not in updatedIconSet — using 'brain'
 	instructions: { i18nKey: 'agents.builder.sections.instructions', icon: 'file-text' },
 	triggers: { i18nKey: 'agents.builder.sections.triggers', icon: 'zap' },
@@ -46,7 +50,7 @@ const sections = computed<SectionDescriptor[]>(() => {
 		return {
 			key,
 			label: known ? i18n.baseText(known.i18nKey) : humanize(key),
-			icon: known?.icon ?? 'file',
+			icon: (known?.icon ?? 'file') as IconProp,
 		};
 	});
 });

@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import AgentSectionEditor from '../components/AgentSectionEditor.vue';
 import { tryParseConfig } from '../components/agentSectionEditor.utils';
+import type { AgentJsonConfig } from '../types';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
@@ -12,7 +13,7 @@ vi.mock('@n8n/i18n', () => ({
 describe('AgentSectionEditor', () => {
 	it('mounts with a serialized JSON doc derived from the config prop', async () => {
 		const wrapper = mount(AgentSectionEditor, {
-			props: { config: { model: { provider: 'openai' } } },
+			props: { config: { model: { provider: 'openai' } } as unknown as AgentJsonConfig },
 		});
 		await nextTick();
 		const text = wrapper.element.querySelector('.cm-content')?.textContent ?? '';
@@ -21,7 +22,9 @@ describe('AgentSectionEditor', () => {
 	});
 
 	it('exposes a container with the expected testid', () => {
-		const wrapper = mount(AgentSectionEditor, { props: { config: {} } });
+		const wrapper = mount(AgentSectionEditor, {
+			props: { config: {} as unknown as AgentJsonConfig },
+		});
 		expect(wrapper.find('[data-testid="agent-section-editor"]').exists()).toBe(true);
 	});
 
