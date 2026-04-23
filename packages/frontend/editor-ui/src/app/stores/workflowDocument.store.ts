@@ -10,7 +10,10 @@ import { useWorkflowDocumentDescription } from './workflowDocument/useWorkflowDo
 import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
 import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
-import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
+import {
+	useWorkflowDocumentSettings,
+	DEFAULT_SETTINGS,
+} from './workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
@@ -23,13 +26,15 @@ import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDo
 import { useWorkflowDocumentGraph } from './workflowDocument/useWorkflowDocumentGraph';
 import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDocumentExpression';
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
+import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IPinData } from 'n8n-workflow';
-import type { IWorkflowDb } from '@/Interface';
-import { DEFAULT_SETTINGS } from './workflowDocument/useWorkflowDocumentSettings';
 
 export {
 	getPinDataSize,
@@ -125,7 +130,20 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
 
-		const workflowDocumentName = useWorkflowDocumentName();
+		const workflowsStore = useWorkflowsStore();
+		const nodeTypesStore = useNodeTypesStore();
+		const nodeHelpers = useNodeHelpers();
+
+		const { workflowObject, ...workflowDocumentWorkflowObject } = useWorkflowDocumentWorkflowObject(
+			{
+				workflowId,
+				getNodeTypes: () => workflowsStore.getNodeTypes(),
+			},
+		);
+
+		const workflowDocumentName = useWorkflowDocumentName({
+			syncWorkflowObject: (name) => workflowDocumentWorkflowObject.syncWorkflowObjectName(name),
+		});
 		const workflowDocumentActive = useWorkflowDocumentActive();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
 		const workflowDocumentSharedWithProjects = useWorkflowDocumentSharedWithProjects();
@@ -137,30 +155,36 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentPinData = useWorkflowDocumentPinData();
 		const workflowDocumentScopes = useWorkflowDocumentScopes();
 		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
-		const workflowDocumentSettings = useWorkflowDocumentSettings();
+		const workflowDocumentSettings = useWorkflowDocumentSettings({
+			syncWorkflowObject: (settings) =>
+				workflowDocumentWorkflowObject.syncWorkflowObjectSettings(settings),
+		});
 		const workflowDocumentParentFolder = useWorkflowDocumentParentFolder();
 		const workflowDocumentUsedCredentials = useWorkflowDocumentUsedCredentials();
 		const workflowDocumentVersionData = useWorkflowDocumentVersionData();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
-		const nodeTypesStore = useNodeTypesStore();
 		const workflowDocumentNodeMetadata = useWorkflowDocumentNodeMetadata();
 		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 			nodeMetadata: workflowDocumentNodeMetadata,
+			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
+			syncWorkflowObject: (nodes) => workflowDocumentWorkflowObject.syncWorkflowObjectNodes(nodes),
+			unpinNodeData: (name) => workflowDocumentPinData.unpinNodeData(name),
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
 				getNodeById: (id) => workflowDocumentNodes.getNodeById(id),
+				syncWorkflowObject: (connections) =>
+					workflowDocumentWorkflowObject.syncWorkflowObjectConnections(connections),
 			});
-		const workflowDocumentGraph = useWorkflowDocumentGraph();
-		const workflowDocumentExpression = useWorkflowDocumentExpression();
+		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
+		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
 		// store is where cross-concern side effects are wired. When adding new
 		// composables, check workflowsStore for hidden cross-cuts that need to
-		// surface here. Known future ones:
-		//   - removeNode → unpinNodeData (currently in workflowsStore.removeNode)
+		// surface here.
 
 		onNodesStateDirty(() => useUIStore().markStateDirty());
 		onConnectionsStateDirty(() => useUIStore().markStateDirty());
@@ -211,6 +235,15 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentNodes.setNodes(workflow.nodes ?? []);
 			workflowDocumentConnections.setConnections(workflow.connections ?? {});
 			workflowDocumentPinData.setPinData(workflow.pinData ?? {});
+
+			workflowDocumentWorkflowObject.initWorkflowObject({
+				id: workflow.id,
+				name: workflow.name,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				settings: workflow.settings ?? { ...DEFAULT_SETTINGS },
+				pinData: workflow.pinData ?? {},
+			});
 		}
 
 		function reset() {
@@ -238,6 +271,15 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentConnections.setConnections({});
 			workflowDocumentPinData.setPinData({});
 			workflowDocumentViewport.setViewport(null);
+
+			workflowDocumentWorkflowObject.initWorkflowObject({
+				id: workflowId,
+				name: '',
+				nodes: [],
+				connections: {},
+				settings: { ...DEFAULT_SETTINGS },
+				pinData: {},
+			});
 		}
 
 		function getSnapshot(): WorkflowObjectAccessors {

@@ -70,11 +70,10 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	const workflowStore = useWorkflowsStore();
 	const workflowState = useWorkflowState();
 
-	workflowStore.setWorkflow(workflow);
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.hydrate(workflow);
 
-	vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowStore.workflowId))),
-	);
+	vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 
 	if (pinData) {
 		workflowStore.workflow.pinData = Object.fromEntries(nodes.map((n) => [n.name, pinData]));
