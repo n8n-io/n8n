@@ -219,7 +219,7 @@
     "@xata.io/client": "0.28.4",
     "@zilliz/milvus2-sdk-node": "^2.5.7",
     "basic-auth": "catalog:",
-    "cheerio": "1.0.0",
+    "cheerio": "1.1.0",
     "cohere-ai": "7.14.0",
     "d3-dsv": "2.0.0",
     "epub2": "3.0.2",
