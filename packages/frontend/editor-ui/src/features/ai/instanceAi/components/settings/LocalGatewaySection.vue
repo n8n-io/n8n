@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { computed, ref, onMounted } from 'vue';
-import { N8nHeading, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { computed } from 'vue';
+import { N8nTooltip, N8nIconButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
@@ -10,23 +10,7 @@ import { useSettingsField } from './useSettingsField';
 const i18n = useI18n();
 const { store } = useSettingsField();
 
-const isLocalGatewayDisabled = computed(() => {
-	if (store.preferencesDraft.localGatewayDisabled !== undefined)
-		return store.preferencesDraft.localGatewayDisabled;
-	return store.preferences?.localGatewayDisabled ?? false;
-});
-
-const copied = ref(false);
-const displayCommand = computed(() => store.setupCommand ?? 'npx @n8n/computer-use');
-
-async function copyCommand() {
-	if (!store.setupCommand) return;
-	await navigator.clipboard.writeText(store.setupCommand);
-	copied.value = true;
-	setTimeout(() => {
-		copied.value = false;
-	}, 2000);
-}
+const isLocalGatewayDisabled = computed(() => store.preferences?.localGatewayDisabled ?? false);
 
 const CATEGORY_META: Record<string, { icon: IconName; labelKey: BaseTextKey }> = {
 	filesystem: { icon: 'folder-open', labelKey: 'instanceAi.filesystem.category.filesystem' },
@@ -54,9 +38,7 @@ const displayCategories = computed(() => {
 		if (!meta) continue;
 		const labelKey = meta.labelKey;
 
-		// Merge screenshot + mouse-keyboard into one "Computer use" pill
 		if (seen.has(labelKey)) {
-			// If this duplicate is enabled, upgrade the existing pill to enabled
 			if (cat.enabled) {
 				const existing = result.find((r) => r.label === i18n.baseText(labelKey));
 				if (existing) existing.enabled = true;
@@ -82,12 +64,6 @@ const displayCategories = computed(() => {
 	}
 	return result.sort((a, b) => Number(b.enabled) - Number(a.enabled));
 });
-
-onMounted(() => {
-	if (!store.isGatewayConnected) {
-		void store.fetchSetupCommand();
-	}
-});
 </script>
 
 <template>
@@ -104,7 +80,7 @@ onMounted(() => {
 			<ElSwitch
 				:model-value="!isLocalGatewayDisabled"
 				:disabled="store.isLocalGatewayDisabled"
-				@update:model-value="store.setPreferenceField('localGatewayDisabled', !$event)"
+				@update:model-value="store.persistLocalGatewayPreference(!$event)"
 			/>
 		</div>
 
@@ -115,8 +91,7 @@ onMounted(() => {
 			</N8nText>
 		</div>
 
-		<template v-if="!isLocalGatewayDisabled && !store.isLocalGatewayDisabled">
-			<!-- Gateway connected -->
+		<template v-if="!store.isLocalGatewayDisabledForUser">
 			<div v-if="store.isGatewayConnected" :class="$style.connectedBlock">
 				<div :class="$style.statusRow">
 					<span :class="[$style.dot, $style.dotConnected]" />
@@ -197,11 +172,6 @@ onMounted(() => {
 	padding: var(--spacing--4xs) 0;
 }
 
-.switchLabel {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-}
-
 .warningRow {
 	display: flex;
 	align-items: center;
@@ -267,62 +237,8 @@ onMounted(() => {
 	background: var(--color--success);
 }
 
-@keyframes pulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-
-	50% {
-		opacity: 0.4;
-	}
-}
-
-.connectingRow {
+.connectRow {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.spinner {
-	width: 14px;
-	height: 14px;
-	border: 2px solid var(--color--foreground);
-	border-top-color: var(--color--primary);
-	border-radius: 50%;
-	animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-	to {
-		transform: rotate(360deg);
-	}
-}
-
-.setupBlock {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs);
-	background: var(--color--foreground--tint-2);
-	border-radius: var(--radius--lg);
-}
-
-.commandBlock {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	background: var(--color--background);
-	border-radius: var(--radius);
-	border: var(--border);
-}
-
-.commandText {
-	flex: 1;
-	font-size: var(--font-size--3xs);
-	font-family: monospace;
-	word-break: break-all;
-	color: var(--color--text);
+	justify-content: flex-start;
 }
 </style>

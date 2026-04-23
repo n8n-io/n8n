@@ -64,12 +64,13 @@ vi.mock('../instanceAi.store', () => ({
 vi.mock('../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => ({
 		isLocalGatewayDisabled: true,
+		isLocalGatewayDisabledForUser: true,
+		hasEverConnectedGateway: false,
 		refreshModuleSettings: vi.fn(async () => undefined),
-		startDaemonProbing: vi.fn(),
+		ensurePreferencesLoaded: vi.fn(async () => undefined),
+		fetchGatewayStatus: vi.fn(async () => undefined),
+		connectLocalGateway: vi.fn(),
 		startGatewayPushListener: vi.fn(),
-		pollGatewayStatus: vi.fn(),
-		stopDaemonProbing: vi.fn(),
-		stopGatewayPolling: vi.fn(),
 		stopGatewayPushListener: vi.fn(),
 	}),
 }));
