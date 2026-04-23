@@ -158,6 +158,7 @@ async function executeNpmCli(args: string[], cwd?: string): Promise<string> {
 
 	const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
 	return stdoutToString(stdout);
+}
 
 function redactAuthTokens(text: string): string {
 	return text.replace(/_authToken=\S+/g, '_authToken=*****');
@@ -167,7 +168,6 @@ function registryAuthKey(registryUrl: string): string {
 	const url = new URL(registryUrl);
 	const pathname = url.pathname.replace(/\/+$/, '');
 	return `${url.host}${pathname}`;
-
 }
 
 /**
