@@ -125,21 +125,14 @@ export class McpSettingsController {
 
 		const updatedWorkflow = await this.workflowService.update(req.user, workflowUpdate, workflowId);
 
-		// Notify other tabs / users that have this workflow open so they can
-		// resync their local `availableInMCP` and `expectedChecksum` without
-		// waiting for a full reload. Non-blocking: a broadcast failure must
-		// not fail the write.
-		try {
-			await this.collaborationService.broadcastWorkflowMcpAvailabilityChanged(
-				workflowId,
-				dto.availableInMCP,
-			);
-		} catch (error) {
-			this.logger.warn('Failed to broadcast workflow MCP availability change', {
-				workflowId,
-				cause: error instanceof Error ? error.message : String(error),
+		void this.collaborationService
+			.broadcastWorkflowMcpAvailabilityChanged(workflowId, dto.availableInMCP)
+			.catch((error) => {
+				this.logger.warn('Failed to broadcast workflow MCP availability change', {
+					workflowId,
+					cause: error instanceof Error ? error.message : String(error),
+				});
 			});
-		}
 
 		return {
 			id: updatedWorkflow.id,

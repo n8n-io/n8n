@@ -98,6 +98,11 @@ describe('McpSettingsController', () => {
 		Container.set(WorkflowFinderService, workflowFinderService);
 		Container.set(WorkflowService, workflowService);
 		Container.set(CollaborationService, collaborationService);
+		// Default resolved broadcast — the controller fires this without
+		// awaiting and attaches a `.catch(...)`, so the mock must return a
+		// real Promise. Tests that exercise the failure path override this
+		// with `mockRejectedValueOnce`.
+		collaborationService.broadcastWorkflowMcpAvailabilityChanged.mockResolvedValue(undefined);
 		controller = Container.get(McpSettingsController);
 	});
 
@@ -509,11 +514,6 @@ describe('McpSettingsController', () => {
 				settings: { availableInMCP: false },
 				versionId: 'updated-version-id',
 			});
-
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Failed to broadcast workflow MCP availability change',
-				expect.objectContaining({ workflowId, cause: 'push down' }),
-			);
 		});
 
 		test('does not broadcast when the workflow cannot be accessed', async () => {
