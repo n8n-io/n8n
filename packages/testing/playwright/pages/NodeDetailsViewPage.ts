@@ -204,10 +204,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('parameter-input-hint');
 	}
 
-	getParameterInputHintWithText(text: string) {
-		return this.getParameterInputHint().getByText(text);
-	}
-
 	getInputLabel() {
 		return this.container.getByTestId('input-label');
 	}
@@ -937,10 +933,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getWebhookTestEvent() {
 		return this.container.getByText('Listening for test event');
-	}
-
-	getAddOptionDropdown() {
-		return this.container.getByRole('combobox', { name: 'Add option' });
 	}
 
 	async setInvalidExpression({
