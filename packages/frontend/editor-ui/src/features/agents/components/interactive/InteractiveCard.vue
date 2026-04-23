@@ -34,7 +34,7 @@ const emit = defineEmits<{
  * card from the open checkpoint can't be matched to a backend suspension —
  * normally an after-effect of expired or pruned checkpoint state.
  */
-const disabled = computed(() => props.payload.resolvedAt != null || !props.payload.runId);
+const disabled = computed(() => !!props.payload.resolvedAt || !props.payload.runId);
 
 function onSubmit(resumeData: unknown) {
 	emit('submit', resumeData);
@@ -45,7 +45,7 @@ function onSubmit(resumeData: unknown) {
 	<AskCredentialCard
 		v-if="payload.toolName === ASK_CREDENTIAL_TOOL_NAME && projectId && agentId"
 		:purpose="payload.input.purpose"
-		:credential-types="payload.input.credentialTypes"
+		:credential-type="payload.input.credentialType"
 		:node-type="payload.input.nodeType"
 		:credential-slot="payload.input.slot"
 		:project-id="projectId"

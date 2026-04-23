@@ -53,9 +53,11 @@ export const askCredentialInputSchema = z.object({
 		.string()
 		.optional()
 		.describe('The n8n node type requiring this credential, e.g. "n8n-nodes-base.slack"'),
-	credentialTypes: z
-		.array(z.string())
-		.describe('Accepted credential type names for this slot, e.g. ["slackApi", "slackOAuth2Api"]'),
+	credentialType: z
+		.string()
+		.describe(
+			'The credential type name to request for this slot, e.g. "slackApi". When the slot accepts multiple credential types, pick the single best match (typically the OAuth or first listed type).',
+		),
 	slot: z.string().optional().describe('Credential slot name on the node, e.g. "slackApi"'),
 });
 

@@ -1,56 +1,78 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-explicit-any -- test-only */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { ref } from 'vue';
 
-const fetchAllCredentials = vi.fn(async () => undefined);
-const allUsableCredentialsByType = ref<
-	Record<string, Array<{ id: string; name: string; type: string; updatedAt: string }>>
->({});
-const $onAction = vi.fn(() => () => undefined);
-const getCredentialTypeByName = vi.fn(() => ({ displayName: 'Slack API' }));
-const allCredentials = ref<Array<{ id: string; name: string }>>([]);
+const credentialsById: Record<string, { id: string; name: string }> = {};
+const getCredentialById = vi.fn((id: string) => credentialsById[id]);
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
-		fetchAllCredentials,
-		allUsableCredentialsByType: allUsableCredentialsByType.value,
-		getCredentialTypeByName,
-		allCredentials: allCredentials.value,
-		$onAction,
+		getCredentialById,
 	}),
 }));
 
-const openNewCredential = vi.fn();
-vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({ openNewCredential }),
-}));
+vi.mock('@n8n/i18n', () => {
+	const baseText = (k: string, opts?: { interpolate?: Record<string, string> }) => {
+		if (opts?.interpolate) return `${k}:${Object.values(opts.interpolate).join(',')}`;
+		return k;
+	};
+	return {
+		useI18n: () => ({ baseText }),
+		i18n: { baseText },
+	};
+});
 
-vi.mock('@/features/collaboration/projects/projects.store', () => ({
-	useProjectsStore: () => ({
-		currentProject: { scopes: ['credential:create'] },
-		personalProject: { scopes: ['credential:create'] },
-	}),
-}));
-
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (k: string, opts?: { interpolate?: Record<string, string> }) => {
-			if (opts?.interpolate) return `${k}:${Object.values(opts.interpolate).join(',')}`;
-			return k;
-		},
-	}),
-}));
-
-vi.mock('@n8n/permissions', () => ({
-	getResourcePermissions: () => ({ credential: { create: true } }),
-}));
+/**
+ * Stub NodeCredentials so the test can drive the credentialSelected event
+ * without booting the full component graph (which pulls in stores, the
+ * AI gateway, ndv event bus, etc.). The stub exposes the key inputs as
+ * data attributes so we can assert prop wiring, plus a "pick" button to
+ * simulate the user choosing a credential and a "clear" button to simulate
+ * deselection.
+ */
+const NodeCredentialsStub = {
+	props: {
+		node: { type: Object, required: true },
+		overrideCredType: { type: String, default: '' },
+		projectId: { type: String, default: '' },
+		standalone: { type: Boolean, default: false },
+		hideIssues: { type: Boolean, default: false },
+		readonly: { type: Boolean, default: false },
+	},
+	emits: ['credentialSelected'],
+	template: `
+		<div
+			data-testid="node-credentials-stub"
+			:data-override-cred-type="overrideCredType"
+			:data-project-id="projectId"
+			:data-standalone="String(standalone)"
+			:data-hide-issues="String(hideIssues)"
+			:data-readonly="String(readonly)"
+			:data-node-type="node?.type"
+		>
+			<button
+				data-testid="stub-pick-credential"
+				@click="$emit('credentialSelected', {
+					name: node.name,
+					properties: { credentials: { [overrideCredType]: { id: 'cred-1', name: 'Acme Slack' } } },
+				})"
+			>pick</button>
+			<button
+				data-testid="stub-clear-credential"
+				@click="$emit('credentialSelected', {
+					name: node.name,
+					properties: { credentials: {} },
+				})"
+			>clear</button>
+		</div>
+	`,
+};
 
 import AskCredentialCard from '../components/interactive/AskCredentialCard.vue';
 
 const baseProps = {
 	purpose: 'Slack credential',
-	credentialTypes: ['slackApi'],
+	credentialType: 'slackApi',
 	projectId: 'p1',
 	agentId: 'a1',
 };
@@ -60,6 +82,7 @@ function mountCard(props: Record<string, unknown> = {}) {
 		props: { ...baseProps, ...props },
 		global: {
 			stubs: {
+				NodeCredentials: NodeCredentialsStub,
 				N8nButton: {
 					props: ['disabled', 'type', 'size', 'variant'],
 					template:
@@ -67,20 +90,6 @@ function mountCard(props: Record<string, unknown> = {}) {
 				},
 				N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size', 'color'] },
 				N8nText: { template: '<span><slot/></span>', props: ['size', 'bold', 'color', 'tag'] },
-				N8nInputLabel: {
-					template: '<label><slot/></label>',
-					props: ['label', 'bold', 'size', 'color'],
-				},
-				N8nSelect: {
-					props: ['modelValue', 'disabled', 'placeholder'],
-					emits: ['update:modelValue'],
-					template:
-						'<select :disabled="disabled" data-testid="ask-credential-select" :value="modelValue" @change="$emit(\'update:modelValue\', ($event.target as HTMLSelectElement).value)"><slot/></select>',
-				},
-				N8nOption: {
-					props: ['label', 'value'],
-					template: '<option :value="value">{{ label }}</option>',
-				},
 			},
 		},
 	});
@@ -88,27 +97,23 @@ function mountCard(props: Record<string, unknown> = {}) {
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	allUsableCredentialsByType.value = {};
-	allCredentials.value = [];
+	for (const id of Object.keys(credentialsById)) delete credentialsById[id];
+	credentialsById['cred-1'] = { id: 'cred-1', name: 'Acme Slack' };
+	credentialsById['cred-9'] = { id: 'cred-9', name: 'Picked Slack' };
 });
 
 describe('AskCredentialCard', () => {
-	it('renders the empty state and exposes a "setup credential" button when no creds match', async () => {
+	it('renders the NodeCredentials picker with the correct override type, project and standalone flags', async () => {
 		const wrapper = mountCard();
 		await flushPromises();
 
-		expect(wrapper.find('[data-testid="ask-credential-empty-state"]').exists()).toBe(true);
-		const setupBtn = wrapper.find('[data-testid="ask-credential-setup-button"]');
-		expect(setupBtn.exists()).toBe(true);
-	});
-
-	it('opens the credential modal when "setup credential" is clicked', async () => {
-		const wrapper = mountCard();
-		await flushPromises();
-
-		await wrapper.find('[data-testid="ask-credential-setup-button"]').trigger('click');
-
-		expect(openNewCredential).toHaveBeenCalledWith('slackApi', false, false, 'p1');
+		const stub = wrapper.find('[data-testid="node-credentials-stub"]');
+		expect(stub.exists()).toBe(true);
+		expect(stub.attributes('data-override-cred-type')).toBe('slackApi');
+		expect(stub.attributes('data-project-id')).toBe('p1');
+		expect(stub.attributes('data-standalone')).toBe('true');
+		expect(stub.attributes('data-hide-issues')).toBe('true');
+		expect(stub.attributes('data-readonly')).toBe('false');
 	});
 
 	it('emits skipped: true when Cancel is pressed', async () => {
@@ -122,46 +127,45 @@ describe('AskCredentialCard', () => {
 		expect(emitted[0][0]).toEqual({ skipped: true });
 	});
 
-	it('auto-selects the most recently updated credential and uses it when confirm is clicked', async () => {
-		allUsableCredentialsByType.value = {
-			slackApi: [
-				{ id: 'cred-old', name: 'Old', type: 'slackApi', updatedAt: '2024-01-01' },
-				{ id: 'cred-new', name: 'New', type: 'slackApi', updatedAt: '2025-06-01' },
-			],
-		};
-
+	it('emits the chosen credential when the confirm button is clicked after a pick', async () => {
 		const wrapper = mountCard();
 		await flushPromises();
 
-		await wrapper.find('[data-testid="ask-credential-confirm"]').trigger('click');
+		// Confirm is disabled until a credential is selected.
+		const confirmBtn = wrapper.find('[data-testid="ask-credential-confirm"]');
+		expect((confirmBtn.element as HTMLButtonElement).disabled).toBe(true);
 
-		const emitted = wrapper.emitted('submit') as unknown[][];
-		expect(emitted[0][0]).toEqual({ credentialId: 'cred-new', credentialName: 'New' });
-	});
-
-	it('emits the chosen credential when the confirm button is clicked', async () => {
-		allUsableCredentialsByType.value = {
-			slackApi: [{ id: 'cred-1', name: 'Acme Slack', type: 'slackApi', updatedAt: '2025-01-01' }],
-		};
-
-		const wrapper = mountCard();
-		await flushPromises();
-
+		await wrapper.find('[data-testid="stub-pick-credential"]').trigger('click');
 		await wrapper.find('[data-testid="ask-credential-confirm"]').trigger('click');
 
 		const emitted = wrapper.emitted('submit') as unknown[][];
 		expect(emitted[0][0]).toEqual({ credentialId: 'cred-1', credentialName: 'Acme Slack' });
 	});
 
-	it('does not emit when the confirm button is clicked while disabled', async () => {
-		allUsableCredentialsByType.value = {
-			slackApi: [{ id: 'cred-1', name: 'Acme Slack', type: 'slackApi', updatedAt: '2025-01-01' }],
-		};
+	it('clears the selection when NodeCredentials emits an empty credentials map', async () => {
+		const wrapper = mountCard();
+		await flushPromises();
 
+		await wrapper.find('[data-testid="stub-pick-credential"]').trigger('click');
+		await wrapper.find('[data-testid="stub-clear-credential"]').trigger('click');
+
+		const confirmBtn = wrapper.find('[data-testid="ask-credential-confirm"]');
+		expect((confirmBtn.element as HTMLButtonElement).disabled).toBe(true);
+	});
+
+	it('does not render the confirm button when disabled', async () => {
 		const wrapper = mountCard({ disabled: true });
 		await flushPromises();
 
 		expect(wrapper.find('[data-testid="ask-credential-confirm"]').exists()).toBe(false);
+	});
+
+	it('forwards the disabled flag to NodeCredentials as readonly', async () => {
+		const wrapper = mountCard({ disabled: true });
+		await flushPromises();
+
+		const stub = wrapper.find('[data-testid="node-credentials-stub"]');
+		expect(stub.attributes('data-readonly')).toBe('true');
 	});
 
 	it('renders the resolved credential name when given a resolvedValue with credentialName', async () => {
@@ -180,18 +184,5 @@ describe('AskCredentialCard', () => {
 		});
 		await flushPromises();
 		expect(wrapper.text()).toContain('Skipped');
-	});
-
-	it('subscribes to the credentials store on mount and unsubscribes on unmount', async () => {
-		const unsubscribe = vi.fn();
-		$onAction.mockReturnValueOnce(unsubscribe);
-
-		const wrapper = mountCard();
-		await flushPromises();
-		await wrapper.find('[data-testid="ask-credential-setup-button"]').trigger('click');
-		expect($onAction).toHaveBeenCalled();
-
-		wrapper.unmount();
-		expect(unsubscribe).toHaveBeenCalled();
 	});
 });

@@ -118,9 +118,10 @@ via write_config or patch_config.
 ### ask_credential
 When: about to add (or change) a node tool whose node requires credentials.
 Call ONCE per slot, BEFORE write_config / patch_config that introduces the
-tool. Pass \`credentialTypes\` from the slot's accepted types (from
-get_node_types) and \`purpose\` (one short sentence, e.g. "Slack credential for
-posting messages").
+tool. Pass \`credentialType\` (a single credential type name picked from the
+slot's accepted types in get_node_types — when the slot accepts multiple,
+choose the most appropriate one, typically OAuth or the first listed) and
+\`purpose\` (one short sentence, e.g. "Slack credential for posting messages").
 Returns: { credentialId, credentialName } or { skipped: true }.
 After (success): set \`tools[i].node.credentials.<slot> = { id: credentialId,
 name: credentialName }\`. After (skipped): omit the slot and tell the user.
@@ -246,7 +247,7 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 2. search_nodes({ query: "slack" }) → ...
 3. get_node_types({ nodeType: "n8n-nodes-base.slack" }) → ...
 4. ask_credential({ purpose: "Slack workspace to read/post messages",
-       nodeType: "n8n-nodes-base.slack", credentialTypes: ["slackApi"],
+       nodeType: "n8n-nodes-base.slack", credentialType: "slackApi",
        slot: "slackApi" })
    → { credentialId: "xyz", credentialName: "Acme Slack" }
 5. write_config({ ...

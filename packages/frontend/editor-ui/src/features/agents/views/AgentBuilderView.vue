@@ -6,6 +6,7 @@ import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
@@ -31,6 +32,7 @@ const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
+const credentialsStore = useCredentialsStore();
 const { showError } = useToast();
 
 const projectId = computed(
@@ -436,6 +438,13 @@ async function initialize() {
 	await fetchConfig(projectId.value, agentId.value);
 	builderTelemetry.captureToolsBaseline();
 	void sessionsStore.fetchThreads(projectId.value, agentId.value);
+	// Warm the credentials store so AskCredentialCard (rendered inside the
+	// build chat panel) can render its picker without a per-card fetch.
+	// Best-effort — failures here just mean the picker shows its empty state
+	// until the user creates one. fetchCredentialTypes(false) short-circuits
+	// when types are already loaded, so it's safe to call on every agent switch.
+	void credentialsStore.fetchAllCredentials({ projectId: projectId.value }).catch(() => undefined);
+	void credentialsStore.fetchCredentialTypes(false).catch(() => undefined);
 	void (async () => {
 		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 		// will correct it once the user expands the Triggers section.

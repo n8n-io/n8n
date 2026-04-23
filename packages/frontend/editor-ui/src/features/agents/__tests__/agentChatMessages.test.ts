@@ -58,7 +58,7 @@ describe('rebuildInteractiveFromHistory', () => {
 		const result = rebuildInteractiveFromHistory({
 			tool: ASK_CREDENTIAL_TOOL_NAME,
 			toolCallId: 'call-2',
-			input: { purpose: 'slack', credentialTypes: ['slackApi'] },
+			input: { purpose: 'slack', credentialType: 'slackApi' },
 			output: { skipped: true },
 			state: 'done',
 		});
@@ -225,7 +225,7 @@ describe('buildDisplayGroups — interactive payloads', () => {
 				interactive: {
 					toolName: ASK_CREDENTIAL_TOOL_NAME,
 					toolCallId: 'c3',
-					input: { purpose: 'Slack', credentialTypes: ['slackApi'] },
+					input: { purpose: 'Slack', credentialType: 'slackApi' },
 				},
 				status: 'awaitingUser',
 			},
@@ -255,7 +255,7 @@ describe('applyOpenSuspensions', () => {
 				interactive: {
 					toolName: ASK_CREDENTIAL_TOOL_NAME,
 					toolCallId: 'c-open',
-					input: { purpose: 'Slack', credentialTypes: ['slackApi'] },
+					input: { purpose: 'Slack', credentialType: 'slackApi' },
 				},
 				status: 'awaitingUser',
 			},

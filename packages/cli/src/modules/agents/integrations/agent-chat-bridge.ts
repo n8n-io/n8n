@@ -545,8 +545,8 @@ export class AgentChatBridge {
 					message?: string;
 					components: Array<{ type: string; [key: string]: unknown }>;
 				},
-				runId!,
-				toolCallId!,
+				runId,
+				toolCallId,
 				riResumeSchema,
 				this.getShortenCallback(),
 				this.integrationType,

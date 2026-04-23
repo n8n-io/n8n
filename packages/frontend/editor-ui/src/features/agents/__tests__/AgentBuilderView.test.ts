@@ -18,6 +18,13 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({ personalProject: { id: 'p1' } }),
 }));
 
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({
+		fetchAllCredentials: vi.fn().mockResolvedValue(undefined),
+		fetchCredentialTypes: vi.fn().mockResolvedValue(undefined),
+	}),
+}));
+
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
