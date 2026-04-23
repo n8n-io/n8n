@@ -173,7 +173,7 @@ export default workflow('id', 'name')
 
 <multi_way_routing>
 
-Switch rules use \`rules.values\` (NOT \`rules.rules\`). Each rule needs \`outputKey\` and a complete \`conditions\` object.
+Each rule needs \`outputKey\` and a complete \`conditions\` object.
 
 \`onCase(index, target)\` takes a **numeric index** — entry 0 targets the first rule's \`outputKey\`, entry 1 the second, and so on.
 
@@ -256,12 +256,12 @@ export default workflow('id', 'name')
 
 <batch_processing>
 
-To branch per item inside a batch, nest the \`ifElse\` inside \`.onEachBatch(...)\` via a \`NodeChain\`:
+To branch per item inside a batch, nest the \`ifElse\` inside \`.onEachBatch(...)\`:
 
 \`\`\`javascript
 // To branch per batch item, chain the conditional inside onEachBatch:
 sibNode
-  .onEachBatch(prepareItem.to(ifElse.onTrue(actionA).onFalse(actionB)).to(nextBatch(sibNode)))
+  .onEachBatch(ifElse.onTrue(actionA).onFalse(actionB).to(nextBatch(sibNode)))
   .onDone(finalizeResults);
 \`\`\`
 
