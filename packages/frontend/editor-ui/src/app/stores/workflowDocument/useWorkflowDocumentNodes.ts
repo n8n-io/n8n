@@ -23,7 +23,6 @@ import findLast from 'lodash/findLast';
 import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
 import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
-import { createWorkflowDocumentId, useWorkflowDocumentStore } from '../workflowDocument.store';
 import { isPresent } from '@/app/utils/typesUtils';
 
 // --- Event types ---
@@ -58,9 +57,6 @@ export interface WorkflowDocumentNodesDeps {
 // will go away.
 export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
 
 	const onNodesChange = createEventHook<NodesChangeEvent>();
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
@@ -157,7 +153,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function applyRemoveNodeById(id: string) {
-		const node = workflowDocumentStore.value.getNodeById(id);
+		const node = workflowsStore.workflow.nodes.find((n) => n.id === id);
 		const idx = workflowsStore.workflow.nodes.findIndex((n) => n.id === id);
 		if (idx !== -1) {
 			workflowsStore.workflow.nodes = [
@@ -188,7 +184,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
 	function getNodeById(id: string): INodeUi | undefined {
-		return workflowDocumentStore.value.getNodeById(id);
+		return workflowsStore.workflow.nodes.find((node) => node.id === id);
 	}
 
 	function getNodeByName(name: string): INodeUi | null {
