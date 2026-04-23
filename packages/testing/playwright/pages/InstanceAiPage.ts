@@ -171,6 +171,62 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-workflow-setup-card');
 	}
 
+	getWorkflowSetupStepCounter(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-step-counter');
+	}
+
+	getWorkflowSetupPrevButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-prev');
+	}
+
+	getWorkflowSetupNextButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-next');
+	}
+
+	getWorkflowSetupLaterButton(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-later');
+	}
+
+	getWorkflowSetupApplyButton(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-apply-button');
+	}
+
+	getWorkflowSetupTestTriggerButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-test-trigger');
+	}
+
+	getWorkflowSetupCredentialButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-credential-button');
+	}
+
+	getWorkflowSetupCredCheck(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-cred-check');
+	}
+
+	getWorkflowSetupStepCheck(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-step-check');
+	}
+
+	getWorkflowSetupNodesHint(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-nodes-hint');
+	}
+
+	getWorkflowSetupListeningCallout(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-listening-callout');
+	}
+
+	getWorkflowSetupErrorBanner(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-error-banner');
+	}
+
+	getWorkflowSetupApplyingState(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-applying');
+	}
+
+	getWorkflowSetupPartialState(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-partial');
+	}
+
 	getWorkflowSetupParameterIssues(): Locator {
 		return this.getWorkflowSetupCard().getByTestId('parameter-issues');
 	}

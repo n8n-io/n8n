@@ -16,6 +16,7 @@ import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { CacheService } from '@/services/cache/cache.service';
 import type { UrlService } from '@/services/url.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
@@ -166,6 +167,7 @@ describe('SamlService', () => {
 	let userRepository: UserRepository;
 	let provisioningService: ProvisioningService;
 	let cipher: Cipher;
+	let cacheService: jest.Mocked<CacheService>;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
 
@@ -216,6 +218,7 @@ describe('SamlService', () => {
 		cipher = mock<Cipher>();
 		cipher.encrypt = jest.fn((data: string) => `encrypted:${data}`) as Cipher['encrypt'];
 		cipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
+		cacheService = mock<CacheService>();
 
 		jest
 			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
@@ -231,6 +234,7 @@ describe('SamlService', () => {
 			instanceSettings,
 			provisioningService,
 			cipher,
+			cacheService,
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
@@ -1703,6 +1707,86 @@ describe('SamlService', () => {
 			// These should NOT have a proxy property
 			expect(httpAgent).not.toHaveProperty('proxy');
 			expect(httpsAgent).not.toHaveProperty('proxy');
+		});
+	});
+
+	describe('pending test configs', () => {
+		test('storePendingTestConfig writes metadata to the cache under a random token with TTL', async () => {
+			const metadata = '<EntityDescriptor/>';
+
+			const token = await samlService.storePendingTestConfig(metadata);
+
+			expect(token).toMatch(/^[0-9a-f]+$/);
+			expect(cacheService.set).toHaveBeenCalledWith(
+				`saml:pending-test-config:${token}`,
+				metadata,
+				10 * 60 * 1000,
+			);
+		});
+
+		test('consumePendingTestConfig returns metadata from the cache and deletes it', async () => {
+			const metadata = '<EntityDescriptor/>';
+			cacheService.get.mockResolvedValueOnce(metadata);
+
+			const result = await samlService.consumePendingTestConfig('abc123');
+
+			expect(result).toBe(metadata);
+			expect(cacheService.get).toHaveBeenCalledWith('saml:pending-test-config:abc123');
+			expect(cacheService.delete).toHaveBeenCalledWith('saml:pending-test-config:abc123');
+		});
+
+		test('consumePendingTestConfig returns undefined for unknown tokens and does not delete', async () => {
+			cacheService.get.mockResolvedValueOnce(undefined);
+
+			const result = await samlService.consumePendingTestConfig('unknown-token');
+
+			expect(result).toBeUndefined();
+			expect(cacheService.delete).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getAttributesFromLoginResponse with metadataOverride', () => {
+		test('uses a temporary IdP built from the provided metadata instead of the stored one', async () => {
+			const overrideMetadata = '<EntityDescriptor override/>';
+			const overrideIdp = { id: 'override-idp' };
+			const getStoredIdp = jest
+				.spyOn(samlService, 'getIdentityProviderInstance')
+				.mockReturnValue(mock<IdentityProviderInstance>());
+			const createFromMetadata = jest
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(samlService as any, 'createIdentityProviderFromMetadata')
+				.mockResolvedValue(overrideIdp);
+
+			const serviceProviderInstance = mock<ServiceProviderInstance>();
+			serviceProviderInstance.parseLoginResponse.mockResolvedValue({
+				samlContent: '',
+				extract: {},
+			});
+			jest
+				.spyOn(samlService, 'getServiceProviderInstance')
+				.mockReturnValue(serviceProviderInstance);
+
+			jest.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
+				attributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+				},
+				missingAttributes: [],
+				rawAttributes: {},
+			});
+
+			const req = { body: {} } as express.Request;
+			await samlService.getAttributesFromLoginResponse(req, 'post', overrideMetadata);
+
+			expect(createFromMetadata).toHaveBeenCalledWith(overrideMetadata);
+			expect(getStoredIdp).not.toHaveBeenCalled();
+			expect(serviceProviderInstance.parseLoginResponse).toHaveBeenCalledWith(
+				overrideIdp,
+				'post',
+				req,
+			);
 		});
 	});
 });
