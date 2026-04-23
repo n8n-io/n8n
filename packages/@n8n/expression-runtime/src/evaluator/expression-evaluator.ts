@@ -18,11 +18,12 @@ import { LruCache } from './lru-cache';
 export const EVALUATION_DURATION_METRIC = 'expression.evaluation.duration_ms';
 
 function recordOutcome(
-	observability: ObservabilityProvider,
+	observability: ObservabilityProvider | undefined,
 	start: number,
 	status: 'success' | 'error',
 	error?: unknown,
 ): void {
+	if (!observability) return;
 	const durationMs = performance.now() - start;
 	const errorType = error !== undefined ? classifyExpressionError(error) : undefined;
 	observability.metrics.histogram(EVALUATION_DURATION_METRIC, durationMs, {
@@ -115,16 +116,16 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		const transformedCode = this.getTransformedCode(expression);
 
 		const { observability } = this.config;
-		const start = observability ? performance.now() : 0;
+		const start = performance.now();
 
 		try {
 			const result = bridge.execute(transformedCode, data, {
 				timezone: options?.timezone,
 			});
-			if (observability) recordOutcome(observability, start, 'success');
+			recordOutcome(observability, start, 'success');
 			return result;
 		} catch (error) {
-			if (observability) recordOutcome(observability, start, 'error', error);
+			recordOutcome(observability, start, 'error', error);
 			throw error;
 		}
 	}
