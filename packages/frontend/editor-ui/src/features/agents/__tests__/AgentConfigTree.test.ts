@@ -52,10 +52,11 @@ describe('AgentConfigTree', () => {
 		expect(item.text()).toContain('Custom thing');
 	});
 
-	it('marks the selected entry with the selected state', () => {
+	it('marks the selected entry with aria-pressed', () => {
 		const wrapper = mount(AgentConfigTree, {
 			props: { config: { model: {}, tools: [] }, selectedKey: 'tools' },
 		});
-		expect(wrapper.find('[data-key="tools"]').classes()).toContain('selected');
+		expect(wrapper.find('[data-key="tools"]').attributes('aria-pressed')).toBe('true');
+		expect(wrapper.find('[data-key="model"]').attributes('aria-pressed')).toBe('false');
 	});
 });

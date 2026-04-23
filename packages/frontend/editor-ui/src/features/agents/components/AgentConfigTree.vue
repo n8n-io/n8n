@@ -5,6 +5,7 @@
  * (PR2 wires it into the section editor).
  */
 import { computed } from 'vue';
+import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import type { AgentJsonConfig } from '../types';
 
@@ -15,19 +16,21 @@ const props = defineProps<{
 
 const emit = defineEmits<{ select: [key: string] }>();
 
+const i18n = useI18n();
+
 interface SectionDescriptor {
 	key: string;
 	label: string;
 	icon: string;
 }
 
-const KNOWN_SECTIONS: Record<string, { label: string; icon: string }> = {
-	model: { label: 'Model', icon: 'brain' }, // 'cpu' not in updatedIconSet — using 'brain'
-	instructions: { label: 'Instructions', icon: 'file-text' },
-	triggers: { label: 'Triggers', icon: 'zap' },
-	tools: { label: 'Tools', icon: 'wrench' },
-	memory: { label: 'Memory', icon: 'database' },
-	guardrails: { label: 'Guardrails', icon: 'shield' },
+const KNOWN_SECTIONS: Record<string, { i18nKey: string; icon: string }> = {
+	model: { i18nKey: 'agents.builder.sections.model', icon: 'brain' }, // 'cpu' not in updatedIconSet — using 'brain'
+	instructions: { i18nKey: 'agents.builder.sections.instructions', icon: 'file-text' },
+	triggers: { i18nKey: 'agents.builder.sections.triggers', icon: 'zap' },
+	tools: { i18nKey: 'agents.builder.sections.tools', icon: 'wrench' },
+	memory: { i18nKey: 'agents.builder.sections.memory', icon: 'database' },
+	guardrails: { i18nKey: 'agents.builder.sections.guardrails', icon: 'shield' },
 };
 
 function humanize(key: string): string {
@@ -42,7 +45,7 @@ const sections = computed<SectionDescriptor[]>(() => {
 		const known = KNOWN_SECTIONS[key];
 		return {
 			key,
-			label: known?.label ?? humanize(key),
+			label: known ? i18n.baseText(known.i18nKey) : humanize(key),
 			icon: known?.icon ?? 'file',
 		};
 	});
@@ -52,16 +55,15 @@ const sections = computed<SectionDescriptor[]>(() => {
 <template>
 	<div :class="$style.tree" data-testid="agent-config-tree">
 		<div v-if="sections.length === 0" data-testid="agent-config-tree-empty" :class="$style.empty">
-			<N8nText size="small" color="text-light">No sections yet</N8nText>
+			<N8nText size="small" color="text-light">{{
+				i18n.baseText('agents.builder.tree.empty')
+			}}</N8nText>
 		</div>
 		<button
 			v-for="section in sections"
 			:key="section.key"
-			:class="[
-				$style.item,
-				selectedKey === section.key && $style.selected,
-				selectedKey === section.key && 'selected',
-			]"
+			:class="[$style.item, selectedKey === section.key && $style.selected]"
+			:aria-pressed="selectedKey === section.key"
 			:data-key="section.key"
 			data-testid="agent-config-tree-item"
 			type="button"
