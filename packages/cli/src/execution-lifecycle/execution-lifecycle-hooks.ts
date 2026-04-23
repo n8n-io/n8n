@@ -571,11 +571,18 @@ function hookFunctionsSave(
 			if (shouldNotSave && !fullRunData.waitTill && !isManualMode) {
 				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
 
-				await executionPersistence.deleteInFlightExecution({
-					workflowId: this.workflowData.id,
-					executionId: this.executionId,
-					storedAt: fullRunData.storedAt,
-				});
+				await executionPersistence.deleteInFlightExecution(
+					{
+						workflowId: this.workflowData.id,
+						executionId: this.executionId,
+						storedAt: fullRunData.storedAt,
+					},
+					{
+						status: fullRunData.status,
+						finished: fullRunData.finished,
+						stoppedAt: fullRunData.stoppedAt,
+					},
+				);
 
 				return;
 			}
@@ -794,11 +801,18 @@ export function getLifecycleHooksForScalingMain(
 			(fullRunData.status !== 'success' && !saveSettings.error);
 
 		if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
-			await executionPersistence.deleteInFlightExecution({
-				workflowId: this.workflowData.id,
-				executionId: this.executionId,
-				storedAt: fullRunData.storedAt,
-			});
+			await executionPersistence.deleteInFlightExecution(
+				{
+					workflowId: this.workflowData.id,
+					executionId: this.executionId,
+					storedAt: fullRunData.storedAt,
+				},
+				{
+					status: fullRunData.status,
+					finished: fullRunData.finished,
+					stoppedAt: fullRunData.stoppedAt,
+				},
+			);
 		} else {
 			// Only save metadata if execution is being kept
 			await updateExistingExecutionMetadata(

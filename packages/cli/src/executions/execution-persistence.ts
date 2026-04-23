@@ -9,6 +9,7 @@ import { ExecutionData, ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, StorageConfig } from 'n8n-core';
+import type { IRun } from 'n8n-workflow';
 
 import { FsStore } from './execution-data/fs-store';
 import type { ExecutionRef, WorkflowSnapshot } from './execution-data/types';
@@ -70,14 +71,25 @@ export class ExecutionPersistence {
 	 *
 	 * - When pruning is enabled, soft-deletes with a backdated `deletedAt` so the
 	 * execution is immediately eligible for the next pruning hard-delete batch.
+	 * The terminal `status`, `finished`, and `stoppedAt` from the completed run
+	 * are also recorded so the row does not linger as `running` until the next
+	 * pruning sweep hard-deletes it.
 	 * - When pruning is disabled, hard-deletes immediately so the execution
 	 * is not persisted indefinitely.
 	 */
-	async deleteInFlightExecution(target: DeletionTarget) {
+	async deleteInFlightExecution(
+		target: DeletionTarget,
+		{ status, finished, stoppedAt }: Pick<IRun, 'status' | 'finished' | 'stoppedAt'>,
+	) {
 		if (this.executionsConfig.pruneData) {
 			const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
 			const deletedAt = new Date(Date.now() - bufferMs);
-			await this.executionRepository.update(target.executionId, { deletedAt });
+			await this.executionRepository.update(target.executionId, {
+				deletedAt,
+				status,
+				finished,
+				stoppedAt,
+			});
 		} else {
 			await this.hardDelete(target);
 		}

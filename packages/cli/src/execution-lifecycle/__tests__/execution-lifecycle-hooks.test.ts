@@ -93,23 +93,27 @@ describe('Execution Lifecycle Hooks', () => {
 	const taskData = mock<ITaskData>();
 	const runExecutionData = mock<IRunExecutionData>();
 
+	const stoppedAt = new Date('2025-01-13T18:25:50.267Z');
 	const successfulRunWithRewiredDestination = mock<IRun>({
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
 		storedAt: 'db',
+		stoppedAt,
 	});
 	const successfulRun = mock<IRun>({
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
 		storedAt: 'db',
+		stoppedAt,
 	});
 	const failedRun = mock<IRun>({
 		status: 'error',
 		finished: true,
 		waitTill: undefined,
 		storedAt: 'db',
+		stoppedAt,
 	});
 	const waitingRun = mock<IRun>({
 		finished: true,
@@ -128,6 +132,7 @@ describe('Execution Lifecycle Hooks', () => {
 		finished: true,
 		waitTill: undefined,
 		storedAt: 'db',
+		stoppedAt,
 		data: {
 			resultData: {
 				metadata: {
@@ -1070,11 +1075,18 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await testHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
-					workflowId,
-					executionId,
-					storedAt: 'db',
-				});
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+					{
+						workflowId,
+						executionId,
+						storedAt: 'db',
+					},
+					{
+						status: 'success',
+						finished: true,
+						stoppedAt: successfulRun.stoppedAt,
+					},
+				);
 			});
 
 			it('should delete unsaved failed executions when error saving is disabled', async () => {
@@ -1094,11 +1106,18 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await testHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
-				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
-					workflowId,
-					executionId,
-					storedAt: 'db',
-				});
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+					{
+						workflowId,
+						executionId,
+						storedAt: 'db',
+					},
+					{
+						status: 'error',
+						finished: true,
+						stoppedAt: failedRun.stoppedAt,
+					},
+				);
 			});
 
 			describe('metadata handling', () => {
@@ -1132,11 +1151,18 @@ describe('Execution Lifecycle Hooks', () => {
 					// Metadata should not be saved before deletion
 					expect(executionMetadataService.save).not.toHaveBeenCalled();
 					// Execution should be deleted
-					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
-						workflowId,
-						executionId,
-						storedAt: 'db',
-					});
+					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+						{
+							workflowId,
+							executionId,
+							storedAt: 'db',
+						},
+						{
+							status: 'success',
+							finished: true,
+							stoppedAt: successfulRunWithMetadata.stoppedAt,
+						},
+					);
 				});
 
 				it('should NOT save metadata when execution has none', async () => {
