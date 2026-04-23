@@ -13,6 +13,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { resolveAuthUrl } from '../../credentials/SalesforceJwtApi.credentials';
+
 function getOptions(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -45,10 +47,7 @@ async function getAccessToken(
 	credentials: IDataObject,
 ): Promise<IDataObject> {
 	const now = moment().unix();
-	const authUrl =
-		credentials.environment === 'sandbox'
-			? 'https://test.salesforce.com'
-			: 'https://login.salesforce.com';
+	const authUrl = resolveAuthUrl(credentials);
 
 	const signature = jwt.sign(
 		{
