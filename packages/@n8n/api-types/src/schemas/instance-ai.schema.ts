@@ -992,6 +992,8 @@ export interface InstanceAiEvalInterceptedRequest {
 
 export interface InstanceAiEvalNodeResult {
 	output: unknown;
+	/** Full count of output items (`output` is truncated for artifact size) */
+	outputCount?: number;
 	interceptedRequests: InstanceAiEvalInterceptedRequest[];
 	executionMode: InstanceAiEvalNodeExecutionMode;
 	/** Missing required parameters detected before execution (empty = fully configured) */
