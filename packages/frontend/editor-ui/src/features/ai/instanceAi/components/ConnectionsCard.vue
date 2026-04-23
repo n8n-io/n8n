@@ -21,6 +21,12 @@ const store = useInstanceAiSettingsStore();
 
 const connections = computed(() => store.connections);
 
+const isVisible = computed(
+	() =>
+		!store.isLocalGatewayDisabledByAdmin &&
+		(store.gatewayStatusLoaded || store.isLocalGatewayDisabled),
+);
+
 const ICON_MAP: Record<ConnectionType, IconName> = {
 	'computer-use': 'mouse-pointer',
 	'browser-use': 'globe',
@@ -84,7 +90,7 @@ async function handleRemove(type: ConnectionType) {
 </script>
 
 <template>
-	<div v-if="store.gatewayStatusLoaded" :class="[$style.section, $style.card]">
+	<div v-if="isVisible" :class="[$style.section, $style.card]">
 		<div :class="$style.header">
 			<N8nHeading tag="h3" size="small" bold>
 				{{ i18n.baseText('instanceAi.connections.title') }}
