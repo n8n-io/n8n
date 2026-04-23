@@ -32,9 +32,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { serializeNode as serializeNodeUtil } from './workflowDocument/useWorkflowDocumentNodeSerialization';
+import { useWorkflowDocumentNodeSerialization } from './workflowDocument/useWorkflowDocumentNodeSerialization';
 import type { WorkflowObjectAccessors } from '../types';
-import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb } from '@/Interface';
 import type { INode, IPinData } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
@@ -79,6 +79,7 @@ type MetaReturn = ReturnType<typeof useWorkflowDocumentMeta>;
 type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
 type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
+type NodeSerializationReturn = ReturnType<typeof useWorkflowDocumentNodeSerialization>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -101,6 +102,11 @@ void (0 as unknown as [
 	AssertNoOverlap<NodeMetadataReturn, PinDataReturn>,
 	AssertNoOverlap<NodeMetadataReturn, MetaReturn>,
 	AssertNoOverlap<NodeMetadataReturn, SettingsReturn>,
+	AssertNoOverlap<NodeSerializationReturn, NodesReturn>,
+	AssertNoOverlap<NodeSerializationReturn, ConnectionsReturn>,
+	AssertNoOverlap<NodeSerializationReturn, GraphReturn>,
+	AssertNoOverlap<NodeSerializationReturn, ExpressionReturn>,
+	AssertNoOverlap<NodeSerializationReturn, NodeMetadataReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -182,6 +188,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			});
 		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
 		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
+		const workflowDocumentNodeSerialization = useWorkflowDocumentNodeSerialization({
+			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
+		});
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
@@ -198,14 +207,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentPinData.setPinData({});
 		}
 
-		function serializeNode(node: INodeUi): INodeUi {
-			return serializeNodeUtil(node, {
-				getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
-			});
-		}
-
 		function serialize(): WorkflowData {
-			const nodes: INode[] = workflowDocumentNodes.allNodes.value.map(serializeNode);
+			const nodes: INode[] = workflowDocumentNodes.allNodes.value.map(
+				workflowDocumentNodeSerialization.serializeNode,
+			);
 
 			// Deep-copy connections to create an in-time snapshot consistent with nodes.
 			// Without this, connections is a reference to the reactive store object, so
@@ -359,12 +364,12 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
+			...workflowDocumentNodeSerialization,
 			removeAllNodes,
 			hydrate,
 			reset,
 			getSnapshot,
 			serialize,
-			serializeNode,
 		};
 	})();
 }
