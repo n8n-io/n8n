@@ -1626,12 +1626,13 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			if (additionalData.otel?.injectTraceHeaders && typeof uriOrObject === 'object') {
-				uriOrObject.headers ??= {};
+			if (additionalData.otel?.injectTraceHeaders) {
+				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
+				target.headers ??= {};
 				additionalData.otel.injectTraceHeaders(
 					additionalData.executionId!,
 					node.name,
-					uriOrObject.headers as Record<string, string>,
+					target.headers as Record<string, string>,
 				);
 			}
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);

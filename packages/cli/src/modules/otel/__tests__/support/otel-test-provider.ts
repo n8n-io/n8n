@@ -45,5 +45,6 @@ export class OtelTestProvider {
 		this.exporter.reset();
 		await this.provider.shutdown();
 		trace.disable();
+		propagation.disable();
 	}
 }

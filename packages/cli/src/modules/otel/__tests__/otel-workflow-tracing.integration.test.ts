@@ -48,10 +48,13 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const executionId = await executeWorkflow(workflowRunner, workflow, 'test-project');
 		await waitForExecution(executionRepository, executionId);
 
-		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute');
+		const spans = otel.getFinishedSpans();
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute');
+		const nodeSpans = spans.filter((s) => s.name === 'node.execute');
 
 		expect(workflowSpan).toBeDefined();
 		expect(workflowSpan!.attributes['n8n.execution.id']).toBe(executionId);
+		expect(nodeSpans).toHaveLength(workflow.nodes.length);
 	});
 
 	it('should persist tracingContext to the execution entity after root span creation', async () => {
