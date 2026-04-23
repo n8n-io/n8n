@@ -3,33 +3,33 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
-const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'plan', 'cancel-background-task']);
+const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'plan', 'task-control']);
 
 export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'delegate' || toolName.endsWith('-with-agent')) return 'share';
+	if (toolName === 'data-tables') return 'table';
+	if (
+		toolName === 'workflows' ||
+		toolName === 'executions' ||
+		toolName === 'nodes' ||
+		toolName === 'templates'
+	)
+		return 'workflow';
+	if (toolName === 'research') return 'search';
+	if (toolName === 'credentials' || toolName === 'browser-credential-setup') return 'key-round';
+	if (toolName === 'task-control' || toolName === 'updateWorkingMemory' || toolName === 'plan')
+		return 'brain';
+	if (toolName === 'filesystem') return 'file-text';
+	if (toolName === 'workspace') return 'folder';
 	if (toolName.includes('data-table')) return 'table';
 	if (
 		toolName.includes('workflow') ||
-		toolName === 'search-nodes' ||
-		toolName.startsWith('get-node') ||
 		toolName === 'submit-workflow' ||
-		toolName === 'run-workflow' ||
-		toolName === 'activate-workflow' ||
-		toolName === 'list-nodes' ||
-		toolName === 'explore-node-resources' ||
-		toolName === 'get-suggested-nodes' ||
-		toolName === 'list-executions' ||
-		toolName === 'get-execution' ||
-		toolName === 'debug-execution' ||
-		toolName === 'stop-execution' ||
 		toolName === 'materialize-node-type'
 	) {
 		return 'workflow';
 	}
-	if (toolName === 'web-search' || toolName === 'fetch-url') return 'search';
-	if (toolName === 'updateWorkingMemory' || toolName === 'plan') return 'brain';
-	if (toolName.includes('credential') || toolName === 'browser-credential-setup')
-		return 'key-round';
+	if (toolName.includes('credential')) return 'key-round';
 	return 'settings';
 }
 
@@ -40,10 +40,15 @@ export function getToolIcon(toolName: string): IconName {
 export function useToolLabel() {
 	const i18n = useI18n();
 
-	function getToolLabel(toolName: string): string {
+	function getToolLabel(toolName: string, args?: Record<string, unknown>): string {
+		const action = typeof args?.action === 'string' ? args.action : undefined;
+		if (action) {
+			const actionKey = `instanceAi.tools.${toolName}.${action}` as BaseTextKey;
+			const actionTranslated = i18n.baseText(actionKey);
+			if (actionTranslated !== actionKey) return actionTranslated;
+		}
 		const key = `instanceAi.tools.${toolName}` as BaseTextKey;
 		const translated = i18n.baseText(key);
-		// If the key is not found, baseText returns the key itself
 		return translated === key ? toolName : translated;
 	}
 

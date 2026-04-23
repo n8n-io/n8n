@@ -20,6 +20,7 @@ import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { InstanceAiConfig } from './configs/instance-ai.config';
+import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
@@ -47,6 +48,7 @@ export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
+export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 export { sampleRateSchema } from './configs/sentry.config';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
@@ -252,4 +254,7 @@ export class GlobalConfig {
 
 	@Nested
 	expressionEngine: ExpressionEngineConfig;
+
+	@Nested
+	instanceSettingsLoader: InstanceSettingsLoaderConfig;
 }

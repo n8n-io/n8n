@@ -1,5 +1,6 @@
 import type { TournamentHooks } from '@n8n/tournament';
 
+import type { Logger } from './bridge';
 import type { RuntimeBridge } from './bridge';
 
 // ============================================================================
@@ -40,6 +41,12 @@ export interface EvaluatorConfig {
 	 * to give each concurrent execution a pre-warmed bridge.
 	 */
 	poolSize?: number;
+
+	/** If set, scale the pool to 0 warm bridges after this many ms with no isolate acquire. */
+	idleTimeoutMs?: number;
+
+	/** Optional logger. Passed through to pool. Falls back to no-op. */
+	logger?: Logger;
 }
 
 /**

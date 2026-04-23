@@ -15,6 +15,7 @@ import {
 	sanitizerName,
 } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
+import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
@@ -245,9 +246,11 @@ export class Expression {
 	 */
 	static async initExpressionEngine(options: {
 		engine: 'legacy' | 'vm';
-		timeout?: number;
+		bridgeTimeout: number;
+		bridgeMemoryLimit: number;
 		poolSize: number;
 		maxCodeCacheSize: number;
+		idleTimeoutMs?: number;
 	}): Promise<void> {
 		if (options.engine !== 'vm' || IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
@@ -256,13 +259,20 @@ export class Expression {
 			// Dynamic import to avoid loading expression-runtime in browser environments
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
 			this.vmEvaluator = new ExpressionEvaluator({
-				createBridge: () => new IsolatedVmBridge({ timeout: options.timeout ?? 5000 }),
+				createBridge: () =>
+					new IsolatedVmBridge({
+						timeout: options.bridgeTimeout,
+						memoryLimit: options.bridgeMemoryLimit,
+						logger: LoggerProxy,
+					}),
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
+				idleTimeoutMs: options.idleTimeoutMs,
 				hooks: {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],
 				},
+				logger: LoggerProxy,
 			});
 			await this.vmEvaluator.initialize();
 		}

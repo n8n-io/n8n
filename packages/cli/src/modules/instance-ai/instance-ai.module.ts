@@ -1,13 +1,28 @@
+import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+const YELLOW = '\x1b[33m';
+const CLEAR = '\x1b[0m';
+const WARNING_MESSAGE =
+	"[Instance AI] 'instance-ai' module is experimental, undocumented and subject to change. " +
+	'Before its official release any features may become inaccessible at any point, ' +
+	'and using the module could compromise the stability of your system. Use at your own risk!';
+
 @BackendModule({ name: 'instance-ai', instanceTypes: ['main'] })
 export class InstanceAiModule implements ModuleInterface {
 	async init() {
+		const logger = Container.get(Logger).scoped('instance-ai');
+		logger.warn(`${YELLOW}${WARNING_MESSAGE}${CLEAR}`);
+
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
 		await Container.get(InstanceAiSettingsService).loadFromDb();
 		await import('./instance-ai.controller');
+
+		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
+			await import('./instance-ai-test.controller');
+		}
 
 		// Fire-and-forget: clean up expired conversation threads on startup
 		const { InstanceAiMemoryService } = await import('./instance-ai-memory.service');
@@ -17,24 +32,27 @@ export class InstanceAiModule implements ModuleInterface {
 			.cleanupExpiredThreads(async (threadId) => await aiService.clearThreadState(threadId))
 			.catch(() => undefined);
 
-		// Register snapshot pruning — lifecycle decorators handle start/stop
-		await import('./snapshot-pruning.service');
+		// Initialize snapshot pruning — lifecycle decorators handle multi-main start/stop
+		const { SnapshotPruningService } = await import('./snapshot-pruning.service');
+		Container.get(SnapshotPruningService).init();
 	}
 
 	async settings() {
+		const { GlobalConfig } = await import('@n8n/config');
 		const { InstanceAiService } = await import('./instance-ai.service');
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
+		const globalConfig = Container.get(GlobalConfig);
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = service.isEnabled();
-		const localGateway = service.isLocalFilesystemAvailable();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
-		const localGatewayFallbackDirectory = service.getLocalFilesystemDirectory();
+		const optinModalDismissed = settingsService.getAdminSettings().optinModalDismissed;
 		return {
 			enabled,
-			localGateway,
 			localGatewayDisabled,
-			localGatewayFallbackDirectory,
+			proxyEnabled: service.isProxyEnabled(),
+			optinModalDismissed,
+			cloudManaged: globalConfig.deployment.type === 'cloud',
 		};
 	}
 

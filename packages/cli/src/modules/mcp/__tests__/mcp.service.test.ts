@@ -16,7 +16,9 @@ import { McpService } from '../mcp.service';
 import { WorkflowBuilderToolsService } from '../tools/workflow-builder/workflow-builder-tools.service';
 
 import { ActiveExecutions } from '@/active-executions';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -69,6 +71,8 @@ describe('McpService', () => {
 			mockInstance(SharedWorkflowRepository),
 			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
+			mockInstance(DataTableProxyService),
+			mockInstance(CollaborationService),
 		);
 	});
 
@@ -107,6 +111,8 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
+				mockInstance(CollaborationService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -310,6 +316,8 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
+				mockInstance(CollaborationService),
 			);
 
 			const server = await service.getServer(user);
@@ -350,6 +358,8 @@ describe('McpService', () => {
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
+				mockInstance(CollaborationService),
 			);
 
 			const server = await service.getServer(user);

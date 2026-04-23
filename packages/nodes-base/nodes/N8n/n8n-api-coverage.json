@@ -8,6 +8,9 @@
 		"GET /credentials": {
 			"status": "gap"
 		},
+		"GET /credentials/{id}": {
+			"status": "gap"
+		},
 		"POST /credentials": {
 			"status": "covered",
 			"nodeOperation": "credential:create"
@@ -27,6 +30,9 @@
 		"PUT /credentials/{id}/transfer": {
 			"status": "gap"
 		},
+		"POST /credentials/{id}/test": {
+			"status": "gap"
+		},
 		"GET /community-packages": {
 			"status": "gap"
 		},
@@ -40,6 +46,9 @@
 			"status": "gap"
 		},
 		"GET /discover": {
+			"status": "gap"
+		},
+		"GET /insights/summary": {
 			"status": "gap"
 		},
 		"GET /executions": {
@@ -201,6 +210,15 @@
 			"status": "gap"
 		},
 		"PUT /projects/{projectId}": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"POST /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"DELETE /projects/{projectId}/folders/{folderId}": {
 			"status": "gap"
 		},
 		"GET /projects/{projectId}/users": {

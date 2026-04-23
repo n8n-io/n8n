@@ -107,6 +107,9 @@ export type { HeartbeatMessage } from './push/heartbeat';
 export { createHeartbeatMessage, heartbeatMessageSchema } from './push/heartbeat';
 export type { SendWorkerStatusMessage } from './push/worker';
 
+export type { FavoriteResourceType } from './schemas/favorites.schema';
+export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
+
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
@@ -153,6 +156,7 @@ export {
 } from './schemas/source-controlled-file.schema';
 
 export {
+	insightsSummarySchema,
 	type InsightsSummaryType,
 	type InsightsSummaryUnit,
 	type InsightsSummary,
@@ -236,6 +240,8 @@ export type {
 } from './schemas/secrets-provider.schema';
 
 export {
+	SECRETS_PROVIDER_KEY_PATTERN,
+	SECRETS_PROVIDER_KEY_REGEX,
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
 } from './schemas/secrets-provider.schema';
@@ -246,6 +252,11 @@ export {
 } from './schemas/community-package.schema';
 
 export {
+	publicApiCredentialResponseSchema,
+	type PublicApiCredentialResponse,
+} from './schemas/credential-response.schema';
+
+export {
 	instanceAiEventTypeSchema,
 	instanceAiRunStatusSchema,
 	instanceAiConfirmationSeveritySchema,
@@ -254,6 +265,7 @@ export {
 	instanceAiEventSchema,
 	taskItemSchema,
 	taskListSchema,
+	plannedTaskArgSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	agentSpawnedPayloadSchema,
@@ -268,8 +280,6 @@ export {
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
-	instanceAiFilesystemResponseSchema,
-	instanceAiGatewayCapabilitiesSchema,
 	mcpToolSchema,
 	mcpToolCallRequestSchema,
 	mcpToolCallResultSchema,
@@ -280,16 +290,21 @@ export {
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	credentialFlowSchema,
+	gatewayConfirmationRequiredPayloadSchema,
+	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
+	InstanceAiEvalExecutionRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
-	InstanceAiUpdateMemoryRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiFilesystemResponseDto,
+	applyBranchReadOnlyOverrides,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -299,6 +314,7 @@ export type {
 	ToolCallId,
 	InstanceAiEventType,
 	InstanceAiRunStatus,
+	InstanceAiConfirmation,
 	InstanceAiConfirmationSeverity,
 	InstanceAiCredentialRequest,
 	InstanceAiAgentStatus,
@@ -338,7 +354,6 @@ export type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiStoredMessage,
 	InstanceAiThreadMessagesResponse,
-	InstanceAiThreadContextResponse,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiAdminSettingsResponse,
@@ -350,8 +365,15 @@ export type {
 	DomainAccessAction,
 	DomainAccessMeta,
 	InstanceAiCredentialFlow,
+	GatewayConfirmationRequiredPayload,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
+	PlannedTaskArg,
+	InstanceAiEvalNodeExecutionMode,
+	InstanceAiEvalInterceptedRequest,
+	InstanceAiEvalNodeResult,
+	InstanceAiEvalMockHints,
+	InstanceAiEvalExecutionResult,
 } from './schemas/instance-ai.schema';
 
 export {

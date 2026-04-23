@@ -11,7 +11,7 @@ import {
 	WorkflowPublishHistory,
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource, EntityManager, In } from '@n8n/typeorm';
+import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -512,13 +512,14 @@ export class ImportService {
 
 						await Promise.all(
 							entities.map(async (entity) => {
-								const columns = Object.keys(entity);
+								const normalizedEntity = this.normalizeEntityJsonColumns(entity, entityMetadata);
+								const columns = Object.keys(normalizedEntity);
 								const columnNames = columns.map(this.dataSource.driver.escape).join(', ');
 								const columnValues = columns.map((key) => `:${key}`).join(', ');
 
 								const [query, parameters] = this.dataSource.driver.escapeQueryWithParameters(
 									`INSERT INTO ${tableName} (${columnNames}) VALUES (${columnValues})`,
-									entity,
+									normalizedEntity,
 									{},
 								);
 
@@ -559,6 +560,50 @@ export class ImportService {
 
 			node.credentials[type] = nodeCredential;
 		}
+	}
+
+	/**
+	 * Normalise JSON column values to JSON strings before a raw INSERT.
+	 *
+	 * The export uses raw SQL (SELECT … FROM table) which bypasses TypeORM column
+	 * transformers entirely. As a result, json/simple-json column values differ by
+	 * source database:
+	 *   - SQLite  → stored as TEXT, so SELECT returns a plain string
+	 *   - Postgres → stored natively, so SELECT returns a parsed JS object/array
+	 *
+	 * Passing a raw string to a Postgres `json` column or a raw object to SQLite's
+	 * TEXT-backed column via a parameterised INSERT produces incorrect data. This
+	 * method normalises both cases to a JSON string, which both database drivers
+	 * accept correctly for json/simple-json columns.
+	 */
+	private normalizeEntityJsonColumns(
+		entity: Record<string, unknown>,
+		metadata: EntityMetadata,
+	): Record<string, unknown> {
+		const result = { ...entity };
+
+		for (const column of metadata.columns) {
+			const { databaseName, type } = column;
+			if (type !== 'json' && type !== 'simple-json') continue;
+
+			const value = result[databaseName];
+			if (value === null || value === undefined) continue;
+
+			if (typeof value === 'string') {
+				// SQLite exports json columns as serialised text — parse then re-serialise
+				// to canonical JSON so both SQLite and Postgres targets receive a valid string.
+				try {
+					result[databaseName] = JSON.stringify(JSON.parse(value));
+				} catch {
+					// Not a valid JSON string; leave as-is and let the DB validate on insert.
+				}
+			} else if (typeof value === 'object') {
+				// Postgres exports json columns as parsed objects — serialise for raw INSERT.
+				result[databaseName] = JSON.stringify(value);
+			}
+		}
+
+		return result;
 	}
 
 	async disableForeignKeyConstraints(transactionManager: EntityManager) {

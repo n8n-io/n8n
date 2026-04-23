@@ -14,6 +14,7 @@ import { computed, onMounted, onUnmounted, watch } from 'vue';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { getNodeIconSize } from '@/app/utils/nodeIcon';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
@@ -223,7 +224,14 @@ function onBackButton() {
 						:icon-source="activeViewStack.nodeIcon"
 						:circle="false"
 						:show-tooltip="false"
-						:size="20"
+						:size="
+							getNodeIconSize(
+								'nodeList',
+								activeViewStack.nodeIcon?.type === 'icon'
+									? activeViewStack.nodeIcon.name
+									: undefined,
+							)
+						"
 					/>
 					<p v-if="activeViewStack.title" :class="$style.title" v-text="viewStackTitle" />
 

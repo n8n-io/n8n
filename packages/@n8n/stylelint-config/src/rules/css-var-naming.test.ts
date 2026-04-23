@@ -1,4 +1,4 @@
-import { lint } from 'stylelint';
+import stylelint from 'stylelint';
 import plugin from './css-var-naming';
 
 const config = {
@@ -9,7 +9,7 @@ const config = {
 };
 
 async function lintCSS(code: string) {
-	const result = await lint({
+	const result = await stylelint.lint({
 		code,
 		config,
 	});

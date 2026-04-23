@@ -8,7 +8,7 @@ import type {
 	ToolCategory,
 } from '@n8n/api-types';
 
-const REQUEST_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 60_000; // 1 minute — tool calls like browser automation and shell execution can be long-running
 
 // ── Internal types ───────────────────────────────────────────────────────────
 
@@ -16,6 +16,7 @@ interface PendingRequest {
 	resolve: (result: McpToolCallResult) => void;
 	reject: (error: Error) => void;
 	timer: NodeJS.Timeout;
+	toolCall: McpToolCallRequest;
 }
 
 export interface LocalGatewayEvent {
@@ -27,7 +28,7 @@ export interface LocalGatewayEvent {
 }
 
 /**
- * Singleton MCP gateway for a connected local client (e.g. the fs-proxy daemon).
+ * Singleton MCP gateway for a connected local client (e.g. the computer-use daemon).
  *
  * The client advertises its capabilities as `McpTool[]` on connect; all tool
  * calls are dispatched generically via the SSE channel. Tools are not limited
@@ -39,6 +40,9 @@ export interface LocalGatewayEvent {
  * 3. callTool() → emits filesystem-request via SSE
  * 4. Client executes locally, POSTs MCP result to /instance-ai/gateway/response/:requestId
  * 5. resolveRequest() resolves the pending promise → caller gets McpToolCallResult
+ *
+ * Resource-access confirmations (GATEWAY_CONFIRMATION_REQUIRED) are handled at the
+ * tool layer via Mastra's suspend()/resumeData mechanism — not here.
  */
 export class LocalGateway {
 	private readonly pendingRequests = new Map<string, PendingRequest>();
@@ -105,18 +109,13 @@ export class LocalGateway {
 
 		if (error) {
 			pending.reject(new Error(error));
-		} else if (result?.isError === true) {
-			pending.reject(
-				new Error(
-					result.content
-						.filter((c): c is { type: 'text'; text: string } => c.type === 'text')
-						.map((c) => c.text)
-						.join('\n'),
-				),
-			);
-		} else {
-			pending.resolve(result ?? { content: [] });
+			return true;
 		}
+
+		// Resolve with the result as-is (including isError responses) so the tool
+		// layer (create-tools-from-mcp-server.ts) can inspect GATEWAY_CONFIRMATION_REQUIRED
+		// errors and handle them via Mastra suspend().
+		pending.resolve(result ?? { content: [] });
 		return true;
 	}
 
@@ -170,7 +169,7 @@ export class LocalGateway {
 				reject(new Error(`Local gateway request timed out after ${REQUEST_TIMEOUT_MS}ms`));
 			}, REQUEST_TIMEOUT_MS);
 
-			this.pendingRequests.set(requestId, { resolve, reject, timer });
+			this.pendingRequests.set(requestId, { resolve, reject, timer, toolCall });
 
 			this.emitter.emit('filesystem-request', {
 				type: 'filesystem-request',

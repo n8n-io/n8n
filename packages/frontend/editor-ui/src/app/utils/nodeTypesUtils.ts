@@ -383,8 +383,8 @@ export const updateNodeAuthType = (
 					},
 				},
 			};
-			const store = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			store.updateNodeProperties(updateInformation);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.updateNodeProperties(updateInformation);
 		}
 	}
 };

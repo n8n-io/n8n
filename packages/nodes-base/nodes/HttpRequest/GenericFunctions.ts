@@ -1,5 +1,6 @@
 import FormData from 'form-data';
 import get from 'lodash/get';
+import type { Readable } from 'stream';
 import isPlainObject from 'lodash/isPlainObject';
 import set from 'lodash/set';
 import {
@@ -263,7 +264,7 @@ export const prepareRequestBody = async (
 			if (parameter.parameterType === 'formBinaryData') {
 				const entry = await defaultReducer({}, parameter);
 				const key = Object.keys(entry)[0];
-				const data = entry[key] as { value: Buffer; options: FormData.AppendOptions };
+				const data = entry[key] as { value: Buffer | Readable; options: FormData.AppendOptions };
 				formData.append(key, data.value, data.options);
 				continue;
 			}

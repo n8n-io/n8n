@@ -11,11 +11,6 @@ describe('cleanStoredUserMessage', () => {
 		expect(cleanStoredUserMessage(stored)).toBe('Actual user message');
 	});
 
-	it('strips <background-tasks> (legacy) block', () => {
-		const stored = '<background-tasks>\ntask info here\n</background-tasks>\n\nUser said this';
-		expect(cleanStoredUserMessage(stored)).toBe('User said this');
-	});
-
 	it('strips <planned-task-follow-up> block', () => {
 		const stored =
 			'<planned-task-follow-up taskId="t1">\nfollow up details\n</planned-task-follow-up>\n\nContinue building';

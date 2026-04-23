@@ -53,6 +53,7 @@ export const defaultSettings: FrontendSettings = {
 		},
 		customRoles: false,
 		personalSpacePolicy: false,
+		dataRedaction: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -87,6 +88,7 @@ export const defaultSettings: FrontendSettings = {
 	saveManualExecutions: false,
 	saveExecutionProgress: false,
 	sso: {
+		managedByEnv: false,
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
 		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },

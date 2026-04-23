@@ -8,6 +8,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	build: {
 		sourcemap: true,
+		minify: 'esbuild',
 		lib: {
 			entry: resolve(__dirname, 'src/background.ts'),
 			formats: ['es'],

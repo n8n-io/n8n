@@ -313,6 +313,27 @@ describe('InstanceAiCredentialSetup', () => {
 
 			expect(getByText('instanceAi.credential.finalize.deferred')).toBeTruthy();
 		});
+
+		it('rolls back UI state when defer API call fails', async () => {
+			const requests = makeCredentialRequests(1);
+			vi.spyOn(store, 'confirmAction').mockResolvedValue(false);
+			const resolveSpy = vi.spyOn(store, 'resolveConfirmation');
+
+			const { getByText } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			await userEvent.click(getByText('instanceAi.credential.deny'));
+
+			// Should NOT resolve confirmation on failure
+			expect(resolveSpy).not.toHaveBeenCalled();
+			// Should show the form again (not deferred state)
+			expect(getByText('instanceAi.credential.deny')).toBeTruthy();
+		});
 	});
 
 	describe('finalize mode', () => {

@@ -37,6 +37,8 @@ export interface ConfirmationData {
 		customText?: string;
 		skipped?: boolean;
 	}>;
+	/** User's resource-access decision (e.g. 'allowForSession'). */
+	resourceDecision?: string;
 }
 
 export interface PendingConfirmation {

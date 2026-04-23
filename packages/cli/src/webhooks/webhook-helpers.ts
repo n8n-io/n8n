@@ -119,9 +119,10 @@ export function handleHostedChatResponse(
 	responseMode: WebhookResponseMode,
 	didSendResponse: boolean,
 	executionId: string,
+	resumeToken?: string,
 ): boolean {
 	if (responseMode === 'hostedChat' && !didSendResponse) {
-		res.send({ executionStarted: true, executionId });
+		res.send({ executionStarted: true, executionId, resumeToken });
 		process.nextTick(() => res.end());
 		return true;
 	}
@@ -367,7 +368,9 @@ export function prepareExecutionData(
 	];
 
 	if (
-		workflowStartNode.type === MICROSOFT_AGENT365_TRIGGER_NODE_TYPE &&
+		[MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(
+			workflowStartNode.type,
+		) &&
 		runExecutionData?.executionData?.nodeExecutionStack
 	) {
 		merge(runExecutionData.executionData.nodeExecutionStack, nodeExecutionStack);
@@ -510,7 +513,11 @@ export async function executeWebhook(
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
-			[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE].includes(workflowStartNode.type)
+			[
+				MCP_TRIGGER_NODE_TYPE,
+				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+				CHAT_TRIGGER_NODE_TYPE,
+			].includes(workflowStartNode.type)
 		) {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
@@ -781,7 +788,13 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
-		didSendResponse = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+		didSendResponse = handleHostedChatResponse(
+			res,
+			responseMode,
+			didSendResponse,
+			executionId,
+			runExecutionData?.resumeToken,
+		);
 
 		Container.get(Logger).debug(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,

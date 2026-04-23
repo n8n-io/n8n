@@ -1,36 +1,44 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ProjectRepository } from '@n8n/db';
+import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
+import { ProjectService } from '@/services/project.service.ee';
 import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
 // Mock middleware before requiring handler
 const mockMiddleware = jest.fn(async (_req, _res, next) => next()) as any;
-jest.spyOn(middlewares, 'apiKeyHasScope').mockReturnValue(mockMiddleware);
+jest.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 jest.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
 jest.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
 
+const mainHandler = require('../data-tables.handler');
 const handler = require('../data-tables.rows.handler');
 
 describe('DataTable Handler', () => {
 	let mockDataTableService: jest.Mocked<DataTableService>;
 	let mockDataTableRepository: jest.Mocked<DataTableRepository>;
 	let mockProjectRepository: jest.Mocked<ProjectRepository>;
+	let mockProjectRelationRepository: jest.Mocked<ProjectRelationRepository>;
+	let mockProjectService: jest.Mocked<ProjectService>;
 	let mockResponse: Partial<Response>;
 
 	const projectId = 'test-project-id';
 	const dataTableId = 'test-data-table-id';
 	const userId = 'test-user-id';
 
+	const makeUser = (role = 'global:member') => ({ id: userId, role: { slug: role } });
+
 	beforeEach(() => {
 		mockDataTableService = mockInstance(DataTableService);
 		mockDataTableRepository = mockInstance(DataTableRepository);
 		mockProjectRepository = mockInstance(ProjectRepository);
+		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
+		mockProjectService = mockInstance(ProjectService);
 
 		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === DataTableService) {
@@ -41,6 +49,12 @@ describe('DataTable Handler', () => {
 			}
 			if (serviceClass === ProjectRepository) {
 				return mockProjectRepository as any;
+			}
+			if (serviceClass === ProjectRelationRepository) {
+				return mockProjectRelationRepository as any;
+			}
+			if (serviceClass === ProjectService) {
+				return mockProjectService as any;
 			}
 			return {} as any;
 		});
@@ -54,12 +68,57 @@ describe('DataTable Handler', () => {
 			id: projectId,
 		} as any);
 
+		mockProjectRelationRepository.find.mockResolvedValue([]);
+
 		mockResponse = {
 			json: jest.fn().mockReturnThis(),
 			status: jest.fn().mockReturnThis(),
+			send: jest.fn().mockReturnThis(),
 		};
 
 		jest.clearAllMocks();
+	});
+
+	describe('createDataTable', () => {
+		it('should create in personal project when no projectId provided', async () => {
+			const req = {
+				body: { name: 'test-table', columns: [{ name: 'col1', type: 'string' }] },
+				user: makeUser(),
+			} as unknown as DataTableRequest.Create;
+			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: projectId,
+			} as never);
+			mockDataTableService.createDataTable.mockResolvedValue({
+				id: dataTableId,
+				name: 'test-table',
+				columns: [],
+				project: { id: projectId },
+			} as never);
+
+			await mainHandler.createDataTable[1](req, mockResponse as Response);
+
+			expect(mockProjectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(userId);
+			expect(mockDataTableService.createDataTable).toHaveBeenCalledWith(
+				projectId,
+				expect.not.objectContaining({ projectId: expect.anything() }),
+			);
+			expect(mockResponse.status).toHaveBeenCalledWith(201);
+		});
+	});
+
+	describe('listDataTables', () => {
+		it('should include personal and team projects for regular user', async () => {
+			const req = { query: {}, user: makeUser() } as unknown as DataTableRequest.List;
+			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: projectId,
+			} as never);
+			mockDataTableService.getManyAndCount.mockResolvedValue({ data: [], count: 0 } as never);
+
+			await mainHandler.listDataTables[2](req, mockResponse as Response);
+
+			const callArgs = mockDataTableService.getManyAndCount.mock.calls[0][0];
+			expect(callArgs.filter?.projectId).toContain(projectId);
+		});
 	});
 
 	describe('getDataTableRows', () => {

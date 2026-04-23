@@ -20,6 +20,30 @@ const store = useInstanceAiSettingsStore();
 
 		<div :class="$style.switchRow">
 			<span :class="$style.switchLabel">{{
+				i18n.baseText('instanceAi.settings.permissions.createWorkflow.label')
+			}}</span>
+			<ElSwitch
+				:model-value="store.getPermission('createWorkflow') === 'always_allow'"
+				@update:model-value="
+					store.setPermission('createWorkflow', $event ? 'always_allow' : 'require_approval')
+				"
+			/>
+		</div>
+
+		<div :class="$style.switchRow">
+			<span :class="$style.switchLabel">{{
+				i18n.baseText('instanceAi.settings.permissions.updateWorkflow.label')
+			}}</span>
+			<ElSwitch
+				:model-value="store.getPermission('updateWorkflow') === 'always_allow'"
+				@update:model-value="
+					store.setPermission('updateWorkflow', $event ? 'always_allow' : 'require_approval')
+				"
+			/>
+		</div>
+
+		<div :class="$style.switchRow">
+			<span :class="$style.switchLabel">{{
 				i18n.baseText('instanceAi.settings.permissions.runWorkflow.label')
 			}}</span>
 			<ElSwitch
@@ -62,6 +86,18 @@ const store = useInstanceAiSettingsStore();
 				:model-value="store.getPermission('deleteCredential') === 'always_allow'"
 				@update:model-value="
 					store.setPermission('deleteCredential', $event ? 'always_allow' : 'require_approval')
+				"
+			/>
+		</div>
+
+		<div :class="$style.switchRow">
+			<span :class="$style.switchLabel">{{
+				i18n.baseText('instanceAi.settings.permissions.deleteDataTable.label')
+			}}</span>
+			<ElSwitch
+				:model-value="store.getPermission('deleteDataTable') === 'always_allow'"
+				@update:model-value="
+					store.setPermission('deleteDataTable', $event ? 'always_allow' : 'require_approval')
 				"
 			/>
 		</div>

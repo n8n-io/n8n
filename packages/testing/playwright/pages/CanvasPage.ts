@@ -13,6 +13,10 @@ import { StickyComponent } from './components/StickyComponent';
 import { TagsManagerModal } from './components/TagsManagerModal';
 
 export class CanvasPage extends BasePage {
+	async goto() {
+		await this.page.goto(ROUTES.NEW_WORKFLOW_PAGE);
+	}
+
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
@@ -556,7 +560,9 @@ export class CanvasPage extends BasePage {
 
 	async executeNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).hover();
-		await this.nodeExecuteButton(nodeName).click();
+		const button = this.nodeExecuteButton(nodeName);
+		await expect(button).toBeVisible();
+		await button.click();
 	}
 
 	async selectAll(): Promise<void> {
@@ -761,6 +767,18 @@ export class CanvasPage extends BasePage {
 	async closeManualChatModal(): Promise<void> {
 		// Same toggle button closes the chat
 		await this.page.getByTestId('workflow-chat-button').click();
+	}
+
+	getOpenChatButton(): Locator {
+		return this.page.getByRole('button', { name: 'Open chat' });
+	}
+
+	getHideChatButton(): Locator {
+		return this.page.getByRole('button', { name: 'Hide chat' });
+	}
+
+	getChatPanel(): Locator {
+		return this.page.getByTestId('canvas-chat');
 	}
 
 	// Input plus endpoints (to add supplemental nodes to parent inputs)

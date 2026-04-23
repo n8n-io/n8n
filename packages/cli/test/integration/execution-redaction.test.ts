@@ -22,9 +22,6 @@ import {
 } from './shared/db/users';
 import { setupTestServer } from './shared/utils';
 
-// Must be set before setupTestServer() so RedactionModule.init() wires the real service
-process.env.N8N_ENV_FEAT_EXECUTION_REDACTION = 'true';
-
 mockInstance(WaitTracker);
 mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
@@ -44,6 +41,7 @@ let publicApiMember: User;
 beforeEach(async () => {
 	await testDb.truncate(['ExecutionEntity', 'WorkflowEntity', 'SharedWorkflow']);
 	testServer.license.reset();
+	testServer.license.enable('feat:dataRedaction');
 	owner = await createOwner();
 	member = await createMember();
 	publicApiOwner = await createOwnerWithApiKey();

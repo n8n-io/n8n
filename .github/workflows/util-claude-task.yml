@@ -149,6 +149,17 @@ jobs:
                   "mcp__linear__*",
                   "mcp__notion__*"
                 ]
+              },
+              "extraKnownMarketplaces": {
+                "n8n": {
+                  "source": {
+                    "source": "directory",
+                    "path": "./.claude/plugins/n8n"
+                  }
+                }
+              },
+              "enabledPlugins": {
+                "n8n@n8n": true
               }
             }
           claude_args: |

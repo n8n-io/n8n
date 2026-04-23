@@ -64,6 +64,7 @@ export interface IEnterpriseSettings {
 	};
 	customRoles: boolean;
 	personalSpacePolicy: boolean;
+	dataRedaction: boolean;
 }
 
 export interface FrontendSettings {
@@ -130,6 +131,7 @@ export interface FrontendSettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
+		managedByEnv: boolean;
 		saml: {
 			loginLabel: string;
 			loginEnabled: boolean;
@@ -214,6 +216,10 @@ export interface FrontendSettings {
 		credits: number;
 		setup: boolean;
 	};
+	aiGateway?: {
+		enabled: boolean;
+		budget: number;
+	};
 	ai: {
 		allowSendingParameterValues: boolean;
 	};
@@ -273,9 +279,10 @@ export type FrontendModuleSettings = {
 	 */
 	'instance-ai'?: {
 		enabled: boolean;
-		localGateway: boolean;
 		localGatewayDisabled: boolean;
-		localGatewayFallbackDirectory: string | null;
+		proxyEnabled: boolean;
+		optinModalDismissed: boolean;
+		cloudManaged: boolean;
 	};
 
 	/**

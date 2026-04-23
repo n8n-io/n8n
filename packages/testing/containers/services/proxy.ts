@@ -139,14 +139,51 @@ export class ProxyServer {
 		this.client = mockServerClient(parsedURL.hostname, parseInt(parsedURL.port, 10));
 	}
 
+	/** Retry an async operation with exponential backoff (handles ECONNRESET). */
+	private async withRetry<T>(
+		fn: () => Promise<T>,
+		{ retries = 3, delayMs = 500 }: { retries?: number; delayMs?: number } = {},
+	): Promise<T> {
+		let lastError: unknown;
+		for (let attempt = 0; attempt <= retries; attempt++) {
+			try {
+				return await fn();
+			} catch (error) {
+				lastError = error;
+				if (attempt < retries) {
+					const backoff = delayMs * 2 ** attempt;
+					console.log(
+						`Proxy request failed (attempt ${attempt + 1}/${retries + 1}), retrying in ${backoff}ms:`,
+						error,
+					);
+					await new Promise((resolve) => setTimeout(resolve, backoff));
+				}
+			}
+		}
+		throw lastError;
+	}
+
 	async loadExpectations(
 		folderName: string,
-		options: { strictBodyMatching?: boolean } = {},
+		options: {
+			strictBodyMatching?: boolean;
+			partialBodyMatching?: boolean;
+			sequential?: boolean;
+		} = {},
 	): Promise<void> {
 		try {
 			const targetDir = join(this.expectationsDir, folderName);
-			const files = await fs.readdir(targetDir);
-			const jsonFiles = files.filter((file) => file.endsWith('.json'));
+			let files: string[];
+			try {
+				files = await fs.readdir(targetDir);
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+					console.log(`No expectations directory: ${targetDir}, skipping`);
+					return;
+				}
+				throw error;
+			}
+			const jsonFiles = files.filter((file) => file.endsWith('.json')).sort();
 			const expectations: Expectation[] = [];
 
 			for (const file of jsonFiles) {
@@ -163,18 +200,45 @@ export class ProxyServer {
 						(expectation.httpRequest as { body: { matchType: string } }).body.matchType = 'STRICT';
 					}
 
+					if (
+						options.partialBodyMatching &&
+						expectation.httpRequest &&
+						'body' in expectation.httpRequest
+					) {
+						(expectation.httpRequest as { body: { matchType: string } }).body.matchType =
+							'ONLY_MATCHING_FIELDS';
+					}
+
+					if (options.sequential) {
+						expectation.times = { remainingTimes: 1 };
+					}
+
 					expectations.push(expectation);
 				} catch (parseError) {
 					console.log(`Error parsing expectation from ${file}:`, parseError);
 				}
 			}
 
+			// In sequential mode, make the last LLM expectation unlimited so it
+			// acts as a fallback — returning the same final response for any extra
+			// calls caused by tool execution divergence during replay.
+			if (options.sequential && expectations.length > 0) {
+				for (let i = expectations.length - 1; i >= 0; i--) {
+					const path = (expectations[i].httpRequest as { path?: string })?.path;
+					if (path === '/v1/messages') {
+						expectations[i].times = { unlimited: true };
+						break;
+					}
+				}
+			}
+
 			if (expectations.length > 0) {
 				console.log('Loading expectations:', expectations.length);
-				await this.client.mockAnyResponse(expectations);
+				await this.withRetry(async () => await this.client.mockAnyResponse(expectations));
 			}
 		} catch (error) {
 			console.log('Error loading expectations:', error);
+			throw error;
 		}
 	}
 
@@ -204,7 +268,7 @@ export class ProxyServer {
 
 	async clearAllExpectations(): Promise<void> {
 		try {
-			await this.client.clear('', 'ALL');
+			await this.withRetry(async () => await this.client.clear('', 'ALL'));
 		} catch (error) {
 			throw new Error(`Failed to clear ProxyServer: ${JSON.stringify(error)}`);
 		}
@@ -255,6 +319,7 @@ export class ProxyServer {
 			host?: string;
 			dedupe?: boolean;
 			raw?: boolean;
+			clearDir?: boolean;
 			transform?: (expectation: Expectation) => Expectation;
 		},
 	): Promise<void> {
@@ -264,6 +329,14 @@ export class ProxyServer {
 			);
 
 			const targetDir = join(this.expectationsDir, folderName);
+
+			if (options?.clearDir) {
+				await fs.rm(targetDir, { recursive: true, force: true });
+			}
+
+			if (recordedExpectations.length === 0) {
+				return;
+			}
 
 			await fs.mkdir(targetDir, { recursive: true });
 			const seenRequests = new Set<string>();
