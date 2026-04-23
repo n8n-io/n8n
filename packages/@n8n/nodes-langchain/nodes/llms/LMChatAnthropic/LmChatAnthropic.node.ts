@@ -69,6 +69,10 @@ const modelField: INodeProperties = {
 	description:
 		'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
 	default: 'claude-2',
+	builderHint: {
+		message:
+			'Always default to the latest Claude Sonnet (claude-sonnet-4-6). Use claude-opus-4-7 when the user needs the most capable model. Avoid Claude Sonnet 4.5 and earlier, Claude 3.x, Claude 2, and LEGACY options.',
+	},
 };
 
 const MIN_THINKING_BUDGET = 1024;
@@ -157,6 +161,10 @@ export class LmChatAnthropic implements INodeType {
 					mode: 'list',
 					value: 'claude-sonnet-4-5-20250929',
 					cachedResultName: 'Claude Sonnet 4.5',
+				},
+				builderHint: {
+					message:
+						'Always default to the latest Claude Sonnet (claude-sonnet-4-6). Use claude-opus-4-7 when the user needs the most capable model. Avoid Claude Sonnet 4.5 and earlier, Claude 3.x, Claude 2, and LEGACY options.',
 				},
 				required: true,
 				modes: [
