@@ -363,10 +363,12 @@ export function createNodesTool(
 				'`explore-resources` with the real method name and a credential.',
 			inputSchema: orchestratorInputSchema,
 			execute: async (input: OrchestratorInput) => {
-				if (input.action === 'type-definition') {
-					return await handleTypeDefinition(context, input);
+				switch (input.action) {
+					case 'type-definition':
+						return await handleTypeDefinition(context, input);
+					case 'explore-resources':
+						return await handleExploreResources(context, input);
 				}
-				return await handleExploreResources(context, input);
 			},
 		});
 	}
