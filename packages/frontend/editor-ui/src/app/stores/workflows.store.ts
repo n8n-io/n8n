@@ -356,24 +356,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.connections.hasOwnProperty(nodeName);
 	}
 
-	/** @deprecated Use `workflowDocumentStore.isNodeInOutgoingNodeConnections()` instead. */
-	function isNodeInOutgoingNodeConnections(
-		rootNodeName: string,
-		searchNodeName: string,
-		depth = -1,
-	): boolean {
-		if (depth === 0) return false;
-		const firstNodeConnections = outgoingConnectionsByNodeName(rootNodeName);
-		if (!firstNodeConnections?.main?.[0]) return false;
-
-		const connections = firstNodeConnections.main[0];
-		if (connections.some((node) => node.node === searchNodeName)) return true;
-
-		return connections.some((node) =>
-			isNodeInOutgoingNodeConnections(node.node, searchNodeName, depth - 1),
-		);
-	}
-
 	/** @deprecated Use `workflowDocumentStore.getNodeByName()` instead. */
 	function getNodeByName(nodeName: string): INodeUi | null {
 		return workflowUtils.getNodeByName(nodesByName.value, nodeName);
@@ -1313,7 +1295,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,
-		isNodeInOutgoingNodeConnections,
 		getNodeByName,
 		getExecutionDataById,
 		getNodeTypes,

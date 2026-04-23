@@ -308,45 +308,6 @@ describe('useWorkflowDocumentConnections', () => {
 		});
 	});
 
-	describe('isNodeInOutgoingNodeConnections', () => {
-		it('returns true when search node is a direct successor', () => {
-			const composable = useWorkflowDocumentConnections(deps);
-			composable.addConnection(createConnectionData('A', 'B'));
-
-			expect(composable.isNodeInOutgoingNodeConnections('A', 'B')).toBe(true);
-		});
-
-		it('returns true when search node is a transitive successor', () => {
-			const composable = useWorkflowDocumentConnections(deps);
-			composable.addConnection(createConnectionData('A', 'B'));
-			composable.addConnection(createConnectionData('B', 'C'));
-
-			expect(composable.isNodeInOutgoingNodeConnections('A', 'C')).toBe(true);
-		});
-
-		it('returns false when search node is not connected', () => {
-			const composable = useWorkflowDocumentConnections(deps);
-
-			// Only A → B exists, D is completely disconnected
-			composable.setConnections({
-				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
-			});
-
-			expect(composable.isNodeInOutgoingNodeConnections('A', 'D')).toBe(false);
-		});
-
-		it('respects depth limit', () => {
-			const composable = useWorkflowDocumentConnections(deps);
-			composable.addConnection(createConnectionData('A', 'B'));
-			composable.addConnection(createConnectionData('B', 'C'));
-
-			// Depth 1: only check direct successors — C is 2 hops away
-			expect(composable.isNodeInOutgoingNodeConnections('A', 'C', 1)).toBe(false);
-			// Depth 2: check 2 hops — C is reachable
-			expect(composable.isNodeInOutgoingNodeConnections('A', 'C', 2)).toBe(true);
-		});
-	});
-
 	describe('events', () => {
 		it('setConnections does not fire onConnectionsChange (initialization path)', () => {
 			const hookSpy = vi.fn();

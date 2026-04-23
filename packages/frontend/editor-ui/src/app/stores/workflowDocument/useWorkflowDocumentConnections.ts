@@ -208,14 +208,6 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 		return workflowsStore.nodeHasOutputConnection(nodeName);
 	}
 
-	function isNodeInOutgoingNodeConnections(
-		rootNodeName: string,
-		searchNodeName: string,
-		depth = -1,
-	): boolean {
-		return workflowsStore.isNodeInOutgoingNodeConnections(rootNodeName, searchNodeName, depth);
-	}
-
 	// -----------------------------------------------------------------------
 	// Write API
 	// -----------------------------------------------------------------------
@@ -256,7 +248,6 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,
-		isNodeInOutgoingNodeConnections,
 
 		// Write
 		setConnections,
