@@ -29,6 +29,8 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/vue": "catalog:frontend",
+    "@testing-library/jest-dom": "catalog:frontend",
+    "@testing-library/user-event": "catalog:frontend",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "@vueuse/core": "catalog:frontend",
