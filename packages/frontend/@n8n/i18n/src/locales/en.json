@@ -5698,6 +5698,7 @@
 	"agents.builder.sections.model": "Model",
 	"agents.builder.sections.tools": "Tools",
 	"agents.builder.sections.triggers": "Triggers",
+	"agents.builder.editor.invalidJson": "Invalid JSON",
 	"agents.builder.tree.empty": "No sections yet",
 	"instanceAi.welcomeModal.badge": "Early preview",
 	"instanceAi.welcomeModal.title": "Try AI Assistant",
