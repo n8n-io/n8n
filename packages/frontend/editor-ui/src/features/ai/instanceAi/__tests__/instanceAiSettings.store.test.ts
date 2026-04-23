@@ -1,9 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type {
-	FrontendModuleSettings,
-	InstanceAiUserPreferencesResponse,
-} from '@n8n/api-types';
+import type { FrontendModuleSettings, InstanceAiUserPreferencesResponse } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
