@@ -1,12 +1,7 @@
 import { type DeepMockProxy, mockDeep } from 'jest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
-import {
-	_cloudIdCache,
-	handlePagination,
-	jiraSoftwareCloudApiRequest,
-	jiraSoftwareCloudApiRequestAllItems,
-} from '../GenericFunctions';
+import { handlePagination, jiraSoftwareCloudApiRequestAllItems } from '../GenericFunctions';
 
 describe('Jira -> GenericFunctions', () => {
 	describe('jiraSoftwareCloudApiRequestAllItems', () => {
@@ -62,8 +57,11 @@ describe('Jira -> GenericFunctions', () => {
 
 	describe('jiraSoftwareCloudApiRequest credential routing', () => {
 		let mockExecuteFunctions: DeepMockProxy<IExecuteFunctions>;
+		let jiraSoftwareCloudApiRequest: typeof import('../GenericFunctions').jiraSoftwareCloudApiRequest;
 
-		beforeEach(() => {
+		beforeEach(async () => {
+			jest.resetModules();
+			({ jiraSoftwareCloudApiRequest } = await import('../GenericFunctions'));
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue({});
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Jira' } as ReturnType<
@@ -73,7 +71,6 @@ describe('Jira -> GenericFunctions', () => {
 
 		afterEach(() => {
 			jest.clearAllMocks();
-			_cloudIdCache.clear();
 		});
 
 		it('should use jiraSoftwareCloudApi credential for jiraVersion "cloud"', async () => {

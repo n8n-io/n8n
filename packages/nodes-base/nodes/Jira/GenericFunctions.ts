@@ -14,7 +14,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { JiraServerInfo, JiraWebhook } from './types';
 
 // Module-level cache: normalised domain → cloudId (persists for the life of the n8n process)
-export const _cloudIdCache = new Map<string, string>();
+const _cloudIdCache = new Map<string, string>();
 
 async function getCloudId(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
