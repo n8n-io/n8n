@@ -179,9 +179,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return false;
 	});
 
-	/** @deprecated Use `workflowDocumentStore.canvasNames` instead. */
-	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
-
 	/** @deprecated Use `workflowDocumentStore.nodesByName` instead. */
 	const nodesByName = computed(() => {
 		return workflow.value.nodes.reduce<Record<string, INodeUi>>((acc, node) => {
@@ -1274,7 +1271,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		connectionsBySourceNode,
 		connectionsByDestinationNode,
 		isWorkflowRunning,
-		canvasNames,
 		nodesByName,
 		nodesWithIssuesCount,
 		nodesWithIssues,

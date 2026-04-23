@@ -185,9 +185,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	const nodesByName = computed<Record<string, INodeUi>>(() => workflowsStore.nodesByName);
 
-	const canvasNames = computed<Set<string>>(
-		() => new Set(workflowsStore.allNodes.map((n) => n.name)),
-	);
+	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
 	function getNodeById(id: string): INodeUi | undefined {
 		return workflowDocumentStore.value.getNodeById(id);
