@@ -64,9 +64,7 @@ const isSubmitEnabled = computed(() => {
 		hasExecutionData.value
 	);
 });
-const hasExecutionData = computed(
-	() => ndvStore.ndvInputDataWithPinnedData.length > 0,
-);
+const hasExecutionData = computed(() => ndvStore.ndvInputDataWithPinnedData.length > 0);
 const loadingString = computed(() =>
 	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}` as BaseTextKey),
 );

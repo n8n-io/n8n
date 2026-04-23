@@ -70,9 +70,7 @@ const issues = computed(() => {
 });
 
 const empty = computed(() => state.paramValue.assignments.length === 0);
-const activeDragField = computed(() =>
-	propertyNameFromExpression(ndvStore.draggableData),
-);
+const activeDragField = computed(() => propertyNameFromExpression(ndvStore.draggableData));
 const inputData = computed(() => ndvStore.ndvInputData?.[0]?.json);
 const actions = computed(() => {
 	return [

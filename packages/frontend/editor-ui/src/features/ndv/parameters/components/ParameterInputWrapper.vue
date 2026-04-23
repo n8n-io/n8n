@@ -101,9 +101,7 @@ const parameterHint = computed(() => {
 
 const targetItem = computed(() => ndvStore.expressionTargetItem ?? null);
 
-const isInputParentOfActiveNode = computed(
-	() => ndvStore.isInputParentOfActiveNode,
-);
+const isInputParentOfActiveNode = computed(() => ndvStore.isInputParentOfActiveNode);
 
 const expression = computed(() => {
 	if (!isExpression.value) return '';

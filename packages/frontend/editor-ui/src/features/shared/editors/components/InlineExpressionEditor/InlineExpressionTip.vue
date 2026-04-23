@@ -87,9 +87,7 @@ onBeforeUnmount(() => {
 watch(
 	tip,
 	(newTip) => {
-		ndvStore.setHighlightDraggables(
-			!ndvStore.isMappingOnboarded && newTip === 'drag',
-		);
+		ndvStore.setHighlightDraggables(!ndvStore.isMappingOnboarded && newTip === 'drag');
 	},
 	{ immediate: true },
 );

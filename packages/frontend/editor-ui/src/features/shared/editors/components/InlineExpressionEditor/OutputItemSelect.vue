@@ -11,9 +11,7 @@ const hoveringItem = computed(() => ndvStore.getHoveringItem ?? null);
 const hoveringItemIndex = computed(() => hoveringItem.value?.itemIndex);
 const isHoveringItem = computed(() => Boolean(hoveringItem.value));
 const itemsLength = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
-const itemIndex = computed(
-	() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex,
-);
+const itemIndex = computed(() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex);
 const max = computed(() => Math.max(itemsLength.value - 1, 0));
 const isItemIndexEditable = computed(() => !isHoveringItem.value && itemsLength.value > 0);
 const hideTableHoverHint = computed(() => ndvStore.isTableHoverOnboarded);

@@ -554,9 +554,7 @@ const branches = computed(() => {
 });
 
 const editMode = computed(() => {
-	return isPaneTypeInput.value
-		? { enabled: false, value: '' }
-		: ndvStore.outputPanelEditMode;
+	return isPaneTypeInput.value ? { enabled: false, value: '' } : ndvStore.outputPanelEditMode;
 });
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);

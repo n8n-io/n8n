@@ -41,9 +41,7 @@ const ndvStore = injectNDVStore();
 const i18n = useI18n();
 const { isOAuthCredentialType } = useCredentialOAuth();
 
-const activeNode = computed<INode | null>(
-	() => props.contextNode ?? ndvStore.activeNode ?? null,
-);
+const activeNode = computed<INode | null>(() => props.contextNode ?? ndvStore.activeNode ?? null);
 const activeNodeType = computed<INodeTypeDescription | null>(() => {
 	if (!activeNode.value) return null;
 	return nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);
