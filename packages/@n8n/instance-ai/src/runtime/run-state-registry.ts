@@ -18,6 +18,10 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	toolCallId: string;
 	requestId: string;
 	createdAt: number;
+	/** Set when the suspended run was a planned-task checkpoint follow-up.
+	 *  Preserved across suspend/resume so the resumed run's finalizer can
+	 *  run the deadlock fallback and reschedule. */
+	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 }
 
 export interface ConfirmationData {

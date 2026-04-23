@@ -54,6 +54,24 @@ export const blueprintDelegateItemSchema = z.object({
 	dependsOn: z.array(z.string()).default([]),
 });
 
+export const blueprintCheckpointItemSchema = z.object({
+	id: z.string().describe('Stable ID — preserved as task ID'),
+	title: z
+		.string()
+		.describe(
+			'User-readable verification goal (e.g., "Verify Daily Email workflow runs without errors")',
+		),
+	instructions: z
+		.string()
+		.describe(
+			'Detailed verification steps the orchestrator must execute — which tools to call, the expected pass condition. The orchestrator runs this itself (no sub-agent).',
+		),
+	dependsOn: z
+		.array(z.string())
+		.default([])
+		.describe('IDs of items this checkpoint verifies. Must include at least one workflow item ID.'),
+});
+
 // ---------------------------------------------------------------------------
 // Top-level blueprint schema
 // ---------------------------------------------------------------------------
@@ -76,3 +94,4 @@ export type BlueprintWorkflowItem = z.infer<typeof blueprintWorkflowItemSchema>;
 export type BlueprintDataTableItem = z.infer<typeof blueprintDataTableItemSchema>;
 export type BlueprintResearchItem = z.infer<typeof blueprintResearchItemSchema>;
 export type BlueprintDelegateItem = z.infer<typeof blueprintDelegateItemSchema>;
+export type BlueprintCheckpointItem = z.infer<typeof blueprintCheckpointItemSchema>;

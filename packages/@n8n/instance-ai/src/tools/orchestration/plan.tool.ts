@@ -8,7 +8,7 @@ import type { OrchestrationContext, PlannedTask } from '../../types';
 const plannedTaskSchema = z.object({
 	id: z.string().describe('Stable task identifier used by dependency edges'),
 	title: z.string().describe('Short user-facing task title'),
-	kind: z.enum(['delegate', 'build-workflow', 'manage-data-tables', 'research']),
+	kind: z.enum(['delegate', 'build-workflow', 'manage-data-tables', 'research', 'checkpoint']),
 	spec: z.string().describe('Detailed executor briefing for this task'),
 	deps: z
 		.array(z.string())
@@ -60,7 +60,11 @@ async function threadHasExistingPlan(context: OrchestrationContext): Promise<boo
 	try {
 		const graph = await context.plannedTaskService.getGraph(context.threadId);
 		if (!graph) return false;
-		return graph.status === 'active' || graph.status === 'awaiting_replan';
+		return (
+			graph.status === 'awaiting_approval' ||
+			graph.status === 'active' ||
+			graph.status === 'awaiting_replan'
+		);
 	} catch {
 		return false;
 	}
@@ -189,8 +193,10 @@ export function createPlanTool(context: OrchestrationContext) {
 				return { result: 'Awaiting approval', taskCount: input.tasks.length };
 			}
 
-			// User approved — start execution
+			// User approved — flip graph status from awaiting_approval → active,
+			// then start execution.
 			if (resumeData.approved) {
+				await context.plannedTaskService.approvePlan(context.threadId);
 				await context.schedulePlannedTasks();
 				return {
 					result: `Plan approved. Started ${input.tasks.length} task${input.tasks.length === 1 ? '' : 's'}.`,
@@ -198,7 +204,12 @@ export function createPlanTool(context: OrchestrationContext) {
 				};
 			}
 
-			// User rejected or requested changes — return feedback to LLM
+			// User rejected or requested changes. Clear the persisted graph so a
+			// later schedulePlannedTasks() (post-run reschedule, or a background
+			// task settlement mid-revision) can't dispatch the rejected plan.
+			// If the LLM decides to revise, its next create-tasks call will
+			// createPlan a fresh graph anyway.
+			await context.plannedTaskService.clear(context.threadId);
 			return {
 				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks and call create-tasks again.`,
 				taskCount: 0,

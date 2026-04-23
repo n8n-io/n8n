@@ -11,6 +11,7 @@ import { z } from 'zod';
 
 import type { BlueprintAccumulator } from './blueprint-accumulator';
 import {
+	blueprintCheckpointItemSchema,
 	blueprintDataTableItemSchema,
 	blueprintDelegateItemSchema,
 	blueprintResearchItemSchema,
@@ -52,6 +53,7 @@ const addPlanItemInputSchema = z.object({
 		blueprintDataTableItemSchema.extend({ kind: z.literal('data-table') }),
 		blueprintResearchItemSchema.extend({ kind: z.literal('research') }),
 		blueprintDelegateItemSchema.extend({ kind: z.literal('delegate') }),
+		blueprintCheckpointItemSchema.extend({ kind: z.literal('checkpoint') }),
 	]),
 });
 

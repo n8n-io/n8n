@@ -549,7 +549,12 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export type PlannedTaskKind = 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
+export type PlannedTaskKind =
+	| 'delegate'
+	| 'build-workflow'
+	| 'manage-data-tables'
+	| 'research'
+	| 'checkpoint';
 
 export interface PlannedTask {
 	id: string;
@@ -575,7 +580,12 @@ export interface PlannedTaskRecord extends PlannedTask {
 	finishedAt?: number;
 }
 
-export type PlannedTaskGraphStatus = 'active' | 'awaiting_replan' | 'completed' | 'cancelled';
+export type PlannedTaskGraphStatus =
+	| 'awaiting_approval'
+	| 'active'
+	| 'awaiting_replan'
+	| 'completed'
+	| 'cancelled';
 
 export interface PlannedTaskGraph {
 	planRunId: string;
@@ -587,6 +597,7 @@ export interface PlannedTaskGraph {
 export type PlannedTaskSchedulerAction =
 	| { type: 'none'; graph: PlannedTaskGraph | null }
 	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
 	| { type: 'synthesize'; graph: PlannedTaskGraph };
 
@@ -617,12 +628,41 @@ export interface PlannedTaskService {
 		taskId: string,
 		update?: { error?: string; finishedAt?: number },
 	): Promise<PlannedTaskGraph | null>;
+	markCheckpointSucceeded(
+		threadId: string,
+		taskId: string,
+		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
+	): Promise<CheckpointSettleResult>;
+	markCheckpointFailed(
+		threadId: string,
+		taskId: string,
+		update: { error?: string; finishedAt?: number },
+	): Promise<CheckpointSettleResult>;
 	tick(
 		threadId: string,
 		options?: { availableSlots?: number },
 	): Promise<PlannedTaskSchedulerAction>;
 	clear(threadId: string): Promise<void>;
+	/** Transition an `awaiting_approval` graph → `active` after the user
+	 *  approves the plan. No-op on any other status. */
+	approvePlan(threadId: string): Promise<PlannedTaskGraph | null>;
+	/** Revert an `awaiting_replan` or `completed` graph back to `active`. Used by
+	 *  the service when a replan or synthesize follow-up couldn't start. */
+	revertToActive(threadId: string): Promise<PlannedTaskGraph | null>;
 }
+
+/**
+ * Result of a guarded checkpoint settlement. The mutators only transition a task
+ * when its kind is `checkpoint` AND its status is `running`, so callers can read
+ * the `reason` to report a precise error back to the LLM.
+ */
+export type CheckpointSettleResult =
+	| { ok: true; graph: PlannedTaskGraph }
+	| {
+			ok: false;
+			reason: 'not-found' | 'wrong-kind' | 'wrong-status';
+			actual?: { kind?: PlannedTaskKind; status?: PlannedTaskStatus };
+	  };
 
 // ── MCP ──────────────────────────────────────────────────────────────────────
 
@@ -849,6 +889,12 @@ export interface OrchestrationContext {
 	 *  background task. Set by the host, not by user text — the create-tasks guard
 	 *  reads this instead of substring-matching `currentUserMessage`. */
 	isReplanFollowUp?: boolean;
+	/** True when the current run was started to execute a planned-task checkpoint.
+	 *  The orchestrator should run the checkpoint's spec and call complete-checkpoint. */
+	isCheckpointFollowUp?: boolean;
+	/** When isCheckpointFollowUp is true, the task ID of the checkpoint being executed.
+	 *  Used by the post-run deadlock fallback in the service. */
+	checkpointTaskId?: string;
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
 	/** When true, research guidance may suggest planned research tasks and the builder gets web-search/fetch-url */

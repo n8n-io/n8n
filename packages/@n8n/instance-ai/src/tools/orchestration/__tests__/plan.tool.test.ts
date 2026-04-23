@@ -20,6 +20,8 @@ function makePlannedTaskService(overrides: Partial<PlannedTaskService> = {}): Pl
 	return {
 		createPlan: jest.fn().mockResolvedValue(undefined),
 		getGraph: jest.fn().mockResolvedValue(null),
+		approvePlan: jest.fn().mockResolvedValue(undefined),
+		clear: jest.fn().mockResolvedValue(undefined),
 		...overrides,
 	} as unknown as PlannedTaskService;
 }
@@ -229,5 +231,31 @@ describe('createPlanTool — replan-only guard', () => {
 
 		expect(out.result).toContain('Plan approved');
 		expect(context.schedulePlannedTasks).toHaveBeenCalled();
+	});
+
+	it('flips graph to active via approvePlan before scheduling on approval', async () => {
+		const context = createMockContext({ currentUserMessage: 'ordinary message' });
+		const tool = createPlanTool(context) as unknown as Executable;
+
+		await tool.execute({ tasks: validTasks() }, { agent: { resumeData: { approved: true } } });
+
+		expect(context.plannedTaskService!.approvePlan).toHaveBeenCalledWith('test-thread');
+		expect(context.schedulePlannedTasks).toHaveBeenCalled();
+	});
+
+	it('clears the persisted graph on rejection so it cannot be dispatched later', async () => {
+		const context = createMockContext({ currentUserMessage: 'ordinary message' });
+		const tool = createPlanTool(context) as unknown as Executable;
+
+		const out = await tool.execute(
+			{ tasks: validTasks() },
+			{ agent: { resumeData: { approved: false, userInput: 'not what I wanted' } } },
+		);
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('User requested changes');
+		expect(context.plannedTaskService!.clear).toHaveBeenCalledWith('test-thread');
+		expect(context.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(context.plannedTaskService!.approvePlan).not.toHaveBeenCalled();
 	});
 });

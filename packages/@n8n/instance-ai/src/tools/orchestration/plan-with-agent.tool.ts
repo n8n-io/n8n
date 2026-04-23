@@ -176,6 +176,22 @@ async function clearDraftChecklist(context: OrchestrationContext): Promise<void>
 	}
 }
 
+/**
+ * Remove any persisted planned-task graph for this thread. Called on planner
+ * give-up / error paths to prevent a later schedulePlannedTasks() tick from
+ * dispatching a plan the user never approved. submit-plan persists the graph
+ * before HITL approval so the checklist renders, which makes this cleanup
+ * mandatory when the planner exits unapproved.
+ */
+async function clearPlannedTaskGraph(context: OrchestrationContext): Promise<void> {
+	if (!context.plannedTaskService) return;
+	try {
+		await context.plannedTaskService.clear(context.threadId);
+	} catch {
+		// Best-effort — don't let cleanup failures block the return path
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Tool factory
 // ---------------------------------------------------------------------------
@@ -337,7 +353,12 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 				// ── Schedule tasks after planner-driven approval ──────────
 				// Only dispatch if submit-plan was called AND the user approved.
+				// createPlan persists the graph as `awaiting_approval`; flip it
+				// to `active` before scheduling so tick() can dispatch.
 				if (accumulator.isApproved()) {
+					if (context.plannedTaskService) {
+						await context.plannedTaskService.approvePlan(context.threadId);
+					}
 					if (context.schedulePlannedTasks) {
 						await context.schedulePlannedTasks();
 					}
@@ -350,6 +371,11 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				// Planner finished without approval (no submit-plan or user didn't approve)
 				publishClearingEvent(context);
 				await clearDraftChecklist(context);
+				// Clear the persisted planned-task graph too. submit-plan persists
+				// it BEFORE user approval (so HITL can display the checklist), so
+				// leaving it intact on planner give-up would let a later
+				// schedulePlannedTasks() tick pick up and dispatch a rejected plan.
+				await clearPlannedTaskGraph(context);
 				if (!accumulator.isEmpty()) {
 					return {
 						result: `Planner added ${accumulator.getTaskList().length} items but did not submit the plan for approval. The plan was not executed.`,
@@ -376,9 +402,12 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					},
 				});
 
-				// Clear draft checklist on error
+				// Clear draft checklist and persisted graph on error — same reason
+				// as the non-approval path: an error-aborted plan must not later be
+				// auto-dispatched by the post-run reschedule.
 				publishClearingEvent(context);
 				await clearDraftChecklist(context);
+				await clearPlannedTaskGraph(context);
 
 				return { result: `Planner error: ${errorMessage}` };
 			}

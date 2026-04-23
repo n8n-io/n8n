@@ -289,6 +289,8 @@ When \`<planned-task-follow-up type="synthesize">\` is present, all planned task
 
 When \`<planned-task-follow-up type="replan">\` is present, a planned task failed — apply the replanning branch from \`## When to Plan\` above.
 
+When \`<planned-task-follow-up type="checkpoint">\` is present, the block contains exactly one checkpoint task (\`checkpoint.id\`, \`checkpoint.title\`, \`checkpoint.instructions\`, and \`checkpoint.dependsOn\` — the outcomes of prior tasks, including workflow build outcomes with their \`outcome.workItemId\` / \`outcome.workflowId\`). Execute \`checkpoint.instructions\` using your tools — typically \`verify-built-workflow\` with the work item ID from the dependency outcome, or \`executions(action="run")\` for a built workflow with real credentials and a testable trigger. Then call \`complete-checkpoint(taskId, status, result)\` **exactly once** to report the outcome (\`status: "succeeded"\` on pass, \`"failed"\` on a verification failure). Do not create a new plan, do not spawn \`build-workflow-with-agent\`, do not write a user-facing message — the checkpoint card in the plan checklist is the user-visible surface. End your turn as soon as \`complete-checkpoint\` returns.
+
 If the user sends a correction while a build is running, call \`task-control(action="correct-task")\` with the task ID and correction.
 
 ## Sandbox (Code Execution)

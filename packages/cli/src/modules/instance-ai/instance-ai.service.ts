@@ -38,6 +38,7 @@ import {
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	applyPlannedTaskPermissions,
+	PLANNED_TASK_PERMISSION_OVERRIDES,
 	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
@@ -813,6 +814,16 @@ export class InstanceAiService {
 			}
 		}
 
+		// Clean up any awaiting_approval plan graph for this thread. The user
+		// cancelled before approving, so leaving the graph persisted would (a)
+		// cause doSchedulePlannedTasks() to republish the stale checklist on
+		// every later pass via syncPlannedTasksToUi(), and (b) incorrectly let a
+		// future unrelated create-tasks call bypass the replan-only guard via
+		// threadHasExistingPlan(). Only target awaiting_approval — active and
+		// awaiting_replan graphs have their own settlement logic via the
+		// background-task cancellations above.
+		void this.cancelAwaitingApprovalPlan(threadId);
+
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
 			active.abortController.abort();
@@ -1133,9 +1144,9 @@ export class InstanceAiService {
 	}
 
 	private buildPlannedTaskFollowUpMessage(
-		type: 'synthesize' | 'replan',
+		type: 'synthesize' | 'replan' | 'checkpoint',
 		graph: PlannedTaskGraph,
-		failedTask?: PlannedTaskRecord,
+		options: { failedTask?: PlannedTaskRecord; checkpoint?: PlannedTaskRecord } = {},
 	): string {
 		const payload: Record<string, unknown> = {
 			tasks: graph.tasks.map((task) => ({
@@ -1149,13 +1160,32 @@ export class InstanceAiService {
 			})),
 		};
 
-		if (failedTask) {
+		if (options.failedTask) {
 			payload.failedTask = {
-				id: failedTask.id,
-				title: failedTask.title,
-				kind: failedTask.kind,
-				error: failedTask.error,
-				result: failedTask.result,
+				id: options.failedTask.id,
+				title: options.failedTask.title,
+				kind: options.failedTask.kind,
+				error: options.failedTask.error,
+				result: options.failedTask.result,
+			};
+		}
+
+		if (options.checkpoint) {
+			const depOutcomes = graph.tasks
+				.filter((t) => options.checkpoint!.deps.includes(t.id))
+				.map((t) => ({
+					id: t.id,
+					title: t.title,
+					kind: t.kind,
+					status: t.status,
+					result: t.result,
+					outcome: t.outcome,
+				}));
+			payload.checkpoint = {
+				id: options.checkpoint.id,
+				title: options.checkpoint.title,
+				instructions: options.checkpoint.spec,
+				dependsOn: depOutcomes,
 			};
 		}
 
@@ -1180,6 +1210,34 @@ export class InstanceAiService {
 			agentId: ORCHESTRATOR_AGENT_ID,
 			payload: { tasks },
 		});
+	}
+
+	/**
+	 * Drop any persisted planned-task graph that is still `awaiting_approval`,
+	 * and clear the UI checklist. Called on run cancellation and HITL timeout so
+	 * stale approval state doesn't linger. A graph in `active` / `awaiting_replan`
+	 * is already in-flight and has its own settlement logic.
+	 */
+	private async cancelAwaitingApprovalPlan(threadId: string): Promise<void> {
+		try {
+			const { plannedTaskService, taskStorage } = await this.createPlannedTaskState();
+			const graph = await plannedTaskService.getGraph(threadId);
+			if (!graph || graph.status !== 'awaiting_approval') return;
+
+			await plannedTaskService.clear(threadId);
+			await taskStorage.save(threadId, { tasks: [] });
+			this.eventBus.publish(threadId, {
+				type: 'tasks-update',
+				runId: graph.planRunId,
+				agentId: ORCHESTRATOR_AGENT_ID,
+				payload: { tasks: { tasks: [] }, planItems: [] },
+			});
+		} catch (error) {
+			this.logger.warn('Failed to clean up awaiting_approval plan on cancel', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	private async createExecutionEnvironment(
@@ -1467,6 +1525,7 @@ export class InstanceAiService {
 		researchMode: boolean | undefined,
 		messageGroupId?: string,
 		isReplanFollowUp: boolean = false,
+		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
 	): Promise<string> {
 		if (this.runState.hasLiveRun(threadId)) {
 			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
@@ -1491,6 +1550,7 @@ export class InstanceAiService {
 			messageGroupId,
 			undefined,
 			isReplanFollowUp,
+			checkpoint,
 		);
 
 		return runId;
@@ -1521,26 +1581,93 @@ export class InstanceAiService {
 
 		if (action.type === 'replan') {
 			await this.syncPlannedTasksToUi(threadId, action.graph);
-			await this.startInternalFollowUpRun(
+			const startedRunId = await this.startInternalFollowUpRun(
 				user,
 				threadId,
-				this.buildPlannedTaskFollowUpMessage('replan', action.graph, action.failedTask),
+				this.buildPlannedTaskFollowUpMessage('replan', action.graph, {
+					failedTask: action.failedTask,
+				}),
 				this.runState.getThreadResearchMode(threadId),
 				action.graph.messageGroupId,
 				true,
 			);
+			// tick() already transitioned the graph to `awaiting_replan`. If the
+			// follow-up run couldn't start (live run present), revert the status
+			// so the next schedulePlannedTasks() pass can re-emit this action.
+			// Without this, tick() returns `none` for non-active graphs and the
+			// replan is silently lost.
+			if (!startedRunId) {
+				await plannedTaskService.revertToActive(threadId);
+			}
 			return;
 		}
 
 		if (action.type === 'synthesize') {
 			await this.syncPlannedTasksToUi(threadId, action.graph);
-			await this.startInternalFollowUpRun(
+			const startedRunId = await this.startInternalFollowUpRun(
 				user,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('synthesize', action.graph),
 				this.runState.getThreadResearchMode(threadId),
 				action.graph.messageGroupId,
 			);
+			// Same rollback as replan: tick() transitioned to `completed`, but if
+			// the synthesize follow-up didn't actually start, revert so the next
+			// tick can emit it again.
+			if (!startedRunId) {
+				await plannedTaskService.revertToActive(threadId);
+			}
+			return;
+		}
+
+		if (action.type === 'orchestrate-checkpoint') {
+			// Defer if a run is already active or suspended. The currently-live
+			// run's post-finally reschedule hook will pick this checkpoint up.
+			if (this.runState.hasLiveRun(threadId)) {
+				return;
+			}
+
+			const checkpoint = action.tasks[0];
+
+			// Mark running before starting the follow-up so complete-checkpoint
+			// (which requires status === 'running') always sees the correct state.
+			// If startInternalFollowUpRun no-ops below (tight race), we roll back
+			// the transition to avoid leaving the task in a phantom 'running' state.
+			await plannedTaskService.markRunning(threadId, checkpoint.id, {
+				agentId: ORCHESTRATOR_AGENT_ID,
+			});
+			const graphAfterMark = (await plannedTaskService.getGraph(threadId)) ?? action.graph;
+			await this.syncPlannedTasksToUi(threadId, graphAfterMark);
+
+			const checkpointRecord =
+				graphAfterMark.tasks.find((t) => t.id === checkpoint.id) ?? checkpoint;
+
+			const startedRunId = await this.startInternalFollowUpRun(
+				user,
+				threadId,
+				this.buildPlannedTaskFollowUpMessage('checkpoint', graphAfterMark, {
+					checkpoint: checkpointRecord,
+				}),
+				this.runState.getThreadResearchMode(threadId),
+				action.graph.messageGroupId,
+				false,
+				{ isCheckpointFollowUp: true, checkpointTaskId: checkpoint.id },
+			);
+
+			if (!startedRunId) {
+				// Rare race: the outer hasLiveRun check passed but the inner guard
+				// in startInternalFollowUpRun did not (another path started a run
+				// between our two checks). Unwind the transition to failed so the
+				// scheduler transitions to awaiting_replan rather than looping —
+				// the replan turn will re-emit the checkpoint if still appropriate.
+				this.logger.warn(
+					'Checkpoint follow-up run did not start — transitioning checkpoint to failed',
+					{ threadId, checkpointTaskId: checkpoint.id },
+				);
+				await plannedTaskService.markCheckpointFailed(threadId, checkpoint.id, {
+					error: 'Checkpoint follow-up run could not start (another run became active)',
+				});
+			}
 			return;
 		}
 
@@ -1572,6 +1699,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		timeZone?: string,
 		isReplanFollowUp: boolean = false,
+		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
 	): Promise<void> {
 		const signal = abortController.signal;
 		let mastraRunId = '';
@@ -1619,6 +1747,17 @@ export class InstanceAiService {
 			orchestrationContext.currentUserMessage = message;
 			orchestrationContext.isReplanFollowUp = isReplanFollowUp;
 			orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
+
+			if (checkpoint?.isCheckpointFollowUp) {
+				orchestrationContext.isCheckpointFollowUp = true;
+				orchestrationContext.checkpointTaskId = checkpoint.checkpointTaskId;
+				// Plan approval authorizes verification; grant runWorkflow on the adapter context
+				// because createInstanceAgent builds domain tools from `context`, not `orchestrationContext.domainContext`.
+				context.permissions = {
+					...context.permissions,
+					...(PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint ?? {}),
+				} as typeof context.permissions;
+			}
 
 			// Thread attachments into the domain context so parse-file can access them
 			if (attachments && attachments.length > 0) {
@@ -1903,6 +2042,7 @@ export class InstanceAiService {
 						messageGroupId,
 						createdAt: Date.now(),
 						tracing,
+						checkpoint,
 					});
 				}
 
@@ -2010,7 +2150,64 @@ export class InstanceAiService {
 			if (!this.runState.hasSuspendedRun(threadId) && mastraRunId) {
 				void this.cleanupMastraSnapshots(mastraRunId);
 			}
+			// Post-run planned-task wiring (only when the run is actually ending,
+			// not when it merely suspended for HITL):
+			//   1. Checkpoint deadlock fallback — if this run was a checkpoint
+			//      follow-up and the orchestrator exited without calling
+			//      complete-checkpoint, mark the task failed so the scheduler
+			//      can transition to awaiting_replan.
+			//   2. Unconditional reschedule — drive the next tick. This covers
+			//      the case where a background task settled during an ordinary
+			//      chat run: its schedulePlannedTasks call may have skipped the
+			//      checkpoint branch because hasLiveRun was true. Ticking again
+			//      now (with no live run) picks it up. schedulerLocks serializes
+			//      this call, and tick() is a no-op when no graph exists.
+			if (!this.runState.hasSuspendedRun(threadId)) {
+				if (checkpoint?.isCheckpointFollowUp) {
+					await this.finalizeCheckpointFollowUp(user, threadId, checkpoint.checkpointTaskId);
+				} else {
+					await this.schedulePlannedTasks(user, threadId);
+				}
+			}
 		}
+	}
+
+	/**
+	 * Post-run cleanup for a checkpoint follow-up. Ensures the checkpoint task is
+	 * terminal (marking it failed if the orchestrator abandoned it) and re-ticks
+	 * the scheduler so the next planned action can fire.
+	 */
+	private async finalizeCheckpointFollowUp(
+		user: User,
+		threadId: string,
+		checkpointTaskId: string,
+	): Promise<void> {
+		try {
+			const { plannedTaskService } = await this.createPlannedTaskState();
+			const graph = await plannedTaskService.getGraph(threadId);
+			const task = graph?.tasks.find((t) => t.id === checkpointTaskId);
+			if (task && task.status === 'running') {
+				this.logger.warn('Checkpoint run ended without reporting completion — marking failed', {
+					threadId,
+					checkpointTaskId,
+				});
+				await plannedTaskService.markCheckpointFailed(threadId, checkpointTaskId, {
+					error: 'Checkpoint run ended without reporting completion',
+				});
+				const nextGraph = await plannedTaskService.getGraph(threadId);
+				if (nextGraph) {
+					await this.syncPlannedTasksToUi(threadId, nextGraph);
+				}
+			}
+		} catch (error) {
+			this.logger.error('Checkpoint finalization failed', {
+				threadId,
+				checkpointTaskId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		await this.schedulePlannedTasks(user, threadId);
 	}
 
 	async resolveConfirmation(
@@ -2048,8 +2245,17 @@ export class InstanceAiService {
 			return false;
 		}
 
-		const { agent, runId, mastraRunId, threadId, user, toolCallId, abortController, tracing } =
-			suspended;
+		const {
+			agent,
+			runId,
+			mastraRunId,
+			threadId,
+			user,
+			toolCallId,
+			abortController,
+			tracing,
+			checkpoint,
+		} = suspended;
 		if (user.id !== requestingUserId) return false;
 
 		this.runState.activateSuspendedRun(threadId);
@@ -2081,6 +2287,7 @@ export class InstanceAiService {
 			abortController,
 			snapshotStorage: this.dbSnapshotStorage,
 			tracing,
+			checkpoint,
 		});
 		return true;
 	}
@@ -2098,6 +2305,7 @@ export class InstanceAiService {
 			abortController: AbortController;
 			snapshotStorage: DbSnapshotStorage;
 			tracing?: InstanceAiTraceContext;
+			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -2157,6 +2365,7 @@ export class InstanceAiService {
 						messageGroupId: this.traceContextsByRunId.get(opts.runId)?.messageGroupId,
 						createdAt: Date.now(),
 						tracing: opts.tracing,
+						checkpoint: opts.checkpoint,
 					});
 				}
 
@@ -2250,6 +2459,21 @@ export class InstanceAiService {
 			this.threadPushRef.delete(opts.threadId);
 			if (messageTraceFinalization) {
 				await this.maybeFinalizeRunTraceRoot(opts.runId, messageTraceFinalization);
+			}
+			// Post-run planned-task wiring — mirror the executeRun finally.
+			// Resumed ordinary-chat runs also need to drive the scheduler in case
+			// a background task settled while they were active or suspended and
+			// the orchestrate-checkpoint branch was skipped because of hasLiveRun.
+			if (!this.runState.hasSuspendedRun(opts.threadId)) {
+				if (opts.checkpoint?.isCheckpointFollowUp) {
+					await this.finalizeCheckpointFollowUp(
+						opts.user,
+						opts.threadId,
+						opts.checkpoint.checkpointTaskId,
+					);
+				} else {
+					await this.schedulePlannedTasks(opts.user, opts.threadId);
+				}
 			}
 		}
 	}
