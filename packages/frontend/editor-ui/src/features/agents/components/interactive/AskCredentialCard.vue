@@ -42,7 +42,7 @@ const selectedCredential = computed(() =>
  * credential to; the actual credential type is forced via `override-cred-type`.
  * This mirrors the pattern used in InstanceAiCredentialSetup.vue.
  */
-function syntheticNodeUi(): INodeUi {
+const nodeForCredentials = computed<INodeUi>(() => {
 	const cred = selectedCredential.value;
 	return {
 		id: props.credentialType,
@@ -53,7 +53,7 @@ function syntheticNodeUi(): INodeUi {
 		parameters: {},
 		credentials: cred ? { [props.credentialType]: { id: cred.id, name: cred.name } } : {},
 	} as INodeUi;
-}
+});
 
 function onCredentialSelected(info: INodeUpdatePropertiesInformation) {
 	const data = info.properties.credentials?.[props.credentialType];
@@ -93,7 +93,7 @@ function onSkip() {
 
 		<div :class="$style.credentialContainer">
 			<NodeCredentials
-				:node="syntheticNodeUi()"
+				:node="nodeForCredentials"
 				:override-cred-type="credentialType"
 				:project-id="projectId"
 				:readonly="disabled"

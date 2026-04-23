@@ -354,7 +354,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		let buffer = '';
 
 		try {
-			while (true) {
+			readerLoop: while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
 				buffer += decoder.decode(value, { stream: true });
@@ -371,7 +371,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						continue;
 					}
 					const result = handleEvent(event, session);
-					if (result?.done) break;
+					if (result?.done) break readerLoop;
 				}
 			}
 		} finally {

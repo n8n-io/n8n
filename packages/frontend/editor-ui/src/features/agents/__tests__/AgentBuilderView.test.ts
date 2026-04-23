@@ -310,7 +310,10 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
 	});
 
-	it('navigates directly to build chat on startChat for an unbuilt agent (no progress screen)', async () => {
+	it('navigates directly to build chat on startChat for an unbuilt agent', async () => {
+		intendedConfig = { name: 'Agent One', instructions: '' };
+		mockConfig.value = { ...intendedConfig };
+
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
 			mode: string;
@@ -341,6 +344,11 @@ describe('AgentBuilderView — chat mode toggle', () => {
 describe('AgentBuilderView — telemetry', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+		};
+		mockConfig.value = { ...intendedConfig };
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 		updateAgentMock.mockImplementation(
 			async (_ctx, _pid, _aid, patch: Record<string, unknown>) => ({

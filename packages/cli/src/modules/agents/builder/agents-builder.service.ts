@@ -7,7 +7,7 @@ import type {
 import { Agent, Memory, providerTools } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse, OperationalError, UserError } from 'n8n-workflow';
 
 import { AgentsService } from '../agents.service';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -16,6 +16,7 @@ import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService } from './agents-builder-tools.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 const BUILDER_MODEL = 'anthropic/claude-sonnet-4-5';
 
@@ -142,7 +143,7 @@ export class AgentsBuilderService {
 	): Promise<Agent> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
-			throw new Error(`Agent "${agentId}" not found`);
+			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
 		// The builder is a built-in, system-level agent — it is driven by an
@@ -150,7 +151,10 @@ export class AgentsBuilderService {
 		// the builder usable before any user credential has been configured.
 		const envAnthropicKey = readEnvAnthropicKey();
 		if (!envAnthropicKey) {
-			throw new Error(
+			// Operational: the n8n instance hasn't been provisioned with a
+			// builder API key. Recoverable by the operator (set the env var)
+			// rather than the end user.
+			throw new OperationalError(
 				'Builder agent is not configured. Set N8N_AI_ANTHROPIC_KEY (preferred) or ANTHROPIC_API_KEY to enable it.',
 			);
 		}

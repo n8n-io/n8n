@@ -420,6 +420,12 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const { message } = payload;
 
+		// Validate the agent exists before opening the SSE stream so a malformed
+		// id surfaces as a typed 404 instead of a generic 500 from the builder
+		// service's internal lookup.
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
 		const { send } = initSseStream(res);
@@ -457,6 +463,12 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
+
+		// Validate the agent exists before opening the SSE stream so a malformed
+		// id surfaces as a typed 404 instead of a generic 500 from the builder
+		// service's internal lookup.
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
