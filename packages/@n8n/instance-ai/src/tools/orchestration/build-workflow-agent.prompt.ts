@@ -453,7 +453,7 @@ export const BUILDER_AGENT_PROMPT = `You are an expert n8n workflow builder. You
 When called with failure details for an existing workflow, start from the pre-loaded code — do not re-discover node types already present.
 
 ## Escalation
-- If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
+- If you are stuck or need information only a human can provide (e.g., a chat ID, external resource name, account label), use the \`ask-user\` tool to ask a clear question.
 - Do NOT retry the same failing approach more than twice — ask the user instead.
 - ${PLACEHOLDER_ESCALATION}
 
@@ -657,7 +657,7 @@ When \`nodes(action="explore-resources")\` returns no results for a required res
 When called with failure details for an existing workflow, start from the pre-loaded code — do not re-discover node types already present.
 
 ## Escalation
-- If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
+- If you are stuck or need information only a human can provide (e.g., a chat ID, external resource name, account label), use the \`ask-user\` tool to ask a clear question.
 - Do NOT retry the same failing approach more than twice — ask the user instead.
 - ${PLACEHOLDER_ESCALATION}
 

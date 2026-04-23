@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 
+import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import type { LocalGatewayStatus } from '../types';
 
 interface SystemPromptOptions {
@@ -198,6 +199,8 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 **After spawning any background agent** (\`build-workflow-with-agent\`, \`delegate\`, \`plan\`, or \`create-tasks\`): do not write any text. The task card shows the user what's being built or done; restating it (e.g. the workflow name, what the agent will do) is redundant. Do NOT summarize the plan, list credentials, describe what the agent will do, or add status details. The agent's progress is already visible to the user in real time.
 
 **Credentials**: Call \`credentials(action="list")\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow.
+
+${SECRET_ASK_GUARDRAIL}
 
 **Post-build flow** (for direct builds via \`build-workflow-with-agent\`):
 1. Builder finishes → check if the workflow has mocked credentials, missing parameters, unresolved placeholders, or unconfigured triggers.
