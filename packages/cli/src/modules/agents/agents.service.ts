@@ -35,6 +35,7 @@ import { AgentExecutionService } from './agent-execution.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
@@ -391,7 +392,10 @@ export class AgentsService {
 
 			if (ref.type === 'node') {
 				const { resolveNodeTool } = await import('./tools/node-tool-factory');
-				return resolveNodeTool(ref, { executor: this.ephemeralNodeExecutor, projectId });
+				return await resolveNodeTool(ref, {
+					executor: this.ephemeralNodeExecutor,
+					projectId,
+				});
 			}
 
 			return null;
@@ -410,15 +414,30 @@ export class AgentsService {
 		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
 			params;
 
-		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
-		try {
-			const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
-			agent.tool(createRichInteractionTool(integrationType));
-		} catch (toolError) {
-			this.logger.warn('Failed to inject rich_interaction tool', {
-				agentId,
-				error: toolError instanceof Error ? toolError.message : String(toolError),
-			});
+		// Inject the rich_interaction tool only for platforms that can actually
+		// render its suspend/resume HITL cards. Two gates:
+		//   - A registered integration in ChatIntegrationRegistry. The in-app
+		//     test chat uses `integrationType = 'chat'`, which isn't registered,
+		//     and the compile/validate path passes no integrationType at all —
+		//     neither has a bridge to render the card or resume the suspended
+		//     turn, so letting the model call the tool there would hang the
+		//     agent.
+		//   - The integration must declare `supportedComponents`. Platforms
+		//     that omit it (e.g. Linear) have explicitly opted out of
+		//     rich_interaction.
+		const integration = integrationType
+			? Container.get(ChatIntegrationRegistry).get(integrationType)
+			: undefined;
+		if (integration && integration.supportedComponents !== undefined) {
+			try {
+				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
+				agent.tool(createRichInteractionTool(integrationType));
+			} catch (toolError) {
+				this.logger.warn('Failed to inject rich_interaction tool', {
+					agentId,
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
 		}
 
 		if (nodeToolsEnabled) {
@@ -520,6 +539,58 @@ export class AgentsService {
 					});
 				});
 		}
+	}
+
+	/**
+	 * Check whether an agent has the minimum config it needs to be run.
+	 * Returns the list of missing/invalid fields, if any.
+	 *
+	 * `missing` items correspond to user-facing concepts:
+	 *   - "instructions": empty or whitespace-only instructions string
+	 *   - "model":        missing model or one that fails the provider/model regex
+	 *   - "credential":   credential name is set in config but doesn't resolve to
+	 *                     a real credential in the project
+	 */
+	async validateAgentIsRunnable(
+		agentId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): Promise<{ missing: string[] }> {
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) {
+			return { missing: ['agent'] };
+		}
+		const config = agentEntity.schema as unknown as AgentJsonConfig | null;
+		const missing: string[] = [];
+
+		if (!config) {
+			return { missing: ['instructions', 'model'] };
+		}
+
+		if (!config.instructions || !config.instructions.trim()) {
+			missing.push('instructions');
+		}
+
+		const modelSchema = AgentJsonConfigSchema.shape.model;
+		if (!config.model || !modelSchema.safeParse(config.model).success) {
+			missing.push('model');
+		}
+
+		if (config.credential) {
+			try {
+				const credentialName = config.credential;
+				const creds = await credentialProvider.list();
+				const exists = creds.some(
+					(c) => c.id === credentialName || c.name.toLowerCase() === credentialName.toLowerCase(),
+				);
+				if (!exists) missing.push('credential');
+			} catch {
+				// If listing fails (e.g. permissions), don't flag as misconfigured —
+				// the runtime will surface the real error path on execute.
+			}
+		}
+
+		return { missing };
 	}
 
 	/**
@@ -951,22 +1022,14 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		// Store tool code + descriptor
+		// Store tool code + descriptor. Registering the tool in the agent config
+		// (adding `{ type: "custom", id }` to `schema.tools`) is the caller's
+		// responsibility — typically via a follow-up patch_config / write_config —
+		// so this method does not touch `entity.schema`.
 		entity.tools = {
 			...entity.tools,
 			[toolId]: { code, descriptor },
 		};
-
-		// Add to config tools array if not already present
-		if (entity.schema) {
-			const tools = entity.schema.tools ?? [];
-			const alreadyLinked = tools.some(
-				(t: AgentJsonToolConfig) => t.type === 'custom' && 'id' in t && t.id === toolId,
-			);
-			if (!alreadyLinked) {
-				entity.schema.tools = [...tools, { type: 'custom' as const, id: toolId }];
-			}
-		}
 
 		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);

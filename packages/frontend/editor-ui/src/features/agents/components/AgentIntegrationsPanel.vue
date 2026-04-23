@@ -6,17 +6,21 @@ import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
 import {
 	connectIntegration,
 	disconnectIntegration,
 	getIntegrationStatus,
 } from '../composables/useAgentApi';
-
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	agentName: string;
+}>();
+
+const emit = defineEmits<{
+	'update:connected-triggers': [triggers: string[]];
+	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 }>();
 
 const rootStore = useRootStore();
@@ -58,6 +62,17 @@ const integrationConfigs: IntegrationConfig[] = [
 		credentialTypes: ['telegramApi'],
 		noCredentialsMessage: 'No Telegram API credentials found.',
 	},
+	{
+		type: 'linear',
+		label: 'Linear',
+		icon: 'list-checks',
+		description:
+			'Connect a Linear API credential to let this agent respond to comments in Linear issues. ' +
+			'Point a Linear webhook at the URL below and paste its signing secret into the credential',
+		connectedDescription: 'Your agent is connected to Linear and can reply to @-mentions',
+		credentialTypes: ['linearApi', 'linearOAuth2Api'],
+		noCredentialsMessage: 'No Linear credentials found.',
+	},
 ];
 
 // Per-integration state
@@ -67,6 +82,7 @@ const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, CredentialOption[]>>({});
 const loadingMap = ref<Record<string, boolean>>({});
 const errorMessages = ref<Record<string, string>>({});
+const errorIsConflict = ref<Record<string, boolean>>({});
 const credentialsLoading = ref(false);
 const copied = ref(false);
 const showManifest = ref(false);
@@ -87,10 +103,20 @@ function hasError(type: string): boolean {
 	return (errorMessages.value[type] ?? '').length > 0;
 }
 
-const webhookUrl = computed(() => {
+function webhookUrlFor(platform: string): string {
 	const base = rootStore.urlBaseEditor;
-	return `${base}rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/slack`;
-});
+	return `${base}rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/${platform}`;
+}
+
+const linearCopied = ref(false);
+
+async function copyLinearWebhookUrl() {
+	await navigator.clipboard.writeText(webhookUrlFor('linear'));
+	linearCopied.value = true;
+	setTimeout(() => {
+		linearCopied.value = false;
+	}, 2000);
+}
 
 const oauthCallbackUrl = computed(
 	() => (rootStore.OAuthCallbackUrls as { oauth2?: string }).oauth2 ?? '',
@@ -138,12 +164,12 @@ const slackAppManifest = computed(() =>
 			},
 			settings: {
 				event_subscriptions: {
-					request_url: webhookUrl.value,
+					request_url: webhookUrlFor('slack'),
 					bot_events: ['app_mention', 'assistant_thread_context_changed', 'message.im'],
 				},
 				interactivity: {
 					is_enabled: true,
-					request_url: webhookUrl.value,
+					request_url: webhookUrlFor('slack'),
 				},
 				org_deploy_enabled: false,
 				socket_mode_enabled: false,
@@ -161,6 +187,16 @@ async function copyManifest() {
 	setTimeout(() => {
 		copied.value = false;
 	}, 2000);
+}
+
+function computeConnectedTriggers(): string[] {
+	return Object.keys(statuses.value)
+		.filter((t) => statuses.value[t] === 'connected')
+		.sort();
+}
+
+function emitConnectedTriggers() {
+	emit('update:connected-triggers', computeConnectedTriggers());
 }
 
 async function fetchStatus() {
@@ -184,6 +220,7 @@ async function fetchStatus() {
 			connectedCredentials.value[config.type] = '';
 		}
 	}
+	emitConnectedTriggers();
 }
 
 async function fetchCredentials() {
@@ -212,6 +249,7 @@ async function onConnect(type: string) {
 	if (!credId) return;
 	loadingMap.value[type] = true;
 	errorMessages.value[type] = '';
+	errorIsConflict.value[type] = false;
 	try {
 		await connectIntegration(
 			rootStore.restApiContext,
@@ -220,6 +258,13 @@ async function onConnect(type: string) {
 			type,
 			credId,
 		);
+
+		// Optimistically mark as connected before fetchStatus() reconciles
+		// so the telemetry payload reflects the just-connected trigger.
+		statuses.value[type] = 'connected';
+		const triggers = computeConnectedTriggers();
+		emit('trigger-added', { triggerType: type, triggers });
+
 		await fetchStatus();
 	} catch (e: unknown) {
 		const msg =
@@ -229,6 +274,7 @@ async function onConnect(type: string) {
 					? String((e as { message: unknown }).message)
 					: 'Failed to connect';
 		errorMessages.value[type] = msg;
+		errorIsConflict.value[type] = e instanceof ResponseError && e.httpStatusCode === 409;
 	} finally {
 		loadingMap.value[type] = false;
 	}
@@ -308,6 +354,28 @@ onMounted(async () => {
 					{{ config.description }}
 				</N8nText>
 
+				<!-- Linear webhook URL — shown regardless of connection state so users can
+				     configure Linear *before* creating a credential (the signing secret is
+				     only revealed after the webhook is saved). -->
+				<div v-if="config.type === 'linear'" :class="$style.webhookRow">
+					<input
+						:value="webhookUrlFor('linear')"
+						readonly
+						:class="$style.webhookInput"
+						:data-testid="`${config.type}-webhook-url`"
+						@focus="($event.target as HTMLInputElement).select()"
+					/>
+					<N8nButton
+						variant="outline"
+						size="small"
+						:data-testid="`${config.type}-copy-webhook-url`"
+						@click="copyLinearWebhookUrl"
+					>
+						<N8nIcon :icon="linearCopied ? 'check' : 'copy'" :size="14" />
+						{{ linearCopied ? 'Copied' : 'Copy' }}
+					</N8nButton>
+				</div>
+
 				<div v-if="!isConnected(config.type)" :class="$style.connectForm">
 					<template v-if="hasCredentials(config.type)">
 						<label :class="$style.label">
@@ -357,7 +425,7 @@ onMounted(async () => {
 					<N8nText v-if="hasError(config.type)" :class="$style.errorText" size="small">
 						{{ errorMessages[config.type] }}
 						<a
-							v-if="selectedCredentials[config.type]"
+							v-if="selectedCredentials[config.type] && !errorIsConflict[config.type]"
 							:class="$style.link"
 							href="#"
 							@click.prevent="onEditCredential(config.type)"
@@ -561,5 +629,31 @@ onMounted(async () => {
 
 .actionButton {
 	align-self: flex-start;
+}
+
+.webhookRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.webhookInput {
+	flex: 1;
+	min-width: 0;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	background-color: var(--color--foreground--tint-2);
+	border: var(--border);
+	border-radius: var(--radius);
+	font-family: monospace;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.webhookInput:focus {
+	outline: none;
+	border-color: var(--color--primary);
 }
 </style>

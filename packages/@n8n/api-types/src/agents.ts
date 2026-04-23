@@ -7,6 +7,29 @@ import { z } from 'zod';
  * keep this interface in sync when the schema changes.
  */
 
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+} from 'n8n-workflow';
+
+/**
+ * Node types a workflow can use as its trigger to be eligible as an agent
+ * tool. Single source of truth for both the backend compatibility check
+ * (`workflow-tool-factory.ts:SUPPORTED_TRIGGERS`) and the frontend Available
+ * list's pre-filter. Body-node incompatibility (Wait / RespondToWebhook) is
+ * enforced separately at save time.
+ */
+export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
+	MANUAL_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+] as const;
+
 export interface NodeToolConfig {
 	nodeType: string;
 	nodeTypeVersion: number;
@@ -23,6 +46,7 @@ export interface AgentJsonToolRef {
 	node?: NodeToolConfig;
 	inputSchema?: Record<string, unknown>;
 	requireApproval?: boolean;
+	allOutputs?: boolean;
 }
 
 export interface AgentJsonConfig {

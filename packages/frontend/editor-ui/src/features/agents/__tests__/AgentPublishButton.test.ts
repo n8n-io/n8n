@@ -1,13 +1,23 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/require-await, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep, async stubs, and any-based mock reads */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import type { AgentResource } from '../types';
 import type { AgentPublishedVersion } from '../agent.types';
 
 vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: vi.fn(),
 	unpublishAgent: vi.fn(),
+}));
+
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackPublishedAgent: vi.fn(),
+		trackUnpublishedAgent: vi.fn(),
+	}),
+}));
+
+vi.mock('../composables/agentTelemetry.utils', () => ({
+	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({ config_version: 'v-test' }),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -18,16 +28,21 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-vi.mock('@/app/composables/useMessage', () => {
-	const confirm = vi.fn(async () => MODAL_CONFIRM);
-	return { useMessage: () => ({ confirm }) };
-});
-
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return { useToast: () => ({ showMessage, showError }) };
 });
+
+const openModalWithDataMock = vi.fn();
+const closeModalMock = vi.fn();
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({
+		openModalWithData: openModalWithDataMock,
+		closeModal: closeModalMock,
+	}),
+}));
 
 const STUBS = {
 	N8nButton: {
@@ -84,6 +99,15 @@ interface RenderProps {
 	agent?: AgentResource | null;
 	projectId?: string;
 	agentId?: string;
+}
+
+function getModalCallbacks() {
+	const data = openModalWithDataMock.mock.lastCall?.[0]?.data as {
+		onConfirm: () => Promise<void> | void;
+		onCancel: () => Promise<void> | void;
+	};
+
+	return data;
 }
 
 describe('AgentPublishButton', () => {
@@ -172,6 +196,53 @@ describe('AgentPublishButton', () => {
 		expect(publishAgent).not.toHaveBeenCalled();
 	});
 
+	it('computes config_version from the server-returned publishedVersion.schema, not caller context', async () => {
+		const { publishAgent } = await import('../composables/useAgentApi');
+		const { buildAgentConfigFingerprint } = await import('../composables/agentTelemetry.utils');
+
+		// Server returns the just-published config in publishedVersion.schema.
+		const publishedSchema = { name: 'X', instructions: 'pub', model: 'gpt-4' } as unknown as Record<
+			string,
+			unknown
+		>;
+		const updatedAgent = createAgent({
+			publishedVersion: { ...publishedVersion, schema: publishedSchema as never },
+		});
+		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
+
+		// Caller has no live draft available — mirrors the list-card publish path.
+		const agent = createAgent({ publishedVersion: null });
+		const wrapper = await renderComponent({ agent });
+		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+		await flushPromises();
+
+		// Fingerprint must be derived from the server's response so different
+		// agents never collide on `config_version`.
+		expect(buildAgentConfigFingerprint).toHaveBeenCalledWith(publishedSchema, []);
+	});
+
+	it('treats publish as successful when telemetry fingerprinting throws', async () => {
+		const { publishAgent } = await import('../composables/useAgentApi');
+		const { buildAgentConfigFingerprint } = await import('../composables/agentTelemetry.utils');
+		const { useToast } = await import('@/app/composables/useToast');
+		const updatedAgent = createAgent({ publishedVersion });
+		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
+		vi.mocked(buildAgentConfigFingerprint).mockRejectedValueOnce(
+			new Error('crypto.subtle unavailable'),
+		);
+
+		const agent = createAgent({ publishedVersion: null });
+		const wrapper = await renderComponent({ agent });
+		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+		await flushPromises();
+
+		// Success path ran all the way through — no error toast, published event emitted.
+		const toast = useToast();
+		expect(toast.showError).not.toHaveBeenCalled();
+		expect(toast.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
+	});
+
 	// Dropdown — publish action
 	it('calls publishAgent via dropdown Publish action', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
@@ -190,28 +261,27 @@ describe('AgentPublishButton', () => {
 	// Dropdown — unpublish action
 	it('calls unpublishAgent and emits unpublished on confirmed unpublish', async () => {
 		const { unpublishAgent } = await import('../composables/useAgentApi');
-		const { useMessage } = await import('@/app/composables/useMessage');
 		const unpublishedAgent = createAgent({ publishedVersion: null });
 		vi.mocked(unpublishAgent).mockResolvedValue(unpublishedAgent);
 
 		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="unpublish"]').trigger('click');
+		await getModalCallbacks().onConfirm();
 		await flushPromises();
 
-		expect(useMessage().confirm).toHaveBeenCalled();
+		expect(openModalWithDataMock).toHaveBeenCalled();
 		expect(unpublishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		expect(wrapper.emitted('unpublished')?.[0]).toEqual([unpublishedAgent]);
 	});
 
 	it('does not unpublish when confirm modal is cancelled', async () => {
 		const { unpublishAgent } = await import('../composables/useAgentApi');
-		const { useMessage } = await import('@/app/composables/useMessage');
-		vi.mocked(useMessage().confirm).mockResolvedValueOnce(MODAL_CANCEL);
 
 		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="unpublish"]').trigger('click');
+		await getModalCallbacks().onCancel();
 		await flushPromises();
 
 		expect(unpublishAgent).not.toHaveBeenCalled();

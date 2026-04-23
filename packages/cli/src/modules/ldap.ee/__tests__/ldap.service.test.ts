@@ -1460,10 +1460,129 @@ describe('LdapService', () => {
 			expect(eventServiceMock.emit).toHaveBeenCalledTimes(1);
 			expect(eventServiceMock.emit).toHaveBeenCalledWith('ldap-general-sync-finished', {
 				error: 'Error processing users',
-				succeeded: true,
+				succeeded: false,
 				type: 'scheduled',
 				usersSynced: 0,
 			});
+		});
+
+		it('should surface non-QueryFailedError on the sync history and emit failure', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			const mockedProcessUsers = processUsers as jest.Mock;
+			mockedProcessUsers.mockRejectedValue(new Error('Unexpected failure'));
+
+			jest.setSystemTime(new Date('2024-12-25'));
+			const expectedDate = new Date();
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(saveLdapSynchronization).toHaveBeenCalledTimes(1);
+			expect(saveLdapSynchronization).toHaveBeenCalledWith({
+				startedAt: expectedDate,
+				endedAt: expectedDate,
+				created: 0,
+				updated: 0,
+				disabled: 0,
+				scanned: 0,
+				runMode: 'live',
+				status: 'error',
+				error: 'Unexpected failure',
+			});
+		});
+
+		it('should skip LDAP entries whose email duplicates within the batch when enforceEmailUniqueness is enabled', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				enforceEmailUniqueness: true,
+			});
+
+			const duplicateUsers = [
+				{
+					dn: 'uid=jdoe1,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
+					givenName: 'John',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe1',
+				},
+				{
+					dn: 'uid=jdoe2,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe2',
+				},
+			];
+
+			const uniqueUser = {
+				dn: 'uid=unique,ou=users,dc=example,dc=com',
+				cn: 'Unique User',
+				givenName: 'Unique',
+				sn: 'User',
+				mail: 'unique@example.com',
+				uid: 'unique',
+			};
+
+			Client.prototype.search = jest
+				.fn()
+				.mockResolvedValue({ searchEntries: [...duplicateUsers, uniqueUser] });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(processUsers).toHaveBeenCalledTimes(1);
+			const [createArg] = (processUsers as jest.Mock).mock.calls[0];
+			expect(createArg).toHaveLength(1);
+			expect(createArg[0][0]).toBe('unique');
+		});
+
+		it('should not filter duplicates when enforceEmailUniqueness is disabled', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				enforceEmailUniqueness: false,
+			});
+
+			const duplicateUsers = [
+				{
+					dn: 'uid=jdoe1,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
+					givenName: 'John',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe1',
+				},
+				{
+					dn: 'uid=jdoe2,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe2',
+				},
+			];
+
+			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: duplicateUsers });
+
+			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(processUsers).toHaveBeenCalledTimes(1);
+			const [createArg] = (processUsers as jest.Mock).mock.calls[0];
+			expect(createArg).toHaveLength(2);
 		});
 	});
 

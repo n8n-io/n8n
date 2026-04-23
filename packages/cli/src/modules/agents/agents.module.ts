@@ -36,9 +36,11 @@ export class AgentsModule implements ModuleInterface {
 		const { ChatIntegrationRegistry } = await import('./integrations/agent-chat-integration');
 		const { SlackIntegration } = await import('./integrations/platforms/slack-integration');
 		const { TelegramIntegration } = await import('./integrations/platforms/telegram-integration');
+		const { LinearIntegration } = await import('./integrations/platforms/linear-integration');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
+		registry.register(Container.get(LinearIntegration));
 
 		// Warm the node catalog so the agent runtime can attach search/execute tools
 		// synchronously on each agent reconstruction. The underlying init is idempotent.

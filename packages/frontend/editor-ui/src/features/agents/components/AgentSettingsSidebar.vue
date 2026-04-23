@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { N8nBadge, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type {
 	ChatHubConversationModel,
@@ -45,12 +45,15 @@ const props = defineProps<{
 	saveStatus: 'idle' | 'saving' | 'saved';
 	building?: boolean;
 	codeOnly?: boolean;
+	agentStatus: 'draft' | 'production';
 }>();
 
 const emit = defineEmits<{
 	'update:config': [changes: Partial<AgentJsonConfig>];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
+	'update:connected-triggers': [triggers: string[]];
+	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 }>();
 
 // --- Model & credential state (reusing ChatHub infrastructure) ---
@@ -206,9 +209,6 @@ watch(
 							: locale.baseText('agents.builder.saved')
 					}}
 				</N8nText>
-				<N8nBadge v-if="config && !config.credential" theme="warning">
-					{{ locale.baseText('agents.settings.credentialsMissing') }}
-				</N8nBadge>
 				<AgentPublishButton
 					:agent="agent"
 					:project-id="projectId"
@@ -277,6 +277,10 @@ watch(
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
+							@update:connected-triggers="
+								(list: string[]) => emit('update:connected-triggers', list)
+							"
+							@trigger-added="(payload) => emit('trigger-added', payload)"
 						/>
 					</div>
 				</div>

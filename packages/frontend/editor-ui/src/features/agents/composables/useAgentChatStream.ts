@@ -13,6 +13,11 @@ import type { AgentPersistedMessageDto } from '@n8n/api-types';
 
 import { convertDbMessages, type ChatMessage, type ToolCall } from './agentChatMessages';
 
+export interface FatalAgentError {
+	message: string;
+	missing: string[];
+}
+
 export interface UseAgentChatStreamParams {
 	projectId: Ref<string>;
 	agentId: Ref<string>;
@@ -38,6 +43,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const isStreaming = ref(false);
 	const abortController = ref<AbortController | null>(null);
 	const historyLoaded = ref(false);
+	/**
+	 * Set when the backend rejects the stream because the agent itself is
+	 * misconfigured (missing instructions / model / credential). Cleared on the
+	 * next send so users can fix the config and retry without a manual dismiss.
+	 */
+	const fatalError = ref<FatalAgentError | null>(null);
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
@@ -203,18 +214,69 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						if (assistantMsg.content && !assistantMsg.content.endsWith('\n')) {
 							assistantMsg.content += '\n';
 						}
-						const tc = data.toolCall as { tool: string; input?: unknown };
+						const tc = data.toolCall as {
+							tool: string;
+							toolCallId?: string;
+							input?: unknown;
+						};
 						assistantMsg.toolCalls = assistantMsg.toolCalls ?? [];
-						assistantMsg.toolCalls.push({ tool: tc.tool, input: tc.input });
+						const already = tc.toolCallId
+							? assistantMsg.toolCalls.find((t: ToolCall) => t.toolCallId === tc.toolCallId)
+							: undefined;
+						if (already) {
+							if (tc.input !== undefined) already.input = tc.input;
+						} else {
+							assistantMsg.toolCalls.push({
+								tool: tc.tool,
+								toolCallId: tc.toolCallId,
+								input: tc.input,
+								status: 'pending',
+							});
+						}
+					}
+
+					if (data.toolCallInput && typeof data.toolCallInput === 'object') {
+						const tci = data.toolCallInput as { toolCallId?: string; input?: unknown };
+						if (tci.toolCallId) {
+							const existing = assistantMsg.toolCalls?.find(
+								(t: ToolCall) => t.toolCallId === tci.toolCallId,
+							);
+							if (existing) existing.input = tci.input;
+						}
+					}
+
+					if (data.toolCallExecuting && typeof data.toolCallExecuting === 'object') {
+						const tce = data.toolCallExecuting as { toolCallId?: string; tool?: string };
+						const existing =
+							(tce.toolCallId
+								? assistantMsg.toolCalls?.find((t: ToolCall) => t.toolCallId === tce.toolCallId)
+								: undefined) ??
+							(tce.tool
+								? assistantMsg.toolCalls?.find(
+										(t: ToolCall) => t.tool === tce.tool && t.status !== 'done',
+									)
+								: undefined);
+						if (existing) {
+							if (existing.status !== 'done') existing.status = 'running';
+						}
 					}
 
 					if (data.toolResult && typeof data.toolResult === 'object') {
-						const tr = data.toolResult as { tool: string; output?: unknown };
-						const existing = assistantMsg.toolCalls?.find(
-							(t: ToolCall) => t.tool === tr.tool && t.output === undefined,
-						);
+						const tr = data.toolResult as {
+							tool: string;
+							toolCallId?: string;
+							output?: unknown;
+						};
+						const existing =
+							(tr.toolCallId
+								? assistantMsg.toolCalls?.find((t: ToolCall) => t.toolCallId === tr.toolCallId)
+								: undefined) ??
+							assistantMsg.toolCalls?.find(
+								(t: ToolCall) => t.tool === tr.tool && t.output === undefined,
+							);
 						if (existing) {
 							existing.output = tr.output;
+							existing.status = 'done';
 						}
 						if (assistantMsg.content && !assistantMsg.content.endsWith('\n')) {
 							assistantMsg.content += '\n';
@@ -222,9 +284,28 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					}
 
 					if (typeof data.error === 'string') {
-						ensureMsg();
-						assistantMsg.content += `\n\nError: ${data.error}`;
-						assistantMsg.status = 'error';
+						if (data.errorCode === 'agent_misconfigured') {
+							// Misconfiguration is a distinct class of error: the agent can't
+							// run until its config is fixed. Surface it via the banner path
+							// rather than as an inline error bubble so the user sees what's
+							// missing and can act on it.
+							fatalError.value = {
+								message: data.error,
+								missing: Array.isArray(data.missing)
+									? (data.missing as string[]).filter((m): m is string => typeof m === 'string')
+									: [],
+							};
+							if (msgAdded) {
+								// We already pushed an empty assistant bubble before the error
+								// arrived — drop it so the banner is the only surface.
+								messages.value = messages.value.filter((m) => m.id !== assistantMsg.id);
+								msgAdded = false;
+							}
+						} else {
+							ensureMsg();
+							assistantMsg.content += `\n\nError: ${data.error}`;
+							assistantMsg.status = 'error';
+						}
 					}
 				}
 			}
@@ -255,6 +336,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function sendMessage(text: string): Promise<void> {
 		const trimmed = text.trim();
 		if (!trimmed || isStreaming.value) return;
+		// Any new send invalidates a prior misconfig banner — the user is retrying.
+		fatalError.value = null;
 		messages.value.push({
 			id: crypto.randomUUID(),
 			role: 'user',
@@ -262,6 +345,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			status: 'success',
 		});
 		await streamFromEndpoint(params.endpoint.value, trimmed);
+	}
+
+	function dismissFatalError(): void {
+		fatalError.value = null;
 	}
 
 	function stopGenerating(): void {
@@ -272,9 +359,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		messages,
 		isStreaming,
 		messagingState,
+		fatalError,
 		loadHistory,
 		clearHistory,
 		sendMessage,
 		stopGenerating,
+		dismissFatalError,
 	};
 }

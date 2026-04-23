@@ -1,7 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/require-await, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep, async stubs, and any-based mock reads */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import type { AgentResource } from '../types';
 import type { AgentPublishedVersion } from '../agent.types';
 
@@ -9,6 +8,17 @@ vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: vi.fn(),
 	unpublishAgent: vi.fn(),
 	deleteAgent: vi.fn(),
+}));
+
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackPublishedAgent: vi.fn(),
+		trackUnpublishedAgent: vi.fn(),
+	}),
+}));
+
+vi.mock('../composables/agentTelemetry.utils', () => ({
+	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({ config_version: 'v-test' }),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -29,15 +39,20 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useMessage', () => {
-	const confirm = vi.fn(async () => MODAL_CONFIRM);
-	return { useMessage: () => ({ confirm }) };
-});
-
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
 	return { useToast: () => ({ showMessage }) };
 });
+
+const openModalWithDataMock = vi.fn();
+const closeModalMock = vi.fn();
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({
+		openModalWithData: openModalWithDataMock,
+		closeModal: closeModalMock,
+	}),
+}));
 
 const STUBS = {
 	N8nCard: {
@@ -92,6 +107,15 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 interface RenderProps {
 	agent?: AgentResource;
 	projectId?: string;
+}
+
+function getModalCallbacks() {
+	const data = openModalWithDataMock.mock.lastCall?.[0]?.data as {
+		onConfirm: () => Promise<void> | void;
+		onCancel: () => Promise<void> | void;
+	};
+
+	return data;
 }
 
 describe('AgentCard', () => {
@@ -200,28 +224,27 @@ describe('AgentCard', () => {
 	// Unpublish action
 	it('calls unpublishAgent and emits unpublished on confirmed unpublish', async () => {
 		const { unpublishAgent } = await import('../composables/useAgentApi');
-		const { useMessage } = await import('@/app/composables/useMessage');
 		const unpublishedAgent = createAgent({ publishedVersion: null });
 		vi.mocked(unpublishAgent).mockResolvedValue(unpublishedAgent);
 
 		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="unpublish"]').trigger('click');
+		await getModalCallbacks().onConfirm();
 		await flushPromises();
 
-		expect(useMessage().confirm).toHaveBeenCalled();
+		expect(openModalWithDataMock).toHaveBeenCalled();
 		expect(unpublishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		expect(wrapper.emitted('unpublished')?.[0]).toEqual([unpublishedAgent]);
 	});
 
 	it('does not unpublish when confirm modal is cancelled', async () => {
 		const { unpublishAgent } = await import('../composables/useAgentApi');
-		const { useMessage } = await import('@/app/composables/useMessage');
-		vi.mocked(useMessage().confirm).mockResolvedValueOnce(MODAL_CANCEL);
 
 		const agent = createAgent({ versionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="unpublish"]').trigger('click');
+		await getModalCallbacks().onCancel();
 		await flushPromises();
 
 		expect(unpublishAgent).not.toHaveBeenCalled();
@@ -236,6 +259,7 @@ describe('AgentCard', () => {
 		const agent = createAgent({ id: 'agent-42' });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="delete"]').trigger('click');
+		await getModalCallbacks().onConfirm();
 		await flushPromises();
 
 		expect(deleteAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-42');
@@ -244,11 +268,10 @@ describe('AgentCard', () => {
 
 	it('does not delete when confirm modal is cancelled', async () => {
 		const { deleteAgent } = await import('../composables/useAgentApi');
-		const { useMessage } = await import('@/app/composables/useMessage');
-		vi.mocked(useMessage().confirm).mockResolvedValueOnce(MODAL_CANCEL);
 
 		const wrapper = await renderComponent();
 		await wrapper.find('[data-action="delete"]').trigger('click');
+		await getModalCallbacks().onCancel();
 		await flushPromises();
 
 		expect(deleteAgent).not.toHaveBeenCalled();

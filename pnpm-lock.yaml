@@ -2478,6 +2478,9 @@ importers:
       '@azure/keyvault-secrets':
         specifier: 4.8.0
         version: 4.8.0
+      '@chat-adapter/linear':
+        specifier: ^4.20.2
+        version: 4.26.0(graphql@16.11.0)
       '@chat-adapter/slack':
         specifier: ^4.20.2
         version: 4.23.0
@@ -2637,9 +2640,6 @@ importers:
       dotenv:
         specifier: 17.2.3
         version: 17.2.3
-      esbuild:
-        specifier: ^0.25.0
-        version: 0.25.10
       express:
         specifier: 5.1.0
         version: 5.1.0
@@ -2796,6 +2796,9 @@ importers:
       sshpk:
         specifier: 1.18.0
         version: 1.18.0
+      sucrase:
+        specifier: 3.35.0
+        version: 3.35.0
       swagger-ui-express:
         specifier: 5.0.1
         version: 5.0.1(express@5.1.0)
@@ -2917,6 +2920,9 @@ importers:
       concurrently:
         specifier: ^8.2.0
         version: 8.2.0
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.10
       ioredis-mock:
         specifier: ^8.8.1
         version: 8.8.1(@types/ioredis-mock@8.2.2)(ioredis@5.3.2)
@@ -4513,6 +4519,9 @@ importers:
       '@types/autocannon':
         specifier: ^7.12.7
         version: 7.12.7
+      '@types/jsonwebtoken':
+        specifier: 'catalog:'
+        version: 9.0.10
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
@@ -4528,6 +4537,9 @@ importers:
       generate-schema:
         specifier: 2.6.0
         version: 2.6.0
+      jsonwebtoken:
+        specifier: 'catalog:'
+        version: 9.0.3
       mockserver-client:
         specifier: ^5.15.0
         version: 5.15.0
@@ -6422,8 +6434,14 @@ packages:
   '@cfworker/json-schema@4.1.0':
     resolution: {integrity: sha512-/vYKi/qMxwNsuIJ9WGWwM2rflY40ZenK3Kh4uR5vB9/Nz12Y7IUN/Xf4wDA7vzPfw0VNh3b/jz4+MjcVgARKJg==}
 
+  '@chat-adapter/linear@4.26.0':
+    resolution: {integrity: sha512-sQfJXh9QbMnLV/odikaWHBQ3Mx1ZS+QtxIt7dTEQ4aCeIrQJflycAxxO8d6aepaGKhLQjvZx7iOkdfxMj35WlA==}
+
   '@chat-adapter/shared@4.23.0':
     resolution: {integrity: sha512-IDHgrAi3Y8Qptl1kd8zmM6jxWX+lu0cq/uZiURv8jONufWHrVwVr19pN0YK52ASnRlLZkcaNYXoa+mLFGQ2tlw==}
+
+  '@chat-adapter/shared@4.26.0':
+    resolution: {integrity: sha512-YD0MGktFXrArUqTBsyPfL5vkdD1WBS58PAWO0oVrMQAMmPxpAXfWGjBtZCkf3y8R8Svb0uVuVXiMZSForaEnMQ==}
 
   '@chat-adapter/slack@4.23.0':
     resolution: {integrity: sha512-J5Ml/Ug8Zdb3zVIcbMhkei9U9aTeY+uqpzuuzcHkwdJC6FDFhwj5TSiuocckctqW9tMCqzFl4h4gU5q9f6KSGA==}
@@ -8069,6 +8087,10 @@ packages:
     resolution: {integrity: sha512-KLB4TQKkRdki9Ugbz+X986a1F7IaZUZbPuTfPNFi7slTT+biSw0b/LPJ0tCk7EHyo5QmN8tZ1XLZwI7GgUBsfA==}
     cpu: [x64]
     os: [win32]
+
+  '@linear/sdk@76.0.0':
+    resolution: {integrity: sha512-Xt0x5Kl6qBoWhGFypb8ykyP+c5kT7scmRPs1uJidSPOaRgkMJ/4y41QpmZCWCBUMmZtf/O0VktgQio6rLXT94w==}
+    engines: {node: '>=18.x'}
 
   '@lukeed/csprng@1.1.0':
     resolution: {integrity: sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==}
@@ -13138,6 +13160,9 @@ packages:
 
   chat@4.23.0:
     resolution: {integrity: sha512-Gmw8yyDrrH9Vxs+TfxF7FoTENrCzJV4T0FiAh7APGcQPhMMYAhrpq66PKj8azhkUSEyaen8ujbneogoJWiY8vg==}
+
+  chat@4.26.0:
+    resolution: {integrity: sha512-QToDnIEGpyb8yQA6YLMHOSRK30YVk4RtsyFyuWFYyB2c4jQlyIrSWtwVK7qyvmvqzQp9uDwCdJRAhS8GtCHAGQ==}
 
   check-error@2.1.1:
     resolution: {integrity: sha512-OAlb+T7V4Op9OwdkjmguYRqncdlx5JiofwOAUkmTF+jNdHwzTaTs4sRAGpzLF3oOz5xAyDGrPgeIDFQmDOTiJw==}
@@ -25877,9 +25902,24 @@ snapshots:
 
   '@cfworker/json-schema@4.1.0': {}
 
+  '@chat-adapter/linear@4.26.0(graphql@16.11.0)':
+    dependencies:
+      '@chat-adapter/shared': 4.26.0
+      '@linear/sdk': 76.0.0(graphql@16.11.0)
+      chat: 4.26.0
+    transitivePeerDependencies:
+      - graphql
+      - supports-color
+
   '@chat-adapter/shared@4.23.0':
     dependencies:
       chat: 4.23.0
+    transitivePeerDependencies:
+      - supports-color
+
+  '@chat-adapter/shared@4.26.0':
+    dependencies:
+      chat: 4.26.0
     transitivePeerDependencies:
       - supports-color
 
@@ -27939,6 +27979,12 @@ snapshots:
 
   '@libsql/win32-x64-msvc@0.5.28':
     optional: true
+
+  '@linear/sdk@76.0.0(graphql@16.11.0)':
+    dependencies:
+      '@graphql-typed-document-node/core': 3.2.0(graphql@16.11.0)
+    transitivePeerDependencies:
+      - graphql
 
   '@lukeed/csprng@1.1.0': {}
 
@@ -34323,6 +34369,18 @@ snapshots:
       '@kurkle/color': 0.3.2
 
   chat@4.23.0:
+    dependencies:
+      '@workflow/serde': 4.1.0-beta.2
+      mdast-util-to-string: 4.0.0
+      remark-gfm: 4.0.1
+      remark-parse: 11.0.0
+      remark-stringify: 11.0.0
+      remend: 1.3.0
+      unified: 11.0.5
+    transitivePeerDependencies:
+      - supports-color
+
+  chat@4.26.0:
     dependencies:
       '@workflow/serde': 4.1.0-beta.2
       mdast-util-to-string: 4.0.0

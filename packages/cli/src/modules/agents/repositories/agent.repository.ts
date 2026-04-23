@@ -38,4 +38,30 @@ export class AgentRepository extends Repository<Agent> {
 			.innerJoinAndSelect('agent.publishedVersion', 'publishedVersion')
 			.getMany();
 	}
+
+	/**
+	 * Finds agents within a project whose `integrations` JSON column contains an
+	 * entry matching the given `type` + `credentialId`, excluding `excludeAgentId`.
+	 *
+	 * Scoped to a single project because credentials are project-scoped in n8n —
+	 * an agent can only use credentials from its own project, so conflicts can
+	 * only occur between agents in the same project.
+	 *
+	 * Filters in memory because `integrations` is a JSON column with no portable
+	 * SQL query across SQLite/Postgres/MySQL. Agent counts per project are small
+	 * enough that this is fine.
+	 */
+	async findByIntegrationCredential(
+		type: string,
+		credentialId: string,
+		projectId: string,
+		excludeAgentId: string,
+	): Promise<Agent[]> {
+		const agents = await this.find({ where: { projectId } });
+		return agents.filter(
+			(agent) =>
+				agent.id !== excludeAgentId &&
+				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
+		);
+	}
 }

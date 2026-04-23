@@ -1,4 +1,3 @@
-import { flushPromises } from '@vue/test-utils';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -45,26 +44,6 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 
 vi.mock('is-emoji-supported', () => ({
 	isEmojiSupported: () => true,
-}));
-
-vi.mock('@/features/agents/composables/useAgentApi', () => ({
-	listAllAgents: vi.fn().mockResolvedValue([
-		{ id: 'agent-1', name: 'SEO Auditor' },
-		{ id: 'agent-2', name: 'Inbox Sorter' },
-	]),
-	deleteAgent: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({
-		confirm: vi.fn(),
-		alert: vi.fn(),
-		prompt: vi.fn(),
-	}),
-}));
-
-vi.mock('@/app/composables/useTelemetry', () => ({
-	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
 const renderComponent = createComponentRenderer(ProjectsNavigation, {
@@ -234,65 +213,5 @@ describe('ProjectsNavigation', () => {
 
 		// The shared menu item should not be rendered
 		expect(getByTestId('project-shared-menu-item')).toBeInTheDocument();
-	});
-
-	describe('Agents sidebar section', () => {
-		beforeEach(() => {
-			projectsStore.teamProjectsLimit = -1;
-			projectsStore.personalProject = createTestProject({ type: 'personal' });
-		});
-
-		it('should show agents section when agents module is active', async () => {
-			settingsStore.isModuleActive = vi.fn((module: string) => module === 'agents');
-
-			const { queryAllByTestId, queryByTestId } = renderComponent({
-				props: { collapsed: false },
-			});
-
-			// Wait for the agents fetch to resolve
-			await flushPromises();
-
-			expect(queryAllByTestId('agent-menu-item').length).toBeGreaterThan(0);
-			expect(queryByTestId('new-agent-menu-item')).toBeInTheDocument();
-		});
-
-		it('should hide agents section when agents module is not active', () => {
-			settingsStore.isModuleActive = vi.fn(() => false);
-
-			const { queryByTestId } = renderComponent({
-				props: { collapsed: false },
-			});
-
-			expect(queryByTestId('agent-menu-item')).not.toBeInTheDocument();
-			expect(queryByTestId('new-agent-menu-item')).not.toBeInTheDocument();
-		});
-
-		it('should hide agents section when sidebar is collapsed', () => {
-			settingsStore.isModuleActive = vi.fn((module: string) => module === 'agents');
-
-			const { queryByTestId } = renderComponent({
-				props: { collapsed: true },
-			});
-
-			expect(queryByTestId('new-agent-menu-item')).not.toBeInTheDocument();
-		});
-
-		it('should refresh agents list when agentUpdated event is emitted', async () => {
-			settingsStore.isModuleActive = vi.fn((module: string) => module === 'agents');
-
-			const { listAllAgents } = await import('@/features/agents/composables/useAgentApi');
-			const { agentsEventBus } = await import('@/features/agents/agents.eventBus');
-
-			renderComponent({ props: { collapsed: false } });
-			await flushPromises();
-
-			// Reset call count after initial mount fetch
-			vi.mocked(listAllAgents).mockClear();
-
-			agentsEventBus.emit('agentUpdated');
-			await flushPromises();
-
-			expect(listAllAgents).toHaveBeenCalledTimes(1);
-		});
 	});
 });

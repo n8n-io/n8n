@@ -1,8 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
+import { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
 import { loadTelegramAdapter } from '../esm-loader';
@@ -10,10 +12,17 @@ import { loadTelegramAdapter } from '../esm-loader';
 /**
  * Telegram platform integration.
  *
- * Telegram's Bot API caps callback_data at 64 bytes, so {@link needsShortCallbackData}
- * is true — the bridge stores full payloads in a CallbackStore and emits short
- * 8-char keys as button IDs. The adapter runs in webhook mode when a public
- * `WEBHOOK_URL` is configured, otherwise it falls back to polling for local dev.
+ * Two capability flags are enabled here because of Telegram constraints:
+ * - {@link needsShortCallbackData} — `callback_data` is capped at 64 bytes, so the
+ *   bridge stores full payloads in a CallbackStore and emits short 8-char keys as
+ *   button IDs.
+ * - {@link disableStreaming} — streaming Markdown edits are unstable: intermediate
+ *   frames carry half-formed markup that Telegram rejects or renders inconsistently.
+ *   The bridge buffers agent output and posts it as a single message per flush,
+ *   guaranteeing well-formed Markdown on every post.
+ *
+ * The adapter runs in webhook mode when a public `WEBHOOK_URL` is configured,
+ * otherwise it falls back to polling for local dev.
  */
 @Service()
 export class TelegramIntegration extends AgentChatIntegration {
@@ -30,9 +39,12 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly needsShortCallbackData = true;
 
+	readonly disableStreaming = true;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
+		private readonly agentRepository: AgentRepository,
 	) {
 		super();
 	}
@@ -42,6 +54,59 @@ export class TelegramIntegration extends AgentChatIntegration {
 		const mode = this.getMode();
 		const { createTelegramAdapter } = await loadTelegramAdapter();
 		return createTelegramAdapter({ botToken, mode });
+	}
+
+	/**
+	 * Block the connect flow if this Telegram credential is already claimed — either
+	 * by another agent in our DB, or by an unrelated webhook registered directly on
+	 * Telegram (stale state, different n8n instance, or a Telegram-trigger workflow).
+	 *
+	 * The DB check is the primary signal (gives us the owning agent's name); the
+	 * Telegram `getWebhookInfo` probe catches leftover webhooks no agent claims.
+	 * The probe fails open — if Telegram's API is flaky, we log a warning and
+	 * proceed rather than blocking a legitimate connect.
+	 */
+	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
+		const others = await this.agentRepository.findByIntegrationCredential(
+			this.type,
+			ctx.credentialId,
+			ctx.projectId,
+			ctx.agentId,
+		);
+		if (others.length > 0) {
+			throw new ConflictError(
+				`Telegram credential is already connected to agent "${others[0].name}"`,
+			);
+		}
+
+		// Only probe Telegram when we'd actually register a webhook (public URL).
+		if (this.getMode() !== 'webhook') return;
+
+		const botToken =
+			typeof ctx.credential.accessToken === 'string' ? ctx.credential.accessToken : '';
+		if (!botToken) return;
+
+		let info: { url: string };
+		try {
+			const resp = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`, {
+				method: 'POST',
+			});
+			if (!resp.ok) throw new Error(await resp.text());
+			const body = (await resp.json()) as { result?: { url?: string } };
+			info = { url: body.result?.url ?? '' };
+		} catch (error) {
+			this.logger.warn(
+				`[TelegramIntegration] getWebhookInfo probe failed, proceeding: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			return;
+		}
+
+		const ourUrl = ctx.webhookUrlFor(this.type);
+		if (info.url && info.url !== ourUrl) {
+			throw new ConflictError(
+				`Telegram bot already has a webhook registered elsewhere: ${info.url}`,
+			);
+		}
 	}
 
 	async onAfterConnect(ctx: AgentChatIntegrationContext): Promise<void> {

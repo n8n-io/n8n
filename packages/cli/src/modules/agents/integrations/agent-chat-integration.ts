@@ -6,6 +6,7 @@ import type { SuspendComponent } from './component-mapper';
 export interface AgentChatIntegrationContext {
 	agentId: string;
 	projectId: string;
+	credentialId: string;
 	credential: Record<string, unknown>;
 	/** Returns the inbound webhook URL this n8n instance exposes for the given platform. */
 	webhookUrlFor: (platform: string) => string;
@@ -27,11 +28,15 @@ export abstract class AgentChatIntegration {
 	/** Credential types accepted by the frontend selector. */
 	abstract readonly credentialTypes: string[];
 
-	/** Component types this platform supports in rich_interaction cards. */
-	abstract readonly supportedComponents: string[];
+	/**
+	 * Component types this platform supports in rich_interaction cards.
+	 * Omit to signal that the platform has no rich_interaction surface — the
+	 * tool won't be injected into agents targeting this platform.
+	 */
+	readonly supportedComponents?: string[];
 
 	/** User-facing description used by `createRichInteractionTool`. */
-	abstract readonly description: string;
+	readonly description?: string;
 
 	/**
 	 * True if this platform has a small callback_data limit (Telegram: 64 bytes).
@@ -40,8 +45,21 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly needsShortCallbackData: boolean = false;
 
+	/**
+	 * True if the bridge should buffer streaming output and post it as a single
+	 * message instead of streaming text deltas via post-and-edit.
+	 */
+	readonly disableStreaming: boolean = false;
+
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
+
+	/**
+	 * Optional hook run BEFORE the adapter is built. Use it to reject the
+	 * connect early — e.g. a webhook-based platform checking that the
+	 * credential isn't already claimed elsewhere. Throwing aborts the connect.
+	 */
+	onBeforeConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */
 	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;

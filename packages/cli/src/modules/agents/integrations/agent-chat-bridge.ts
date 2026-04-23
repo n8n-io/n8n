@@ -93,10 +93,17 @@ type TextEndFn = () => void;
  * 2. `onSubscribedMessage` — follow-up messages in subscribed threads
  * 3. `onAction` — button clicks for HITL resume flow
  *
- * Streaming strategy (Phase 1 — collect-and-post):
- * Text chunks are accumulated in a buffer. When a non-text event arrives
- * (suspension, message, error, finish), the buffer is flushed as a markdown
- * post. This sacrifices real-time streaming but ensures correct ordering.
+ * Stream consumption has two strategies, selected per integration via the
+ * `disableStreaming` flag on `AgentChatIntegration`:
+ *   • streaming (default, e.g. Slack): text deltas are piped as an
+ *     AsyncIterable<string> into `thread.post()` so Chat SDK can render
+ *     incrementally (post-and-edit).
+ *   • buffered (Telegram): deltas accumulate into a string and are posted as
+ *     a single message per flush event, so the platform adapter only ever
+ *     sees well-formed Markdown (streaming edits ship half-formed markup).
+ *
+ * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
+ * `error`) flush any pending text before being handled, preserving ordering.
  */
 export class AgentChatBridge {
 	/** Short-lived set of run IDs that have been resumed to prevent double resumption */
@@ -104,6 +111,9 @@ export class AgentChatBridge {
 
 	/** Store for shortening callback data on platforms with size limits (Telegram) */
 	private readonly callbackStore?: CallbackStore;
+
+	/** When true, buffer deltas and post as a single message (see integration flag). */
+	private readonly disableStreaming: boolean;
 
 	constructor(
 		private readonly bot: ChatBot,
@@ -120,6 +130,7 @@ export class AgentChatBridge {
 		if (integration?.needsShortCallbackData) {
 			this.callbackStore = new CallbackStore();
 		}
+		this.disableStreaming = integration?.disableStreaming ?? false;
 		this.registerHandlers();
 	}
 
@@ -227,23 +238,30 @@ export class AgentChatBridge {
 	}
 
 	// ---------------------------------------------------------------------------
-	// Stream consumer — collect-and-post strategy
+	// Stream consumer
 	// ---------------------------------------------------------------------------
 
 	/**
-	 * Consume the agent stream and post to the thread with real-time streaming.
+	 * Consume the agent stream and post to the thread.
 	 *
-	 * Text deltas are piped as an AsyncIterable<string> to thread.post(),
-	 * which Chat SDK renders incrementally (post-and-edit pattern).
+	 * Default: pipe text deltas as an AsyncIterable<string> to `thread.post()`
+	 * so Chat SDK can render incrementally (post-and-edit). Integrations that
+	 * set `disableStreaming` short-circuit to `consumeStreamBuffered`, which
+	 * accumulates deltas into a string and posts them as a single message per
+	 * flush event (used by Telegram to avoid Markdown streaming issues).
 	 *
-	 * When a non-text event arrives (suspension, custom message, error),
-	 * the current text stream is terminated, the event is handled, and a
-	 * new text stream starts for subsequent text deltas.
+	 * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
+	 * `error`) flush any pending text first, then get handled in order.
 	 */
 	private async consumeStream(
 		stream: AsyncGenerator<StreamChunk>,
 		thread: ChatThread,
 	): Promise<void> {
+		if (this.disableStreaming) {
+			await this.consumeStreamBuffered(stream, thread);
+			return;
+		}
+
 		// Controller for the text stream iterable that Chat SDK consumes.
 		// These are reassigned inside `createTextIterable()` (called transitively
 		// by `ensureStreamingPost()`). TypeScript cannot track mutations through
@@ -358,6 +376,63 @@ export class AgentChatBridge {
 		}
 
 		await endStreamingPost();
+	}
+
+	/**
+	 * Buffered consumer — accumulates text/reasoning deltas and posts them as a
+	 * single message per flush. Used when the integration disables streaming
+	 * (e.g. Telegram).
+	 */
+	private async consumeStreamBuffered(
+		stream: AsyncGenerator<StreamChunk>,
+		thread: ChatThread,
+	): Promise<void> {
+		let buffer = '';
+
+		const flushBuffer = async () => {
+			const text = buffer;
+			buffer = '';
+			if (!text.trim()) return;
+			try {
+				// Chat SDK's streaming path wraps accumulated deltas as `{ markdown }`
+				// so the platform adapter applies its markdown parse-mode (Telegram:
+				// sendMessage with parse_mode=Markdown). A raw string bypasses that
+				// and renders as plain text, so we post the buffered message the same
+				// shape the streaming path uses under the hood.
+				await thread.post({ markdown: text });
+			} catch (postError: unknown) {
+				this.logger.error('[AgentChatBridge] Buffered post failed', {
+					error: postError instanceof Error ? postError.message : String(postError),
+				});
+			}
+		};
+
+		for await (const chunk of stream) {
+			switch (chunk.type) {
+				case 'text-delta':
+					buffer += chunk.delta;
+					break;
+				case 'reasoning-delta':
+					buffer += `_${chunk.delta}_`;
+					break;
+				case 'tool-call-suspended':
+					await flushBuffer();
+					await this.handleSuspension(chunk, thread);
+					break;
+				case 'message':
+					await flushBuffer();
+					await this.handleMessage(chunk, thread);
+					break;
+				case 'error':
+					await flushBuffer();
+					await this.postErrorToThread(thread, chunk.error);
+					break;
+				default:
+					break;
+			}
+		}
+
+		await flushBuffer();
 	}
 
 	// ---------------------------------------------------------------------------

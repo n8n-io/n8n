@@ -1,4 +1,4 @@
-import { Agent, Memory } from '@n8n/agents';
+import { Agent, Memory, providerTools } from '@n8n/agents';
 import type { CredentialProvider, StreamChunk } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -83,7 +83,8 @@ export class AgentsBuilderService {
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
 			.instructions(instructions)
-			.memory(builderMemory);
+			.memory(builderMemory)
+			.providerTool(providerTools.anthropicWebSearch({ maxUses: 5 }));
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);

@@ -151,3 +151,5 @@ export type {
 } from './workspace';
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
+
+export { isZodSchema, zodToJsonSchema } from './utils/zod';

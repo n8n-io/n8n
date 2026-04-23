@@ -100,9 +100,17 @@ export class ChatIntegrationService {
 		const ctx: AgentChatIntegrationContext = {
 			agentId,
 			projectId,
+			credentialId,
 			credential: decryptedData,
 			webhookUrlFor: (platform) => this.buildWebhookUrl(agentId, projectId, platform),
 		};
+
+		// Pre-connect hook — webhook-based platforms use this to detect
+		// credential conflicts (e.g. a Telegram bot token already in use) and
+		// abort the connect before we touch any external API.
+		if (integration.onBeforeConnect) {
+			await integration.onBeforeConnect(ctx);
+		}
 
 		// Delegate adapter construction to the platform implementation.
 		const adapter = await integration.createAdapter(ctx);

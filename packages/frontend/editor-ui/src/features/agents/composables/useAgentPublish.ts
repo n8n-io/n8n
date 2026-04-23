@@ -1,10 +1,12 @@
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { publishAgent, unpublishAgent } from './useAgentApi';
+import { useAgentTelemetry } from './useAgentTelemetry';
+import { buildAgentConfigFingerprint } from './agentTelemetry.utils';
+import { useAgentConfirmationModal } from './useAgentConfirmationModal';
 import type { AgentResource } from '../types';
 
 /**
@@ -16,7 +18,8 @@ export function useAgentPublish() {
 	const rootStore = useRootStore();
 	const locale = useI18n();
 	const { showMessage, showError } = useToast();
-	const message = useMessage();
+	const agentTelemetry = useAgentTelemetry();
+	const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 	const publishing = ref(false);
 
@@ -25,6 +28,19 @@ export function useAgentPublish() {
 		publishing.value = true;
 		try {
 			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
+			// Derive the fingerprint from the server's response so `config_version`
+			// reflects what was actually published regardless of the caller —
+			// list-card publishes don't have access to the live draft. Triggers
+			// are intentionally omitted: they live outside AgentJsonConfig and
+			// aren't part of the published schema. `crypto.subtle.digest` can
+			// throw in insecure contexts — swallow so telemetry never surfaces
+			// as a publish failure. `trackPublishedAgent` itself is already safe.
+			try {
+				const fp = await buildAgentConfigFingerprint(updated.publishedVersion?.schema ?? null, []);
+				agentTelemetry.trackPublishedAgent({ agentId, configVersion: fp.config_version });
+			} catch {
+				// Swallow fingerprint failures.
+			}
 			showMessage({ title: locale.baseText('agents.publish.toast.published'), type: 'success' });
 			return updated;
 		} catch (error) {
@@ -35,22 +51,26 @@ export function useAgentPublish() {
 		}
 	}
 
-	async function unpublish(projectId: string, agentId: string): Promise<AgentResource | null> {
+	async function unpublish(
+		projectId: string,
+		agentId: string,
+		agentName?: string,
+	): Promise<AgentResource | null> {
 		if (publishing.value) return null;
-		const confirmed = await message.confirm(
-			locale.baseText('agents.unpublish.modal.description'),
-			locale.baseText('agents.unpublish.modal.title'),
-			{
-				confirmButtonText: locale.baseText('agents.unpublish.modal.button.unpublish'),
-				cancelButtonText: locale.baseText('generic.cancel'),
-				type: 'warning',
-			},
-		);
+		const confirmed = await openAgentConfirmationModal({
+			title: locale.baseText('agents.unpublish.modal.title', {
+				interpolate: { name: agentName ?? '' },
+			}),
+			description: locale.baseText('agents.unpublish.modal.description'),
+			confirmButtonText: locale.baseText('agents.unpublish.modal.button.unpublish'),
+			cancelButtonText: locale.baseText('generic.cancel'),
+		});
 		if (confirmed !== MODAL_CONFIRM) return null;
 
 		publishing.value = true;
 		try {
 			const updated = await unpublishAgent(rootStore.restApiContext, projectId, agentId);
+			agentTelemetry.trackUnpublishedAgent({ agentId });
 			showMessage({ title: locale.baseText('agents.publish.toast.unpublished'), type: 'success' });
 			return updated;
 		} catch (error) {

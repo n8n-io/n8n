@@ -1,7 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick } from 'vue';
+import { nextTick, ref } from 'vue';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -30,6 +30,17 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn() }),
 }));
 
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({
+		openModalWithData: vi.fn(),
+		closeModal: vi.fn(),
+	}),
+}));
+
+const updateAgentMock = vi.fn();
+const getIntegrationStatusMock = vi.fn();
+const publishAgentMock = vi.fn();
+
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: vi.fn().mockResolvedValue({
 		id: 'a1',
@@ -37,38 +48,33 @@ vi.mock('../composables/useAgentApi', () => ({
 		description: null,
 		tools: {},
 		updatedAt: '2026-01-01T00:00:00Z',
+		publishedVersion: null,
+		versionId: 'v1',
 	}),
-	updateAgent: vi.fn(),
+	updateAgent: updateAgentMock,
 	deleteAgent: vi.fn(),
-	publishAgent: vi.fn(),
+	publishAgent: publishAgentMock,
+	getIntegrationStatus: getIntegrationStatusMock,
 }));
 
-/**
- * Keep AgentBuilderView's dependency graph light: static imports of sidebar /
- * chat / home SFCs would otherwise pull in ChatHub, users store, etc. before
- * mount stubs apply.
- */
-vi.mock('../components/AgentSettingsSidebar.vue', () => ({
-	default: { name: 'AgentSettingsSidebar', template: '<div data-testid="settings-stub" />' },
-}));
-vi.mock('../components/AgentChatPanel.vue', () => ({
-	default: {
-		name: 'AgentChatPanel',
-		props: ['endpoint', 'projectId', 'agentId', 'mode', 'initialMessage', 'visible'],
-		template: '<div data-testid="chat-panel-stub" :data-endpoint="endpoint" />',
-	},
-}));
-vi.mock('../components/AgentHomeContent.vue', () => ({
-	default: { name: 'AgentHomeContent', template: '<div data-testid="home-stub" />' },
-}));
-vi.mock('../components/AgentBuilderProgress.vue', () => ({
-	default: { name: 'AgentBuilderProgress', template: '<div data-testid="progress-stub" />' },
-}));
-vi.mock('../components/AgentBuilderUnconfiguredEmptyState.vue', () => ({
-	default: {
-		name: 'AgentBuilderUnconfiguredEmptyState',
-		template: '<div data-testid="agent-builder-unconfigured-stub" />',
-	},
+const trackClickedNewAgentMock = vi.fn();
+const trackSubmittedMessageMock = vi.fn();
+const trackEditedConfigMock = vi.fn();
+const trackAddedTriggerMock = vi.fn();
+const trackAddedToolsMock = vi.fn();
+const trackPublishedAgentMock = vi.fn();
+const trackUnpublishedAgentMock = vi.fn();
+
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackClickedNewAgent: trackClickedNewAgentMock,
+		trackSubmittedMessage: trackSubmittedMessageMock,
+		trackEditedConfig: trackEditedConfigMock,
+		trackAddedTrigger: trackAddedTriggerMock,
+		trackAddedTools: trackAddedToolsMock,
+		trackPublishedAgent: trackPublishedAgentMock,
+		trackUnpublishedAgent: trackUnpublishedAgentMock,
+	}),
 }));
 
 vi.mock('../agentBuilderSettings.store', () => ({
@@ -78,16 +84,33 @@ vi.mock('../agentBuilderSettings.store', () => ({
 	}),
 }));
 
-vi.mock('../composables/useAgentConfig', async () => {
-	const { ref } = await import('vue');
-	return {
-		useAgentConfig: () => ({
-			config: ref({ name: 'Agent One', instructions: '' }),
-			fetchConfig: vi.fn().mockResolvedValue(undefined),
-			updateConfig: vi.fn().mockResolvedValue({ versionId: 'v1' }),
-		}),
-	};
+// Real ref so the view's `watch(config, ...)` fires and populates `localConfig`.
+// Tests that need an unbuilt agent flip this to empty instructions before render.
+const mockConfig = ref<{ name: string; instructions: string } | null>({
+	name: 'Agent One',
+	instructions: 'You are a helpful assistant.',
 });
+// Stash the "desired config" separately so the fetchConfig mock can restore
+// the ref after `initialize()` clears `localConfig` and re-fetches. Without
+// this, the view's `localConfig = null` reset sticks — the config ref hasn't
+// changed, so the `watch(config, ...)` listener doesn't re-fire.
+let intendedConfig: { name: string; instructions: string } | null = {
+	name: 'Agent One',
+	instructions: 'You are a helpful assistant.',
+};
+
+vi.mock('../composables/useAgentConfig', () => ({
+	useAgentConfig: () => ({
+		config: mockConfig,
+		fetchConfig: vi.fn().mockImplementation(async () => {
+			// Mimic the real composable: re-publish the fetched config by touching
+			// the ref, which triggers watchers even when the shape is unchanged.
+			mockConfig.value = intendedConfig ? { ...intendedConfig } : null;
+		}),
+		updateConfig: vi.fn().mockResolvedValue({ versionId: 'v1' }),
+	}),
+}));
+
 vi.mock('../agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({
 		threads: [],
@@ -124,6 +147,13 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Reset to a built agent; tests that need an unbuilt agent override locally.
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+		};
+		mockConfig.value = { ...intendedConfig };
+		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
 	async function renderView() {
@@ -131,6 +161,30 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		const wrapper = mount(AgentBuilderView, {
 			global: {
 				stubs: {
+					AgentChatPanel: {
+						name: 'AgentChatPanel',
+						template: '<div data-testid="chat-panel-stub" :data-endpoint="endpoint" />',
+						props: [
+							'endpoint',
+							'projectId',
+							'agentId',
+							'mode',
+							'initialMessage',
+							'agentConfig',
+							'agentStatus',
+							'connectedTriggers',
+						],
+					},
+					AgentHomeContent: {
+						name: 'AgentHomeContent',
+						emits: ['update:name', 'update:description'],
+						template: '<div data-testid="home-stub" />',
+					},
+					AgentSettingsSidebar: {
+						name: 'AgentSettingsSidebar',
+						emits: ['update:connected-triggers'],
+						template: '<div data-testid="settings-stub" />',
+					},
 					N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 					N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
 					N8nActionDropdown: { template: '<div />' },
@@ -204,6 +258,47 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
 	});
 
+	it('drops unbuilt agents straight into the build chat on load', async () => {
+		// Unbuilt agents go to the build chat unconditionally so the build
+		// panel mounts, triggers loadHistory, and any prior conversation with
+		// the builder is visible instead of being stranded behind the home
+		// screen (where the Test tab is locked and clicking Build is a no-op).
+		intendedConfig = { name: 'Agent One', instructions: '' };
+		mockConfig.value = { ...intendedConfig };
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { mode: string; chatMode: string };
+
+		expect(vm.mode).toBe('chat');
+		expect(vm.chatMode).toBe('build');
+	});
+
+	it('lands built agents on the home screen', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { mode: string; chatMode: string };
+
+		expect(vm.mode).toBe('home');
+		expect(vm.chatMode).toBe('test');
+	});
+
+	it('locks the Test tab when the agent has no instructions', async () => {
+		intendedConfig = { name: 'Agent One', instructions: '' };
+		mockConfig.value = { ...intendedConfig };
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { chatMode: string; mode: string };
+
+		// Get into Build mode first (it's clickable on any agent state).
+		await wrapper.find('[data-test-id="radio-button-build"]').trigger('click');
+		await nextTick();
+		expect(vm.chatMode).toBe('build');
+
+		// Clicking Test on an unbuilt agent must be a no-op — the RadioButton
+		// option is disabled and the click handler returns early.
+		await wrapper.find('[data-test-id="radio-button-test"]').trigger('click');
+		await nextTick();
+		expect(vm.chatMode).toBe('build');
+	});
+
 	it('transitions from home to chat when a toggle segment is clicked', async () => {
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as { mode: string; chatMode: string };
@@ -219,5 +314,137 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
 		expect(buildPanel.exists()).toBe(true);
 		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
+	});
+});
+
+describe('AgentBuilderView — telemetry', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		updateAgentMock.mockImplementation(
+			async (_ctx, _pid, _aid, patch: Record<string, unknown>) => ({
+				id: 'a1',
+				name: typeof patch.name === 'string' ? patch.name : 'Agent One',
+				description: typeof patch.description === 'string' ? patch.description : null,
+				tools: {},
+				updatedAt: '2026-01-02T00:00:00Z',
+				publishedVersion: null,
+				versionId: 'v1',
+			}),
+		);
+	});
+
+	async function renderViewWithEmittableStubs() {
+		const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
+		const wrapper = mount(AgentBuilderView, {
+			global: {
+				stubs: {
+					AgentChatPanel: {
+						name: 'AgentChatPanel',
+						template: '<div data-testid="chat-panel-stub" />',
+						props: [
+							'endpoint',
+							'projectId',
+							'agentId',
+							'mode',
+							'initialMessage',
+							'agentConfig',
+							'agentStatus',
+							'connectedTriggers',
+						],
+					},
+					AgentHomeContent: {
+						name: 'AgentHomeContent',
+						emits: ['update:name', 'update:description'],
+						template: '<div data-testid="home-stub" />',
+					},
+					AgentBuilderProgress: { template: '<div data-testid="progress-stub" />' },
+					AgentSettingsSidebar: {
+						name: 'AgentSettingsSidebar',
+						emits: ['update:connected-triggers'],
+						template: '<div data-testid="settings-stub" />',
+					},
+					N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
+					N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
+					N8nActionDropdown: { template: '<div />' },
+					Transition: { template: '<div><slot/></div>' },
+				},
+			},
+		});
+		await flushPromises();
+		return wrapper;
+	}
+
+	afterEach(async () => {
+		// Drain any telemetry IIFEs (crypto.subtle digest + track call) so
+		// pending work doesn't leak across tests and pollute later mocks.
+		for (let i = 0; i < 5; i++) await flushPromises();
+	});
+
+	it('fires User edited agent config with part=name when the agent name is updated', async () => {
+		const wrapper = await renderViewWithEmittableStubs();
+		const home = wrapper.findComponent({ name: 'AgentHomeContent' });
+
+		home.vm.$emit('update:name', 'Renamed Agent');
+
+		await vi.waitFor(() => {
+			expect(trackEditedConfigMock).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'a1', part: 'name' }),
+			);
+		});
+		expect(updateAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', {
+			name: 'Renamed Agent',
+		});
+	});
+
+	it('fires User edited agent config with part=description when the description is updated', async () => {
+		const wrapper = await renderViewWithEmittableStubs();
+		const home = wrapper.findComponent({ name: 'AgentHomeContent' });
+
+		home.vm.$emit('update:description', 'A new description');
+
+		await vi.waitFor(() => {
+			expect(trackEditedConfigMock).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'a1', part: 'description' }),
+			);
+		});
+		expect(updateAgentMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			expect.objectContaining({ description: 'A new description' }),
+		);
+	});
+
+	it('fires User edited agent config with part=triggers when the connected-triggers list changes', async () => {
+		const wrapper = await renderViewWithEmittableStubs();
+		const sidebar = wrapper.findComponent({ name: 'AgentSettingsSidebar' });
+
+		// Baseline starts at [] from loadInitialConnectedTriggers (mocked to
+		// return no integrations). Emitting a different list should fire.
+		sidebar.vm.$emit('update:connected-triggers', ['slack']);
+
+		await vi.waitFor(() => {
+			expect(trackEditedConfigMock).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'a1', part: 'triggers' }),
+			);
+		});
+	});
+
+	it('does not fire User edited agent config when the connected-triggers list is unchanged', async () => {
+		// Pre-seed the baseline to ['slack'] so an emission of the same list is a no-op.
+		getIntegrationStatusMock.mockResolvedValueOnce({
+			status: 'ok',
+			integrations: [{ type: 'slack', credentialId: 'c1' }],
+		});
+
+		const wrapper = await renderViewWithEmittableStubs();
+		const sidebar = wrapper.findComponent({ name: 'AgentSettingsSidebar' });
+
+		trackEditedConfigMock.mockClear();
+		sidebar.vm.$emit('update:connected-triggers', ['slack']);
+		for (let i = 0; i < 5; i++) await flushPromises();
+
+		expect(trackEditedConfigMock).not.toHaveBeenCalled();
 	});
 });
