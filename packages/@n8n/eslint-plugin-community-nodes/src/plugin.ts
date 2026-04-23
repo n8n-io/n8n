@@ -31,6 +31,7 @@ const configs = {
 			'@n8n/community-nodes/no-credential-reuse': 'error',
 			'@n8n/community-nodes/no-forbidden-lifecycle-scripts': 'error',
 			'@n8n/community-nodes/no-http-request-with-manual-auth': 'error',
+			'@n8n/community-nodes/no-overrides-field': 'error',
 			'@n8n/community-nodes/icon-validation': 'error',
 			'@n8n/community-nodes/options-sorted-alphabetically': 'warn',
 			'@n8n/community-nodes/resource-operation-pattern': 'warn',
@@ -42,6 +43,7 @@ const configs = {
 			'@n8n/community-nodes/require-continue-on-fail': 'error',
 			'@n8n/community-nodes/require-node-api-error': 'error',
 			'@n8n/community-nodes/require-node-description-fields': 'error',
+			'@n8n/community-nodes/webhook-lifecycle-complete': 'error',
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
@@ -59,6 +61,7 @@ const configs = {
 			'@n8n/community-nodes/no-credential-reuse': 'error',
 			'@n8n/community-nodes/no-forbidden-lifecycle-scripts': 'error',
 			'@n8n/community-nodes/no-http-request-with-manual-auth': 'error',
+			'@n8n/community-nodes/no-overrides-field': 'error',
 			'@n8n/community-nodes/icon-validation': 'error',
 			'@n8n/community-nodes/options-sorted-alphabetically': 'warn',
 			'@n8n/community-nodes/credential-documentation-url': 'error',
@@ -70,6 +73,7 @@ const configs = {
 			'@n8n/community-nodes/require-continue-on-fail': 'error',
 			'@n8n/community-nodes/require-node-api-error': 'error',
 			'@n8n/community-nodes/require-node-description-fields': 'error',
+			'@n8n/community-nodes/webhook-lifecycle-complete': 'error',
 		},
 	},
 } satisfies Record<string, Linter.Config>;

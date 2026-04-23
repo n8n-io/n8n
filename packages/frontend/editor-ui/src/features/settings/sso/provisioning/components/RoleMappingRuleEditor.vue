@@ -40,6 +40,7 @@ const {
 	reorder,
 	loadRules,
 	save,
+	discardProjectRules,
 } = useRoleMappingRules();
 
 function duplicateRule(id: string) {
@@ -60,7 +61,7 @@ onMounted(async () => {
 	await Promise.all([loadRules(), rolesStore.fetchRoles(), projectsStore.getAllProjects()]);
 });
 
-defineExpose({ isDirty, save });
+defineExpose({ isDirty, save, discardProjectRules });
 </script>
 <template>
 	<div :class="$style.editor" data-test-id="role-mapping-rule-editor">

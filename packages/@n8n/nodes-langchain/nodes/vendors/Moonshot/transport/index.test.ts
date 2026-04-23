@@ -16,7 +16,7 @@ describe('Moonshot transport', () => {
 
 		await apiRequest.call(executeFunctionsMock, 'POST', '/chat/completions', {
 			body: {
-				model: 'kimi-k2.5',
+				model: 'kimi-k2.6',
 				messages: [{ role: 'user', content: 'Hello' }],
 			},
 		});
@@ -28,7 +28,7 @@ describe('Moonshot transport', () => {
 				url: 'https://api.moonshot.ai/v1/chat/completions',
 				json: true,
 				body: {
-					model: 'kimi-k2.5',
+					model: 'kimi-k2.6',
 					messages: [{ role: 'user', content: 'Hello' }],
 				},
 				headers: {},
