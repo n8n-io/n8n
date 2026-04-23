@@ -4,6 +4,7 @@ import path from 'node:path';
 import { addCredentialToNode, updateCredentialAst, updateNodeAst } from './ast';
 import { baseUrlPrompt, credentialTypePrompt, oauthFlowPrompt } from './prompts';
 import type { CustomTemplateConfig } from './types';
+import { createProject, type Project } from '../../../../utils/ast';
 import {
 	renameDirectory,
 	renameFilesInDirectory,
@@ -14,7 +15,6 @@ import {
 	addCredentialPackageJson,
 	getPackageJsonNodes,
 } from '../../../../utils/package';
-import { createProject, type Project } from '../../../../utils/ast';
 import { createTemplate, type TemplateData } from '../../../core';
 
 export const customTemplate = createTemplate({
