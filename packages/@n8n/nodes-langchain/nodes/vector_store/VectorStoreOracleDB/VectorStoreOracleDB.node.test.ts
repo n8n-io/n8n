@@ -222,7 +222,7 @@ jest.mock('@n8n/ai-utilities', () => {
 			extends (BaseClass as new () => Record<string, unknown>)
 			implements TestNodeInstance
 		{
-			constructor(...args: unknown[]) {
+			constructor(...args: []) {
 				super(...args);
 				if (releaseVectorStoreClient) {
 					capturedReleaseVectorStoreClient = (vectorStore: OracleVSStub) =>
@@ -242,7 +242,7 @@ jest.mock('@n8n/ai-utilities', () => {
 				if (!capturedConfig) throw new Error('Vector store config not captured');
 				const vectorStore = await capturedConfig.getVectorStoreClient(
 					context,
-					filter,
+					filter as Record<string, never> | undefined,
 					embeddings,
 					itemIndex,
 				);
