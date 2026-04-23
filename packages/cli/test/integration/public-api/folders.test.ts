@@ -4,6 +4,8 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 
+import { FolderService } from '@/services/folder.service';
+
 import { createFolder } from '../shared/db/folders';
 import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -170,6 +172,19 @@ describe('POST /projects/:projectId/folders', () => {
 		expect(response.statusCode).toBe(201);
 		expect(response.body).toHaveProperty('name', 'Child');
 	});
+
+	test('should return 500 when createFolder throws an unexpected error', async () => {
+		testServer.license.enable('feat:folders');
+		jest
+			.spyOn(Container.get(FolderService), 'createFolder')
+			.mockRejectedValueOnce(new Error('Unexpected create error'));
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerPersonalProject.id}/folders`)
+			.send({ name: 'Folder' });
+
+		expect(response.statusCode).toBe(500);
+	});
 });
 
 describe('GET /projects/:projectId/folders', () => {
@@ -294,6 +309,17 @@ describe('GET /projects/:projectId/folders', () => {
 		expect(response.body.count).toBe(2);
 		expect(response.body.data).toHaveLength(1);
 		expect(response.body.data[0].name).toBe('Child B');
+	});
+
+	test('should return 500 when getManyAndCount throws an unexpected error', async () => {
+		testServer.license.enable('feat:folders');
+		jest
+			.spyOn(Container.get(FolderService), 'getManyAndCount')
+			.mockRejectedValueOnce(new Error('Unexpected list error'));
+
+		const response = await authOwnerAgent.get(`/projects/${ownerPersonalProject.id}/folders`);
+
+		expect(response.statusCode).toBe(500);
 	});
 });
 
@@ -483,5 +509,19 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 			.delete(`/projects/${teamProject.id}/folders/${folder.id}`);
 
 		expect(response.statusCode).toBe(204);
+	});
+
+	test('should return 500 when deleteFolder throws an unexpected error', async () => {
+		testServer.license.enable('feat:folders');
+		const { agent, personalProject } = await createDeleteScopedAgent();
+
+		const folder = await createFolder(personalProject, { name: 'Folder' });
+		jest
+			.spyOn(Container.get(FolderService), 'deleteFolder')
+			.mockRejectedValueOnce(new Error('Unexpected delete error'));
+
+		const response = await agent.delete(`/projects/${personalProject.id}/folders/${folder.id}`);
+
+		expect(response.statusCode).toBe(500);
 	});
 });
