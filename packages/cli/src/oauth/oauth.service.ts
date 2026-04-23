@@ -342,6 +342,10 @@ export class OauthService {
 	async getOAuthCredentials<T>(credential: CredentialsEntity): Promise<T> {
 		const additionalData = await this.getAdditionalData();
 		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
+		const parentTypes = this.credentialsHelper.getParentTypes(credential.type);
+		const hasEditableInheritedScope = parentTypes.some((parentType) =>
+			GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(parentType),
+		);
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
@@ -349,7 +353,8 @@ export class OauthService {
 		if (
 			decryptedDataOriginal?.scope &&
 			credential.type.includes('OAuth2') &&
-			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type)
+			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) &&
+			!hasEditableInheritedScope
 		) {
 			delete decryptedDataOriginal.scope;
 		}

@@ -31,7 +31,6 @@ import type {
 	XaiThinkingConfig,
 } from '../types';
 import { AgentEventBus } from './event-bus';
-import { createFilteredLogger } from './logger';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
@@ -57,8 +56,8 @@ import {
 	toAiSdkProviderTools,
 	toAiSdkTools,
 } from './tool-adapter';
-import { parseWorkingMemory, WorkingMemoryStreamFilter } from './working-memory';
 import type { AgentEventSpecificData } from '../types/runtime/event';
+import { buildWorkingMemoryTool } from './working-memory';
 import { AgentEvent } from '../types/runtime/event';
 import type {
 	AgentPersistenceOptions,
@@ -76,19 +75,6 @@ import type {
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { isZodSchema } from '../utils/zod';
 
-const logger = createFilteredLogger();
-
-/** Type guard for text content parts in LLM messages. */
-function isTextPart(part: unknown): part is { type: 'text'; text: string } {
-	return (
-		typeof part === 'object' &&
-		part !== null &&
-		'type' in part &&
-		(part as Record<string, unknown>).type === 'text' &&
-		'text' in part
-	);
-}
-
 export interface AgentRuntimeConfig {
 	name: string;
 	model: ModelConfig;
@@ -103,6 +89,7 @@ export interface AgentRuntimeConfig {
 		structured: boolean;
 		schema?: z.ZodObject<z.ZodRawShape>;
 		scope?: 'resource' | 'thread';
+		instruction?: string;
 	};
 	semanticRecall?: SemanticRecallConfig;
 	structuredOutput?: z.ZodType;
@@ -758,20 +745,10 @@ export class AgentRuntime {
 			);
 		}
 
-		const persistence = this.currentState.persistence;
-
-		// Extract and strip working memory from assistant response
-		if (this.config.workingMemory && this.config.memory?.saveWorkingMemory && persistence) {
-			this.extractAndPersistWorkingMemory(list, {
-				threadId: persistence.threadId,
-				resourceId: persistence.resourceId,
-				scope: this.config.workingMemory?.scope ?? 'resource',
-			});
-		}
-
 		await this.saveToMemory(list);
 		await this.flushTelemetry();
 
+		const persistence = this.currentState.persistence;
 		if (this.config.titleGeneration && persistence?.threadId && this.config.memory) {
 			void generateThreadTitle({
 				memory: this.config.memory,
@@ -840,20 +817,8 @@ export class AgentRuntime {
 		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
 			this.buildLoopContext();
 
-		// Wrap writer with working memory filter if configured
-		const wmParamsStream = this.resolveWorkingMemoryParams(this.currentState.persistence);
-		const wmFilter = wmParamsStream?.persistFn
-			? new WorkingMemoryStreamFilter(writer, async (content: string) => {
-					await wmParamsStream.persistFn(content);
-				})
-			: undefined;
-
 		const writeChunk = async (chunk: StreamChunk): Promise<void> => {
-			if (wmFilter) {
-				await wmFilter.write(chunk);
-			} else {
-				await writer.write(chunk);
-			}
+			await writer.write(chunk);
 		};
 
 		let totalUsage: TokenUsage | undefined;
@@ -865,7 +830,6 @@ export class AgentRuntime {
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun();
 			this.updateState({ status });
-			if (wmFilter) await wmFilter.flush();
 			await writer.write({ type: 'error', error });
 			await writer.write({ type: 'finish', finishReason: 'error' });
 			await writer.close();
@@ -1041,8 +1005,6 @@ export class AgentRuntime {
 			this.emitTurnEnd(newMessages, extractToolResults(list.responseDelta()));
 		}
 
-		if (wmFilter) await wmFilter.flush();
-
 		const costUsage = this.applyCost(totalUsage);
 		const parentCost = costUsage?.cost ?? 0;
 		const subCost = collectedSubAgentUsage.reduce((sum, s) => sum + (s.usage.cost ?? 0), 0);
@@ -1059,19 +1021,9 @@ export class AgentRuntime {
 		});
 
 		try {
-			const persistence = this.currentState.persistence;
-
-			// Extract and strip working memory from assistant response
-			if (this.config.workingMemory && this.config.memory?.saveWorkingMemory && persistence) {
-				this.extractAndPersistWorkingMemory(list, {
-					threadId: persistence.threadId,
-					resourceId: persistence.resourceId,
-					scope: this.config.workingMemory?.scope ?? 'resource',
-				});
-			}
-
 			await this.saveToMemory(list);
 
+			const persistence = this.currentState.persistence;
 			if (this.config.titleGeneration && persistence && this.config.memory) {
 				void generateThreadTitle({
 					memory: this.config.memory,
@@ -1153,43 +1105,6 @@ export class AgentRuntime {
 				model: embedder,
 			})),
 		});
-	}
-
-	/**
-	 * Extract <working_memory> tags from the last assistant message in the turn delta,
-	 * strip them from the message, and persist the working memory content.
-	 */
-	private extractAndPersistWorkingMemory(
-		list: AgentMessageList,
-		params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
-	): void {
-		const delta = list.responseDelta();
-		for (let i = delta.length - 1; i >= 0; i--) {
-			const msg = delta[i];
-			if (!isLlmMessage(msg) || msg.role !== 'assistant') continue;
-			for (const part of msg.content) {
-				if (!isTextPart(part)) continue;
-				const { cleanText, workingMemory } = parseWorkingMemory(part.text);
-				if (workingMemory !== null) {
-					// Validate structured working memory if schema is configured
-					if (this.config.workingMemory?.structured && this.config.workingMemory.schema) {
-						try {
-							this.config.workingMemory.schema.parse(JSON.parse(workingMemory));
-						} catch {
-							// Validation failed — keep previous state, still strip tags
-							part.text = cleanText;
-							return;
-						}
-					}
-					part.text = cleanText;
-					// Fire-and-forget persist
-					this.config.memory!.saveWorkingMemory!(params, workingMemory).catch((error: unknown) => {
-						logger.warn('Failed to persist working memory', { error });
-					});
-				}
-				return;
-			}
-		}
 	}
 
 	/** Build the providerOptions object for thinking/reasoning config. */
@@ -1660,12 +1575,16 @@ export class AgentRuntime {
 
 	/** Build common LLM call dependencies shared by both the generate and stream loops. */
 	private buildLoopContext() {
-		const aiTools = toAiSdkTools(this.config.tools);
+		const wmTool = this.buildWorkingMemoryToolForRun(this.currentState.persistence);
+		const allUserTools = wmTool
+			? [...(this.config.tools ?? []), wmTool]
+			: (this.config.tools ?? []);
+		const aiTools = toAiSdkTools(allUserTools);
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
 		return {
 			model: createModel(this.config.model),
-			toolMap: buildToolMap(this.config.tools),
+			toolMap: buildToolMap(allUserTools),
 			aiTools: allTools,
 			providerOptions: this.buildCallProviderOptions(this.executionOptions?.providerOptions),
 			hasTools: Object.keys(allTools).length > 0,
@@ -1673,6 +1592,20 @@ export class AgentRuntime {
 				? Output.object({ schema: this.config.structuredOutput })
 				: undefined,
 		};
+	}
+
+	/**
+	 * Build the updateWorkingMemory BuiltTool for the current run.
+	 * Returns undefined when working memory is not configured or persistence is unavailable.
+	 */
+	private buildWorkingMemoryToolForRun(persistence: AgentPersistenceOptions | undefined) {
+		const wmParams = this.resolveWorkingMemoryParams(persistence);
+		if (!wmParams) return undefined;
+		return buildWorkingMemoryTool({
+			structured: wmParams.structured,
+			schema: wmParams.schema,
+			persist: wmParams.persistFn,
+		});
 	}
 
 	/**
@@ -1770,6 +1703,7 @@ export class AgentRuntime {
 			template: wmParams.template,
 			structured: wmParams.structured,
 			state: wmState,
+			...(wmParams.instruction !== undefined && { instruction: wmParams.instruction }),
 		};
 	}
 
@@ -1802,6 +1736,7 @@ export class AgentRuntime {
 			template: this.config.workingMemory.template,
 			structured: this.config.workingMemory.structured,
 			schema: this.config.workingMemory.schema,
+			instruction: this.config.workingMemory.instruction,
 		};
 	}
 }

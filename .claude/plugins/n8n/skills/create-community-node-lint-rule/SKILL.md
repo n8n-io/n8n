@@ -4,7 +4,6 @@ description: >-
   Use when adding a lint rule, creating a community node lint, or working on
   eslint-plugin-community-nodes. Guides rule implementation, tests, docs, and
   plugin registration.
-user_invocable: true
 ---
 
 # Create Community Node Lint Rule

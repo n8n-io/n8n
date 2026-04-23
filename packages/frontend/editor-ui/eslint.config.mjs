@@ -63,9 +63,9 @@ export default defineConfig(
 				},
 				{
 					selector:
-						"MemberExpression[property.name='nodes'][object.property.name='workflow'][object.object.name='workflowsStore']",
+						"MemberExpression[property.name=/^(name|nodes|connections|active|isArchived|settings|tags|pinData|meta|versionId|activeVersionId|createdAt|updatedAt|parentFolder|scopes|usedCredentials|homeProject|description|versionData)$/][object.property.name='workflow'][object.object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore node accessors instead of workflowsStore.workflow.nodes',
+						'Use the equivalent workflowDocumentStore accessor instead of workflowsStore.workflow.<property>',
 				},
 				{
 					selector:

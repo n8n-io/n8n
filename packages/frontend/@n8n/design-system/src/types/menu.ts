@@ -40,6 +40,7 @@ export type IMenuItem = {
 	beta?: boolean;
 	preview?: boolean;
 	new?: boolean;
+	creditsTag?: string;
 };
 
 export interface ICustomMenuItem {

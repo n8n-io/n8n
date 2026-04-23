@@ -316,12 +316,12 @@ describe('agent-run-reducer', () => {
 	describe('tool execution', () => {
 		it('tool-call adds to toolCallsById and timeline', () => {
 			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'update-tasks'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'task-control'));
 
 			const tc = state.toolCallsById['tc-1'];
 			expect(tc).toBeDefined();
 			expect(tc.toolCallId).toBe('tc-1');
-			expect(tc.toolName).toBe('update-tasks');
+			expect(tc.toolName).toBe('task-control');
 			expect(tc.isLoading).toBe(true);
 			expect(tc.renderHint).toBe('tasks');
 

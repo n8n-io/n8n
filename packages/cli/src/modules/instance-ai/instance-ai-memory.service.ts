@@ -1,7 +1,6 @@
 import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiRichMessagesResponse,
-	InstanceAiThreadContextResponse,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
 	InstanceAiThreadMessagesResponse,
@@ -10,12 +9,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import {
-	createMemory,
-	patchThread,
-	type AgentTreeSnapshot,
-	WORKING_MEMORY_TEMPLATE,
-} from '@n8n/instance-ai';
+import { createMemory, patchThread, type AgentTreeSnapshot } from '@n8n/instance-ai';
 
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
@@ -36,30 +30,6 @@ export class InstanceAiMemoryService {
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
-	}
-
-	async getWorkingMemory(
-		userId: string,
-		threadId: string,
-	): Promise<{ content: string; template: string }> {
-		const memory = this.createMemoryInstance();
-		const content = await memory.getWorkingMemory({
-			threadId,
-			resourceId: userId,
-		});
-		return {
-			content: content ?? '',
-			template: WORKING_MEMORY_TEMPLATE,
-		};
-	}
-
-	async updateWorkingMemory(userId: string, threadId: string, content: string): Promise<void> {
-		const memory = this.createMemoryInstance();
-		await memory.updateWorkingMemory({
-			threadId,
-			resourceId: userId,
-			workingMemory: content,
-		});
 	}
 
 	async listThreads(
@@ -142,29 +112,6 @@ export class InstanceAiMemoryService {
 				type: m.type,
 				createdAt: m.createdAt.toISOString(),
 			})),
-		};
-	}
-
-	async getThreadContext(
-		userId: string,
-		threadId: string,
-	): Promise<InstanceAiThreadContextResponse> {
-		const memory = this.createMemoryInstance();
-		let workingMemory: string | null;
-		try {
-			workingMemory = await memory.getWorkingMemory({
-				threadId,
-				resourceId: userId,
-			});
-		} catch (error: unknown) {
-			if (error instanceof Error && error.message.includes('No thread found')) {
-				return { threadId, workingMemory: null };
-			}
-			throw error;
-		}
-		return {
-			threadId,
-			workingMemory: workingMemory ?? null,
 		};
 	}
 

@@ -8,13 +8,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { ITag, WorkflowHistory } from '@n8n/rest-api-client';
+import type { Scope } from '@n8n/permissions';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
@@ -88,5 +93,282 @@ describe('workflowDocument.store orchestration', () => {
 		});
 
 		expect(uiStore.stateIsDirty).toBe(true);
+	});
+
+	describe('hydrate', () => {
+		function buildFullWorkflow(): IWorkflowDb {
+			const version: WorkflowHistory = {
+				versionId: 'ver-123',
+				authors: 'Alice',
+				createdAt: '2026-04-01T00:00:00.000Z',
+				updatedAt: '2026-04-01T00:00:00.000Z',
+				workflowPublishHistory: [],
+				name: 'v1',
+				description: 'first',
+			};
+
+			const homeProject = { id: 'p-home' } as ProjectSharingData;
+			const sharedProject = { id: 'p-1' } as ProjectSharingData;
+			const usedCredential: IUsedCredential = {
+				id: 'c-1',
+				name: 'Cred',
+				credentialType: 'httpBasicAuth',
+				currentUserHasAccess: true,
+			};
+
+			return {
+				id: 'wf-1',
+				name: 'My Workflow',
+				description: 'Sample description',
+				active: true,
+				isArchived: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				updatedAt: '2026-04-02T00:00:00.000Z',
+				nodes: [createNode({ name: 'A' }), createNode({ name: 'B' })],
+				connections: {
+					A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				settings: { executionOrder: 'v1', timezone: 'UTC' },
+				tags: ['tag-1', 'tag-2'],
+				pinData: { A: [{ json: { foo: 'bar' } }] },
+				sharedWithProjects: [sharedProject],
+				homeProject,
+				scopes: ['workflow:read', 'workflow:update'] as Scope[],
+				versionId: 'ver-123',
+				activeVersionId: 'ver-123',
+				usedCredentials: [usedCredential],
+				meta: { templateId: 'tpl-1' },
+				parentFolder: { id: 'f-1', name: 'Folder', parentFolderId: null },
+				activeVersion: version,
+				checksum: 'abc123',
+			};
+		}
+
+		it('populates every document-scoped field from a full IWorkflowDb', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+			const workflow = buildFullWorkflow();
+
+			store.hydrate(workflow);
+
+			expect(store.name).toBe('My Workflow');
+			expect(store.description).toBe('Sample description');
+			expect(store.activeVersionId).toBe('ver-123');
+			expect(store.activeVersion).toEqual(workflow.activeVersion);
+			expect(store.active).toBe(true);
+			expect(store.isArchived).toBe(false);
+			expect(store.homeProject).toEqual(workflow.homeProject);
+			expect(store.sharedWithProjects).toEqual(workflow.sharedWithProjects);
+			expect(store.scopes).toEqual(workflow.scopes);
+			expect(store.tags).toEqual(['tag-1', 'tag-2']);
+			expect(store.meta).toEqual({ templateId: 'tpl-1' });
+			expect(store.settings).toEqual({ ...DEFAULT_SETTINGS, ...workflow.settings });
+			expect(store.parentFolder).toEqual(workflow.parentFolder);
+			expect(store.usedCredentials).toEqual({ 'c-1': workflow.usedCredentials?.[0] });
+			expect(store.createdAt).toBe('2026-04-01T00:00:00.000Z');
+			expect(store.updatedAt).toBe('2026-04-02T00:00:00.000Z');
+			expect(store.checksum).toBe('abc123');
+			expect(store.versionId).toBe('ver-123');
+			expect(store.versionData).toEqual({
+				versionId: 'ver-123',
+				name: 'My Workflow',
+				description: 'Sample description',
+			});
+			expect(store.allNodes).toHaveLength(2);
+			expect(store.connectionsBySourceNode).toHaveProperty('A');
+			expect(store.pinData).toEqual({ A: [{ json: { foo: 'bar' } }] });
+		});
+
+		it('applies safe defaults for missing optional fields', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-partial'));
+
+			const minimal: IWorkflowDb = {
+				id: 'wf-partial',
+				name: 'Minimal',
+				active: false,
+				isArchived: false,
+				createdAt: -1,
+				updatedAt: -1,
+				nodes: [],
+				connections: {},
+				versionId: '',
+				activeVersionId: null,
+			};
+
+			store.hydrate(minimal);
+
+			expect(store.name).toBe('Minimal');
+			expect(store.description).toBe('');
+			expect(store.activeVersionId).toBeNull();
+			expect(store.activeVersion).toBeNull();
+			expect(store.homeProject).toBeNull();
+			expect(store.sharedWithProjects).toEqual([]);
+			expect(store.scopes).toEqual([]);
+			expect(store.tags).toEqual([]);
+			expect(store.meta).toEqual({});
+			expect(store.settings).toEqual({ ...DEFAULT_SETTINGS });
+			expect(store.parentFolder).toBeNull();
+			expect(store.usedCredentials).toEqual({});
+			expect(store.checksum).toBe('');
+			expect(store.versionData).toEqual({
+				versionId: '',
+				name: 'Minimal',
+				description: null,
+			});
+			expect(store.allNodes).toHaveLength(0);
+			expect(store.connectionsBySourceNode).toEqual({});
+			expect(store.pinData).toEqual({});
+		});
+
+		it('normalizes ITag[] tags to string[]', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-tag'));
+			const itags: ITag[] = [
+				{ id: 't-1', name: 'alpha' },
+				{ id: 't-2', name: 'beta' },
+			];
+
+			store.hydrate({
+				id: 'wf-tag',
+				name: 'WithTags',
+				active: false,
+				isArchived: false,
+				createdAt: -1,
+				updatedAt: -1,
+				nodes: [],
+				connections: {},
+				versionId: '',
+				activeVersionId: null,
+				tags: itags,
+			});
+
+			expect(store.tags).toEqual(['t-1', 't-2']);
+		});
+
+		it('is idempotent — hydrating twice with the same input yields the same state', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+			const workflow = buildFullWorkflow();
+
+			store.hydrate(workflow);
+			const firstSnapshot = {
+				name: store.name,
+				description: store.description,
+				activeVersionId: store.activeVersionId,
+				isArchived: store.isArchived,
+				tags: [...store.tags],
+				checksum: store.checksum,
+				allNodes: store.allNodes.map((n) => n.name),
+				pinData: { ...store.pinData },
+			};
+
+			store.hydrate(workflow);
+
+			expect(store.name).toBe(firstSnapshot.name);
+			expect(store.description).toBe(firstSnapshot.description);
+			expect(store.activeVersionId).toBe(firstSnapshot.activeVersionId);
+			expect(store.isArchived).toBe(firstSnapshot.isArchived);
+			expect([...store.tags]).toEqual(firstSnapshot.tags);
+			expect(store.checksum).toBe(firstSnapshot.checksum);
+			expect(store.allNodes.map((n) => n.name)).toEqual(firstSnapshot.allNodes);
+			expect({ ...store.pinData }).toEqual(firstSnapshot.pinData);
+		});
+
+		describe('identity guards', () => {
+			it('throws when workflow.id does not match the store workflow id', () => {
+				const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+				const workflow = { ...buildFullWorkflow(), id: 'wf-other' };
+
+				expect(() => store.hydrate(workflow)).toThrow(/workflow id mismatch/);
+			});
+
+			it('throws when workflow.versionId does not match an explicit store version', () => {
+				const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1', 'ver-123'));
+				const workflow = { ...buildFullWorkflow(), versionId: 'ver-999' };
+
+				expect(() => store.hydrate(workflow)).toThrow(/workflow version mismatch/);
+			});
+
+			it("does not validate versionId when store version is 'latest'", () => {
+				const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+				const workflow = { ...buildFullWorkflow(), versionId: 'ver-anything' };
+
+				expect(() => store.hydrate(workflow)).not.toThrow();
+				expect(store.versionId).toBe('ver-anything');
+			});
+
+			it('hydrates normally when both id and versionId match', () => {
+				const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1', 'ver-123'));
+				const workflow = buildFullWorkflow();
+
+				expect(() => store.hydrate(workflow)).not.toThrow();
+				expect(store.name).toBe('My Workflow');
+				expect(store.versionId).toBe('ver-123');
+			});
+		});
+	});
+
+	describe('reset', () => {
+		it('clears every document-scoped field back to empty defaults', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-reset'));
+			const version: WorkflowHistory = {
+				versionId: 'v1',
+				authors: 'A',
+				createdAt: '2026-04-01T00:00:00.000Z',
+				updatedAt: '2026-04-01T00:00:00.000Z',
+				workflowPublishHistory: [],
+				name: 'v1',
+				description: null,
+			};
+
+			store.hydrate({
+				id: 'wf-reset',
+				name: 'Populated',
+				description: 'desc',
+				active: true,
+				isArchived: true,
+				createdAt: 100,
+				updatedAt: 200,
+				nodes: [createNode({ name: 'A' })],
+				connections: {
+					A: { main: [[{ node: 'A', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				settings: { executionOrder: 'v1', timezone: 'UTC' },
+				tags: ['t-1'],
+				pinData: { A: [{ json: {} }] },
+				sharedWithProjects: [{ id: 'p' } as ProjectSharingData],
+				homeProject: { id: 'p' } as ProjectSharingData,
+				scopes: ['workflow:read'] as Scope[],
+				versionId: 'v1',
+				activeVersionId: 'v1',
+				activeVersion: version,
+				checksum: 'sum',
+				meta: { templateId: 'tpl' },
+			});
+			store.setViewport({ x: 100, y: 200, zoom: 1.5 });
+
+			store.reset();
+
+			expect(store.name).toBe('');
+			expect(store.description).toBe('');
+			expect(store.activeVersionId).toBeNull();
+			expect(store.activeVersion).toBeNull();
+			expect(store.active).toBe(false);
+			expect(store.isArchived).toBe(false);
+			expect(store.homeProject).toBeNull();
+			expect(store.sharedWithProjects).toEqual([]);
+			expect(store.scopes).toEqual([]);
+			expect(store.tags).toEqual([]);
+			expect(store.meta).toEqual({});
+			expect(store.settings).toEqual({ ...DEFAULT_SETTINGS });
+			expect(store.parentFolder).toBeNull();
+			expect(store.usedCredentials).toEqual({});
+			expect(store.createdAt).toBe(-1);
+			expect(store.updatedAt).toBe(-1);
+			expect(store.checksum).toBe('');
+			expect(store.versionId).toBe('');
+			expect(store.versionData).toEqual({ versionId: '', name: null, description: null });
+			expect(store.allNodes).toHaveLength(0);
+			expect(store.connectionsBySourceNode).toEqual({});
+			expect(store.pinData).toEqual({});
+			expect(store.viewport).toBeNull();
+		});
 	});
 });

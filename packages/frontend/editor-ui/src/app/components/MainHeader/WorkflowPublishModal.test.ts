@@ -176,22 +176,10 @@ describe('WorkflowPublishModal', () => {
 			});
 		});
 
-		it('should show warning when publish fails with unhandled error', async () => {
+		it('should not show duplicate warning when publish fails with handled error', async () => {
 			mockPublishWorkflow.mockReset().mockResolvedValue({
 				success: false,
-				errorHandled: false,
-			});
-			workflowsListStore.fetchWorkflow.mockResolvedValue({
-				id: 'conflicting-workflow-123',
-				name: 'Conflicting Workflow Name',
-				active: true,
-				isArchived: false,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-				nodes: [],
-				connections: {},
-				versionId: 'version-123',
-				activeVersionId: 'version-123',
+				errorHandled: true,
 			});
 
 			const { getByTestId } = renderComponent();
@@ -203,12 +191,7 @@ describe('WorkflowPublishModal', () => {
 
 			await waitFor(() => {
 				expect(mockPublishWorkflow).toHaveBeenCalled();
-				expect(mockShowMessage).toHaveBeenCalledWith({
-					message: 'Sorry there was a problem requesting the error',
-					title: 'Problem activating workflow',
-					type: 'warning',
-					duration: 0,
-				});
+				expect(mockShowMessage).not.toHaveBeenCalled();
 				expect(mockTelemetryTrack).not.toHaveBeenCalled();
 			});
 		});

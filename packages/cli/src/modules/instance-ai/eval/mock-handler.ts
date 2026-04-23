@@ -10,6 +10,11 @@
  * the LLM decide whether an endpoint returns JSON, a file download, or an
  * error — without us maintaining per-service detection rules.
  *
+ * IMPORTANT: This handler is designed for use with synthetic/eval data only.
+ * All request data (body, query params) is sanitized before being sent to
+ * the LLM, but the handler should never be used with real user data in
+ * production workflows.
+ *
  * Used by:
  *   - Instance AI agent tools (self-validation during workflow building)
  *   - Eval CLI test suite (scenario-based testing via REST endpoint)
@@ -24,6 +29,7 @@ import { z } from 'zod';
 import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
 import { fetchApiDocs } from './api-docs';
 import { extractNodeConfig } from './node-config';
+import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
 
 // ---------------------------------------------------------------------------
 // System prompt
@@ -66,6 +72,8 @@ Respond with ONLY a JSON object. No explanation, no markdown, no prose.
 // Types
 // ---------------------------------------------------------------------------
 
+const DEFAULT_MAX_RETRIES = 1;
+
 interface MockHandlerOptions {
 	/** Optional scenario description — steers the LLM toward specific behavior (errors, edge cases) */
 	scenarioHints?: string;
@@ -73,6 +81,8 @@ interface MockHandlerOptions {
 	globalContext?: string;
 	/** Per-node data hints from Phase 1, keyed by node name */
 	nodeHints?: Record<string, string>;
+	/** Max retries on mock generation failure (default: 1) */
+	maxRetries?: number;
 }
 
 /** Structured response spec returned by the LLM */
@@ -108,6 +118,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 			globalContext: options?.globalContext,
 			nodeHint: options?.nodeHints?.[node.name],
 			nodeConfig: nodeConfigCache.get(node.name) ?? '',
+			maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
 		});
 	};
 }
@@ -121,6 +132,7 @@ interface MockResponseContext {
 	globalContext?: string;
 	nodeHint?: string;
 	nodeConfig: string;
+	maxRetries: number;
 }
 
 async function generateMockResponse(
@@ -141,10 +153,13 @@ async function generateMockResponse(
 	];
 
 	if (request.body) {
-		sections.push(`Body: ${JSON.stringify(request.body)}`);
+		const sanitized = redactSecretKeys(request.body);
+		const serialized = truncateForLlm(JSON.stringify(sanitized));
+		sections.push(`Body: ${serialized}`);
 	}
 	if (request.qs && Object.keys(request.qs).length > 0) {
-		sections.push(`Query: ${JSON.stringify(request.qs)}`);
+		const sanitizedQs = redactSecretKeys(request.qs);
+		sections.push(`Query: ${JSON.stringify(sanitizedQs)}`);
 	}
 
 	// Detect GraphQL and add format constraint
@@ -182,21 +197,31 @@ async function generateMockResponse(
 
 	const userPrompt = sections.join('\n');
 
-	try {
-		const spec = await callLlm(userPrompt, context.nodeConfig);
-		return materializeSpec(spec);
-	} catch (error) {
-		const errorMsg = error instanceof Error ? error.message : String(error);
-		const safeUrl = extractEndpoint(request.url);
-		Container.get(Logger).error(
-			`[EvalMock] Mock generation failed for ${request.method ?? 'GET'} ${safeUrl}: ${errorMsg}`,
-		);
-		return {
-			body: { _evalMockError: true, message: `Mock generation failed: ${errorMsg}` },
-			headers: { 'content-type': 'application/json' },
-			statusCode: 200,
-		};
+	const safeUrl = extractEndpoint(request.url);
+	let lastError = '';
+
+	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
+		try {
+			const spec = await callLlm(userPrompt, context.nodeConfig);
+			return materializeSpec(spec);
+		} catch (error) {
+			lastError = error instanceof Error ? error.message : String(error);
+			if (attempt < context.maxRetries) {
+				Container.get(Logger).warn(
+					`[EvalMock] Mock generation failed for ${request.method ?? 'GET'} ${safeUrl}, retrying (${attempt + 1}/${context.maxRetries}): ${lastError}`,
+				);
+			}
+		}
 	}
+
+	Container.get(Logger).error(
+		`[EvalMock] Mock generation failed for ${request.method ?? 'GET'} ${safeUrl} after ${context.maxRetries + 1} attempts: ${lastError}`,
+	);
+	return {
+		body: { _evalMockError: true, message: `Mock generation failed: ${lastError}` },
+		headers: { 'content-type': 'application/json' },
+		statusCode: 200,
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -243,9 +268,7 @@ async function callLlm(userPrompt: string, nodeConfig: string): Promise<MockResp
 		.tool(apiDocsTool)
 		.tool(createNodeConfigTool(nodeConfig));
 
-	const result = await agent.generate(userPrompt, {
-		providerOptions: { anthropic: { maxTokens: 4096 } },
-	});
+	const result = await agent.generate(userPrompt);
 
 	const text: string = extractText(result);
 	return parseResponseText(text);

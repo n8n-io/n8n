@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useRoleMappingRules } from './useRoleMappingRules';
 import * as roleMappingRuleApi from '@n8n/rest-api-client/api/roleMappingRule';
+import type { RoleMappingRuleResponse } from '@n8n/rest-api-client/api/roleMappingRule';
 
 vi.mock('@n8n/rest-api-client/api/roleMappingRule');
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -19,10 +20,26 @@ describe('useRoleMappingRules', () => {
 		composable = useRoleMappingRules();
 	});
 
+	const makeRule = (overrides: Partial<RoleMappingRuleResponse> = {}): RoleMappingRuleResponse => ({
+		id: `rule-${Math.random()}`,
+		expression: '',
+		role: '',
+		type: 'instance',
+		order: 0,
+		projectIds: [],
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		...overrides,
+	});
+
 	it('should start with empty rules and not dirty', () => {
 		expect(composable.instanceRules.value).toEqual([]);
 		expect(composable.projectRules.value).toEqual([]);
 		expect(composable.isDirty.value).toBe(false);
+	});
+
+	it('should initialize fallbackInstanceRole to global:member', () => {
+		expect(composable.fallbackInstanceRole.value).toBe('global:member');
 	});
 
 	describe('addRule', () => {
@@ -51,7 +68,7 @@ describe('useRoleMappingRules', () => {
 	});
 
 	describe('updateRule', () => {
-		it('should update a rule field and mark dirty', () => {
+		it('should update an instance rule field and mark dirty', () => {
 			composable.addRule('instance');
 			const id = composable.instanceRules.value[0].id;
 
@@ -59,6 +76,15 @@ describe('useRoleMappingRules', () => {
 
 			expect(composable.instanceRules.value[0].expression).toBe('$claims.admin === true');
 			expect(composable.isDirty.value).toBe(true);
+		});
+
+		it('should update a project rule field', () => {
+			composable.addRule('project');
+			const id = composable.projectRules.value[0].id;
+
+			composable.updateRule(id, { role: 'project:editor' });
+
+			expect(composable.projectRules.value[0].role).toBe('project:editor');
 		});
 	});
 
@@ -71,6 +97,19 @@ describe('useRoleMappingRules', () => {
 
 			expect(composable.instanceRules.value).toHaveLength(0);
 			expect(composable.isDirty.value).toBe(true);
+		});
+
+		it('should renumber remaining rules after deletion', () => {
+			composable.addRule('instance');
+			composable.addRule('instance');
+			composable.addRule('instance');
+			const firstId = composable.instanceRules.value[0].id;
+
+			composable.deleteRule(firstId);
+
+			expect(composable.instanceRules.value).toHaveLength(2);
+			expect(composable.instanceRules.value[0].order).toBe(0);
+			expect(composable.instanceRules.value[1].order).toBe(1);
 		});
 	});
 
@@ -87,6 +126,56 @@ describe('useRoleMappingRules', () => {
 			expect(composable.instanceRules.value[1].expression).toBe('first');
 			expect(composable.isDirty.value).toBe(true);
 		});
+
+		it('should call moveRule API for persisted rules', async () => {
+			vi.mocked(roleMappingRuleApi.moveRoleMappingRule).mockResolvedValue(
+				makeRule({ id: 'persisted-1' }),
+			);
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
+				makeRule({ id: 'persisted-1', type: 'instance', order: 0, expression: 'first' }),
+				makeRule({ id: 'persisted-2', type: 'instance', order: 1, expression: 'second' }),
+			]);
+
+			await composable.loadRules();
+
+			await composable.reorder('instance', 0, 1);
+
+			expect(roleMappingRuleApi.moveRoleMappingRule).toHaveBeenCalledWith(
+				expect.anything(),
+				'persisted-1',
+				1,
+			);
+		});
+
+		it('should not call moveRule API for local rules', async () => {
+			composable.addRule('instance');
+			composable.addRule('instance');
+
+			await composable.reorder('instance', 0, 1);
+
+			expect(roleMappingRuleApi.moveRoleMappingRule).not.toHaveBeenCalled();
+		});
+
+		it('should rollback by reloading rules when moveRule API fails', async () => {
+			vi.mocked(roleMappingRuleApi.moveRoleMappingRule).mockRejectedValue(new Error('API error'));
+			const originalRules = [
+				makeRule({ id: 'persisted-1', type: 'instance', order: 0, expression: 'first' }),
+				makeRule({ id: 'persisted-2', type: 'instance', order: 1, expression: 'second' }),
+			];
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue(originalRules);
+
+			await composable.loadRules();
+			vi.clearAllMocks();
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue(originalRules);
+
+			await composable.reorder('instance', 0, 1);
+
+			// Should have called loadRules to rollback
+			expect(roleMappingRuleApi.listRoleMappingRules).toHaveBeenCalled();
+			// After rollback, order should be restored
+			expect(composable.instanceRules.value[0].expression).toBe('first');
+			expect(composable.instanceRules.value[1].expression).toBe('second');
+		});
 	});
 
 	describe('loadRules', () => {
@@ -98,6 +187,21 @@ describe('useRoleMappingRules', () => {
 
 			expect(composable.instanceRules.value).toEqual([]);
 			expect(composable.isDirty.value).toBe(false);
+		});
+
+		it('should split rules by type into instanceRules and projectRules', async () => {
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
+				makeRule({ id: 'i1', type: 'instance', order: 0 }),
+				makeRule({ id: 'i2', type: 'instance', order: 1 }),
+				makeRule({ id: 'p1', type: 'project', order: 0 }),
+			]);
+
+			await composable.loadRules();
+
+			expect(composable.instanceRules.value).toHaveLength(2);
+			expect(composable.projectRules.value).toHaveLength(1);
+			expect(composable.instanceRules.value.every((r) => r.type === 'instance')).toBe(true);
+			expect(composable.projectRules.value.every((r) => r.type === 'project')).toBe(true);
 		});
 	});
 });

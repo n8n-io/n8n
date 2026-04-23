@@ -35,6 +35,43 @@ describe('Cipher', () => {
 		});
 	});
 
+	describe('encryptWithKey', () => {
+		it('should roundtrip with decryptWithKey using the same key', () => {
+			const encrypted = cipher.encryptWithKey('random-string', 'explicit-key', 'aes-256-cbc');
+			const decrypted = cipher.decryptWithKey(encrypted, 'explicit-key', 'aes-256-cbc');
+			expect(decrypted).toEqual('random-string');
+		});
+
+		it('should produce different ciphertexts for the same plaintext on successive calls', () => {
+			const first = cipher.encryptWithKey('random-string', 'explicit-key', 'aes-256-cbc');
+			const second = cipher.encryptWithKey('random-string', 'explicit-key', 'aes-256-cbc');
+			expect(first).not.toEqual(second);
+		});
+
+		it('should fail to decrypt with a different key', () => {
+			const encrypted = cipher.encryptWithKey('random-string', 'key-a', 'aes-256-cbc');
+			expect(() => cipher.decryptWithKey(encrypted, 'key-b', 'aes-256-cbc')).toThrow();
+		});
+
+		it('should throw on aes-256-gcm for encryptWithKey', () => {
+			expect(() => cipher.encryptWithKey('data', 'key', 'aes-256-gcm')).toThrow(
+				'GCM not yet implemented',
+			);
+		});
+
+		it('should throw on aes-256-gcm for decryptWithKey', () => {
+			expect(() => cipher.decryptWithKey('data', 'key', 'aes-256-gcm')).toThrow(
+				'GCM not yet implemented',
+			);
+		});
+
+		it('should be interoperable with legacy encrypt when given the same key', () => {
+			const encrypted = cipher.encrypt('random-string', 'shared-key');
+			const decrypted = cipher.decryptWithKey(encrypted, 'shared-key', 'aes-256-cbc');
+			expect(decrypted).toEqual('random-string');
+		});
+	});
+
 	describe('getKeyAndIv', () => {
 		it('should generate a key and iv using instance settings encryption key', () => {
 			const salt = Buffer.from('test-salt');

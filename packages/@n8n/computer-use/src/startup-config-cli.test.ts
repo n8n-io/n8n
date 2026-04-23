@@ -1,5 +1,26 @@
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as nodePath from 'node:path';
+
+jest.mock('node:os', () => {
+	const actual = jest.requireActual<typeof os>('node:os');
+	return { ...actual, homedir: jest.fn(() => actual.homedir()) };
+});
+
 import type { GatewayConfig } from './config';
-import { applyTemplate, resolveTemplateName } from './startup-config-cli';
+import { ensureSettingsFile, isAllDeny } from './startup-config-cli';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function parseJson<T>(raw: string): T {
+	try {
+		return JSON.parse(raw) as T;
+	} catch {
+		throw new Error(`Failed to parse JSON: ${raw}`);
+	}
+}
 
 const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'info',
@@ -14,54 +35,119 @@ const BASE_CONFIG: GatewayConfig = {
 	permissionConfirmation: 'instance',
 };
 
-describe('resolveTemplateName', () => {
-	it('returns recommended for undefined', () => {
-		expect(resolveTemplateName(undefined)).toBe('default');
+// ---------------------------------------------------------------------------
+// isAllDeny
+// ---------------------------------------------------------------------------
+
+describe('isAllDeny', () => {
+	it('returns true when all groups are deny', () => {
+		expect(
+			isAllDeny({
+				filesystemRead: 'deny',
+				filesystemWrite: 'deny',
+				shell: 'deny',
+				computer: 'deny',
+				browser: 'deny',
+			}),
+		).toBe(true);
 	});
 
-	it('returns recommended for unknown value', () => {
-		expect(resolveTemplateName('bogus')).toBe('default');
+	it('returns false when at least one group is ask', () => {
+		expect(
+			isAllDeny({
+				filesystemRead: 'ask',
+				filesystemWrite: 'deny',
+				shell: 'deny',
+				computer: 'deny',
+				browser: 'deny',
+			}),
+		).toBe(false);
 	});
 
-	it.each(['default', 'yolo', 'custom'] as const)('returns %s for valid name', (name) => {
-		expect(resolveTemplateName(name)).toBe(name);
+	it('returns false when at least one group is allow', () => {
+		expect(
+			isAllDeny({
+				filesystemRead: 'allow',
+				filesystemWrite: 'deny',
+				shell: 'deny',
+				computer: 'deny',
+				browser: 'deny',
+			}),
+		).toBe(false);
 	});
 });
 
-describe('applyTemplate', () => {
-	it('applies recommended template permissions', () => {
-		const result = applyTemplate(BASE_CONFIG, 'default');
-		expect(result.permissions).toMatchObject({
+// ---------------------------------------------------------------------------
+// ensureSettingsFile
+// ---------------------------------------------------------------------------
+
+describe('ensureSettingsFile', () => {
+	let tmpDir: string;
+
+	beforeEach(async () => {
+		tmpDir = await fs.mkdtemp(nodePath.join(os.tmpdir(), 'gateway-test-'));
+		// Point getSettingsFilePath() at our temp location by overriding homedir
+		(os.homedir as jest.Mock).mockReturnValue(tmpDir);
+	});
+
+	afterEach(async () => {
+		jest.restoreAllMocks();
+		await fs.rm(tmpDir, { recursive: true, force: true });
+	});
+
+	it('creates the settings file with recommended defaults when absent', async () => {
+		await ensureSettingsFile(BASE_CONFIG);
+
+		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
+		const parsed = parseJson<Record<string, unknown>>(raw);
+
+		expect(parsed.permissions).toMatchObject({
 			filesystemRead: 'allow',
 			filesystemWrite: 'ask',
 			shell: 'deny',
 			computer: 'deny',
 			browser: 'ask',
 		});
+		expect(parsed.filesystemDir).toBe('');
+		expect(parsed.resourcePermissions).toEqual({});
 	});
 
-	it('applies yolo template permissions', () => {
-		const result = applyTemplate(BASE_CONFIG, 'yolo');
-		for (const mode of Object.values(result.permissions)) {
-			expect(mode).toBe('allow');
-		}
-	});
-
-	it('CLI/ENV overrides in config.permissions win over template', () => {
+	it('merges CLI/ENV permission overrides on top of the template', async () => {
 		const config: GatewayConfig = {
 			...BASE_CONFIG,
-			permissions: { shell: 'allow' }, // explicit CLI override
+			permissions: { shell: 'allow' },
 		};
-		const result = applyTemplate(config, 'default');
-		// recommended says shell: deny, but CLI override says allow
-		expect(result.permissions.shell).toBe('allow');
-		// Other fields come from template
-		expect(result.permissions.filesystemRead).toBe('allow');
+		await ensureSettingsFile(config);
+
+		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
+		const parsed = parseJson<{ permissions: Record<string, string> }>(raw);
+
+		// CLI override wins
+		expect(parsed.permissions.shell).toBe('allow');
+		// Template defaults for the rest
+		expect(parsed.permissions.filesystemRead).toBe('allow');
 	});
 
-	it('does not mutate the input config', () => {
-		const config: GatewayConfig = { ...BASE_CONFIG, permissions: {} };
-		applyTemplate(config, 'yolo');
-		expect(config.permissions).toEqual({});
+	it('does not overwrite an existing settings file', async () => {
+		const dir = nodePath.join(tmpDir, '.n8n-gateway');
+		const file = nodePath.join(dir, 'settings.json');
+		await fs.mkdir(dir, { recursive: true });
+		const existing = JSON.stringify({ permissions: { shell: 'allow' }, filesystemDir: '/custom' });
+		await fs.writeFile(file, existing, 'utf-8');
+
+		await ensureSettingsFile(BASE_CONFIG);
+
+		const raw = await fs.readFile(file, 'utf-8');
+		expect(raw).toBe(existing);
+	});
+
+	it('is safe to call multiple times — only creates once', async () => {
+		await ensureSettingsFile(BASE_CONFIG);
+		await ensureSettingsFile(BASE_CONFIG);
+
+		// Second call must not throw and must not alter the file
+		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
+		const parsed = parseJson<Record<string, unknown>>(raw);
+		expect(parsed.filesystemDir).toBe('');
 	});
 });

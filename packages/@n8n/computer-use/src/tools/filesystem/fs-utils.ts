@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
+import { isProtectedSettingsPath } from '../../config';
 import type { AffectedResource } from '../types';
 
 const MAX_ENTRIES = 10_000;
@@ -191,6 +192,13 @@ export async function resolveSafePath(basePath: string, relativePath: string): P
 	if (!current.startsWith(realBase + path.sep) && current !== realBase) {
 		throw new Error(`Path "${relativePath}" escapes the base directory`);
 	}
+
+	// Check if the resolved real path targets a protected path (e.g. settings directory).
+	// This catches symlink-based bypasses since `current` has all symlinks resolved.
+	if (isProtectedSettingsPath(current)) {
+		throw new Error(`Access denied: cannot access "${relativePath}"`);
+	}
+
 	return absolute;
 }
 
@@ -206,5 +214,6 @@ export async function buildFilesystemResource(
 	description: string,
 ): Promise<AffectedResource> {
 	const absolutePath = await resolveSafePath(dir, inputPath);
+
 	return { toolGroup, resource: absolutePath, description };
 }

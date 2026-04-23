@@ -14,7 +14,7 @@ import { mock } from 'jest-mock-extended';
 const mockMiddleware = jest.fn(async (_req: unknown, _res: unknown, next: unknown) =>
 	(next as () => void)(),
 ) as unknown as middlewares.ScopeTaggedMiddleware;
-jest.spyOn(middlewares, 'apiKeyHasScope').mockReturnValue(mockMiddleware);
+jest.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 
 const handler = require('../community-packages.handler');
 
@@ -61,11 +61,28 @@ describe('CommunityPackages Handler', () => {
 			await handler.installPackage[handler.installPackage.length - 1](req, mockResponse);
 
 			expect(mockLifecycle.install).toHaveBeenCalledWith(
-				{ name: 'n8n-nodes-test', version: undefined, verify: false },
+				{ name: 'n8n-nodes-test', version: undefined, verify: true },
 				mockUser,
 				'publicApi',
 			);
 			expect(mockResponse.json).toHaveBeenCalledWith(mapToCommunityPackage(mockInstalledPackage));
+		});
+
+		it('should forward verify:false to lifecycle when explicitly provided', async () => {
+			const req = {
+				body: { name: 'n8n-nodes-test', verify: false },
+				user: mockUser,
+			};
+
+			mockLifecycle.install.mockResolvedValue(mockInstalledPackage as InstalledPackages);
+
+			await handler.installPackage[handler.installPackage.length - 1](req, mockResponse);
+
+			expect(mockLifecycle.install).toHaveBeenCalledWith(
+				{ name: 'n8n-nodes-test', version: undefined, verify: false },
+				mockUser,
+				'publicApi',
+			);
 		});
 
 		it('should return 400 when name is missing', async () => {
@@ -147,7 +164,7 @@ describe('CommunityPackages Handler', () => {
 			await handler.updatePackage[handler.updatePackage.length - 1](req, mockResponse);
 
 			expect(mockLifecycle.update).toHaveBeenCalledWith(
-				{ name: 'n8n-nodes-test', version: undefined },
+				{ name: 'n8n-nodes-test', version: undefined, verify: true },
 				mockUser,
 				'notFound',
 			);

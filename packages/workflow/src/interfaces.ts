@@ -6,6 +6,7 @@ import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
+import type { AgentOptions } from 'https';
 import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
@@ -79,6 +80,7 @@ export interface IBinaryData {
 // credentials file.
 export interface IOAuth2Options {
 	includeCredentialsOnRefreshOnBody?: boolean;
+	skipTokenRefresh?: boolean;
 	property?: string;
 	tokenType?: string;
 	keepBearer?: boolean;
@@ -513,6 +515,7 @@ export interface IHttpRequestOptions {
 	 * If set, requests to domains not in this list will be blocked.
 	 */
 	allowedDomains?: string;
+	agentOptions?: Omit<AgentOptions, 'socket'>;
 }
 
 /**
@@ -2169,23 +2172,34 @@ export interface IWorkflowIssues {
 }
 
 export type ThemeIconColor =
+	| 'neutral'
 	| 'gray'
 	| 'black'
 	| 'blue'
 	| 'light-blue'
 	| 'dark-blue'
+	| 'sky-blue'
 	| 'orange'
 	| 'orange-red'
+	| 'amber'
+	| 'rust'
 	| 'pink-red'
+	| 'magenta'
 	| 'red'
 	| 'light-green'
 	| 'green'
 	| 'dark-green'
+	| 'emerald'
+	| 'forest-green'
+	| 'lime'
 	| 'azure'
+	| 'teal'
 	| 'purple'
+	| 'violet'
+	| 'lavender'
 	| 'crimson';
 export type Themed<T> = T | { light: T; dark: T };
-export type IconRef = `fa:${string}` | `node:${string}.${string}`;
+export type IconRef = `fa:${string}` | `node:${string}`;
 export type IconFile = `file:${string}.png` | `file:${string}.svg` | ExpressionString;
 export type Icon = IconRef | Themed<IconFile> | IconFile;
 
@@ -3529,6 +3543,11 @@ export interface IUserSettings {
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
 	dismissedCallouts?: Record<string, boolean>;
+	instanceAi?: {
+		credentialId?: string | null;
+		modelName?: string;
+		localGatewayDisabled?: boolean;
+	};
 }
 
 export interface IProcessedDataConfig {

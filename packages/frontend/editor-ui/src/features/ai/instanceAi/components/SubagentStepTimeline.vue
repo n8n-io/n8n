@@ -1,10 +1,15 @@
 <script lang="ts" setup>
-import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
 import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
 import { getToolIcon, useToolLabel } from '../toolLabels';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ButtonLike from './ButtonLike.vue';
 import DataSection from './DataSection.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -12,6 +17,8 @@ import ToolCallStep from './ToolCallStep.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
+	/** When provided, renders only these entries instead of the full timeline. */
+	visibleEntries?: InstanceAiTimelineEntry[];
 }>();
 
 const i18n = useI18n();
@@ -23,7 +30,7 @@ const CODE_BLOCK_PATTERN = /```/;
 const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
 
 interface TimelineStep {
-	type: 'tool-call' | 'text' | 'done';
+	type: 'tool-call' | 'text';
 	icon: IconName;
 	label: string;
 	isLoading: boolean;
@@ -59,10 +66,12 @@ const toolCallsById = computed(() => {
 	return map;
 });
 
+const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
+
 const steps = computed((): TimelineStep[] => {
 	const result: TimelineStep[] = [];
 
-	for (const entry of props.agentNode.timeline) {
+	for (const entry of timelineEntries.value) {
 		if (entry.type === 'text') {
 			const longText = isLongTextContent(entry.content);
 			result.push({
@@ -80,7 +89,7 @@ const steps = computed((): TimelineStep[] => {
 			result.push({
 				type: 'tool-call',
 				icon: tc.isLoading ? 'spinner' : getToolIcon(tc.toolName),
-				label: getToolLabel(tc.toolName),
+				label: getToolLabel(tc.toolName, tc.args),
 				isLoading: tc.isLoading,
 				toggleLabel: getToggleLabel(tc),
 				hideLabel: getHideLabel(tc),
@@ -88,15 +97,6 @@ const steps = computed((): TimelineStep[] => {
 			});
 		}
 		// Skip 'child' entries — parent AgentTimeline handles child cards
-	}
-
-	if (props.agentNode.status === 'completed') {
-		result.push({
-			type: 'done',
-			icon: 'circle-check',
-			label: i18n.baseText('instanceAi.stepTimeline.done'),
-			isLoading: false,
-		});
 	}
 
 	return result;
@@ -130,22 +130,16 @@ const steps = computed((): TimelineStep[] => {
 							<template v-else>{{ step.label }}</template>
 						</N8nButton>
 					</CollapsibleTrigger>
-					<CollapsibleContent :class="$style.toggleContent">
+					<AnimatedCollapsibleContent :class="$style.toggleContent">
 						<DataSection>
 							<InstanceAiMarkdown :content="step.textContent!" />
 						</DataSection>
-					</CollapsibleContent>
+					</AnimatedCollapsibleContent>
 				</CollapsibleRoot>
 				<ButtonLike v-else>
-					<N8nIcon :icon="step.icon" size="small" />
-					{{ step.label }}
+					<InstanceAiMarkdown :content="step.label" />
 				</ButtonLike>
 			</template>
-
-			<ButtonLike v-else-if="step.type === 'done'">
-				<N8nIcon :icon="step.icon" size="small" />
-				{{ step.label }}
-			</ButtonLike>
 		</template>
 	</div>
 </template>

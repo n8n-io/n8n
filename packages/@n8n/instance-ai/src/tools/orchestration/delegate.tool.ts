@@ -14,17 +14,16 @@ import {
 	withTraceRun,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
+import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
+import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
-import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
 const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'create-tasks', 'delegate']);
-
-const FALLBACK_MAX_STEPS = 10;
 
 function generateAgentId(): string {
 	return `agent-${nanoid(6)}`;
@@ -67,23 +66,17 @@ async function buildDelegateBriefing(
 	artifacts?: unknown,
 	conversationContext?: string,
 ): Promise<string> {
-	const serializedArtifacts = artifacts ? `\n\nArtifacts: ${JSON.stringify(artifacts)}` : '';
-	const conversationCtx = conversationContext
-		? `\n\n[CONVERSATION CONTEXT: ${conversationContext}]`
-		: '';
+	const structured = await buildSubAgentBriefing({
+		task: briefing,
+		conversationContext,
+		artifacts: artifacts as Record<string, unknown> | undefined,
+		iteration: context.iterationLog
+			? { log: context.iterationLog, threadId: context.threadId, taskKey: `delegate:${role}` }
+			: undefined,
+		runningTasks: context.getRunningTaskSummaries?.(),
+	});
 
-	let iterationContext = '';
-	if (context.iterationLog) {
-		const taskKey = `delegate:${role}`;
-		try {
-			const entries = await context.iterationLog.getForTask(context.threadId, taskKey);
-			iterationContext = formatPreviousAttempts(entries);
-		} catch {
-			// Non-fatal — iteration log is best-effort
-		}
-	}
-
-	return `${briefing}${conversationCtx}${serializedArtifacts}${iterationContext ? `\n\n${iterationContext}` : ''}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
+	return `${structured}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
 }
 
 export interface DetachedDelegateTaskInput {
@@ -191,6 +184,7 @@ export async function startDetachedDelegateTask(
 					tools: tracedTools,
 					modelId: context.modelId,
 					traceRun: traceContext?.actorRun,
+					timeZone: context.timeZone,
 				});
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
@@ -198,24 +192,14 @@ export async function startDetachedDelegateTask(
 				const traceParent = getTraceParentRun();
 				return await withTraceParentContext(traceParent, async () => {
 					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-					const stream = await traceWorkingMemoryContext(
-						{
-							phase: 'initial',
-							agentId: subAgentId,
-							agentRole: role,
-							threadId: context.threadId,
-							input: briefingMessage,
+					const stream = await subAgent.stream(briefingMessage, {
+						maxSteps: context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK,
+						abortSignal: signal,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
-						async () =>
-							await subAgent.stream(briefingMessage, {
-								maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
-								abortSignal: signal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-								...(llmStepTraceHooks?.executionOptions ?? {}),
-							}),
-					);
+						...(llmStepTraceHooks?.executionOptions ?? {}),
+					});
 
 					const result = await consumeStreamWithHitl({
 						agent: subAgent,
@@ -234,7 +218,6 @@ export async function startDetachedDelegateTask(
 						drainCorrections,
 						waitForCorrection,
 						llmStepTraceHooks,
-						workingMemoryEnabled: false,
 					});
 
 					return await result.text;
@@ -244,7 +227,7 @@ export async function startDetachedDelegateTask(
 	});
 
 	return {
-		result: `Delegation started (task: ${taskId}). Reply with one short sentence. Do NOT summarize the plan or list details.`,
+		result: `Delegation started (task: ${taskId}). Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
@@ -273,6 +256,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 			}
 
 			const subAgentId = generateAgentId();
+			const startTime = Date.now();
 
 			// 2. Publish agent-spawned
 			context.eventBus.publish(context.threadId, {
@@ -310,6 +294,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					tools: tracedTools,
 					modelId: context.modelId,
 					traceRun,
+					timeZone: context.timeZone,
 				});
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
@@ -323,30 +308,20 @@ export function createDelegateTool(context: OrchestrationContext) {
 				);
 
 				// 4. Stream sub-agent with HITL support
-				const resultText = await withTraceRun(context, traceRun, async () => {
+				const consumeResult = await withTraceRun(context, traceRun, async () => {
 					const traceParent = getTraceParentRun();
 					return await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-						const stream = await traceWorkingMemoryContext(
-							{
-								phase: 'initial',
-								agentId: subAgentId,
-								agentRole: input.role,
-								threadId: context.threadId,
-								input: briefingMessage,
+						const stream = await subAgent.stream(briefingMessage, {
+							maxSteps: context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK,
+							abortSignal: context.abortSignal,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
-							async () =>
-								await subAgent.stream(briefingMessage, {
-									maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
-									abortSignal: context.abortSignal,
-									providerOptions: {
-										anthropic: { cacheControl: { type: 'ephemeral' } },
-									},
-									...(llmStepTraceHooks?.executionOptions ?? {}),
-								}),
-						);
+							...(llmStepTraceHooks?.executionOptions ?? {}),
+						});
 
-						const result = await consumeStreamWithHitl({
+						return await consumeStreamWithHitl({
 							agent: subAgent,
 							stream: stream as {
 								runId?: string;
@@ -361,17 +336,27 @@ export function createDelegateTool(context: OrchestrationContext) {
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
 							llmStepTraceHooks,
-							workingMemoryEnabled: false,
 						});
-
-						return await result.text;
 					});
 				});
+
+				const resultText = await consumeResult.text;
+				const debriefing = buildDebriefing({
+					agentId: subAgentId,
+					role: input.role,
+					result: resultText,
+					workSummary: consumeResult.workSummary,
+					startTime,
+				});
+
 				await finishTraceRun(context, traceRun, {
 					outputs: {
 						result: resultText,
 						agentId: subAgentId,
 						role: input.role,
+						toolCallCount: debriefing.toolCallCount,
+						toolErrorCount: debriefing.toolErrorCount,
+						durationMs: debriefing.durationMs,
 					},
 				});
 
@@ -386,7 +371,13 @@ export function createDelegateTool(context: OrchestrationContext) {
 					},
 				});
 
-				return { result: resultText };
+				return {
+					result: resultText,
+					toolCallCount: debriefing.toolCallCount,
+					toolErrorCount: debriefing.toolErrorCount,
+					durationMs: debriefing.durationMs,
+					blockers: debriefing.blockers,
+				};
 			} catch (error) {
 				// 8. Publish agent-completed with error
 				const errorMessage = error instanceof Error ? error.message : String(error);

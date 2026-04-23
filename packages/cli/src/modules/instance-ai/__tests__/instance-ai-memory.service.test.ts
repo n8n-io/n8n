@@ -14,7 +14,6 @@ const mockMemory = {
 
 jest.mock('@n8n/instance-ai', () => ({
 	createMemory: () => mockMemory,
-	WORKING_MEMORY_TEMPLATE: 'template',
 }));
 
 // Mock GlobalConfig

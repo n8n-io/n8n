@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nCallout, N8nIcon } from '@n8n/design-system';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed, ref, watch } from 'vue';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
@@ -10,16 +11,26 @@ const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
 }>();
 
+const isActive = computed(() => props.agentNode.status === 'active');
 const isExpanded = ref(false);
 
-const isActive = computed(() => props.agentNode.status === 'active');
 const isError = computed(() => props.agentNode.status === 'error');
 
 const sectionTitle = computed(
 	() => props.agentNode.subtitle ?? props.agentNode.role ?? 'Working...',
 );
 
-// Auto-collapse when agent completes (keep collapsed by default for peek preview)
+/** Most recent non-child timeline entry, shown as a peek while collapsed and active. */
+const peekEntries = computed(() => {
+	const entries = props.agentNode.timeline;
+	for (let i = entries.length - 1; i >= 0; i--) {
+		const entry = entries[i];
+		if (entry.type !== 'child') return [entry];
+	}
+	return [];
+});
+
+// Auto-collapse when agent completes so the peek preview returns to the resting state.
 watch(
 	() => props.agentNode.status,
 	(status) => {
@@ -48,9 +59,12 @@ watch(
 				<span :class="{ [$style.shimmer]: isActive }">{{ sectionTitle }}</span>
 			</TimelineStepButton>
 		</CollapsibleTrigger>
-		<CollapsibleContent :class="$style.content">
+		<div v-if="!isOpen && isActive && peekEntries.length" :class="$style.content">
+			<SubagentStepTimeline :agent-node="props.agentNode" :visible-entries="peekEntries" />
+		</div>
+		<AnimatedCollapsibleContent :class="$style.content">
 			<SubagentStepTimeline :agent-node="props.agentNode" />
-		</CollapsibleContent>
+		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 	<!-- Error display -->
 	<N8nCallout v-if="isError && props.agentNode.error" theme="danger">

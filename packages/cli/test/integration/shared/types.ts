@@ -61,7 +61,8 @@ type ModuleName =
 	| 'log-streaming'
 	| 'ldap'
 	| 'redaction'
-	| 'source-control';
+	| 'source-control'
+	| 'token-exchange';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

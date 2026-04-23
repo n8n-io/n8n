@@ -10,7 +10,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InsightsService } from '@/modules/insights/insights.service';
 import type { InsightsRequest } from '@/public-api/types';
 
-import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
+import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
 const dateFilterValidationSchema = z
 	.object({
@@ -33,7 +33,7 @@ const dateFilterValidationSchema = z
 
 export = {
 	getInsightsSummary: [
-		apiKeyHasScope('insights:read'),
+		publicApiScope('insights:read'),
 		async (req: InsightsRequest.GetSummary, res: express.Response): Promise<express.Response> => {
 			const query = InsightsDateFilterDto.safeParse(req.query);
 			if (!query.success) {

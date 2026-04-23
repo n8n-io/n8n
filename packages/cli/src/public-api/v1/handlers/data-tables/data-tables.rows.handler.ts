@@ -11,7 +11,7 @@ import type express from 'express';
 
 import type { DataTableRequest } from '../../../types';
 import {
-	apiKeyHasScope,
+	publicApiScope,
 	projectScope,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
@@ -66,7 +66,7 @@ const getProjectIdForDataTable = async (dataTableId: string): Promise<string> =>
 
 export = {
 	getDataTableRows: [
-		apiKeyHasScope('dataTableRow:read'),
+		publicApiScope('dataTableRow:read'),
 		projectScope('dataTable:readRow', 'dataTable'),
 		validCursor,
 		async (req: DataTableRequest.GetRows, res: express.Response): Promise<express.Response> => {
@@ -111,7 +111,7 @@ export = {
 	],
 
 	insertDataTableRows: [
-		apiKeyHasScope('dataTableRow:create'),
+		publicApiScope('dataTableRow:create'),
 		projectScope('dataTable:writeRow', 'dataTable'),
 		async (req: DataTableRequest.InsertRows, res: express.Response): Promise<express.Response> => {
 			try {
@@ -141,7 +141,7 @@ export = {
 	],
 
 	updateDataTableRows: [
-		apiKeyHasScope('dataTableRow:update'),
+		publicApiScope('dataTableRow:update'),
 		projectScope('dataTable:writeRow', 'dataTable'),
 		async (req: DataTableRequest.UpdateRows, res: express.Response): Promise<express.Response> => {
 			try {
@@ -173,7 +173,7 @@ export = {
 	],
 
 	upsertDataTableRow: [
-		apiKeyHasScope('dataTableRow:upsert'),
+		publicApiScope('dataTableRow:upsert'),
 		projectScope('dataTable:writeRow', 'dataTable'),
 		async (req: DataTableRequest.UpsertRow, res: express.Response): Promise<express.Response> => {
 			try {
@@ -205,7 +205,7 @@ export = {
 	],
 
 	deleteDataTableRows: [
-		apiKeyHasScope('dataTableRow:delete'),
+		publicApiScope('dataTableRow:delete'),
 		projectScope('dataTable:writeRow', 'dataTable'),
 		async (req: DataTableRequest.DeleteRows, res: express.Response): Promise<express.Response> => {
 			try {
