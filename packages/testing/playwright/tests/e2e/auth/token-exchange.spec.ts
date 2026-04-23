@@ -81,6 +81,7 @@ test.describe(
 					email,
 					given_name: 'Provisioned',
 					family_name: 'User',
+					role: 'global:admin',
 				});
 
 				const exchangeResponse = await api.request.post('/rest/auth/oauth/token', {
