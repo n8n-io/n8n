@@ -147,6 +147,7 @@ describe('Google Drive V2', () => {
 			credentials,
 			workflowFiles: [
 				'file-copy.workflow.json',
+				'file-copy-url-mode.workflow.json',
 				'file-createFromText.workflow.json',
 				'file-delete.workflow.json',
 				'file-download.workflow.json',

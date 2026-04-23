@@ -81,14 +81,16 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const file = this.getNodeParameter('fileId', i) as INodeParameterResourceLocator;
+	const fileLocator = this.getNodeParameter('fileId', i) as INodeParameterResourceLocator;
 
-	const fileId = file.value;
+	const fileId = this.getNodeParameter('fileId', i, undefined, {
+		extractValue: true,
+	}) as string;
 
 	const options = this.getNodeParameter('options', i, {});
 
 	let name = this.getNodeParameter('name', i) as string;
-	name = name ? name : `Copy of ${file.cachedResultName}`;
+	name = name ? name : `Copy of ${fileLocator.cachedResultName}`;
 
 	const copyRequiresWriterPermission = options.copyRequiresWriterPermission || false;
 
