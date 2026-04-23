@@ -50,7 +50,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		return typeof id === 'string' ? id : store.currentThreadId;
 	}
 
-	const debouncedSavePreviewState = useDebounceFn((tabId: string | null) => {
+	const debouncedSavePreviewState = useDebounceFn((tabId: string | undefined) => {
 		const threadId = currentThreadId();
 		if (!threadId) return;
 		void store.updateThreadMetadata(threadId, { activePreviewTab: tabId });

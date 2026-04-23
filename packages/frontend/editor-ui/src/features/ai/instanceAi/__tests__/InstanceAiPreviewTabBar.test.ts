@@ -35,7 +35,7 @@ const Wrapper = defineComponent({
 			h(TabsRoot, { modelValue: props.activeTabId }, () =>
 				h(InstanceAiPreviewTabBar, {
 					tabs: props.tabs,
-					activeTabId: props.activeTabId ?? null,
+					activeTabId: props.activeTabId,
 					onClose: () => emit('close'),
 				}),
 			);
