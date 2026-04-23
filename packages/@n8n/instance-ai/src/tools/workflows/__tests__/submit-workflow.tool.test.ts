@@ -36,11 +36,11 @@ function makeWorkspace(): Workspace {
 	return {
 		sandbox: {
 			executeCommand: async (command: string) => {
-				if (command === 'echo $HOME') {
-					return { exitCode: 0, stdout: '/home/test\n', stderr: '' };
-				}
-				// cat ... — return empty content for any other command
-				return { exitCode: 0, stdout: '', stderr: '' };
+				// await ensures the function is truly async (lint rule); no real I/O needed.
+				await Promise.resolve();
+				return command === 'echo $HOME'
+					? { exitCode: 0, stdout: '/home/test\n', stderr: '' }
+					: { exitCode: 0, stdout: '', stderr: '' };
 			},
 		},
 	} as unknown as Workspace;
@@ -63,11 +63,9 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 		expect(out.success).toBe(false);
 		expect(out.errors).toEqual(['Action blocked by admin']);
 		expect(attempts).toHaveLength(1);
-		expect(attempts[0]).toMatchObject({
-			success: false,
-			errors: ['Action blocked by admin'],
-			filePath: expect.stringContaining('workflow.ts'),
-		});
+		expect(attempts[0].success).toBe(false);
+		expect(attempts[0].errors).toEqual(['Action blocked by admin']);
+		expect(attempts[0].filePath).toContain('workflow.ts');
 	});
 
 	it('rejects update when updateWorkflow is blocked and reports the attempt', async () => {
