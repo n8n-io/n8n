@@ -809,12 +809,38 @@ export interface SpawnBackgroundTaskOptions {
 	/** Unique work item ID for workflow loop tracking. When set, the service
 	 *  uses the workflow loop controller to manage verify/repair transitions. */
 	workItemId?: string;
+	/**
+	 * Identity used for single-flight dedupe. When present, a spawn with the same
+	 * `plannedTaskId` (primary) or `role + workflowId` (fallback) as a currently-running
+	 * task returns `{ status: 'duplicate', existing }` instead of starting a new task.
+	 */
+	dedupeKey?: {
+		plannedTaskId?: string;
+		workflowId?: string;
+		role: string;
+	};
 	run: (
 		signal: AbortSignal,
 		drainCorrections: () => string[],
 		waitForCorrection: () => Promise<void>,
 	) => Promise<string | BackgroundTaskResult>;
 }
+
+/** Result of a {@link SpawnBackgroundTaskOptions} spawn. */
+export type SpawnBackgroundTaskResult =
+	| { status: 'started'; taskId: string; agentId: string }
+	| { status: 'limit-reached' }
+	| {
+			status: 'duplicate';
+			/** The live background task that matched on `dedupeKey`. */
+			existing: {
+				taskId: string;
+				agentId: string;
+				role: string;
+				plannedTaskId?: string;
+				workItemId?: string;
+			};
+	  };
 
 export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
@@ -867,7 +893,7 @@ export interface OrchestrationContext {
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
 	webhookBaseUrl?: string;
 	/** Spawn a detached background task that outlives the current orchestrator run */
-	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => void;
+	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => SpawnBackgroundTaskResult;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
 	/** Persist and inspect dependency-aware planned tasks for this thread. */
@@ -928,7 +954,12 @@ export interface CreateInstanceAgentOptions {
 	memoryConfig: InstanceAiMemoryConfig;
 	/** Pre-built Memory instance. When provided, `memoryConfig` is ignored for memory creation. */
 	memory?: Memory;
-	/** Workspace with sandbox for code execution. When provided, the agent gets execute_command tool. */
+	/**
+	 * @deprecated Ignored by the orchestrator. Passing a workspace here used to auto-register
+	 * `mastra_workspace_*` tools on the orchestrator, which the LLM abused as a `sleep` primitive
+	 * and mis-routed for build-task polling. Sandbox access is now scoped to the workflow-builder
+	 * subagent via `builderSandboxFactory`; `orchestrationContext.workspace` still flows to it.
+	 */
 	workspace?: Workspace;
 	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
 	disableDeferredTools?: boolean;

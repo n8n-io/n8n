@@ -132,8 +132,16 @@ async function getRecentMessages(
 	return messages;
 }
 
-function formatMessagesForBriefing(messages: FormattedMessage[], guidance?: string): string {
+function formatMessagesForBriefing(
+	messages: FormattedMessage[],
+	guidance?: string,
+	timeZone?: string,
+): string {
 	const parts: string[] = [];
+
+	if (timeZone) {
+		parts.push(`<user-timezone>${timeZone}</user-timezone>`);
+	}
 
 	if (messages.length > 0) {
 		parts.push('## Recent conversation');
@@ -243,7 +251,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 			// ── Retrieve conversation history ─────────────────────────────
 			const messages = await getRecentMessages(context, MESSAGE_HISTORY_COUNT);
-			const briefing = formatMessagesForBriefing(messages, input.guidance);
+			const briefing = formatMessagesForBriefing(messages, input.guidance, context.timeZone);
 
 			// ── IDs & events ──────────────────────────────────────────────
 			const subAgentId = `agent-planner-${nanoid(6)}`;

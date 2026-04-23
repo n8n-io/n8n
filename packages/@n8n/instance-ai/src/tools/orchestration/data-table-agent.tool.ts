@@ -101,13 +101,14 @@ export async function startDataTableAgentTask(
 	});
 	const tracedDataTableTools = traceSubAgentTools(context, dataTableTools, 'data-table-manager');
 
-	context.spawnBackgroundTask({
+	const spawnOutcome = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'data-table-manager',
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
+		dedupeKey: { role: 'data-table-manager', plannedTaskId: input.plannedTaskId },
 		run: async (signal, _drainCorrections, _waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent({
@@ -174,6 +175,22 @@ export async function startDataTableAgentTask(
 			});
 		},
 	});
+
+	if (spawnOutcome.status === 'duplicate') {
+		return {
+			result: `Data table operation already in progress (task: ${spawnOutcome.existing.taskId}). Wait for the planned-task-follow-up — do not dispatch again.`,
+			taskId: spawnOutcome.existing.taskId,
+			agentId: spawnOutcome.existing.agentId,
+		};
+	}
+	if (spawnOutcome.status === 'limit-reached') {
+		return {
+			result:
+				'Could not start data table operation: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+			taskId: '',
+			agentId: '',
+		};
+	}
 
 	return {
 		result: `Data table operation started (task: ${taskId}). Do NOT summarize the plan or list details.`,

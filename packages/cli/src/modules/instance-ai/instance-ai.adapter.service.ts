@@ -2343,8 +2343,40 @@ function getExecutionModeForTrigger(node: INode): WorkflowExecuteMode {
 	}
 }
 
+/**
+ * Validate that `inputData` matches the shape the caller of `verify-built-workflow`
+ * is expected to pass for this trigger. Throws a descriptive error when the shape
+ * is wrong — this is surfaced to the orchestrator via the execution result and
+ * prevents the common "null downstream values" misdiagnosis where the orchestrator
+ * would otherwise patch the workflow's expressions (breaking it in production).
+ */
+function validateInputDataShape(node: INode, inputData: Record<string, unknown>): void {
+	if (node.type === FORM_TRIGGER_NODE_TYPE) {
+		// Production Form Trigger emits field values FLAT on `json` alongside
+		// `submittedAt` and `formMode`. Callers that wrap in `formFields` produce
+		// `{ submittedAt, formMode, formFields: {...} }` which does not match
+		// production — downstream `$json.<field>` references resolve to null.
+		const keys = Object.keys(inputData);
+		const looksWrapped =
+			keys.length === 1 &&
+			keys[0] === 'formFields' &&
+			typeof inputData.formFields === 'object' &&
+			inputData.formFields !== null;
+		if (looksWrapped) {
+			throw new Error(
+				'verify-built-workflow: inputData for a Form Trigger must be a flat field map ' +
+					'(e.g. {name: "Alice", email: "a@b.c"}), NOT wrapped in `formFields`. ' +
+					'The production Form Trigger emits fields directly on $json, so downstream ' +
+					'expressions like $json.name are correct. Re-run with the flat shape.',
+			);
+		}
+	}
+}
+
 /** Construct proper pin data per trigger type. */
 function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): IPinData {
+	validateInputDataShape(node, inputData);
+
 	switch (node.type) {
 		case CHAT_TRIGGER_NODE_TYPE:
 			return {
@@ -2375,18 +2407,28 @@ function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): 
 				],
 			};
 
-		case WEBHOOK_NODE_TYPE:
+		case WEBHOOK_NODE_TYPE: {
+			// Allow callers that already nest their payload under `body` — unwrap once
+			// so the adapter's outer `body: inputData` wrapper doesn't create double
+			// nesting. Keep `headers` / `query` pass-through when callers provide them.
+			const alreadyShaped = typeof inputData.body === 'object' && inputData.body !== null;
+			const body = alreadyShaped ? (inputData.body as Record<string, unknown>) : inputData;
+			const headers =
+				typeof inputData.headers === 'object' && inputData.headers !== null
+					? (inputData.headers as Record<string, unknown>)
+					: {};
+			const query =
+				typeof inputData.query === 'object' && inputData.query !== null
+					? (inputData.query as Record<string, unknown>)
+					: {};
 			return {
 				[node.name]: [
 					{
-						json: {
-							headers: {},
-							query: {},
-							body: inputData,
-						},
+						json: { headers, query, body },
 					},
 				],
 			};
+		}
 
 		case SCHEDULE_TRIGGER_NODE_TYPE: {
 			const now = new Date();

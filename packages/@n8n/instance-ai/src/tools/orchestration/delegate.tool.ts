@@ -167,13 +167,14 @@ export async function startDetachedDelegateTask(
 	});
 	const tracedTools = traceSubAgentTools(context, validTools, role);
 
-	context.spawnBackgroundTask({
+	const spawnOutcome = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role,
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
+		dedupeKey: { role, plannedTaskId: input.plannedTaskId },
 		run: async (signal, drainCorrections, waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = createSubAgent({
@@ -225,6 +226,22 @@ export async function startDetachedDelegateTask(
 			});
 		},
 	});
+
+	if (spawnOutcome.status === 'duplicate') {
+		return {
+			result: `Delegation already in progress (task: ${spawnOutcome.existing.taskId}). Wait for the planned-task-follow-up — do not dispatch again.`,
+			taskId: spawnOutcome.existing.taskId,
+			agentId: spawnOutcome.existing.agentId,
+		};
+	}
+	if (spawnOutcome.status === 'limit-reached') {
+		return {
+			result:
+				'Could not start delegation: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+			taskId: '',
+			agentId: '',
+		};
+	}
 
 	return {
 		result: `Delegation started (task: ${taskId}). Do NOT summarize the plan or list details.`,

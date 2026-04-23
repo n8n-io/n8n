@@ -52,7 +52,11 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 		domainTools,
 		abortSignal: new AbortController().signal,
 		taskStorage: {} as TaskStorage,
-		spawnBackgroundTask: jest.fn(),
+		spawnBackgroundTask: jest.fn(() => ({
+			status: 'started' as const,
+			taskId: 'spawn-task-id',
+			agentId: 'spawn-agent-id',
+		})),
 		cancelBackgroundTask: jest.fn(),
 		...overrides,
 	};

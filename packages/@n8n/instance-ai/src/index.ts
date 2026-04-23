@@ -150,6 +150,7 @@ export type {
 	PlannedTaskService,
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,
+	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,
 	InstanceAiToolTraceOptions,
 	InstanceAiTraceContext,

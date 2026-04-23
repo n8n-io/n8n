@@ -21,6 +21,17 @@ export interface ManagedBackgroundTask {
 	plannedTaskId?: string;
 	workItemId?: string;
 	traceContext?: InstanceAiTraceContext;
+	/** Identity used for single-flight dedupe lookups; copied from the spawn options. */
+	dedupeKey?: BackgroundTaskDedupeKey;
+}
+
+export interface BackgroundTaskDedupeKey {
+	/** Planned-task graph ID this background task is dispatched for. Primary dedupe key. */
+	plannedTaskId?: string;
+	/** Target workflow ID for this background task. Fallback dedupe key when there is no planned task. */
+	workflowId?: string;
+	/** Agent role (e.g. 'workflow-builder'). Scopes the workflowId fallback so different roles against the same workflow don't collide. */
+	role: string;
 }
 
 export interface SpawnManagedBackgroundTaskOptions {
@@ -33,6 +44,12 @@ export interface SpawnManagedBackgroundTaskOptions {
 	plannedTaskId?: string;
 	workItemId?: string;
 	traceContext?: InstanceAiTraceContext;
+	/**
+	 * Identity for single-flight dedupe. When supplied, a spawn with the same `plannedTaskId`
+	 * (primary) or `role + workflowId` (fallback) as a currently-running task returns
+	 * `{ status: 'duplicate', existing }` instead of launching a second task.
+	 */
+	dedupeKey?: BackgroundTaskDedupeKey;
 	run: (
 		signal: AbortSignal,
 		drainCorrections: () => string[],
@@ -44,6 +61,11 @@ export interface SpawnManagedBackgroundTaskOptions {
 	onSettled?: (task: ManagedBackgroundTask) => void | Promise<void>;
 }
 
+export type SpawnManagedBackgroundTaskResult =
+	| { status: 'started'; task: ManagedBackgroundTask }
+	| { status: 'limit-reached' }
+	| { status: 'duplicate'; existing: ManagedBackgroundTask };
+
 export interface BackgroundTaskMessageOptions<
 	TTask extends ManagedBackgroundTask = ManagedBackgroundTask,
 > {
@@ -52,8 +74,39 @@ export interface BackgroundTaskMessageOptions<
 
 export class BackgroundTaskManager {
 	private readonly tasks = new Map<string, ManagedBackgroundTask>();
+	/** plannedTaskId → taskId for the currently-running task. Populated only when the caller provides a dedupeKey. */
+	private readonly byPlannedTaskId = new Map<string, string>();
+	/** `${role}:${workflowId}` → taskId for the currently-running task. Populated only when the caller provides a dedupeKey without plannedTaskId. */
+	private readonly byRoleAndWorkflowId = new Map<string, string>();
 
 	constructor(private readonly maxConcurrentPerThread = 5) {}
+
+	private workflowKey(role: string, workflowId: string): string {
+		return `${role}:${workflowId}`;
+	}
+
+	private findDuplicate(
+		dedupeKey: BackgroundTaskDedupeKey | undefined,
+	): ManagedBackgroundTask | undefined {
+		if (!dedupeKey) return undefined;
+		if (dedupeKey.plannedTaskId) {
+			const existingId = this.byPlannedTaskId.get(dedupeKey.plannedTaskId);
+			if (existingId) {
+				const existing = this.tasks.get(existingId);
+				if (existing && existing.status === 'running') return existing;
+			}
+		}
+		if (dedupeKey.workflowId) {
+			const existingId = this.byRoleAndWorkflowId.get(
+				this.workflowKey(dedupeKey.role, dedupeKey.workflowId),
+			);
+			if (existingId) {
+				const existing = this.tasks.get(existingId);
+				if (existing && existing.status === 'running') return existing;
+			}
+		}
+		return undefined;
+	}
 
 	getTaskSnapshots(threadId: string): ManagedBackgroundTask[] {
 		return [...this.tasks.values()].filter((task) => task.threadId === threadId);
@@ -89,6 +142,7 @@ export class BackgroundTaskManager {
 		task.abortController.abort();
 		task.status = 'cancelled';
 		this.tasks.delete(taskId);
+		this.releaseDedupeIndices(task);
 		return task;
 	}
 
@@ -100,6 +154,7 @@ export class BackgroundTaskManager {
 			task.status = 'cancelled';
 			cancelled.push(task);
 			this.tasks.delete(taskId);
+			this.releaseDedupeIndices(task);
 		}
 		return cancelled;
 	}
@@ -110,17 +165,21 @@ export class BackgroundTaskManager {
 			task.abortController.abort();
 			cancelled.push(task);
 			this.tasks.delete(taskId);
+			this.releaseDedupeIndices(task);
 		}
 		return cancelled;
 	}
 
-	spawn(options: SpawnManagedBackgroundTaskOptions): boolean {
+	spawn(options: SpawnManagedBackgroundTaskOptions): SpawnManagedBackgroundTaskResult {
+		const duplicate = this.findDuplicate(options.dedupeKey);
+		if (duplicate) return { status: 'duplicate', existing: duplicate };
+
 		const runningCount = this.getRunningTasks(options.threadId).length;
 		if (runningCount >= this.maxConcurrentPerThread) {
 			options.onLimitReached?.(
 				`Cannot start background task: limit of ${this.maxConcurrentPerThread} concurrent tasks reached. Wait for existing tasks to complete.`,
 			);
-			return false;
+			return { status: 'limit-reached' };
 		}
 
 		const task: ManagedBackgroundTask = {
@@ -137,11 +196,35 @@ export class BackgroundTaskManager {
 			plannedTaskId: options.plannedTaskId,
 			workItemId: options.workItemId,
 			traceContext: options.traceContext,
+			dedupeKey: options.dedupeKey,
 		};
 
 		this.tasks.set(options.taskId, task);
+		if (options.dedupeKey?.plannedTaskId) {
+			this.byPlannedTaskId.set(options.dedupeKey.plannedTaskId, options.taskId);
+		}
+		if (options.dedupeKey?.workflowId) {
+			this.byRoleAndWorkflowId.set(
+				this.workflowKey(options.dedupeKey.role, options.dedupeKey.workflowId),
+				options.taskId,
+			);
+		}
 		void this.executeTask(task, options);
-		return true;
+		return { status: 'started', task };
+	}
+
+	private releaseDedupeIndices(task: ManagedBackgroundTask): void {
+		const key = task.dedupeKey;
+		if (!key) return;
+		if (key.plannedTaskId && this.byPlannedTaskId.get(key.plannedTaskId) === task.taskId) {
+			this.byPlannedTaskId.delete(key.plannedTaskId);
+		}
+		if (key.workflowId) {
+			const wfKey = this.workflowKey(key.role, key.workflowId);
+			if (this.byRoleAndWorkflowId.get(wfKey) === task.taskId) {
+				this.byRoleAndWorkflowId.delete(wfKey);
+			}
+		}
 	}
 
 	private async executeTask(
@@ -185,6 +268,7 @@ export class BackgroundTaskManager {
 				}
 			} finally {
 				this.tasks.delete(task.taskId);
+				this.releaseDedupeIndices(task);
 			}
 		}
 	}

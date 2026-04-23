@@ -47,28 +47,13 @@ import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-cre
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
 import { type SubmitWorkflowAttempt } from '../workflows/submit-workflow.tool';
 
-/** Trigger types that cannot be test-fired programmatically (need an external request). */
-const UNTESTABLE_TRIGGERS = new Set([
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.formTrigger',
-	'@n8n/n8n-nodes-langchain.mcpTrigger',
-	'@n8n/n8n-nodes-langchain.chatTrigger',
-]);
-
-/** Human-readable label derived from a node type string, e.g. "n8n-nodes-base.formTrigger" → "form" */
-function triggerLabel(nodeType: string): string {
-	const short = nodeType.split('.').pop() ?? nodeType;
-	return short.replace(/Trigger$/i, '').toLowerCase() || short.toLowerCase();
-}
-
-const UNTESTABLE_TRIGGER_LABELS = [...UNTESTABLE_TRIGGERS].map(triggerLabel).join(', ');
-
-function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerType {
-	if (!attempt?.triggerNodeTypes || attempt.triggerNodeTypes.length === 0) {
-		return 'manual_or_testable';
-	}
-	const allUntestable = attempt.triggerNodeTypes.every((t) => UNTESTABLE_TRIGGERS.has(t));
-	return allUntestable ? 'trigger_only' : 'manual_or_testable';
+function detectTriggerType(_attempt: SubmitWorkflowAttempt | undefined): TriggerType {
+	// Every trigger type the builder can produce is testable — manual/schedule via
+	// `executions(action="run")`, event-based via `verify-built-workflow` with inputData.
+	// `trigger_only` is reserved for workflows the builder could not fully wire
+	// (e.g. unresolved placeholders), which is detected separately via
+	// `hasUnresolvedPlaceholders` in buildOutcome().
+	return 'manual_or_testable';
 }
 
 function buildOutcome(
@@ -112,8 +97,12 @@ You are running as a detached background task. Do not stop after a successful su
 
 Your job is done when ONE of these is true:
 - the workflow is verified (ran successfully)
-- the workflow uses only event triggers (${UNTESTABLE_TRIGGER_LABELS}) and cannot be runtime-tested — stop after a successful submit. Do NOT publish it; the orchestrator will handle setup and publishing.
 - you are blocked after one repair attempt per unique failure
+
+Do NOT stop after a successful submit without verifying. Every trigger type is testable:
+manual / schedule via \`executions(action="run")\`; event-based triggers (form, webhook,
+chat, mcp, linear, github, slack, etc.) via \`verify-built-workflow\` with an \`inputData\`
+payload. The pin-data adapter injects it as the trigger node's output.
 
 ### Submit discipline
 
@@ -122,8 +111,13 @@ The system tracks file hashes. If you edit the code and then call \`executions(a
 
 ### Verification
 
-- If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
-- Otherwise call \`executions(action="run")\` to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
+- If submit-workflow returned mocked credentials, call \`verify-built-workflow\` with the workItemId.
+- Otherwise pick based on trigger type:
+  - **Manual / Schedule** — \`executions(action="run")\`.
+  - **Form Trigger** — \`verify-built-workflow\` with \`inputData\` as a flat field map, e.g. \`{name: "Alice", email: "a@b.c"}\`. Do NOT wrap in \`formFields\` — production Form Trigger emits fields directly on \`$json\`, and the adapter rejects wrapped payloads.
+  - **Webhook** — \`verify-built-workflow\` with \`inputData\` as the body payload, e.g. \`{event: "signup", userId: "..."}\`. Adapter wraps it under \`body\`; downstream expressions use \`$json.body.<field>\`.
+  - **Chat Trigger** — \`verify-built-workflow\` with \`{chatInput: "user message"}\`.
+  - **Other event triggers (Linear, GitHub, Slack, MCP, etc.)** — \`verify-built-workflow\` with \`inputData\` matching the trigger's expected payload shape.
 - If verification fails, call \`executions(action="debug")\`, fix the code, re-submit, and retry once
 - If the same failure signature repeats, stop and explain the block
 
@@ -321,7 +315,7 @@ export async function startBuildWorkflowAgentTask(
 		},
 	});
 
-	context.spawnBackgroundTask({
+	const spawnOutcome = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
@@ -329,6 +323,11 @@ export async function startBuildWorkflowAgentTask(
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		workItemId,
+		dedupeKey: {
+			role: 'workflow-builder',
+			plannedTaskId: input.plannedTaskId,
+			workflowId: input.workflowId,
+		},
 		run: async (signal, drainCorrections, waitForCorrection): Promise<BackgroundTaskResult> =>
 			await withTraceContextActor(traceContext, async () => {
 				let builderWs: BuilderWorkspace | undefined;
@@ -598,6 +597,22 @@ export async function startBuildWorkflowAgentTask(
 				}
 			}),
 	});
+
+	if (spawnOutcome.status === 'duplicate') {
+		return {
+			result: `Workflow build already in progress (task: ${spawnOutcome.existing.taskId}). Acknowledge and wait for the planned-task-follow-up — do not dispatch again.`,
+			taskId: spawnOutcome.existing.taskId,
+			agentId: spawnOutcome.existing.agentId,
+		};
+	}
+	if (spawnOutcome.status === 'limit-reached') {
+		return {
+			result:
+				'Could not start build: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+			taskId: '',
+			agentId: '',
+		};
+	}
 
 	return {
 		result: `Workflow build started (task: ${taskId}). Reply with one short sentence — e.g. name what's being built. Do NOT summarize the plan or list details.`,

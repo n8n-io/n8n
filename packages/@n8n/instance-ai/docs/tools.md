@@ -151,8 +151,22 @@ Run a built workflow with sidecar pin data for verification (never persisted).
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workItemId` | string | yes | Work item ID from build outcome |
+| `workflowId` | string | yes | Workflow ID to execute |
+| `inputData` | object | no   | Trigger payload — **shape depends on trigger type**, see below |
+| `timeout` | number | no | Max wait in ms (default 300000) |
 
-**Returns**: `{ executionId, success, status, data?, error? }`
+**`inputData` shape by trigger type** (the adapter's `getPinDataForTrigger` spreads or wraps based on type — passing the wrong shape produces null downstream values that look like an expression bug):
+
+| Trigger | Pass | Adapter emits on `$json` |
+|---|---|---|
+| Form Trigger | flat field map, e.g. `{name: "Alice", email: "a@b.c"}` | `{ submittedAt, formMode: "instanceAi", name, email, ... }` — matches production. Do NOT wrap in `formFields`. |
+| Webhook | body payload, e.g. `{event: "signup", userId: "..."}` | `{ headers, query, body: { event, userId, ... } }` |
+| Chat Trigger | `{chatInput: "..."}` | `{ sessionId, action, chatInput }` |
+| Schedule | omit | synthetic timestamp fields |
+
+**Writes on success/failure**: the tool persists a structured `verification` record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) onto the build outcome so subsequent checkpoint turns can reuse it without re-running verify.
+
+**Returns**: `{ executionId?, success, status?, data?, error? }`
 
 ### `report-verification-verdict` *(conditional)*
 

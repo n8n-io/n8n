@@ -102,13 +102,14 @@ export async function startResearchAgentTask(
 	});
 	const tracedResearchTools = traceSubAgentTools(context, researchTools, 'web-researcher');
 
-	context.spawnBackgroundTask({
+	const spawnOutcome = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'web-researcher',
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
+		dedupeKey: { role: 'web-researcher', plannedTaskId: input.plannedTaskId },
 		run: async (signal, drainCorrections, waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent({
@@ -167,6 +168,22 @@ export async function startResearchAgentTask(
 			});
 		},
 	});
+
+	if (spawnOutcome.status === 'duplicate') {
+		return {
+			result: `Research already in progress (task: ${spawnOutcome.existing.taskId}). Wait for the planned-task-follow-up — do not dispatch again.`,
+			taskId: spawnOutcome.existing.taskId,
+			agentId: spawnOutcome.existing.agentId,
+		};
+	}
+	if (spawnOutcome.status === 'limit-reached') {
+		return {
+			result:
+				'Could not start research: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+			taskId: '',
+			agentId: '',
+		};
+	}
 
 	return {
 		result: `Research started (task: ${taskId}). Do NOT summarize the plan or list details.`,

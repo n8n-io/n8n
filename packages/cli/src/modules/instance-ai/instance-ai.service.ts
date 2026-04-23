@@ -61,6 +61,7 @@ import {
 	type PlannedTaskRecord,
 	type SandboxConfig,
 	type SpawnBackgroundTaskOptions,
+	type SpawnBackgroundTaskResult,
 	type ServiceProxyConfig,
 	type StreamableAgent,
 	WorkflowTaskCoordinator,
@@ -742,6 +743,13 @@ export class InstanceAiService {
 			user,
 			researchMode,
 		});
+
+		// Persist the user's time zone so checkpoint / replan / synthesize
+		// follow-up runs can reinject it into the planner and system prompt
+		// instead of falling back to GENERIC_TIMEZONE.
+		if (timeZone) {
+			this.runState.setTimeZone(threadId, timeZone);
+		}
 
 		if (pushRef !== undefined) {
 			this.threadPushRef.set(threadId, pushRef);
@@ -1539,6 +1547,12 @@ export class InstanceAiService {
 			messageGroupId,
 		});
 
+		// Resolve user time zone from the thread's run-state snapshot (captured on the
+		// initial user-facing run) before falling back to the instance default. Follow-up
+		// runs (checkpoint / replan / synthesize) used to drop this context, which made
+		// the planner emit "instance default timezone" for user-local schedules.
+		const timeZone = this.runState.getTimeZone(threadId) ?? this.defaultTimeZone;
+
 		void this.executeRun(
 			user,
 			threadId,
@@ -1548,7 +1562,7 @@ export class InstanceAiService {
 			researchMode,
 			undefined,
 			messageGroupId,
-			undefined,
+			timeZone,
 			isReplanFollowUp,
 			checkpoint,
 		);
@@ -1828,7 +1842,6 @@ export class InstanceAiService {
 				mcpServers,
 				memoryConfig,
 				memory,
-				workspace: orchestrationContext.workspace,
 				disableDeferredTools: true,
 				timeZone: timeZone ?? this.defaultTimeZone,
 			});
@@ -2485,8 +2498,8 @@ export class InstanceAiService {
 		opts: SpawnBackgroundTaskOptions,
 		snapshotStorage: DbSnapshotStorage,
 		messageGroupIdOverride?: string,
-	): void {
-		this.backgroundTasks.spawn({
+	): SpawnBackgroundTaskResult {
+		const outcome = this.backgroundTasks.spawn({
 			taskId: opts.taskId,
 			threadId: opts.threadId,
 			runId,
@@ -2496,6 +2509,7 @@ export class InstanceAiService {
 			plannedTaskId: opts.plannedTaskId,
 			workItemId: opts.workItemId,
 			traceContext: opts.traceContext,
+			dedupeKey: opts.dedupeKey,
 			run: opts.run,
 			onLimitReached: async (errorMessage) => {
 				await this.finalizeDetachedTraceRun(opts.taskId, opts.traceContext, {
@@ -2592,6 +2606,31 @@ export class InstanceAiService {
 				}
 			},
 		});
+
+		if (outcome.status === 'started') {
+			return { status: 'started', taskId: outcome.task.taskId, agentId: outcome.task.agentId };
+		}
+		if (outcome.status === 'duplicate') {
+			this.logger.warn('Background task dispatch deduped — task already in flight', {
+				threadId: opts.threadId,
+				requestedTaskId: opts.taskId,
+				existingTaskId: outcome.existing.taskId,
+				plannedTaskId: opts.dedupeKey?.plannedTaskId,
+				workflowId: opts.dedupeKey?.workflowId,
+				role: opts.role,
+			});
+			return {
+				status: 'duplicate',
+				existing: {
+					taskId: outcome.existing.taskId,
+					agentId: outcome.existing.agentId,
+					role: outcome.existing.role,
+					plannedTaskId: outcome.existing.plannedTaskId,
+					workItemId: outcome.existing.workItemId,
+				},
+			};
+		}
+		return { status: 'limit-reached' };
 	}
 
 	private async buildMessageWithRunningTasks(threadId: string, message: string): Promise<string> {

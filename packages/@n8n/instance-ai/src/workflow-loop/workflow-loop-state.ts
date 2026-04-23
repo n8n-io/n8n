@@ -65,6 +65,30 @@ export type AttemptRecord = z.infer<typeof attemptRecordSchema>;
 
 export const triggerTypeSchema = z.enum(['manual_or_testable', 'trigger_only']);
 
+/**
+ * Structured verification evidence the builder captures when it runs
+ * `verify-built-workflow`. Downstream checkpoint runs read this and skip
+ * running verify again when `success === true`.
+ */
+export const workflowVerificationEvidenceSchema = z.object({
+	attempted: z.boolean(),
+	success: z.boolean(),
+	executionId: z.string().optional(),
+	status: z.enum(['success', 'error', 'waiting', 'running', 'unknown']).optional(),
+	failureSignature: z.string().optional(),
+	evidence: z
+		.object({
+			nodesExecuted: z.array(z.string()).optional(),
+			producedOutputRows: z.number().optional(),
+			errorNodeName: z.string().optional(),
+			errorMessage: z.string().optional(),
+		})
+		.optional(),
+	verifiedAt: z.string().datetime().optional(),
+});
+
+export type WorkflowVerificationEvidence = z.infer<typeof workflowVerificationEvidenceSchema>;
+
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	taskId: z.string(),
@@ -84,6 +108,12 @@ export const workflowBuildOutcomeSchema = z.object({
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
+	/**
+	 * Structured verification record from the most recent `verify-built-workflow` call
+	 * that executed inside the builder. Checkpoints should treat a `success: true`
+	 * value here as sufficient evidence and skip re-running verify.
+	 */
+	verification: workflowVerificationEvidenceSchema.optional(),
 	summary: z.string(),
 });
 

@@ -65,6 +65,7 @@ ${NATIVE_NODE_PREFERENCE}
 
 ## Critical Rules
 
+- **User time zone is in context as \`<current-datetime>\` / \`<user-timezone>\`.** Schedule times, cron expressions, and digest times must be stated in the user's time zone. Never write "instance default timezone" or leave the zone ambiguous — spell it out (e.g. "daily at 08:00 America/New_York").
 - **Dependencies are mandatory.** Every workflow must list the data table IDs it reads from or writes to in \`dependsOn\`. If workflow C needs data from A and B, it must depend on both.
 - **No duplicate items.** Each piece of work appears exactly once. Use \`workflow\` kind for workflows, \`data-table\` kind for all data table operations (create, delete, modify, seed), \`research\` kind for web research. Use \`delegate\` only for tasks that don't fit the other kinds — never for data table operations.
 - **Data-table-only plans are valid.** When the request is purely about data tables (no triggers, schedules, or integrations), use only \`data-table\` items — don't wrap them in \`workflow\` or \`delegate\`. For creation, include \`columns\`; for other operations, omit \`columns\` and describe the operation in \`purpose\`. Include seed rows in \`purpose\` when the user wants sample data.
