@@ -140,14 +140,14 @@ describe('NodeCreator - utils', () => {
 		];
 
 		test('should return only one node', () => {
-			const result = filterAndSearchNodes(mergedNodes, 'sample', false);
+			const result = filterAndSearchNodes(mergedNodes, 'sample');
 
 			expect(result.length).toEqual(1);
 			expect(result[0].key).toEqual('n8n-nodes-preview-test.SampleNode');
 		});
 
 		test('should return two nodes', () => {
-			const result = filterAndSearchNodes(mergedNodes, 'node', false);
+			const result = filterAndSearchNodes(mergedNodes, 'node');
 
 			expect(result.length).toEqual(2);
 			expect(result[1].key).toEqual('n8n-nodes-preview-test.SampleNode');
@@ -155,12 +155,12 @@ describe('NodeCreator - utils', () => {
 		});
 
 		test('should return [] when in HITL subcategory', () => {
-			const result = filterAndSearchNodes(mergedNodes, 'node', false, true);
+			const result = filterAndSearchNodes(mergedNodes, 'node', { isHitlSubcategory: true });
 			expect(result).toEqual([]);
 		});
 
-		describe('AI Tools subcategory', () => {
-			const aiToolNodes: SimplifiedNodeType[] = [
+		describe('AI subcategory pickers', () => {
+			const aiNodes: SimplifiedNodeType[] = [
 				{
 					displayName: 'Instagram Tool',
 					defaults: { name: 'Instagram' },
@@ -185,24 +185,69 @@ describe('NodeCreator - utils', () => {
 					group: ['transform'],
 					outputs: [{ type: 'ai_tool' }],
 				},
+				{
+					displayName: 'Acme Language Model',
+					defaults: { name: 'AcmeLM' },
+					description: 'Community language model',
+					name: 'n8n-nodes-preview-acme.acmeLanguageModel',
+					group: ['transform'],
+					outputs: ['ai_languageModel'],
+				},
 			];
 
-			test('includes only AI Tool variants from community when in AI subcategory', () => {
-				const result = filterAndSearchNodes(aiToolNodes, 'instagram', true);
+			test('in the Tools picker surfaces only AiTool-output community nodes', () => {
+				const result = filterAndSearchNodes(aiNodes, 'instagram', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_tool',
+				});
 
 				expect(result).toHaveLength(1);
 				expect(result[0].key).toEqual('@mookielianhd/n8n-nodes-preview-instagram.instagramTool');
 			});
 
-			test('supports object-form outputs when filtering AI Tool variants', () => {
-				const result = filterAndSearchNodes(aiToolNodes, 'other', true);
+			test('supports object-form outputs when matching the picker connection type', () => {
+				const result = filterAndSearchNodes(aiNodes, 'other', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_tool',
+				});
 
 				expect(result).toHaveLength(1);
 				expect(result[0].key).toEqual('n8n-nodes-preview-other.otherTool');
 			});
 
+			test('in the Language Model picker surfaces only AiLanguageModel-output nodes', () => {
+				const result = filterAndSearchNodes(aiNodes, 'acme', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_languageModel',
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0].key).toEqual('n8n-nodes-preview-acme.acmeLanguageModel');
+			});
+
+			test('does not leak AiTool nodes into the Language Model picker', () => {
+				const result = filterAndSearchNodes(aiNodes, 'instagram', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_languageModel',
+				});
+
+				expect(result).toEqual([]);
+			});
+
+			test('returns [] when AI subcategory is active but the connection type is unknown', () => {
+				const result = filterAndSearchNodes(aiNodes, 'instagram', {
+					isAiSubcategory: true,
+				});
+
+				expect(result).toEqual([]);
+			});
+
 			test('returns [] when search is empty even in AI subcategory', () => {
-				const result = filterAndSearchNodes(aiToolNodes, '', true);
+				const result = filterAndSearchNodes(aiNodes, '', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_tool',
+				});
+
 				expect(result).toEqual([]);
 			});
 
@@ -218,10 +263,13 @@ describe('NodeCreator - utils', () => {
 						outputs:
 							'={{ $parameter["mode"] === "tool" ? ["ai_tool"] : ["main"] }}' as unknown as SimplifiedNodeType['outputs'],
 					},
-					...aiToolNodes,
+					...aiNodes,
 				];
 
-				const result = filterAndSearchNodes(nodesWithExpressionOutputs, 'dynamic', true);
+				const result = filterAndSearchNodes(nodesWithExpressionOutputs, 'dynamic', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_tool',
+				});
 
 				expect(result).toEqual([]);
 			});

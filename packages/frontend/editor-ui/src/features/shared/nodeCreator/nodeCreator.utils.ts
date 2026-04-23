@@ -41,7 +41,7 @@ import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
-import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
@@ -319,34 +319,51 @@ export function finalizeItems(items: INodeCreateElement[]): INodeCreateElement[]
 		.map(applyNodeTags);
 }
 
-const hasAiToolOutput = (node: SimplifiedNodeType): boolean => {
+const hasMatchingOutput = (
+	node: SimplifiedNodeType,
+	connectionType: NodeConnectionType,
+): boolean => {
 	const outputs = node.outputs;
 	if (!Array.isArray(outputs)) return false;
 	return outputs.some((output: NodeConnectionType | INodeOutputConfiguration) =>
-		typeof output === 'string'
-			? output === NodeConnectionTypes.AiTool
-			: output?.type === NodeConnectionTypes.AiTool,
+		typeof output === 'string' ? output === connectionType : output?.type === connectionType,
 	);
 };
 
 export const filterAndSearchNodes = (
 	mergedNodes: SimplifiedNodeType[],
 	search: string,
-	isAiSubcategory: boolean,
-	isHitlSubcategory: boolean = false,
+	options: {
+		isAiSubcategory?: boolean;
+		isHitlSubcategory?: boolean;
+		aiConnectionType?: NodeConnectionType;
+	} = {},
 ) => {
-	// HITL surfacing from community nodes is not supported yet
-	if (!search || isHitlSubcategory) return [];
+	if (!search) return [];
 
-	// In the AI Tools picker (AI Others root view) restrict community candidates
-	// to their tool variants so we don't surface unrelated community nodes there.
-	const candidates = isAiSubcategory ? mergedNodes.filter(hasAiToolOutput) : mergedNodes;
+	const { isAiSubcategory = false, isHitlSubcategory = false, aiConnectionType } = options;
 
-	const vettedNodes = candidates.map((item) => transformNodeType(item)) as NodeCreateElement[];
+	// HITL surfacing from community nodes is not supported yet — see
+	// CommunityNodeTypesService.createAiTools which only generates `...Tool`
+	// variants, never `...HitlTool` variants.
+	if (isHitlSubcategory) return [];
 
-	const searchResult: INodeCreateElement[] = finalizeItems(searchNodes(search || '', vettedNodes));
+	// AI sub-pickers (Tools, Language Model, Memory, Vector Store, …) all share
+	// rootView === AI_OTHERS_NODE_CREATOR_VIEW but target different connection
+	// types. Only surface community results when we know which connection type
+	// the picker is scoped to, and only for nodes whose outputs match it. This
+	// is what fixes NODE-3183 (Tools picker) without leaking tool nodes into
+	// the Language Model / Memory / … pickers.
+	if (isAiSubcategory) {
+		if (!aiConnectionType) return [];
+		const candidates = mergedNodes.filter((node) => hasMatchingOutput(node, aiConnectionType));
+		const vettedNodes = candidates.map((item) => transformNodeType(item)) as NodeCreateElement[];
+		return finalizeItems(searchNodes(search, vettedNodes));
+	}
 
-	return searchResult;
+	const vettedNodes = mergedNodes.map((item) => transformNodeType(item)) as NodeCreateElement[];
+
+	return finalizeItems(searchNodes(search, vettedNodes));
 };
 
 export function prepareCommunityNodeDetailsViewStack(
