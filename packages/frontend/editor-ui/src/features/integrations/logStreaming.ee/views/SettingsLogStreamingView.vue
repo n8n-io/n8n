@@ -21,7 +21,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip } from '@n8n/design-system';
+import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip, N8nNotice } from '@n8n/design-system';
 const environment = process.env.NODE_ENV;
 
 const settingsStore = useSettingsStore();
@@ -200,11 +200,12 @@ async function onEdit(destinationId?: string) {
 					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
 				</N8nInfoTip>
 			</div>
-			<div v-if="isManagedByEnv" class="mb-l" data-test-id="log-streaming-managed-by-env">
-				<N8nInfoTip theme="info" type="note">
-					{{ i18n.baseText('settings.log-streaming.managedByEnv') }}
-				</N8nInfoTip>
-			</div>
+			<N8nNotice
+				v-if="isManagedByEnv"
+				class="mb-l"
+				:content="i18n.baseText('settings.log-streaming.managedByEnv')"
+				data-test-id="log-streaming-managed-by-env"
+			/>
 			<template v-if="storeHasItems()">
 				<ElRow
 					v-for="item in sortedItemKeysByLabel"
