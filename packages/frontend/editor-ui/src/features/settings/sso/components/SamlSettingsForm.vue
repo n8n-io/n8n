@@ -37,6 +37,8 @@ async function handleCopy(value: string, field: string) {
 	}
 }
 
+const isSsoManagedByEnv = computed(() => ssoStore.ssoManagedByEnv);
+
 const savingForm = ref<boolean>(false);
 const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
 
@@ -312,7 +314,7 @@ const validateSamlInput = () => {
 	}
 };
 
-const hasUnsavedChanges = computed(() => isSaveEnabled.value);
+const hasUnsavedChanges = computed(() => isSaveEnabled.value && !isSsoManagedByEnv.value);
 
 defineExpose({ hasUnsavedChanges, onSave });
 
@@ -372,12 +374,17 @@ onMounted(async () => {
 						<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
+						<N8nRadioButtons
+							v-model="ipsType"
+							:disabled="isSsoManagedByEnv"
+							:options="ipsOptions"
+						/>
 					</div>
 				</div>
 				<div v-if="ipsType === IdentityProviderSettingsType.URL">
 					<N8nInput
 						v-model="metadataUrl"
+						:disabled="isSsoManagedByEnv"
 						type="text"
 						name="metadataUrl"
 						size="large"
@@ -389,6 +396,7 @@ onMounted(async () => {
 				<div v-if="ipsType === IdentityProviderSettingsType.XML">
 					<N8nInput
 						v-model="metadata"
+						:disabled="isSsoManagedByEnv"
 						type="textarea"
 						name="metadata"
 						:rows="4"
@@ -404,6 +412,7 @@ onMounted(async () => {
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
 				v-model:legacy-value="userRoleProvisioning"
+				:disabled="isSsoManagedByEnv"
 				auth-protocol="saml"
 			/>
 			<RoleMappingRuleEditor
@@ -435,6 +444,7 @@ onMounted(async () => {
 					<N8nSelect
 						:model-value="samlLoginEnabled ? 'enabled' : 'disabled'"
 						size="medium"
+						:disabled="isSsoManagedByEnv"
 						data-test-id="sso-toggle"
 						@update:model-value="samlLoginEnabled = $event === 'enabled'"
 					>
@@ -456,6 +466,7 @@ onMounted(async () => {
 
 		<div :class="$style.buttons">
 			<N8nButton
+				v-if="!isSsoManagedByEnv"
 				:disabled="!isSaveEnabled"
 				:loading="savingForm"
 				size="large"

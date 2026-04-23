@@ -33,11 +33,9 @@ const logsStore = useLogsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
-const workflowName = computed(() => workflowDocumentStore.value?.name ?? '');
+const workflowName = computed(() => workflowDocumentStore.value.name);
 
 const {
 	height,

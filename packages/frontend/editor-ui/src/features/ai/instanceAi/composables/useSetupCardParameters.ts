@@ -69,10 +69,6 @@ export function useSetupCardParameters(
 		return getCardParameters(card).filter((p) => !isNestedParam(p));
 	}
 
-	function getCardNestedParameterCount(card: SetupCard): number {
-		return getCardParameters(card).filter(isNestedParam).length;
-	}
-
 	/** Set a parameter value. */
 	function setParamValue(nodeName: string, paramName: string, value: unknown): void {
 		if (!paramValues.value[nodeName]) {
@@ -94,6 +90,19 @@ export function useSetupCardParameters(
 		const canvasNode = workflowsStore.getNodeByName(nodeName);
 		if (canvasNode) {
 			canvasNode.parameters = { ...canvasNode.parameters, [paramName]: parameterData.value };
+		}
+
+		// 3. `workflowsStore.workflowObject` holds a deep copy of the nodes (see
+		// `createWorkflowObject(..., copyData=true)` in `workflows.store.ts`), and
+		// `ParameterInput` reads its node through that copy via
+		// `expressionLocalResolveCtx.workflow.getNode()`. Without syncing, the
+		// per-input issue indicator would keep checking stale parameters.
+		const workflowObjectNode = workflowsStore.workflowObject.getNode(nodeName);
+		if (workflowObjectNode) {
+			workflowObjectNode.parameters = {
+				...workflowObjectNode.parameters,
+				[paramName]: parameterData.value,
+			};
 		}
 	}
 
@@ -136,7 +145,6 @@ export function useSetupCardParameters(
 		paramValues,
 		getCardParameters,
 		getCardSimpleParameters,
-		getCardNestedParameterCount,
 		setParamValue,
 		onParameterValueChanged,
 		buildNodeParameters,

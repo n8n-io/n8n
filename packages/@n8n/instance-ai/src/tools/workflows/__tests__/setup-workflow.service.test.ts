@@ -539,7 +539,7 @@ describe('analyzeWorkflow', () => {
 		expect(result[0].credentialType).toBe('slackApi');
 	});
 
-	it('marks needsAction correctly after credentials are applied', async () => {
+	it('hides credential-only requests whose credential is already set and tests OK', async () => {
 		const node = makeNode({
 			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
 		});
@@ -557,8 +557,89 @@ describe('analyzeWorkflow', () => {
 
 		const result = await analyzeWorkflow(context, 'wf-1');
 
+		expect(result).toHaveLength(0);
+	});
+
+	it('keeps credential-only requests whose credential test fails', async () => {
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			makeWorkflowJSON([node]),
+		);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as jest.Mock).mockResolvedValue({
+			success: false,
+			message: 'Invalid token',
+		});
+
+		const result = await analyzeWorkflow(context, 'wf-1');
+
 		expect(result).toHaveLength(1);
+		expect(result[0].needsAction).toBe(true);
+	});
+
+	it('keeps testable trigger requests even when their credential is already valid', async () => {
+		const trigger = makeNode({
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			id: 'n-trigger',
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Auth' } },
+		});
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			makeWorkflowJSON([trigger]),
+		);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: ['trigger'],
+			credentials: [{ name: 'httpHeaderAuth' }],
+			webhooks: [{}],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Auth', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as jest.Mock).mockResolvedValue({ success: true });
+
+		const result = await analyzeWorkflow(context, 'wf-1');
+
+		expect(result).toHaveLength(1);
+		expect(result[0].isTrigger).toBe(true);
+		expect(result[0].isTestable).toBe(true);
 		expect(result[0].needsAction).toBe(false);
+	});
+
+	it('keeps requests with parameter issues regardless of credential validity', async () => {
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			makeWorkflowJSON([node]),
+		);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+			properties: [{ name: 'resource', displayName: 'Resource', type: 'string' }],
+		});
+		(context.nodeService as unknown as Record<string, unknown>).getParameterIssues = jest
+			.fn()
+			.mockResolvedValue({
+				resource: ['Parameter "resource" is required'],
+			});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as jest.Mock).mockResolvedValue({ success: true });
+
+		const result = await analyzeWorkflow(context, 'wf-1');
+
+		expect(result).toHaveLength(1);
+		expect(result[0].needsAction).toBe(true);
+		expect(result[0].parameterIssues).toBeDefined();
 	});
 
 	it('sorts by execution order with triggers first', async () => {
@@ -730,6 +811,42 @@ describe('applyNodeChanges', () => {
 		const savedNode = savedJson.nodes.find((n) => n.name === 'HTTP Request');
 		expect(savedNode?.credentials).toEqual({
 			httpHeaderAuth: { id: 'cred-1', name: 'My Header Auth' },
+		});
+	});
+
+	it('persists merged parameter values into the saved workflow JSON', async () => {
+		// Regression: the FE was sending `nodeParameters` correctly on apply but
+		// the saved workflow still had the original (empty) parameter value.
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			parameters: { method: 'GET', url: '', authentication: 'none' },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+		(context.workflowService.updateFromWorkflowJSON as jest.Mock).mockResolvedValue(undefined);
+
+		const result = await applyNodeChanges(context, 'wf-1', undefined, {
+			'HTTP Request': { url: 'https://example.com/api' },
+		});
+
+		expect(result.applied).toContain('HTTP Request');
+		expect(result.failed).toHaveLength(0);
+
+		const calls = (context.workflowService.updateFromWorkflowJSON as jest.Mock).mock.calls as Array<
+			[string, WorkflowJSON]
+		>;
+		expect(calls).toHaveLength(1);
+		const savedNode = calls[0][1].nodes.find((n) => n.name === 'HTTP Request');
+		expect(savedNode?.parameters).toEqual({
+			method: 'GET',
+			url: 'https://example.com/api',
+			authentication: 'none',
 		});
 	});
 

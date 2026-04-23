@@ -52,11 +52,11 @@ export function useTypescript(
 				allNodeNames: autocompletableNodeNames(toValue(targetNodeParameterContext)),
 				variables: useEnvironmentsStore().scopedVariables.map((v) => v.key),
 				inputNodeNames: activeNodeName
-					? workflowsStore.workflowObject.getParentNodes(
+					? (workflowDocumentStore?.value?.getParentNodes(
 							activeNodeName,
 							NodeConnectionTypes.Main,
 							1,
-						)
+						) ?? [])
 					: [],
 				mode: toValue(mode),
 				binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,

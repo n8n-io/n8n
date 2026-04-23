@@ -18,6 +18,7 @@ export const WorkflowTechnique = {
 	NOTIFICATION: 'notification',
 	KNOWLEDGE_BASE: 'knowledge_base',
 	HUMAN_IN_THE_LOOP: 'human_in_the_loop',
+	WEB_APP: 'web_app',
 } as const;
 
 export type WorkflowTechniqueType = (typeof WorkflowTechnique)[keyof typeof WorkflowTechnique];
@@ -50,6 +51,8 @@ export const TechniqueDescription: Record<WorkflowTechniqueType, string> = {
 	[WorkflowTechnique.KNOWLEDGE_BASE]:
 		'Building or using a centralized information collection (usually vector database for LLM use)',
 	[WorkflowTechnique.HUMAN_IN_THE_LOOP]: 'Pausing for human decision/input before resuming',
+	[WorkflowTechnique.WEB_APP]:
+		'Serving a single-page application (HTML + JS) from a webhook — dashboards, admin UIs, forms that need custom rendering',
 };
 
 /**

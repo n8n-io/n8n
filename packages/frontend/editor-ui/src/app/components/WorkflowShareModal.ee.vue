@@ -58,24 +58,21 @@ const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 
 const workflowDocumentStore = computed(() =>
-	data.id ? useWorkflowDocumentStore(createWorkflowDocumentId(data.id)) : undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(data.id)),
 );
 const workflowListEntry = computed(() => workflowsListStore.workflowsById[data.id]);
 const workflowId = computed(() => data.id);
 const workflowName = computed(
-	() => workflowListEntry.value?.name ?? workflowDocumentStore.value?.name ?? '',
+	() => workflowListEntry.value?.name ?? workflowDocumentStore.value.name,
 );
 const workflowHomeProject = computed(
 	() =>
 		workflowListEntry.value?.homeProject ??
-		workflowDocumentStore.value?.homeProject ??
+		workflowDocumentStore.value.homeProject ??
 		workflowsStore.workflow.homeProject,
 );
 const workflowScopes = computed(
-	() =>
-		workflowListEntry.value?.scopes ??
-		workflowDocumentStore.value?.scopes ??
-		workflowsStore.workflow.scopes,
+	() => workflowListEntry.value?.scopes ?? workflowDocumentStore.value.scopes,
 );
 const workflowSharedWithProjects = computed(
 	() =>

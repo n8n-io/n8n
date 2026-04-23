@@ -118,14 +118,16 @@ describe('useWorkflowImport', () => {
 		);
 	});
 
-	it('should use "demo" id on demo routes', async () => {
+	it('should pass through workflow id as-is on demo routes', async () => {
 		mockRoute.name = VIEWS.DEMO;
 
 		const storeRef = shallowRef(null);
 		const { importWorkflowExact } = useWorkflowImport(storeRef);
 
-		await importWorkflowExact({ workflow: createWorkflowData({ id: 'ignored-id' }) });
+		await importWorkflowExact({ workflow: createWorkflowData({ id: 'real-workflow-id' }) });
 
-		expect(mockInitializeWorkspace).toHaveBeenCalledWith(expect.objectContaining({ id: 'demo' }));
+		expect(mockInitializeWorkspace).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'real-workflow-id' }),
+		);
 	});
 });

@@ -141,6 +141,7 @@ const props = withDefaults(
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		canExecute?: boolean;
 		executing?: boolean;
 		keyBindings?: boolean;
 		loading?: boolean;
@@ -155,6 +156,7 @@ const props = withDefaults(
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
+		canExecute: false,
 		executing: false,
 		keyBindings: true,
 		loading: false,
@@ -359,6 +361,9 @@ const keyMap = computed(() => {
 		z: onToggleZoomMode,
 	};
 
+	if (props.readOnly && props.canExecute) {
+		return { ...readOnlyKeymap, ctrl_enter: () => emit('run:workflow') };
+	}
 	if (props.readOnly) return readOnlyKeymap;
 
 	const fullKeymap: KeyMap = {
@@ -1123,6 +1128,7 @@ defineExpose({
 					v-bind="nodeProps"
 					:data="nodeDataById[nodeProps.id]"
 					:read-only="readOnly"
+					:can-execute="canExecute"
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"

@@ -42,6 +42,23 @@ export class KeyManagerService {
 		return { id: key.id, value: key.value, algorithm: key.algorithm! };
 	}
 
+	/**
+	 * Seeds the legacy aes-256-cbc key as active if no active encryption key exists.
+	 * Race-safe across concurrent mains: the DB's partial unique index serializes
+	 * insert attempts, and losers are silently ignored.
+	 */
+	async bootstrapLegacyKey(value: string): Promise<void> {
+		const existing = await this.deploymentKeyRepository.findActiveByType('data_encryption');
+		if (existing) return;
+
+		await this.deploymentKeyRepository.insertOrIgnore({
+			type: 'data_encryption',
+			value,
+			status: 'active',
+			algorithm: 'aes-256-cbc',
+		});
+	}
+
 	/** Inserts a new encryption key. If setAsActive, atomically deactivates the current key first. */
 	async addKey(value: string, algorithm: string, setAsActive = false): Promise<{ id: string }> {
 		if (!setAsActive) {
