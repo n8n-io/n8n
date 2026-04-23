@@ -374,15 +374,6 @@ describe('useWorkflowCommands', () => {
 	});
 
 	describe('import commands', () => {
-		it('should handle import from URL', async () => {
-			const { commands } = useWorkflowCommands();
-			const importCommand = commands.value.find((cmd) => cmd.id === 'import-workflow-from-url');
-
-			await importCommand?.handler?.();
-
-			expect(mockUIStore.openModal).toHaveBeenCalledWith('importWorkflowUrl');
-		});
-
 		it('should handle import from file', async () => {
 			const { commands } = useWorkflowCommands();
 			const importCommand = commands.value.find((cmd) => cmd.id === 'import-workflow-from-file');

@@ -603,42 +603,6 @@ describe('GET /workflows/new', () => {
 	});
 });
 
-describe('GET /workflows/from-url', () => {
-	test('should return 403 when user does not have workflow:create permission in the project', async () => {
-		const teamProject = await createTeamProject();
-		await linkUserToProject(member, teamProject, 'project:viewer');
-
-		const response = await authMemberAgent
-			.get('/workflows/from-url')
-			.query({
-				url: 'https://example.com/workflow.json',
-				projectId: teamProject.id,
-			})
-			.expect(403);
-
-		expect(response.body).toMatchObject({
-			message: "You don't have the permissions to create a workflow in this project.",
-		});
-	});
-
-	test('should return 403 when user is not part of the project', async () => {
-		const teamProject = await createTeamProject();
-		await linkUserToProject(anotherMember, teamProject, 'project:admin');
-
-		const response = await authMemberAgent
-			.get('/workflows/from-url')
-			.query({
-				url: 'https://example.com/workflow.json',
-				projectId: teamProject.id,
-			})
-			.expect(403);
-
-		expect(response.body).toMatchObject({
-			message: "You don't have the permissions to create a workflow in this project.",
-		});
-	});
-});
-
 describe('GET /workflows/:workflowId', () => {
 	test('should fail with invalid id due to route rule', async () => {
 		const response = await authOwnerAgent.get('/workflows/potatoes');

@@ -4,7 +4,6 @@ import {
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
-	ImportWorkflowFromUrlDto,
 	ROLE,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
@@ -29,13 +28,12 @@ import {
 	Post,
 	ProjectScope,
 	Put,
-	Query,
 	RestController,
 } from '@n8n/decorators';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
-import axios from 'axios';
+
 import express from 'express';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { CollaborationService } from '../collaboration/collaboration.service';
@@ -52,7 +50,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
-import type { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -160,44 +157,6 @@ export class WorkflowsController {
 
 		const name = await this.namingService.getUniqueWorkflowName(requestedName);
 		return { name };
-	}
-
-	@Get('/from-url')
-	async getFromUrl(
-		req: AuthenticatedRequest,
-		_res: express.Response,
-		@Query query: ImportWorkflowFromUrlDto,
-	) {
-		const projectId = query.projectId;
-		if (
-			!(await this.projectService.getProjectWithScope(req.user, projectId, ['workflow:create']))
-		) {
-			throw new ForbiddenError(
-				"You don't have the permissions to create a workflow in this project.",
-			);
-		}
-		let workflowData: IWorkflowResponse | undefined;
-		try {
-			const { data } = await axios.get<IWorkflowResponse>(query.url);
-			workflowData = data;
-		} catch (error) {
-			throw new BadRequestError('The URL does not point to valid JSON file!');
-		}
-
-		// Do a very basic check if it is really a n8n-workflow-json
-		if (
-			workflowData?.nodes === undefined ||
-			!Array.isArray(workflowData.nodes) ||
-			workflowData.connections === undefined ||
-			typeof workflowData.connections !== 'object' ||
-			Array.isArray(workflowData.connections)
-		) {
-			throw new BadRequestError(
-				'The data in the file does not seem to be a n8n workflow JSON file!',
-			);
-		}
-
-		return workflowData;
 	}
 
 	@Get('/:workflowId')

@@ -254,30 +254,8 @@ export class CanvasPage extends BasePage {
 		await this.page.getByTestId('inline-edit-input').press('Enter');
 	}
 
-	// Import workflow locators
-	getImportURLInput(): Locator {
-		return this.page.getByTestId('workflow-url-import-input');
-	}
-
-	// Import workflow actions
 	async clickWorkflowMenu(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
-	}
-
-	async clickImportFromURL(): Promise<void> {
-		await this.clickByTestId('workflow-menu-item-import-from-url');
-	}
-
-	async fillImportURLInput(url: string): Promise<void> {
-		await this.getImportURLInput().fill(url);
-	}
-
-	async clickConfirmImportURL(): Promise<void> {
-		await this.clickByTestId('confirm-workflow-import-url-button');
-	}
-
-	async clickCancelImportURL(): Promise<void> {
-		await this.clickByTestId('cancel-workflow-import-url-button');
 	}
 
 	async clickOutsideModal(): Promise<void> {

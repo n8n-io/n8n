@@ -274,7 +274,6 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
 		});
 
@@ -292,7 +291,6 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
 		});
 
@@ -308,7 +306,6 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(getByTestId('workflow-menu-item-duplicate')).toBeInTheDocument();
-			expect(getByTestId('workflow-menu-item-import-from-url')).toBeInTheDocument();
 			expect(getByTestId('workflow-menu-item-import-from-file')).toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-share')).toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
@@ -485,7 +482,6 @@ describe('WorkflowDetails', () => {
 
 			await userEvent.click(getByTestId('workflow-menu'));
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
 		});
 
