@@ -71,7 +71,7 @@ export class ExportService {
 				.join('\n');
 			await appendFile(
 				filePath,
-				this.cipher.encrypt(migrationsJsonl ?? '' + '\n', customEncryptionKey),
+				this.cipher.encrypt(migrationsJsonl, customEncryptionKey) + '\n',
 				'utf8',
 			);
 
@@ -140,6 +140,18 @@ export class ExportService {
 			if (excludedTables.has(tableName)) {
 				this.logger.info(
 					`   💭 Skipping table: ${tableName} (${metadata.name}) as it exists as an exclusion`,
+				);
+				continue;
+			}
+
+			// Check if table exists
+			try {
+				await this.dataSource.query(
+					`SELECT 1 FROM ${this.dataSource.driver.escape(tableName)} LIMIT 1`,
+				);
+			} catch (error) {
+				this.logger.info(
+					`   ⚠️  Skipping table: ${tableName} (${metadata.name}) as it does not exist or is not accessible`,
 				);
 				continue;
 			}
