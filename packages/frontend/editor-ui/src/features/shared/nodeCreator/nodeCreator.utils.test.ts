@@ -153,6 +153,59 @@ describe('NodeCreator - utils', () => {
 			expect(result[1].key).toEqual('n8n-nodes-preview-test.SampleNode');
 			expect(result[0].key).toEqual('n8n-nodes-preview-test.OtherNode');
 		});
+
+		test('should return [] when in HITL subcategory', () => {
+			const result = filterAndSearchNodes(mergedNodes, 'node', false, true);
+			expect(result).toEqual([]);
+		});
+
+		describe('AI Tools subcategory', () => {
+			const aiToolNodes: SimplifiedNodeType[] = [
+				{
+					displayName: 'Instagram Tool',
+					defaults: { name: 'Instagram' },
+					description: 'Instagram as tool',
+					name: '@mookielianhd/n8n-nodes-preview-instagram.instagramTool',
+					group: ['transform'],
+					outputs: ['ai_tool'],
+				},
+				{
+					displayName: 'Instagram',
+					defaults: { name: 'Instagram' },
+					description: 'Instagram node',
+					name: '@mookielianhd/n8n-nodes-preview-instagram.instagram',
+					group: ['transform'],
+					outputs: ['main'],
+				},
+				{
+					displayName: 'Other Tool',
+					defaults: { name: 'OtherTool' },
+					description: 'Other tool',
+					name: 'n8n-nodes-preview-other.otherTool',
+					group: ['transform'],
+					outputs: [{ type: 'ai_tool' }],
+				},
+			];
+
+			test('includes only AI Tool variants from community when in AI subcategory', () => {
+				const result = filterAndSearchNodes(aiToolNodes, 'instagram', true);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].key).toEqual('@mookielianhd/n8n-nodes-preview-instagram.instagramTool');
+			});
+
+			test('supports object-form outputs when filtering AI Tool variants', () => {
+				const result = filterAndSearchNodes(aiToolNodes, 'other', true);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].key).toEqual('n8n-nodes-preview-other.otherTool');
+			});
+
+			test('returns [] when search is empty even in AI subcategory', () => {
+				const result = filterAndSearchNodes(aiToolNodes, '', true);
+				expect(result).toEqual([]);
+			});
+		});
 	});
 	describe('prepareCommunityNodeDetailsViewStack', () => {
 		beforeEach(() => {

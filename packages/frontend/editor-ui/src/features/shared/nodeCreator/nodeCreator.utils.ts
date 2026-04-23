@@ -40,7 +40,8 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
@@ -318,14 +319,30 @@ export function finalizeItems(items: INodeCreateElement[]): INodeCreateElement[]
 		.map(applyNodeTags);
 }
 
+const hasAiToolOutput = (node: SimplifiedNodeType): boolean => {
+	const outputs = node.outputs;
+	if (!Array.isArray(outputs)) return false;
+	return outputs.some((output: NodeConnectionType | INodeOutputConfiguration) =>
+		typeof output === 'string'
+			? output === NodeConnectionTypes.AiTool
+			: output?.type === NodeConnectionTypes.AiTool,
+	);
+};
+
 export const filterAndSearchNodes = (
 	mergedNodes: SimplifiedNodeType[],
 	search: string,
-	isAgentSubcategory: boolean,
+	isAiSubcategory: boolean,
+	isHitlSubcategory: boolean = false,
 ) => {
-	if (!search || isAgentSubcategory) return [];
+	// HITL surfacing from community nodes is not supported yet
+	if (!search || isHitlSubcategory) return [];
 
-	const vettedNodes = mergedNodes.map((item) => transformNodeType(item)) as NodeCreateElement[];
+	// In the AI Tools picker (AI Others root view) restrict community candidates
+	// to their tool variants so we don't surface unrelated community nodes there.
+	const candidates = isAiSubcategory ? mergedNodes.filter(hasAiToolOutput) : mergedNodes;
+
+	const vettedNodes = candidates.map((item) => transformNodeType(item)) as NodeCreateElement[];
 
 	const searchResult: INodeCreateElement[] = finalizeItems(searchNodes(search || '', vettedNodes));
 

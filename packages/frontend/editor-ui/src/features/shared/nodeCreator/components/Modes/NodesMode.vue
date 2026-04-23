@@ -76,7 +76,8 @@ const moreFromCommunity = computed(() => {
 	return filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
 		activeViewStack.value.search ?? '',
-		isAiSubcategoryView(activeViewStack.value) || isHitlSubcategoryView(activeViewStack.value),
+		isAiSubcategoryView(activeViewStack.value),
+		isHitlSubcategoryView(activeViewStack.value),
 	);
 });
 
