@@ -56,6 +56,7 @@ const i18n = useI18n();
 						icon="settings"
 						variant="ghost"
 						text
+						:aria-label="i18n.baseText('agents.tools.configure')"
 						:data-test-id="configureTestId"
 						@click="$emit('configure')"
 					/>

@@ -12,6 +12,20 @@ import AgentToolsModal from '../components/AgentToolsModal.vue';
 import type { AgentJsonToolRef } from '../types';
 import type { IWorkflowDb } from '@/Interface';
 
+const showErrorMock = vi.fn();
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: showErrorMock,
+		showMessage: vi.fn(),
+		showToast: vi.fn(),
+	}),
+}));
+
+const getWorkflowMock = vi.fn();
+vi.mock('@/app/api/workflows', () => ({
+	getWorkflow: (...args: unknown[]) => getWorkflowMock(...args),
+}));
+
 vi.mock('virtual:node-popularity-data', () => ({
 	default: [
 		{ id: 'n8n-nodes-base.slack', popularity: 100 },
@@ -189,12 +203,17 @@ describe('AgentToolsModal', () => {
 		};
 
 		workflowsListStore.fetchAllWorkflows = vi.fn().mockResolvedValue([]);
+		// Default: no workflows returned from the fetch. Tests opt in by calling
+		// `seedWorkflows(...)`, which sets `searchWorkflows`'s return value
+		// (the modal's local workflow catalog is populated from this result —
+		// it no longer reads from the global `workflowsListStore` cache).
 		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([]);
-		// Default: no workflows in the list. Tests opt in by overriding `allWorkflows`.
-		Object.defineProperty(workflowsListStore, 'allWorkflows', {
-			value: [],
-			configurable: true,
-		});
+
+		// Default: `getWorkflow` returns a node-free workflow, which is
+		// compatible — tests that need incompatibility override this.
+		getWorkflowMock.mockReset();
+		getWorkflowMock.mockResolvedValue({ id: 'wf-1', name: 'Daily sales digest', nodes: [] });
+		showErrorMock.mockReset();
 
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
@@ -202,10 +221,7 @@ describe('AgentToolsModal', () => {
 	});
 
 	function seedWorkflows(workflows: IWorkflowDb[]) {
-		Object.defineProperty(workflowsListStore, 'allWorkflows', {
-			value: workflows,
-			configurable: true,
-		});
+		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue(workflows);
 	}
 
 	function defaultProps(tools: AgentJsonToolRef[] = [], onConfirm = vi.fn()) {
@@ -429,7 +445,7 @@ describe('AgentToolsModal', () => {
 			});
 		});
 
-		it('renders a Workflows section with non-archived available workflows', () => {
+		it('renders a Workflows section with non-archived available workflows', async () => {
 			seedWorkflows([
 				makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' }),
 				makeWorkflow({ id: 'wf-archived', name: 'Old archived', isArchived: true }),
@@ -442,7 +458,7 @@ describe('AgentToolsModal', () => {
 				},
 			});
 
-			const list = getByTestId('agent-tools-available-workflows-list');
+			const list = await waitFor(() => getByTestId('agent-tools-available-workflows-list'));
 			const rows = getAllByTestId('agent-tools-available-workflow-row');
 			expect(rows).toHaveLength(1);
 			expect(list.textContent).toContain('Daily sales digest');
@@ -450,7 +466,7 @@ describe('AgentToolsModal', () => {
 			expect(queryByText('Old archived')).toBeNull();
 		});
 
-		it('keeps already-connected workflows listed under Available (duplicates allowed)', () => {
+		it('keeps already-connected workflows listed under Available (duplicates allowed)', async () => {
 			seedWorkflows([makeWorkflow({ id: 'wf-1', name: 'Daily digest' })]);
 			const existing: AgentJsonToolRef = {
 				type: 'workflow',
@@ -467,16 +483,16 @@ describe('AgentToolsModal', () => {
 
 			// Users can add the same workflow twice with different descriptions or
 			// input schemas — the config modal enforces tool-name uniqueness.
-			expect(getByTestId('agent-tools-available-workflows-list')).toBeTruthy();
-			expect(getByTestId('agent-tools-available-workflows-list').textContent).toContain(
-				'Daily digest',
-			);
+			const list = await waitFor(() => getByTestId('agent-tools-available-workflows-list'));
+			expect(list.textContent).toContain('Daily digest');
 		});
 
 		it('opens the config modal with a workflow ref when Connect is clicked on a workflow row', async () => {
 			seedWorkflows([
 				makeWorkflow({ id: 'wf-1', name: 'Daily sales digest', description: 'Summary' }),
 			]);
+			// Workflow has no incompatible body nodes — Connect should open config.
+			getWorkflowMock.mockResolvedValueOnce({ id: 'wf-1', name: 'Daily sales digest', nodes: [] });
 
 			const { getByTestId } = renderComponent({
 				props: {
@@ -485,10 +501,12 @@ describe('AgentToolsModal', () => {
 				},
 			});
 
-			const row = getByTestId('agent-tools-available-workflow-row');
+			const row = await waitFor(() => getByTestId('agent-tools-available-workflow-row'));
 			await fireEvent.click(row.querySelector('button')!);
 
-			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			await waitFor(() => {
+				expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			});
 			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
 			expect(payload.name).toBe('agentToolConfigModal');
 			expect(payload.data.toolRef).toMatchObject({
@@ -498,6 +516,55 @@ describe('AgentToolsModal', () => {
 				description: 'Summary',
 				allOutputs: false,
 			});
+			expect(showErrorMock).not.toHaveBeenCalled();
+		});
+
+		it('blocks Connect and shows an error toast when the workflow contains incompatible body nodes', async () => {
+			seedWorkflows([makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' })]);
+			getWorkflowMock.mockResolvedValueOnce({
+				id: 'wf-1',
+				name: 'Daily sales digest',
+				nodes: [
+					{ name: 'Wait a bit', type: 'n8n-nodes-base.wait' },
+					{ name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+				],
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [], projectId: 'p-42', onConfirm: vi.fn() },
+				},
+			});
+
+			const row = await waitFor(() => getByTestId('agent-tools-available-workflow-row'));
+			await fireEvent.click(row.querySelector('button')!);
+
+			await waitFor(() => {
+				expect(showErrorMock).toHaveBeenCalledTimes(1);
+			});
+			// The config modal must NOT open for an incompatible workflow.
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
+		it('shows an error toast when the compatibility pre-check fetch fails', async () => {
+			seedWorkflows([makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' })]);
+			getWorkflowMock.mockRejectedValueOnce(new Error('network down'));
+
+			const { getByTestId } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [], projectId: 'p-42', onConfirm: vi.fn() },
+				},
+			});
+
+			const row = await waitFor(() => getByTestId('agent-tools-available-workflow-row'));
+			await fireEvent.click(row.querySelector('button')!);
+
+			await waitFor(() => {
+				expect(showErrorMock).toHaveBeenCalledTimes(1);
+			});
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 		});
 
 		it('renders connected workflow tools in the Connected section', () => {
@@ -548,6 +615,7 @@ describe('AgentToolsModal', () => {
 
 		it('appends the configured workflow ref to workingTools on save', async () => {
 			seedWorkflows([makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' })]);
+			getWorkflowMock.mockResolvedValueOnce({ id: 'wf-1', name: 'Daily sales digest', nodes: [] });
 			const onConfirm = vi.fn();
 
 			const { getByTestId } = renderComponent({
@@ -557,9 +625,12 @@ describe('AgentToolsModal', () => {
 				},
 			});
 
-			const row = getByTestId('agent-tools-available-workflow-row');
+			const row = await waitFor(() => getByTestId('agent-tools-available-workflow-row'));
 			await fireEvent.click(row.querySelector('button')!);
 
+			await waitFor(() => {
+				expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			});
 			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
 			const savedRef: AgentJsonToolRef = {
 				type: 'workflow',

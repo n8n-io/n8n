@@ -2,15 +2,21 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { getWorkflow } from '@/app/api/workflows';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { NodeConnectionTypes, type INode, type INodeTypeDescription } from 'n8n-workflow';
-import { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from '@n8n/api-types';
+import {
+	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
+	SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
+} from '@n8n/api-types';
 import nodePopularity from 'virtual:node-popularity-data';
 
 import AgentToolItem from './AgentToolItem.vue';
@@ -45,6 +51,8 @@ const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
+const rootStore = useRootStore();
+const toast = useToast();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
@@ -96,19 +104,27 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 
 // --- Workflow catalog -------------------------------------------------------
 
+/**
+ * Fetched workflows kept **local** to this modal instance — we deliberately
+ * do NOT write into `useWorkflowsListStore`'s `workflowsById` cache. That
+ * store is shared with the Workflows list page, project pages, etc., and
+ * calling `setWorkflows` here would clobber whatever they've cached until
+ * they re-fetch. `searchWorkflows` is used for its network-only side
+ * (network request + return) — it doesn't mutate the store, which is exactly
+ * why it's safe here.
+ */
+const projectWorkflows = ref<IWorkflowDb[]>([]);
+
 onMounted(async () => {
 	// Fetch on open so the Available list populates with project-scoped workflows.
 	// Pre-filter by supported trigger types so users can't pick a workflow that
 	// would fail backend compatibility validation on save. Failures are
 	// non-fatal: the Available list just stays workflow-free.
-	// `searchWorkflows` only returns results — it doesn't persist — so we pipe
-	// them into `setWorkflows` ourselves to populate `allWorkflows`.
 	try {
-		const workflows = await workflowsListStore.searchWorkflows({
+		projectWorkflows.value = await workflowsListStore.searchWorkflows({
 			projectId: props.data.projectId,
 			triggerNodeTypes: [...SUPPORTED_WORKFLOW_TOOL_TRIGGERS],
 		});
-		workflowsListStore.setWorkflows(workflows);
 	} catch (error) {
 		// Non-fatal — render without the Workflows section. Log so a flaky fetch
 		// doesn't masquerade as "no workflows available".
@@ -121,11 +137,12 @@ onMounted(async () => {
  * a supported trigger (pre-filtered by the server via `triggerNodeTypes`).
  * Already-connected workflows remain listed — users can add the same workflow
  * twice with different descriptions / input schemas. Body-node incompatibility
- * (Wait / RespondToWebhook) is still enforced on save in
+ * (Wait / RespondToWebhook) is enforced on Connect-click via
+ * `handleAddWorkflow`, and again on save in
  * `workflow-tool-factory.ts:validateCompatibility`.
  */
 const availableWorkflows = computed<IWorkflowDb[]>(() =>
-	workflowsListStore.allWorkflows.filter((wf) => !wf.isArchived),
+	projectWorkflows.value.filter((wf) => !wf.isArchived),
 );
 
 /** Configured tools annotated with their node-type description (for the icon + fallback name). */
@@ -241,8 +258,40 @@ function handleAddTool(nodeType: INodeTypeDescription) {
 	openConfigForNewRef(nodeTypeToNewToolRef(nodeType));
 }
 
-function handleAddWorkflow(workflow: IWorkflowDb) {
+async function handleAddWorkflow(workflow: IWorkflowDb) {
 	toolTelemetry.trackAddStarted('workflow');
+
+	// Pre-check on Connect click: the list API omits `nodes`, so body-node
+	// incompatibility (Wait / RespondToWebhook / Form) can only be detected
+	// after fetching the full workflow. We hit `GET /workflows/:id` directly
+	// (instead of `workflowsListStore.fetchWorkflow`, which would re-enter the
+	// global store cache) so this modal stays side-effect-free.
+	let full: IWorkflowDb;
+	try {
+		full = await getWorkflow(rootStore.restApiContext, workflow.id);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.tools.workflow.fetchFailed.title'), {
+			message: i18n.baseText('agents.tools.workflow.fetchFailed.message'),
+		});
+		return;
+	}
+
+	const incompatible = (full.nodes ?? []).filter((n) =>
+		(INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES as readonly string[]).includes(n.type),
+	);
+	if (incompatible.length > 0) {
+		const nodeNames = incompatible.map((n) => n.name).join(', ');
+		toast.showError(
+			new Error(
+				i18n.baseText('agents.tools.workflow.incompatible.message', {
+					interpolate: { name: workflow.name, nodes: nodeNames },
+				}),
+			),
+			i18n.baseText('agents.tools.workflow.incompatible.title'),
+		);
+		return;
+	}
+
 	openConfigForNewRef(workflowToNewToolRef(workflow));
 }
 

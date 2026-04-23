@@ -16,10 +16,7 @@ import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { CustomToolEntry } from '../agent.types';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
-import {
-	getExistingToolNames,
-	replaceToolRefInList,
-} from '../composables/useAgentToolRefAdapter';
+import { getExistingToolNames, replaceToolRefInList } from '../composables/useAgentToolRefAdapter';
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import {
 	CHATHUB_TO_CATALOG,
@@ -386,27 +383,31 @@ watch(
 
 				<!-- Tools (collapsible) -->
 				<div :class="$style.section">
-					<button :class="$style.sectionHeader" @click="toggleSection('tools')">
-						<div :class="$style.sectionHeaderLeft">
+					<div :class="$style.sectionHeader">
+						<button
+							type="button"
+							:class="$style.sectionHeaderToggle"
+							:aria-expanded="expandedSections.tools"
+							@click="toggleSection('tools')"
+						>
 							<N8nIcon
 								:icon="expandedSections.tools ? 'chevron-down' : 'chevron-right'"
 								:size="16"
 							/>
-							<N8nText tag="span" bold size="small">{{
-								locale.baseText('agents.settings.tools')
-							}}</N8nText>
-						</div>
-						<span
-							role="button"
-							tabindex="0"
+							<N8nText tag="span" bold size="small">
+								{{ locale.baseText('agents.settings.tools') }}
+							</N8nText>
+						</button>
+						<button
+							type="button"
 							:class="$style.addBtn"
+							:aria-label="locale.baseText('agents.tools.add')"
 							data-test-id="agent-add-tool-btn"
-							@click.stop="openToolsModal"
-							@keydown.enter.stop="openToolsModal"
+							@click="openToolsModal"
 						>
 							<N8nIcon icon="plus" :size="16" />
-						</span>
-					</button>
+						</button>
+					</div>
 					<div v-if="expandedSections.tools" :class="$style.sectionContent">
 						<AgentToolsPanel
 							:config="config"
@@ -562,14 +563,56 @@ watch(
 	text-align: left;
 }
 
-.sectionHeader:hover {
+button.sectionHeader:hover {
 	background-color: var(--color--foreground--tint-2);
+}
+
+.sectionHeaderToggle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex: 1;
+	background: transparent;
+	border: none;
+	padding: 0;
+	margin: 0;
+	cursor: pointer;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+}
+
+.sectionHeaderToggle:hover {
+	color: var(--color--text--shade-1);
 }
 
 .sectionHeaderLeft {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.addBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: transparent;
+	border: none;
+	padding: var(--spacing--5xs);
+	margin-left: var(--spacing--2xs);
+	cursor: pointer;
+	color: var(--color--text--tint-1);
+	border-radius: var(--radius--sm);
+}
+
+.addBtn:hover {
+	background-color: var(--color--foreground--tint-2);
+	color: var(--color--text);
+}
+
+.addBtn:focus-visible {
+	outline: 2px solid var(--color--primary);
+	outline-offset: 1px;
 }
 
 .sectionContent {
