@@ -797,11 +797,16 @@ export class AgentRuntime {
 		// so the fire-and-forget is safe.
 		const onToolExecutionStart = (data: AgentEventData): void => {
 			if (data.type !== AgentEvent.ToolExecutionStart) return;
-			void writer.write({
-				type: 'tool-execution-start',
-				toolCallId: data.toolCallId,
-				toolName: data.toolName,
-			});
+			// Swallow rejections: if the writer is already closed/errored (e.g.
+			// an abort raced ahead of the subscription cleanup) there is nothing
+			// useful to do with the chunk.
+			writer
+				.write({
+					type: 'tool-execution-start',
+					toolCallId: data.toolCallId,
+					toolName: data.toolName,
+				})
+				.catch(() => {});
 		};
 		this.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
 
