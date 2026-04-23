@@ -119,7 +119,7 @@
       "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",
       "ws": ">=8.17.1",
-      "brace-expansion@1": "1.1.12",
+      "brace-expansion@1": "5.0.5",
       "brace-expansion@2": "2.0.3",
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
