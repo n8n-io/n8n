@@ -206,18 +206,23 @@ describe('AgentToolsPanel', () => {
 		expect(changes.tools?.[0]).toStrictEqual(keep);
 	});
 
-	it('renders workflow tool rows with no gear (not configurable yet)', () => {
+	it('renders workflow tool rows with a gear and emits configure with the ref when clicked', async () => {
+		// Per AGENT-26 workflow tools must be editable in-place (name,
+		// description, allOutputs via `WorkflowToolConfigContent`), so the
+		// sidebar's gear stays active for them.
 		const workflowRef: AgentJsonToolRef = {
 			type: 'workflow',
 			name: 'Share with Sales team',
 			description: 'Sales',
 			workflow: 'workflow-sales',
 		};
-		const { getByText, queryByTestId } = renderComponent({
+		const { getByText, getByTestId, emitted } = renderComponent({
 			props: { config: configWithTools([workflowRef]), agentTools: {} },
 		});
 		expect(getByText('Share with Sales team')).toBeTruthy();
 		expect(getByText('Sales')).toBeTruthy();
-		expect(queryByTestId('agent-sidebar-configure-btn')).toBeNull();
+		await fireEvent.click(getByTestId('agent-sidebar-configure-btn'));
+		expect(emitted('configure')).toBeTruthy();
+		expect((emitted('configure') as unknown[][])[0][0]).toStrictEqual(workflowRef);
 	});
 });

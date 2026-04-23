@@ -93,7 +93,11 @@ const rows = computed<ToolRowView[]>(() =>
 				fallbackIcon: 'workflow',
 				fallbackIconClass: 'workflowIcon',
 				missingCredentials: false,
-				configurable: false,
+				// Workflow tools round-trip through `WorkflowToolConfigContent`
+				// in the shared config modal (name / description / allOutputs),
+				// so the sidebar's gear button must remain active — per AGENT-26
+				// scope, existing tools are editable in-place.
+				configurable: true,
 			};
 		}
 

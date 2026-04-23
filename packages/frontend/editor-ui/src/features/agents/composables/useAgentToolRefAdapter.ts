@@ -135,6 +135,10 @@ export function nodeTypeToNewToolRef(nodeType: INodeTypeDescription): AgentJsonT
 	const version = pickLatestVersion(nodeType.version);
 	return {
 		type: 'node',
+		// Stable id assigned on creation so the modal's `onConfirm` callback can
+		// locate this ref in the current tools array by identity, even if the
+		// array has been rebuilt by an intervening reactive update.
+		id: uuidv4(),
 		// Display name may carry the " Tool" suffix the variant adds — strip it
 		// so the sidebar + config modal show the service name, not "Slack Tool".
 		name: nodeType.displayName.replace(/ Tool$/, ''),
@@ -232,10 +236,12 @@ export function extractFromAIInputSchema(
 
 /**
  * Merge edits made to an `INode` back into the original ref (preserving extra
- * fields). If the new parameters contain `$fromAI` overrides the `inputSchema`
- * is regenerated from them so the LLM sees exactly the args the tool now
- * expects; otherwise the original `inputSchema` (native-tool seed or
- * introspected shape) is left untouched.
+ * fields). `inputSchema` is always regenerated from the `$fromAI` overrides
+ * found in the new parameters — or reset to an empty object when none remain.
+ * Leaving a stale `$fromAI`-derived schema in place after the user cleared all
+ * overrides would mislead the LLM; resetting lets the backend's
+ * `resolveInputSchema` re-introspect at tool-registration time, which
+ * regenerates the native-tool seed or the MCP-introspected shape.
  */
 export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): AgentJsonToolRef {
 	if (original.type !== 'node' || !original.node) return original;
@@ -252,7 +258,7 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
 			nodeParameters: node.parameters as Record<string, unknown>,
 			credentials: toConfigCredentials(node.credentials),
 		},
-		...(derivedSchema ? { inputSchema: derivedSchema } : {}),
+		inputSchema: derivedSchema ?? { type: 'object', properties: {} },
 	};
 }
 
@@ -265,11 +271,32 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
 export function workflowToNewToolRef(workflow: IWorkflowDb): AgentJsonToolRef {
 	return {
 		type: 'workflow',
+		// Stable id: see `nodeTypeToNewToolRef` for rationale.
+		id: uuidv4(),
 		workflow: workflow.name,
 		name: workflow.name,
 		description: workflow.description ?? '',
 		allOutputs: false,
 	};
+}
+
+/**
+ * Replace a tool ref in a list, identifying it by its stable `id` when
+ * available and falling back to reference equality for legacy refs created
+ * before ids were assigned. Relying purely on reference equality is brittle
+ * when the tools array can be rebuilt between open-time and confirm-time of
+ * the config modal (e.g. another reactive update landing mid-edit) — every
+ * element then has a fresh reference and the map would silently no-op.
+ */
+export function replaceToolRefInList(
+	tools: AgentJsonToolRef[],
+	target: AgentJsonToolRef,
+	replacement: AgentJsonToolRef,
+): AgentJsonToolRef[] {
+	if (target.id) {
+		return tools.map((t) => (t.id === target.id ? replacement : t));
+	}
+	return tools.map((t) => (t === target ? replacement : t));
 }
 
 /**

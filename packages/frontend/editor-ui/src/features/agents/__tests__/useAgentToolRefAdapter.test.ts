@@ -228,7 +228,9 @@ describe('useAgentToolRefAdapter', () => {
 					nodeParameters: { channel: 'general' },
 					credentials: undefined,
 				},
-				inputSchema: { type: 'object' },
+				// Reset to a canonical empty object since there are no $fromAI
+				// overrides — backend `resolveInputSchema` will re-introspect.
+				inputSchema: { type: 'object', properties: {} },
 			});
 		});
 
@@ -323,35 +325,38 @@ describe('useAgentToolRefAdapter', () => {
 			});
 		});
 
-		it('preserves the original inputSchema when no $fromAI overrides are present', () => {
-			// Native tool seed: `{ input: string }`. Editing params without adding
-			// an override must not clobber this.
+		it('resets inputSchema to an empty object when no $fromAI overrides remain', () => {
+			// The user may have previously added $fromAI overrides (making
+			// inputSchema list those keys) and then removed them all. Carrying the
+			// stale schema forward would advertise args the tool no longer expects;
+			// resetting lets the backend re-introspect at registration time.
 			const original: AgentJsonToolRef = {
 				type: 'node',
-				name: 'Wikipedia',
+				name: 'Slack',
 				node: {
-					nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+					nodeType: 'n8n-nodes-base.slack',
 					nodeTypeVersion: 1,
 					nodeParameters: {},
 				},
 				inputSchema: {
 					type: 'object',
-					properties: { input: { type: 'string', description: 'Search term' } },
-					required: ['input'],
+					properties: { channel: { type: 'string', description: 'stale' } },
+					required: ['channel'],
 				},
 			};
 
 			const node: INode = {
 				id: 'n-1',
-				name: 'Wikipedia',
-				type: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
 				typeVersion: 1,
 				position: [0, 0],
-				parameters: { topK: 3 },
+				// No `$fromAI(...)` expression — user cleared the override.
+				parameters: { channel: '#general' },
 			};
 
 			const updated = updateToolRefFromNode(original, node);
-			expect(updated.inputSchema).toEqual(original.inputSchema);
+			expect(updated.inputSchema).toEqual({ type: 'object', properties: {} });
 		});
 	});
 
@@ -453,13 +458,17 @@ describe('useAgentToolRefAdapter', () => {
 			// See cli/src/modules/agents/tools/workflow-tool-factory.ts:506 — the
 			// backend queries `workflowRepository.findOne({ where: { name } })`.
 			const ref = workflowToNewToolRef(makeWorkflow({ name: 'Notify Sales' }));
-			expect(ref).toStrictEqual({
+			expect(ref).toMatchObject({
 				type: 'workflow',
 				workflow: 'Notify Sales',
 				name: 'Notify Sales',
 				description: 'Ship a daily summary',
 				allOutputs: false,
 			});
+			// A stable id is assigned at creation so the config modal's onConfirm
+			// can match this ref even if the surrounding tools array is rebuilt.
+			expect(typeof ref.id).toBe('string');
+			expect(ref.id).not.toBe('');
 		});
 
 		it('defaults description to empty when the workflow has none', () => {
