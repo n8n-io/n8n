@@ -132,12 +132,11 @@ test.describe(
 			// step — "1 of 1".
 			await expect(n8n.instanceAi.getWorkflowSetupStepCounter()).toContainText('1 of 1');
 
-			// Fill the HTTP URL. n8n's ParameterInput debounces updates by
-			// 200ms; the wait lets the value propagate to `paramValues` before
-			// we proceed so the apply payload includes the URL.
+			// Fill the HTTP URL. n8n's ParameterInput debounces updates by 200ms;
+			// the subsequent `toBeHidden` poll waits for the debounce to flush
+			// the value into `paramValues` before we proceed.
 			await expect(n8n.instanceAi.getWorkflowSetupParameterIssues()).toBeVisible();
 			await n8n.instanceAi.getWorkflowSetupParameterInput().fill('https://example.com/api');
-			await n8n.page.waitForTimeout(300);
 			await expect(n8n.instanceAi.getWorkflowSetupParameterIssues()).toBeHidden({
 				timeout: 5_000,
 			});
@@ -197,7 +196,6 @@ test.describe(
 
 			await expect(n8n.instanceAi.getWorkflowSetupParameterIssues()).toBeVisible();
 			await n8n.instanceAi.getWorkflowSetupParameterInput().fill('https://example.com/api');
-			await n8n.page.waitForTimeout(300);
 			await expect(n8n.instanceAi.getWorkflowSetupParameterIssues()).toBeHidden({
 				timeout: 5_000,
 			});

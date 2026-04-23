@@ -382,7 +382,7 @@ describe('workflows tool', () => {
 						type: 'n8n-nodes-base.httpRequest',
 						typeVersion: 4.2,
 						position: [0, 0],
-						parameters: { method: 'GET', url: 'https://example.com/api', authentication: 'none' },
+						parameters: { method: 'GET', url: '', authentication: 'none' },
 					},
 				],
 				connections: {},
