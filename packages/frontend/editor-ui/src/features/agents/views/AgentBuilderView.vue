@@ -12,6 +12,7 @@ import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM, MODAL_CANCEL, getDebounceTime } from '@/app/constants';
@@ -36,6 +37,7 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
+const credentialsStore = useCredentialsStore();
 const { showError } = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
@@ -71,6 +73,7 @@ const agentIcon = ref<IconOrEmoji>({ type: 'icon', value: 'robot' });
 const agent = ref<AgentResource | null>(null);
 const updatedAt = ref<string>('');
 const initialPrompt = ref<string | undefined>(undefined);
+const buildInitialPrompt = ref<string | undefined>(undefined);
 const continueSessionId = computed(() => route.query.continueSessionId as string | undefined);
 /**
  * Ephemeral session id for the in-tab "current chat". Set when the user starts
@@ -79,6 +82,8 @@ const continueSessionId = computed(() => route.query.continueSessionId as string
  * to the same thread, per product requirement.
  */
 const activeChatSessionId = ref<string | null>(null);
+// Whether the build panel has been opened at least once (for lazy mounting)
+const buildPanelOpened = ref(false);
 /**
  * The session id whichever panel should be bound to — URL-supplied
  * (continueSessionId) takes precedence over the in-tab ephemeral one.
@@ -180,6 +185,7 @@ function startChat(msg: string) {
 	// previous URL — otherwise the new conversation would keep appending to the
 	// old thread.
 	if (continueSessionId.value) clearContinueSessionParam();
+
 	if (isBuilt.value) {
 		// Mint a fresh thread id for the ephemeral session. Test and Build
 		// remain visually linked via `chatModeOpened` (v-show) — Build doesn't
@@ -188,27 +194,28 @@ function startChat(msg: string) {
 		initialPrompt.value = msg;
 		chatMode.value = 'test';
 		mode.value = 'chat';
+		// We don't clear initialPrompt here — the panel reads it during its
+		// own onMounted (which runs after the home → chat <Transition mode=
+		// "out-in"> finishes) and then emits `initial-consumed`, at which
+		// point the parent clears the ref. Clearing here on nextTick would
+		// wipe the prompt before the panel mounts; clearing on `consumed`
+		// is the right ordering and also prevents an HMR re-mount from
+		// re-sending the message.
 		telemetry.track('User started agent chat', { agent_id: agentId.value });
 	} else {
-		// Fresh agent — route through the same build chat panel the Build tab
-		// uses so the first-build experience matches the ongoing Build UX.
-		initialPrompt.value = msg;
+		// Fresh (unbuilt) agent — navigate straight into the build chat panel.
+		// The builder now uses interactive cards (ask_llm, ask_credential,
+		// etc.) for all setup steps instead of a separate progress screen.
+		// `buildInitialPrompt` is kept separate from `initialPrompt` so the
+		// two panels (Test, Build) never bleed each other's seed messages
+		// when the user toggles tabs mid-session.
+		buildInitialPrompt.value = msg;
+		buildPanelOpened.value = true;
 		chatMode.value = 'build';
 		mode.value = 'chat';
 		settingsVisible.value = true;
 		telemetry.track('User started agent build', { agent_id: agentId.value });
 	}
-
-	// Drop the seed prompt after the re-render that mounts the target panel.
-	// Vue runs this child's setup during the render kicked off by the state
-	// changes above, so `props.initialMessage` is captured synchronously in
-	// the panel's setup before this callback fires. Leaving the prompt in
-	// place would bleed the same message into whichever panel the user
-	// opens next (e.g. clicking Build after starting a Test chat would
-	// re-send the Test message to the builder and skip loadHistory).
-	void nextTick(() => {
-		initialPrompt.value = undefined;
-	});
 }
 
 /**
@@ -220,6 +227,8 @@ function onBackFromChat() {
 	if (continueSessionId.value) clearContinueSessionParam();
 	activeChatSessionId.value = null;
 	chatModeOpened.value = { test: false, build: false };
+	buildPanelOpened.value = false;
+	buildInitialPrompt.value = undefined;
 	chatMode.value = 'test';
 	mode.value = 'home';
 	// Refresh so the recent-sessions list on the home screen picks up any
@@ -229,6 +238,19 @@ function onBackFromChat() {
 
 function onBuildChatStreamingChange(streaming: boolean) {
 	isBuildChatStreaming.value = streaming;
+}
+
+/**
+ * Clear the seed prompt once the panel has consumed it. We rely on the
+ * panel emitting AFTER it has read the prop, so subsequent re-mounts
+ * (HMR, route reactivation) don't re-send the same first message.
+ */
+function onInitialPromptConsumed() {
+	initialPrompt.value = undefined;
+}
+
+function onBuildInitialPromptConsumed() {
+	buildInitialPrompt.value = undefined;
 }
 
 function setChatMode(next: ChatMode) {
@@ -241,6 +263,7 @@ function setChatMode(next: ChatMode) {
 	// session either stays on home or kicks back to home from a session-less
 	// chat mode (e.g. they were in Build with no session).
 	if (next === 'build' && mode.value !== 'chat') {
+		buildPanelOpened.value = true;
 		mode.value = 'chat';
 	} else if (next === 'test' && mode.value === 'chat' && !effectiveSessionId.value) {
 		mode.value = 'home';
@@ -279,6 +302,7 @@ function onOpenBuildFromChat() {
 	// Triggered by the misconfigured-agent banner on the Test panel. Flip to
 	// the Build tab so the user can finish setup without leaving the session.
 	chatMode.value = 'build';
+	buildPanelOpened.value = true;
 }
 
 async function saveConfig(): Promise<void> {
@@ -480,10 +504,12 @@ async function initialize() {
 	agent.value = null;
 	mode.value = 'home';
 	chatModeOpened.value = { test: false, build: false };
+	buildPanelOpened.value = false;
 	activeChatSessionId.value = null;
 	isBuildChatStreaming.value = false;
 	agentIcon.value = { type: 'icon', value: 'robot' };
 	initialPrompt.value = undefined;
+	buildInitialPrompt.value = undefined;
 	localConfig.value = null;
 	connectedTriggers.value = [];
 	saveStatus.value = 'idle';
@@ -492,6 +518,13 @@ async function initialize() {
 	await fetchConfig(projectId.value, agentId.value);
 	builderTelemetry.captureToolsBaseline();
 	void sessionsStore.fetchThreads(projectId.value, agentId.value);
+	// Warm the credentials store so AskCredentialCard (rendered inside the
+	// build chat panel) can render its picker without a per-card fetch.
+	// Best-effort — failures here just mean the picker shows its empty state
+	// until the user creates one. fetchCredentialTypes(false) short-circuits
+	// when types are already loaded, so it's safe to call on every agent switch.
+	void credentialsStore.fetchAllCredentials({ projectId: projectId.value }).catch(() => undefined);
+	void credentialsStore.fetchCredentialTypes(false).catch(() => undefined);
 	void (async () => {
 		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 		// will correct it once the user expands the Triggers section.
@@ -551,6 +584,9 @@ watch(
 	([m, cm]) => {
 		if (m === 'chat') {
 			chatModeOpened.value[cm] = true;
+			if (cm === 'build') {
+				buildPanelOpened.value = true;
+			}
 		}
 	},
 	{ immediate: true },
@@ -680,11 +716,11 @@ function onContinueLoaded(count: number) {
 				<template v-else-if="initialized && mode === 'chat'">
 					<div key="chat" :class="$style.chatHost">
 						<!--
-							v-if on `chatModeOpened` lazy-mounts each panel the first time
-							its tab is activated; v-show then preserves state (messages,
-							input, scroll) without re-firing loadHistory on every toggle.
-							Test additionally requires an active session id — Build is
-							per-agent and needs no session.
+							v-if on `chatModeOpened` / `buildPanelOpened` lazy-mounts each
+							panel the first time its tab is activated; v-show then preserves
+							state (messages, input, scroll) without re-firing loadHistory on
+							every toggle. Test additionally requires an active session id —
+							Build is per-agent and needs no session.
 						-->
 						<AgentChatPanel
 							v-if="chatModeOpened.test && effectiveSessionId"
@@ -703,22 +739,24 @@ function onContinueLoaded(count: number) {
 							:connected-triggers="connectedTriggers"
 							@config-updated="onConfigUpdated"
 							@continue-loaded="onContinueLoaded"
+							@initial-consumed="onInitialPromptConsumed"
 							@open-build="onOpenBuildFromChat"
 							@back="onBackFromChat"
 						/>
 						<AgentChatPanel
-							v-if="chatModeOpened.build"
+							v-if="buildPanelOpened"
 							v-show="chatMode === 'build'"
 							:project-id="projectId"
 							:agent-id="agentId"
 							mode="inline"
 							endpoint="build"
-							:initial-message="chatMode === 'build' ? initialPrompt : undefined"
+							:initial-message="buildInitialPrompt"
 							:agent-config="localConfig"
 							:agent-status="deriveAgentStatus(agent)"
 							:connected-triggers="connectedTriggers"
 							@config-updated="onConfigUpdated"
 							@update:streaming="onBuildChatStreamingChange"
+							@initial-consumed="onBuildInitialPromptConsumed"
 							@back="onBackFromChat"
 						/>
 					</div>

@@ -1,13 +1,24 @@
+import type {
+	CredentialProvider,
+	SerializableAgentState,
+	StreamChunk,
+	StreamResult,
+} from '@n8n/agents';
 import { Agent, Memory, providerTools } from '@n8n/agents';
-import type { CredentialProvider, StreamChunk } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { jsonParse, OperationalError, UserError } from 'n8n-workflow';
 
 import { AgentsService } from '../agents.service';
-import { buildBuilderPrompt } from './agents-builder-prompts';
-import { AgentsBuilderToolsService } from './agents-builder-tools.service';
+import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { buildBuilderPrompt } from './agents-builder-prompts';
+import { AgentsBuilderToolsService } from './agents-builder-tools.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+const BUILDER_MODEL = 'anthropic/claude-sonnet-4-5';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -27,7 +38,13 @@ export class AgentsBuilderService {
 		private readonly agentsService: AgentsService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly n8nMemory: N8nMemory,
+		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
+		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 	) {}
+
+	// ---------------------------------------------------------------------------
+	// Public — message storage
+	// ---------------------------------------------------------------------------
 
 	/**
 	 * Return persisted builder chat messages for an agent.
@@ -45,18 +62,88 @@ export class AgentsBuilderService {
 		await this.n8nMemory.deleteMessagesByThread(threadId);
 		await this.n8nMemory.deleteThread(threadId);
 	}
+	// ---------------------------------------------------------------------------
+	// Public — streaming
+	// ---------------------------------------------------------------------------
 
 	async *buildAgent(
 		agentId: string,
 		projectId: string,
 		message: string,
 		credentialProvider: CredentialProvider,
-		_userId?: string,
+		userId?: string,
 	): AsyncGenerator<StreamChunk> {
-		const agent = await this.agentsService.findById(agentId, projectId);
+		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider);
 
+		this.logger.debug('Starting builder agent stream', { agentId, projectId });
+
+		const resourceId = userId ?? agentId;
+		const resultStream = await builder.stream(message, {
+			persistence: { threadId: builderThreadId(agentId), resourceId },
+		});
+
+		yield* this.streamFromAgent(resultStream);
+	}
+
+	/**
+	 * Resume a suspended builder tool call and yield the resulting stream chunks.
+	 *
+	 * The `runId` is supplied by the caller — it originates either from the
+	 * `tool-call-suspended` chunk the FE just received (live) or from the
+	 * `openSuspensions` sidecar returned by `GET /build/messages` (history
+	 * reload). A fresh builder agent is reconstructed every time; the SDK's
+	 * `agent.resume(...)` rehydrates the suspended state from the persisted
+	 * checkpoint, so the new instance picks up where the old one left off.
+	 */
+	async *resumeBuild(
+		agentId: string,
+		projectId: string,
+		runId: string,
+		toolCallId: string,
+		resumeData: unknown,
+		credentialProvider: CredentialProvider,
+	): AsyncGenerator<StreamChunk> {
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
+		if (checkpointStatus === 'expired') {
+			throw new UserError(`Builder checkpoint ${runId} has expired and cannot be resumed`);
+		}
+		if (checkpointStatus === 'not-found') {
+			throw new UserError(`Builder checkpoint ${runId} not found`);
+		}
+
+		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider);
+
+		this.logger.debug('Resuming builder agent', { agentId, runId, toolCallId });
+
+		const resultStream = await builder.resume('stream', resumeData, {
+			runId,
+			toolCallId,
+		});
+
+		yield* this.streamFromAgent(resultStream);
+	}
+
+	// ---------------------------------------------------------------------------
+	// Private — builder agent construction
+	// ---------------------------------------------------------------------------
+
+	/**
+	 * Build a fresh builder `Agent` instance for the given target agent.
+	 *
+	 * Encapsulates: env-key validation, prompt assembly from current config,
+	 * tool registration, memory storage, and checkpoint wiring. Called on
+	 * every `buildAgent` / `resumeBuild` — resume rehydrates state from the
+	 * persisted checkpoint via the SDK, so the new instance picks up where
+	 * the previous one left off.
+	 */
+	private async createBuilderAgent(
+		agentId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): Promise<Agent> {
+		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
-			throw new Error(`Agent "${agentId}" not found`);
+			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
 		// The builder is a built-in, system-level agent — it is driven by an
@@ -64,12 +151,13 @@ export class AgentsBuilderService {
 		// the builder usable before any user credential has been configured.
 		const envAnthropicKey = readEnvAnthropicKey();
 		if (!envAnthropicKey) {
-			throw new Error(
+			// Operational: the n8n instance hasn't been provisioned with a
+			// builder API key. Recoverable by the operator (set the env var)
+			// rather than the end user.
+			throw new OperationalError(
 				'Builder agent is not configured. Set N8N_AI_ANTHROPIC_KEY (preferred) or ANTHROPIC_API_KEY to enable it.',
 			);
 		}
-
-		const builderModel = 'anthropic/claude-sonnet-4-6';
 
 		const currentConfig = agent.schema as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
@@ -79,32 +167,37 @@ export class AgentsBuilderService {
 				.join('\n') || '(none)';
 
 		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
-
-		const instructions = buildBuilderPrompt({ configJson, toolList, builderModel });
+		const instructions = buildBuilderPrompt({
+			configJson,
+			toolList,
+			builderModel: BUILDER_MODEL,
+		});
 
 		const tools = this.agentsBuilderToolsService.getTools(agentId, projectId, credentialProvider);
 
 		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
 
 		const builder = new Agent('agent-builder')
-			.model({ id: builderModel, apiKey: envAnthropicKey })
+			.model({ id: BUILDER_MODEL, apiKey: envAnthropicKey })
 			.instructions(instructions)
 			.memory(builderMemory)
+			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
 			.providerTool(providerTools.anthropicWebSearch({ maxUses: 5 }));
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);
 		}
 
-		this.logger.debug('Starting builder agent stream', { agentId, projectId });
+		return builder;
+	}
 
-		const threadId = builderThreadId(agentId);
-		const resourceId = _userId ?? agentId;
-		const resultStream = await builder.stream(message, {
-			persistence: { threadId, resourceId },
-		});
+	/**
+	 * Pump SDK stream chunks through to the caller. The runId is now carried
+	 * on each `tool-call-suspended` chunk by the SDK, so this is just a
+	 * plain reader→generator adapter.
+	 */
+	private async *streamFromAgent(resultStream: StreamResult): AsyncGenerator<StreamChunk> {
 		const reader = resultStream.stream.getReader();
-
 		try {
 			while (true) {
 				const { done, value } = await reader.read();
@@ -114,5 +207,36 @@ export class AgentsBuilderService {
 		} finally {
 			reader.releaseLock();
 		}
+	}
+
+	// ---------------------------------------------------------------------------
+	// Private — open-suspension lookup
+	// ---------------------------------------------------------------------------
+
+	/**
+	 * Return the parsed state of the most recent non-expired suspended
+	 * checkpoint for this agent, or `null` if there isn't one. Each pending
+	 * tool call inside the state already carries its own `runId`, so callers
+	 * don't need a separate runId from this helper.
+	 */
+	async findOpenCheckpoint(agentId: string): Promise<SerializableAgentState | null> {
+		const rows = await this.agentCheckpointRepository.find({
+			where: { agentId, expired: false },
+			order: { updatedAt: 'DESC' },
+			take: 5,
+		});
+		for (const row of rows) {
+			if (!row.state) continue;
+			let parsed: SerializableAgentState;
+			try {
+				parsed = jsonParse<SerializableAgentState>(row.state);
+			} catch {
+				continue;
+			}
+			if (parsed.status === 'suspended') {
+				return parsed;
+			}
+		}
+		return null;
 	}
 }
