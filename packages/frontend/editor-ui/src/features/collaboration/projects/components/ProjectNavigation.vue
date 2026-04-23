@@ -13,7 +13,6 @@ import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
-import FavoritesSidebarCompact from './FavoritesSidebarCompact.vue';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -203,47 +202,37 @@ onBeforeUnmount(() => {
 					:class="[$style.chevron, favoritesCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
-			<div v-if="!favoritesCollapsed" :class="$style.projectItems">
-				<!-- Expanded: flat list, icon hidden (but space preserved) on non-first items per group -->
-				<template v-if="!props.collapsed">
-					<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
-						<div v-if="groupIndex > 0" :class="$style.groupSpacer" />
-						<template v-for="entry in group.items" :key="entry.menuItem.id">
-							<div
-								:class="$style.favoriteItem"
-								@click="
-									group.type === 'project'
-										? onFavoriteProjectClick(entry.resourceId)
-										: group.type === 'workflow'
-											? onFavoriteWorkflowClick()
-											: undefined
-								"
+			<div v-if="props.collapsed || !favoritesCollapsed" :class="$style.projectItems">
+				<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
+					<div v-if="!props.collapsed && groupIndex > 0" :class="$style.groupSpacer" />
+					<template v-for="entry in group.items" :key="entry.menuItem.id">
+						<div
+							:class="[$style.favoriteItem, props.collapsed && $style.collapsed]"
+							@click="
+								group.type === 'project'
+									? onFavoriteProjectClick(entry.resourceId)
+									: group.type === 'workflow'
+										? onFavoriteWorkflowClick()
+										: undefined
+							"
+						>
+							<N8nMenuItem
+								:item="entry.menuItem"
+								:compact="props.collapsed"
+								:active="activeTabId === entry.menuItem.id"
+							/>
+							<button
+								v-if="!props.collapsed"
+								:class="$style.unpinButton"
+								:aria-label="locale.baseText('favorites.remove')"
+								data-test-id="favorite-unpin-button"
+								@click.stop.prevent="onUnpinFavorite(entry.resourceId, entry.resourceType)"
 							>
-								<N8nMenuItem
-									:item="entry.menuItem"
-									:compact="false"
-									:active="activeTabId === entry.menuItem.id"
-								/>
-								<button
-									:class="$style.unpinButton"
-									:aria-label="locale.baseText('favorites.remove')"
-									data-test-id="favorite-unpin-button"
-									@click.stop.prevent="onUnpinFavorite(entry.resourceId, entry.resourceType)"
-								>
-									<N8nIcon icon="x" size="small" />
-								</button>
-							</div>
-						</template>
+								<N8nIcon icon="x" size="small" />
+							</button>
+						</div>
 					</template>
 				</template>
-				<!-- Collapsed sidebar: single star trigger with hover popover -->
-				<template v-else>
-					<FavoritesSidebarCompact />
-				</template>
-			</div>
-			<!-- Compact sidebar always shows the star icon regardless of favoritesCollapsed -->
-			<div v-else-if="props.collapsed" :class="$style.projectItems">
-				<FavoritesSidebarCompact />
 			</div>
 		</template>
 		<template v-if="projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0">
@@ -309,22 +298,33 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	width: 100%;
+	width: calc(100% - var(--spacing--3xs) * 2);
 	box-sizing: border-box;
-	padding: 0 var(--spacing--xs);
-	margin-top: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	margin: var(--spacing--4xs) var(--spacing--3xs) 0;
 	background: none;
 	border: none;
+	border-radius: var(--spacing--4xs);
 	cursor: pointer;
 	color: inherit;
 
-	&:hover .chevron {
-		color: var(--color--text);
+	&:hover {
+		background-color: var(--color--background--light-1);
+		color: var(--color--text--shade-1);
+
+		.chevron {
+			color: var(--color--text--shade-1);
+		}
+	}
+
+	&:focus-visible {
+		outline: 1px solid var(--color--secondary);
+		outline-offset: -1px;
 	}
 }
 
 .chevron {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	transition: transform 0.15s ease;
 	flex-shrink: 0;
 }
@@ -388,7 +388,7 @@ onBeforeUnmount(() => {
 		pointer-events: auto;
 	}
 
-	&:hover a[role='menuitem'] {
+	&:not(.collapsed):hover a[role='menuitem'] {
 		background-color: var(--color--background--light-1);
 		color: var(--color--text--shade-1);
 		padding-right: var(--spacing--lg);
