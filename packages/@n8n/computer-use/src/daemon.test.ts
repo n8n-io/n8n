@@ -20,11 +20,15 @@ jest.mock('node:os', () => {
 	return { ...actual, homedir: jest.fn(() => actual.homedir()) };
 });
 
-// Prevent GatewayClient.start() from making real network calls
+// Prevent GatewayClient.start() from making real network calls. Mirror the
+// real contract: disconnect() invokes the onDisconnected hook so the daemon
+// can clear its state.
 jest.mock('./gateway-client', () => ({
-	['GatewayClient']: jest.fn().mockImplementation(() => ({
+	['GatewayClient']: jest.fn().mockImplementation((options: { onDisconnected?: () => void }) => ({
 		start: jest.fn().mockResolvedValue(undefined),
-		disconnect: jest.fn().mockResolvedValue(undefined),
+		disconnect: jest.fn().mockImplementation(async () => {
+			options.onDisconnected?.();
+		}),
 		tools: [],
 	})),
 }));
