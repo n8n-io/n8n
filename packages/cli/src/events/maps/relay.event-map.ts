@@ -777,6 +777,12 @@ export type RelayEventMap = {
 		ruleType: 'instance' | 'project';
 	};
 
+	'role-mapping-rules-bulk-deleted': {
+		ruleType: 'instance' | 'project';
+		count: number;
+		reason: 'strategy-switch';
+	};
+
 	// #endregion
 
 	// #region Token exchange

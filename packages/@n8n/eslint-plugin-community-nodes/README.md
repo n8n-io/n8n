@@ -71,5 +71,6 @@ export default [
 | [require-node-description-fields](docs/rules/require-node-description-fields.md)         | Node class description must define all required fields: icon, subtitle                                                                      | ✅ ☑️ |      |    |    |    |
 | [resource-operation-pattern](docs/rules/resource-operation-pattern.md)                   | Enforce proper resource/operation pattern for better UX in n8n nodes                                                                        |      | ✅ ☑️ |    |    |    |
 | [valid-peer-dependencies](docs/rules/valid-peer-dependencies.md)                         | Require community node package.json peerDependencies to contain only "n8n-workflow": "*" (and optionally "ai-node-sdk")                     | ✅ ☑️ |      | 🔧 |    |    |
+| [webhook-lifecycle-complete](docs/rules/webhook-lifecycle-complete.md)                   | Require webhook trigger nodes to implement the complete webhookMethods lifecycle (checkExists, create, delete)                              | ✅ ☑️ |      |    |    |    |
 
 <!-- end auto-generated rules list -->
