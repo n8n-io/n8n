@@ -2814,9 +2814,6 @@ export function useCanvasOperations() {
 		for (const node of nodes) {
 			const nodeSaveData = serializeNodeUtil(node, {
 				getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
-				hasProxyAuth: (n) => nodeHelpers.hasProxyAuth(n),
-				displayParameter: (params, credential, path, n) =>
-					nodeHelpers.displayParameter(params, credential, path, n),
 			});
 			const pinDataForNode = pinDataToExecutionData(workflowDocumentStore.value.pinData)[node.name];
 

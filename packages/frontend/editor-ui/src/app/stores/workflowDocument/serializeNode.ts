@@ -1,23 +1,11 @@
-import {
-	type INodeCredentialDescription,
-	type INodeCredentials,
-	type INodeParameters,
-	type INodeTypeDescription,
-	NodeHelpers,
-} from 'n8n-workflow';
+import { type INodeCredentials, type INodeTypeDescription, NodeHelpers } from 'n8n-workflow';
 import { HTTP_REQUEST_NODE_TYPE } from '@/app/constants';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
+import { hasProxyAuth } from '@/app/utils/nodeTypeUtils';
 import type { INodeUi } from '@/Interface';
 
 export interface SerializeNodeDeps {
 	getNodeType: (typeName: string, version?: number) => INodeTypeDescription | null;
-	hasProxyAuth: (node: INodeUi) => boolean;
-	displayParameter: (
-		parameters: INodeParameters,
-		credential: INodeCredentialDescription,
-		path: string,
-		node: INodeUi,
-	) => boolean;
 }
 
 export function serializeNode(node: INodeUi, deps: SerializeNodeDeps): INodeUi {
@@ -72,14 +60,14 @@ export function serializeNode(node: INodeUi, deps: SerializeNodeDeps): INodeUi {
 		if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 			const saveCredentials: INodeCredentials = {};
 			for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-				if (deps.hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
+				if (hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
 					saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
 					continue;
 				}
 
 				const credentialTypeDescription = nodeType.credentials
 					// filter out credentials with same name in different node versions
-					.filter((c) => deps.displayParameter(node.parameters, c, '', node))
+					.filter((c) => NodeHelpers.displayParameterPath(node.parameters, c, '', node, nodeType))
 					.find((c) => c.name === nodeCredentialTypeName);
 
 				if (credentialTypeDescription === undefined) {
@@ -87,7 +75,15 @@ export function serializeNode(node: INodeUi, deps: SerializeNodeDeps): INodeUi {
 					continue;
 				}
 
-				if (!deps.displayParameter(node.parameters, credentialTypeDescription, '', node)) {
+				if (
+					!NodeHelpers.displayParameterPath(
+						node.parameters,
+						credentialTypeDescription,
+						'',
+						node,
+						nodeType,
+					)
+				) {
 					// Credential should not be displayed so do also not save
 					continue;
 				}

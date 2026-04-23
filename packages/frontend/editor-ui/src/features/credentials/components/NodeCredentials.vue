@@ -11,6 +11,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { I18nT } from 'vue-i18n';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { hasProxyAuth } from '@/app/utils/nodeTypeUtils';
 import { useToast } from '@/app/composables/useToast';
 
 import TitledList from '@/app/components/TitledList.vue';
@@ -425,7 +426,7 @@ function onCredentialSelected(
 	telemetry.track('User selected credential from node modal', {
 		credential_type: credentialType,
 		node_type: props.node.type,
-		...(nodeHelpers.hasProxyAuth(props.node) ? { is_service_specific: true } : {}),
+		...(hasProxyAuth(props.node) ? { is_service_specific: true } : {}),
 		workflow_id: props.standalone ? '' : workflowsStore.workflowId,
 		credential_id: credentialId,
 	});

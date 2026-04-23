@@ -26,7 +26,6 @@ import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentN
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { serializeNode as serializeNodeUtil } from './workflowDocument/serializeNode';
 import type { WorkflowObjectAccessors } from '../types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -147,7 +146,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentVersionData = useWorkflowDocumentVersionData();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
 		const nodeTypesStore = useNodeTypesStore();
-		const nodeHelpers = useNodeHelpers();
 		const workflowDocumentNodeMetadata = useWorkflowDocumentNodeMetadata();
 		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
@@ -179,9 +177,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		function serializeNode(node: INodeUi): INodeUi {
 			return serializeNodeUtil(node, {
 				getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
-				hasProxyAuth: (n) => nodeHelpers.hasProxyAuth(n),
-				displayParameter: (params, credential, path, n) =>
-					nodeHelpers.displayParameter(params, credential, path, n),
 			});
 		}
 

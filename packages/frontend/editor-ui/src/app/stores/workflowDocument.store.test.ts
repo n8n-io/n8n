@@ -30,13 +30,6 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useNodeHelpers', () => ({
-	useNodeHelpers: vi.fn(() => ({
-		hasProxyAuth: vi.fn().mockReturnValue(false),
-		displayParameter: vi.fn().mockReturnValue(true),
-	})),
-}));
-
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
 }
