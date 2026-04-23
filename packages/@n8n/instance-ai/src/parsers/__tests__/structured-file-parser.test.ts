@@ -540,4 +540,25 @@ describe('isStructuredAttachment', () => {
 			}),
 		).toBe(true);
 	});
+
+	// INS-120: Verify .docx and .html files are not treated as structured
+	it('returns false for .docx files (Word documents)', () => {
+		expect(
+			isStructuredAttachment({
+				data: '',
+				mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				fileName: 'document.docx',
+			}),
+		).toBe(false);
+	});
+
+	it('returns false for .html files', () => {
+		expect(
+			isStructuredAttachment({
+				data: '',
+				mimeType: 'text/html',
+				fileName: 'page.html',
+			}),
+		).toBe(false);
+	});
 });

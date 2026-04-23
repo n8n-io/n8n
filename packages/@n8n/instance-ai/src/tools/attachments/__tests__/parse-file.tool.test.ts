@@ -184,4 +184,58 @@ describe('createParseFileTool', () => {
 			expect(result.totalRows).toBe(0);
 		});
 	});
+
+	// INS-120: File upload handling for unsupported formats
+	describe('with .docx file (unsupported format)', () => {
+		it('returns clear error mentioning supported formats', async () => {
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						data: toBase64('fake docx content'),
+						mimeType:
+							'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+						fileName: 'document.docx',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = (await tool.execute!(
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			)) as Record<string, unknown>;
+
+			expect(result.error).toBeDefined();
+			expect(result.error).toContain('Unsupported format');
+			// Error should mention what formats ARE supported
+			expect(result.error).toMatch(/csv|tsv|json/i);
+			expect(result.fileName).toBe('document.docx');
+		});
+	});
+
+	describe('with .html file (unsupported format)', () => {
+		it('returns clear error mentioning supported formats', async () => {
+			const context = createMockContext({
+				currentUserAttachments: [
+					{
+						data: toBase64('<html><body>Test</body></html>'),
+						mimeType: 'text/html',
+						fileName: 'page.html',
+					},
+				],
+			});
+			const tool = createParseFileTool(context);
+
+			const result = (await tool.execute!(
+				{ attachmentIndex: 0, hasHeader: true, startRow: 0, maxRows: 20 },
+				{} as never,
+			)) as Record<string, unknown>;
+
+			expect(result.error).toBeDefined();
+			expect(result.error).toContain('Unsupported format');
+			// Error should mention what formats ARE supported
+			expect(result.error).toMatch(/csv|tsv|json/i);
+			expect(result.fileName).toBe('page.html');
+		});
+	});
 });
