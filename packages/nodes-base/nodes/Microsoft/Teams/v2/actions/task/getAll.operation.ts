@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -53,6 +54,14 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (tasksFor === 'member') {
+		const authentication = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
+		if (authentication === 'servicePrincipal') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Retrieving tasks for "Group Member" is not supported with Service Principal authentication. Use "Plan" instead, or switch to OAuth2.',
+				{ itemIndex: i },
+			);
+		}
 		//https://docs.microsoft.com/en-us/graph/api/planneruser-list-tasks?view=graph-rest-1.0&tabs=http
 		const memberId = ((await microsoftApiRequest.call(this, 'GET', '/v1.0/me')) as { id: string })
 			.id;

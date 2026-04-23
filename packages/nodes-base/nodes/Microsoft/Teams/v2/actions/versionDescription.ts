@@ -25,11 +25,41 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			name: 'microsoftTeamsOAuth2Api',
 			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2'],
+				},
+			},
+		},
+		{
+			name: 'microsoftTeamsServicePrincipalApi',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['servicePrincipal'],
+				},
+			},
 		},
 	],
 	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{
+					name: 'OAuth2 (Delegated)',
+					value: 'oAuth2',
+				},
+				{
+					name: 'Service Principal (Application)',
+					value: 'servicePrincipal',
+				},
+			],
+			default: 'oAuth2',
+		},
 		{
 			displayName: 'Resource',
 			name: 'resource',

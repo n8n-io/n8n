@@ -12,6 +12,7 @@ describe('Microsoft Teams Transport', () => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockRequestOAuth2 = jest.fn();
 		mockExecuteFunctions.helpers.requestOAuth2 = mockRequestOAuth2;
+		mockExecuteFunctions.getNodeParameter.mockReturnValue('oAuth2');
 
 		mockNode = {
 			id: 'test-node',
@@ -202,6 +203,45 @@ describe('Microsoft Teams Transport', () => {
 						method: 'GET',
 						uri: 'https://microsoftgraph.chinacloudapi.cn/teams',
 						json: true,
+					}),
+				);
+			});
+		});
+
+		describe('service principal authentication', () => {
+			it('should use service principal credential', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequestOAuth2.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('servicePrincipal');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					graphApiBaseUrl: 'https://graph.microsoft.com',
+				});
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/teams');
+
+				expect(mockRequestOAuth2).toHaveBeenCalledWith(
+					'microsoftTeamsServicePrincipalApi',
+					expect.objectContaining({
+						method: 'GET',
+						uri: 'https://graph.microsoft.com/v1.0/teams',
+					}),
+				);
+			});
+
+			it('should use service principal credential with custom cloud endpoint', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequestOAuth2.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('servicePrincipal');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					graphApiBaseUrl: 'https://graph.microsoft.us',
+				});
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/teams');
+
+				expect(mockRequestOAuth2).toHaveBeenCalledWith(
+					'microsoftTeamsServicePrincipalApi',
+					expect.objectContaining({
+						uri: 'https://graph.microsoft.us/v1.0/teams',
 					}),
 				);
 			});

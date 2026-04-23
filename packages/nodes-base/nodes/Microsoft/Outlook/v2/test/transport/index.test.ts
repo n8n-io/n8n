@@ -12,6 +12,7 @@ describe('Microsoft Outlook Transport', () => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockRequestWithAuthentication = jest.fn();
 		mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
+		mockExecuteFunctions.getNodeParameter.mockReturnValue('oAuth2');
 
 		mockNode = {
 			id: 'test-node',
@@ -202,6 +203,47 @@ describe('Microsoft Outlook Transport', () => {
 						method: 'GET',
 						uri: 'https://microsoftgraph.chinacloudapi.cn/v1.0/me/messages',
 						json: true,
+					}),
+				);
+			});
+		});
+
+		describe('service principal authentication', () => {
+			it('should use service principal credential and /users/ path', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequestWithAuthentication.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('servicePrincipal');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					userPrincipalName: 'user@example.com',
+					graphApiBaseUrl: 'https://graph.microsoft.com',
+				});
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages');
+
+				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+					'microsoftOutlookServicePrincipalApi',
+					expect.objectContaining({
+						method: 'GET',
+						uri: 'https://graph.microsoft.com/v1.0/users/user@example.com/messages',
+					}),
+				);
+			});
+
+			it('should use /users/ path with custom cloud endpoint', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequestWithAuthentication.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('servicePrincipal');
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					userPrincipalName: 'user@example.com',
+					graphApiBaseUrl: 'https://graph.microsoft.us',
+				});
+
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages');
+
+				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+					'microsoftOutlookServicePrincipalApi',
+					expect.objectContaining({
+						uri: 'https://graph.microsoft.us/v1.0/users/user@example.com/messages',
 					}),
 				);
 			});

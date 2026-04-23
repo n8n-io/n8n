@@ -20,7 +20,13 @@ export async function microsoftApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials('microsoftTeamsOAuth2Api');
+	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
+	const credentialName =
+		authentication === 'servicePrincipal'
+			? 'microsoftTeamsServicePrincipalApi'
+			: 'microsoftTeamsOAuth2Api';
+
+	const credentials = await this.getCredentials(credentialName);
 	const baseUrl = (
 		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
 			? credentials.graphApiBaseUrl
@@ -40,7 +46,7 @@ export async function microsoftApiRequest(
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		return await this.helpers.requestOAuth2.call(this, 'microsoftTeamsOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, credentialName, options);
 	} catch (error) {
 		const errorOptions: IDataObject = {};
 		if (error.error?.error) {

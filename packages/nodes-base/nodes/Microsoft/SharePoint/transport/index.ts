@@ -16,9 +16,13 @@ export async function microsoftSharePointApiRequest(
 	headers?: IDataObject,
 	url?: string,
 ): Promise<any> {
-	const credentials: { subdomain: string } = await this.getCredentials(
-		'microsoftSharePointOAuth2Api',
-	);
+	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
+	const credentialName =
+		authentication === 'servicePrincipal'
+			? 'microsoftSharePointServicePrincipalApi'
+			: 'microsoftSharePointOAuth2Api';
+
+	const credentials: { subdomain: string } = await this.getCredentials(credentialName);
 
 	const options: IHttpRequestOptions = {
 		method,
@@ -29,9 +33,5 @@ export async function microsoftSharePointApiRequest(
 		qs,
 	};
 
-	return await this.helpers.httpRequestWithAuthentication.call(
-		this,
-		'microsoftSharePointOAuth2Api',
-		options,
-	);
+	return await this.helpers.httpRequestWithAuthentication.call(this, credentialName, options);
 }
