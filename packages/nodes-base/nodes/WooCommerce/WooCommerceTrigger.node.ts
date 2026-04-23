@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { getAutomaticSecret, woocommerceApiRequest } from './GenericFunctions';
 
@@ -164,17 +164,30 @@ export class WooCommerceTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData();
 		const webhookData = this.getWorkflowStaticData('node');
+
 		if (headerData['x-wc-webhook-id'] === undefined) {
 			return {};
 		}
 
-		const computedSignature = createHmac('sha256', webhookData.secret as string)
-			.update(req.rawBody)
-			.digest('base64');
-		if (headerData['x-wc-webhook-signature'] !== computedSignature) {
-			// Signature is not valid so ignore call
-			return {};
+		const secret = webhookData.secret as string | undefined;
+		if (!secret) {
+			throw new NodeOperationError(this.getNode(), 'WooCommerce webhook secret is missing', {
+				description:
+					'The stored webhook secret could not be found. Deactivate and re-activate the workflow so n8n can re-register the webhook with WooCommerce.',
+			});
 		}
+
+		const providedSignature = headerData['x-wc-webhook-signature'] as string | undefined;
+		const computedSignature = providedSignature
+			? createHmac('sha256', secret).update(req.rawBody).digest('base64')
+			: undefined;
+
+		if (!providedSignature || providedSignature !== computedSignature) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
+
 		return {
 			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
