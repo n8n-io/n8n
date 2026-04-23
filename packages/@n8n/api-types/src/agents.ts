@@ -138,3 +138,25 @@ export interface AgentPersistedMessageDto {
 	role: 'user' | 'assistant' | 'tool' | (string & {});
 	content: AgentPersistedMessageContentPart[];
 }
+
+/**
+ * One still-open interactive tool call, surfaced alongside persisted messages
+ * so the FE can re-attach a `runId` to suspended interactive cards after a
+ * page refresh.
+ */
+export interface AgentBuilderOpenSuspension {
+	toolCallId: string;
+	runId: string;
+}
+
+/**
+ * Response body of `GET /projects/:projectId/agents/v2/:agentId/build/messages`.
+ *
+ * `messages` is the merged history (persisted memory + any in-flight checkpoint
+ * messages). `openSuspensions` carries the runIds for every still-open
+ * interactive tool call so the FE can resume them.
+ */
+export interface AgentBuilderMessagesResponse {
+	messages: AgentPersistedMessageDto[];
+	openSuspensions: AgentBuilderOpenSuspension[];
+}

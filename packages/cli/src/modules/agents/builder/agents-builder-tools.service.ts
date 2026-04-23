@@ -14,6 +14,7 @@ import {
 	tryParseConfigJson,
 } from '../json-config/agent-json-config';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { buildAskCredentialTool, buildAskLlmTool, buildAskQuestionTool } from './interactive';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -158,7 +159,13 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
-		return [writeConfigTool, patchConfigTool];
+		return [
+			writeConfigTool,
+			patchConfigTool,
+			buildAskCredentialTool(),
+			buildAskLlmTool(),
+			buildAskQuestionTool(),
+		];
 	}
 
 	private getSharedTools(
@@ -253,9 +260,9 @@ export class AgentsBuilderToolsService {
 			listWorkflowsTool,
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,
-				'Call this BEFORE adding a node tool so you know which credential to wire up. ' +
-					"Copy the returned { id, name } into the tool's `credentials` field, keyed by the " +
-					'credential slot name (e.g. `credentials: { gmailOAuth2: { id, name } }`).',
+				'Read-only inspection of available credentials. Use ask_credential to let the user ' +
+					'pick the credential to wire into a node tool — never copy ids from this list directly ' +
+					'into the config.',
 			),
 		];
 	}
