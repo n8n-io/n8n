@@ -9,11 +9,17 @@ import type {
 } from '../role-mapping-rule.service.ee';
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '@n8n/db';
+import type { EventService } from '@/events/event.service';
 
 const roleMappingRuleService = mock<RoleMappingRuleService>();
 const licenseState = mock<LicenseState>();
+const eventService = mock<EventService>();
 
-const controller = new RoleMappingRuleController(roleMappingRuleService, licenseState);
+const controller = new RoleMappingRuleController(
+	roleMappingRuleService,
+	licenseState,
+	eventService,
+);
 
 describe('RoleMappingRuleController', () => {
 	beforeEach(() => {
@@ -203,12 +209,16 @@ describe('RoleMappingRuleController', () => {
 
 		it('should delete a role mapping rule when provisioning is licensed', async () => {
 			licenseState.isProvisioningLicensed.mockReturnValue(true);
-			roleMappingRuleService.delete.mockResolvedValue(undefined);
+			roleMappingRuleService.delete.mockResolvedValue({ ruleType: 'instance' });
 
 			const result = await controller.delete(req, res, ruleId);
 
 			expect(result).toEqual({ success: true });
 			expect(roleMappingRuleService.delete).toHaveBeenCalledWith(ruleId);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'role-mapping-rule-deleted',
+				expect.objectContaining({ ruleId, ruleType: 'instance' }),
+			);
 		});
 	});
 });

@@ -642,6 +642,7 @@ export interface NewCredentialsModal extends ModalState {
 	forceManualMode?: boolean;
 	projectId?: string;
 	suggestedName?: string;
+	nodeName?: string;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';

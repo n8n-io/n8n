@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
-import { N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
@@ -80,7 +80,7 @@ watch(
 
 		<!-- Loading overlay (shown during initial load or when no data table yet) -->
 		<div v-if="isLoading && !dataTable" :class="$style.centerState">
-			<N8nSpinner type="dots" />
+			<N8nIcon icon="loader-circle" :size="80" spin />
 		</div>
 	</div>
 </template>

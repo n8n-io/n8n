@@ -192,11 +192,9 @@ describe('useReadyToRunStore', () => {
 				// Expected to throw
 			}
 
-			expect(mockShowError).toHaveBeenCalledWith(
-				error,
-				'freeAi.credits.showError.claim.title',
-				'freeAi.credits.showError.claim.message',
-			);
+			expect(mockShowError).toHaveBeenCalledWith(error, 'freeAi.credits.showError.claim.title', {
+				message: 'freeAi.credits.showError.claim.message',
+			});
 		});
 	});
 

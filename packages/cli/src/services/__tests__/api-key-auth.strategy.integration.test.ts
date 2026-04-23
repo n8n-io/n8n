@@ -4,13 +4,14 @@ import { ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
-import type { InstanceSettings } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 
 import { ApiKeyAuthStrategy } from '../api-key-auth.strategy';
 import { JwtService } from '../jwt.service';
+import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
+import { API_KEY_ISSUER } from '../public-api-key.service';
 
 const mockReqWith = (apiKey: string, path: string, method: string): AuthenticatedRequest =>
 	mock<AuthenticatedRequest>({
@@ -31,10 +32,7 @@ const mockReqWithoutApiKey = (path: string, method: string): AuthenticatedReques
 	return req;
 };
 
-const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
-
-const jwtService = new JwtService(instanceSettings, mock());
-
+let jwtService: JwtService;
 let strategy: ApiKeyAuthStrategy;
 
 describe('ApiKeyAuthStrategy', () => {
@@ -44,6 +42,7 @@ describe('ApiKeyAuthStrategy', () => {
 
 	beforeAll(async () => {
 		await testDb.init();
+		jwtService = Container.get(JwtService);
 		strategy = new ApiKeyAuthStrategy(Container.get(ApiKeyRepository), jwtService);
 	});
 
@@ -62,7 +61,7 @@ describe('ApiKeyAuthStrategy', () => {
 	});
 
 	it('should return false if valid api key is not in database', async () => {
-		const apiKey = jwtService.sign({ sub: '123' });
+		const apiKey = jwtService.sign({ sub: '123', iss: API_KEY_ISSUER });
 		const req = mockReqWith(apiKey, '/test', 'GET');
 		expect(await strategy.authenticate(req)).toBe(false);
 	});
@@ -88,7 +87,7 @@ describe('ApiKeyAuthStrategy', () => {
 		expect(req.user.role.slug).toBeDefined();
 	});
 
-	it('should set req.tokenGrant with the scopes of the authenticated API key', async () => {
+	it('should set req.tokenGrant with the scopes of the authenticated user role', async () => {
 		const owner = await createOwnerWithApiKey();
 		const [{ apiKey }] = owner.apiKeys;
 		const req = mockReqWith(apiKey, '/test', 'GET');
@@ -97,6 +96,30 @@ describe('ApiKeyAuthStrategy', () => {
 
 		expect(req.tokenGrant).toBeDefined();
 		expect(Array.isArray(req.tokenGrant?.scopes)).toBe(true);
+	});
+
+	it('should set req.tokenGrant.apiKeyScopes from the scopes stored on the API key', async () => {
+		const owner = await createOwnerWithApiKey({ scopes: ['workflow:read', 'workflow:list'] });
+		const [{ apiKey }] = owner.apiKeys;
+		const req = mockReqWith(apiKey, '/test', 'GET');
+
+		await strategy.authenticate(req);
+
+		expect(req.tokenGrant?.apiKeyScopes).toEqual(['workflow:read', 'workflow:list']);
+	});
+
+	it('should set req.tokenGrant.apiKeyScopes independently from role scopes', async () => {
+		const owner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
+		const [{ apiKey }] = owner.apiKeys;
+		const req = mockReqWith(apiKey, '/test', 'GET');
+
+		await strategy.authenticate(req);
+
+		// role scopes come from the user's role — unaffected by the API key scopes restriction
+		expect(Array.isArray(req.tokenGrant?.scopes)).toBe(true);
+		expect(req.tokenGrant?.scopes.length).toBeGreaterThan(1);
+		// apiKeyScopes reflects what was stored on the key
+		expect(req.tokenGrant?.apiKeyScopes).toEqual(['workflow:read']);
 	});
 
 	it('should return false if expired JWT is used', async () => {
@@ -142,5 +165,23 @@ describe('ApiKeyAuthStrategy', () => {
 		const req = mockReqWith(apiKey, '/test', 'GET');
 
 		expect(await strategy.authenticate(req)).toBe(false);
+	});
+
+	it('should set req.tokenGrant.subject to the API key owner', async () => {
+		const owner = await createOwnerWithApiKey();
+		const [{ apiKey }] = owner.apiKeys;
+		const req = mockReqWith(apiKey, '/test', 'GET');
+
+		await strategy.authenticate(req);
+
+		expect(req.tokenGrant?.subject).toBeDefined();
+		expect(req.tokenGrant?.subject.id).toBe(owner.id);
+	});
+
+	it('should return null when x-n8n-api-key contains a token-exchange JWT', async () => {
+		const tokenExchangeJwt = jwtService.sign({ iss: TOKEN_EXCHANGE_ISSUER, sub: '123' });
+		const req = mockReqWith(tokenExchangeJwt, '/test', 'GET');
+
+		expect(await strategy.authenticate(req)).toBeNull();
 	});
 });

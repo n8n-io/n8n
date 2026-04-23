@@ -327,6 +327,70 @@ describe('POST /connect — origin allowlist', () => {
 });
 
 // ---------------------------------------------------------------------------
+// POST /connect — concurrent confirmation
+// ---------------------------------------------------------------------------
+
+describe('POST /connect — concurrent confirmation', () => {
+	it('returns 409 when a confirmation prompt is already in progress', async () => {
+		let resolveConfirm!: (value: boolean) => void;
+		const confirmConnect = jest
+			.fn()
+			.mockImplementation(
+				async () => await new Promise<boolean>((resolve) => (resolveConfirm = resolve)),
+			);
+		const { port, close } = await startTestDaemon(
+			{ filesystem: { dir: tmpDir } },
+			{ confirmConnect },
+		);
+		try {
+			// First connection — hangs waiting for user confirmation
+			const first = post(port, '/connect', { url: 'http://localhost:5678', token: 'tok' });
+
+			// Wait for the first request to reach confirmConnect
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			// Second connection attempt while confirmation is pending
+			const second = await post(port, '/connect', { url: 'http://localhost:5679', token: 'tok' });
+			expect(second.status).toBe(409);
+			expect(second.body.error).toMatch(/confirmation is already in progress/);
+
+			// Resolve the first confirmation and await its response
+			resolveConfirm(false);
+			await first;
+		} finally {
+			await close();
+		}
+	});
+
+	it('accepts a new connection after a pending confirmation completes', async () => {
+		let resolveConfirm!: (value: boolean) => void;
+		const confirmConnect = jest
+			.fn()
+			.mockImplementationOnce(
+				async () => await new Promise<boolean>((resolve) => (resolveConfirm = resolve)),
+			)
+			.mockResolvedValue(true);
+		const { port, close } = await startTestDaemon(
+			{ filesystem: { dir: tmpDir } },
+			{ confirmConnect },
+		);
+		try {
+			// First connection — hangs then gets rejected
+			const first = post(port, '/connect', { url: 'http://localhost:5678', token: 'tok' });
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			resolveConfirm(false);
+			await first;
+
+			// Second connection after confirmation cleared — should succeed
+			const second = await post(port, '/connect', { url: 'http://localhost:5678', token: 'tok' });
+			expect(second.status).toBe(200);
+		} finally {
+			await close();
+		}
+	});
+});
+
+// ---------------------------------------------------------------------------
 // POST /connect — already connected
 // ---------------------------------------------------------------------------
 

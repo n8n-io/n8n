@@ -39,6 +39,8 @@ export const LOG_SCOPES = [
 	'instance-ai',
 	'instance-version-history',
 	'instance-settings-loader',
+	'instance-registry',
+	'encryption-key-manager',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

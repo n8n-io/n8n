@@ -431,13 +431,13 @@ export const toolCategorySchema = z.object({
 });
 export type ToolCategory = z.infer<typeof toolCategorySchema>;
 
-export const instanceAiGatewayCapabilitiesSchema = z.object({
+export class InstanceAiGatewayCapabilitiesDto extends Z.class({
 	rootPath: z.string(),
 	tools: z.array(mcpToolSchema).default([]),
 	hostIdentifier: z.string().optional(),
 	toolCategories: z.array(toolCategorySchema).default([]),
-});
-export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
+}) {}
+export type InstanceAiGatewayCapabilities = InstanceType<typeof InstanceAiGatewayCapabilitiesDto>;
 
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
@@ -448,10 +448,10 @@ export const filesystemRequestPayloadSchema = z.object({
 	toolCall: mcpToolCallRequestSchema,
 });
 
-export const instanceAiFilesystemResponseSchema = z.object({
+export class InstanceAiFilesystemResponseDto extends Z.class({
 	result: mcpToolCallResultSchema.optional(),
 	error: z.string().optional(),
-});
+}) {}
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
@@ -466,7 +466,13 @@ export const threadTitleUpdatedPayloadSchema = z.object({
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
 
-const eventBase = { runId: z.string(), agentId: z.string(), userId: z.string().optional() };
+const eventBase = {
+	runId: z.string(),
+	agentId: z.string(),
+	userId: z.string().optional(),
+	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
+	responseId: z.string().optional(),
+};
 
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('run-start'), ...eventBase, payload: runStartPayloadSchema }),
@@ -538,7 +544,7 @@ export type InstanceAiThreadTitleUpdatedEvent = Extract<
 	{ type: 'thread-title-updated' }
 >;
 
-export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemResponseSchema>;
+export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesystemResponseDto>;
 
 // ---------------------------------------------------------------------------
 // API types
@@ -660,9 +666,9 @@ export interface InstanceAiToolCallState {
 }
 
 export type InstanceAiTimelineEntry =
-	| { type: 'text'; content: string }
-	| { type: 'tool-call'; toolCallId: string }
-	| { type: 'child'; agentId: string };
+	| { type: 'text'; content: string; responseId?: string }
+	| { type: 'tool-call'; toolCallId: string; responseId?: string }
+	| { type: 'child'; agentId: string; responseId?: string };
 
 export interface InstanceAiAgentNode {
 	agentId: string;
@@ -902,6 +908,7 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
+	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -921,6 +928,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
@@ -957,7 +965,7 @@ const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
 const PLANNER_RENDER_HINT_TOOLS = new Set(['plan']);
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
-	if (toolName === 'update-tasks') return 'tasks';
+	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
 	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
 	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';

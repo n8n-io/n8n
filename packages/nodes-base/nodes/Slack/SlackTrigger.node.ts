@@ -69,6 +69,11 @@ export class SlackTrigger implements INodeType {
 						description: 'Triggers on any event',
 					},
 					{
+						name: 'App Home Opened',
+						value: 'app_home_opened',
+						description: "When a user opens your app's Home tab",
+					},
+					{
 						name: 'Bot / App Mention',
 						value: 'app_mention',
 						description: 'When your bot or app is mentioned in a channel the app is added to',
@@ -352,7 +357,8 @@ export class SlackTrigger implements INodeType {
 			return {};
 		}
 
-		if (eventType !== 'team_join') {
+		const eventsWithoutChannel = ['team_join', 'app_home_opened'];
+		if (!eventsWithoutChannel.includes(eventType)) {
 			eventChannel =
 				req.body.event.channel ?? req.body.event.item?.channel ?? req.body.event.channel_id;
 

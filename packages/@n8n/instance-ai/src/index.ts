@@ -1,13 +1,4 @@
-// Prevent Mastra from loading the 66 MB tiktoken BPE table.
-// Mastra's workspace tools use tiktoken for token-accurate output truncation,
-// but a character-based estimate (~4 chars/token) is sufficient for our use case.
-// getTiktoken() checks globalThis.__mastraTiktoken first and skips the load.
-(globalThis as Record<string, unknown>).__mastraTiktoken = {
-	encode(text: string) {
-		return new Array<number>(Math.ceil(text.length / 4));
-	},
-};
-
+export { MAX_STEPS } from './constants/max-steps';
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
 export { generateCompactionSummary } from './compaction';
@@ -16,10 +7,25 @@ export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export {
 	createInstanceAiTraceContext,
+	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
 	releaseTraceClient,
 	withCurrentTraceSpan,
 } from './tracing/langsmith-tracing';
+export {
+	IdRemapper,
+	TraceIndex,
+	TraceWriter,
+	parseTraceJsonl,
+	PURE_REPLAY_TOOLS,
+} from './tracing/trace-replay';
+export type {
+	TraceEvent,
+	TraceHeader,
+	TraceToolCall,
+	TraceToolSuspend,
+	TraceToolResume,
+} from './tracing/trace-replay';
 export { createInstanceAgent } from './agent/instance-agent';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
@@ -44,7 +50,7 @@ export type {
 	ThreadPatch,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
-export { truncateToTitle, generateThreadTitle } from './memory/title-utils';
+export { truncateToTitle, generateTitleForRun } from './memory/title-utils';
 export { McpClientManager } from './mcp/mcp-client-manager';
 export { mapMastraChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';

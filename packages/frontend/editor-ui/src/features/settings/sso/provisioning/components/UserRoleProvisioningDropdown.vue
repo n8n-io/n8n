@@ -26,8 +26,9 @@ const legacyValue = defineModel<UserRoleProvisioningSetting>('legacyValue', {
 	default: 'disabled',
 });
 
-const { authProtocol } = defineProps<{
+const { authProtocol, disabled = false } = defineProps<{
 	authProtocol: SupportedProtocolType;
+	disabled?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -107,7 +108,7 @@ const legacyOptions: Array<{ label: string; value: UserRoleProvisioningSetting }
 				<div :class="shared.settingsItemControl">
 					<N8nSelect
 						:model-value="legacyValue"
-						:disabled="!canManage"
+						:disabled="disabled || !canManage"
 						data-test-id="oidc-user-role-provisioning"
 						@update:model-value="legacyValue = $event as UserRoleProvisioningSetting"
 					>
@@ -133,7 +134,7 @@ const legacyOptions: Array<{ label: string; value: UserRoleProvisioningSetting }
 					<N8nSelect
 						v-model="roleAssignment"
 						size="medium"
-						:disabled="!canManage"
+						:disabled="disabled || !canManage"
 						data-test-id="role-assignment-select"
 					>
 						<N8nOption
@@ -160,7 +161,7 @@ const legacyOptions: Array<{ label: string; value: UserRoleProvisioningSetting }
 					<N8nSelect
 						v-model="mappingMethod"
 						size="medium"
-						:disabled="!canManage"
+						:disabled="disabled || !canManage"
 						data-test-id="role-mapping-method-select"
 					>
 						<N8nOption

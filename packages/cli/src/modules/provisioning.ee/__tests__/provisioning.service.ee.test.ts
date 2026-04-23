@@ -677,4 +677,130 @@ describe('ProvisioningService', () => {
 			provisioningService.getConfig = originStateGetConfig;
 		});
 	});
+
+	describe('provisionExpressionMappedRolesForUser', () => {
+		const user = mock<User>({
+			id: 'user-1',
+			email: 'test@example.com',
+			role: mock<Role>({ slug: 'global:member', roleType: 'global' }),
+		});
+
+		beforeEach(() => {
+			provisioningService['isExpressionMappingEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['buildRoleMappingConfig'] = jest.fn().mockResolvedValue({
+				instanceRoleRules: [],
+				projectRoleRules: [],
+				fallbackInstanceRole: 'global:member',
+			});
+			// Mock getPreviousProjectRoles — no existing project access
+			projectRepository.find.mockResolvedValue([]);
+		});
+
+		it('should emit expression-mapping-roles-resolved with metadata', async () => {
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:admin',
+					matchedRuleId: 'rule-1',
+					expression: '{{ $claims.role === "admin" }}',
+					isFallback: false,
+				},
+				projectRoles: new Map([
+					[
+						'proj-1',
+						{
+							projectId: 'proj-1',
+							role: 'project:editor',
+							matchedRuleId: 'rule-2',
+							expression: '{{ true }}',
+						},
+					],
+				]),
+			});
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
+			);
+
+			const context = { $claims: { role: 'admin' }, $provider: 'oidc' as const };
+
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(eventService.emit).toHaveBeenCalledWith('expression-mapping-roles-resolved', {
+				userId: 'user-1',
+				userEmail: 'test@example.com',
+				provider: 'oidc',
+				instanceRole: {
+					role: 'global:admin',
+					previousRole: 'global:member',
+					changed: true,
+					matchedRuleId: 'rule-1',
+					expression: '{{ $claims.role === "admin" }}',
+					isFallback: false,
+				},
+				projectRoles: [
+					{
+						projectId: 'proj-1',
+						role: 'project:editor',
+						previousRole: null,
+						changed: true,
+						matchedRuleId: 'rule-2',
+						expression: '{{ true }}',
+					},
+				],
+				removedProjectIds: [],
+			});
+		});
+
+		it('should not emit when expression mapping is disabled', async () => {
+			provisioningService['isExpressionMappingEnabled'] = jest.fn().mockResolvedValue(false);
+
+			const context = { $claims: {}, $provider: 'saml' as const };
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'expression-mapping-roles-resolved',
+				expect.anything(),
+			);
+		});
+
+		it('should detect removed projects and role changes', async () => {
+			const existingProject = mock<Project>({
+				id: 'old-proj-1',
+				projectRelations: [
+					mock<ProjectRelation>({
+						userId: 'user-1',
+						role: mock<Role>({ slug: 'project:viewer' }),
+					}),
+				],
+			});
+			// First call is getPreviousProjectRoles, second is from applyExpressionMappedProjectRoles
+			projectRepository.find
+				.mockResolvedValueOnce([existingProject])
+				.mockResolvedValueOnce([existingProject]);
+
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:member',
+					matchedRuleId: null,
+					expression: null,
+					isFallback: true,
+				},
+				projectRoles: new Map(),
+			});
+
+			const context = { $claims: {}, $provider: 'oidc' as const };
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'expression-mapping-roles-resolved',
+				expect.objectContaining({
+					removedProjectIds: ['old-proj-1'],
+					instanceRole: expect.objectContaining({
+						isFallback: true,
+						changed: false,
+						previousRole: 'global:member',
+					}),
+				}),
+			);
+		});
+	});
 });

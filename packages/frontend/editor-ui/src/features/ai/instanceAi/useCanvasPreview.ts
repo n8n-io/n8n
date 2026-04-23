@@ -4,6 +4,7 @@ import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import type { IconName } from '@n8n/design-system';
 import {
 	getLatestBuildResult,
+	getLatestWorkflowSetupResult,
 	getLatestExecutionId,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
@@ -86,7 +87,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		const result: ArtifactTab[] = [];
 		const liveExecMap = workflowExecutions?.value;
 		const historicalExecMap = historicalExecutions.value;
-		for (const entry of store.resourceRegistry.values()) {
+		for (const entry of store.producedArtifacts.values()) {
 			if (entry.type === 'workflow' || entry.type === 'data-table') {
 				// Live push event state takes priority over historical message data.
 				// Historical data already has stale executions filtered out.
@@ -224,7 +225,13 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 	watch(
 		() => route.params.threadId,
-		() => {
+		(threadId, oldThreadId) => {
+			// Skip if this is the initial route setup (e.g. URL updated from
+			// /instance-ai to /instance-ai/:threadId after the first message)
+			if (!oldThreadId) return;
+			// Skip if the thread ID hasn't actually changed
+			if (threadId === oldThreadId) return;
+
 			wasCanvasOpenBeforeSwitch.value = isPreviewVisible.value;
 			pendingRestore.value = true;
 			activeTabId.value = null;
@@ -251,8 +258,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
 	// Auto-open logic:
 	//   - Preview closed + live build/user message: auto-open to this workflow
-	//   - Preview open on same workflow: refresh it (workflowRefreshKey++)
-	//   - Preview open on different artifact: don't switch — user chose that tab
+	//   - Preview open: switch to this workflow and refresh (workflowRefreshKey++)
 	//   - Thread switch with canvas open: restore canvas with new thread's workflow
 	//   - Thread switch with canvas closed: stay closed
 	watch(
@@ -279,16 +285,39 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 				workflowExecutions.value = next;
 			}
 
-			// If preview is already open on a different artifact, don't switch
-			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== targetId) {
-				workflowRefreshKey.value++;
-				return;
-			}
-
 			wasCanvasOpenBeforeSwitch.value = false;
 			activeExecutionId.value = null;
 			activeTabId.value = targetId;
 			workflowRefreshKey.value++;
+		},
+	);
+
+	// --- Refresh preview when setup-workflow / apply-workflow-credentials completes ---
+	// These tools modify the workflow (credentials, parameters) but aren't detected
+	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
+
+	const latestSetupResult = computed(() => {
+		for (let i = store.messages.length - 1; i >= 0; i--) {
+			const msg = store.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestWorkflowSetupResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestSetupResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestSetupResult.value) return;
+
+			const targetId = latestSetupResult.value.workflowId;
+
+			// Only refresh if the setup targeted the currently active workflow tab
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
+			}
 		},
 	);
 
@@ -312,15 +341,6 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 			if (!exec) return;
 
 			if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
-
-			// If preview is already open on a different artifact, don't switch
-			if (
-				isPreviewVisible.value &&
-				activeTabId.value !== null &&
-				activeTabId.value !== exec.workflowId
-			) {
-				return;
-			}
 
 			activeExecutionId.value = exec.executionId;
 			activeTabId.value = exec.workflowId;
@@ -356,12 +376,6 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 				!userSentMessage.value &&
 				!wasCanvasOpenBeforeSwitch.value
 			) {
-				return;
-			}
-
-			// If preview is already open on a different artifact, don't switch
-			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== targetId) {
-				dataTableRefreshKey.value++;
 				return;
 			}
 

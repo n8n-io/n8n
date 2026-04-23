@@ -124,7 +124,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
 
-	const aiGatewayCreditsQuota = computed(() => settings.value.aiGateway?.creditsQuota ?? 0);
+	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
@@ -150,7 +150,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
-	const isChatFeatureEnabled = computed(() => isModuleActive('chat-hub'));
+	const isChatFeatureEnabled = computed(
+		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
+	);
 
 	const isCustomRolesFeatureEnabled = computed(
 		() => settings.value.enterprise?.customRoles ?? false,
@@ -415,7 +417,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		aiCreditsQuota,
 		isAiDataSharingEnabled,
 		isAiGatewayEnabled,
-		aiGatewayCreditsQuota,
+		aiGatewayBudget,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,

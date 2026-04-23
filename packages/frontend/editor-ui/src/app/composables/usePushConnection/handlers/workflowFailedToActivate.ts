@@ -1,5 +1,6 @@
 import type { WorkflowFailedToActivate } from '@n8n/api-types/push/workflow';
 import { useToast } from '@/app/composables/useToast';
+import { useActivationError } from '@/app/composables/useActivationError';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -21,10 +22,12 @@ export async function workflowFailedToActivate(
 
 	const toast = useToast();
 	const i18n = useI18n();
-	toast.showError(
-		new Error(data.errorMessage),
-		i18n.baseText('workflowActivator.showError.title', {
-			interpolate: { newStateName: 'activated' },
-		}) + ':',
-	);
+	const { errorMessage } = useActivationError(() => data.nodeId);
+	const title = i18n.baseText('workflowActivator.showError.title', {
+		interpolate: { newStateName: 'activated' },
+	});
+	toast.showError(new Error(data.errorMessage), title, {
+		message: errorMessage.value,
+		description: data.errorDescription,
+	});
 }

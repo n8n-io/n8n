@@ -1,6 +1,67 @@
-import { transformLegacyLangchainImport } from './Code.node';
+import { LOG_LEVELS } from 'n8n-workflow';
+import { transformLegacyLangchainImport, createSandboxLogger } from './Code.node';
 
 describe('Code.node', () => {
+	describe('createSandboxLogger', () => {
+		const logLevelKeys = LOG_LEVELS.filter((level) => level !== 'silent') as Array<
+			Exclude<(typeof LOG_LEVELS)[number], 'silent'>
+		>;
+
+		function buildMockLogger() {
+			const logger = {
+				error: jest.fn(),
+				warn: jest.fn(),
+				info: jest.fn(),
+				debug: jest.fn(),
+				// Sensitive properties that must never appear in the sandbox
+				globalConfig: jest.fn(),
+				instanceSettingsConfig: jest.fn(),
+				internalLogger: jest.fn(),
+			};
+			return logger;
+		}
+
+		it('should expose only non-silent log level methods', () => {
+			const mockLogger = buildMockLogger();
+			const sandboxLogger = createSandboxLogger(mockLogger);
+
+			expect(Object.keys(sandboxLogger)).toEqual(expect.arrayContaining(logLevelKeys));
+			expect(Object.keys(sandboxLogger)).toHaveLength(logLevelKeys.length);
+		});
+
+		it('should not expose sensitive properties on the sandbox logger', () => {
+			const mockLogger = buildMockLogger();
+			const sandboxLogger = createSandboxLogger(mockLogger);
+
+			expect((sandboxLogger as Record<string, unknown>).globalConfig).toBeUndefined();
+			expect((sandboxLogger as Record<string, unknown>).instanceSettingsConfig).toBeUndefined();
+			expect((sandboxLogger as Record<string, unknown>).internalLogger).toBeUndefined();
+		});
+
+		it('should not call sensitive properties when log methods are invoked', () => {
+			const mockLogger = buildMockLogger();
+			const sandboxLogger = createSandboxLogger(mockLogger);
+
+			for (const level of logLevelKeys) {
+				sandboxLogger[level]('test message');
+			}
+
+			expect(mockLogger.globalConfig).not.toHaveBeenCalled();
+			expect(mockLogger.instanceSettingsConfig).not.toHaveBeenCalled();
+			expect(mockLogger.internalLogger).not.toHaveBeenCalled();
+		});
+
+		it('should delegate log method calls to the original logger', () => {
+			const mockLogger = buildMockLogger();
+			const sandboxLogger = createSandboxLogger(mockLogger);
+
+			for (const level of logLevelKeys) {
+				sandboxLogger[level]('test message', { key: 'value' });
+				expect(mockLogger[level]).toHaveBeenCalledWith('test message', { key: 'value' });
+			}
+		});
+	});
+
 	describe('transformLegacyLangchainImport', () => {
 		describe('transforms legacy langchain imports to @langchain/classic', () => {
 			it('should transform langchain/chains to @langchain/classic/chains', () => {

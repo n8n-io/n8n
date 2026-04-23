@@ -8,6 +8,7 @@ export const ATTR = {
 	INSTANCE_ROLE: 'n8n.instance.role',
 
 	WORKFLOW_ID: 'n8n.workflow.id',
+	WORKFLOW_VERSION_ID: 'n8n.workflow.version_id',
 	WORKFLOW_NAME: 'n8n.workflow.name',
 	WORKFLOW_NODE_COUNT: 'n8n.workflow.node_count',
 

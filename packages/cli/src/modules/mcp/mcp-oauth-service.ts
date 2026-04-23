@@ -106,17 +106,27 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 
 	private validateClientRegistration(client: OAuthClientInformationFull): void {
-		if (client.redirect_uris) {
-			if (client.redirect_uris.length > MAX_REDIRECT_URIS) {
-				throw new Error(`redirect_uris exceeds maximum count of ${MAX_REDIRECT_URIS}`);
-			}
+		if (!client.client_name) {
+			throw new Error('client_name is required');
+		}
 
-			for (const uri of client.redirect_uris) {
-				if (uri.length > MAX_REDIRECT_URI_LENGTH) {
-					throw new Error(
-						`redirect_uri exceeds maximum length of ${MAX_REDIRECT_URI_LENGTH} characters`,
-					);
-				}
+		if (!client.grant_types || client.grant_types.length === 0) {
+			throw new Error('grant_types is required');
+		}
+
+		if (!client.redirect_uris || client.redirect_uris.length === 0) {
+			throw new Error('redirect_uris is required');
+		}
+
+		if (client.redirect_uris.length > MAX_REDIRECT_URIS) {
+			throw new Error(`redirect_uris exceeds maximum count of ${MAX_REDIRECT_URIS}`);
+		}
+
+		for (const uri of client.redirect_uris) {
+			if (uri.length > MAX_REDIRECT_URI_LENGTH) {
+				throw new Error(
+					`redirect_uri exceeds maximum length of ${MAX_REDIRECT_URI_LENGTH} characters`,
+				);
 			}
 		}
 	}
