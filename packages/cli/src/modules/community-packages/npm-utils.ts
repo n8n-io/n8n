@@ -197,7 +197,7 @@ export async function executeNpmCommand(
 	});
 
 	try {
-		return await executeNpmCli(args, cwd);
+		return await executeNpmCli(fullArgs, cwd);
 	} catch (error) {
 		if (authToken && error instanceof Error) {
 			error.message = redactAuthTokens(error.message);
