@@ -72,7 +72,7 @@ export class AgentsBuilderService {
 		// Resolve the model the builder should run on. Throws
 		// `BuilderNotConfiguredError` when none of custom-credential / proxy /
 		// env-var fallback is available.
-		const modelConfig = await this.builderSettings.resolveModelConfig(user);
+		const { config: modelConfig, isProxied } = await this.builderSettings.resolveModelConfig(user);
 
 		const currentConfig = agent.schema as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
@@ -98,7 +98,9 @@ export class AgentsBuilderService {
 			.instructions(instructions)
 			.memory(builderMemory);
 
-		if (isAnthropicModel(modelConfig)) {
+		// proxy services doesn't support web search
+		// TODO: use brave search tool
+		if (isAnthropicModel(modelConfig) && !isProxied) {
 			builder.providerTool(providerTools.anthropicWebSearch({ maxUses: 5 }));
 		}
 

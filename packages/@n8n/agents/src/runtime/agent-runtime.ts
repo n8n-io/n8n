@@ -936,10 +936,13 @@ export class AgentRuntime {
 			if (await handleAbort()) return;
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
-
+			const messages = list.forLlm(
+				this.config.instructions,
+				this.config.instructionProviderOptions,
+			);
 			const result = streamText({
 				model,
-				messages: list.forLlm(this.config.instructions, this.config.instructionProviderOptions),
+				messages,
 				abortSignal: this.eventBus.signal,
 				...(hasTools ? { tools: aiTools } : {}),
 				...(providerOptions

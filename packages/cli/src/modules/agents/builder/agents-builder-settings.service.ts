@@ -166,12 +166,12 @@ export class AgentsBuilderSettingsService {
 	 *
 	 * Throws `BuilderNotConfiguredError` when none resolve.
 	 */
-	async resolveModelConfig(user: User): Promise<ModelConfig> {
+	async resolveModelConfig(user: User): Promise<{ config: ModelConfig; isProxied: boolean }> {
 		const settings = await this.loadSettings();
 
 		if (settings.mode === 'custom') {
 			const fromCredential = await this.tryResolveCustomCredential(settings, user);
-			if (fromCredential) return fromCredential;
+			if (fromCredential) return { config: fromCredential, isProxied: false };
 			this.logger.warn(
 				'Agent builder custom credential could not be resolved; falling back to default',
 				{ credentialId: settings.credentialId },
@@ -179,15 +179,18 @@ export class AgentsBuilderSettingsService {
 		}
 
 		if (this.aiService.isProxyEnabled()) {
-			return await this.resolveProxyModel(user);
+			return { config: await this.resolveProxyModel(user), isProxied: true };
 		}
 
 		const envKey = readEnvAnthropicKey();
 		if (envKey) {
 			return {
-				id: `anthropic/${AGENT_BUILDER_DEFAULT_MODEL}`,
-				apiKey: envKey,
-			} as ModelConfig;
+				config: {
+					id: `anthropic/${AGENT_BUILDER_DEFAULT_MODEL}`,
+					apiKey: envKey,
+				},
+				isProxied: false,
+			};
 		}
 
 		throw new BuilderNotConfiguredError();
