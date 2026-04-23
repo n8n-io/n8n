@@ -108,6 +108,8 @@ export async function jiraSoftwareCloudApiRequest(
 	}
 }
 
+export type JiraSoftwareCloudApiRequest = typeof jiraSoftwareCloudApiRequest;
+
 export function handlePagination(
 	method: IHttpRequestMethods,
 	body: any,

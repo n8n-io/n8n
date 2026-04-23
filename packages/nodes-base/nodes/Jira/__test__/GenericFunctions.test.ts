@@ -4,7 +4,7 @@ import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import {
 	handlePagination,
 	jiraSoftwareCloudApiRequestAllItems,
-	type jiraSoftwareCloudApiRequest as JiraSoftwareCloudApiRequest,
+	type JiraSoftwareCloudApiRequest,
 } from '../GenericFunctions';
 
 describe('Jira -> GenericFunctions', () => {
