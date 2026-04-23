@@ -177,6 +177,29 @@ export class McpApiHelper {
 	 */
 	async sseSetup(
 		path: string,
+		options?: {
+			headers?: Record<string, string>;
+			maxNotFoundRetries?: number;
+			notFoundRetryDelayMs?: number;
+		},
+	): Promise<McpSession> {
+		const maxNotFoundRetries = options?.maxNotFoundRetries ?? 5;
+		const notFoundRetryDelayMs = options?.notFoundRetryDelayMs ?? 500;
+
+		for (let attempt = 0; attempt <= maxNotFoundRetries; attempt++) {
+			try {
+				return await this.attemptSseSetup(path, options);
+			} catch (error) {
+				const isNotFound = error instanceof Error && 'isSseNotFound' in error;
+				if (!isNotFound || attempt === maxNotFoundRetries) throw error;
+				await new Promise((resolve) => setTimeout(resolve, notFoundRetryDelayMs));
+			}
+		}
+		throw new Error('SSE setup: retry loop exhausted');
+	}
+
+	private async attemptSseSetup(
+		path: string,
 		options?: { headers?: Record<string, string> },
 	): Promise<McpSession> {
 		// Get base URL and auth cookie from Playwright context
@@ -216,6 +239,17 @@ export class McpApiHelper {
 					headers,
 				},
 				(res) => {
+					if (res.statusCode === 404) {
+						res.resume();
+						clearTimeout(timeout);
+						const notFound = new Error(`SSE setup got 404 for ${path}`) as Error & {
+							isSseNotFound: true;
+						};
+						notFound.isSseNotFound = true;
+						reject(notFound);
+						return;
+					}
+
 					let buffer = '';
 					let resolved = false;
 
