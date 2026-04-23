@@ -6,10 +6,11 @@ import type oracledb from 'oracledb';
 
 import { EmbeddingsOracleDb } from '../EmbeddingsOracleDB/EmbeddingsOracleDb.node';
 
-const mockClose = jest.fn();
 const mockGetConnection = jest.fn();
 const mockEmbedQuery = jest.fn();
 const mockEmbedDocuments = jest.fn();
+
+type MockConnection = oracledb.Connection & { close: jest.Mock };
 
 jest.mock('@n8n/ai-utilities', () => {
 	const actual = jest.requireActual<typeof AiUtilitiesModule>('@n8n/ai-utilities');
@@ -28,16 +29,19 @@ jest.mock('@oracle/langchain-oracledb', () => ({
 }));
 
 jest.mock('n8n-nodes-base/dist/nodes/Oracle/Sql/transport', () => ({
-	configureOracleDB: jest.fn(async () => {
-		await Promise.resolve();
-		return { getConnection: mockGetConnection };
-	}),
+	configureOracleDB: jest.fn(),
 }));
+
+const { configureOracleDB: mockConfigureOracleDB } = jest.requireMock(
+	'n8n-nodes-base/dist/nodes/Oracle/Sql/transport',
+) as {
+	configureOracleDB: jest.Mock;
+};
 
 describe('EmbeddingsOracleDb', () => {
 	let node: EmbeddingsOracleDb;
 	let context: jest.Mocked<ISupplyDataFunctions>;
-	let connection: { close: jest.Mock };
+	let borrowedConnections: MockConnection[];
 
 	const baseNode: INode = {
 		id: '1',
@@ -50,9 +54,17 @@ describe('EmbeddingsOracleDb', () => {
 
 	beforeEach(() => {
 		node = new EmbeddingsOracleDb();
-		connection = { close: mockClose } as unknown as oracledb.Connection & { close: jest.Mock };
-		mockClose.mockResolvedValue(undefined);
-		mockGetConnection.mockResolvedValue(connection);
+		borrowedConnections = [];
+		mockConfigureOracleDB.mockResolvedValue({
+			getConnection: mockGetConnection,
+		} as unknown as oracledb.Pool);
+		mockGetConnection.mockImplementation(async () => {
+			const connection = {
+				close: jest.fn().mockResolvedValue(undefined),
+			} as unknown as MockConnection;
+			borrowedConnections.push(connection);
+			return connection;
+		});
 		mockEmbedQuery.mockResolvedValue([1]);
 		mockEmbedDocuments.mockResolvedValue([[1]]);
 
@@ -76,7 +88,10 @@ describe('EmbeddingsOracleDb', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		mockConfigureOracleDB.mockReset();
+		mockGetConnection.mockReset();
+		mockEmbedQuery.mockReset();
+		mockEmbedDocuments.mockReset();
 	});
 
 	it('borrows and releases a connection per embedding call', async () => {
@@ -89,10 +104,15 @@ describe('EmbeddingsOracleDb', () => {
 		await embeddingsResponse.embedQuery('hello world');
 		await embeddingsResponse.embedDocuments(['doc one', 'doc two']);
 
+		expect(mockConfigureOracleDB).toHaveBeenCalledWith(
+			expect.objectContaining({ user: 'user', password: 'pw' }),
+		);
 		expect(mockGetConnection).toHaveBeenCalledTimes(2);
 		expect(mockEmbedQuery).toHaveBeenCalledWith('hello world');
 		expect(mockEmbedDocuments).toHaveBeenCalledWith(['doc one', 'doc two']);
-		expect(mockClose).toHaveBeenCalledTimes(2);
+		expect(borrowedConnections).toHaveLength(2);
+		expect(borrowedConnections[0]).not.toBe(borrowedConnections[1]);
+		borrowedConnections.forEach((connection) => expect(connection.close).toHaveBeenCalledTimes(1));
 	});
 
 	it('still releases the connection when the embedding call throws', async () => {
@@ -105,7 +125,11 @@ describe('EmbeddingsOracleDb', () => {
 		};
 
 		await expect(embeddingsResponse.embedQuery('boom')).rejects.toThrow('oracle failure');
+		expect(mockConfigureOracleDB).toHaveBeenCalledWith(
+			expect.objectContaining({ user: 'user', password: 'pw' }),
+		);
 		expect(mockGetConnection).toHaveBeenCalledTimes(1);
-		expect(mockClose).toHaveBeenCalledTimes(1);
+		expect(borrowedConnections).toHaveLength(1);
+		expect(borrowedConnections[0].close).toHaveBeenCalledTimes(1);
 	});
 });

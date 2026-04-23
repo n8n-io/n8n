@@ -1,9 +1,14 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-const configureOracleDBMock = jest.fn();
 jest.mock('n8n-nodes-base/dist/nodes/Oracle/Sql/transport', () => ({
-	configureOracleDB: configureOracleDBMock,
+	configureOracleDB: jest.fn(),
 }));
+
+const { configureOracleDB: mockConfigureOracleDB } = jest.requireMock(
+	'n8n-nodes-base/dist/nodes/Oracle/Sql/transport',
+) as {
+	configureOracleDB: jest.Mock;
+};
 
 import { searchModels } from './listModels';
 
@@ -29,7 +34,7 @@ describe('EmbeddingsOracleDB listModels', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		configureOracleDBMock.mockResolvedValue(pool);
+		mockConfigureOracleDB.mockResolvedValue(pool);
 		pool.getConnection = jest.fn().mockResolvedValue(connection);
 		connection.execute = jest.fn().mockResolvedValue({
 			rows: [['MODEL_A'], ['MODEL_B']],
@@ -41,7 +46,7 @@ describe('EmbeddingsOracleDB listModels', () => {
 	it('returns models and always closes the connection', async () => {
 		const result = await searchModels.call(context, '');
 
-		expect(configureOracleDBMock).toHaveBeenCalledWith({ user: 'user', password: 'pw' });
+		expect(mockConfigureOracleDB).toHaveBeenCalledWith({ user: 'user', password: 'pw' });
 		expect(pool.getConnection).toHaveBeenCalledTimes(1);
 		expect(connection.execute).toHaveBeenCalledWith('select model_name from user_mining_models');
 		expect(connection.close).toHaveBeenCalledTimes(1);
