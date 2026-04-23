@@ -981,7 +981,7 @@ export class WorkflowExecute {
 			}
 
 			const error = new Error(runExecutionData.resultData.error.message);
-			error.stack = runExecutionData.resultData.error.stack;
+			error.stack = runExecutionData.resultData.error.stack ?? '';
 			throw error;
 		}
 	}
