@@ -38,7 +38,11 @@ export class ExpressionEngineConfig {
 	@Env('N8N_EXPRESSION_ENGINE_OBSERVABILITY_ENABLED')
 	observabilityEnabled: boolean = true;
 
-	/** Whether to emit OpenTelemetry spans for expression evaluation. */
+	/**
+	 * Whether to emit OpenTelemetry spans for expression evaluation.
+	 * Slow evaluations (>slowEvaluationThresholdMs) and errors always emit a span.
+	 * Healthy-path evaluations are sampled at tracesSampleRate.
+	 */
 	@Env('N8N_EXPRESSION_ENGINE_TRACES_ENABLED')
 	tracesEnabled: boolean = true;
 
