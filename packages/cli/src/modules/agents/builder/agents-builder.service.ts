@@ -1,5 +1,5 @@
 import { Agent, Memory, providerTools } from '@n8n/agents';
-import type { CredentialProvider, StreamChunk } from '@n8n/agents';
+import type { CredentialProvider, ModelConfig, StreamChunk } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -14,6 +14,19 @@ import type { AgentJsonConfig } from '../json-config/agent-json-config';
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
 	return `builder:${agentId}`;
+}
+
+function isAnthropicModel(modelConfig: ModelConfig): boolean {
+	if (typeof modelConfig === 'string') {
+		return modelConfig.includes('anthropic');
+	}
+	if (typeof modelConfig === 'object' && 'id' in modelConfig) {
+		return modelConfig.id.includes('anthropic');
+	}
+	if (typeof modelConfig === 'object' && 'provider' in modelConfig) {
+		return modelConfig.provider === 'anthropic';
+	}
+	return false;
 }
 
 @Service()
@@ -83,8 +96,11 @@ export class AgentsBuilderService {
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
 			.instructions(instructions)
-			.memory(builderMemory)
-			.providerTool(providerTools.anthropicWebSearch({ maxUses: 5 }));
+			.memory(builderMemory);
+
+		if (isAnthropicModel(modelConfig)) {
+			builder.providerTool(providerTools.anthropicWebSearch({ maxUses: 5 }));
+		}
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);
