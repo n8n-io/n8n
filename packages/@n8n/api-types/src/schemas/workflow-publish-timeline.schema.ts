@@ -1,7 +1,7 @@
 export type PublishTimelineEvent = {
 	id: number;
 	workflowId: string;
-	versionId: string;
+	versionId: string | null;
 	event: 'activated' | 'deactivated';
 	createdAt: string;
 	userId: string | null;

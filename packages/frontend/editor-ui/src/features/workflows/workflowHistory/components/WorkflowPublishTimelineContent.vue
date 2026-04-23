@@ -148,6 +148,7 @@ const loadTimeline = async () => {
 			workflowHistoryStore
 				.getVersionFirstAdoptionDate({ major: 2, minor: 17, patch: 0 })
 				.catch(() => null),
+			// ensure usersStore is sufficiently initialized for `hasMultipleAuthors`
 			usersStore.fetchUsers({ filter: { isPending: false }, take: 2 }),
 		]);
 		adoptionDate.value = firstAdoptionDate === null ? null : new Date(firstAdoptionDate);
@@ -297,15 +298,6 @@ onMounted(loadTimeline);
 	&:hover {
 		color: var(--color--primary);
 	}
-}
-
-.disclaimer {
-	margin-bottom: var(--spacing--sm);
-}
-
-.dismissButton {
-	cursor: pointer;
-	color: var(--color--text--tint-2);
 }
 
 .empty {

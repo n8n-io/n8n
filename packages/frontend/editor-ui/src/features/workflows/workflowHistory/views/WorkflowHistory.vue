@@ -202,6 +202,7 @@ onBeforeMount(async () => {
 					workflowId: workflowId.value,
 					versionId: workflowHistory.value[0].versionId,
 				},
+				query: route.query,
 			});
 		}
 	} catch (error) {

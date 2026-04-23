@@ -21,7 +21,7 @@ export type WorkflowPublishHistory = {
 	id: number;
 	event: 'activated' | 'deactivated';
 	userId: string | null;
-	versionId: string;
+	versionId: string | null;
 	workflowId: string;
 };
 
