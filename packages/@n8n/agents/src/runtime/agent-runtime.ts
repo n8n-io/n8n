@@ -56,8 +56,8 @@ import {
 	toAiSdkProviderTools,
 	toAiSdkTools,
 } from './tool-adapter';
-import type { AgentEventSpecificData } from '../types/runtime/event';
 import { buildWorkingMemoryTool } from './working-memory';
+import type { AgentEventSpecificData } from '../types/runtime/event';
 import { AgentEvent } from '../types/runtime/event';
 import type {
 	AgentPersistenceOptions,
@@ -408,9 +408,7 @@ export class AgentRuntime {
 	 * The system prompt is NOT stored in the list; list.forLlm(instructions)
 	 * prepends it at every LLM call site.
 	 */
-	private async buildMessageList(
-		input: AgentMessage[],
-	): Promise<AgentMessageList> {
+	private async buildMessageList(input: AgentMessage[]): Promise<AgentMessageList> {
 		const list = new AgentMessageList();
 		const persistence = this.currentState.persistence;
 
