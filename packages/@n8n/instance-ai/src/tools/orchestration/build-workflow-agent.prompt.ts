@@ -640,7 +640,6 @@ When modifying an existing workflow, the current code is **already pre-loaded** 
 - Edit using \`edit_file\` for targeted changes or \`write_file\` for full rewrites (always use absolute paths)
 - Run tsc → submit-workflow with the \`workflowId\`
 - Do NOT call \`workflows(action="get-as-code")\` — the file is already populated
-- **Preserve existing raw \`{ id, name }\` credential objects verbatim.** The id binds the node to the exact credential the user chose; swapping it for a different credential (or dropping the id) silently re-binds the node to a different credential of the same type. If you rewrite a node from scratch, copy the existing credential object as-is.
 
 ${SDK_RULES_AND_PATTERNS_SANDBOX}
 `;
