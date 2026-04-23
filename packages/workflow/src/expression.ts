@@ -251,6 +251,7 @@ export class Expression {
 		poolSize: number;
 		maxCodeCacheSize: number;
 		observability?: ObservabilityProvider;
+		idleTimeoutMs?: number;
 	}): Promise<void> {
 		if (options.engine !== 'vm' || IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
@@ -267,6 +268,7 @@ export class Expression {
 					}),
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
+				idleTimeoutMs: options.idleTimeoutMs,
 				hooks: {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],

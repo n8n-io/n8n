@@ -624,7 +624,7 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		workflowsStore.setNodePristine(node.name, false);
+		workflowDocumentStore.value.setNodePristine(node.name, false);
 		setNodeActiveByName(node.name, source);
 	}
 
@@ -892,7 +892,7 @@ export function useCanvasOperations() {
 				uiStore.markStateDirty();
 			}
 
-			workflowsStore.setNodePristine(nodeData.name, true);
+			workflowDocumentStore.value.setNodePristine(nodeData.name, true);
 			nodeHelpers.matchCredentials(nodeData);
 			nodeHelpers.updateNodeParameterIssues(nodeData);
 			nodeHelpers.updateNodeCredentialIssues(nodeData);

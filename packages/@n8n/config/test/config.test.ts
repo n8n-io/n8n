@@ -162,6 +162,7 @@ describe('GlobalConfig', () => {
 				keepLogCount: 3,
 				logBaseName: 'n8nEventLog',
 				maxFileSizeInKB: 10240,
+				maxMessagesPerParse: 10_000,
 			},
 		},
 		externalHooks: {
@@ -500,6 +501,7 @@ describe('GlobalConfig', () => {
 			tracesEnabled: true,
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
+			idleTimeout: undefined,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -519,6 +521,9 @@ describe('GlobalConfig', () => {
 			mfaEnforcedEnabled: false,
 			personalSpacePublishingEnabled: true,
 			personalSpaceSharingEnabled: true,
+			samlMetadata: '',
+			samlMetadataUrl: '',
+			samlLoginEnabled: false,
 		},
 	} satisfies GlobalConfigShape;
 

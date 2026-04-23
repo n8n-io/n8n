@@ -493,11 +493,62 @@ export function validateWorkflow(
 		validateParentSupportsInputs(json, options.nodeTypesProvider, warnings);
 	}
 
+	// Merge node input-count consistency
+	checkMergeNodeInputCount(json, warnings);
+
 	return {
 		valid: errors.length === 0,
 		errors,
 		warnings,
 	};
+}
+
+/**
+ * Validate that the Merge node's `numberInputs` parameter is consistent with
+ * the input indices actually used by incoming connections.
+ *
+ * The Merge node has expression-based inputs (count derived from
+ * `numberInputs`, default 2), so checkNodeInputIndices can't resolve the count
+ * statically. Without this check, a workflow with three branches wired into a
+ * Merge node that still has `numberInputs=2` passes validation and silently
+ * drops the third branch at runtime.
+ */
+function checkMergeNodeInputCount(json: WorkflowJSON, warnings: ValidationWarning[]): void {
+	const connectionsByDest = mapConnectionsByDestination(
+		json.connections as unknown as N8nIConnections,
+	);
+
+	for (const node of json.nodes) {
+		if (!node.name) continue;
+		if (node.type !== 'n8n-nodes-base.merge') continue;
+
+		const numberInputsParam = node.parameters?.numberInputs;
+		const declaredInputs = typeof numberInputsParam === 'number' ? numberInputsParam : 2;
+
+		const incomingMain = connectionsByDest[node.name]?.main;
+		if (!incomingMain) continue;
+
+		let maxConnectedIndex = -1;
+		for (let i = 0; i < incomingMain.length; i++) {
+			const slot = incomingMain[i];
+			if (Array.isArray(slot) && slot.length > 0) {
+				maxConnectedIndex = i;
+			}
+		}
+
+		if (maxConnectedIndex >= declaredInputs) {
+			warnings.push(
+				new ValidationWarning(
+					'INVALID_INPUT_INDEX',
+					`Merge node '${node.name}' has a connection to input index ${maxConnectedIndex} but 'numberInputs' is ${declaredInputs}. Set 'numberInputs' to ${maxConnectedIndex + 1} so every branch is accepted.`,
+					node.name,
+					'numberInputs',
+					undefined,
+					'major',
+				),
+			);
+		}
+	}
 }
 
 /**

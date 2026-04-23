@@ -14,6 +14,7 @@ import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -57,8 +58,8 @@ export class MeController {
 		} = req.user;
 
 		if (this.isUserManagedByEnv(req.user)) {
-			throw new BadRequestError(
-				'This account is managed via environment variables and cannot be updated here',
+			throw new ForbiddenError(
+				'This account is managed via environment variables and cannot be modified through the API',
 			);
 		}
 
@@ -194,8 +195,8 @@ export class MeController {
 		const { currentPassword, newPassword, mfaCode } = payload;
 
 		if (this.isUserManagedByEnv(user)) {
-			throw new BadRequestError(
-				'This account is managed via environment variables and cannot be updated here',
+			throw new ForbiddenError(
+				'This account is managed via environment variables and cannot be modified through the API',
 			);
 		}
 

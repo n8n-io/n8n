@@ -176,7 +176,7 @@ export abstract class BaseCommand<F = never> {
 		await Container.get(TelemetryEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
-		const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit } =
+		const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
 			this.globalConfig.expressionEngine;
 		await Expression.initExpressionEngine({
 			engine,
@@ -184,6 +184,7 @@ export abstract class BaseCommand<F = never> {
 			maxCodeCacheSize,
 			bridgeTimeout,
 			bridgeMemoryLimit,
+			idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
 			observability: Container.get(ExpressionObservabilityProvider),
 		});
 	}

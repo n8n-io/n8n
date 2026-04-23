@@ -49,4 +49,8 @@ export class ExpressionEngineConfig {
 	/** Head-based sampling rate (0.0–1.0) for healthy-path spans. Slow and erroring expressions always emit. */
 	@Env('N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE', z.number({ coerce: true }).min(0).max(1))
 	tracesSampleRate: number = 0.0;
+
+	/** If set, scale the pool to 0 warm isolates after this many seconds with no acquire. */
+	@Env('N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT')
+	idleTimeout?: number;
 }
