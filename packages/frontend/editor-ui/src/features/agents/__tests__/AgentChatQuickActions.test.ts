@@ -14,12 +14,24 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
 }));
 
+const globalStubs = {
+	N8nButton: {
+		props: ['type', 'size', 'disabled'],
+		template:
+			'<button v-bind="$attrs" :disabled="disabled !== false && disabled !== undefined ? true : undefined" @click="$emit(\'click\', $event)"><slot name="prefix" /><slot /></button>',
+		emits: ['click'],
+		inheritAttrs: false,
+	},
+	N8nIcon: { template: '<i></i>' },
+};
+
 describe('AgentChatQuickActions', () => {
 	beforeEach(() => openModalWithData.mockClear());
 
 	it('renders three chips: Run now, Edit config, Add tool', () => {
 		const wrapper = mount(AgentChatQuickActions, {
 			props: { tools: [] as AgentJsonToolRef[], projectId: 'p1', agentId: 'a1' },
+			global: { stubs: globalStubs },
 		});
 		expect(wrapper.find('[data-testid="agent-quick-action-run"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-quick-action-edit"]').exists()).toBe(true);
@@ -30,6 +42,7 @@ describe('AgentChatQuickActions', () => {
 		const tools = [{ type: 'node', name: 'x' } as unknown as AgentJsonToolRef];
 		const wrapper = mount(AgentChatQuickActions, {
 			props: { tools, projectId: 'p1', agentId: 'a1' },
+			global: { stubs: globalStubs },
 		});
 		await wrapper.find('[data-testid="agent-quick-action-add-tool"]').trigger('click');
 		expect(openModalWithData).toHaveBeenCalledTimes(1);
@@ -44,6 +57,7 @@ describe('AgentChatQuickActions', () => {
 	it('emits update:tools when the modal confirms a selection', async () => {
 		const wrapper = mount(AgentChatQuickActions, {
 			props: { tools: [] as AgentJsonToolRef[], projectId: 'p1', agentId: 'a1' },
+			global: { stubs: globalStubs },
 		});
 		await wrapper.find('[data-testid="agent-quick-action-add-tool"]').trigger('click');
 		const { onConfirm } = openModalWithData.mock.calls[0][0].data;
@@ -52,13 +66,19 @@ describe('AgentChatQuickActions', () => {
 		expect(wrapper.emitted('update:tools')?.[0]).toEqual([next]);
 	});
 
-	it('Run now and Edit config are click-inert (no modal, no emit)', async () => {
+	it('Run now and Edit config render as disabled, Add tool is enabled', () => {
 		const wrapper = mount(AgentChatQuickActions, {
 			props: { tools: [] as AgentJsonToolRef[], projectId: 'p1', agentId: 'a1' },
+			global: { stubs: globalStubs },
 		});
-		await wrapper.find('[data-testid="agent-quick-action-run"]').trigger('click');
-		await wrapper.find('[data-testid="agent-quick-action-edit"]').trigger('click');
-		expect(openModalWithData).not.toHaveBeenCalled();
-		expect(wrapper.emitted('update:tools')).toBeUndefined();
+		expect(
+			wrapper.find('[data-testid="agent-quick-action-run"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			wrapper.find('[data-testid="agent-quick-action-edit"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			wrapper.find('[data-testid="agent-quick-action-add-tool"]').attributes('disabled'),
+		).toBeUndefined();
 	});
 });
