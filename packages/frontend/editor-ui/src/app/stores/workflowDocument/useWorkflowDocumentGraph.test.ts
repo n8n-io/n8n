@@ -44,6 +44,7 @@ function createNodesDeps(): WorkflowDocumentNodesDeps {
 		getNodeType: vi.fn().mockReturnValue(null),
 		assignNodeId: vi.fn().mockReturnValue(''),
 		syncWorkflowObject: vi.fn(),
+		unpinNodeData: vi.fn(),
 		nodeMetadata: useWorkflowDocumentNodeMetadata(),
 	};
 }
