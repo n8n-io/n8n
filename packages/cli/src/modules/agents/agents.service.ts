@@ -392,7 +392,10 @@ export class AgentsService {
 
 			if (ref.type === 'node') {
 				const { resolveNodeTool } = await import('./tools/node-tool-factory');
-				return resolveNodeTool(ref, { executor: this.ephemeralNodeExecutor, projectId });
+				return await resolveNodeTool(ref, {
+					executor: this.ephemeralNodeExecutor,
+					projectId,
+				});
 			}
 
 			return null;
