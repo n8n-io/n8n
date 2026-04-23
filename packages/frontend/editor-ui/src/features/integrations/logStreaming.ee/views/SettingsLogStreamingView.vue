@@ -58,6 +58,12 @@ const canManageLogStreaming = computed((): boolean => {
 	return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });
 });
 
+const isManagedByEnv = computed((): boolean => {
+	return settingsStore.settings.logStreaming?.managedByEnv ?? false;
+});
+
+const isReadonly = computed((): boolean => isManagedByEnv.value || !canManageLogStreaming.value);
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.log-streaming.heading'));
 	if (!isLicensed.value) return;
@@ -194,6 +200,11 @@ async function onEdit(destinationId?: string) {
 					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
 				</N8nInfoTip>
 			</div>
+			<div v-if="isManagedByEnv" class="mb-l" data-test-id="log-streaming-managed-by-env">
+				<N8nInfoTip theme="info" type="note">
+					{{ i18n.baseText('settings.log-streaming.managedByEnv') }}
+				</N8nInfoTip>
+			</div>
 			<template v-if="storeHasItems()">
 				<ElRow
 					v-for="item in sortedItemKeysByLabel"
@@ -205,19 +216,19 @@ async function onEdit(destinationId?: string) {
 						<EventDestinationCard
 							:destination="logStreamingStore.items[item.key]?.destination"
 							:event-bus="eventBus"
-							:readonly="!canManageLogStreaming"
+							:readonly="isReadonly"
 							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
 							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
 						/>
 					</ElCol>
 				</ElRow>
-				<div class="mt-m text-right">
-					<N8nButton v-if="canManageLogStreaming" size="large" @click="addDestination">
+				<div v-if="!isReadonly" class="mt-m text-right">
+					<N8nButton size="large" @click="addDestination">
 						{{ i18n.baseText(`settings.log-streaming.add`) }}
 					</N8nButton>
 				</div>
 			</template>
-			<div v-else data-test-id="action-box-licensed">
+			<div v-else-if="!isManagedByEnv" data-test-id="action-box-licensed">
 				<N8nActionBox
 					:button-text="i18n.baseText(`settings.log-streaming.add`)"
 					@click:button="addDestination"
