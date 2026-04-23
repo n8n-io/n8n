@@ -11,7 +11,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { I18nT } from 'vue-i18n';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { hasProxyAuth } from '@/app/utils/nodeTypeUtils';
+import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@/app/composables/useToast';
 
 import TitledList from '@/app/components/TitledList.vue';

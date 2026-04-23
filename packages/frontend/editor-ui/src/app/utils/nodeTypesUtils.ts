@@ -42,6 +42,14 @@ export function getAppNameFromCredType(name: string) {
 		.join(' ');
 }
 
+/**
+ * True when the node uses the HTTP-request proxy-auth pattern
+ * (parameter key `nodeCredentialType` is present).
+ */
+export function hasProxyAuth(node: INodeUi): boolean {
+	return Object.keys(node.parameters).includes('nodeCredentialType');
+}
+
 export function getAppNameFromNodeName(name: string) {
 	return name
 		.split(' ')

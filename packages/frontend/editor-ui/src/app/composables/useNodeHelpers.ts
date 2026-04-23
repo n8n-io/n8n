@@ -38,7 +38,7 @@ import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 import { isString } from '@/app/utils/typeGuards';
 import { isObject } from '@/app/utils/objectUtils';
-import { hasProxyAuth } from '@/app/utils/nodeTypeUtils';
+import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';

@@ -15,7 +15,7 @@ import type {
 import { isHitlToolType, NodeHelpers, traverseNodeParameters } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
-import { hasProxyAuth } from '@/app/utils/nodeTypeUtils';
+import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
 
 /**
  * Returns the credentials that are displayable for the given node.
