@@ -1,6 +1,6 @@
-import { Service } from '@n8n/di';
 import { DeploymentKeyRepository, type DeploymentKey } from '@n8n/db';
-import { Cipher } from 'n8n-core';
+import { Service } from '@n8n/di';
+import { Cipher, type CipherAlgorithm } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -86,7 +86,7 @@ export class KeyManagerService {
 	 */
 	async addKey(
 		plaintextValue: string,
-		algorithm: string,
+		algorithm: CipherAlgorithm,
 		setAsActive = false,
 	): Promise<DeploymentKey> {
 		const encryptedValue = this.cipher.encrypt(plaintextValue);
