@@ -1,17 +1,14 @@
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
-import {
-	makeN8nLlmFailedAttemptHandler,
-	N8nLlmTracing,
-	getNodeProxyAgent,
-} from '@n8n/ai-utilities';
+import { makeN8nLlmFailedAttemptHandler, getNodeProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatAwsBedrock } from '../LmChatAwsBedrock.node';
 
-vi.mock('@aws-sdk/client-bedrock-runtime');
-vi.mock('@langchain/aws');
+vi.mock('@langchain/aws', () => ({
+	ChatBedrockConverse: vi.fn(),
+}));
 vi.mock('@n8n/ai-utilities', () => ({
 	getConnectionHintNoticeField: vi
 		.fn()
@@ -21,6 +18,9 @@ vi.mock('@n8n/ai-utilities', () => ({
 	getNodeProxyAgent: vi.fn(),
 }));
 
+vi.mock('@aws-sdk/client-bedrock-runtime', () => ({
+	BedrockRuntimeClient: vi.fn(),
+}));
 const MockedBedrockRuntimeClient = vi.mocked(BedrockRuntimeClient);
 const MockedChatBedrockConverse = vi.mocked(ChatBedrockConverse);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
@@ -60,8 +60,6 @@ describe('LmChatAwsBedrock', () => {
 
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetNodeProxyAgent.mockReturnValue(undefined);
-		MockedBedrockRuntimeClient.mockImplementation(() => ({}) as BedrockRuntimeClient);
-		MockedChatBedrockConverse.mockImplementation(() => ({}) as unknown as ChatBedrockConverse);
 
 		return mockContext;
 	};

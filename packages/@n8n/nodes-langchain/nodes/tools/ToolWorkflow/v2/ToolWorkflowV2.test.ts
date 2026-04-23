@@ -1,5 +1,5 @@
 import { DynamicTool } from '@langchain/core/tools';
-import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError, sleepWithAbort } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
 	INodeExecutionData,
@@ -16,6 +16,8 @@ vi.mock('n8n-workflow', async () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
 	sleepWithAbort: vi.fn().mockResolvedValue(undefined),
 }));
+
+const sleepWithAbortMock = vi.mocked(sleepWithAbort);
 
 function createMockClonedContext(
 	baseContext: ISupplyDataFunctions,
@@ -735,8 +737,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		});
 
 		it('should respect waitBetweenTries with sleepWithAbort', async () => {
-			const { sleepWithAbort } = vi.requireMock('n8n-workflow');
-			sleepWithAbort.mockClear();
+			sleepWithAbortMock.mockClear();
 			const executeWorkflowMock = vi.fn().mockRejectedValue(new Error('Test error'));
 
 			const contextWithRetryNode = createMockContext({
@@ -776,7 +777,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			await tool.func('test query');
 
-			expect(sleepWithAbort).toHaveBeenCalledWith(1500, undefined);
+			expect(sleepWithAbortMock).toHaveBeenCalledWith(1500, undefined);
 		});
 	});
 
@@ -851,8 +852,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		});
 
 		it('should handle abort signal during retry wait', async () => {
-			const { sleepWithAbort } = vi.requireMock('n8n-workflow');
-			sleepWithAbort.mockRejectedValue(new Error('Execution was cancelled'));
+			sleepWithAbortMock.mockRejectedValue(new Error('Execution was cancelled'));
 
 			const executeWorkflowMock = vi
 				.fn()
@@ -878,7 +878,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const result = await tool.func('test query');
 
 			expect(result).toBe('There was an error: "Execution was cancelled"');
-			expect(sleepWithAbort).toHaveBeenCalledWith(100, abortController.signal);
+			expect(sleepWithAbortMock).toHaveBeenCalledWith(100, abortController.signal);
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(1); // Only first attempt
 		});
 
@@ -909,8 +909,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		});
 
 		it('should complete successfully if not aborted', async () => {
-			const { sleepWithAbort } = vi.requireMock('n8n-workflow');
-			sleepWithAbort.mockClear().mockResolvedValue(undefined);
+			sleepWithAbortMock.mockClear().mockResolvedValue(undefined);
 
 			const executeWorkflowMock = vi
 				.fn()
@@ -937,12 +936,11 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toBe(JSON.stringify({ result: 'success' }, null, 2));
 			expect(executeWorkflowMock).toHaveBeenCalledTimes(2);
-			expect(sleepWithAbort).toHaveBeenCalledWith(100, abortController.signal);
+			expect(sleepWithAbortMock).toHaveBeenCalledWith(100, abortController.signal);
 		});
 
 		it('should work when getExecutionCancelSignal is not available', async () => {
-			const { sleepWithAbort } = vi.requireMock('n8n-workflow');
-			sleepWithAbort.mockClear().mockResolvedValue(undefined);
+			sleepWithAbortMock.mockClear().mockResolvedValue(undefined);
 
 			const executeWorkflowMock = vi
 				.fn()
@@ -966,7 +964,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const result = await tool.func('test query');
 
 			expect(result).toBe(JSON.stringify({ result: 'success' }, null, 2));
-			expect(sleepWithAbort).toHaveBeenCalledWith(100, undefined);
+			expect(sleepWithAbortMock).toHaveBeenCalledWith(100, undefined);
 		});
 	});
 });

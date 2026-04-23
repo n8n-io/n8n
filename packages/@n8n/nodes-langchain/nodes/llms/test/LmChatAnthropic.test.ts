@@ -7,7 +7,9 @@ import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-wor
 
 import { LmChatAnthropic } from '../LMChatAnthropic/LmChatAnthropic.node';
 
-vi.mock('@langchain/anthropic');
+vi.mock('@langchain/anthropic', () => ({
+	ChatAnthropic: vi.fn(),
+}));
 vi.mock('@n8n/ai-utilities');
 
 const MockedChatAnthropic = vi.mocked(ChatAnthropic);

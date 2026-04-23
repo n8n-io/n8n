@@ -9,7 +9,9 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { LmChatAnthropic } from '../LmChatAnthropic.node';
 
-vi.mock('@langchain/anthropic');
+vi.mock('@langchain/anthropic', () => ({
+	ChatAnthropic: vi.fn(),
+}));
 vi.mock('@n8n/ai-utilities', () => ({
 	getConnectionHintNoticeField: vi
 		.fn()
@@ -22,6 +24,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 const MockedChatAnthropic = vi.mocked(ChatAnthropic);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 
 describe('LmChatAnthropic', () => {
 	let lmChatAnthropic: LmChatAnthropic;
@@ -58,7 +61,9 @@ describe('LmChatAnthropic', () => {
 
 	const createMockModel = (properties: Partial<ChatAnthropic>): ChatAnthropic => {
 		const mockModel = properties as ChatAnthropic;
-		MockedChatAnthropic.mockImplementation(() => mockModel);
+		MockedChatAnthropic.mockImplementation(function () {
+			return mockModel;
+		} as unknown as typeof ChatAnthropic);
 		return mockModel;
 	};
 
