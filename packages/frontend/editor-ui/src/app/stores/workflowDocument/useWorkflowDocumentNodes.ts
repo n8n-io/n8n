@@ -197,7 +197,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
-		return workflowsStore.findNodeByPartialId(partialId);
+		return workflowsStore.workflow.nodes.find((node) => node.id.startsWith(partialId));
 	}
 
 	function getNodesByIds(ids: string[]): INodeUi[] {
