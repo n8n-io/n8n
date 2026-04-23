@@ -346,10 +346,14 @@ export class InstanceAiService {
 		if (!config.enabled) return undefined;
 
 		if (config.provider === 'daytona') {
-			return new BuilderSandboxFactory(config, new SnapshotManager(config.image, this.logger));
+			return new BuilderSandboxFactory(
+				config,
+				new SnapshotManager(config.image, this.logger),
+				this.logger,
+			);
 		}
 
-		return new BuilderSandboxFactory(config);
+		return new BuilderSandboxFactory(config, undefined, this.logger);
 	}
 
 	/** Get or create a sandbox + workspace for a thread. Returns undefined when sandbox is disabled. */
