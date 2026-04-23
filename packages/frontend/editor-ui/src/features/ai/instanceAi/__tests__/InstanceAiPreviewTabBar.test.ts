@@ -1,10 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { TabsRoot } from 'reka-ui';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import type { ArtifactTab } from '../useCanvasPreview';
+
+vi.mock('@/app/composables/useClipboard', () => ({
+	useClipboard: () => ({ copy: vi.fn() }),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showMessage: vi.fn() }),
+}));
 
 const workflowTab: ArtifactTab = {
 	id: 'wf-1',
