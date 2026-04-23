@@ -46,7 +46,7 @@ function makeContext(
 	outcome: WorkflowBuildOutcome | undefined,
 	runResult: ExecutionRunResult,
 	overrides: {
-		workflowNodes?: Array<{ type: string; parameters?: Record<string, unknown> }>;
+		workflowNodes?: Array<{ name?: string; type: string; parameters?: Record<string, unknown> }>;
 		tableRows?: Record<string, Array<Record<string, unknown>>>;
 		queriesAfterRun?: Record<string, Array<Record<string, unknown>>>;
 	} = {},
@@ -238,19 +238,28 @@ describe('verify-built-workflow tool', () => {
 		expect(result.executionId).toBe('exec-3');
 	});
 
-	it('cleans up rows inserted by the verification run in tracked data tables', async () => {
+	it('cleans up rows inserted by the verification run, reading row IDs from the node output', async () => {
 		const { ctx, deleteRows } = makeContext(
 			makeBuildOutcome(),
-			{ executionId: 'exec-4', status: 'success' },
+			{
+				executionId: 'exec-4',
+				status: 'success',
+				// The insert node's output is what drives the delete set — a concurrent
+				// writer's row would never appear here, so it's safe from cleanup.
+				data: {
+					'Lead Form': [{ name: 'Test' }],
+					'Insert Lead': [{ id: 3, name: 'Test', email: 'test@example.com' }],
+				},
+			},
 			{
 				workflowNodes: [
 					{
+						name: 'Insert Lead',
 						type: 'n8n-nodes-base.dataTable',
 						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
 					},
 				],
 				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }] },
-				queriesAfterRun: { 'tbl-leads': [{ id: 1 }, { id: 2 }, { id: 3 }] },
 			},
 		);
 
@@ -266,6 +275,72 @@ describe('verify-built-workflow tool', () => {
 		expect(call).toBeDefined();
 		expect(call[0]).toBe('tbl-leads');
 		expect(call[1]).toEqual({
+			type: 'or',
+			filters: [{ columnName: 'id', condition: 'eq', value: 3 }],
+		});
+	});
+
+	it('does not delete a row produced by an upsert node when it already existed pre-verify', async () => {
+		const { ctx, deleteRows } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-upsert',
+				status: 'success',
+				data: {
+					// Upsert matched existing row id=2 — no new row was created.
+					'Upsert Lead': [{ id: 2, name: 'Existing', stage: 'qualified' }],
+				},
+			},
+			{
+				workflowNodes: [
+					{
+						name: 'Upsert Lead',
+						type: 'n8n-nodes-base.dataTable',
+						parameters: { operation: 'upsert', dataTableId: 'tbl-leads' },
+					},
+				],
+				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }] },
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(deleteRows).not.toHaveBeenCalled();
+	});
+
+	it('does not delete rows from concurrent writers that never appeared in the node output', async () => {
+		const { ctx, deleteRows } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-concurrent',
+				status: 'success',
+				// The verify's insert node only emitted id=3; a concurrent writer that
+				// added id=4 after the snapshot would be invisible to us and must NOT
+				// be deleted. This test asserts the delete set is driven purely by
+				// node output, not by a post-verify table-wide diff.
+				data: {
+					'Insert Lead': [{ id: 3, name: 'VerifyRow' }],
+				},
+			},
+			{
+				workflowNodes: [
+					{
+						name: 'Insert Lead',
+						type: 'n8n-nodes-base.dataTable',
+						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
+					},
+				],
+				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }] },
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(deleteRows).toHaveBeenCalledTimes(1);
+		// Only id=3 (the row our insert node emitted), not id=4 from the concurrent writer.
+		expect(deleteRows.mock.calls[0][1]).toEqual({
 			type: 'or',
 			filters: [{ columnName: 'id', condition: 'eq', value: 3 }],
 		});
@@ -314,16 +389,20 @@ describe('verify-built-workflow tool', () => {
 	it('does not delete rows for dataTable nodes that only read', async () => {
 		const { ctx, deleteRows } = makeContext(
 			makeBuildOutcome(),
-			{ executionId: 'exec-5', status: 'success' },
+			{
+				executionId: 'exec-5',
+				status: 'success',
+				data: { 'Lookup Lead': [{ id: 1, name: 'Existing' }] },
+			},
 			{
 				workflowNodes: [
 					{
+						name: 'Lookup Lead',
 						type: 'n8n-nodes-base.dataTable',
 						parameters: { operation: 'get', dataTableId: 'tbl-leads' },
 					},
 				],
 				tableRows: { 'tbl-leads': [{ id: 1 }] },
-				queriesAfterRun: { 'tbl-leads': [{ id: 1 }] },
 			},
 		);
 

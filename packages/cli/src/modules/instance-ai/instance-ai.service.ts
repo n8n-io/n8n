@@ -1671,16 +1671,15 @@ export class InstanceAiService {
 			if (!startedRunId) {
 				// Rare race: the outer hasLiveRun check passed but the inner guard
 				// in startInternalFollowUpRun did not (another path started a run
-				// between our two checks). Unwind the transition to failed so the
-				// scheduler transitions to awaiting_replan rather than looping —
-				// the replan turn will re-emit the checkpoint if still appropriate.
+				// between our two checks). Revert the checkpoint back to `planned`
+				// so the next scheduler tick re-emits `orchestrate-checkpoint` —
+				// marking it `failed` here would cascade cancel to every dependent
+				// and destroy downstream work even though nothing actually failed.
 				this.logger.warn(
-					'Checkpoint follow-up run did not start — transitioning checkpoint to failed',
+					'Checkpoint follow-up run did not start — reverting checkpoint to planned for retry',
 					{ threadId, checkpointTaskId: checkpoint.id },
 				);
-				await plannedTaskService.markCheckpointFailed(threadId, checkpoint.id, {
-					error: 'Checkpoint follow-up run could not start (another run became active)',
-				});
+				await plannedTaskService.revertCheckpointToPlanned(threadId, checkpoint.id);
 			}
 			return;
 		}
@@ -2618,6 +2617,37 @@ export class InstanceAiService {
 				plannedTaskId: opts.dedupeKey?.plannedTaskId,
 				workflowId: opts.dedupeKey?.workflowId,
 				role: opts.role,
+			});
+			// The sub-agent dispatch tools publish `agent-spawned` and allocate a
+			// detached LangSmith trace root BEFORE calling spawnBackgroundTask, so
+			// the freshly-generated subAgentId for this deduped attempt already has
+			// a phantom sub-agent node in the event stream and an unfinished trace
+			// root. Compensate the same way `onLimitReached` does so the agent tree
+			// snapshot doesn't keep a ghost child and the trace client is released.
+			void this.finalizeDetachedTraceRun(opts.taskId, opts.traceContext, {
+				status: 'cancelled',
+				outputs: {
+					taskId: opts.taskId,
+					agentId: opts.agentId,
+					role: opts.role,
+					deduped_to: outcome.existing.taskId,
+				},
+				metadata: {
+					deduped: true,
+					existing_task_id: outcome.existing.taskId,
+					...(opts.plannedTaskId ? { planned_task_id: opts.plannedTaskId } : {}),
+					...(opts.workItemId ? { work_item_id: opts.workItemId } : {}),
+				},
+			});
+			this.eventBus.publish(opts.threadId, {
+				type: 'agent-completed',
+				runId,
+				agentId: opts.agentId,
+				payload: {
+					role: opts.role,
+					result: '',
+					error: `Deduped: task already in flight as ${outcome.existing.taskId}`,
+				},
 			});
 			return {
 				status: 'duplicate',

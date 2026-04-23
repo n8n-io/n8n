@@ -208,7 +208,17 @@ export function createPlanTool(context: OrchestrationContext) {
 			// later schedulePlannedTasks() (post-run reschedule, or a background
 			// task settlement mid-revision) can't dispatch the rejected plan.
 			// If the LLM decides to revise, its next create-tasks call will
-			// createPlan a fresh graph anyway.
+			// createPlan a fresh graph anyway. Mirror plan-with-agent.tool.ts and
+			// cancelAwaitingApprovalPlan: also reset the UI checklist so the
+			// rejected plan's "todo" items don't linger on screen (or in the
+			// persisted snapshot) if the LLM doesn't immediately retry.
+			await context.taskStorage.save(context.threadId, { tasks: [] });
+			context.eventBus.publish(context.threadId, {
+				type: 'tasks-update',
+				runId: context.runId,
+				agentId: context.orchestratorAgentId,
+				payload: { tasks: { tasks: [] }, planItems: [] },
+			});
 			await context.plannedTaskService.clear(context.threadId);
 			return {
 				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks and call create-tasks again.`,

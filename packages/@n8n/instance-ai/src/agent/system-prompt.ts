@@ -301,9 +301,5 @@ When \`<planned-task-follow-up type="checkpoint">\` is present, the block contai
 
 **Do not patch a workflow first when verify returns null downstream values.** Re-run verify with the corrected \`inputData\` shape. Only patch the workflow if the expression is wrong against the *production* trigger output shape (consult node descriptions), not the \`instanceAi\` pin data path.
 
-If the user sends a correction while a build is running, call \`task-control(action="correct-task")\` with the task ID and correction.
-
-## Sandbox (Code Execution)
-
-When available, \`mastra_workspace_execute_command\` runs shell commands in a persistent isolated sandbox. Use it for code execution, package installation, file processing. The sandbox cannot access the n8n host filesystem — use tool calls for n8n data.`;
+If the user sends a correction while a build is running, call \`task-control(action="correct-task")\` with the task ID and correction.`;
 }

@@ -509,6 +509,79 @@ describe('PlannedTaskCoordinator', () => {
 		});
 	});
 
+	describe('revertCheckpointToPlanned', () => {
+		it('rewinds a running checkpoint to planned without touching dependents', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({
+							id: 'verify-1',
+							kind: 'checkpoint',
+							status: 'running',
+							agentId: 'agent-race',
+							startedAt: 123,
+						}),
+						makeTaskRecord({
+							id: 'wf-2',
+							kind: 'build-workflow',
+							status: 'planned',
+							deps: ['verify-1'],
+						}),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.revertCheckpointToPlanned('thread-1', 'verify-1');
+
+			expect(res.ok).toBe(true);
+			if (res.ok) {
+				const verify = res.graph.tasks.find((t) => t.id === 'verify-1');
+				expect(verify?.status).toBe('planned');
+				expect(verify?.agentId).toBeUndefined();
+				expect(verify?.startedAt).toBeUndefined();
+				// Dependents must remain untouched — scheduling race is not a failure.
+				const wf2 = res.graph.tasks.find((t) => t.id === 'wf-2');
+				expect(wf2?.status).toBe('planned');
+				expect(wf2?.error).toBeUndefined();
+			}
+		});
+
+		it('rejects when the target task is not a checkpoint', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'task-1', kind: 'build-workflow', status: 'running' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.revertCheckpointToPlanned('thread-1', 'task-1');
+
+			expect(res).toEqual({
+				ok: false,
+				reason: 'wrong-kind',
+				actual: { kind: 'build-workflow' },
+			});
+		});
+
+		it('rejects when the checkpoint is not running', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'verify-1', kind: 'checkpoint', status: 'planned' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.revertCheckpointToPlanned('thread-1', 'verify-1');
+
+			expect(res).toEqual({
+				ok: false,
+				reason: 'wrong-status',
+				actual: { status: 'planned' },
+			});
+		});
+	});
+
 	describe('tick', () => {
 		it('dispatches ready tasks with all deps satisfied', async () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {

@@ -266,6 +266,50 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		return result;
 	}
 
+	/**
+	 * Rewind a running checkpoint back to `planned` so the next scheduler tick
+	 * re-emits the same `orchestrate-checkpoint` action. Used by the service when
+	 * `startInternalFollowUpRun` no-ops due to a scheduling race (another run
+	 * became active between `markRunning` and the follow-up dispatch). Unlike
+	 * `markCheckpointFailed` this does NOT cascade cancel to dependents — the
+	 * checkpoint hasn't actually failed, it just lost a schedule slot and will
+	 * run on the next tick.
+	 */
+	async revertCheckpointToPlanned(
+		threadId: string,
+		taskId: string,
+	): Promise<CheckpointSettleResult> {
+		let result: CheckpointSettleResult = { ok: false, reason: 'not-found' };
+
+		await this.storage.update(threadId, (graph) => {
+			const task = graph.tasks.find((t) => t.id === taskId);
+			if (!task) {
+				result = { ok: false, reason: 'not-found' };
+				return graph;
+			}
+			if (task.kind !== 'checkpoint') {
+				result = { ok: false, reason: 'wrong-kind', actual: { kind: task.kind } };
+				return graph;
+			}
+			if (task.status !== 'running') {
+				result = { ok: false, reason: 'wrong-status', actual: { status: task.status } };
+				return graph;
+			}
+
+			const tasks = graph.tasks.map<PlannedTaskRecord>((t) => {
+				if (t.id !== taskId) return t;
+				const { agentId: _agentId, startedAt: _startedAt, ...rest } = t;
+				return { ...rest, status: 'planned' };
+			});
+
+			const next: PlannedTaskGraph = { ...graph, tasks };
+			result = { ok: true, graph: next };
+			return next;
+		});
+
+		return result;
+	}
+
 	async markCheckpointFailed(
 		threadId: string,
 		taskId: string,

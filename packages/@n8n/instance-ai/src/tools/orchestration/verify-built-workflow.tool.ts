@@ -15,100 +15,156 @@ import type {
 	OrchestrationContext,
 } from '../../types';
 
-/** Max rows we'll snapshot for cleanup. Skip cleanup for tables larger than this. */
-const ROW_TRACKING_CAP = 1000;
+interface DataTableWriteNode {
+	nodeName: string;
+	dataTableId: string;
+	/** Only `insert` and `upsert` may create new rows; `update` is tracked but never cleaned up. */
+	operation: 'insert' | 'upsert' | 'update';
+}
 
 /**
- * Extract the data-table IDs a workflow writes to by scanning its nodes for the
- * `n8n-nodes-base.dataTable` type with a row-write operation. Used to narrow the
- * pre/post verify snapshot to only the tables the workflow might mutate.
+ * Extract the data-table write nodes a workflow contains, keyed by node name so
+ * we can look up each node's per-execution output and identify the exact row IDs
+ * it created. Returning node-level records (instead of just dataTable IDs) is
+ * what lets post-verify cleanup delete only rows *this* run inserted — rows from
+ * concurrent writers never appear in these nodes' outputs, so they are safe.
  */
-async function extractWrittenDataTableIds(
+async function extractDataTableWriteNodes(
 	workflowService: InstanceAiWorkflowService,
 	workflowId: string,
-): Promise<string[]> {
+): Promise<DataTableWriteNode[]> {
 	try {
 		const json = await workflowService.getAsWorkflowJSON(workflowId);
-		const ids = new Set<string>();
+		const out: DataTableWriteNode[] = [];
 		for (const node of json.nodes ?? []) {
 			if (node.type !== 'n8n-nodes-base.dataTable') continue;
 			const params = node.parameters as Record<string, unknown> | undefined;
 			const operation = params?.operation;
 			if (operation !== 'insert' && operation !== 'upsert' && operation !== 'update') continue;
 			const ref = params?.dataTableId;
+			let dataTableId: string | undefined;
 			if (typeof ref === 'string' && ref.length > 0) {
-				ids.add(ref);
-				continue;
-			}
-			if (
+				dataTableId = ref;
+			} else if (
 				ref &&
 				typeof ref === 'object' &&
 				'value' in ref &&
 				typeof (ref as { value: unknown }).value === 'string'
 			) {
 				const value = (ref as { value: string }).value;
-				if (value.length > 0) ids.add(value);
+				if (value.length > 0) dataTableId = value;
 			}
+			if (!dataTableId || !node.name) continue;
+			out.push({ nodeName: node.name, dataTableId, operation });
 		}
-		return [...ids];
+		return out;
 	} catch {
 		return [];
 	}
 }
 
-/** Snapshot the current row IDs for a table. Returns null when the table exceeds ROW_TRACKING_CAP. */
-async function snapshotRowIds(
-	dataTableService: InstanceAiDataTableService,
-	dataTableId: string,
-): Promise<Set<number> | null> {
-	try {
-		const { count, data } = await dataTableService.queryRows(dataTableId, {
-			limit: ROW_TRACKING_CAP,
-		});
-		if (count > ROW_TRACKING_CAP) return null;
-		const ids = new Set<number>();
-		for (const row of data) {
-			const id = row.id;
-			if (typeof id === 'number') ids.add(id);
+/**
+ * Extract the numeric `id` values that a single node produced as output during
+ * the verify execution. Handles the common n8n shapes: an array of row objects,
+ * a `{ json: {...} }` wrapper, or a single row object.
+ */
+function extractRowIdsFromNodeOutput(nodeOutput: unknown): number[] {
+	const ids: number[] = [];
+	const visit = (value: unknown): void => {
+		if (!value) return;
+		if (Array.isArray(value)) {
+			for (const item of value) visit(item);
+			return;
 		}
-		return ids;
-	} catch {
-		return null;
-	}
+		if (typeof value !== 'object') return;
+		const row = value as Record<string, unknown>;
+		if (row.json !== undefined) {
+			visit(row.json);
+			return;
+		}
+		const id = row.id;
+		if (typeof id === 'number' && Number.isFinite(id)) ids.push(id);
+	};
+	visit(nodeOutput);
+	return ids;
 }
 
 /**
- * Delete rows whose IDs appear after `preIds` — i.e. rows the verification run
- * inserted. Best-effort, bounded to `ROW_TRACKING_CAP` new rows.
+ * Delete rows this verify execution inserted, identified by the node outputs of
+ * the dataTable insert/upsert nodes the workflow contains. Rows that appear in a
+ * node's output but were present pre-verify are treated as updates (upsert hits
+ * on an existing row) and NOT deleted. Rows inserted by concurrent writers never
+ * appear in any node's output and are therefore safe from this cleanup.
  */
-async function cleanupInsertedRows(
+async function cleanupInsertedRowsByNodeOutput(
 	dataTableService: InstanceAiDataTableService,
-	dataTableId: string,
-	preIds: Set<number>,
+	writeNodes: DataTableWriteNode[],
+	resultData: Record<string, unknown> | undefined,
+	preIdsByTable: Map<string, Set<number>>,
 ): Promise<number> {
-	try {
-		const { count, data } = await dataTableService.queryRows(dataTableId, {
-			limit: ROW_TRACKING_CAP + preIds.size,
-		});
-		if (count > ROW_TRACKING_CAP + preIds.size) return 0;
-		const newIds: number[] = [];
-		for (const row of data) {
-			const id = row.id;
-			if (typeof id === 'number' && !preIds.has(id)) newIds.push(id);
+	if (!resultData) return 0;
+	/** per-table set of row IDs the workflow's own insert/upsert nodes produced */
+	const createdIdsByTable = new Map<string, Set<number>>();
+	for (const { nodeName, dataTableId, operation } of writeNodes) {
+		if (operation === 'update') continue;
+		const output = resultData[nodeName];
+		if (!output) continue;
+		const ids = extractRowIdsFromNodeOutput(output);
+		if (ids.length === 0) continue;
+		let bucket = createdIdsByTable.get(dataTableId);
+		if (!bucket) {
+			bucket = new Set();
+			createdIdsByTable.set(dataTableId, bucket);
 		}
-		if (newIds.length === 0) return 0;
-		await dataTableService.deleteRows(dataTableId, {
-			type: 'or',
-			filters: newIds.map((id) => ({
-				columnName: 'id',
-				condition: 'eq' as const,
-				value: id,
-			})),
-		});
-		return newIds.length;
-	} catch {
-		return 0;
+		for (const id of ids) bucket.add(id);
 	}
+	let total = 0;
+	for (const [dataTableId, ids] of createdIdsByTable) {
+		const preIds = preIdsByTable.get(dataTableId) ?? new Set<number>();
+		// Only delete IDs that did not exist before the run — upsert-matched rows stay.
+		const toDelete = [...ids].filter((id) => !preIds.has(id));
+		if (toDelete.length === 0) continue;
+		try {
+			await dataTableService.deleteRows(dataTableId, {
+				type: 'or',
+				filters: toDelete.map((id) => ({
+					columnName: 'id',
+					condition: 'eq' as const,
+					value: id,
+				})),
+			});
+			total += toDelete.length;
+		} catch {
+			// best-effort: failure on one table does not block others
+		}
+	}
+	return total;
+}
+
+/**
+ * Cheap pre-verify snapshot of current row IDs per tracked table. Used only to
+ * distinguish insert from upsert-of-existing on the cleanup side — NOT to build
+ * the delete set. This keeps cleanup safe against concurrent writers.
+ */
+async function snapshotRowIdsPerTable(
+	dataTableService: InstanceAiDataTableService,
+	dataTableIds: Iterable<string>,
+): Promise<Map<string, Set<number>>> {
+	const out = new Map<string, Set<number>>();
+	for (const id of dataTableIds) {
+		try {
+			const { data } = await dataTableService.queryRows(id, { limit: 1000 });
+			const bucket = new Set<number>();
+			for (const row of data) {
+				const rid = row.id;
+				if (typeof rid === 'number') bucket.add(rid);
+			}
+			out.set(id, bucket);
+		} catch {
+			out.set(id, new Set());
+		}
+	}
+	return out;
 }
 
 export const verifyBuiltWorkflowInputSchema = z.object({
@@ -165,17 +221,20 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				};
 			}
 
-			// Pre-verify: snapshot row IDs for data tables the workflow writes to, so we can
-			// clean up any rows inserted during verification. Best-effort; errors are swallowed.
-			const dataTableIds = await extractWrittenDataTableIds(
+			// Pre-verify: enumerate the dataTable write nodes in the workflow and
+			// snapshot current row IDs for each referenced table. The snapshot is
+			// NOT used to compute the delete set — it only disambiguates inserts
+			// from upsert-matched-existing rows. The delete set comes from each
+			// insert/upsert node's own output after verify, so concurrent writers
+			// (whose rows never appear in the workflow's node outputs) are safe.
+			const writeNodes = await extractDataTableWriteNodes(
 				context.domainContext.workflowService,
 				input.workflowId,
 			);
-			const preSnapshots = new Map<string, Set<number>>();
-			for (const id of dataTableIds) {
-				const snap = await snapshotRowIds(context.domainContext.dataTableService, id);
-				if (snap) preSnapshots.set(id, snap);
-			}
+			const preSnapshots = await snapshotRowIdsPerTable(
+				context.domainContext.dataTableService,
+				new Set(writeNodes.map((n) => n.dataTableId)),
+			);
 
 			const result = await context.domainContext.executionService.run(
 				input.workflowId,
@@ -197,16 +256,15 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const success =
 				result.status === 'success' || (result.status === 'waiting' && !result.error && hasOutput);
 
-			// Post-verify cleanup: remove rows the verification run inserted into
-			// tracked data tables. Best-effort; no-op when snapshots are missing.
-			let cleanedRows = 0;
-			for (const [id, preIds] of preSnapshots) {
-				cleanedRows += await cleanupInsertedRows(
-					context.domainContext.dataTableService,
-					id,
-					preIds,
-				);
-			}
+			// Post-verify cleanup: delete only rows this run's own dataTable insert
+			// nodes emitted as output, and only those whose IDs were not present in
+			// the pre-verify snapshot (protects upsert-updated rows from deletion).
+			const cleanedRows = await cleanupInsertedRowsByNodeOutput(
+				context.domainContext.dataTableService,
+				writeNodes,
+				result.data,
+				preSnapshots,
+			);
 
 			// Persist a structured verification record onto the build outcome so the
 			// checkpoint follow-up turn can reuse it instead of re-running verify.

@@ -638,6 +638,10 @@ export interface PlannedTaskService {
 		taskId: string,
 		update: { error?: string; finishedAt?: number },
 	): Promise<CheckpointSettleResult>;
+	/** Rewind a running checkpoint back to `planned` after a scheduling race
+	 *  prevented its follow-up from starting. Non-destructive — dependents are
+	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
+	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
 	tick(
 		threadId: string,
 		options?: { availableSlots?: number },

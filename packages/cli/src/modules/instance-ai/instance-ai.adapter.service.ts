@@ -2353,15 +2353,14 @@ function getExecutionModeForTrigger(node: INode): WorkflowExecuteMode {
 function validateInputDataShape(node: INode, inputData: Record<string, unknown>): void {
 	if (node.type === FORM_TRIGGER_NODE_TYPE) {
 		// Production Form Trigger emits field values FLAT on `json` alongside
-		// `submittedAt` and `formMode`. Callers that wrap in `formFields` produce
-		// `{ submittedAt, formMode, formFields: {...} }` which does not match
-		// production — downstream `$json.<field>` references resolve to null.
-		const keys = Object.keys(inputData);
-		const looksWrapped =
-			keys.length === 1 &&
-			keys[0] === 'formFields' &&
-			typeof inputData.formFields === 'object' &&
-			inputData.formFields !== null;
+		// `submittedAt` and `formMode`. Callers that place fields under `formFields`
+		// (whether pure-wrap `{formFields: {...}}` or mixed-key `{formFields: {...},
+		// other: ...}`) produce pin data where `$json.<field>` resolves to null and
+		// downstream expressions look broken. Any top-level `formFields` object is
+		// treated as a mistake — real Form Trigger fields are scalars and would not
+		// surface as a nested object here.
+		const formFieldsValue = inputData.formFields;
+		const looksWrapped = typeof formFieldsValue === 'object' && formFieldsValue !== null;
 		if (looksWrapped) {
 			throw new Error(
 				'verify-built-workflow: inputData for a Form Trigger must be a flat field map ' +
@@ -2408,17 +2407,28 @@ function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): 
 			};
 
 		case WEBHOOK_NODE_TYPE: {
-			// Allow callers that already nest their payload under `body` — unwrap once
-			// so the adapter's outer `body: inputData` wrapper doesn't create double
-			// nesting. Keep `headers` / `query` pass-through when callers provide them.
-			const alreadyShaped = typeof inputData.body === 'object' && inputData.body !== null;
-			const body = alreadyShaped ? (inputData.body as Record<string, unknown>) : inputData;
+			// Allow callers that already wrap the payload as an envelope
+			// (`{body, headers?, query?}`) — unwrap once so the adapter's outer
+			// `body: inputData` wrapper doesn't create double nesting. But only
+			// treat `inputData` as an envelope when ALL top-level keys look like
+			// envelope fields; otherwise a flat payload that happens to contain a
+			// `body` field (e.g. `{event: 'signup', body: {...}}`) would have its
+			// sibling fields silently dropped, producing the same "null downstream
+			// values" failure the Form Trigger validator exists to prevent.
+			const envelopeKeys = new Set(['body', 'headers', 'query']);
+			const inputKeys = Object.keys(inputData);
+			const looksLikeEnvelope =
+				inputKeys.length > 0 &&
+				inputKeys.every((k) => envelopeKeys.has(k)) &&
+				typeof inputData.body === 'object' &&
+				inputData.body !== null;
+			const body = looksLikeEnvelope ? (inputData.body as Record<string, unknown>) : inputData;
 			const headers =
-				typeof inputData.headers === 'object' && inputData.headers !== null
+				looksLikeEnvelope && typeof inputData.headers === 'object' && inputData.headers !== null
 					? (inputData.headers as Record<string, unknown>)
 					: {};
 			const query =
-				typeof inputData.query === 'object' && inputData.query !== null
+				looksLikeEnvelope && typeof inputData.query === 'object' && inputData.query !== null
 					? (inputData.query as Record<string, unknown>)
 					: {};
 			return {
