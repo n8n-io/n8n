@@ -8,8 +8,10 @@ import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
-import { EventDestinations } from '@/modules/log-streaming.ee/database/entities';
 import { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
+import { EventDestinations } from '@/modules/log-streaming.ee/database/entities';
+
+import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 
 // The env schema mirrors the UI fields exactly (see logStreaming.constants.ts):
 // fields hidden from the UI are not accepted here, and closed enums (method,
@@ -171,7 +173,14 @@ export class LogStreamingInstanceSettingsLoader {
 			'logStreamingManagedByEnv is enabled — reconciling log streaming destinations from env vars',
 		);
 
-		const items = this.parseAndValidate(this.config.logStreamingDestinations);
+		let items: EnvDestination[] = [];
+		try {
+			items = this.parseAndValidate(this.config.logStreamingDestinations);
+		} catch (error) {
+			const message = (error as Error).message ?? 'Unknown error';
+			this.logger.error(message);
+			throw new InstanceBootstrappingError(message);
+		}
 
 		await this.eventDestinationsRepository.manager.transaction(async (tx) => {
 			await this.reconcile(tx, items);

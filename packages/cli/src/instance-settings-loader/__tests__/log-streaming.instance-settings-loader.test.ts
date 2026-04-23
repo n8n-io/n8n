@@ -7,6 +7,7 @@ import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { EventDestinations } from '@/modules/log-streaming.ee/database/entities';
 import type { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
 
+import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 import { LogStreamingInstanceSettingsLoader } from '../loaders/log-streaming.instance-settings-loader';
 
 const UUID_A = '11111111-1111-4111-8111-111111111111';
@@ -68,10 +69,26 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 	});
 
 	describe('parse + validation errors', () => {
+		async function expectRejectsWithBootstrappingError(
+			loader: LogStreamingInstanceSettingsLoader,
+			messagePattern: RegExp,
+		) {
+			let thrown: unknown;
+			try {
+				await loader.run();
+			} catch (e) {
+				thrown = e;
+			}
+			expect(thrown).toBeInstanceOf(InstanceBootstrappingError);
+			expect((thrown as Error).message).toMatch(messagePattern);
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith((thrown as Error).message);
+		}
+
 		it('throws on malformed JSON', async () => {
 			const loader = createLoader({ logStreamingDestinations: '{not json' });
 
-			await expect(loader.run()).rejects.toThrow(/not valid JSON/);
+			await expectRejectsWithBootstrappingError(loader, /not valid JSON/);
 		});
 
 		it('throws when the top-level value is not an array', async () => {
@@ -79,7 +96,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				logStreamingDestinations: JSON.stringify({ type: 'webhook', url: 'https://x.test' }),
 			});
 
-			await expect(loader.run()).rejects.toThrow(/validation failed/);
+			await expectRejectsWithBootstrappingError(loader, /validation failed/);
 		});
 
 		it('throws when type is unknown', async () => {
@@ -87,7 +104,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				logStreamingDestinations: JSON.stringify([{ type: 'kafka', label: 'a' }]),
 			});
 
-			await expect(loader.run()).rejects.toThrow(/validation failed/);
+			await expectRejectsWithBootstrappingError(loader, /validation failed/);
 		});
 
 		it('throws when a webhook is missing url', async () => {
@@ -95,7 +112,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				logStreamingDestinations: JSON.stringify([{ type: 'webhook', label: 'a' }]),
 			});
 
-			await expect(loader.run()).rejects.toThrow(/validation failed/);
+			await expectRejectsWithBootstrappingError(loader, /validation failed/);
 		});
 
 		it('throws when id is not a UUID', async () => {
@@ -105,7 +122,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				]),
 			});
 
-			await expect(loader.run()).rejects.toThrow(/validation failed/);
+			await expectRejectsWithBootstrappingError(loader, /validation failed/);
 		});
 
 		it('throws when an item has neither id nor label', async () => {
@@ -113,7 +130,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				logStreamingDestinations: JSON.stringify([{ type: 'webhook', url: 'https://x.test' }]),
 			});
 
-			await expect(loader.run()).rejects.toThrow(/must have either "id" or "label"/);
+			await expectRejectsWithBootstrappingError(loader, /must have either "id" or "label"/);
 		});
 
 		it('throws on duplicate ids within the array', async () => {
@@ -124,7 +141,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				]),
 			});
 
-			await expect(loader.run()).rejects.toThrow(/duplicate id/);
+			await expectRejectsWithBootstrappingError(loader, /duplicate id/);
 		});
 
 		it('throws on duplicate (type, label) within the array when no ids are given', async () => {
@@ -135,7 +152,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				]),
 			});
 
-			await expect(loader.run()).rejects.toThrow(/duplicate \(type,label\)/);
+			await expectRejectsWithBootstrappingError(loader, /duplicate \(type,label\)/);
 		});
 
 		it('rejects unknown top-level fields', async () => {
@@ -145,7 +162,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				]),
 			});
 
-			await expect(loader.run()).rejects.toThrow(/validation failed/);
+			await expectRejectsWithBootstrappingError(loader, /validation failed/);
 		});
 
 		it('rejects webhook method values outside GET/POST/PUT', async () => {
@@ -155,7 +172,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				]),
 			});
 
-			await expect(loader.run()).rejects.toThrow(/validation failed/);
+			await expectRejectsWithBootstrappingError(loader, /validation failed/);
 		});
 
 		it('rejects syslog facility outside the 0–23 range', async () => {
@@ -165,7 +182,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				]),
 			});
 
-			await expect(loader.run()).rejects.toThrow(/validation failed/);
+			await expectRejectsWithBootstrappingError(loader, /validation failed/);
 		});
 
 		it('requires tlsCa when syslog protocol is "tls"', async () => {
@@ -175,7 +192,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				]),
 			});
 
-			await expect(loader.run()).rejects.toThrow(/must provide "tlsCa"/);
+			await expectRejectsWithBootstrappingError(loader, /must provide "tlsCa"/);
 		});
 	});
 
