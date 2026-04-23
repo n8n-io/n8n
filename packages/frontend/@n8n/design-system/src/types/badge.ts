@@ -1,5 +1,15 @@
-const BADGE_THEME = [
+export const BADGE_THEME = [
 	'default',
+	'neutral',
+	'pink',
+	'orange',
+	'green',
+	'purple',
+	'mint',
+	'red',
+	'blue',
+	'yellow',
+	// @deprecated - Prefer semantic over utility themes
 	'success',
 	'warning',
 	'danger',

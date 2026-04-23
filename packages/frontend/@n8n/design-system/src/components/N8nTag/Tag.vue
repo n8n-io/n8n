@@ -1,4 +1,11 @@
 <script lang="ts" setup>
+import N8nBadge from '../N8nBadge';
+
+/*
+ * N8nTag is a deprecated wrapper around N8nBadge.
+ * Use <N8nBadge theme="neutral"> instead.
+ */
+
 interface TagProps {
 	text: string;
 	clickable?: boolean;
@@ -10,35 +17,7 @@ withDefaults(defineProps<TagProps>(), {
 </script>
 
 <template>
-	<span :class="['n8n-tag', $style.tag, { [$style.clickable]: clickable }]" v-bind="$attrs">
-		<slot v-if="$slots['tag']" name="tag" />
-		<span v-else>{{ text }}</span>
-	</span>
+	<N8nBadge v-bind="$attrs" theme="neutral" :text="text" :clickable="clickable">
+		<slot />
+	</N8nBadge>
 </template>
-
-<style lang="scss" module>
-.tag {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-width: max-content;
-	height: var(--tag--height);
-	padding: var(--tag--padding);
-	line-height: var(--tag--line-height);
-	color: var(--tag--color--text);
-	background-color: var(--tag--color--background);
-	border: 1px solid var(--tag--border-color);
-	border-radius: var(--tag--radius);
-	font-size: var(--tag--font-size);
-	transition: background-color 0.3s ease;
-
-	&.clickable {
-		cursor: pointer;
-
-		&:hover {
-			background-color: var(--tag--color--background--hover);
-			border-color: var(--tag--border-color--hover);
-		}
-	}
-}
-</style>

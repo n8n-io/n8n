@@ -2,8 +2,8 @@
 import { computed, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nBadge from '../N8nBadge';
 import N8nLink from '../N8nLink';
-import N8nTag from '../N8nTag';
 
 interface ITag {
 	id: string;
@@ -52,9 +52,10 @@ const onExpand = () => {
 
 <template>
 	<div :class="['n8n-tags', $style.tags]">
-		<N8nTag
+		<N8nBadge
 			v-for="tag in visibleTags"
 			:key="tag.id"
+			theme="neutral"
 			:text="tag.name"
 			:clickable="clickable"
 			@click="emit('click:tag', tag.id, $event)"
@@ -72,6 +73,10 @@ const onExpand = () => {
 </template>
 
 <style lang="scss" module>
+/*
+ * @deprecated N8nTags is deprecated. Consider using N8nBadge with theme="neutral" directly
+ * or a custom component for tag list functionality.
+ */
 .tags {
 	display: inline-flex;
 	flex-wrap: wrap;
