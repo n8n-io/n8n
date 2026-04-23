@@ -4,6 +4,7 @@ import path from 'node:path';
 import { addCredentialToNode, updateCredentialAst, updateNodeAst } from './ast';
 import { baseUrlPrompt, credentialTypePrompt, oauthFlowPrompt } from './prompts';
 import type { CustomTemplateConfig } from './types';
+import { createProject, type Project } from '../../../../utils/ast';
 import {
 	renameDirectory,
 	renameFilesInDirectory,
@@ -34,12 +35,17 @@ export const customTemplate = createTemplate({
 		return { credentialType, baseUrl };
 	},
 	run: async (data) => {
-		await renameNode(data, 'Example');
-		await addCredential(data);
+		const project = createProject();
+		await renameNode(data, 'Example', project);
+		await addCredential(data, project);
 	},
 });
 
-async function renameNode(data: TemplateData<CustomTemplateConfig>, oldNodeName: string) {
+async function renameNode(
+	data: TemplateData<CustomTemplateConfig>,
+	oldNodeName: string,
+	project: Project,
+) {
 	const { config, nodePackageName: nodeName, destinationPath } = data;
 	const newClassName = pascalCase(nodeName.replace('n8n-nodes-', ''));
 	const oldNodeDir = path.resolve(destinationPath, `nodes/${oldNodeName}`);
@@ -52,6 +58,7 @@ async function renameNode(data: TemplateData<CustomTemplateConfig>, oldNodeName:
 		nodePath: newNodePath,
 		baseUrl: config.baseUrl,
 		className: newClassName,
+		project,
 	});
 	await writeFileSafe(newNodePath, newNodeAst.getFullText());
 
@@ -59,7 +66,7 @@ async function renameNode(data: TemplateData<CustomTemplateConfig>, oldNodeName:
 	await setNodesPackageJson(destinationPath, nodes);
 }
 
-async function addCredential(data: TemplateData<CustomTemplateConfig>) {
+async function addCredential(data: TemplateData<CustomTemplateConfig>, project: Project) {
 	const { config, destinationPath, nodePackageName } = data;
 	if (config.credentialType === 'none') return;
 
@@ -93,6 +100,7 @@ async function addCredential(data: TemplateData<CustomTemplateConfig>) {
 		credentialDisplayName,
 		credentialClassName,
 		credentialPath: credentialTemplatePath,
+		project,
 	});
 
 	await writeFileSafe(
@@ -114,6 +122,7 @@ async function addCredential(data: TemplateData<CustomTemplateConfig>) {
 		const updatedNodeAst = addCredentialToNode({
 			nodePath: srcNodePath,
 			credentialName,
+			project,
 		});
 
 		await writeFileSafe(srcNodePath, updatedNodeAst.getFullText());

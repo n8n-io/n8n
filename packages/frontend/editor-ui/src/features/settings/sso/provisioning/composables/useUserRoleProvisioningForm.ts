@@ -127,20 +127,32 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 			? 'idp'
 			: mappingMethod.value;
 
+		// Whenever the effective assignment isn't 'instance_and_project', any project
+		// mapping rules on the server are stale and must be cleaned up. We send this
+		// flag even when the config appears unchanged because storedHasProjectRules
+		// can be out of sync (e.g. rules were created via the editor after load).
+		const shouldDeleteProjectRules = effectiveRoleAssignment !== 'instance_and_project';
+
 		const stored = storedValues.value;
-		if (
+		const configUnchanged =
 			effectiveRoleAssignment === stored.roleAssignment &&
-			effectiveMappingMethod === stored.mappingMethod
-		) {
+			effectiveMappingMethod === stored.mappingMethod;
+
+		if (configUnchanged && !shouldDeleteProjectRules) {
 			return;
 		}
 
-		await provisioningStore.saveProvisioningConfig(
-			getProvisioningConfigFromDropdowns(effectiveRoleAssignment, effectiveMappingMethod),
-		);
+		await provisioningStore.saveProvisioningConfig({
+			...getProvisioningConfigFromDropdowns(effectiveRoleAssignment, effectiveMappingMethod),
+			...(shouldDeleteProjectRules ? { deleteProjectRules: true } : {}),
+		});
 
 		roleAssignment.value = effectiveRoleAssignment;
 		mappingMethod.value = effectiveMappingMethod;
+
+		if (shouldDeleteProjectRules) {
+			storedHasProjectRules.value = false;
+		}
 
 		sendTrackingEventForUserProvisioning(
 			toLegacyValue(effectiveRoleAssignment, effectiveMappingMethod),
@@ -163,6 +175,12 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 
 	const storedHasProjectRoles = computed(
 		() => storedValues.value.roleAssignment === 'instance_and_project',
+	);
+
+	const isDroppingProjectRules = computed(
+		() =>
+			storedValues.value.roleAssignment === 'instance_and_project' &&
+			roleAssignment.value !== 'instance_and_project',
 	);
 
 	const revertRoleAssignment = () => {
@@ -199,6 +217,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		saveProvisioningConfig,
 		roleAssignmentTransition,
 		storedHasProjectRoles,
+		isDroppingProjectRules,
 		revertRoleAssignment,
 	};
 }

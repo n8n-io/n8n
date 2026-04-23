@@ -117,6 +117,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'role-mapping-rule-created': (event) => this.roleMappingRuleCreated(event),
 			'role-mapping-rule-updated': (event) => this.roleMappingRuleUpdated(event),
 			'role-mapping-rule-deleted': (event) => this.roleMappingRuleDeleted(event),
+			'role-mapping-rules-bulk-deleted': (event) => this.roleMappingRulesBulkDeleted(event),
 		});
 	}
 
@@ -1135,6 +1136,19 @@ export class LogStreamingEventRelay extends EventRelay {
 				msg: {
 					ruleId: event.ruleId,
 					ruleType: event.ruleType,
+				},
+			},
+		});
+	}
+
+	private roleMappingRulesBulkDeleted(event: RelayEventMap['role-mapping-rules-bulk-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.role-mapping.rules.bulk-deleted',
+			payload: {
+				msg: {
+					ruleType: event.ruleType,
+					count: event.count,
+					reason: event.reason,
 				},
 			},
 		});

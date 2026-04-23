@@ -140,7 +140,7 @@ export function useWorkflowSaving({
 		next(
 			router.resolve({
 				name: VIEWS.WORKFLOW,
-				params: { name: workflowsStore.workflow.id },
+				params: { name: workflowsStore.workflowId },
 			}),
 		);
 	}
