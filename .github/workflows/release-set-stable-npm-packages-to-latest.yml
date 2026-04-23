@@ -26,10 +26,7 @@ jobs:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
-      # Remove after https://github.com/npm/cli/issues/8547 gets resolved
-      - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Set npm packages to latest
         run: node ./.github/scripts/set-latest-for-monorepo-packages.mjs
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

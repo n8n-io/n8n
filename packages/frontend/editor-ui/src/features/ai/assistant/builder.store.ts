@@ -1397,9 +1397,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (!pinData) return;
 		for (const nodeName of Object.keys(pinData)) {
 			workflowDocumentStore.value.unpinNodeData(nodeName);
-			if (workflowsStore.nodeMetadata[nodeName]) {
-				workflowsStore.nodeMetadata[nodeName].pinnedDataLastRemovedAt = Date.now();
-			}
+			workflowDocumentStore.value.touchPinnedDataLastRemovedAt(nodeName);
 		}
 		uiStore.markStateDirty();
 	}

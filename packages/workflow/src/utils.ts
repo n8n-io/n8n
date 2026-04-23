@@ -412,6 +412,14 @@ export function setSafeObjectProperty(
 	}
 }
 
+const DANGEROUS_XML_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
+
+export function sanitizeXmlName(name: string) {
+	if (DANGEROUS_XML_NAMES.has(name)) return `sanitized_${name}`;
+
+	return name;
+}
+
 export function isDomainAllowed(
 	urlString: string,
 	options: {

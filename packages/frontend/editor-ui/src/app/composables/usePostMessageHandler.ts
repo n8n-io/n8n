@@ -12,6 +12,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { buildExecutionResponseFromSchema } from '@/features/execution/executions/executions.utils';
@@ -42,6 +43,7 @@ export function usePostMessageHandler({
 	const uiStore = useUIStore();
 	const projectsStore = useProjectsStore();
 	const executionsStore = useExecutionsStore();
+	const credentialsStore = useCredentialsStore();
 	const rootStore = useRootStore();
 	const externalHooks = useExternalHooks();
 	const telemetry = useTelemetry();
@@ -130,6 +132,8 @@ export function usePostMessageHandler({
 		if (!data) {
 			return;
 		}
+
+		await credentialsStore.fetchAllCredentialsForWorkflow({ workflowId: data.workflowData.id });
 
 		const wfId = workflowsStore.workflowId;
 		if (wfId) {
