@@ -34,6 +34,9 @@ describe('ChangePasswordModal', () => {
 	});
 
 	it('should default to 8-character minimum when passwordMinLength is not configured', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		delete (settingsStore.userManagement as { passwordMinLength?: number }).passwordMinLength;
+
 		renderComponent({ pinia });
 
 		expect(createPasswordRules).toHaveBeenCalledWith(8);

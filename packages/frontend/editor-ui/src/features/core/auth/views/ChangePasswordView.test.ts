@@ -43,6 +43,8 @@ describe('ChangePasswordView', () => {
 
 	it('should default to 8-character minimum when passwordMinLength is not configured', async () => {
 		const pinia = createTestingPinia();
+		const settingsStore = mockedStore(useSettingsStore);
+		delete (settingsStore.userManagement as { passwordMinLength?: number }).passwordMinLength;
 
 		const { findByText } = renderComponent({ pinia });
 

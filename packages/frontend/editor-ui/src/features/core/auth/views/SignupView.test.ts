@@ -198,6 +198,9 @@ describe('SignupView', () => {
 	});
 
 	it('should default to 8-character minimum when passwordMinLength is not configured', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		delete (settingsStore.userManagement as { passwordMinLength?: number }).passwordMinLength;
+
 		const { getByText } = renderComponent();
 
 		expect(getByText(/8\+ characters/)).toBeInTheDocument();
