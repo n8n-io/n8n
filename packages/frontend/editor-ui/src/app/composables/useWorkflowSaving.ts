@@ -29,7 +29,6 @@ import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { isDebouncedFunction } from '@/app/utils/typeGuards';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -42,11 +41,9 @@ import { useBackendConnectionStore } from '@/app/stores/backendConnection.store'
 
 export function useWorkflowSaving({
 	router,
-	workflowState: providedWorkflowState,
 	onSaved,
 }: {
 	router: ReturnType<typeof useRouter>;
-	workflowState?: WorkflowState;
 	onSaved?: (isFirstSave: boolean) => void;
 }) {
 	const uiStore = useUIStore();
@@ -55,7 +52,6 @@ export function useWorkflowSaving({
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
-	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -79,14 +75,14 @@ export function useWorkflowSaving({
 			cancel?: () => Promise<void>;
 		} = {},
 	) {
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 
 		if (
 			!uiStore.stateIsDirty ||
-			workflowDocumentStore?.isArchived ||
-			!getResourcePermissions(workflowDocumentStore?.scopes ?? []).workflow.update
+			workflowDocumentStore.isArchived ||
+			!getResourcePermissions(workflowDocumentStore.scopes).workflow.update
 		) {
 			next();
 			return;
@@ -140,7 +136,7 @@ export function useWorkflowSaving({
 		next(
 			router.resolve({
 				name: VIEWS.WORKFLOW,
-				params: { name: workflowsStore.workflow.id },
+				params: { name: workflowsStore.workflowId },
 			}),
 		);
 	}
@@ -481,7 +477,7 @@ export function useWorkflowSaving({
 			if (workflowData.checksum) {
 				workflowDocumentStore.setChecksum(workflowData.checksum);
 			}
-			workflowState.setWorkflowId(workflowData.id);
+			workflowsStore.setWorkflowId(workflowData.id);
 			workflowDocumentStore.setVersionData({
 				versionId: workflowData.versionId,
 				name: null,

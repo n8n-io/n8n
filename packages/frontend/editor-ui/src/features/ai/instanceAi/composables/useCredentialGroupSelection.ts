@@ -1,7 +1,9 @@
 import type { ComputedRef } from 'vue';
 import { ref } from 'vue';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { credGroupKey, type SetupCard } from '../instanceAiWorkflowSetup.utils';
 
@@ -13,6 +15,7 @@ export function useCredentialGroupSelection(
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
+	const nodeTypesStore = useNodeTypesStore();
 
 	// Shared credential selection keyed by credGroupKey — single source of truth
 	// for all cards in the same credential group (including escalated per-node cards).
@@ -135,9 +138,38 @@ export function useCredentialGroupSelection(
 		);
 	}
 
+	function findCardForGroup(credentialType: string, groupKey: string): SetupCard | undefined {
+		return cards.value.find(
+			(c) =>
+				c.credentialType === credentialType && c.nodes[0] && credGroupKey(c.nodes[0]) === groupKey,
+		);
+	}
+
+	function shouldShowAuthOptions(card: SetupCard | undefined): boolean {
+		const setupNode = card?.nodes[0]?.node;
+		if (!setupNode) return false;
+		const nodeType = nodeTypesStore.getNodeType(setupNode.type, setupNode.typeVersion);
+		const mainAuthField = getMainAuthField(nodeType);
+		return (
+			mainAuthField !== null &&
+			Array.isArray(mainAuthField.options) &&
+			mainAuthField.options.length > 0
+		);
+	}
+
 	function openNewCredentialForSection(credentialType: string, groupKey: string) {
 		activeCredentialTarget.value = { groupKey, credentialType };
-		uiStore.openNewCredential(credentialType, false, false, projectId);
+		const card = findCardForGroup(credentialType, groupKey);
+		const showAuthOptions = shouldShowAuthOptions(card);
+		const nodeName = card?.nodes[0]?.node.name;
+		uiStore.openNewCredential(
+			credentialType,
+			showAuthOptions,
+			false,
+			projectId,
+			undefined,
+			nodeName,
+		);
 	}
 
 	return {

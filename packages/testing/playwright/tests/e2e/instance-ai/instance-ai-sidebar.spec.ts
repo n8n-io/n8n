@@ -23,6 +23,10 @@ test.describe(
 			// Should show empty input in the new thread
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
 
+			// Send a message to materialize the new thread in the sidebar
+			await n8n.instanceAi.sendMessage('Second thread message');
+			await n8n.instanceAi.waitForResponseComplete();
+
 			// Thread count should increase
 			await expect(n8n.instanceAi.sidebar.getThreadItems()).toHaveCount(threadCountBefore + 1, {
 				timeout: 10_000,
@@ -82,16 +86,15 @@ test.describe(
 			await n8n.instanceAi.sendMessage('Thread to delete');
 			await n8n.instanceAi.waitForResponseComplete();
 
-			// Create a second thread so we have somewhere to go after deletion
-			await n8n.instanceAi.sidebar.getNewThreadButton().click();
-			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
+			// Verify target thread is visible in the sidebar
+			const targetThread = n8n.instanceAi.sidebar.getThreadByTitle('Thread to Delete');
+			await expect(targetThread).toBeVisible({ timeout: 10_000 });
 
 			// Hover the target thread to reveal the three-dots button, then click it
-			const targetThread = n8n.instanceAi.sidebar.getThreadByTitle('Thread to Delete');
 			await targetThread.hover();
 			const actionButton = n8n.instanceAi.sidebar.getThreadActionsTrigger(targetThread);
 			await expect(actionButton).toBeVisible({ timeout: 5_000 });
-			await actionButton.click({ force: true });
+			await actionButton.click();
 
 			// Click delete option in the dropdown
 			await expect(n8n.instanceAi.sidebar.getDeleteMenuItem()).toBeVisible({ timeout: 5_000 });

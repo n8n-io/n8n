@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { screen, cleanup } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import RunDataJson from '@/features/ndv/runData/components/RunDataJson.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useElementSize } from '@vueuse/core'; // Import the composable to mock
@@ -55,12 +56,15 @@ const renderComponent = createComponentRenderer(RunDataJson, {
 describe('RunDataJson.vue', () => {
 	beforeEach(cleanup);
 
-	it('renders json values properly', () => {
+	it('renders json values properly', async () => {
 		const { container } = renderComponent({
 			global: {
 				plugins: [createTestingPinia()],
 			},
 		});
+		// Resolve the defineAsyncComponent import to prevent EnvironmentTeardownError
+		await flushPromises();
+
 		expect(container).toMatchSnapshot();
 
 		expect(screen.getByText('123')).toBeInTheDocument();

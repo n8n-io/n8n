@@ -100,6 +100,15 @@ describe('Google Drive V2', () => {
 				})
 				.persist();
 
+			// Mock file download for file that doesn't exist
+			mock
+				.get('/drive/v3/files/does-not-exist')
+				.query({ fields: 'mimeType,name', supportsTeamDrives: true, supportsAllDrives: true })
+				.reply(404, {
+					message: 'File not found',
+				})
+				.persist();
+
 			mock.delete('/drive/v3/files/123').query(true).reply(200).persist();
 
 			mock
@@ -141,6 +150,7 @@ describe('Google Drive V2', () => {
 				'file-createFromText.workflow.json',
 				'file-delete.workflow.json',
 				'file-download.workflow.json',
+				'file-download-error.workflow.json',
 				'file-move.workflow.json',
 				'file-share.workflow.json',
 				'file-update.workflow.json',

@@ -1182,6 +1182,28 @@ function createWorkflow(
 	name: string,
 	options?: WorkflowSettings | WorkflowBuilderOptions,
 ): WorkflowBuilder {
+	if (typeof id !== 'string' || typeof name !== 'string') {
+		const receivedId = Array.isArray(id) ? 'an array' : typeof id;
+		const receivedName = Array.isArray(name) ? 'an array' : typeof name;
+		throw new TypeError(
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			`workflow() requires (id: string, name: string), but received (${receivedId}, ${receivedName}). ` +
+				"Example: workflow('my-workflow-id', 'My Workflow Name')",
+		);
+	}
+	if (
+		options !== undefined &&
+		(Array.isArray(options) ||
+			(typeof options === 'object' &&
+				options !== null &&
+				('nodes' in options || 'connections' in options)))
+	) {
+		throw new TypeError(
+			'workflow() third argument is settings, not workflow structure. ' +
+				'Do not pass nodes or connections here — use .add() and .to() to build the workflow. ' +
+				"Example: workflow('id', 'Name').add(trigger({...})).to(node({...}))",
+		);
+	}
 	if (isWorkflowBuilderOptions(options)) {
 		return new WorkflowBuilderImpl(
 			id,

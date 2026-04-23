@@ -271,12 +271,10 @@ export class AiController {
 	}
 
 	@Licensed('feat:aiGateway')
-	@Get('/gateway/credits')
-	async getGatewayCredits(
-		req: AuthenticatedRequest,
-	): Promise<{ creditsQuota: number; creditsRemaining: number }> {
+	@Get('/gateway/wallet')
+	async getGatewayWallet(req: AuthenticatedRequest): Promise<{ budget: number; balance: number }> {
 		try {
-			return await this.aiGatewayService.getCreditsRemaining(req.user.id);
+			return await this.aiGatewayService.getWallet(req.user.id);
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

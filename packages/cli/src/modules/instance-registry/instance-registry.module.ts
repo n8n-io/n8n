@@ -24,7 +24,13 @@ export class InstanceRegistryModule implements ModuleInterface {
 		await import('./instance-registry.controller');
 
 		const { InstanceRegistryService } = await import('./instance-registry.service');
-		await Container.get(InstanceRegistryService).init();
+		const instanceRegistryService = Container.get(InstanceRegistryService);
+		await instanceRegistryService.init();
+
+		const { InstanceRegistryProxyService } = await import(
+			'@/services/instance-registry-proxy.service'
+		);
+		Container.get(InstanceRegistryProxyService).registerProvider(instanceRegistryService);
 
 		const { StaleMemberCleanupService } = await import('./stale-member-cleanup.service');
 		Container.get(StaleMemberCleanupService).init();

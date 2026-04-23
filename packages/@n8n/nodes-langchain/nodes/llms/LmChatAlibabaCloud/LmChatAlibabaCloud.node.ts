@@ -14,7 +14,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { BASE_URL_EXPRESSION, getBaseUrl } from './alibaba-cloud-base-url';
+import { COMPATIBLE_MODE_SUFFIX } from './alibaba-cloud-base-url';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
 export class LmChatAlibabaCloud implements INodeType {
@@ -57,7 +57,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: BASE_URL_EXPRESSION,
+			baseURL: `={{ $credentials?.url + "${COMPATIBLE_MODE_SUFFIX}" }}`,
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
@@ -213,6 +213,7 @@ export class LmChatAlibabaCloud implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials<{
 			apiKey: string;
+			url: string;
 			region: string;
 			workspaceId?: string;
 		}>('alibabaCloudApi');
@@ -237,7 +238,7 @@ export class LmChatAlibabaCloud implements INodeType {
 			);
 		}
 
-		const baseURL = getBaseUrl(credentials.region, credentials.workspaceId);
+		const baseURL = credentials.url + COMPATIBLE_MODE_SUFFIX;
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL,

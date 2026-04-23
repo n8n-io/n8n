@@ -367,10 +367,11 @@ At end of turn, `saveToMemory()` uses `list.turnDelta()` and
 `saveMessagesToThread`. If **semantic recall** is configured with an embedder
 and `memory.saveEmbeddings`, new messages are embedded and stored.
 
-**Working memory:** when configured, the runtime parses `<working_memory>` …
-`</working_memory>` regions from assistant text, validates structured JSON if a
-schema exists, strips the tags from the visible message, and asynchronously
-persists via `memory.saveWorkingMemory`.
+**Working memory:** when configured, the runtime injects an `updateWorkingMemory`
+tool into the agent's tool set. The current state is included in the system prompt
+so the model can read it; when new information should be persisted the model calls
+the tool, which validates the input and asynchronously persists via
+`memory.saveWorkingMemory`.
 
 **Thread titles:** `titleGeneration` triggers `generateThreadTitle` (fire-and-forget)
 after a successful save when persistence and memory are present.
@@ -414,7 +415,7 @@ src/
     tool-adapter.ts               — buildToolMap, executeTool, toAiSdkTools, suspend / agent-result guards
     stream.ts                     — convertChunk, toTokenUsage
     runtime-helpers.ts            — normalizeInput, usage merge, stream error helpers, …
-    working-memory.ts             — instruction text, parse/filter for working_memory tags
+    working-memory.ts             — instruction text, updateWorkingMemory tool builder
     strip-orphaned-tool-messages.ts
     title-generation.ts
     logger.ts

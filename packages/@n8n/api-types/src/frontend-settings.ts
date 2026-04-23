@@ -131,6 +131,7 @@ export interface FrontendSettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
+		managedByEnv: boolean;
 		saml: {
 			loginLabel: string;
 			loginEnabled: boolean;
@@ -217,7 +218,7 @@ export interface FrontendSettings {
 	};
 	aiGateway?: {
 		enabled: boolean;
-		creditsQuota: number;
+		budget: number;
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
@@ -281,6 +282,7 @@ export type FrontendModuleSettings = {
 		localGatewayDisabled: boolean;
 		proxyEnabled: boolean;
 		optinModalDismissed: boolean;
+		cloudManaged: boolean;
 	};
 
 	/**

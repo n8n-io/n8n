@@ -18,8 +18,8 @@
 		},
 		{
 			"name": "high-volume",
-			"description": "Channels return many messages, testing merge and aggregation",
-			"dataSetup": "Each Slack channel history node returns 8-10 messages covering diverse topics: hiring updates, infrastructure changes, feature launches, customer feedback, and team announcements. The AI/LLM node should return a comprehensive summary. The Slack post-message node returns a success response.",
+			"description": "Channels return several messages each, testing merge and aggregation",
+			"dataSetup": "Each Slack channel history node returns 4-5 messages. Channel 1: hiring updates and a new joiner announcement. Channel 2: infrastructure migration discussion and CI/CD pipeline changes. Channel 3: feature launch announcement and customer feedback. The AI/LLM node should return a comprehensive summary. The Slack post-message node returns a success response.",
 			"successCriteria": "The workflow handles the volume without errors. All messages are merged/aggregated correctly. The summary covers the major topics and is posted successfully. No data is lost in the merge step."
 		},
 		{
