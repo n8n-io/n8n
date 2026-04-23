@@ -27,11 +27,15 @@ export abstract class AgentChatIntegration {
 	/** Credential types accepted by the frontend selector. */
 	abstract readonly credentialTypes: string[];
 
-	/** Component types this platform supports in rich_interaction cards. */
-	abstract readonly supportedComponents: string[];
+	/**
+	 * Component types this platform supports in rich_interaction cards.
+	 * Omit to signal that the platform has no rich_interaction surface — the
+	 * tool won't be injected into agents targeting this platform.
+	 */
+	readonly supportedComponents?: string[];
 
 	/** User-facing description used by `createRichInteractionTool`. */
-	abstract readonly description: string;
+	readonly description?: string;
 
 	/**
 	 * True if this platform has a small callback_data limit (Telegram: 64 bytes).
