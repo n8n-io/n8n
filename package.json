@@ -160,7 +160,7 @@
       "follow-redirects": "1.16.0",
       "express-rate-limit": "8.2.2",
       "underscore": "1.13.8",
-      "fast-xml-parser": "5.5.7",
+      "fast-xml-parser": "5.7.0",
       "flatted": "3.4.2",
       "handlebars": "4.7.9",
       "path-to-regexp": "8.4.0",
