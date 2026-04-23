@@ -17,7 +17,6 @@ import {
 	N8nScrollArea,
 	N8nText,
 	N8nButton,
-	N8nIcon,
 } from '@n8n/design-system';
 import { useLocalStorage, useScroll, useWindowSize } from '@vueuse/core';
 import { N8nCallout } from '@n8n/design-system';
@@ -53,7 +52,7 @@ import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/Cr
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
-import { TabsContent, TabsList, TabsRoot, TabsTrigger, TabsIndicator } from 'reka-ui';
+import { TabsContent, TabsRoot } from 'reka-ui';
 
 const props = defineProps<{
 	threadId?: string;
@@ -601,29 +600,21 @@ function handleStop() {
 			@resizestart="isResizingPreview = true"
 			@resizeend="isResizingPreview = false"
 		>
-			<TabsRoot orientation="horizontal" :class="$style.previewPanel">
-				<TabsList aria-label="artifacts" :class="$style.tabList">
-					<TabsIndicator :class="$style.tabsIndicator">
-						<div
-							style="width: 100%; height: 100%; background: red"
-							class="bg-grass8 w-full h-full"
-						/>
-					</TabsIndicator>
-					<TabsTrigger
-						v-for="tab in preview.allArtifactTabs.value"
-						:key="tab.id"
-						:value="tab.id"
-						:class="$style.tab"
-					>
-						<N8nIcon :icon="tab.icon" size="large" />
-						<span :class="$style.label">{{ tab.name }}</span>
-					</TabsTrigger>
-				</TabsList>
+			<TabsRoot
+				v-model="preview.activeTabId.value"
+				orientation="horizontal"
+				:class="$style.previewPanel"
+			>
+				<InstanceAiPreviewTabBar
+					:tabs="preview.allArtifactTabs.value"
+					:active-tab-id="preview.activeTabId.value"
+					@close="preview.closePreview()"
+				/>
 				<TabsContent
 					v-for="tab in preview.allArtifactTabs.value"
 					:key="tab.id"
 					:value="tab.id"
-					style="flex: 1"
+					:class="$style.previewContent"
 				>
 					<InstanceAiWorkflowPreview
 						v-if="preview.activeWorkflowId.value"
@@ -641,125 +632,11 @@ function handleStop() {
 					/>
 				</TabsContent>
 			</TabsRoot>
-			<!-- <div :class="$style.previewPanel">
-				<InstanceAiPreviewTabBar
-					:tabs="preview.allArtifactTabs.value"
-					:active-tab-id="preview.activeTabId.value"
-					@update:active-tab-id="preview.selectTab($event)"
-					@close="preview.closePreview()"
-				/>
-				<div :class="$style.previewContent">
-					<InstanceAiWorkflowPreview
-						v-if="preview.activeWorkflowId.value"
-						ref="workflowPreview"
-						:workflow-id="preview.activeWorkflowId.value"
-						:execution-id="preview.activeExecutionId.value"
-						:refresh-key="preview.workflowRefreshKey.value"
-						@iframe-ready="eventRelay.handleIframeReady"
-					/>
-					<InstanceAiDataTablePreview
-						v-else-if="preview.activeDataTableId.value"
-						:data-table-id="preview.activeDataTableId.value"
-						:project-id="preview.activeDataTableProjectId.value"
-						:refresh-key="preview.dataTableRefreshKey.value"
-					/>
-				</div>
-			</div> -->
 		</N8nResizeWrapper>
 	</div>
 </template>
 
 <style lang="scss" module>
-@property --left--fade {
-	syntax: '<length>';
-	inherits: false;
-	initial-value: 0;
-}
-
-@property --right--fade {
-	syntax: '<length>';
-	inherits: false;
-	initial-value: 0;
-}
-
-@keyframes scrollfade {
-	0% {
-		--left--fade: 0;
-	}
-	10%,
-	100% {
-		--left--fade: 24px;
-	}
-	0%,
-	90% {
-		--right--fade: 24px;
-	}
-	100% {
-		--right--fade: 0;
-	}
-}
-
-.tabList {
-	flex: 0 0 auto;
-	display: flex;
-	overflow-x: auto;
-	scrollbar-width: none;
-	position: relative;
-	mask: linear-gradient(
-		to right,
-		#0000,
-		#ffff var(--left--fade) calc(100% - var(--right--fade)),
-		#0000
-	);
-	animation: scrollfade;
-	animation-timeline: --scrollfade;
-	scroll-timeline: --scrollfade x;
-}
-
-.tab {
-	flex: 0 0 auto;
-	min-width: 64px;
-	max-width: 270px;
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
-	color: var(--text-color--subtle);
-	background-color: transparent;
-	border: none;
-	font-size: var(--font-size--2xs);
-	padding: var(--spacing--sm) var(--spacing--xs);
-
-	:global(.n8n-icon) {
-		flex-shrink: 0;
-	}
-
-	&[data-state='active'] {
-		/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
-		color: var(--text-color);
-	}
-
-	.label {
-		flex: 1 1 auto;
-		min-width: 0; /* critical — lets the span shrink below content size */
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-}
-
-.tabsIndicator {
-	position: absolute;
-	left: 0;
-	height: 2px;
-	bottom: 0;
-	width: var(--reka-tabs-indicator-size);
-	transform: translateX(var(--reka-tabs-indicator-position));
-	border-radius: 9999px; /* rounded-full equivalent */
-	transition-property: width, transform;
-	transition-duration: 300ms;
-}
-
 .container {
 	display: flex;
 	height: 100%;
