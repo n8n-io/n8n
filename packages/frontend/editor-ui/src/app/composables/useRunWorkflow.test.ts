@@ -53,10 +53,15 @@ const { mockDocumentStore } = vi.hoisted(() => {
 		getParentNodes: vi.fn().mockReturnValue([]),
 		getChildNodes: vi.fn().mockReturnValue([]),
 		getStartNode: vi.fn(),
+		checkIfNodeHasChatParent: vi.fn(),
+		checkIfToolNodeHasChatParent: vi.fn(),
 		connectionsBySourceNode: {} as Record<string, unknown>,
 		pinData: {} as Record<string, unknown>,
 		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+		getParametersLastUpdate: vi.fn(),
+		getPinnedDataLastUpdate: vi.fn(),
+		getPinnedDataLastRemovedAt: vi.fn(),
 		getSnapshot: vi.fn(),
 	};
 	store.getSnapshot.mockReturnValue({
@@ -110,11 +115,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 				name === 'Test node' ? { name: 'Test node', id: 'Test id' } : undefined,
 			),
 		getExecution: vi.fn(),
-		checkIfNodeHasChatParent: vi.fn(),
-		checkIfToolNodeHasChatParent: vi.fn(),
-		getParametersLastUpdate: vi.fn(),
-		getPinnedDataLastUpdate: vi.fn(),
-		getPinnedDataLastRemovedAt: vi.fn(),
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
 		private: {
@@ -528,8 +528,8 @@ describe('useRunWorkflow({ router })', () => {
 				source: null,
 			} as IExecuteData);
 
-			vi.mocked(workflowsStore).checkIfNodeHasChatParent.mockReturnValue(false);
-			vi.mocked(workflowsStore).getParametersLastUpdate.mockImplementation((name: string) => {
+			mockDocumentStore.checkIfNodeHasChatParent.mockReturnValue(false);
+			mockDocumentStore.getParametersLastUpdate.mockImplementation((name: string) => {
 				if (name === executeName) return 2;
 				return undefined;
 			});
@@ -823,8 +823,8 @@ describe('useRunWorkflow({ router })', () => {
 				vi.mocked(pushConnectionStore).isConnected = true;
 				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({ executionId: 'exec-123' });
 				vi.mocked(workflowsStore).nodesIssuesExist = false;
-				vi.mocked(workflowsStore).checkIfNodeHasChatParent.mockReturnValue(false);
-				vi.mocked(workflowsStore).checkIfToolNodeHasChatParent.mockReturnValue(false);
+				mockDocumentStore.checkIfNodeHasChatParent.mockReturnValue(false);
+				mockDocumentStore.checkIfToolNodeHasChatParent.mockReturnValue(false);
 			});
 
 			it('emits setupWebsocket when chat trigger has responseMode responseNodes and no active ws', async () => {

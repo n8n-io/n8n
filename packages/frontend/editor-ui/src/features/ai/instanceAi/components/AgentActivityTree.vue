@@ -91,6 +91,7 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 					:name="resolveArtifactName(artifact)"
 					:resource-id="artifact.resourceId"
 					:project-id="artifact.projectId"
+					:class="$style.artifactCard"
 				/>
 			</template>
 
@@ -109,6 +110,10 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 .reasoningTrigger {
 	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
 	color: var(--text-color--subtler);
+}
+
+.artifactCard {
+	max-width: 90%;
 }
 
 .reasoningContent {

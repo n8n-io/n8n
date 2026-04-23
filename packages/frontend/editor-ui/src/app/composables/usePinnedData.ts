@@ -283,11 +283,8 @@ export function usePinnedData(
 		if (workflowDocumentStore.value) {
 			const nodeName = targetNode.name;
 			// Update metadata timestamp for existing pinned data
-			if (
-				(workflowDocumentStore.value.pinData[nodeName] ?? []).length > 0 &&
-				workflowsStore.nodeMetadata[nodeName]
-			) {
-				workflowsStore.nodeMetadata[nodeName].pinnedDataLastUpdatedAt = Date.now();
+			if ((workflowDocumentStore.value.pinData[nodeName] ?? []).length > 0) {
+				workflowDocumentStore.value.touchPinnedDataLastUpdatedAt(nodeName);
 			}
 			workflowDocumentStore.value.pinNodeData(nodeName, data as INodeExecutionData[]);
 			uiStore.markStateDirty();
@@ -317,9 +314,7 @@ export function usePinnedData(
 		onUnsetData({ source });
 		if (workflowDocumentStore.value) {
 			workflowDocumentStore.value.unpinNodeData(targetNode.name);
-			if (workflowsStore.nodeMetadata[targetNode.name]) {
-				workflowsStore.nodeMetadata[targetNode.name].pinnedDataLastRemovedAt = Date.now();
-			}
+			workflowDocumentStore.value.touchPinnedDataLastRemovedAt(targetNode.name);
 			uiStore.markStateDirty();
 		}
 	}

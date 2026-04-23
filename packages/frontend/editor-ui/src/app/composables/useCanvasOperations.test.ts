@@ -1750,7 +1750,6 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should set node as dirty when node is set active', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const node = createTestNode();
 
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation(() => node);
@@ -1758,7 +1757,7 @@ describe('useCanvasOperations', () => {
 			const { setNodeActive } = useCanvasOperations();
 			setNodeActive(node.id, 'other');
 
-			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(node.name, false);
+			expect(workflowDocumentStoreInstance.setNodePristine).toHaveBeenCalledWith(node.name, false);
 		});
 	});
 
@@ -4758,7 +4757,7 @@ describe('useCanvasOperations', () => {
 			};
 
 			const nodes = buildImportNodes();
-			workflowsStore.setNodes(nodes);
+			workflowsStore.workflow.nodes = nodes;
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
 			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
 
@@ -4784,7 +4783,7 @@ describe('useCanvasOperations', () => {
 			};
 
 			const nodes = buildImportNodes();
-			workflowsStore.setNodes(nodes);
+			workflowsStore.workflow.nodes = nodes;
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
 			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
 
@@ -4857,13 +4856,13 @@ describe('useCanvasOperations', () => {
 				credentials: {},
 				disabled: false,
 			});
-			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(nodeA.name, true);
+			expect(workflowDocumentStoreInstance.setNodePristine).toHaveBeenCalledWith(nodeA.name, true);
 			expect(workflowDocumentStoreInstance.addNode).toHaveBeenNthCalledWith(2, {
 				...nodeB,
 				credentials: {},
 				disabled: false,
 			});
-			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(nodeB.name, true);
+			expect(workflowDocumentStoreInstance.setNodePristine).toHaveBeenCalledWith(nodeB.name, true);
 			expect(getNewWorkflowData).toHaveBeenCalledWith(templateName, projectsStore.currentProjectId);
 		});
 	});
@@ -4884,7 +4883,6 @@ describe('useCanvasOperations', () => {
 
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
 			const setNodeParametersSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodeParameters');
-			workflowState.setNodeParameters = vi.fn();
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters, { trackHistory: true });
@@ -4919,7 +4917,6 @@ describe('useCanvasOperations', () => {
 
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
 			const setNodeParametersSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodeParameters');
-			workflowState.setNodeParameters = vi.fn();
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters, { trackHistory: false });
@@ -4938,7 +4935,6 @@ describe('useCanvasOperations', () => {
 
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(undefined);
 			const setNodeParametersSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodeParameters');
-			workflowState.setNodeParameters = vi.fn();
 
 			const { replaceNodeParameters } = useCanvasOperations();
 			replaceNodeParameters(nodeId, currentParameters, newParameters);
@@ -4970,7 +4966,6 @@ describe('useCanvasOperations', () => {
 			});
 
 			const setNodeParametersSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodeParameters');
-			workflowState.setNodeParameters = vi.fn();
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById')
 				.mockReturnValueOnce(node1)
 				.mockReturnValueOnce(node2);
@@ -5003,7 +4998,6 @@ describe('useCanvasOperations', () => {
 			});
 
 			const setNodeParametersSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodeParameters');
-			workflowState.setNodeParameters = vi.fn();
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
 
 			const { revertReplaceNodeParameters } = useCanvasOperations();
@@ -6328,6 +6322,7 @@ function buildImportNodes() {
 		// Setting position in mockNode will wrap it in a Proxy
 		// This causes deepCopy to remove position -> set position after instead
 		node.position = [40, 40];
+		node.credentials = undefined;
 		return node;
 	});
 }

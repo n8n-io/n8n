@@ -107,10 +107,11 @@ export function isTriggerOnly(
 	return card.isTrigger && !card.credentialType && !cardHasParamWork(card);
 }
 
-/** Use credential icon when it's a credential card */
-export function shouldUseCredentialIcon(
-	card: SetupCard,
-	cardHasParamWork: (c: SetupCard) => boolean,
-): boolean {
-	return !!card.credentialType && !isTriggerOnly(card, cardHasParamWork);
+/**
+ * Use credential icon only for multi-node credential-grouping cards, where the card
+ * title is the credential display name. By construction (see `useSetupCards`), cards
+ * with more than one node always have a credentialType.
+ */
+export function shouldUseCredentialIcon(card: SetupCard): boolean {
+	return card.nodes.length > 1;
 }
