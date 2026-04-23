@@ -176,7 +176,7 @@ export async function startDataTableAgentTask(
 	});
 
 	return {
-		result: `Data table operation started (task: ${taskId}). Reply with one short sentence. Do NOT summarize the plan or list details.`,
+		result: `Data table operation started (task: ${taskId}). Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
