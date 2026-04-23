@@ -6,16 +6,18 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import type { WorkflowListItem } from '@/Interface';
+import type { IWorkflowSettings, WorkflowListItem } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	updateMcpSettings,
-	toggleWorkflowMcpAccessApi,
+	toggleWorkflowsMcpAccessApi,
 	fetchApiKey,
 	rotateApiKey,
 	fetchOAuthClients,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
+	type ToggleWorkflowsMcpAccessResponse,
+	type ToggleWorkflowsMcpAccessTarget,
 } from '@/features/ai/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -62,40 +64,87 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return updated;
 	}
 
+	/**
+	 * Patches the local workflow stores (list + active document) so the UI
+	 * reflects the new `availableInMCP` value without waiting for a full list
+	 * re-fetch. Called only after the backend confirms the workflow is in the
+	 * requested state — the bulk endpoint does not return per-workflow
+	 * settings, so the merge happens purely on the client.
+	 *
+	 * Some list entries arrive with `settings: undefined` (legacy workflows
+	 * or sparse API responses). We create a minimal settings object in that
+	 * case so the UI flips instead of silently ignoring the change.
+	 */
+	function applyAvailableInMCPToLocalStores(workflowId: string, availableInMCP: boolean) {
+		const existing = workflowsListStore.workflowsById[workflowId];
+		if (existing) {
+			if (existing.settings) {
+				existing.settings.availableInMCP = availableInMCP;
+			} else {
+				// The DB may store workflows without a full `IWorkflowSettings`
+				// object. `availableInMCP` is the only field we control here, so
+				// we cast — any missing required fields will be filled in on
+				// the next list fetch.
+				existing.settings = { availableInMCP } as IWorkflowSettings;
+			}
+		}
+
+		if (workflowId === workflowsStore.workflowId) {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.mergeSettings({ availableInMCP });
+		}
+	}
+
+	/**
+	 * Backwards-compatible single-workflow toggle. Internally hits the bulk
+	 * endpoint with a one-element id list.
+	 *
+	 * The bulk backend may skip workflows (unauthorized, archived, not found)
+	 * — those are legitimate failures. No-op toggles (already in the
+	 * requested state) are reported as updated for idempotency, so we throw
+	 * only when the target id isn't in `updatedIds`. Existing `try/catch`
+	 * blocks in callers then surface a toast.
+	 */
 	async function toggleWorkflowMcpAccess(
 		workflowId: string,
 		availableInMCP: boolean,
-	): Promise<{
-		id: string;
-		settings: { availableInMCP?: boolean } | undefined;
-		versionId: string;
-	}> {
-		const response = await toggleWorkflowMcpAccessApi(
+	): Promise<ToggleWorkflowsMcpAccessResponse> {
+		const response = await toggleWorkflowsMcpAccessApi(
 			rootStore.restApiContext,
-			workflowId,
+			{ workflowIds: [workflowId] },
 			availableInMCP,
 		);
 
-		const { id, settings, versionId } = response;
-
-		// Update local  version of the workflow
-		if (id === workflowsStore.workflowId) {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
-			workflowDocumentStore.setVersionData({
-				versionId,
-				name: workflowDocumentStore.versionData?.name ?? null,
-				description: workflowDocumentStore.versionData?.description ?? null,
-			});
-			if (settings) {
-				workflowDocumentStore.mergeSettings(settings);
-			}
+		if (!response.updatedIds.includes(workflowId)) {
+			throw new Error(
+				`Workflow ${workflowId} could not be updated. It may be archived or you may no longer have permission to edit it.`,
+			);
 		}
-		if (workflowsListStore.workflowsById[id]) {
-			workflowsListStore.workflowsById[id] = {
-				...workflowsListStore.workflowsById[id],
-				settings,
-				versionId,
-			};
+
+		applyAvailableInMCPToLocalStores(workflowId, availableInMCP);
+
+		return response;
+	}
+
+	/**
+	 * Bulk-toggle MCP availability, scoped by an id list, a project, or a
+	 * folder (+ descendants). Local stores are patched only for workflows that
+	 * the backend confirmed were updated. Unlike the single-workflow variant,
+	 * this does not throw on partial skips — callers need the full
+	 * `{ updatedIds, skippedCount }` response to drive bulk UX.
+	 */
+	async function toggleWorkflowsMcpAccess(
+		target: ToggleWorkflowsMcpAccessTarget,
+		availableInMCP: boolean,
+	): Promise<ToggleWorkflowsMcpAccessResponse> {
+		const response = await toggleWorkflowsMcpAccessApi(
+			rootStore.restApiContext,
+			target,
+			availableInMCP,
+		);
+
+		for (const id of response.updatedIds) {
+			applyAvailableInMCPToLocalStores(id, availableInMCP);
 		}
 
 		return response;
@@ -151,6 +200,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		fetchWorkflowsAvailableForMCP,
 		setMcpAccessEnabled,
 		toggleWorkflowMcpAccess,
+		toggleWorkflowsMcpAccess,
 		currentUserMCPKey,
 		getOrCreateApiKey,
 		generateNewApiKey,
