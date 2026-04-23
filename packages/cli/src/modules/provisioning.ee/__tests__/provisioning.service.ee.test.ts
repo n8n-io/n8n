@@ -23,9 +23,11 @@ import { type InstanceSettings } from 'n8n-core';
 import { type EventService } from '@/events/event.service';
 import { type UserService } from '@/services/user.service';
 import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
+import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 
 const globalConfig = mock<GlobalConfig>();
-const settingsRepository = mock<SettingsRepository>();
+const settingsEntityManager = mock<EntityManager>();
+const settingsRepository = mock<SettingsRepository>({ manager: settingsEntityManager });
 const userRepository = mock<UserRepository>();
 const userService = mock<UserService>();
 const entityManager = mock<EntityManager>();
@@ -39,6 +41,7 @@ const roleRepository = mock<RoleRepository>();
 const instanceSettings = mock<InstanceSettings>();
 const roleMappingRuleRepository = mock<RoleMappingRuleRepository>();
 const roleResolverService = mock<RoleResolverService>();
+const roleMappingRuleService = mock<RoleMappingRuleService>();
 
 const provisioningService = new ProvisioningService(
 	eventService,
@@ -54,6 +57,7 @@ const provisioningService = new ProvisioningService(
 	instanceSettings,
 	roleMappingRuleRepository,
 	roleResolverService,
+	roleMappingRuleService,
 );
 
 describe('ProvisioningService', () => {
@@ -63,6 +67,11 @@ describe('ProvisioningService', () => {
 			// @ts-expect-error Mock
 			await cb(entityManager);
 		});
+		settingsEntityManager.transaction.mockImplementation(async (cb) => {
+			// @ts-expect-error Mock
+			await cb(settingsEntityManager);
+		});
+		settingsEntityManager.getRepository.mockReturnValue(settingsRepository);
 	});
 
 	const provisioningConfigDto: ProvisioningConfigDto = {
@@ -618,18 +627,34 @@ describe('ProvisioningService', () => {
 	});
 
 	describe('patchConfig', () => {
-		it('should patch the provisioning config, sending out pubsub updates for other nodes to reload in multi-main setup', async () => {
-			(instanceSettings as any).isMultiMain = true;
-			const originStateLoadConfig = provisioningService.loadConfig;
-			const originStateGetConfig = provisioningService.getConfig;
-
+		const stubGetConfigs = (current: ProvisioningConfigDto, next: ProvisioningConfigDto) => {
 			provisioningService.getConfig = jest
 				.fn()
-				.mockResolvedValueOnce(provisioningConfigDto)
-				.mockResolvedValueOnce({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
-			provisioningService.loadConfig = jest
-				.fn()
-				.mockResolvedValue({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
+				.mockResolvedValueOnce(current)
+				.mockResolvedValueOnce(next);
+			provisioningService.loadConfig = jest.fn().mockResolvedValue(next);
+		};
+
+		let originStateLoadConfig: typeof provisioningService.loadConfig;
+		let originStateGetConfig: typeof provisioningService.getConfig;
+
+		beforeEach(() => {
+			originStateLoadConfig = provisioningService.loadConfig;
+			originStateGetConfig = provisioningService.getConfig;
+		});
+
+		afterEach(() => {
+			provisioningService.loadConfig = originStateLoadConfig;
+			provisioningService.getConfig = originStateGetConfig;
+		});
+
+		it('should patch the provisioning config, sending out pubsub updates for other nodes to reload in multi-main setup', async () => {
+			(instanceSettings as any).isMultiMain = true;
+
+			stubGetConfigs(provisioningConfigDto, {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: false,
+			});
 
 			const config = await provisioningService.patchConfig({ scopesProvisionInstanceRole: false });
 			expect(config).toEqual({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
@@ -640,9 +665,205 @@ describe('ProvisioningService', () => {
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'reload-sso-provisioning-configuration',
 			});
+		});
 
-			provisioningService.loadConfig = originStateLoadConfig;
-			provisioningService.getConfig = originStateGetConfig;
+		it('should wrap settings upsert and project rule cleanup in a single transaction', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionProjectRoles: true,
+				scopesUseExpressionMapping: false,
+			};
+			const next: ProvisioningConfigDto = {
+				...current,
+				scopesProvisionProjectRoles: false,
+			};
+			stubGetConfigs(current, next);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(2);
+
+			await provisioningService.patchConfig({ scopesProvisionProjectRoles: false });
+
+			expect(settingsEntityManager.transaction).toHaveBeenCalledTimes(1);
+			expect(settingsRepository.upsert).toHaveBeenCalledTimes(1);
+			expect(roleMappingRuleService.deleteAllOfType).toHaveBeenCalledTimes(1);
+			expect(roleMappingRuleService.deleteAllOfType).toHaveBeenCalledWith(
+				'project',
+				settingsEntityManager,
+			);
+		});
+
+		it('should emit role-mapping-rules-bulk-deleted with the deleted count after commit', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionProjectRoles: true,
+				scopesUseExpressionMapping: false,
+			};
+			const next: ProvisioningConfigDto = { ...current, scopesProvisionProjectRoles: false };
+			stubGetConfigs(current, next);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(4);
+
+			await provisioningService.patchConfig({ scopesProvisionProjectRoles: false });
+
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rules-bulk-deleted', {
+				ruleType: 'project',
+				count: 4,
+				reason: 'strategy-switch',
+			});
+		});
+
+		it('should delete project rules when expression mapping is turned off', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+				scopesUseExpressionMapping: true,
+			};
+			const next: ProvisioningConfigDto = {
+				...current,
+				scopesUseExpressionMapping: false,
+				scopesProvisionInstanceRole: true,
+			};
+			stubGetConfigs(current, next);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(1);
+
+			await provisioningService.patchConfig({
+				scopesUseExpressionMapping: false,
+				scopesProvisionInstanceRole: true,
+			});
+
+			expect(roleMappingRuleService.deleteAllOfType).toHaveBeenCalledWith(
+				'project',
+				settingsEntityManager,
+			);
+		});
+
+		it('should delete project rules when the caller passes explicit deleteProjectRules=true without changing strategy flags', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+				scopesUseExpressionMapping: true,
+			};
+			stubGetConfigs(current, current);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(3);
+
+			await provisioningService.patchConfig({ deleteProjectRules: true });
+
+			expect(roleMappingRuleService.deleteAllOfType).toHaveBeenCalledWith(
+				'project',
+				settingsEntityManager,
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rules-bulk-deleted', {
+				ruleType: 'project',
+				count: 3,
+				reason: 'strategy-switch',
+			});
+		});
+
+		it('should not touch project rules when the strategy does not drop project-role management', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			stubGetConfigs(provisioningConfigDto, {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: false,
+			});
+
+			await provisioningService.patchConfig({ scopesProvisionInstanceRole: false });
+
+			expect(roleMappingRuleService.deleteAllOfType).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'role-mapping-rules-bulk-deleted',
+				expect.anything(),
+			);
+		});
+
+		it('should persist deleteProjectRules only as a transient flag, never to settings', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionProjectRoles: true,
+			};
+			const next: ProvisioningConfigDto = { ...current, scopesProvisionProjectRoles: false };
+			stubGetConfigs(current, next);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(0);
+
+			await provisioningService.patchConfig({
+				scopesProvisionProjectRoles: false,
+				deleteProjectRules: true,
+			});
+
+			const upsertCall = settingsRepository.upsert.mock.calls[0]?.[0] as {
+				value: string;
+			};
+			expect(upsertCall.value).toBeDefined();
+			expect(JSON.parse(upsertCall.value)).not.toHaveProperty('deleteProjectRules');
+		});
+
+		it('should still broadcast reload-sso-provisioning-configuration after cleanup in multi-main', async () => {
+			(instanceSettings as any).isMultiMain = true;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionProjectRoles: true,
+			};
+			const next: ProvisioningConfigDto = { ...current, scopesProvisionProjectRoles: false };
+			stubGetConfigs(current, next);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(1);
+
+			const transactionInvocationOrder: string[] = [];
+			settingsEntityManager.transaction.mockImplementation(async (cb) => {
+				transactionInvocationOrder.push('tx:enter');
+				// @ts-expect-error Mock
+				await cb(settingsEntityManager);
+				transactionInvocationOrder.push('tx:exit');
+			});
+			publisher.publishCommand.mockImplementation(async () => {
+				transactionInvocationOrder.push('pubsub');
+			});
+
+			await provisioningService.patchConfig({ scopesProvisionProjectRoles: false });
+
+			expect(roleMappingRuleService.deleteAllOfType).toHaveBeenCalledTimes(1);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-sso-provisioning-configuration',
+			});
+			// Pubsub must fire after transaction has fully committed.
+			expect(transactionInvocationOrder).toEqual(['tx:enter', 'tx:exit', 'pubsub']);
+		});
+
+		it('should not commit settings upsert if the rule cleanup throws inside the transaction', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionProjectRoles: true,
+			};
+			stubGetConfigs(current, { ...current, scopesProvisionProjectRoles: false });
+
+			roleMappingRuleService.deleteAllOfType.mockRejectedValue(new Error('cleanup failed'));
+			// Simulate real TX behaviour — a throw in the callback rejects the transaction promise,
+			// and the outer patchConfig must propagate the error.
+			settingsEntityManager.transaction.mockImplementation(async (cb) => {
+				// @ts-expect-error Mock
+				return await cb(settingsEntityManager);
+			});
+
+			await expect(
+				provisioningService.patchConfig({ scopesProvisionProjectRoles: false }),
+			).rejects.toThrow('cleanup failed');
+
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'role-mapping-rules-bulk-deleted',
+				expect.anything(),
+			);
 		});
 	});
 

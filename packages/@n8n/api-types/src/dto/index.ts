@@ -25,6 +25,7 @@ export type {
 } from './ai/ai-gateway-usage-response.dto';
 
 export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
+export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
@@ -225,3 +226,7 @@ export { UpdateAgentConfigDto } from './agents/update-agent-config.dto';
 export { AgentIntegrationDto } from './agents/agent-integration.dto';
 export { AgentChatMessageDto } from './agents/agent-chat-message.dto';
 export { AgentBuildResumeDto } from './agents/agent-build-resume.dto';
+
+export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
+export { ListEncryptionKeysQueryDto } from './encryption/list-encryption-keys-query.dto';
+export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';

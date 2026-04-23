@@ -56,7 +56,9 @@ jobs:
               !.github/**
             e2e:
               .github/workflows/test-e2e-*.yml
-              .github/scripts/cleanup-ghcr-images.mjs
+              .github/workflows/prepare-docker-reusable.yml
+              .github/actions/build-n8n-docker/**
+              .github/actions/load-n8n-docker/**
               packages/testing/playwright/**
               packages/testing/containers/**
             workflows: .github/**
@@ -149,10 +151,31 @@ jobs:
         run: |
           pnpm -r pack --dry-run
 
+  # Seeds the SHA-keyed Docker image cache once so that downstream e2e jobs
+  # (each of which invokes prepare-docker internally) short-circuit to a
+  # cache hit instead of racing to rebuild.
+  prepare-docker:
+    name: Prepare Docker
+    needs: install-and-build
+    if: >-
+      github.repository == 'n8n-io/n8n' &&
+      github.event_name != 'merge_group' &&
+      (needs.install-and-build.outputs.ci == 'true'
+        || needs.install-and-build.outputs.e2e == 'true'
+        || needs.install-and-build.outputs.e2e_performance == 'true')
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
   e2e-tests:
     name: E2E Tests
-    needs: install-and-build
-    if: (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') && github.repository == 'n8n-io/n8n' && github.event_name != 'merge_group'
+    needs: [install-and-build, prepare-docker]
+    if: >-
+      needs.prepare-docker.result == 'success' &&
+      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') &&
+      github.repository == 'n8n-io/n8n' &&
+      github.event_name != 'merge_group'
     uses: ./.github/workflows/test-e2e-ci-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -177,11 +200,12 @@ jobs:
 
   e2e-performance:
     name: E2E Performance
-    needs: install-and-build
+    needs: [install-and-build, prepare-docker]
+    # Performance is internal-only (license secrets required, not available on forks).
     if: >-
-      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e_performance == 'true') &&
-      github.event_name == 'pull_request' &&
-      github.repository == 'n8n-io/n8n'
+      needs.prepare-docker.result == 'success' &&
+      needs.install-and-build.outputs.e2e_performance == 'true' &&
+      github.event.pull_request.head.repo.fork != true
     uses: ./.github/workflows/test-e2e-performance-reusable.yml
     secrets: inherit
 
