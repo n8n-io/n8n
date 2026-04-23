@@ -299,6 +299,21 @@ export class AgentsController {
 
 		const threadId = sessionId ?? randomUUID();
 
+		const { missing } = await this.agentsService.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			credentialProvider,
+		);
+		if (missing.length > 0) {
+			send({
+				error: 'This agent is not ready to run yet.',
+				errorCode: 'agent_misconfigured',
+				missing,
+			});
+			res.end();
+			return;
+		}
+
 		try {
 			for await (const chunk of this.agentsService.executeForChat(
 				agentId,

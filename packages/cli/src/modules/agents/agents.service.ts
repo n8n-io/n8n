@@ -414,17 +414,21 @@ export class AgentsService {
 		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
 			params;
 
-		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
-		// Platforms opt in by declaring `supportedComponents`; integrations that
-		// omit it (e.g. Linear) are treated as having no rich_interaction surface
-		// and the tool is skipped. Draft/editor contexts (no integrationType)
-		// always get the tool.
+		// Inject the rich_interaction tool only for platforms that can actually
+		// render its suspend/resume HITL cards. Two gates:
+		//   - A registered integration in ChatIntegrationRegistry. The in-app
+		//     test chat uses `integrationType = 'chat'`, which isn't registered,
+		//     and the compile/validate path passes no integrationType at all —
+		//     neither has a bridge to render the card or resume the suspended
+		//     turn, so letting the model call the tool there would hang the
+		//     agent.
+		//   - The integration must declare `supportedComponents`. Platforms
+		//     that omit it (e.g. Linear) have explicitly opted out of
+		//     rich_interaction.
 		const integration = integrationType
 			? Container.get(ChatIntegrationRegistry).get(integrationType)
 			: undefined;
-		const hasRichInteraction = !integration || integration.supportedComponents !== undefined;
-
-		if (hasRichInteraction) {
+		if (integration && integration.supportedComponents !== undefined) {
 			try {
 				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
 				agent.tool(createRichInteractionTool(integrationType));
@@ -535,6 +539,58 @@ export class AgentsService {
 					});
 				});
 		}
+	}
+
+	/**
+	 * Check whether an agent has the minimum config it needs to be run.
+	 * Returns the list of missing/invalid fields, if any.
+	 *
+	 * `missing` items correspond to user-facing concepts:
+	 *   - "instructions": empty or whitespace-only instructions string
+	 *   - "model":        missing model or one that fails the provider/model regex
+	 *   - "credential":   credential name is set in config but doesn't resolve to
+	 *                     a real credential in the project
+	 */
+	async validateAgentIsRunnable(
+		agentId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): Promise<{ missing: string[] }> {
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) {
+			return { missing: ['agent'] };
+		}
+		const config = agentEntity.schema as unknown as AgentJsonConfig | null;
+		const missing: string[] = [];
+
+		if (!config) {
+			return { missing: ['instructions', 'model'] };
+		}
+
+		if (!config.instructions || !config.instructions.trim()) {
+			missing.push('instructions');
+		}
+
+		const modelSchema = AgentJsonConfigSchema.shape.model;
+		if (!config.model || !modelSchema.safeParse(config.model).success) {
+			missing.push('model');
+		}
+
+		if (config.credential) {
+			try {
+				const credentialName = config.credential;
+				const creds = await credentialProvider.list();
+				const exists = creds.some(
+					(c) => c.id === credentialName || c.name.toLowerCase() === credentialName.toLowerCase(),
+				);
+				if (!exists) missing.push('credential');
+			} catch {
+				// If listing fails (e.g. permissions), don't flag as misconfigured —
+				// the runtime will surface the real error path on execute.
+			}
+		}
+
+		return { missing };
 	}
 
 	/**

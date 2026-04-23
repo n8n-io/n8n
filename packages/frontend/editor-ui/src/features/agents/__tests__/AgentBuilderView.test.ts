@@ -1,7 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick } from 'vue';
+import { nextTick, ref } from 'vue';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -70,10 +70,29 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 	}),
 }));
 
+// Real ref so the view's `watch(config, ...)` fires and populates `localConfig`.
+// Tests that need an unbuilt agent flip this to empty instructions before render.
+const mockConfig = ref<{ name: string; instructions: string } | null>({
+	name: 'Agent One',
+	instructions: 'You are a helpful assistant.',
+});
+// Stash the "desired config" separately so the fetchConfig mock can restore
+// the ref after `initialize()` clears `localConfig` and re-fetches. Without
+// this, the view's `localConfig = null` reset sticks — the config ref hasn't
+// changed, so the `watch(config, ...)` listener doesn't re-fire.
+let intendedConfig: { name: string; instructions: string } | null = {
+	name: 'Agent One',
+	instructions: 'You are a helpful assistant.',
+};
+
 vi.mock('../composables/useAgentConfig', () => ({
 	useAgentConfig: () => ({
-		config: { value: { name: 'Agent One', instructions: '' } },
-		fetchConfig: vi.fn().mockResolvedValue(undefined),
+		config: mockConfig,
+		fetchConfig: vi.fn().mockImplementation(async () => {
+			// Mimic the real composable: re-publish the fetched config by touching
+			// the ref, which triggers watchers even when the shape is unchanged.
+			mockConfig.value = intendedConfig ? { ...intendedConfig } : null;
+		}),
 		updateConfig: vi.fn().mockResolvedValue({ versionId: 'v1' }),
 	}),
 }));
@@ -108,6 +127,12 @@ vi.setConfig({ testTimeout: 15_000 });
 describe('AgentBuilderView — chat mode toggle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Reset to a built agent; tests that need an unbuilt agent override locally.
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+		};
+		mockConfig.value = { ...intendedConfig };
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
@@ -135,7 +160,6 @@ describe('AgentBuilderView — chat mode toggle', () => {
 						emits: ['update:name', 'update:description'],
 						template: '<div data-testid="home-stub" />',
 					},
-					AgentBuilderProgress: { template: '<div data-testid="progress-stub" />' },
 					AgentSettingsSidebar: {
 						name: 'AgentSettingsSidebar',
 						emits: ['update:connected-triggers'],
@@ -212,6 +236,47 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		);
 		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
 		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
+	});
+
+	it('drops unbuilt agents straight into the build chat on load', async () => {
+		// Unbuilt agents go to the build chat unconditionally so the build
+		// panel mounts, triggers loadHistory, and any prior conversation with
+		// the builder is visible instead of being stranded behind the home
+		// screen (where the Test tab is locked and clicking Build is a no-op).
+		intendedConfig = { name: 'Agent One', instructions: '' };
+		mockConfig.value = { ...intendedConfig };
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { mode: string; chatMode: string };
+
+		expect(vm.mode).toBe('chat');
+		expect(vm.chatMode).toBe('build');
+	});
+
+	it('lands built agents on the home screen', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { mode: string; chatMode: string };
+
+		expect(vm.mode).toBe('home');
+		expect(vm.chatMode).toBe('test');
+	});
+
+	it('locks the Test tab when the agent has no instructions', async () => {
+		intendedConfig = { name: 'Agent One', instructions: '' };
+		mockConfig.value = { ...intendedConfig };
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { chatMode: string; mode: string };
+
+		// Get into Build mode first (it's clickable on any agent state).
+		await wrapper.find('[data-test-id="radio-button-build"]').trigger('click');
+		await nextTick();
+		expect(vm.chatMode).toBe('build');
+
+		// Clicking Test on an unbuilt agent must be a no-op — the RadioButton
+		// option is disabled and the click handler returns early.
+		await wrapper.find('[data-test-id="radio-button-test"]').trigger('click');
+		await nextTick();
+		expect(vm.chatMode).toBe('build');
 	});
 
 	it('transitions from home to chat when a toggle segment is clicked', async () => {

@@ -7,13 +7,28 @@ import { z } from 'zod';
 
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { AgentJsonConfig, ConfigValidationError } from '../json-config/agent-json-config';
 import {
 	AgentJsonConfigSchema,
 	formatZodErrors,
 	tryParseConfigJson,
 } from '../json-config/agent-json-config';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+
+const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
+	path: '/instructions',
+	message:
+		'Refusing to write an agent with empty instructions. Ask the user what the agent should do before calling write_config or patch_config again.',
+};
+
+function rejectIfEmptyInstructions(
+	config: AgentJsonConfig,
+): { errors: ConfigValidationError[] } | null {
+	if (!config.instructions.trim()) {
+		return { errors: [EMPTY_INSTRUCTIONS_ERROR] };
+	}
+	return null;
+}
 
 export interface BuilderTools {
 	json: BuiltTool[];
@@ -60,6 +75,10 @@ export class AgentsBuilderToolsService {
 				const zodResult = AgentJsonConfigSchema.safeParse(parsed.data);
 				if (!zodResult.success) {
 					return { ok: false, errors: formatZodErrors(zodResult.error) };
+				}
+				const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
+				if (emptyInstructions) {
+					return { ok: false, errors: emptyInstructions.errors };
 				}
 				try {
 					await this.agentsService.updateConfig(agentId, projectId, zodResult.data);
@@ -120,6 +139,10 @@ export class AgentsBuilderToolsService {
 				const zodResult = AgentJsonConfigSchema.safeParse(patched);
 				if (!zodResult.success) {
 					return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
+				}
+				const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
+				if (emptyInstructions) {
+					return { ok: false, stage: 'schema', errors: emptyInstructions.errors };
 				}
 
 				try {
