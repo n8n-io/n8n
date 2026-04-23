@@ -436,7 +436,7 @@ class TaskExecutor:
 
         filtered["__import__"] = TaskExecutor._create_safe_import(security_config)
 
-        return types.MappingProxyType(filtered)
+        return filtered
 
     @staticmethod
     def _sanitize_sys_modules(security_config: SecurityConfig):

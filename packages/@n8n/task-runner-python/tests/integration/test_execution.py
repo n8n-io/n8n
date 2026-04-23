@@ -185,6 +185,27 @@ async def test_per_item_with_continue_on_fail(broker, manager):
     assert "division by zero" in done_msg["data"]["result"][0]["json"]["error"]
 
 
+@pytest.mark.asyncio
+async def test_per_item_datetime_strptime_works(broker, manager):
+    task_id = nanoid()
+    items = [{"json": {"value": "2026-04-23T16:04:28+0000"}}]
+    code = textwrap.dedent("""
+        from datetime import datetime
+
+        parsed = datetime.strptime(_item['json']['value'], "%Y-%m-%dT%H:%M:%S%z")
+        return {'parsed': parsed.isoformat()}
+    """)
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    done_msg = await wait_for_task_done(broker, task_id)
+
+    assert done_msg["taskId"] == task_id
+    assert done_msg["data"]["result"] == [
+        {"json": {"parsed": "2026-04-23T16:04:28+00:00"}, "pairedItem": {"item": 0}}
+    ]
+
+
 # ========== Security ===========
 
 

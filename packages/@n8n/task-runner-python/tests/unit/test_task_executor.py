@@ -1,6 +1,5 @@
 import pytest
 import json
-import types
 from unittest.mock import MagicMock, patch
 
 from src.task_executor import TaskExecutor
@@ -209,7 +208,7 @@ class TestFilterBuiltins:
             runner_env_deny=False,
         )
 
-    def test_returns_mapping_proxy(self):
+    def test_returns_dict(self):
         result = TaskExecutor._filter_builtins(self._make_security_config())
 
-        assert isinstance(result, types.MappingProxyType)
+        assert isinstance(result, dict)
