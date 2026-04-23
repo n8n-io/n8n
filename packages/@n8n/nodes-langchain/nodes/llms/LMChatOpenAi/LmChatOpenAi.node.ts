@@ -193,7 +193,7 @@ export class LmChatOpenAi implements INodeType {
 				default: 'gpt-5-mini',
 				builderHint: {
 					message:
-						'Always default to the latest flagship OpenAI model (gpt-5.4). Use gpt-5.4-mini when cost-efficiency matters. Avoid gpt-4o, gpt-4, and earlier.',
+						'Default to gpt-5.4 (flagship) or gpt-5.4-mini (cost-efficient). Never use gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5, or earlier — those are superseded by the GPT-5 family and are not valid choices.',
 				},
 				displayOptions: {
 					hide: {
@@ -208,7 +208,7 @@ export class LmChatOpenAi implements INodeType {
 				default: { mode: 'list', value: 'gpt-5-mini' },
 				builderHint: {
 					message:
-						'Always default to the latest flagship OpenAI model (gpt-5.4). Use gpt-5.4-mini when cost-efficiency matters. Avoid gpt-4o, gpt-4, and earlier.',
+						'Default to gpt-5.4 (flagship) or gpt-5.4-mini (cost-efficient). Never use gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5, or earlier — those are superseded by the GPT-5 family and are not valid choices.',
 				},
 				required: true,
 				modes: [

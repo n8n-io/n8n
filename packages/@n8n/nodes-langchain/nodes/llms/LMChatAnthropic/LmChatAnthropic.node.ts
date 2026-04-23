@@ -71,7 +71,7 @@ const modelField: INodeProperties = {
 	default: 'claude-2',
 	builderHint: {
 		message:
-			'Always default to the latest Claude Sonnet (claude-sonnet-4-6). Use claude-opus-4-7 when the user needs the most capable model. Avoid Claude Sonnet 4.5 and earlier, Claude 3.x, Claude 2, and LEGACY options.',
+			'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices.',
 	},
 };
 
@@ -164,7 +164,7 @@ export class LmChatAnthropic implements INodeType {
 				},
 				builderHint: {
 					message:
-						'Always default to the latest Claude Sonnet (claude-sonnet-4-6). Use claude-opus-4-7 when the user needs the most capable model. Avoid Claude Sonnet 4.5 and earlier, Claude 3.x, Claude 2, and LEGACY options.',
+						'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices.',
 				},
 				required: true,
 				modes: [

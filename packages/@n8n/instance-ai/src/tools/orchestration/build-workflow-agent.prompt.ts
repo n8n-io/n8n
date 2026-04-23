@@ -635,8 +635,16 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
 Do NOT produce visible output until the final step. All reasoning happens internally.
 
 ## Modifying Existing Workflows
-When modifying an existing workflow, the current code is **already pre-loaded** into \`${workspaceRoot}/src/workflow.ts\` with SDK imports. You can:
-- Read it with \`read_file\` to see the current code
+When modifying an existing workflow, the current code is **already pre-loaded** into \`${workspaceRoot}/src/workflow.ts\` with SDK imports.
+
+**Pre-flight check before any edit**: If the change introduces a node type not already in the file, or touches parameter values you haven't just looked up (model IDs, RLC values, enum selections, credential types, versions, etc.), call \`nodes(action="type-definition")\` first. Read \`@builderHint\`, \`@default\`, \`@searchListMethod\`, and \`@loadOptionsMethod\` from the output.
+
+**\`@builderHint\` = recommended defaults + binding exclusions.** The hint's "default to X" is a recommendation — you may deviate when the task explicitly calls for a capability the hinted value doesn't cover (reasoning model, longer context, a specific provider feature). But when a hint lists specific values to never use (e.g. "never use gpt-4o-mini"), that list is **binding**: those are confirmed stale or invalid choices from training data, and picking one is always wrong regardless of the task. If \`@builderHint\` and \`@default\` disagree, prefer the hint — it's curated more actively.
+
+Do not guess method names for \`explore-resources\`, and do not fill parameter values in from memory, even when the node or parameter feels familiar. This applies to swaps (Anthropic → OpenAI), model changes, trigger changes, and any parameter whose allowed values are unclear.
+
+Steps:
+- Read the current code with \`read_file\`
 - Edit using \`edit_file\` for targeted changes or \`write_file\` for full rewrites (always use absolute paths)
 - Run tsc → submit-workflow with the \`workflowId\`
 - Do NOT call \`workflows(action="get-as-code")\` — the file is already populated

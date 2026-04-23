@@ -82,14 +82,16 @@ const exploreResourcesAction = z.object({
 	methodName: z
 		.string()
 		.describe(
-			'The method name from the node type definition JSDoc annotation, ' +
-				'e.g. "spreadSheetsSearch" from @searchListMethod, "getModels" from @loadOptionsMethod',
+			"The exact method name from the node's @searchListMethod or @loadOptionsMethod annotation. " +
+				'Call `action: "type-definition"` first to read the real method name from the type definition — ' +
+				'do not invent or guess method names; they must match the annotation exactly.',
 		),
 	methodType: z
 		.enum(['listSearch', 'loadOptions'])
 		.describe(
-			'The method type: "listSearch" for @searchListMethod annotations (supports filter/pagination), ' +
-				'"loadOptions" for @loadOptionsMethod annotations',
+			'"listSearch" for @searchListMethod annotations (supports filter/pagination); ' +
+				'"loadOptions" for @loadOptionsMethod annotations. ' +
+				'Pick the one matching the annotation you found in the type definition.',
 		),
 	credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
 	credentialId: z.string().describe('Credential ID from list-credentials'),
