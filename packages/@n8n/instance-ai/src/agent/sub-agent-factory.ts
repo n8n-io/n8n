@@ -1,6 +1,8 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 
+import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
+import { ASK_USER_FALLBACK, SUBAGENT_OUTPUT_CONTRACT } from './shared-prompts';
 import { getDateTimeSection } from './system-prompt';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { InstanceAiTraceRun, ModelConfig } from '../types';
@@ -24,12 +26,10 @@ export interface SubAgentOptions {
 }
 
 /** Hard protocol injected into every sub-agent — cannot be overridden by orchestrator instructions. */
-const SUB_AGENT_PROTOCOL = `## Output Protocol (MANDATORY)
-You are reporting to a parent agent, NOT a human user. Your output is machine-consumed.
+const SUB_AGENT_PROTOCOL = `${SUBAGENT_OUTPUT_CONTRACT}
 
-### Structured Result (required)
+### Structured Result
 Return a concise result summary: IDs created, statuses, counts, errors encountered.
-No emojis, no markdown headers, no filler phrases.
 
 ### Diagnostic Context (when relevant)
 If you encountered errors, retried operations, or made non-obvious decisions, add a brief
@@ -40,11 +40,11 @@ diagnostic section at the end explaining:
 
 Keep diagnostics to 2-3 sentences maximum. Omit entirely when the task succeeded cleanly.
 
-### Rules
+### Delegate Rules
 - One tool call at a time unless truly independent. Minimum tool calls needed.
 - You cannot delegate to other agents or create plans.
-- If you are stuck or need information only a human can provide, use the ask-user tool.
-- Do NOT retry the same failing approach more than twice — ask the user instead.`;
+- ${ASK_USER_FALLBACK}
+- ${SECRET_ASK_GUARDRAIL}`;
 
 export { SUB_AGENT_PROTOCOL };
 

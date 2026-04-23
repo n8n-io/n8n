@@ -227,7 +227,7 @@ export async function startDetachedDelegateTask(
 	});
 
 	return {
-		result: `Delegation started (task: ${taskId}). Reply with one short sentence. Do NOT summarize the plan or list details.`,
+		result: `Delegation started (task: ${taskId}). Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
