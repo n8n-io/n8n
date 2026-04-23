@@ -35,6 +35,10 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-send-button');
 	}
 
+	getStopButton(): Locator {
+		return this.page.getByTestId('instance-ai-stop-button');
+	}
+
 	getUserMessages(): Locator {
 		return this.page.getByTestId('instance-ai-user-message');
 	}
@@ -45,6 +49,11 @@ export class InstanceAiPage extends BasePage {
 
 	getStatusBar(): Locator {
 		return this.page.getByTestId('instance-ai-status-bar');
+	}
+
+	/** "Working in the background..." indicator — visible when orchestrator is done but child agents still building. */
+	getBackgroundTaskIndicator(): Locator {
+		return this.page.getByText('Working in the background...');
 	}
 
 	getEmptyState(): Locator {
@@ -71,6 +80,14 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-panel-confirm-deny');
 	}
 
+	getDomainAccessApprove(): Locator {
+		return this.page.getByTestId('domain-access-primary');
+	}
+
+	getCredentialContinue(): Locator {
+		return this.page.getByTestId('instance-ai-credential-continue-button');
+	}
+
 	// ── Plan Review ───────────────────────────────────────────────────
 
 	getPlanReviewPanel(): Locator {
@@ -83,6 +100,19 @@ export class InstanceAiPage extends BasePage {
 
 	getPlanRequestChangesButton(): Locator {
 		return this.page.getByTestId('instance-ai-plan-request-changes');
+	}
+
+	/**
+	 * Returns a locator that matches ANY type of approve/continue button.
+	 * Uses Playwright's `or()` to race between confirmation types.
+	 * Workflow setup is always skipped to avoid blocking the benchmark on credential dialogs.
+	 */
+	getAnyApproveButton(): Locator {
+		return this.getConfirmApproveButton()
+			.or(this.getDomainAccessApprove())
+			.or(this.getPlanApproveButton())
+			.or(this.getCredentialContinue())
+			.or(this.getWorkflowSetupSkip());
 	}
 
 	// ── Questions ─────────────────────────────────────────────────────
@@ -171,6 +201,62 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-workflow-setup-card');
 	}
 
+	getWorkflowSetupStepCounter(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-step-counter');
+	}
+
+	getWorkflowSetupPrevButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-prev');
+	}
+
+	getWorkflowSetupNextButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-next');
+	}
+
+	getWorkflowSetupLaterButton(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-later');
+	}
+
+	getWorkflowSetupApplyButton(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-apply-button');
+	}
+
+	getWorkflowSetupTestTriggerButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-test-trigger');
+	}
+
+	getWorkflowSetupCredentialButton(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-credential-button');
+	}
+
+	getWorkflowSetupCredCheck(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-cred-check');
+	}
+
+	getWorkflowSetupStepCheck(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-step-check');
+	}
+
+	getWorkflowSetupNodesHint(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-nodes-hint');
+	}
+
+	getWorkflowSetupListeningCallout(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-listening-callout');
+	}
+
+	getWorkflowSetupErrorBanner(): Locator {
+		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-error-banner');
+	}
+
+	getWorkflowSetupApplyingState(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-applying');
+	}
+
+	getWorkflowSetupPartialState(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-partial');
+	}
+
 	getWorkflowSetupParameterIssues(): Locator {
 		return this.getWorkflowSetupCard().getByTestId('parameter-issues');
 	}
@@ -182,6 +268,10 @@ export class InstanceAiPage extends BasePage {
 			.nth(index)
 			.locator('input, textarea')
 			.first();
+	}
+
+	getWorkflowSetupSkip(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-later');
 	}
 
 	// ── Artifacts ─────────────────────────────────────────────────────
@@ -227,5 +317,9 @@ export class InstanceAiPage extends BasePage {
 	async waitForResponseComplete(timeout = 120_000): Promise<void> {
 		await this.getAssistantMessages().first().waitFor({ state: 'visible', timeout });
 		await this.getSendButton().waitFor({ state: 'visible', timeout });
+	}
+
+	async waitForRunComplete(timeoutMs = 180_000): Promise<void> {
+		await this.getStopButton().waitFor({ state: 'hidden', timeout: timeoutMs });
 	}
 }
