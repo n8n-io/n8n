@@ -351,9 +351,8 @@ export const filterAndSearchNodes = (
 	// AI sub-pickers (Tools, Language Model, Memory, Vector Store, …) all share
 	// rootView === AI_OTHERS_NODE_CREATOR_VIEW but target different connection
 	// types. Only surface community results when we know which connection type
-	// the picker is scoped to, and only for nodes whose outputs match it. This
-	// is what fixes NODE-3183 (Tools picker) without leaking tool nodes into
-	// the Language Model / Memory / … pickers.
+	// the picker is scoped to, and only for nodes whose outputs match it, so
+	// tool nodes don't leak into the Language Model / Memory / … pickers.
 	if (isAiSubcategory) {
 		if (!aiConnectionType) return [];
 		const candidates = mergedNodes.filter((node) => hasMatchingOutput(node, aiConnectionType));
