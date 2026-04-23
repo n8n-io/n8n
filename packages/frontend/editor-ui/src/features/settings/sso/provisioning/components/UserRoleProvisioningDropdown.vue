@@ -34,7 +34,7 @@ const { authProtocol, disabled = false } = defineProps<{
 const i18n = useI18n();
 const canManage = useRBACStore().hasScope('provisioning:manage');
 const { check: isEnvFeatEnabled } = useEnvFeatureFlag();
-const isRuleMappingEnabled = computed(() => isEnvFeatEnabled.value('ROLE_MAPPING_RULES'));
+const isRuleMappingEnabled = computed(() => isEnvFeatEnabled.value('EXPRESSION_ROLE_MAPPING'));
 const showMappingMethod = computed(() => roleAssignment.value !== 'manual');
 const showIdpInfoBox = computed(() => showMappingMethod.value && mappingMethod.value === 'idp');
 const idpInfoText = computed(() =>

@@ -28,9 +28,7 @@ const settingsStore = useSettingsStore();
 const logStreamingStore = useLogStreamingStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
@@ -104,7 +102,7 @@ function forceUpdateInstance() {
 }
 
 function onBusClosing() {
-	workflowDocumentStore?.value?.removeAllNodes();
+	workflowDocumentStore.value.removeAllNodes();
 	uiStore.markStateClean();
 }
 
@@ -155,9 +153,9 @@ async function addDestination() {
 async function onRemove(destinationId?: string) {
 	if (!destinationId) return;
 	await logStreamingStore.deleteDestination(destinationId);
-	const foundNode = workflowDocumentStore?.value?.getNodeByName(destinationId);
+	const foundNode = workflowDocumentStore.value.getNodeByName(destinationId);
 	if (foundNode) {
-		workflowDocumentStore?.value?.removeNode(foundNode);
+		workflowDocumentStore.value.removeNode(foundNode);
 	}
 }
 

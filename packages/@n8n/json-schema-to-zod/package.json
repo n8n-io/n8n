@@ -1,6 +1,6 @@
 {
   "name": "@n8n/json-schema-to-zod",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Converts JSON schema objects into Zod schemas",
   "types": "./dist/types/index.d.ts",
   "main": "./dist/cjs/index.js",
@@ -28,9 +28,9 @@
     "build:esm": "tsc -p tsconfig.esm.json && node postesm.cjs",
     "build": "rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm",
     "dry": "pnpm run build && pnpm pub --dry-run",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:watch": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
   },
   "keywords": [
     "zod",
@@ -65,6 +65,10 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@types/json-schema": "^7.0.15",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   }
 }

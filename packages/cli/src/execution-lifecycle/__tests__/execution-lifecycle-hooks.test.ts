@@ -116,6 +116,12 @@ describe('Execution Lifecycle Hooks', () => {
 		status: 'waiting',
 		waitTill: new Date(),
 		storedAt: 'db',
+		data: {
+			resultData: {
+				lastNodeExecuted: undefined,
+				runData: {},
+			},
+		},
 	});
 	const successfulRunWithMetadata = mock<IRun>({
 		status: 'success',
@@ -206,6 +212,96 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
 				expect(eventService.emit).not.toHaveBeenCalledWith('workflow-post-execute');
+			});
+
+			describe('execution-waiting audit event', () => {
+				it('should emit execution-waiting when the last node is waiting for a webhook', async () => {
+					const webhookWaitingRun = mock<IRun>({
+						finished: true,
+						status: 'waiting',
+						waitTill: new Date(),
+						storedAt: 'db',
+					});
+					// Assigning `data` outside the `mock()` call to avoid jest-mock-extended wrapping it in a DeepMockProxy
+					webhookWaitingRun.data = createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'wait',
+							runData: {
+								wait: [
+									{ metadata: { resumeUrl: 'https://example.test/webhook/abc' } },
+								] as ITaskData[],
+							},
+						},
+					});
+					await lifecycleHooks.runHook('workflowExecuteAfter', [webhookWaitingRun, {}]);
+
+					expect(eventService.emit).toHaveBeenCalledWith('execution-waiting', {
+						executionId,
+						workflowId,
+					});
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'workflow-post-execute',
+						expect.anything(),
+					);
+				});
+
+				it('should not emit execution-waiting when no node was executed', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'execution-waiting',
+						expect.anything(),
+					);
+				});
+
+				it('should not emit execution-waiting when the last node is not waiting for a webhook', async () => {
+					const nonWebhookWaitingRun = mock<IRun>({
+						finished: true,
+						status: 'waiting',
+						waitTill: new Date(),
+						storedAt: 'db',
+					});
+					nonWebhookWaitingRun.data = createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'sendAndWait',
+							runData: {
+								sendAndWait: [{ metadata: {} }] as ITaskData[],
+							},
+						},
+					});
+					await lifecycleHooks.runHook('workflowExecuteAfter', [nonWebhookWaitingRun, {}]);
+
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'execution-waiting',
+						expect.anything(),
+					);
+				});
+
+				it('should use the latest task run to determine webhook wait status', async () => {
+					const latestTaskWebhookWaitingRun = mock<IRun>({
+						finished: true,
+						status: 'waiting',
+						waitTill: new Date(),
+						storedAt: 'db',
+					});
+					latestTaskWebhookWaitingRun.data = createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'wait',
+							runData: {
+								wait: [
+									{ metadata: {} },
+									{ metadata: { resumeUrl: 'https://example.test/webhook/xyz' } },
+								] as ITaskData[],
+							},
+						},
+					});
+					await lifecycleHooks.runHook('workflowExecuteAfter', [latestTaskWebhookWaitingRun, {}]);
+
+					expect(eventService.emit).toHaveBeenCalledWith('execution-waiting', {
+						executionId,
+						workflowId,
+					});
+				});
 			});
 
 			it('should reset destination node to original destination', async () => {

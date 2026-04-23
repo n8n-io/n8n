@@ -686,6 +686,27 @@ describe('ProjectSettings', () => {
 		});
 	});
 
+	describe('User search for member invitation', () => {
+		it('preloads all users without projectId filter on mount when user has project:update scope', async () => {
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).toHaveBeenCalledWith({ take: 50, filter: {} });
+		});
+
+		it('skips user preloading on mount when user cannot update the project', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read'],
+			};
+
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('Icon updates', () => {
 		it('updates project icon and shows success toast', async () => {
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);

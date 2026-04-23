@@ -38,7 +38,6 @@ import type { INodeUi, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { computedAsync } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
@@ -73,7 +72,6 @@ const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const workflowId = useInjectWorkflowId();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
@@ -154,7 +152,7 @@ const { workflowRunData } = useExecutionData({ node });
 
 const hasNodeRun = computed(() => {
 	if (!node.value) return true;
-	const parentNode = workflowsStore.workflowObject.getParentNodes(node.value.name, 'main', 1)[0];
+	const parentNode = workflowDocumentStore?.value?.getParentNodes(node.value.name, 'main', 1)[0];
 	return Boolean(
 		parentNode &&
 			workflowRunData.value &&
