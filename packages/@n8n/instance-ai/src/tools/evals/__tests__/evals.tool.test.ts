@@ -2,7 +2,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { mock } from 'jest-mock-extended';
 
 import type { InstanceAiContext } from '../../../types';
-import { applyEvalSetup } from '../apply-eval-setup.service';
+import { ensureEvalDataTable } from '../ensure-eval-data-table.service';
 import { createEvalsTool } from '../evals.tool';
 import { inferEvalShape, DEFAULT_EVAL_SHAPE } from '../infer-eval-shape.service';
 
@@ -18,18 +18,19 @@ jest.mock('../infer-eval-shape.service', () => ({
 				kind: 'llm-judge',
 				description: 'd',
 				prompt: 'p',
+				cannedMetricKey: 'correctness',
 				defaultEnabled: true,
 			},
 		],
 	},
 }));
 
-jest.mock('../apply-eval-setup.service', () => ({
-	applyEvalSetup: jest.fn(),
+jest.mock('../ensure-eval-data-table.service', () => ({
+	ensureEvalDataTable: jest.fn(),
 }));
 
 const mockInfer = inferEvalShape as jest.MockedFunction<typeof inferEvalShape>;
-const mockApply = applyEvalSetup as jest.MockedFunction<typeof applyEvalSetup>;
+const mockEnsureDataTable = ensureEvalDataTable as jest.MockedFunction<typeof ensureEvalDataTable>;
 
 function aiWf(): WorkflowJSON {
 	return {
@@ -62,7 +63,7 @@ function makeCtx(wf: WorkflowJSON): InstanceAiContext {
 	return ctx;
 }
 
-describe('evalsTool — propose', () => {
+describe('evalsTool — propose gate checks', () => {
 	beforeEach(() => jest.clearAllMocks());
 
 	it('returns skipped when the workflow has no AI nodes', async () => {
@@ -83,9 +84,9 @@ describe('evalsTool — propose', () => {
 		const ctx = makeCtx(wf);
 		const tool = createEvalsTool(ctx);
 
-		const result: unknown = await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
 			agent: {},
-		} as never);
+		} as never)) as Record<string, unknown>;
 
 		expect(result).toMatchObject({ skipped: true });
 		expect(mockInfer).not.toHaveBeenCalled();
@@ -125,58 +126,60 @@ describe('evalsTool — propose', () => {
 		const ctx = makeCtx(wf);
 		const tool = createEvalsTool(ctx);
 
-		const result: unknown = await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
 			agent: {},
-		} as never);
+		} as never)) as Record<string, unknown>;
 
 		expect(result).toMatchObject({
 			skipped: true,
 			reason: expect.stringMatching(/already/i) as unknown,
 		});
 	});
+});
+
+describe('evalsTool — phase 1 suspend', () => {
+	beforeEach(() => jest.clearAllMocks());
 
 	it('suspends with proposal payload when workflow has AI nodes and no existing eval setup', async () => {
 		const ctx = makeCtx(aiWf());
 		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
-		const suspend = jest.fn().mockImplementation(async () => {
-			await new Promise(() => {});
-		});
+		const suspend = jest.fn().mockImplementation(async () => await new Promise(() => {}));
 		const tool = createEvalsTool(ctx);
 
 		void tool.execute!({ action: 'propose', workflowId: 'w1' }, { agent: { suspend } } as never);
 
 		await new Promise(process.nextTick);
 		expect(suspend).toHaveBeenCalledTimes(1);
-		const calls = suspend.mock.calls as unknown[][];
-		const payload = calls[0][0];
+		const payload = (suspend.mock.calls[0] as unknown[])[0] as Record<string, unknown>;
 		expect(payload).toMatchObject({
 			workflowId: 'w1',
 			detectedAiNodes: ['Agent'],
 			suggestedMetrics: expect.any(Array) as unknown,
 		});
 	});
+});
+
+describe('evalsTool — phase 2 resume', () => {
+	beforeEach(() => jest.clearAllMocks());
 
 	it('returns deferred:true when user declines', async () => {
 		const ctx = makeCtx(aiWf());
 		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
 		const tool = createEvalsTool(ctx);
-		const result: unknown = await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
 			agent: { resumeData: { approved: false } },
-		} as never);
+		} as never)) as Record<string, unknown>;
 		expect(result).toMatchObject({ success: true, deferred: true });
+		expect(mockEnsureDataTable).not.toHaveBeenCalled();
 	});
 
-	it('calls applyEvalSetup when user approves and returns the result', async () => {
+	it('approve + generate: creates DataTable, returns builder task with dataTableId', async () => {
 		const ctx = makeCtx(aiWf());
 		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
-		mockApply.mockResolvedValue({
-			success: true,
-			evalTriggerNodeName: 'EvaluationTrigger',
-			dataTableId: 'dt-1',
-		});
+		mockEnsureDataTable.mockResolvedValue({ id: 'dt-1', name: 'AI Flow — eval samples' });
 		const tool = createEvalsTool(ctx);
 
-		const result: unknown = await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1', projectId: 'p1' }, {
 			agent: {
 				resumeData: {
 					approved: true,
@@ -184,9 +187,100 @@ describe('evalsTool — propose', () => {
 					enabledMetricIds: ['correctness'],
 				},
 			},
-		} as never);
+		} as never)) as Record<string, unknown>;
 
-		expect(mockApply).toHaveBeenCalled();
-		expect(result).toMatchObject({ success: true, dataTableId: 'dt-1' });
+		expect(mockEnsureDataTable).toHaveBeenCalledTimes(1);
+		expect(result).toMatchObject({
+			success: true,
+			shouldDelegateToBuilder: true,
+			workflowId: 'w1',
+			dataTableId: 'dt-1',
+		});
+		const builderTask = (result as { builderTask: string }).builderTask;
+		expect(builderTask).toContain('dt-1');
+		expect(builderTask).toContain('Agent');
+		expect(builderTask).toContain('checkIfEvaluating');
+	});
+
+	it('approve + link-existing: does not create DataTable, uses provided id in builder task', async () => {
+		const ctx = makeCtx(aiWf());
+		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+			agent: {
+				resumeData: {
+					approved: true,
+					datasetChoice: 'link-existing',
+					existingDataTableId: 'dt-user-123',
+					enabledMetricIds: ['correctness'],
+				},
+			},
+		} as never)) as Record<string, unknown>;
+
+		expect(mockEnsureDataTable).not.toHaveBeenCalled();
+		expect(result).toMatchObject({
+			success: true,
+			shouldDelegateToBuilder: true,
+			dataTableId: 'dt-user-123',
+		});
+		const builderTask = (result as { builderTask: string }).builderTask;
+		expect(builderTask).toContain('dt-user-123');
+	});
+
+	it('approve + later: omits dataTableId, builder task tells builder to leave it empty', async () => {
+		const ctx = makeCtx(aiWf());
+		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+			agent: {
+				resumeData: {
+					approved: true,
+					datasetChoice: 'later',
+					enabledMetricIds: ['correctness'],
+				},
+			},
+		} as never)) as Record<string, unknown>;
+
+		expect(mockEnsureDataTable).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ success: true, shouldDelegateToBuilder: true });
+		expect(result).not.toHaveProperty('dataTableId');
+		const builderTask = (result as { builderTask: string }).builderTask;
+		expect(builderTask).toContain('Leave the `evaluationTrigger` dataTableId empty');
+	});
+
+	it('filters builder task metrics by enabledMetricIds from resume data', async () => {
+		const ctx = makeCtx(aiWf());
+		mockInfer.mockResolvedValue({
+			suggestedInputColumns: ['input'],
+			suggestedOutputColumns: ['expected_output'],
+			suggestedMetrics: [
+				{
+					id: 'a',
+					name: 'Metric A',
+					kind: 'llm-judge',
+					description: 'd',
+					prompt: 'p',
+					defaultEnabled: true,
+				},
+				{ id: 'b', name: 'Metric B', kind: 'exact-match', description: 'd', defaultEnabled: false },
+			],
+		});
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+			agent: {
+				resumeData: {
+					approved: true,
+					datasetChoice: 'later',
+					enabledMetricIds: ['b'],
+				},
+			},
+		} as never)) as Record<string, unknown>;
+
+		const builderTask = (result as { builderTask: string }).builderTask;
+		expect(builderTask).toContain('Metric B');
+		expect(builderTask).not.toContain('Metric A');
 	});
 });

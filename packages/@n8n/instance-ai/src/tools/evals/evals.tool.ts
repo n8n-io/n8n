@@ -6,8 +6,9 @@ import {
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { applyEvalSetup } from './apply-eval-setup.service';
 import { detectAiNodes } from './detect-ai-nodes';
+import { ensureEvalDataTable } from './ensure-eval-data-table.service';
+import { formatEvalBuilderTask } from './format-builder-task';
 import { DEFAULT_EVAL_SHAPE, inferEvalShape, type EvalShape } from './infer-eval-shape.service';
 import type { InstanceAiContext } from '../../types';
 
@@ -21,14 +22,13 @@ type Input = z.infer<typeof inputSchema>;
 
 export function createEvalsTool(context: InstanceAiContext) {
 	// Cache the proposal produced in phase 1 so phase 2 (apply) uses the
-	// same metric IDs the user saw in the card. Keyed by workflowId to
-	// keep this state machine robust across concurrent propose calls.
+	// same metric IDs the user saw in the card. Keyed by workflowId.
 	const proposalCache: Map<string, EvalShape> = new Map();
 
 	return createTool({
 		id: 'evals',
 		description:
-			'Propose an evaluation setup (EvaluationTrigger + Evaluation nodes + optional sample dataset) for workflows containing AI/LLM nodes. Call after `workflows(action="setup")` for AI workflows only.',
+			'Propose an evaluation setup for workflows containing AI/LLM nodes. Call after `workflows(action="setup")` for AI workflows only. When approved, returns a builder task the orchestrator must pass to `build-workflow-with-agent`.',
 		inputSchema,
 		suspendSchema: instanceAiEvalsProposeSuspendSchema,
 		resumeSchema: instanceAiEvalsProposeResumeSchema,
@@ -83,29 +83,48 @@ export function createEvalsTool(context: InstanceAiContext) {
 				return { success: true, deferred: true, reason: 'User skipped eval setup.' };
 			}
 
-			// Reuse the cached proposal so the metric IDs match what the user selected.
-			// If the cache is missing (e.g. server restart between suspend and resume),
-			// fall back to a fresh inference — the user may see slightly different
-			// metric resolution but the flow still completes.
-			let shape = proposalCache.get(input.workflowId);
-			if (shape === undefined) {
-				const wf = await context.workflowService.getAsWorkflowJSON(input.workflowId);
-				shape = await inferEvalShape(wf).catch(() => DEFAULT_EVAL_SHAPE);
-			}
+			// Re-fetch workflow + re-detect AI nodes (pure, cheap).
+			const wf = await context.workflowService.getAsWorkflowJSON(input.workflowId);
+			const detection = detectAiNodes(wf);
+
+			// Reuse cached shape so metric IDs match what the user selected.
+			const shape =
+				proposalCache.get(input.workflowId) ??
+				(await inferEvalShape(wf).catch(() => DEFAULT_EVAL_SHAPE));
 			proposalCache.delete(input.workflowId);
 
-			const result = await applyEvalSetup(context, {
+			// DataTable prep (only for 'generate').
+			let dataTableId = resumeData.existingDataTableId;
+			if (resumeData.datasetChoice === 'generate') {
+				const dt = await ensureEvalDataTable(context, {
+					workflowName: wf.name ?? 'Workflow',
+					projectId: input.projectId,
+					columns: [...shape.suggestedInputColumns, ...shape.suggestedOutputColumns],
+					workflowForSamples: wf,
+				});
+				dataTableId = dt.id;
+			}
+
+			// Format the builder task.
+			const enabledMetrics = shape.suggestedMetrics.filter((m) =>
+				(resumeData.enabledMetricIds ?? []).includes(m.id),
+			);
+			const builderTask = formatEvalBuilderTask({
 				workflowId: input.workflowId,
-				projectId: input.projectId,
-				userChoice: {
-					datasetChoice: resumeData.datasetChoice ?? 'later',
-					existingDataTableId: resumeData.existingDataTableId,
-					enabledMetricIds: resumeData.enabledMetricIds ?? [],
-				},
-				proposal: shape,
+				dataTableId,
+				datasetChoice: resumeData.datasetChoice ?? 'later',
+				detectedAiNodes: detection.aiNodeNames,
+				suggestedOutputColumns: shape.suggestedOutputColumns,
+				enabledMetrics,
 			});
 
-			return result;
+			return {
+				success: true,
+				shouldDelegateToBuilder: true,
+				builderTask,
+				workflowId: input.workflowId,
+				...(dataTableId ? { dataTableId } : {}),
+			};
 		},
 	});
 }
