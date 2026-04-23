@@ -65,7 +65,9 @@ async function main() {
 	fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
 	fs.writeFileSync(OUTPUT_PATH, JSON.stringify(output, null, 2) + '\n');
 
-	console.log(`Wrote ${titles.length} quarantined titles to ${path.relative(ROOT_DIR, OUTPUT_PATH)}`);
+	console.log(
+		`Wrote ${titles.length} quarantined titles to ${path.relative(ROOT_DIR, OUTPUT_PATH)}`,
+	);
 }
 
 main().catch((error) => {
