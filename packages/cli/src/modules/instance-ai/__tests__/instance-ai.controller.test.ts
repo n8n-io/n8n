@@ -389,6 +389,62 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('feedback', () => {
+		const RESPONSE_ID = 'mg-1';
+
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('feedback')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+		});
+
+		it('should forward the payload to the service and return { ok: true }', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.submitLangsmithFeedback.mockResolvedValue(undefined);
+
+			const payload = { rating: 'up' as const, comment: 'great' };
+			const result = await controller.feedback(req, res, THREAD_ID, RESPONSE_ID, payload);
+
+			expect(result).toEqual({ ok: true });
+			expect(instanceAiService.submitLangsmithFeedback).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				RESPONSE_ID,
+				payload,
+			);
+		});
+
+		it('should not await the service call so LangSmith latency never blocks the response', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			let resolveService: () => void = () => {};
+			instanceAiService.submitLangsmithFeedback.mockReturnValue(
+				new Promise<void>((resolve) => {
+					resolveService = resolve;
+				}),
+			);
+
+			const start = Date.now();
+			await controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'down' });
+			expect(Date.now() - start).toBeLessThan(50);
+			resolveService();
+		});
+
+		it('should throw ForbiddenError for other user thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'up' }),
+			).rejects.toThrow(ForbiddenError);
+			expect(instanceAiService.submitLangsmithFeedback).not.toHaveBeenCalled();
+		});
+
+		it('should throw NotFoundError for missing thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'up' }),
+			).rejects.toThrow(NotFoundError);
+		});
+	});
+
 	describe('cancelTask', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('cancelTask')).toEqual({ scope: 'instanceAi:message', globalOnly: true });

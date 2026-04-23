@@ -3131,6 +3131,8 @@
 	"settings.provisioningConfirmDialog.button.cancel": "Cancel",
 	"settings.provisioningConfirmDialog.button.downloadProjectRolesCsv": "Existing project role access settings CSV",
 	"settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv": "Existing instance role settings CSV",
+	"settings.provisioningConfirmDialog.projectRulesDeletion.warning": "Existing project mapping rules will be permanently deleted.",
+	"settings.provisioningConfirmDialog.projectRulesDeletion.description": "Saving this change removes all project role mapping rules. Download the project roles CSV above before saving so you can recreate them if needed.",
 	"settings.provisioningInstanceRolesHandledBySsoProvider.description": "User management and instance roles are controlled by your SSO provider. Contact your n8n instance owner or admin to make changes.",
 	"settings.provisioningInstanceRolesHandledByExpressionMapping.description": "Instance roles are managed automatically by expression-based role mapping rules. Manual role changes are disabled.",
 	"settings.provisioningProjectRolesHandledBySsoProvider.description": "User management and project roles are controlled by your SSO provider. Contact your n8n instance owner or admin to make changes.",
