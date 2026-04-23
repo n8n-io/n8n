@@ -86,6 +86,7 @@ describe('useNodeCreatorStore', () => {
 		nodeCreatorStore = useNodeCreatorStore();
 		mockUseNodeTypesStore = mockedStore(useNodeTypesStore);
 		mockUseWorkflowsStore = mockedStore(useWorkflowsStore);
+		mockUseWorkflowsStore.workflowId = 'test-wf-id';
 		mockUseWorkflowDocumentStore = mockedStore(() =>
 			useWorkflowDocumentStore(createWorkflowDocumentId('test-wf-id')),
 		);
@@ -98,7 +99,6 @@ describe('useNodeCreatorStore', () => {
 		mockUseWorkflowDocumentStore.getNodeById = vi.fn((id?: string) => {
 			return id ? ({ id, name: 'Test Node', type: 'test-type' } as INodeUi) : undefined;
 		});
-		mockUseWorkflowsStore.workflowId = 'dummy-workflow-id';
 
 		mockedPrepareCommunityNodeDetailsViewStack.mockReturnValue({
 			title: 'Test Node',
