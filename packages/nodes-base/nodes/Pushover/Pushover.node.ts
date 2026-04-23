@@ -256,8 +256,7 @@ export class Pushover implements INodeType {
 						name: 'ttl',
 						type: 'number',
 						default: '',
-						description:
-							'Time to Live in seconds, after which the message will be automatically deleted from the devices it was delivered to',
+						description: 'Time to Live in seconds, after which the message will be automatically deleted from the devices it was delivered to.',
 					},
 					{
 						displayName: 'URL',
