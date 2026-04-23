@@ -21,7 +21,9 @@ import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 
-const getNodeTypeMock = vi.fn().mockReturnValue(null);
+const { getNodeTypeMock } = vi.hoisted(() => ({
+	getNodeTypeMock: vi.fn().mockReturnValue(null),
+}));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
