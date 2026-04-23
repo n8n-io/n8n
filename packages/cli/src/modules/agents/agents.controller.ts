@@ -3,6 +3,7 @@ import {
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
 	type AgentPersistedMessageDto,
+	type AgentSseEvent,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
@@ -16,7 +17,12 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { messagesToDto } from './agent-message-mapper';
-import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
+import {
+	type FlushableResponse,
+	initSseStream,
+	pumpChunks,
+	type ToolEventCallbacks,
+} from './agent-sse-stream';
 import {
 	AgentIntegrationDto,
 	CreateAgentDto,
@@ -27,6 +33,38 @@ import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
+
+/**
+ * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
+ * we re-emit each delta as a `code-delta` event so the FE editor can render
+ * incrementally; on tool completion we emit `config-updated` / `tool-updated`
+ * so the FE refreshes the corresponding panel. State is local to one request:
+ * `streamingToolName` tracks the tool whose arguments are currently streaming
+ * (replaces the old per-message-id heuristic).
+ */
+function makeBuilderToolEvents(send: (e: AgentSseEvent) => void): ToolEventCallbacks {
+	let streamingToolName: string | undefined;
+	return {
+		toolInputStart: (name) => {
+			streamingToolName = name;
+		},
+		toolInputDelta: (_toolCallId, delta) => {
+			if (streamingToolName === 'build_custom_tool') {
+				send({ type: 'code-delta', delta });
+			}
+		},
+		toolResult: (name) => {
+			if (name === 'write_config' || name === 'patch_config') {
+				send({ type: 'config-updated' });
+				streamingToolName = undefined;
+			}
+			if (name === 'build_custom_tool') {
+				send({ type: 'tool-updated' });
+				streamingToolName = undefined;
+			}
+		},
+	};
+}
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsController {
@@ -244,7 +282,7 @@ export class AgentsController {
 
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
-		const { send, getMessageId, startNewTurn } = initSseStream(res);
+		const { send } = initSseStream(res);
 
 		// If the client supplied a sessionId and a thread already exists under that id,
 		// the thread must belong to this (project, agent). Otherwise a caller could
@@ -273,8 +311,6 @@ export class AgentsController {
 					'chat',
 				),
 				send,
-				getMessageId,
-				startNewTurn,
 			);
 			send({ type: 'done', sessionId: threadId });
 		} catch (error) {
@@ -372,10 +408,9 @@ export class AgentsController {
 
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
-		const { send, getMessageId, startNewTurn } = initSseStream(res);
+		const { send } = initSseStream(res);
 
 		try {
-			let streamingToolName: string | undefined;
 			const suspended = await pumpChunks(
 				this.agentsBuilderService.buildAgent(
 					agentId,
@@ -385,27 +420,7 @@ export class AgentsController {
 					req.user.id,
 				),
 				send,
-				getMessageId,
-				startNewTurn,
-				{
-					toolCall: (name) => (streamingToolName = name),
-					toolCallDelta: (name, argumentsDelta) => {
-						if (name) streamingToolName = name;
-						if (streamingToolName === 'build_custom_tool') {
-							send({ type: 'codeDelta', delta: argumentsDelta });
-						}
-					},
-					toolResult: (name) => {
-						if (name === 'write_config' || name === 'patch_config') {
-							send({ type: 'configUpdated' });
-							streamingToolName = undefined;
-						}
-						if (name === 'build_custom_tool') {
-							send({ type: 'toolUpdated' });
-							streamingToolName = undefined;
-						}
-					},
-				},
+				makeBuilderToolEvents(send),
 			);
 
 			if (!suspended) {
@@ -431,10 +446,9 @@ export class AgentsController {
 
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
-		const { send, getMessageId, startNewTurn } = initSseStream(res);
+		const { send } = initSseStream(res);
 
 		try {
-			let streamingToolName: string | undefined;
 			const suspended = await pumpChunks(
 				this.agentsBuilderService.resumeBuild(
 					agentId,
@@ -445,27 +459,7 @@ export class AgentsController {
 					credentialProvider,
 				),
 				send,
-				getMessageId,
-				startNewTurn,
-				{
-					toolCall: (name) => (streamingToolName = name),
-					toolCallDelta: (name, argumentsDelta) => {
-						if (name) streamingToolName = name;
-						if (streamingToolName === 'build_custom_tool') {
-							send({ type: 'codeDelta', delta: argumentsDelta });
-						}
-					},
-					toolResult: (name) => {
-						if (name === 'write_config' || name === 'patch_config') {
-							send({ type: 'configUpdated' });
-							streamingToolName = undefined;
-						}
-						if (name === 'build_custom_tool') {
-							send({ type: 'toolUpdated' });
-							streamingToolName = undefined;
-						}
-					},
-				},
+				makeBuilderToolEvents(send),
 			);
 
 			if (!suspended) {

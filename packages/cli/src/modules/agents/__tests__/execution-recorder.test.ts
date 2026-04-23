@@ -1,24 +1,12 @@
 import { ExecutionRecorder } from '../execution-recorder';
 import type { StreamChunk } from '@n8n/agents';
 
-function makeToolCallMessage(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
-	return {
-		type: 'message',
-		message: {
-			role: 'tool',
-			content: [{ type: 'tool-call', toolCallId, toolName, input }],
-		},
-	} as StreamChunk;
+function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
+	return { type: 'tool-call', toolCallId, toolName, input } satisfies StreamChunk;
 }
 
-function makeToolResultMessage(toolName: string, result: unknown, toolCallId = 'tc1'): StreamChunk {
-	return {
-		type: 'message',
-		message: {
-			role: 'tool',
-			content: [{ type: 'tool-result', toolCallId, toolName, result }],
-		},
-	} as StreamChunk;
+function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc1'): StreamChunk {
+	return { type: 'tool-result', toolCallId, toolName, output } satisfies StreamChunk;
 }
 
 describe('ExecutionRecorder', () => {
@@ -26,10 +14,10 @@ describe('ExecutionRecorder', () => {
 		it('captures text → tool call → text in order', () => {
 			const recorder = new ExecutionRecorder();
 
-			recorder.record({ type: 'text-delta', delta: 'Let me check' });
-			recorder.record(makeToolCallMessage('lookup', { query: 'test' }));
-			recorder.record(makeToolResultMessage('lookup', { found: true }));
-			recorder.record({ type: 'text-delta', delta: 'Here are the results' });
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Let me check' });
+			recorder.record(makeToolCallChunk('lookup', { query: 'test' }));
+			recorder.record(makeToolResultChunk('lookup', { found: true }));
+			recorder.record({ type: 'text-delta', id: 't2', delta: 'Here are the results' });
 			recorder.record({
 				type: 'finish',
 				finishReason: 'stop',
@@ -58,12 +46,12 @@ describe('ExecutionRecorder', () => {
 		it('captures multiple tool calls between text segments', () => {
 			const recorder = new ExecutionRecorder();
 
-			recorder.record({ type: 'text-delta', delta: 'Checking...' });
-			recorder.record(makeToolCallMessage('tool_a', {}, 'a1'));
-			recorder.record(makeToolResultMessage('tool_a', 'result_a', 'a1'));
-			recorder.record(makeToolCallMessage('tool_b', {}, 'b1'));
-			recorder.record(makeToolResultMessage('tool_b', 'result_b', 'b1'));
-			recorder.record({ type: 'text-delta', delta: 'Done' });
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Checking...' });
+			recorder.record(makeToolCallChunk('tool_a', {}, 'a1'));
+			recorder.record(makeToolResultChunk('tool_a', 'result_a', 'a1'));
+			recorder.record(makeToolCallChunk('tool_b', {}, 'b1'));
+			recorder.record(makeToolResultChunk('tool_b', 'result_b', 'b1'));
+			recorder.record({ type: 'text-delta', id: 't2', delta: 'Done' });
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 
 			const record = recorder.getMessageRecord();
@@ -80,9 +68,9 @@ describe('ExecutionRecorder', () => {
 		it('does not create empty text events for whitespace-only segments', () => {
 			const recorder = new ExecutionRecorder();
 
-			recorder.record({ type: 'text-delta', delta: '   ' });
-			recorder.record(makeToolCallMessage('lookup', {}));
-			recorder.record(makeToolResultMessage('lookup', {}));
+			recorder.record({ type: 'text-delta', id: 't1', delta: '   ' });
+			recorder.record(makeToolCallChunk('lookup', {}));
+			recorder.record(makeToolResultChunk('lookup', {}));
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 
 			const record = recorder.getMessageRecord();
@@ -95,7 +83,7 @@ describe('ExecutionRecorder', () => {
 		it('captures working-memory-update as a timeline event', () => {
 			const recorder = new ExecutionRecorder();
 
-			recorder.record({ type: 'text-delta', delta: 'Hello' });
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Hello' });
 			recorder.record({ type: 'working-memory-update', content: '# Name: Alice' });
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 
@@ -121,7 +109,7 @@ describe('ExecutionRecorder', () => {
 		it('records suspension as a timeline event', () => {
 			const recorder = new ExecutionRecorder();
 
-			recorder.record({ type: 'text-delta', delta: 'Choose an option' });
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Choose an option' });
 			recorder.record({
 				type: 'tool-call-suspended',
 				toolName: 'rich_interaction',
@@ -139,8 +127,8 @@ describe('ExecutionRecorder', () => {
 		it('still populates flat toolCalls array', () => {
 			const recorder = new ExecutionRecorder();
 
-			recorder.record(makeToolCallMessage('my_tool', { x: 1 }));
-			recorder.record(makeToolResultMessage('my_tool', { y: 2 }));
+			recorder.record(makeToolCallChunk('my_tool', { x: 1 }));
+			recorder.record(makeToolResultChunk('my_tool', { y: 2 }));
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 
 			const record = recorder.getMessageRecord();
@@ -156,10 +144,10 @@ describe('ExecutionRecorder', () => {
 		it('still concatenates assistantResponse from all text deltas', () => {
 			const recorder = new ExecutionRecorder();
 
-			recorder.record({ type: 'text-delta', delta: 'Hello ' });
-			recorder.record(makeToolCallMessage('tool', {}));
-			recorder.record(makeToolResultMessage('tool', {}));
-			recorder.record({ type: 'text-delta', delta: 'world' });
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Hello ' });
+			recorder.record(makeToolCallChunk('tool', {}));
+			recorder.record(makeToolResultChunk('tool', {}));
+			recorder.record({ type: 'text-delta', id: 't2', delta: 'world' });
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 
 			const record = recorder.getMessageRecord();

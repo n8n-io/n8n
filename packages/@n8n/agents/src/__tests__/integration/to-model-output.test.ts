@@ -106,15 +106,14 @@ describe('toModelOutput integration', () => {
 		const { stream } = await agent.stream('Get report RPT-001');
 		const chunks = await collectStreamChunks(stream);
 
-		// The tool result messages in the stream contain the transformed output
-		const messageChunks = chunksOfType(chunks, 'message');
-		const toolResults = findAllToolResults(messageChunks.map((c) => c.message));
+		// The discrete tool-result chunks in the stream contain the transformed output
+		const toolResults = chunksOfType(chunks, 'tool-result');
 
 		const reportResult = toolResults.find((tr) => tr.toolName === 'fetch_report');
 		expect(reportResult).toBeDefined();
 
 		// The model output (transformed) should have the truncated fields
-		const modelOutput = reportResult!.result as { id: string; title: string; pageCount: number };
+		const modelOutput = reportResult!.output as { id: string; title: string; pageCount: number };
 		expect(modelOutput.id).toBe('RPT-001');
 		expect(modelOutput.title).toBe('Q4 Sales Report');
 		expect(modelOutput.pageCount).toBe(42);

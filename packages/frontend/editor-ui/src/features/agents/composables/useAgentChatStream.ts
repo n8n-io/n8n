@@ -120,15 +120,26 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	interface StreamSession {
 		builderMutated: boolean;
-		/** Per-turn ChatMessage cache keyed by server-issued messageId. */
-		msgsByMessageId: Map<string, ChatMessage>;
+		/**
+		 * Cursor pointing at the ChatMessage currently being filled by
+		 * text/reasoning/tool-input events. `start-step` / `finish-step`
+		 * boundaries clear it; the next text/tool event lazily mints a fresh
+		 * ChatMessage.
+		 */
+		current?: ChatMessage;
+		/** Tracks any messages we minted so we can flip `streaming → success` on done. */
+		minted: Set<ChatMessage>;
 	}
 
-	function ensureMsgFor(session: StreamSession, messageId: string): ChatMessage {
-		const existing = session.msgsByMessageId.get(messageId);
-		if (existing) return existing;
+	/**
+	 * Lazily mint a ChatMessage when the next text/reasoning/tool event needs
+	 * one. The id is FE-issued (used as a v-for key) — the wire format no
+	 * longer carries a server-minted messageId.
+	 */
+	function ensureCurrent(session: StreamSession): ChatMessage {
+		if (session.current) return session.current;
 		const msg = reactive<ChatMessage>({
-			id: messageId,
+			id: crypto.randomUUID(),
 			role: 'assistant',
 			content: '',
 			thinking: '',
@@ -136,19 +147,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			status: 'streaming',
 		});
 		messages.value.push(msg);
-		session.msgsByMessageId.set(messageId, msg);
+		session.current = msg;
+		session.minted.add(msg);
 		return msg;
 	}
 
-	function findToolCall(messageId: string, toolCallId: string, session: StreamSession) {
-		// First check the message bucket the event claims to belong to.
-		const msg = session.msgsByMessageId.get(messageId);
-		const inOwn = msg?.toolCalls?.find((t) => t.toolCallId === toolCallId);
-		if (inOwn) return { msg: msg!, tc: inOwn };
-		// Tool results often arrive against the assistant turn that issued the
-		// call — but we tag both events with the same messageId server-side, so
-		// this fallback only catches resilience cases (e.g. a tool result whose
-		// messageId was lost). Walk recent assistant messages.
+	/**
+	 * Find a ToolCall by its `toolCallId`, walking from the latest ChatMessage
+	 * backwards. Tool results / execution-start events arrive in fresh LLM
+	 * iterations after the tool-call message has been closed by `finish-step`,
+	 * so we cannot rely on the cursor — only the natural id.
+	 */
+	function findToolCallById(toolCallId: string): { msg: ChatMessage; tc: ToolCall } | null {
 		for (let i = messages.value.length - 1; i >= 0; i--) {
 			const m = messages.value[i];
 			const found = m.toolCalls?.find((t) => t.toolCallId === toolCallId);
@@ -162,18 +172,30 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		session: StreamSession,
 	): { done?: boolean } | undefined {
 		switch (event.type) {
-			case 'text': {
-				const msg = ensureMsgFor(session, event.messageId);
+			case 'start-step':
+			case 'finish-step':
+				// LLM iteration boundary — the next text/tool event mints a
+				// fresh ChatMessage. We don't flip status here; `done` is what
+				// finalizes the message at the end of the stream.
+				session.current = undefined;
+				break;
+			case 'text-start':
+			case 'text-end':
+			case 'reasoning-start':
+			case 'reasoning-end':
+				break;
+			case 'text-delta': {
+				const msg = ensureCurrent(session);
 				msg.content += event.delta;
 				break;
 			}
-			case 'reasoning': {
-				const msg = ensureMsgFor(session, event.messageId);
+			case 'reasoning-delta': {
+				const msg = ensureCurrent(session);
 				msg.thinking = (msg.thinking ?? '') + event.delta;
 				break;
 			}
-			case 'toolCall': {
-				const msg = ensureMsgFor(session, event.messageId);
+			case 'tool-input-start': {
+				const msg = ensureCurrent(session);
 				if (msg.content && !msg.content.endsWith('\n')) msg.content += '\n';
 				msg.toolCalls = msg.toolCalls ?? [];
 				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
@@ -181,36 +203,45 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg.toolCalls.push({
 						tool: event.toolName,
 						toolCallId: event.toolCallId,
+						state: 'pending',
+					});
+				}
+				break;
+			}
+			case 'tool-input-delta':
+				// Streaming tool input — `code-delta` handles the build-tool case.
+				// No ToolCall state mutation here.
+				break;
+			case 'tool-call': {
+				// LLM finalized the call. Update input on the existing entry,
+				// or push one if `tool-input-start` was missing.
+				const msg = ensureCurrent(session);
+				msg.toolCalls = msg.toolCalls ?? [];
+				const existing = msg.toolCalls.find((t) => t.toolCallId === event.toolCallId);
+				if (!existing) {
+					msg.toolCalls.push({
+						tool: event.toolName,
+						toolCallId: event.toolCallId,
 						input: event.input,
-						// Start as 'pending'; the runtime emits `toolExecutionStart`
-						// when it actually invokes the handler.
 						state: 'pending',
 					});
 				} else {
 					existing.input = event.input;
-					// Don't downgrade a call that is already running/done/etc.
 					if (existing.state !== 'running' && existing.state !== 'done') {
 						existing.state = 'pending';
 					}
 				}
 				break;
 			}
-			case 'toolCallDelta': {
-				// Streaming tool input — used for `build_custom_tool` codeDelta.
-				// No state change to a ToolCall here (it may not exist yet).
-				break;
-			}
-			case 'toolExecutionStart': {
-				// Handler started running for this tool call. Flip the indicator
-				// from "pending" → "running" so the FE shows mid-flight progress.
-				const found = findToolCall(event.messageId, event.toolCallId, session);
+			case 'tool-execution-start': {
+				const found = findToolCallById(event.toolCallId);
 				if (found && found.tc.state !== 'done' && found.tc.state !== 'error') {
 					found.tc.state = 'running';
 				}
 				break;
 			}
-			case 'toolResult': {
-				const found = findToolCall(event.messageId, event.toolCallId, session);
+			case 'tool-result': {
+				const found = findToolCallById(event.toolCallId);
 				if (found) {
 					found.tc.output = event.output;
 					found.tc.state = event.isError ? 'error' : 'done';
@@ -225,22 +256,25 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}
 				break;
 			}
-			case 'toolSuspended': {
-				const msg = ensureMsgFor(session, event.messageId);
+			case 'tool-call-suspended': {
 				const { payload } = event;
-				const tc =
-					msg.toolCalls?.find((t) => t.toolCallId === payload.toolCallId) ??
-					({
+				const found = findToolCallById(payload.toolCallId);
+				let msg: ChatMessage;
+				let tc: ToolCall;
+				if (found) {
+					msg = found.msg;
+					tc = found.tc;
+					tc.state = 'suspended';
+					tc.input = payload.input;
+				} else {
+					msg = ensureCurrent(session);
+					tc = {
 						tool: payload.toolName,
 						toolCallId: payload.toolCallId,
 						input: payload.input,
 						state: 'suspended',
-					} satisfies ToolCall);
-				if (!msg.toolCalls?.includes(tc)) {
+					};
 					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
-				} else {
-					tc.state = 'suspended';
-					tc.input = payload.input;
 				}
 				const interactive = rebuildInteractiveFromHistory({
 					...tc,
@@ -253,12 +287,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}
 				break;
 			}
-			case 'codeDelta': {
+			case 'message':
+				// Custom (sub-agent / app-defined) message envelope. Reserved
+				// for future use; nothing renders today.
+				break;
+			case 'code-delta': {
 				params.onCodeDelta?.(event.delta);
 				break;
 			}
-			case 'configUpdated':
-			case 'toolUpdated': {
+			case 'config-updated':
+			case 'tool-updated': {
 				session.builderMutated = true;
 				params.onConfigUpdated?.();
 				break;
@@ -316,8 +354,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	// -------------------------------------------------------------------------
 
 	function finalizeStream(session: StreamSession): void {
-		// Flip any still-streaming messages to success.
-		for (const msg of session.msgsByMessageId.values()) {
+		for (const msg of session.minted) {
 			if (msg.status === 'streaming') msg.status = 'success';
 		}
 		if (params.endpoint.value === 'build' && session.builderMutated) {
@@ -328,7 +365,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function postAndConsume(url: string, body: Record<string, unknown>): Promise<void> {
 		const session: StreamSession = {
 			builderMutated: false,
-			msgsByMessageId: new Map(),
+			minted: new Set(),
 		};
 
 		isStreaming.value = true;

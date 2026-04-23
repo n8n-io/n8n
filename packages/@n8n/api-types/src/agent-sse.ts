@@ -2,10 +2,16 @@
  * Wire format for the agent builder/chat SSE stream. Each SSE `data:` line is
  * exactly one `AgentSseEvent` JSON object.
  *
- * The `messageId` field on per-turn events is the stable id of the persisted
- * assistant message that the event belongs to. The frontend creates a new
- * `ChatMessage` whenever `messageId` changes so the live array shape matches
- * what `convertDbMessages` produces from history.
+ * Per-turn events carry the SDK's natural block ids:
+ *
+ * - `text-*` and `reasoning-*` events carry the SDK's per-block `id`.
+ * - `tool-*` events carry the SDK's `toolCallId`.
+ * - `start-step` / `finish-step` mark LLM iteration boundaries.
+ *
+ * The frontend groups deltas by these ids and uses `start-step` / `finish-step`
+ * to decide when a new ChatMessage cursor should open. There is no
+ * server-minted `messageId` — the FE generates its own UUID per ChatMessage
+ * for v-for keys only.
  *
  * `runId` is included on `ToolSuspendedPayload` and echoed back by the
  * frontend on resume. The SDK stores `runId` on each `PendingToolCall` and
@@ -14,9 +20,12 @@
  *
  * Note: there is no separate "resumed" event. After the user resumes a
  * suspended tool, the SDK runs the tool's handler (which returns
- * `ctx.resumeData`) and emits a normal `tool-result` content part. Consumers
- * see the resume payload as the `output` on the standard `toolResult` event.
+ * `ctx.resumeData`) and emits a normal `tool-result` event. Consumers see the
+ * resume payload as the `output` on that `tool-result`.
+ *
  */
+
+import type { AgentPersistedMessageContentPart } from './agents';
 
 export interface ToolSuspendedPayload {
 	toolCallId: string;
@@ -28,47 +37,50 @@ export interface ToolSuspendedPayload {
 	input: unknown;
 }
 
+/**
+ * Custom (sub-agent / app-defined) message envelope. Tool-call and tool-result
+ * events ride their own discrete chunk types — only `CustomAgentMessage`-style
+ * payloads use this shape.
+ */
+export interface AgentSseMessage {
+	role: string;
+	content: AgentPersistedMessageContentPart[];
+}
+
 export type AgentSseEvent =
-	| { type: 'text'; messageId: string; delta: string }
-	| { type: 'reasoning'; messageId: string; delta: string }
+	| { type: 'start-step' }
+	| { type: 'finish-step' }
+	| { type: 'text-start'; id: string }
+	| { type: 'text-delta'; id: string; delta: string }
+	| { type: 'text-end'; id: string }
+	| { type: 'reasoning-start'; id: string }
+	| { type: 'reasoning-delta'; id: string; delta: string }
+	| { type: 'reasoning-end'; id: string }
+	| { type: 'tool-input-start'; toolCallId: string; toolName: string }
+	| { type: 'tool-input-delta'; toolCallId: string; delta: string }
+	| { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
 	| {
-			type: 'toolCall';
-			messageId: string;
+			/**
+			 * Mid-flight indicator: the LLM has finished emitting the tool call and
+			 * the runtime has started invoking the handler. Sent between `tool-call`
+			 * and the eventual `tool-result` so the FE can flip the indicator from
+			 * "pending" (LLM committed) to "running" (handler in flight).
+			 */
+			type: 'tool-execution-start';
 			toolCallId: string;
 			toolName: string;
-			input: unknown;
 	  }
 	| {
-			type: 'toolResult';
-			messageId: string;
+			type: 'tool-result';
 			toolCallId: string;
 			toolName: string;
 			output: unknown;
 			isError?: boolean;
 	  }
-	| {
-			type: 'toolCallDelta';
-			messageId: string;
-			toolCallId?: string;
-			toolName?: string;
-			argumentsDelta: string;
-	  }
-	| {
-			/**
-			 * Mid-flight indicator: the LLM has finished emitting the tool call and
-			 * the runtime has started invoking the handler. Sent between the
-			 * `toolCall` and the eventual `toolResult` so the FE can flip the
-			 * indicator from "pending" (LLM committed) to "running" (handler in
-			 * flight).
-			 */
-			type: 'toolExecutionStart';
-			messageId: string;
-			toolCallId: string;
-			toolName: string;
-	  }
-	| { type: 'toolSuspended'; messageId: string; payload: ToolSuspendedPayload }
-	| { type: 'codeDelta'; delta: string }
-	| { type: 'configUpdated' }
-	| { type: 'toolUpdated' }
+	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
+	| { type: 'message'; message: AgentSseMessage }
+	| { type: 'code-delta'; delta: string }
+	| { type: 'config-updated' }
+	| { type: 'tool-updated' }
 	| { type: 'error'; message: string }
 	| { type: 'done'; sessionId?: string };

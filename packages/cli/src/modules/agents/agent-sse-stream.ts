@@ -1,29 +1,33 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
-import type { AgentSseEvent, ToolSuspendedPayload } from '@n8n/api-types';
-import { randomUUID } from 'crypto';
+import type {
+	AgentPersistedMessageContentPart,
+	AgentSseEvent,
+	AgentSseMessage,
+	ToolSuspendedPayload,
+} from '@n8n/api-types';
 import type { Response } from 'express';
 
 export type FlushableResponse = Response & { flush?: () => void };
 
+/**
+ * Side-effect callbacks for the agent builder. Keyed off discrete tool events
+ * — no more `messageId` turn tracking. `toolInputStart` lets the builder
+ * remember which tool is currently streaming arguments so it can route
+ * `toolInputDelta` text into the right side-effect (e.g. `code-delta`).
+ */
 export interface ToolEventCallbacks {
-	toolCall?: (toolName: string) => void;
+	toolInputStart?: (toolName: string) => void;
+	toolInputDelta?: (toolCallId: string, delta: string) => void;
 	toolResult?: (toolName: string) => void;
-	toolCallDelta?: (toolName: string | undefined, argumentsDelta: string) => void;
 }
 
 interface ChunkHandlerCtx {
 	send: (e: AgentSseEvent) => void;
-	getMessageId: () => string;
-	startNewTurn: () => void;
 	onToolEvent?: ToolEventCallbacks;
 }
 
 /**
- * Set up SSE headers and return a typed `send(event)` helper plus a
- * per-turn `messageId` tracker. Every per-turn event (text, reasoning, tool
- * calls, tool results, suspensions, resumes) is tagged with the current
- * messageId; the id rolls over when a tool-result is emitted, so the next
- * assistant turn (the next LLM call) starts a fresh ChatMessage on the FE.
+ * Set up SSE headers and return a typed `send(event)` helper.
  */
 export function initSseStream(res: FlushableResponse) {
 	res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
@@ -38,130 +42,202 @@ export function initSseStream(res: FlushableResponse) {
 		res.flush?.();
 	};
 
-	let currentTurnMessageId: string | undefined;
-	const getMessageId = (): string => {
-		currentTurnMessageId ??= randomUUID();
-		return currentTurnMessageId;
-	};
-	const startNewTurn = () => {
-		currentTurnMessageId = undefined;
-	};
-
-	return { send, getMessageId, startNewTurn };
+	return { send };
 }
 
-/** Translate a single non-suspension chunk into one or more SSE events. */
-function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): void {
-	const { send, getMessageId, onToolEvent } = ctx;
+function toAgentSseMessage(message: AgentMessage): AgentSseMessage | undefined {
+	if (!('content' in message) || !Array.isArray(message.content)) return undefined;
 
+	const content: AgentPersistedMessageContentPart[] = [];
+	for (const part of message.content) {
+		if (part.type === 'text' && 'text' in part) {
+			content.push({ type: 'text', text: part.text });
+		} else if (part.type === 'reasoning' && 'text' in part) {
+			content.push({ type: 'reasoning', text: part.text });
+		}
+	}
+
+	if (content.length === 0) return undefined;
+	return { role: message.role, content };
+}
+
+/** SSE-emit text/reasoning lifecycle chunks. */
+function emitTextLikeChunk(
+	chunk: Extract<
+		StreamChunk,
+		{
+			type:
+				| 'text-start'
+				| 'text-delta'
+				| 'text-end'
+				| 'reasoning-start'
+				| 'reasoning-delta'
+				| 'reasoning-end';
+		}
+	>,
+	send: (e: AgentSseEvent) => void,
+): void {
 	switch (chunk.type) {
+		case 'text-start':
+			send({ type: 'text-start', id: chunk.id });
+			break;
 		case 'text-delta':
-			if (chunk.delta) send({ type: 'text', messageId: getMessageId(), delta: chunk.delta });
+			if (chunk.delta) send({ type: 'text-delta', id: chunk.id, delta: chunk.delta });
+			break;
+		case 'text-end':
+			send({ type: 'text-end', id: chunk.id });
+			break;
+		case 'reasoning-start':
+			send({ type: 'reasoning-start', id: chunk.id });
 			break;
 		case 'reasoning-delta':
-			if (chunk.delta) send({ type: 'reasoning', messageId: getMessageId(), delta: chunk.delta });
+			if (chunk.delta) send({ type: 'reasoning-delta', id: chunk.id, delta: chunk.delta });
 			break;
-		case 'tool-call-delta':
-			if (chunk.argumentsDelta) {
-				send({
-					type: 'toolCallDelta',
-					messageId: getMessageId(),
-					toolName: chunk.name,
-					argumentsDelta: chunk.argumentsDelta,
-				});
-				onToolEvent?.toolCallDelta?.(chunk.name, chunk.argumentsDelta);
-			}
-			break;
-		case 'message':
-			emitMessageParts(chunk.message, ctx);
-			break;
-		case 'tool-execution-start':
-			send({
-				type: 'toolExecutionStart',
-				messageId: getMessageId(),
-				toolCallId: chunk.toolCallId,
-				toolName: chunk.toolName,
-			});
-			break;
-		case 'error': {
-			const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
-			send({ type: 'error', message: errMsg });
-			break;
-		}
-		default:
+		case 'reasoning-end':
+			send({ type: 'reasoning-end', id: chunk.id });
 			break;
 	}
 }
 
-/** Flatten an `AgentMessage` into per-part SSE events. */
-function emitMessageParts(message: AgentMessage, ctx: ChunkHandlerCtx): void {
-	if (!('content' in message) || !Array.isArray(message.content)) return;
-	const { send, getMessageId, startNewTurn, onToolEvent } = ctx;
+/**
+ * SSE-emit a tool-* chunk and fire any matching builder side-effect callback.
+ * Returns `{ suspended: true }` when the chunk was `tool-call-suspended`.
+ */
+function emitToolChunk(
+	chunk: Extract<
+		StreamChunk,
+		{
+			type:
+				| 'tool-input-start'
+				| 'tool-input-delta'
+				| 'tool-call'
+				| 'tool-execution-start'
+				| 'tool-result'
+				| 'tool-call-suspended';
+		}
+	>,
+	ctx: ChunkHandlerCtx,
+): { suspended: boolean } {
+	const { send, onToolEvent } = ctx;
+	switch (chunk.type) {
+		case 'tool-input-start':
+			send({
+				type: 'tool-input-start',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+			});
+			onToolEvent?.toolInputStart?.(chunk.toolName);
+			break;
+		case 'tool-input-delta':
+			if (chunk.delta) {
+				send({ type: 'tool-input-delta', toolCallId: chunk.toolCallId, delta: chunk.delta });
+				onToolEvent?.toolInputDelta?.(chunk.toolCallId, chunk.delta);
+			}
+			break;
+		case 'tool-call':
+			send({
+				type: 'tool-call',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				input: chunk.input,
+			});
+			break;
+		case 'tool-execution-start':
+			send({
+				type: 'tool-execution-start',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+			});
+			break;
+		case 'tool-result':
+			send({
+				type: 'tool-result',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				output: chunk.output,
+				...(chunk.isError !== undefined && { isError: chunk.isError }),
+			});
+			onToolEvent?.toolResult?.(chunk.toolName);
+			break;
+		case 'tool-call-suspended': {
+			const payload: ToolSuspendedPayload = {
+				toolCallId: chunk.toolCallId,
+				runId: chunk.runId,
+				toolName: chunk.toolName,
+				input: chunk.suspendPayload,
+			};
+			send({ type: 'tool-call-suspended', payload });
+			return { suspended: true };
+		}
+	}
+	return { suspended: false };
+}
 
-	for (const part of message.content) {
-		if (part.type === 'text' && 'text' in part) {
-			// Text content is already streamed via text-delta; the final
-			// `message` chunk repeats it. Skip to avoid duplication.
-			continue;
+/**
+ * Translate a single chunk into one or more SSE events.
+ *
+ * Returns `{ suspended: true }` when the chunk was a `tool-call-suspended`
+ * — the run pauses and the caller stops pumping. All other chunks return
+ * `{ suspended: false }`.
+ */
+function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended: boolean } {
+	switch (chunk.type) {
+		case 'start-step':
+			ctx.send({ type: 'start-step' });
+			return { suspended: false };
+		case 'finish-step':
+			ctx.send({ type: 'finish-step' });
+			return { suspended: false };
+		case 'text-start':
+		case 'text-delta':
+		case 'text-end':
+		case 'reasoning-start':
+		case 'reasoning-delta':
+		case 'reasoning-end':
+			emitTextLikeChunk(chunk, ctx.send);
+			return { suspended: false };
+		case 'tool-input-start':
+		case 'tool-input-delta':
+		case 'tool-call':
+		case 'tool-execution-start':
+		case 'tool-result':
+		case 'tool-call-suspended':
+			return emitToolChunk(chunk, ctx);
+		case 'message': {
+			const sseMessage = toAgentSseMessage(chunk.message);
+			if (sseMessage) ctx.send({ type: 'message', message: sseMessage });
+			return { suspended: false };
 		}
-		if (part.type === 'tool-call' && 'toolName' in part) {
-			send({
-				type: 'toolCall',
-				messageId: getMessageId(),
-				toolCallId: part.toolCallId ?? '',
-				toolName: part.toolName,
-				input: part.input,
-			});
-			onToolEvent?.toolCall?.(part.toolName);
-			continue;
+		case 'error': {
+			const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
+			ctx.send({ type: 'error', message: errMsg });
+			return { suspended: false };
 		}
-		if (part.type === 'tool-result' && 'toolName' in part) {
-			send({
-				type: 'toolResult',
-				messageId: getMessageId(),
-				toolCallId: part.toolCallId ?? '',
-				toolName: part.toolName,
-				output: part.result,
-				...(part.isError !== undefined && { isError: part.isError }),
-			});
-			onToolEvent?.toolResult?.(part.toolName);
-			// A tool-result message ends the current "turn" — the next
-			// assistant message (next LLM call) gets a fresh messageId.
-			startNewTurn();
-		}
+		default:
+			return { suspended: false };
 	}
 }
 
 /**
  * Pump SDK stream chunks through a typed AgentSseEvent stream.
  *
- * Side-effects (configUpdated / toolUpdated / codeDelta) for the agent builder
- * are surfaced via the `onToolEvent` callback so the chat path can ignore them.
+ * Side-effects (`config-updated` / `tool-updated` / `code-delta`) for the
+ * agent builder are surfaced via the `onToolEvent` callback so the chat path
+ * can ignore them.
  *
- * Returns `true` when a suspension was emitted (the run paused), `false` otherwise.
+ * Returns `true` when a suspension was emitted (the run paused), `false`
+ * otherwise.
  */
 export async function pumpChunks(
 	chunks: AsyncIterable<StreamChunk>,
 	send: (e: AgentSseEvent) => void,
-	getMessageId: () => string,
-	startNewTurn: () => void,
 	onToolEvent?: ToolEventCallbacks,
 ): Promise<boolean> {
-	// TODO: update SDK to sent step-start, step-finish, text-start, text-finish events to avoid counting turns manually
-	const ctx: ChunkHandlerCtx = { send, getMessageId, startNewTurn, onToolEvent };
+	const ctx: ChunkHandlerCtx = { send, onToolEvent };
 
 	for await (const chunk of chunks) {
-		if (chunk.type === 'tool-call-suspended') {
-			const payload: ToolSuspendedPayload = {
-				toolCallId: chunk.toolCallId ?? '',
-				runId: chunk.runId ?? '',
-				toolName: chunk.toolName ?? '',
-				input: chunk.suspendPayload,
-			};
-			send({ type: 'toolSuspended', messageId: getMessageId(), payload });
-			return true;
-		}
-		emitChunkEvents(chunk, ctx);
+		const { suspended } = emitChunkEvents(chunk, ctx);
+		if (suspended) return true;
 	}
 	return false;
 }

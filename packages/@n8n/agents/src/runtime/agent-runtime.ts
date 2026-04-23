@@ -125,9 +125,15 @@ type ToolCallOutcome =
 	| {
 			outcome: 'success';
 			toolEntry: ToolResultEntry;
+			/**
+			 * Output as the LLM sees it (after `toModelOutput`). Same as
+			 * `toolEntry.output` when no `toModelOutput` transform is configured.
+			 * Surfaced on the `tool-result` wire chunk so consumers see what the
+			 * LLM saw (rather than the larger raw output).
+			 */
+			modelOutput: unknown;
 			subAgentUsage?: SubAgentUsage[];
 			customMessage?: AgentMessage;
-			message: AgentMessage;
 	  }
 	| { outcome: 'suspended'; payload: unknown; resumeSchema: JsonSchema7Type }
 	| { outcome: 'error'; error: unknown; message: AgentMessage }
@@ -139,9 +145,9 @@ interface ToolCallSuccess {
 	toolName: string;
 	input: JSONValue;
 	toolEntry: ToolResultEntry;
+	modelOutput: unknown;
 	subAgentUsage?: SubAgentUsage[];
 	customMessage?: AgentMessage;
-	message: AgentMessage;
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */
@@ -870,8 +876,10 @@ export class AgentRuntime {
 				for (const r of batch.results) {
 					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 					await writer.write({
-						type: 'message',
-						message: r.message,
+						type: 'tool-result',
+						toolCallId: r.toolCallId,
+						toolName: r.toolName,
+						output: r.modelOutput,
 					});
 					if (r.customMessage) {
 						await writer.write({ type: 'message', message: r.customMessage });
@@ -880,8 +888,11 @@ export class AgentRuntime {
 
 				for (const e of batch.errors) {
 					await writer.write({
-						type: 'message',
-						message: e.message,
+						type: 'tool-result',
+						toolCallId: e.toolCallId,
+						toolName: e.toolName,
+						output: e.error,
+						isError: true,
 					});
 				}
 
@@ -937,7 +948,11 @@ export class AgentRuntime {
 			// We catch that here and close the consumer stream with an error chunk.
 			try {
 				for await (const chunk of result.fullStream) {
-					if (chunk.type === 'finish' || chunk.type === 'finish-step') continue;
+					// Filter only the SDK's terminal `finish` chunk — the runtime
+					// emits its own consolidated `finish` after the loop completes.
+					// `start-step` / `finish-step` are passed through so consumers
+					// can use them as LLM-iteration boundaries.
+					if (chunk.type === 'finish') continue;
 					const converted = convertChunk(chunk);
 					if (converted) await writeChunk(converted);
 				}
@@ -984,8 +999,10 @@ export class AgentRuntime {
 				for (const r of batch.results) {
 					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 					await writer.write({
-						type: 'message',
-						message: r.message,
+						type: 'tool-result',
+						toolCallId: r.toolCallId,
+						toolName: r.toolName,
+						output: r.modelOutput,
 					});
 					if (r.customMessage) {
 						await writer.write({ type: 'message', message: r.customMessage });
@@ -994,8 +1011,11 @@ export class AgentRuntime {
 
 				for (const e of batch.errors) {
 					await writer.write({
-						type: 'message',
-						message: e.message,
+						type: 'tool-result',
+						toolCallId: e.toolCallId,
+						toolName: e.toolName,
+						output: e.error,
+						isError: true,
 					});
 				}
 
@@ -1308,9 +1328,9 @@ export class AgentRuntime {
 						toolName: tc.toolName,
 						input: toolInput,
 						toolEntry: result.value.toolEntry,
+						modelOutput: result.value.modelOutput,
 						subAgentUsage: result.value.subAgentUsage,
 						customMessage: result.value.customMessage,
-						message: result.value.message,
 					});
 				} else if (result.value.outcome === 'error') {
 					errors.push({
@@ -1400,9 +1420,9 @@ export class AgentRuntime {
 				toolName: resumedToolName,
 				input: resumedEntry.input,
 				toolEntry: processResult.toolEntry,
+				modelOutput: processResult.modelOutput,
 				subAgentUsage: processResult.subAgentUsage,
 				customMessage: processResult.customMessage,
-				message: processResult.message,
 			});
 		} else if (processResult.outcome === 'error') {
 			errors.push({
@@ -1599,9 +1619,9 @@ export class AgentRuntime {
 				output: actualResult,
 				transformed: !!builtTool.toModelOutput,
 			},
+			modelOutput: modelResult,
 			subAgentUsage: extractedSubAgentUsage,
 			customMessage,
-			message: toolResultMsg,
 		};
 	}
 

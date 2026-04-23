@@ -32,7 +32,7 @@ export {
 	type AskQuestionResume,
 	type InteractiveResumeData,
 } from './agent-builder-interactive';
-export type { AgentSseEvent, ToolSuspendedPayload } from './agent-sse';
+export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from './agent-sse';
 export { AgentChatMessageDto } from './dto/agents/agent-chat-message.dto';
 export { AgentBuildResumeDto } from './dto/agents/agent-build-resume.dto';
 export * from './instance-registry-types';
