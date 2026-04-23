@@ -3,13 +3,15 @@ import type { User } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
 import type {
 	INode,
-	IRunExecutionData,
 	IRun,
+	IRunExecutionData,
 	IWorkflowBase,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { ActiveExecutions } from '@/active-executions';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowRunner } from '@/workflow-runner';
 import type { NodeTypes } from '@/node-types';
 
 // ---------------------------------------------------------------------------
@@ -34,26 +36,11 @@ jest.mock('../workflow-analysis', () => ({
 jest.mock('@n8n/workflow-sdk', () => ({
 	normalizePinData: jest.fn((pd: unknown) => pd),
 }));
-jest.mock('@/workflow-execute-additional-data', () => ({
-	getBase: jest.fn().mockResolvedValue({
-		hooks: undefined,
-		evalLlmMockHandler: undefined,
-	}),
-}));
 
-// WorkflowExecute is a class instantiated with `new` — mock it so
-// processRunExecutionData returns a controllable IRun.
+// Execution now flows through WorkflowRunner + ActiveExecutions.
+// `mockProcessRunExecutionData` historically controlled the IRun returned
+// by direct WorkflowExecute; it now feeds activeExecutions.getPostExecutePromise.
 const mockProcessRunExecutionData = jest.fn();
-jest.mock('n8n-core', () => {
-	const actual = jest.requireActual('n8n-core');
-	return {
-		...actual,
-		WorkflowExecute: jest.fn().mockImplementation(() => ({
-			processRunExecutionData: mockProcessRunExecutionData,
-		})),
-		ExecutionLifecycleHooks: jest.fn().mockImplementation(() => ({})),
-	};
-});
 
 // Workflow is a class instantiated with `new` — mock getStartNode
 const mockGetStartNode = jest.fn();
@@ -167,12 +154,25 @@ describe('EvalExecutionService', () => {
 	let service: EvalExecutionService;
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const nodeTypes = mock<NodeTypes>();
+	const workflowRunner = mock<WorkflowRunner>();
+	const activeExecutions = mock<ActiveExecutions>();
 	const logger = mock<Logger>();
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		service = new EvalExecutionService(workflowFinderService, nodeTypes, logger);
+		workflowRunner.run.mockResolvedValue('exec-id-1');
+		activeExecutions.getPostExecutePromise.mockImplementation(
+			async () => await mockProcessRunExecutionData(),
+		);
+
+		service = new EvalExecutionService(
+			workflowFinderService,
+			nodeTypes,
+			workflowRunner,
+			activeExecutions,
+			logger,
+		);
 
 		// Default mock returns — happy path
 		identifyNodesForHintsMock.mockReturnValue([]);

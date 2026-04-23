@@ -2,11 +2,14 @@
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
 import { EVALUATIONS_DOCS_URL } from '@/app/constants';
+import { SCENARIO_RUNNER_PROTOTYPE_EXPERIMENT } from '@/app/constants/experiments';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import ScenariosView from '@/features/ai/scenarioRunner/components/ScenariosView.vue';
 
 import { computed, watch } from 'vue';
 import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
@@ -23,6 +26,11 @@ const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
+const posthogStore = usePostHog();
+
+const scenariosPrototypeEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(SCENARIO_RUNNER_PROTOTYPE_EXPERIMENT.name),
+);
 
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
@@ -106,7 +114,8 @@ watch(
 
 <template>
 	<div :class="$style.evaluationsView">
-		<template v-if="isReady && showWizard">
+		<ScenariosView v-if="scenariosPrototypeEnabled && isReady" :workflow-id="props.name" />
+		<template v-else-if="isReady && showWizard">
 			<div :class="$style.setupContent">
 				<div>
 					<N8nText size="large" color="text-dark" tag="h3" bold>
@@ -140,7 +149,7 @@ watch(
 				</div>
 			</div>
 		</template>
-		<RouterView v-else-if="isReady" />
+		<RouterView v-else-if="isReady && !scenariosPrototypeEnabled" />
 	</div>
 </template>
 
@@ -150,6 +159,7 @@ watch(
 	height: 100%;
 	display: flex;
 	justify-content: center;
+	position: relative;
 }
 
 .setupContent {

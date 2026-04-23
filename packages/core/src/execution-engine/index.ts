@@ -1,9 +1,8 @@
 import type {
 	DataTableProxyProvider,
 	DynamicCredentialCheckProxyProvider,
+	EvalLlmMockHandler,
 	IExecutionContext,
-	IHttpRequestOptions,
-	INode,
 	IWorkflowSettings,
 	Result,
 } from 'n8n-workflow';
@@ -12,22 +11,7 @@ import type { LookupFunction } from 'node:net';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import type { ExternalSecretsProxy } from './external-secrets-proxy';
 
-/** Standardized mock HTTP response returned by the eval mock handler. */
-export interface EvalMockHttpResponse {
-	body: unknown;
-	headers: Record<string, string>;
-	statusCode: number;
-}
-
-/**
- * Handler for LLM-based HTTP mocking during evaluation.
- * Receives the fully-built request (after credential auth) and the executing node.
- * Return a full mock response, or `undefined` to pass through to real HTTP.
- */
-export type EvalLlmMockHandler = (
-	requestOptions: IHttpRequestOptions,
-	node: INode,
-) => Promise<EvalMockHttpResponse | undefined>;
+export type { EvalMockHttpResponse, EvalLlmMockHandler } from 'n8n-workflow';
 
 export type SsrfCheckResult = Result<void, Error>;
 

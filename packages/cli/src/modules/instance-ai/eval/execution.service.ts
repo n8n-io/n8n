@@ -6,43 +6,35 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	type EvalLlmMockHandler,
-	type EvalMockHttpResponse,
-	ExecutionLifecycleHooks,
-	WorkflowExecute,
-} from 'n8n-core';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { normalizePinData } from '@n8n/workflow-sdk';
+import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import {
 	type IDataObject,
 	type IHttpRequestOptions,
 	type INode,
 	type IPinData,
 	type IRun,
-	type IRunExecutionData,
 	type IWorkflowBase,
-	type IWorkflowExecuteAdditionalData,
-	createRunExecutionData,
+	type IWorkflowExecutionDataProcess,
 	NodeHelpers,
 	Workflow,
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { NodeTypes } from '@/node-types';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { normalizePinData } from '@n8n/workflow-sdk';
-
+import { createLlmMockHandler } from './mock-handler';
 import { generatePinData } from './pin-data-generator';
-
 import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	type MockHints,
 } from './workflow-analysis';
-import { createLlmMockHandler } from './mock-handler';
+
+import { ActiveExecutions } from '@/active-executions';
+import { NodeTypes } from '@/node-types';
+import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -72,6 +64,8 @@ export class EvalExecutionService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly workflowRunner: WorkflowRunner,
+		private readonly activeExecutions: ActiveExecutions,
 		private readonly logger: Logger,
 	) {}
 
@@ -80,19 +74,17 @@ export class EvalExecutionService {
 		user: User,
 		options: InstanceAiEvalExecutionRequest = {},
 	): Promise<InstanceAiEvalExecutionResult> {
-		const executionId = randomUUID();
-
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:execute',
 		]);
 
 		if (!workflowEntity) {
-			return this.errorResult(executionId, `Workflow ${workflowId} not found or not accessible`);
+			return this.errorResult(randomUUID(), `Workflow ${workflowId} not found or not accessible`);
 		}
 
 		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints);
 
-		return await this.execute(workflowEntity, user, executionId, hints, options.scenarioHints);
+		return await this.execute(workflowEntity, user, hints, options.scenarioHints);
 	}
 
 	// ── Phase 1: Workflow analysis ─────────────────────────────────────────
@@ -187,7 +179,6 @@ export class EvalExecutionService {
 	private async execute(
 		workflowEntity: IWorkflowBase,
 		user: User,
-		executionId: string,
 		hints: MockHints,
 		scenarioHints?: string,
 	): Promise<InstanceAiEvalExecutionResult> {
@@ -197,22 +188,8 @@ export class EvalExecutionService {
 		const startNode = this.findStartNode(workflow);
 
 		if (!startNode) {
-			return this.errorResult(executionId, 'No trigger or start node found in the workflow');
+			return this.errorResult(randomUUID(), 'No trigger or start node found in the workflow');
 		}
-
-		const mockHandler = createLlmMockHandler({
-			scenarioHints,
-			globalContext: hints.globalContext,
-			nodeHints: hints.nodeHints,
-		});
-
-		const additionalData = await getBase({
-			userId: user.id,
-			workflowId: workflowEntity.id,
-			workflowSettings: workflowEntity.settings ?? {},
-		});
-		additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
-		additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
 
 		const triggerPinData = this.buildTriggerPinData(startNode, hints.triggerContent);
 		const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
@@ -220,9 +197,8 @@ export class EvalExecutionService {
 
 		// Check config completeness before execution — detect missing required parameters
 		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
-		const executionData = this.buildExecutionData(startNode, pinData);
 
-		// Mark the trigger node as pinned (it gets its output from pin data, not execution)
+		// Mark the trigger node as pinned (it gets its output from pin data, not execution).
 		// Preserve any configIssues that checkNodeConfig may have already recorded.
 		if (Object.keys(triggerPinData).length > 0) {
 			const existing = nodeResults[startNode.name];
@@ -245,8 +221,50 @@ export class EvalExecutionService {
 			};
 		}
 
+		const mockHandler = createLlmMockHandler({
+			scenarioHints,
+			globalContext: hints.globalContext,
+			nodeHints: hints.nodeHints,
+		});
+
+		// Route through WorkflowRunner so the run is persisted as a normal execution
+		// record (mode: 'evaluation') — appears in the Executions screen with full
+		// progress pushes, stop support, and save hooks. WorkflowRunner copies
+		// data.evalLlmMockHandler to additionalData so the engine's HTTP interception
+		// site picks it up. See workflow-runner.ts for the propagation site.
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: 'evaluation',
+			workflowData: {
+				...workflowEntity,
+				settings: {
+					...workflowEntity.settings,
+					saveManualExecutions: true,
+					saveDataErrorExecution: 'all',
+					saveDataSuccessExecution: 'all',
+					saveExecutionProgress: false,
+				},
+			},
+			userId: user.id,
+			pinData,
+			forceFullExecutionData: true,
+			triggerToStartFrom: { name: startNode.name },
+			evalLlmMockHandler: this.createInterceptingHandler(mockHandler, nodeResults),
+		};
+
+		let executionId: string;
 		try {
-			const result = await this.runWorkflow(workflow, additionalData, executionData);
+			executionId = await this.workflowRunner.run(data);
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.error(`[EvalMock] Failed to start workflow execution: ${message}`);
+			return this.errorResult(randomUUID(), `Failed to start execution: ${message}`);
+		}
+
+		try {
+			const result = await this.activeExecutions.getPostExecutePromise(executionId);
+			if (!result) {
+				return this.errorResult(executionId, 'Execution ended without a result');
+			}
 			return this.buildResult(executionId, result, nodeResults, hints);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -336,42 +354,6 @@ export class EvalExecutionService {
 	private buildTriggerPinData(startNode: INode, triggerContent: Record<string, unknown>): IPinData {
 		if (Object.keys(triggerContent).length === 0) return {};
 		return { [startNode.name]: [{ json: triggerContent as IDataObject }] };
-	}
-
-	/**
-	 * Build execution data with the trigger node on the execution stack.
-	 * We use processRunExecutionData() instead of run() because run() relies on
-	 * getStartNode() which doesn't find webhook nodes (they define `webhook`,
-	 * not `trigger`). This follows the same pattern as InstanceAiAdapterService.
-	 * Pin data carries the trigger's output; the execution stack just marks where to start.
-	 */
-	private buildExecutionData(startNode: INode, pinData: IPinData): IRunExecutionData {
-		return createRunExecutionData({
-			startData: {},
-			resultData: { pinData, runData: {} },
-			executionData: {
-				contextData: {},
-				metadata: {},
-				nodeExecutionStack: [
-					{
-						node: startNode,
-						data: { main: [[{ json: {} }]] },
-						source: null,
-					},
-				],
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		});
-	}
-
-	private async runWorkflow(
-		workflow: Workflow,
-		additionalData: IWorkflowExecuteAdditionalData,
-		executionData: IRunExecutionData,
-	): Promise<IRun> {
-		const workflowExecute = new WorkflowExecute(additionalData, 'evaluation', executionData);
-		return await workflowExecute.processRunExecutionData(workflow);
 	}
 
 	// ── Request interception ─────────────────────────────────────────────

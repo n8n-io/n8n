@@ -307,6 +307,13 @@ export class WorkflowRunner {
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
 
+		// Propagate eval mock handler (scenario runner path). Runtime-only — only set
+		// when the caller is routing an evaluation run through WorkflowRunner so the
+		// execution is persisted like a regular run.
+		if (data.evalLlmMockHandler) {
+			additionalData.evalLlmMockHandler = data.evalLlmMockHandler;
+		}
+
 		additionalData.executionId = executionId;
 
 		this.logger.debug(

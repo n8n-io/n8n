@@ -518,6 +518,23 @@ export interface IHttpRequestOptions {
 	agentOptions?: Omit<AgentOptions, 'socket'>;
 }
 
+/** Standardized mock HTTP response returned by the eval mock handler. */
+export interface EvalMockHttpResponse {
+	body: unknown;
+	headers: Record<string, string>;
+	statusCode: number;
+}
+
+/**
+ * Handler for LLM-based HTTP mocking during evaluation.
+ * Receives the fully-built request (after credential auth) and the executing node.
+ * Return a full mock response, or `undefined` to pass through to real HTTP.
+ */
+export type EvalLlmMockHandler = (
+	requestOptions: IHttpRequestOptions,
+	node: INode,
+) => Promise<EvalMockHttpResponse | undefined>;
+
 /**
  * used in helpers.request(WithAuthentication)
  * @see IHttpRequestOptions
@@ -2966,6 +2983,13 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	startedAt?: Date;
+	/**
+	 * LLM-based HTTP mock handler for evaluation mode. Runtime-only — never serialized.
+	 * When present, WorkflowRunner copies it to additionalData.evalLlmMockHandler so the
+	 * execution engine intercepts external HTTP requests and routes them through this
+	 * handler instead of making real API calls. Only set by the scenario-runner/eval path.
+	 */
+	evalLlmMockHandler?: EvalLlmMockHandler;
 
 	// MCP-specific fields for queue mode support
 	/** Whether this execution was triggered by an MCP tool call. */
