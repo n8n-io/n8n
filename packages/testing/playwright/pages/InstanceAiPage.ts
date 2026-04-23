@@ -15,6 +15,10 @@ export class InstanceAiPage extends BasePage {
 		await this.page.goto('/instance-ai');
 	}
 
+	getContainer(): Locator {
+		return this.page.getByTestId('instance-ai-container');
+	}
+
 	// ── Messages ──────────────────────────────────────────────────────
 
 	getChatInput(): Locator {
