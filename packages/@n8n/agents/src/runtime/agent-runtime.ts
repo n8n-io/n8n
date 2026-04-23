@@ -57,6 +57,7 @@ import {
 } from './tool-adapter';
 import { buildWorkingMemoryTool } from './working-memory';
 import { AgentEvent } from '../types/runtime/event';
+import type { AgentEventData } from '../types/runtime/event';
 import type {
 	AgentPersistenceOptions,
 	ExecutionOptions,
@@ -790,8 +791,27 @@ export class AgentRuntime {
 		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
 		const writer = writable.getWriter();
 
-		this.runStreamLoop(list, options, writer, pendingResume, runId).catch(
-			async (error: unknown) => {
+		// Bridge tool-execution lifecycle events into the stream so consumers
+		// can show a mid-flight indicator between the LLM's tool-call message
+		// and the eventual tool-result message. Writer queues writes in order
+		// so the fire-and-forget is safe.
+		const onToolExecutionStart = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.ToolExecutionStart) return;
+			// Swallow rejections: if the writer is already closed/errored (e.g.
+			// an abort raced ahead of the subscription cleanup) there is nothing
+			// useful to do with the chunk.
+			writer
+				.write({
+					type: 'tool-execution-start',
+					toolCallId: data.toolCallId,
+					toolName: data.toolName,
+				})
+				.catch(() => {});
+		};
+		this.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+
+		this.runStreamLoop(list, options, writer, pendingResume, runId)
+			.catch(async (error: unknown) => {
 				await this.flushTelemetry(options);
 				await this.cleanupRun(runId);
 				try {
@@ -801,8 +821,10 @@ export class AgentRuntime {
 				} catch {
 					writer.abort(error).catch(() => {});
 				}
-			},
-		);
+			})
+			.finally(() => {
+				this.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+			});
 
 		return readable;
 	}

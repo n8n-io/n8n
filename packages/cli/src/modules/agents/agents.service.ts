@@ -411,16 +411,21 @@ export class AgentsService {
 		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
 			params;
 
-		// Inject the rich_interaction tool only for platforms that can render
-		// its suspend/resume HITL cards (Slack, Telegram, Discord, …). The in-app
-		// test chat runs with `integrationType = 'chat'`, which isn't a
-		// registered platform — it has no bridge to render the card or resume
-		// the suspended turn, so letting the model call the tool there would
-		// just hang the agent. Gate on a real registered integration.
+		// Inject the rich_interaction tool only for platforms that can actually
+		// render its suspend/resume HITL cards. Two gates:
+		//   - A registered integration in ChatIntegrationRegistry. The in-app
+		//     test chat uses `integrationType = 'chat'`, which isn't registered,
+		//     and the compile/validate path passes no integrationType at all —
+		//     neither has a bridge to render the card or resume the suspended
+		//     turn, so letting the model call the tool there would hang the
+		//     agent.
+		//   - The integration must declare `supportedComponents`. Platforms
+		//     that omit it (e.g. Linear) have explicitly opted out of
+		//     rich_interaction.
 		const integration = integrationType
 			? Container.get(ChatIntegrationRegistry).get(integrationType)
 			: undefined;
-		if (integration) {
+		if (integration && integration.supportedComponents !== undefined) {
 			try {
 				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
 				agent.tool(createRichInteractionTool(integrationType));
@@ -1014,22 +1019,14 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		// Store tool code + descriptor
+		// Store tool code + descriptor. Registering the tool in the agent config
+		// (adding `{ type: "custom", id }` to `schema.tools`) is the caller's
+		// responsibility — typically via a follow-up patch_config / write_config —
+		// so this method does not touch `entity.schema`.
 		entity.tools = {
 			...entity.tools,
 			[toolId]: { code, descriptor },
 		};
-
-		// Add to config tools array if not already present
-		if (entity.schema) {
-			const tools = entity.schema.tools ?? [];
-			const alreadyLinked = tools.some(
-				(t: AgentJsonToolConfig) => t.type === 'custom' && 'id' in t && t.id === toolId,
-			);
-			if (!alreadyLinked) {
-				entity.schema.tools = [...tools, { type: 'custom' as const, id: toolId }];
-			}
-		}
 
 		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);

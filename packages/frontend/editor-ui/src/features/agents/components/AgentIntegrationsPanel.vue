@@ -62,6 +62,17 @@ const integrationConfigs: IntegrationConfig[] = [
 		credentialTypes: ['telegramApi'],
 		noCredentialsMessage: 'No Telegram API credentials found.',
 	},
+	{
+		type: 'linear',
+		label: 'Linear',
+		icon: 'list-checks',
+		description:
+			'Connect a Linear API credential to let this agent respond to comments in Linear issues. ' +
+			'Point a Linear webhook at the URL below and paste its signing secret into the credential',
+		connectedDescription: 'Your agent is connected to Linear and can reply to @-mentions',
+		credentialTypes: ['linearApi', 'linearOAuth2Api'],
+		noCredentialsMessage: 'No Linear credentials found.',
+	},
 ];
 
 // Per-integration state
@@ -91,10 +102,20 @@ function hasError(type: string): boolean {
 	return (errorMessages.value[type] ?? '').length > 0;
 }
 
-const webhookUrl = computed(() => {
+function webhookUrlFor(platform: string): string {
 	const base = rootStore.urlBaseEditor;
-	return `${base}rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/slack`;
-});
+	return `${base}rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/${platform}`;
+}
+
+const linearCopied = ref(false);
+
+async function copyLinearWebhookUrl() {
+	await navigator.clipboard.writeText(webhookUrlFor('linear'));
+	linearCopied.value = true;
+	setTimeout(() => {
+		linearCopied.value = false;
+	}, 2000);
+}
 
 const oauthCallbackUrl = computed(
 	() => (rootStore.OAuthCallbackUrls as { oauth2?: string }).oauth2 ?? '',
@@ -142,12 +163,12 @@ const slackAppManifest = computed(() =>
 			},
 			settings: {
 				event_subscriptions: {
-					request_url: webhookUrl.value,
+					request_url: webhookUrlFor('slack'),
 					bot_events: ['app_mention', 'assistant_thread_context_changed', 'message.im'],
 				},
 				interactivity: {
 					is_enabled: true,
-					request_url: webhookUrl.value,
+					request_url: webhookUrlFor('slack'),
 				},
 				org_deploy_enabled: false,
 				socket_mode_enabled: false,
@@ -329,6 +350,28 @@ onMounted(async () => {
 				<N8nText :class="$style.description" size="small">
 					{{ config.description }}
 				</N8nText>
+
+				<!-- Linear webhook URL — shown regardless of connection state so users can
+				     configure Linear *before* creating a credential (the signing secret is
+				     only revealed after the webhook is saved). -->
+				<div v-if="config.type === 'linear'" :class="$style.webhookRow">
+					<input
+						:value="webhookUrlFor('linear')"
+						readonly
+						:class="$style.webhookInput"
+						:data-testid="`${config.type}-webhook-url`"
+						@focus="($event.target as HTMLInputElement).select()"
+					/>
+					<N8nButton
+						variant="outline"
+						size="small"
+						:data-testid="`${config.type}-copy-webhook-url`"
+						@click="copyLinearWebhookUrl"
+					>
+						<N8nIcon :icon="linearCopied ? 'check' : 'copy'" :size="14" />
+						{{ linearCopied ? 'Copied' : 'Copy' }}
+					</N8nButton>
+				</div>
 
 				<div v-if="!isConnected(config.type)" :class="$style.connectForm">
 					<template v-if="hasCredentials(config.type)">
@@ -583,5 +626,31 @@ onMounted(async () => {
 
 .actionButton {
 	align-self: flex-start;
+}
+
+.webhookRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.webhookInput {
+	flex: 1;
+	min-width: 0;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	background-color: var(--color--foreground--tint-2);
+	border: var(--border);
+	border-radius: var(--radius);
+	font-family: monospace;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.webhookInput:focus {
+	outline: none;
+	border-color: var(--color--primary);
 }
 </style>

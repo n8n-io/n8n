@@ -168,9 +168,11 @@ export class AgentsBuilderToolsService {
 	): BuiltTool[] {
 		const buildCustomToolTool = new Tool('build_custom_tool')
 			.description(
-				'Create or update a custom tool. Pass the tool ID and complete TypeScript source ' +
+				'Compile and store a custom tool. Pass the tool ID and complete TypeScript source ' +
 					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
-					'sandbox. On success the tool is added to the agent config automatically. ' +
+					'sandbox and saved against the agent, but this does NOT register the tool in the ' +
+					'agent config — follow up with patch_config (or write_config) to add a ' +
+					'`{ type: "custom", id }` entry to `tools` so the agent actually uses it. ' +
 					'Returns { ok: true, descriptor } or { ok: false, errors }.',
 			)
 			.input(
