@@ -23,7 +23,7 @@ function combinations(n: number, k: number): number {
  * Probability that at least 1 of k randomly chosen samples passes,
  * given n total samples of which c passed.
  */
-function passAtK(n: number, c: number, k: number): number {
+export function passAtK(n: number, c: number, k: number): number {
 	if (k > n) return 0;
 	const denominator = combinations(n, k);
 	if (denominator === 0) return 0;
@@ -35,7 +35,7 @@ function passAtK(n: number, c: number, k: number): number {
  * Probability that all k independent attempts pass,
  * given observed success rate p = c/n.
  */
-function passHatK(n: number, c: number, k: number): number {
+export function passHatK(n: number, c: number, k: number): number {
 	if (n === 0) return 0;
 	return Math.pow(c / n, k);
 }

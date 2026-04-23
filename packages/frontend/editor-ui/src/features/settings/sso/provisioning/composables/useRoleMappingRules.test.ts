@@ -204,4 +204,74 @@ describe('useRoleMappingRules', () => {
 			expect(composable.projectRules.value.every((r) => r.type === 'project')).toBe(true);
 		});
 	});
+
+	describe('save', () => {
+		it('should send the local order on creates so user-intended position is preserved', async () => {
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
+				makeRule({ id: 'persisted-1', type: 'instance', order: 0 }),
+			]);
+			vi.mocked(roleMappingRuleApi.createRoleMappingRule).mockResolvedValue(makeRule());
+			vi.mocked(roleMappingRuleApi.updateRoleMappingRule).mockResolvedValue(makeRule());
+
+			await composable.loadRules();
+			composable.addRule('instance');
+			const localId = composable.instanceRules.value[1].id;
+			composable.updateRule(localId, {
+				expression: '$claims.admin',
+				role: 'global:member',
+			});
+			// Drag the new local rule above the persisted one.
+			await composable.reorder('instance', 1, 0);
+
+			await composable.save();
+
+			expect(roleMappingRuleApi.createRoleMappingRule).toHaveBeenCalledTimes(1);
+			const [, payload] = vi.mocked(roleMappingRuleApi.createRoleMappingRule).mock.calls[0];
+			expect(payload).toMatchObject({
+				expression: '$claims.admin',
+				role: 'global:member',
+				type: 'instance',
+				order: 0,
+			});
+		});
+
+		it('should serialize create calls to avoid concurrent temp-order collisions', async () => {
+			const callOrder: string[] = [];
+			vi.mocked(roleMappingRuleApi.createRoleMappingRule).mockImplementation(
+				async (_ctx, input) => {
+					callOrder.push(input.expression);
+					await new Promise((r) => setTimeout(r, 0));
+					return makeRule({ expression: input.expression });
+				},
+			);
+
+			composable.addRule('instance');
+			composable.addRule('instance');
+			composable.updateRule(composable.instanceRules.value[0].id, { expression: 'first' });
+			composable.updateRule(composable.instanceRules.value[1].id, { expression: 'second' });
+
+			await composable.save();
+
+			expect(callOrder).toEqual(['first', 'second']);
+		});
+
+		it('should include order on updates to existing persisted rules', async () => {
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([
+				makeRule({ id: 'persisted-1', type: 'instance', order: 0, expression: 'orig' }),
+			]);
+			vi.mocked(roleMappingRuleApi.updateRoleMappingRule).mockResolvedValue(
+				makeRule({ id: 'persisted-1' }),
+			);
+
+			await composable.loadRules();
+			composable.updateRule('persisted-1', { expression: 'edited' });
+			await composable.save();
+
+			expect(roleMappingRuleApi.updateRoleMappingRule).toHaveBeenCalledWith(
+				expect.anything(),
+				'persisted-1',
+				expect.objectContaining({ order: 0 }),
+			);
+		});
+	});
 });
