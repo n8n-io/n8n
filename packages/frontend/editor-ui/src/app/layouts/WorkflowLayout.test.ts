@@ -36,7 +36,6 @@ vi.mock('@/features/ai/assistant/assistant.store', () => ({
 vi.mock('@/app/composables/useWorkflowState', () => {
 	const mockState = () => ({
 		getNewWorkflowData: vi.fn(),
-		setWorkflowId: vi.fn(),
 		resetState: vi.fn(),
 	});
 	return {
