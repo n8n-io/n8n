@@ -1180,7 +1180,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
-		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
+		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabledForUser(user.id);
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
 
 		// When the proxy is enabled, create a single ProxyTokenManager and

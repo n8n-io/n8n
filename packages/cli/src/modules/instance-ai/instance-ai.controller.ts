@@ -592,9 +592,14 @@ export class InstanceAiController {
 		res.flushHeaders();
 
 		const gateway = this.instanceAiService.getLocalGateway(userId);
-		const unsubscribe = gateway.onRequest((event) => {
+		const unsubscribeRequest = gateway.onRequest((event) => {
 			res.write(`data: ${JSON.stringify(event)}\n\n`);
 			res.flush?.();
+		});
+		const unsubscribeDisconnect = gateway.onDisconnect((event) => {
+			res.write(`data: ${JSON.stringify(event)}\n\n`);
+			res.flush?.();
+			res.end();
 		});
 
 		const keepAlive = setInterval(() => {
@@ -603,7 +608,8 @@ export class InstanceAiController {
 		}, KEEP_ALIVE_INTERVAL_MS);
 
 		const cleanup = () => {
-			unsubscribe();
+			unsubscribeRequest();
+			unsubscribeDisconnect();
 			clearInterval(keepAlive);
 			this.instanceAiService.startDisconnectTimer(userId, () => {
 				this.push.sendToUsers(
@@ -697,6 +703,28 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
 		return this.instanceAiService.getGatewayStatus(req.user.id);
+	}
+
+	/**
+	 * User-initiated gateway disconnect. Tears down the paired daemon session
+	 * so its tools are no longer exposed to the agent, without changing the
+	 * user's preference to disabled.
+	 */
+	@Post('/gateway/disconnect-session')
+	@GlobalScope('instanceAi:gateway')
+	async gatewayDisconnectSession(req: AuthenticatedRequest) {
+		const userId = req.user.id;
+		this.instanceAiService.clearDisconnectTimer(userId);
+		this.instanceAiService.disconnectGateway(userId);
+		this.instanceAiService.clearActiveSessionKey(userId);
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+			},
+			[userId],
+		);
+		return { ok: true };
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────
