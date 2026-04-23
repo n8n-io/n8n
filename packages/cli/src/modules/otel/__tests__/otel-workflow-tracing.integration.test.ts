@@ -15,7 +15,7 @@ import {
 import type { OtelTestProvider } from './support/otel-test-provider';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { ExecutionRepository } from '@n8n/db';
-import { createWorkflow } from '@n8n/backend-test-utils';
+import { createTeamProject, createWorkflow } from '@n8n/backend-test-utils';
 
 let otel: OtelTestProvider;
 let workflowRunner: WorkflowRunner;
@@ -44,8 +44,9 @@ afterEach(() => {
 
 describe('OTEL Workflow Tracing Integration', () => {
 	it('should produce workflow and node spans for a successful execution', async () => {
-		const workflow = await createWorkflow(createMultiNodeWorkflowFixture());
-		const executionId = await executeWorkflow(workflowRunner, workflow, 'test-project');
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
 		await waitForExecution(executionRepository, executionId);
 
 		const spans = otel.getFinishedSpans();
