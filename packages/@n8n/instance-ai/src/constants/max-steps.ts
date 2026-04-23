@@ -15,6 +15,8 @@ export const MAX_STEPS = {
 	BUILDER: 60,
 	/** Data table management sub-agent. */
 	DATA_TABLE: 35,
+	/** Eval setup sub-agent — reads workflow, creates DataTable, patches eval nodes + validates. */
+	EVAL_SETUP: 30,
 	/** Planning sub-agent — breaks down multi-step tasks. */
 	PLANNER: 30,
 	/** Research sub-agent — web search and synthesis. */
