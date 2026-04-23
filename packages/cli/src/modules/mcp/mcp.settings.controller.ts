@@ -17,6 +17,7 @@ import { UpdateWorkflowAvailabilityDto } from './dto/update-workflow-availabilit
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpSettingsService } from './mcp.settings.service';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
@@ -32,6 +33,7 @@ export class McpSettingsController {
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowService: WorkflowService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	@GlobalScope('mcp:manage')
@@ -122,6 +124,22 @@ export class McpSettingsController {
 		workflowUpdate.versionId = workflow.versionId;
 
 		const updatedWorkflow = await this.workflowService.update(req.user, workflowUpdate, workflowId);
+
+		// Notify other tabs / users that have this workflow open so they can
+		// resync their local `availableInMCP` and `expectedChecksum` without
+		// waiting for a full reload. Non-blocking: a broadcast failure must
+		// not fail the write.
+		try {
+			await this.collaborationService.broadcastWorkflowMcpAvailabilityChanged(
+				workflowId,
+				dto.availableInMCP,
+			);
+		} catch (error) {
+			this.logger.warn('Failed to broadcast workflow MCP availability change', {
+				workflowId,
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
 
 		return {
 			id: updatedWorkflow.id,

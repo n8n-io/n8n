@@ -14,6 +14,7 @@ import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 import { createWorkflow } from './mock.utils';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -84,6 +85,7 @@ describe('McpSettingsController', () => {
 	const mcpServerApiKeyService = mockDeep<McpServerApiKeyService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowService = mock<WorkflowService>();
+	const collaborationService = mock<CollaborationService>();
 
 	let controller: McpSettingsController;
 
@@ -95,6 +97,7 @@ describe('McpSettingsController', () => {
 		Container.set(McpServerApiKeyService, mcpServerApiKeyService);
 		Container.set(WorkflowFinderService, workflowFinderService);
 		Container.set(WorkflowService, workflowService);
+		Container.set(CollaborationService, collaborationService);
 		controller = Container.get(McpSettingsController);
 	});
 
@@ -456,6 +459,73 @@ describe('McpSettingsController', () => {
 				settings: { saveManualExecutions: true, availableInMCP: true },
 				versionId: 'updated-version-id',
 			});
+		});
+
+		test('broadcasts the availability change to open collaborators after a successful update', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				createWorkflow({ activeVersionId: null }),
+			);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				settings: { availableInMCP: true },
+				versionId: 'updated-version-id',
+			} as unknown as WorkflowEntity);
+
+			await controller.toggleWorkflowMCPAccess(
+				createReq({}, { user }),
+				mock<Response>(),
+				workflowId,
+				{
+					availableInMCP: true,
+				},
+			);
+
+			expect(collaborationService.broadcastWorkflowMcpAvailabilityChanged).toHaveBeenCalledTimes(1);
+			expect(collaborationService.broadcastWorkflowMcpAvailabilityChanged).toHaveBeenCalledWith(
+				workflowId,
+				true,
+			);
+		});
+
+		test('does not fail the request when the broadcast throws', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				createWorkflow({ activeVersionId: null }),
+			);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				settings: { availableInMCP: false },
+				versionId: 'updated-version-id',
+			} as unknown as WorkflowEntity);
+			collaborationService.broadcastWorkflowMcpAvailabilityChanged.mockRejectedValueOnce(
+				new Error('push down'),
+			);
+
+			await expect(
+				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
+					availableInMCP: false,
+				}),
+			).resolves.toEqual({
+				id: workflowId,
+				settings: { availableInMCP: false },
+				versionId: 'updated-version-id',
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to broadcast workflow MCP availability change',
+				expect.objectContaining({ workflowId, cause: 'push down' }),
+			);
+		});
+
+		test('does not broadcast when the workflow cannot be accessed', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(
+				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
+					availableInMCP: true,
+				}),
+			).rejects.toThrow(NotFoundError);
+
+			expect(collaborationService.broadcastWorkflowMcpAvailabilityChanged).not.toHaveBeenCalled();
 		});
 	});
 });

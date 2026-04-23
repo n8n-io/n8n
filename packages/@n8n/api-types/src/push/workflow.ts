@@ -38,9 +38,18 @@ export type WorkflowUpdated = {
 	};
 };
 
+export type WorkflowMcpAvailabilityChanged = {
+	type: 'workflowMcpAvailabilityChanged';
+	data: {
+		workflowId: string;
+		availableInMCP: boolean;
+	};
+};
+
 export type WorkflowPushMessage =
 	| WorkflowActivated
 	| WorkflowFailedToActivate
 	| WorkflowDeactivated
 	| WorkflowAutoDeactivated
-	| WorkflowUpdated;
+	| WorkflowUpdated
+	| WorkflowMcpAvailabilityChanged;

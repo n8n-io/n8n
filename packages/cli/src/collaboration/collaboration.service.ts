@@ -259,6 +259,29 @@ export class CollaborationService {
 	}
 
 	/**
+	 * Notifies open collaborators of a workflow that its `availableInMCP`
+	 * setting was changed out-of-band (e.g. via the MCP settings/list view).
+	 */
+	async broadcastWorkflowMcpAvailabilityChanged(
+		workflowId: Workflow['id'],
+		availableInMCP: boolean,
+	) {
+		const collaborators = await this.state.getCollaborators(workflowId);
+		const userIds = collaborators.map((user) => user.userId);
+
+		if (userIds.length === 0) {
+			return;
+		}
+
+		const msgData: PushPayload<'workflowMcpAvailabilityChanged'> = {
+			workflowId,
+			availableInMCP,
+		};
+
+		this.push.sendToUsers({ type: 'workflowMcpAvailabilityChanged', data: msgData }, userIds);
+	}
+
+	/**
 	 * Exposes write-lock state to allow clients to restore read-only mode
 	 * after page refresh, since write-lock is persisted in backend cache
 	 * but lost in frontend memory
