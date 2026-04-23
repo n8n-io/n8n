@@ -215,7 +215,7 @@ export class Snowflake implements INodeType {
 			const table = this.getNodeParameter('table', 0) as string;
 			const columnString = this.getNodeParameter('columns', 0) as string;
 			const columns = columnString.split(',').map((column) => column.trim());
-			const query = `INSERT INTO IDENTIFIER(?)(${columns.map(() => 'IDENTIFIER(?)').join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
+			const query = `INSERT INTO IDENTIFIER(?) (${columns.map(() => 'IDENTIFIER(?)').join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
 			const data = this.helpers.copyInputItems(items, columns);
 			const binds = data.map((element) => [table, ...columns, ...Object.values(element)]);
 			await execute(connection, query, binds as unknown as snowflake.InsertBinds);
