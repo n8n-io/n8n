@@ -192,6 +192,7 @@ catalogs:
       version: 4.5.0
 
 overrides:
+  '@isaacs/brace-expansion': 5.0.1
   ast-types: 0.16.1
   '@azure/identity': 4.13.0
   '@lezer/common': ^1.2.0
@@ -258,7 +259,9 @@ overrides:
   undici@<=7.24.1: 7.24.1
   fast-xml-parser: 5.5.7
   picomatch@<=4.0.4: 4.0.4
-  brace-expansion@<=5.0.5: 5.0.5
+  brace-expansion@1: 1.1.12
+  brace-expansion@2: 2.0.3
+  brace-expansion@5: 5.0.5
 
 patchedDependencies:
   '@lezer/highlight':
@@ -9710,6 +9713,9 @@ packages:
     resolution: {integrity: sha512-GAwkz0AihzY5bkwIY5QDR+LvsRQgB/B+1foMPvi0FZPMl5fjD7ICiznUiBdLYMH1QYe6vqu4gWYytZOccLouFw==}
     engines: {node: '>= 10.0.0'}
 
+  balanced-match@1.0.2:
+    resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
+
   balanced-match@2.0.0:
     resolution: {integrity: sha512-1ugUSr8BHXRnK23KfuYS+gVMC3LB8QGH9W1iGtDPsNWoQbgtXSExkBu2aDR4epiGWZOjZsj6lDl/N/AqqTC3UA==}
 
@@ -9794,6 +9800,9 @@ packages:
 
   bowser@2.11.0:
     resolution: {integrity: sha512-AlcaJBi/pqqJBIQ8U9Mcpc9i8Aqxn88Skv5d+xBX006BY5u8N3mGLHa5Lgppa7L/HfwgwLgZ6NYs+Ag6uUmJRA==}
+
+  brace-expansion@2.0.3:
+    resolution: {integrity: sha512-MCV/fYJEbqx68aE58kv2cA/kiky1G8vux3OR6/jbS+jIMe/6fJWa0DTzJU7dqijOWYwHi1t29FlfYI9uytqlpA==}
 
   brace-expansion@5.0.5:
     resolution: {integrity: sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==}
@@ -26709,6 +26718,8 @@ snapshots:
     dependencies:
       '@babel/types': 7.28.5
 
+  balanced-match@1.0.2: {}
+
   balanced-match@2.0.0: {}
 
   balanced-match@4.0.4: {}
@@ -26790,6 +26801,10 @@ snapshots:
   boolbase@1.0.0: {}
 
   bowser@2.11.0: {}
+
+  brace-expansion@2.0.3:
+    dependencies:
+      balanced-match: 1.0.2
 
   brace-expansion@5.0.5:
     dependencies:
@@ -32127,7 +32142,7 @@ snapshots:
 
   minimatch@10.0.1:
     dependencies:
-      brace-expansion: 5.0.5
+      brace-expansion: 2.0.3
 
   minimatch@10.2.1:
     dependencies:
@@ -32139,19 +32154,19 @@ snapshots:
 
   minimatch@5.1.8:
     dependencies:
-      brace-expansion: 5.0.5
+      brace-expansion: 2.0.3
 
   minimatch@9.0.1:
     dependencies:
-      brace-expansion: 5.0.5
+      brace-expansion: 2.0.3
 
   minimatch@9.0.3:
     dependencies:
-      brace-expansion: 5.0.5
+      brace-expansion: 2.0.3
 
   minimatch@9.0.9:
     dependencies:
-      brace-expansion: 5.0.5
+      brace-expansion: 2.0.3
 
   minimist@1.2.8: {}
 
