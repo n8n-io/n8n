@@ -311,7 +311,7 @@ export function createNodesTool(
 	surface: 'full' | 'orchestrator' = 'full',
 ) {
 	if (surface === 'orchestrator') {
-		const orchestratorInputSchema = z.object({
+		const orchestratorExploreAction = z.object({
 			action: z
 				.literal('explore-resources')
 				.describe("Query real resources for a node's RLC parameters"),
@@ -320,14 +320,16 @@ export function createNodesTool(
 			methodName: z
 				.string()
 				.describe(
-					'The method name from the node type definition JSDoc annotation, ' +
-						'e.g. "spreadSheetsSearch" from @searchListMethod, "getModels" from @loadOptionsMethod',
+					"The exact method name from the node's @searchListMethod or @loadOptionsMethod annotation. " +
+						'Call `action: "type-definition"` first to read the real method name from the type definition — ' +
+						'do not invent or guess method names; they must match the annotation exactly.',
 				),
 			methodType: z
 				.enum(['listSearch', 'loadOptions'])
 				.describe(
-					'The method type: "listSearch" for @searchListMethod annotations (supports filter/pagination), ' +
-						'"loadOptions" for @loadOptionsMethod annotations',
+					'"listSearch" for @searchListMethod annotations (supports filter/pagination); ' +
+						'"loadOptions" for @loadOptionsMethod annotations. ' +
+						'Pick the one matching the annotation you found in the type definition.',
 				),
 			credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
 			credentialId: z.string().describe('Credential ID from list-credentials'),
@@ -346,14 +348,24 @@ export function createNodesTool(
 				),
 		});
 
+		const orchestratorInputSchema = sanitizeInputSchema(
+			z.discriminatedUnion('action', [typeDefinitionAction, orchestratorExploreAction]),
+		);
+
+		type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
+
 		return createTool({
 			id: 'nodes',
 			description:
-				"Query real resources for a node's RLC parameters (e.g., list Google Sheets, " +
-				"OpenAI models, Slack channels). Uses the node's built-in search/load methods " +
-				'with your credentials.',
+				"Read node type definitions or query real resources for a node's RLC parameters " +
+				'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
+				'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
+				'`explore-resources` with the real method name and a credential.',
 			inputSchema: orchestratorInputSchema,
-			execute: async (input: z.infer<typeof orchestratorInputSchema>) => {
+			execute: async (input: OrchestratorInput) => {
+				if (input.action === 'type-definition') {
+					return await handleTypeDefinition(context, input);
+				}
 				return await handleExploreResources(context, input);
 			},
 		});

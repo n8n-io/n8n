@@ -34,6 +34,14 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 	default: '',
 };
 
+const OPENAI_MODEL_BUILDER_HINT = {
+	message:
+		"When a credential is attached, look up the live model list via the node's `@searchListMethod` (`searchModels`) to see what the credential can actually access — don't guess from memory. " +
+		'From that list, prefer the GPT-5 family: the flagship variant (e.g. `gpt-5.4`) for general use, a `-mini` / `-nano` variant when the task explicitly calls for cost-efficiency, or `-pro` only when the user asks for maximum capability. ' +
+		"The list may be only a subset of what OpenAI offers depending on the credential — use what's returned and don't substitute a different variant from memory. " +
+		"When no credential is attached, the node's @default applies automatically — do not override it with a specific ID from memory.",
+};
+
 const completionsResponseFormat: INodeProperties = {
 	displayName: 'Response Format',
 	name: 'responseFormat',
@@ -191,10 +199,7 @@ export class LmChatOpenAi implements INodeType {
 					},
 				},
 				default: 'gpt-5-mini',
-				builderHint: {
-					message:
-						'Default to gpt-5.4 (flagship) or gpt-5.4-mini (cost-efficient). Never use gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5, or earlier — those are superseded by the GPT-5 family and are not valid choices.',
-				},
+				builderHint: OPENAI_MODEL_BUILDER_HINT,
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { gte: 1.2 } }],
@@ -206,10 +211,7 @@ export class LmChatOpenAi implements INodeType {
 				name: 'model',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: 'gpt-5-mini' },
-				builderHint: {
-					message:
-						'Default to gpt-5.4 (flagship) or gpt-5.4-mini (cost-efficient). Never use gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5, or earlier — those are superseded by the GPT-5 family and are not valid choices.',
-				},
+				builderHint: OPENAI_MODEL_BUILDER_HINT,
 				required: true,
 				modes: [
 					{
