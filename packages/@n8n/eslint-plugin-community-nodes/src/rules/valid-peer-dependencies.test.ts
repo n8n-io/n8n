@@ -85,6 +85,24 @@ ruleTester.run('valid-peer-dependencies', ValidPeerDependenciesRule, {
 			],
 		},
 		{
+			name: 'peerDependencies is a string instead of an object',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "peerDependencies": "n8n-workflow" }',
+			errors: [{ messageId: 'invalidPeerDependenciesType' }],
+		},
+		{
+			name: 'peerDependencies is an array instead of an object',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "peerDependencies": ["n8n-workflow"] }',
+			errors: [{ messageId: 'invalidPeerDependenciesType' }],
+		},
+		{
+			name: 'peerDependencies is null',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "peerDependencies": null }',
+			errors: [{ messageId: 'invalidPeerDependenciesType' }],
+		},
+		{
 			name: 'pinned n8n-workflow combined with forbidden entry',
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "peerDependencies": { "n8n-workflow": "1.0.0", "n8n-core": "*" } }',

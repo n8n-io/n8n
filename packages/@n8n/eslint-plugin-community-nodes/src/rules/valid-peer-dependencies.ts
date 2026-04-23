@@ -18,6 +18,7 @@ export const ValidPeerDependenciesRule = createRule({
 		fixable: 'code',
 		messages: {
 			missingPeerDependencies: `The package.json must have a "peerDependencies" section containing "${REQUIRED_DEP}": "${REQUIRED_VERSION}".`,
+			invalidPeerDependenciesType: `"peerDependencies" must be an object mapping package names to version ranges (containing "${REQUIRED_DEP}": "${REQUIRED_VERSION}").`,
 			missingN8nWorkflow: `"peerDependencies" must include "${REQUIRED_DEP}": "${REQUIRED_VERSION}".`,
 			pinnedN8nWorkflow: `"peerDependencies.${REQUIRED_DEP}" must be "${REQUIRED_VERSION}", got {{ value }}.`,
 			forbiddenPeerDependency:
@@ -56,6 +57,10 @@ export const ValidPeerDependenciesRule = createRule({
 				}
 
 				if (peerDepsProp.value.type !== AST_NODE_TYPES.ObjectExpression) {
+					context.report({
+						node: peerDepsProp,
+						messageId: 'invalidPeerDependenciesType',
+					});
 					return;
 				}
 
