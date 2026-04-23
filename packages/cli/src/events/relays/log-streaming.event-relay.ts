@@ -82,6 +82,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
 			'execution-cancelled': (event) => this.executionCancelled(event),
 			'execution-deleted': (event) => this.executionDeleted(event),
+			'execution-waiting': (event) => this.executionWaiting(event),
+			'execution-resumed': (event) => this.executionResumed(event),
 			'execution-data-revealed': (event) => this.executionDataRevealed(event),
 			'execution-data-reveal-failure': (event) => this.executionDataRevealFailure(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
@@ -764,6 +766,33 @@ export class LogStreamingEventRelay extends EventRelay {
 				...user,
 				executionIds,
 				...(deleteBefore && { deleteBefore: deleteBefore.toISOString() }),
+			},
+		});
+	}
+
+	private executionWaiting({ executionId, workflowId }: RelayEventMap['execution-waiting']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.waiting',
+			payload: {
+				executionId,
+				workflowId,
+			},
+		});
+	}
+
+	private executionResumed({
+		executionId,
+		workflowId,
+		resumeSource,
+		responseAt,
+	}: RelayEventMap['execution-resumed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.resumed',
+			payload: {
+				executionId,
+				workflowId,
+				resumeSource,
+				responseAt: responseAt.toISOString(),
 			},
 		});
 	}

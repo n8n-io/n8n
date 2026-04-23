@@ -11,6 +11,7 @@ import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
 import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-scripts.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
+import { NoOverridesFieldRule } from './no-overrides-field.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
@@ -37,6 +38,7 @@ export const rules = {
 	'no-credential-reuse': NoCredentialReuseRule,
 	'no-forbidden-lifecycle-scripts': NoForbiddenLifecycleScriptsRule,
 	'no-http-request-with-manual-auth': NoHttpRequestWithManualAuthRule,
+	'no-overrides-field': NoOverridesFieldRule,
 	'icon-validation': IconValidationRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
