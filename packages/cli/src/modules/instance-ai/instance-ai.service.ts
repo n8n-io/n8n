@@ -1466,6 +1466,7 @@ export class InstanceAiService {
 		message: string,
 		researchMode: boolean | undefined,
 		messageGroupId?: string,
+		isReplanFollowUp: boolean = false,
 	): Promise<string> {
 		if (this.runState.hasLiveRun(threadId)) {
 			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
@@ -1488,6 +1489,8 @@ export class InstanceAiService {
 			researchMode,
 			undefined,
 			messageGroupId,
+			undefined,
+			isReplanFollowUp,
 		);
 
 		return runId;
@@ -1524,6 +1527,7 @@ export class InstanceAiService {
 				this.buildPlannedTaskFollowUpMessage('replan', action.graph, action.failedTask),
 				this.runState.getThreadResearchMode(threadId),
 				action.graph.messageGroupId,
+				true,
 			);
 			return;
 		}
@@ -1567,6 +1571,7 @@ export class InstanceAiService {
 		attachments?: InstanceAiAttachment[],
 		messageGroupId?: string,
 		timeZone?: string,
+		isReplanFollowUp: boolean = false,
 	): Promise<void> {
 		const signal = abortController.signal;
 		let mastraRunId = '';
@@ -1612,6 +1617,7 @@ export class InstanceAiService {
 			// Make the current user message available to sub-agents (e.g. planner)
 			// since memory.recall() only returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
+			orchestrationContext.isReplanFollowUp = isReplanFollowUp;
 			orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
 
 			// Thread attachments into the domain context so parse-file can access them
