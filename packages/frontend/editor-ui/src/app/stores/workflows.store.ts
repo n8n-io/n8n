@@ -37,7 +37,6 @@ import * as workflowUtils from 'n8n-workflow/common';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
-import { isPresent } from '@/app/utils/typesUtils';
 import { makeRestApiRequest, ResponseError, type WorkflowHistory } from '@n8n/rest-api-client';
 import {
 	unflattenExecutionData,
@@ -394,11 +393,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			}
 		}
 		return fullId;
-	}
-
-	/** @deprecated Use `workflowDocumentStore.getNodesByIds()` instead. */
-	function getNodesByIds(nodeIds: string[]): INodeUi[] {
-		return nodeIds.map(getNodeById).filter(isPresent);
 	}
 
 	function getExecutionDataById(id: string): ExecutionSummary | undefined {
@@ -1321,7 +1315,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodeHasOutputConnection,
 		isNodeInOutgoingNodeConnections,
 		getNodeByName,
-		getNodesByIds,
 		getExecutionDataById,
 		getNodeTypes,
 		getNodes,

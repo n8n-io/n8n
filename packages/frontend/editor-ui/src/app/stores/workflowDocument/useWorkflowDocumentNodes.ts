@@ -24,6 +24,7 @@ import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
 import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 import { createWorkflowDocumentId, useWorkflowDocumentStore } from '../workflowDocument.store';
+import { isPresent } from '@/app/utils/typesUtils';
 
 // --- Event types ---
 
@@ -204,8 +205,8 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		return workflowsStore.workflow.nodes.find((node) => node.id.startsWith(partialId));
 	}
 
-	function getNodesByIds(ids: string[]): INodeUi[] {
-		return workflowsStore.getNodesByIds(ids);
+	function getNodesByIds(nodeIds: string[]): INodeUi[] {
+		return nodeIds.map(getNodeById).filter(isPresent);
 	}
 
 	// -----------------------------------------------------------------------
