@@ -7,7 +7,13 @@ import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import { ErrorReporter, InstanceSettings, StorageConfig, WorkflowExecute } from 'n8n-core';
+import {
+	ErrorReporter,
+	establishExecutionContext,
+	InstanceSettings,
+	StorageConfig,
+	WorkflowExecute,
+} from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -160,6 +166,38 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		// Establish the execution context before persisting to the DB.
+		// activeExecutions.add() -> executionPersistence.create() writes
+		// data.executionData to the DB; any header masking or runtimeData
+		// population must happen before that write so the persisted record
+		// does not contain raw trigger-item data (e.g. Authorization headers).
+		// The runtimeData early-exit guard in establishExecutionContext keeps
+		// the subsequent worker-side call at workflow-execute.ts idempotent.
+		if (data.executionData) {
+			const workflowSettings = data.workflowData.settings ?? {};
+			const contextWorkflow = new Workflow({
+				id: data.workflowData.id,
+				name: data.workflowData.name,
+				nodes: data.workflowData.nodes,
+				connections: data.workflowData.connections,
+				active: data.workflowData.activeVersionId !== null,
+				nodeTypes: this.nodeTypes,
+				staticData: data.workflowData.staticData,
+				settings: workflowSettings,
+			});
+			const contextAdditionalData = await WorkflowExecuteAdditionalData.getBase({
+				userId: data.userId,
+				workflowId: data.workflowData.id,
+				workflowSettings,
+			});
+			await establishExecutionContext(
+				contextWorkflow,
+				data.executionData,
+				contextAdditionalData,
+				data.executionMode,
+			);
+		}
+
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 
