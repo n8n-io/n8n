@@ -7,7 +7,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { createPasswordRules } from '@n8n/design-system';
 
 vi.mock('@n8n/design-system', async () => {
-	const actual = await vi.importActual('@n8n/design-system');
+	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
 	return {
 		...actual,
 		createPasswordRules: vi.fn(actual.createPasswordRules),
