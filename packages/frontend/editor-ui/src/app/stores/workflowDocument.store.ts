@@ -26,8 +26,13 @@ import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentN
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { serializeNode as serializeNodeUtil } from './workflowDocument/serializeNode';
 import type { WorkflowObjectAccessors } from '../types';
-import type { IPinData } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+import type { INode, IPinData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 
 export {
 	getPinDataSize,
@@ -141,6 +146,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentVersionData = useWorkflowDocumentVersionData();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
 		const nodeTypesStore = useNodeTypesStore();
+		const nodeHelpers = useNodeHelpers();
 		const workflowDocumentNodeMetadata = useWorkflowDocumentNodeMetadata();
 		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
@@ -167,6 +173,43 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentNodes.removeAllNodes();
 			workflowDocumentConnections.removeAllConnections();
 			workflowDocumentPinData.setPinData({});
+		}
+
+		function serializeNode(node: INodeUi): INodeUi {
+			return serializeNodeUtil(node, {
+				getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
+				hasProxyAuth: (n) => nodeHelpers.hasProxyAuth(n),
+				displayParameter: (params, credential, path, n) =>
+					nodeHelpers.displayParameter(params, credential, path, n),
+			});
+		}
+
+		function serialize(): WorkflowData {
+			const nodes: INode[] = workflowDocumentNodes.allNodes.value.map(serializeNode);
+
+			// Deep-copy connections to create an in-time snapshot consistent with nodes.
+			// Without this, connections is a reference to the reactive store object, so
+			// mutations between now and request serialization can include connections to
+			// nodes not present in the nodes snapshot, violating a BE invariant.
+			const connections = deepCopy(workflowDocumentConnections.connectionsBySourceNode.value);
+
+			const data: WorkflowData = {
+				name: workflowDocumentName.name.value,
+				nodes,
+				pinData: workflowDocumentPinData.getPinDataSnapshot() as IPinData,
+				connections,
+				active: workflowDocumentActive.active.value,
+				settings: workflowDocumentSettings.settings.value,
+				tags: [...workflowDocumentTags.tags.value],
+				versionId: workflowDocumentVersionData.versionId.value,
+				meta: workflowDocumentMeta.meta.value,
+			};
+
+			if (workflowId) {
+				data.id = workflowId;
+			}
+
+			return data;
 		}
 
 		function getSnapshot(): WorkflowObjectAccessors {
@@ -211,6 +254,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentNodeMetadata,
 			removeAllNodes,
 			getSnapshot,
+			serialize,
+			serializeNode,
 		};
 	})();
 }

@@ -1091,7 +1091,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				node_id: node?.id,
 				node_graph_string: JSON.stringify(
 					TelemetryHelpers.generateNodesGraph(
-						await workflowHelpers.getWorkflowDataToSave(),
+						useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)).serialize(),
 						workflowHelpers.getNodeTypes(),
 						{
 							isCloudDeployment: settingsStore.isCloudDeployment,
