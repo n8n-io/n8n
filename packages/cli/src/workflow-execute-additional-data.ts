@@ -8,7 +8,7 @@ import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
-import { UnexpectedError, Workflow, createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError, Workflow, createResultOk, createRunExecutionData } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -501,7 +501,7 @@ export async function getBase({
 			return executionData?.data;
 		},
 		externalSecretsProxy: Container.get(ExternalSecretsProxy),
-		async startRunnerTask(
+		async startRunnerTask<T = unknown, E = unknown>(
 			additionalData: IWorkflowExecuteAdditionalData,
 			jobType: string,
 			settings: unknown,
@@ -519,6 +519,43 @@ export async function getBase({
 			envProviderState: EnvProviderState,
 			executeData?: IExecuteData,
 		) {
+			const sandboxServiceUrl = process.env.N8N_SANDBOX_SERVICE_URL;
+			if (
+				jobType === 'javascript' &&
+				process.env.N8N_CODE_NODE_BACKEND === 'sandbox' &&
+				sandboxServiceUrl
+			) {
+				const { CodeSandboxClient } = await import('@/sandbox/code-sandbox-client');
+				const jsSettings = settings as {
+					code: string;
+					nodeMode: string;
+					additionalProperties?: {
+						packages?: { package?: Array<{ name: string }> };
+					};
+				};
+				const packages =
+					jsSettings.additionalProperties?.packages?.package?.map((p) => p.name).filter(Boolean) ??
+					[];
+				const client = new CodeSandboxClient(
+					sandboxServiceUrl,
+					process.env.N8N_SANDBOX_API_KEY ?? '',
+					additionalData.executionId,
+					packages,
+				);
+				// T is always TaskResultData for JS tasks; cast to satisfy the generic signature.
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+				return createResultOk(
+					await client.runTask(
+						jsSettings.code,
+						jsSettings.nodeMode === 'runOnceForEachItem'
+							? 'runOnceForEachItem'
+							: 'runOnceForAllItems',
+						itemIndex,
+						connectionInputData,
+					),
+				) as unknown as import('n8n-workflow').Result<T, E>;
+			}
+
 			return await Container.get(TaskRequester).startTask(
 				additionalData,
 				jobType,

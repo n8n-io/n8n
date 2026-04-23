@@ -179,7 +179,11 @@ export class Code implements INodeType {
 
 		if (isJsLang) {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
-			const sandbox = new JsTaskRunnerSandbox(workflowMode, this);
+			const packages =
+				node.typeVersion === 2
+					? (this.getNodeParameter('packages', 0, {}) as { package?: Array<{ name: string }> })
+					: {};
+			const sandbox = new JsTaskRunnerSandbox(workflowMode, this, 1000, { packages });
 			const numInputItems = this.getInputData().length;
 
 			return nodeMode === 'runOnceForAllItems'

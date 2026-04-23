@@ -73,4 +73,36 @@ export const javascriptCodeDescription: INodeProperties[] = [
 		},
 		default: '',
 	},
+	{
+		displayName: 'NPM Packages',
+		name: 'packages',
+		type: 'fixedCollection',
+		typeOptions: { multipleValues: true },
+		displayOptions: {
+			show: {
+				'@version': [2],
+				language: ['javaScript'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Package',
+		description: 'NPM packages to install in the sandbox before running the code',
+		options: [
+			{
+				name: 'package',
+				displayName: 'Package',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. lodash',
+						description:
+							'Package name as it appears on npm (optionally with version, e.g. lodash@4)',
+					},
+				],
+			},
+		],
+	},
 ];
