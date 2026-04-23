@@ -7,6 +7,7 @@ import {
 	type SharedCredentials,
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import { StructuredToolkit } from 'n8n-core';
 import {
 	NodeConnectionTypes,
 	UserError,
@@ -356,6 +357,119 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result.status).toBe('error');
 			expect(result.error).toMatch(/does not have an execute method/);
 		});
+
+		it('surfaces a clear error when supplyData returns a StructuredToolkit (multi-tool dispatch unsupported)', async () => {
+			// MCP client nodes legitimately return a toolkit wrapping N tools;
+			// the ephemeral runtime treats one ref as one invocable target, so
+			// this path must fail with an explicit message rather than silently
+			// invoke a non-existent `.invoke` on the toolkit.
+			const toolkit = new StructuredToolkit([
+				mock<StructuredToolkit['tools'][number]>({ name: 'list-docs' }),
+				mock<StructuredToolkit['tools'][number]>({ name: 'read-doc' }),
+			]);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: toolDescription,
+					supplyData: jest.fn().mockResolvedValue({ response: toolkit }),
+				}),
+			);
+
+			const result = await executor.executeInline({
+				nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('error');
+			expect(result.error).toMatch(/StructuredToolkit.*multi-tool dispatch/);
+		});
+	});
+
+	describe('executeInline → executeNodeDirectly (nodes without supplyData)', () => {
+		// Use plain objects so `typeof nodeType.supplyData === 'function'`
+		// reliably returns false — jest-mock-extended auto-proxies every
+		// property as callable, which would route us to the supplyData path.
+
+		it('runs nodeType.execute and returns its first output batch on success', async () => {
+			const execute = jest.fn().mockResolvedValue([[{ json: { ok: true, count: 3 } }]]);
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: { channel: '#general', text: 'hi' },
+				inputData: [{ json: { userId: 'u-1' } }],
+				projectId: 'p-1',
+			});
+
+			expect(execute).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ status: 'success', data: [{ json: { ok: true, count: 3 } }] });
+		});
+
+		it('returns an error result when nodeType.execute throws', async () => {
+			const execute = jest.fn().mockRejectedValue(new Error('upstream 500'));
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('error');
+			expect(result.error).toBe('upstream 500');
+		});
+
+		it('returns an error when execute resolves without an output array', async () => {
+			// Downstream consumers expect NodeExecutionData[] — resolving with
+			// `null` or a truthy-but-not-array value must not leak through as
+			// `status: 'success'`.
+			const execute = jest.fn().mockResolvedValue(null);
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('error');
+			expect(result.error).toMatch(/No output data/);
+		});
+
+		it('returns an error when execute resolves with an empty output array', async () => {
+			const execute = jest.fn().mockResolvedValue([]);
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('error');
+			expect(result.error).toMatch(/No output data/);
+		});
 	});
 
 	describe('introspectSupplyDataToolSchema', () => {
@@ -393,6 +507,30 @@ describe('EphemeralNodeExecutor', () => {
 			const result = await executor.introspectSupplyDataToolSchema({
 				projectId: 'p-1',
 				nodeType: '@n8n/n8n-nodes-langchain.toolBasic',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+			});
+
+			expect(result).toBeNull();
+		});
+
+		it('returns null for a StructuredToolkit response (per-method introspection not yet wired)', async () => {
+			// Toolkit carries N tools, each with its own schema — there's no
+			// single schema to advertise, so we fall back to the factory's
+			// `{ input: string }` default rather than crash on `.schema` lookup.
+			const toolkit = new StructuredToolkit([
+				mock<StructuredToolkit['tools'][number]>({ name: 'list-docs' }),
+			]);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: toolDescription,
+					supplyData: jest.fn().mockResolvedValue({ response: toolkit }),
+				}),
+			);
+
+			const result = await executor.introspectSupplyDataToolSchema({
+				projectId: 'p-1',
+				nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool',
 				nodeTypeVersion: 1,
 				nodeParameters: {},
 			});

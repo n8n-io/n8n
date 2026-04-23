@@ -1,9 +1,8 @@
 import type { BuiltTool } from '@n8n/agents';
-import { Tool } from '@n8n/agents';
+import { Tool, isZodSchema } from '@n8n/agents';
 import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { nodeNameToToolName } from 'n8n-workflow';
-import type { ZodType } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -34,20 +33,6 @@ function toExecutorCredentials(
 	return Object.keys(out).length > 0 ? out : undefined;
 }
 
-function isZodSchema(value: unknown): value is ZodType {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		typeof (value as { safeParse?: unknown }).safeParse === 'function'
-	);
-}
-
-/**
- * Coerce any `zodToJsonSchema` output into a top-level `{ type: "object" }`
- * without dropping field guidance — Anthropic rejects any other root, but
- * simply flattening unions would strip the per-branch shapes the LLM relies
- * on. See the branches below for the per-shape handling.
- */
 function isObjectSchema(value: JSONSchema7Definition): value is JSONSchema7 {
 	return typeof value === 'object' && value !== null && value.type === 'object';
 }
@@ -66,6 +51,22 @@ function mergeAllOfObjects(members: JSONSchema7[]): JSONSchema7 {
 	};
 }
 
+/**
+ * Coerce any `zodToJsonSchema` output into a top-level `{ type: "object" }`
+ * without dropping field guidance — Anthropic rejects any other root, but
+ * simply flattening unions would strip the per-branch shapes the LLM relies
+ * on. Branches:
+ *
+ *   - `type: 'object'` → pass through.
+ *   - `allOf` of objects → merge into one object (lossless for z.intersection).
+ *   - `anyOf`/`oneOf` of objects → hoist `type: 'object'` to the root but keep
+ *     the union so discriminated-union branches survive.
+ *   - Anything else → wrap in `{ input: <schema> }`. This covers single-type
+ *     primitives / arrays, multi-type roots (e.g. `["string","null"]` from
+ *     `z.string().nullable()`), `$ref`-only, `const`-only, `enum`-only,
+ *     `not`-only, and bare `{}` schemas. The inner schema stays intact as a
+ *     valid property-value — strictly more informative than an empty object.
+ */
 export function normalizeToObjectSchema(schema: JSONSchema7): JSONSchema7 {
 	if (schema.type === 'object') return schema;
 
@@ -86,21 +87,11 @@ export function normalizeToObjectSchema(schema: JSONSchema7): JSONSchema7 {
 		}
 	}
 
-	// JSON Schema's `type` can be a single string (`"string"`, `"array"`, …) or
-	// an array of strings (e.g. `["string", "null"]`, which `zodToJsonSchema`
-	// emits for `z.string().nullable()` or `z.union([z.string(), z.null()])`
-	// in its nullable-as-type-union mode). Both shapes carry real inner type
-	// guidance, so wrap them in a single-property object rather than flattening
-	// to an empty one.
-	if (typeof schema.type === 'string' || Array.isArray(schema.type)) {
-		return {
-			type: 'object',
-			properties: { input: schema },
-			required: ['input'],
-		};
-	}
-
-	return { type: 'object', properties: {} };
+	return {
+		type: 'object',
+		properties: { input: schema },
+		required: ['input'],
+	};
 }
 
 /**

@@ -147,11 +147,18 @@ describe('normalizeToObjectSchema', () => {
 		});
 	});
 
-	it('falls back to an empty object for allOf with no object members', () => {
+	it('wraps an allOf with no object members under { input: <schema> }', () => {
+		// The merge branch only fires when at least one allOf member is an object.
+		// When none are, the whole schema is handed to the default wrap path so
+		// the constraint still reaches the LLM.
 		const input: JSONSchema7 = {
 			allOf: [{ type: 'string' }, { type: 'number' }],
 		};
-		expect(normalizeToObjectSchema(input)).toEqual({ type: 'object', properties: {} });
+		expect(normalizeToObjectSchema(input)).toEqual({
+			type: 'object',
+			properties: { input: { allOf: [{ type: 'string' }, { type: 'number' }] } },
+			required: ['input'],
+		});
 	});
 
 	it('wraps a top-level array schema in { input: <schema> }', () => {
@@ -181,6 +188,23 @@ describe('normalizeToObjectSchema', () => {
 		expect(normalizeToObjectSchema(input)).toEqual({
 			type: 'object',
 			properties: { input: { type: ['string', 'null'] } },
+			required: ['input'],
+		});
+	});
+
+	it.each([
+		['a $ref-only root', { $ref: '#/$defs/Foo' } as JSONSchema7],
+		['a const-only root', { const: 'create' } as JSONSchema7],
+		['an enum-only root', { enum: ['a', 'b', 'c'] } as JSONSchema7],
+		['a not-only root', { not: { type: 'string' } } as JSONSchema7],
+		['a bare {} root', {} as JSONSchema7],
+	])('wraps %s under { input: <schema> } instead of flattening to empty', (_label, input) => {
+		// These roots are valid JSON Schema but carry no `type` field, so a
+		// type-narrow fallback would drop every constraint. Wrapping keeps them
+		// visible to the LLM while satisfying the top-level-object requirement.
+		expect(normalizeToObjectSchema(input)).toEqual({
+			type: 'object',
+			properties: { input },
 			required: ['input'],
 		});
 	});

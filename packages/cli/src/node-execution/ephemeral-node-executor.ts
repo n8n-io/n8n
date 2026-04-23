@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Tool } from '@langchain/core/tools';
-import { ExecuteContext, SupplyDataContext } from 'n8n-core';
+import { ExecuteContext, StructuredToolkit, SupplyDataContext } from 'n8n-core';
 import type {
 	CloseFunction,
 	IExecuteData,
@@ -342,15 +342,20 @@ export class EphemeralNodeExecutor {
 	}
 
 	/**
-	 * Instantiate the LangChain tool that a `supplyData` node exposes, run a
-	 * caller-supplied action against it, and clean up. Both invocation (with
-	 * LLM args) and schema introspection (at tool-registration time) need the
-	 * same setup/teardown, so they share this helper.
+	 * Instantiate the LangChain tool (or toolkit) that a `supplyData` node
+	 * exposes, run a caller-supplied action against it, and clean up. Both
+	 * invocation (with LLM args) and schema introspection (at tool-registration
+	 * time) need the same setup/teardown, so they share this helper.
+	 *
+	 * `supplyData` legitimately returns either a single LangChain `Tool` or a
+	 * `StructuredToolkit` (the shape MCP client nodes produce — see
+	 * `SupplyDataToolResponse` in `@n8n/core`). Callers branch on which shape
+	 * arrived; a `null`/malformed response is treated as an error.
 	 */
 	private async withSupplyDataTool<T>(
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
-		onTool: (langchainTool: Tool) => Promise<T> | T,
+		onTool: (response: Tool | StructuredToolkit) => Promise<T> | T,
 	): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
 		const parts = await this.buildEphemeralContextParts(tool, inputItems);
 		const closeFunctions: CloseFunction[] = [];
@@ -376,16 +381,18 @@ export class EphemeralNodeExecutor {
 
 		try {
 			const supplyDataResult = await nodeType.supplyData.call(context, 0);
-			const langchainTool = supplyDataResult.response as Tool | undefined;
+			const response = supplyDataResult.response as Tool | StructuredToolkit | undefined;
 
-			if (!langchainTool || typeof langchainTool.invoke !== 'function') {
-				return {
-					ok: false,
-					error: `Node "${tool.nodeType}" did not return a valid LangChain tool`,
-				};
+			if (response instanceof StructuredToolkit) {
+				return { ok: true, value: await onTool(response) };
 			}
-
-			return { ok: true, value: await onTool(langchainTool) };
+			if (response && typeof response.invoke === 'function') {
+				return { ok: true, value: await onTool(response) };
+			}
+			return {
+				ok: false,
+				error: `Node "${tool.nodeType}" did not return a valid LangChain tool or toolkit`,
+			};
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return { ok: false, error: message };
@@ -405,6 +412,12 @@ export class EphemeralNodeExecutor {
 	 * LangChain tool and invoking that tool with the LLM's arguments. Mirrors
 	 * the pattern in `scaling/job-processor.ts:invokeTool` but scoped to the
 	 * ephemeral, single-node execution the agent runtime wants.
+	 *
+	 * MCP client nodes return a `StructuredToolkit` (multiple LangChain tools
+	 * keyed by MCP method) rather than a single tool — the ephemeral runtime
+	 * currently treats one `AgentJsonToolRef` as one invocable target, so
+	 * toolkit dispatch is surfaced as an explicit error. Proper per-method
+	 * expansion is tracked separately.
 	 */
 	private async invokeSupplyDataTool(
 		tool: EphemeralWorkflowToolLike,
@@ -414,11 +427,18 @@ export class EphemeralNodeExecutor {
 		// node-tool-factory.ts). Pass it straight through to the LangChain tool.
 		const toolArgs = (inputItems[0]?.json ?? {}) as Record<string, unknown>;
 
-		const result = await this.withSupplyDataTool(
-			tool,
-			inputItems,
-			async (langchainTool): Promise<unknown> => await langchainTool.invoke(toolArgs),
-		);
+		const result = await this.withSupplyDataTool(tool, inputItems, async (response) => {
+			if (response instanceof StructuredToolkit) {
+				// TODO(AGENT-26 follow-up): expand toolkit members into per-method
+				// BuiltTools at registration so the LLM can name the specific MCP
+				// tool to dispatch. For now, fail with a clear message rather than
+				// silently invoke a non-existent `.invoke` on the toolkit.
+				throw new Error(
+					`Node "${tool.nodeType}" returned a StructuredToolkit (${response.tools.length} tools); multi-tool dispatch via the ephemeral runtime isn't supported yet.`,
+				);
+			}
+			return (await response.invoke(toolArgs)) as unknown;
+		});
 
 		if (!result.ok) {
 			this.logger.debug('supplyData tool invocation failed', {
@@ -447,8 +467,13 @@ export class EphemeralNodeExecutor {
 	 * a bad MCP connection shouldn't prevent the agent from loading.
 	 */
 	async introspectSupplyDataToolSchema(tool: EphemeralWorkflowToolLike): Promise<unknown> {
-		const result = await this.withSupplyDataTool(tool, [], (langchainTool) => {
-			const maybeSchema = (langchainTool as unknown as { schema?: unknown }).schema;
+		const result = await this.withSupplyDataTool(tool, [], (response) => {
+			// Toolkits hold multiple tools, each with its own schema — there's no
+			// single Zod schema to hand back. Return null so the factory falls
+			// through to its `{ input: string }` default; proper per-method
+			// introspection ships with multi-tool expansion.
+			if (response instanceof StructuredToolkit) return null;
+			const maybeSchema = (response as unknown as { schema?: unknown }).schema;
 			return maybeSchema ?? null;
 		});
 
