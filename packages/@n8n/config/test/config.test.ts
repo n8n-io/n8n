@@ -501,7 +501,6 @@ describe('GlobalConfig', () => {
 			tracesEnabled: true,
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
-			idleTimeout: undefined,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
