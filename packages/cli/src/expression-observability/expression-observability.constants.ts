@@ -9,6 +9,4 @@ export const ATTRIBUTE = {
 	EXPRESSION_ERROR_TYPE: 'expression.error.type',
 } as const;
 
-export const MAX_EXPRESSION_TEXT_LENGTH = 256;
-
 export const DURATION_BUCKETS_MS = [0.1, 0.5, 1, 5, 10, 25, 50, 100, 250, 500, 1000, 5000];
