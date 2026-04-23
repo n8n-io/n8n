@@ -141,7 +141,7 @@ import {
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
-import { useWorkflowDocumentNodeSerialization } from '@/app/stores/workflowDocument/useWorkflowDocumentNodeSerialization';
+import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -194,9 +194,6 @@ export function useCanvasOperations() {
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
-	const { serializeNode } = useWorkflowDocumentNodeSerialization({
-		getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
-	});
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -2813,7 +2810,7 @@ export function useCanvasOperations() {
 		const exportedNodeNames = new Set<string>();
 
 		for (const node of nodes) {
-			const nodeSaveData = serializeNode(node);
+			const nodeSaveData = serializeNode(nodeTypesStore, node);
 			const pinDataForNode = pinDataToExecutionData(workflowDocumentStore.value.pinData)[node.name];
 
 			if (pinDataForNode) {

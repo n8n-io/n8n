@@ -139,53 +139,6 @@ describe('workflowDocument.store orchestration', () => {
 		});
 	});
 
-	describe('serializeNode', () => {
-		it('passes parameters + credentials through when node type is unknown', () => {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
-			const node = createNode({
-				name: 'Unknown',
-				parameters: { foo: 'bar' },
-				credentials: { someCred: { id: '1', name: 'cred' } },
-			});
-
-			const result = workflowDocumentStore.serializeNode(node);
-
-			expect(result.parameters).toEqual({ foo: 'bar' });
-			expect(result.credentials).toEqual({ someCred: { id: '1', name: 'cred' } });
-		});
-
-		it('preserves disabled / continueOnFail / onError / notes only when set', () => {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
-			const withFlags = createNode({
-				name: 'With',
-				disabled: true,
-				continueOnFail: true,
-				onError: 'continueRegularOutput',
-				notes: 'hello',
-			});
-			const withoutFlags = createNode({
-				name: 'Without',
-				disabled: false,
-				continueOnFail: false,
-				onError: 'stopWorkflow',
-				notes: '',
-			});
-
-			const resultWith = workflowDocumentStore.serializeNode(withFlags);
-			const resultWithout = workflowDocumentStore.serializeNode(withoutFlags);
-
-			expect(resultWith.disabled).toBe(true);
-			expect(resultWith.continueOnFail).toBe(true);
-			expect(resultWith.onError).toBe('continueRegularOutput');
-			expect(resultWith.notes).toBe('hello');
-
-			expect(resultWithout.disabled).toBeUndefined();
-			expect(resultWithout.continueOnFail).toBeUndefined();
-			expect(resultWithout.onError).toBeUndefined();
-			expect(resultWithout.notes).toBeUndefined();
-		});
-	});
-
 	describe('hydrate', () => {
 		function buildFullWorkflow(): IWorkflowDb {
 			const version: WorkflowHistory = {
