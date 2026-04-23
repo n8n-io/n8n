@@ -963,22 +963,14 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		// Store tool code + descriptor
+		// Store tool code + descriptor. Registering the tool in the agent config
+		// (adding `{ type: "custom", id }` to `schema.tools`) is the caller's
+		// responsibility — typically via a follow-up patch_config / write_config —
+		// so this method does not touch `entity.schema`.
 		entity.tools = {
 			...entity.tools,
 			[toolId]: { code, descriptor },
 		};
-
-		// Add to config tools array if not already present
-		if (entity.schema) {
-			const tools = entity.schema.tools ?? [];
-			const alreadyLinked = tools.some(
-				(t: AgentJsonToolConfig) => t.type === 'custom' && 'id' in t && t.id === toolId,
-			);
-			if (!alreadyLinked) {
-				entity.schema.tools = [...tools, { type: 'custom' as const, id: toolId }];
-			}
-		}
 
 		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);

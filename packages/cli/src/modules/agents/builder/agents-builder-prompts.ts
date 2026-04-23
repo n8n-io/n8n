@@ -94,12 +94,30 @@ export default new Tool('tool_name')
   });
 \`\`\`
 
-Rules for custom tool code:
-- Must use \`export default new Tool(...)\` pattern
-- Only imports: '@n8n/agents' and 'zod'
-- Tool handlers are async, receive validated input
-- Do NOT use process.env, fetch external URLs only if needed
-- Do NOT call .build() -- the engine handles it`;
+Custom tools run inside a V8 isolate sandbox. Treat every handler as a pure
+function: take \`input\`, compute, return a JSON-serialisable value.
+
+- Must use \`export default new Tool(...)\` pattern.
+- Imports at the top of the file: only '@n8n/agents' and 'zod'. No other
+  modules resolve.
+- No I/O of any kind — no network, no filesystem, no waiting for wall-clock
+  time. Host globals like \`crypto\`, \`process\`, \`Buffer\`, \`fetch\`, \`atob\`,
+  \`XMLHttpRequest\` are not present and will throw \`ReferenceError\` at runtime.
+- Some web APIs appear defined but are no-op stubs (\`setTimeout\` fires
+  synchronously, \`console.log\` goes nowhere, \`TextEncoder.encode\` returns
+  its input unchanged). Don't rely on their real behaviour.
+- Free to use: \`Math\`, \`Date\`, \`JSON\`, \`RegExp\`, \`Array\`, \`Object\`, \`Map\`,
+  \`Set\`, \`Promise\`, typed arrays, and any method on values you already have.
+- The handler is async and receives \`(input, ctx)\`.
+  - \`input\` is already validated against your zod schema.
+  - \`ctx.suspend(payload)\` pauses the tool until the caller resumes it —
+    use it for human-in-the-loop flows that need to ask the user something.
+    Otherwise ignore \`ctx\`.
+- Return a JSON-serialisable value. Execution is capped at 5 seconds and
+  ~32 MB of memory.
+- If something fails at runtime, the error message is handed back to you on
+  the next turn — fix the code and try again.
+- Do NOT call \`.build()\` — the engine handles it.`;
 
 export const N8N_EXPRESSIONS_SECTION = `\
 ## n8n expressions
@@ -188,7 +206,7 @@ export const WORKFLOW_SECTION = `\
 1. FIRST call list_credentials, list_workflows to see what's available
 2. When the user describes what they want, use write_config with a complete JSON string to set up the full config
 3. PREFER attaching existing workflows(type: "workflow") or nodes(type: "node") as tools over custom tools
-4. If the user needs custom logic, use build_custom_tool (custom tools are registered separately, then referenced in config by id)
+4. If the user needs custom logic, use build_custom_tool to compile and store the tool, then add a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config so the agent actually uses it
 5. Use patch_config (RFC 6902) for targeted field changes; use write_config to replace the full config`;
 
 export const IMPORTANT_SECTION = `\
@@ -198,7 +216,7 @@ export const IMPORTANT_SECTION = `\
 - Use search_nodes + get_node_types to discover nodes before adding node tools
 - Prefer workflow tools and node tools over custom tools for real-world interactions
 - Memory with storage "n8n" is the default -- always enable it unless told otherwise
-- Custom tools require calling \`build_custom_tool\` - it saves the tool code and updates agent config`;
+- \`build_custom_tool\` only compiles and stores the tool code. Register it in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config`;
 
 export const RESPONSE_STYLE_SECTION = `\
 ## Response style

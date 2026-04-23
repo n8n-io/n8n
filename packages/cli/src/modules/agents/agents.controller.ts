@@ -37,9 +37,13 @@ function extractMessageEvents(message: AgentMessage): Array<Record<string, unkno
 		if (part.type === 'text' && 'text' in part) {
 			events.push({ text: part.text });
 		} else if (part.type === 'tool-call' && 'toolName' in part) {
-			events.push({ toolCall: { tool: part.toolName, input: part.input } });
+			const toolCallId =
+				'toolCallId' in part && typeof part.toolCallId === 'string' ? part.toolCallId : undefined;
+			events.push({ toolCall: { tool: part.toolName, toolCallId, input: part.input } });
 		} else if (part.type === 'tool-result' && 'toolName' in part) {
-			events.push({ toolResult: { tool: part.toolName, output: part.result } });
+			const toolCallId =
+				'toolCallId' in part && typeof part.toolCallId === 'string' ? part.toolCallId : undefined;
+			events.push({ toolResult: { tool: part.toolName, toolCallId, output: part.result } });
 		}
 	}
 	return events;
@@ -399,6 +403,12 @@ export class AgentsController {
 					// Track which tool is streaming
 					if (chunk.name) {
 						streamingToolName = chunk.name;
+						// Announce the tool call as soon as the LLM commits to a name —
+						// before args finish streaming. The FE dedupes by toolCallId
+						// and fills in the full input when the tool-call message arrives.
+						if (chunk.id) {
+							send({ toolCall: { tool: chunk.name, toolCallId: chunk.id } });
+						}
 					}
 					// Stream tool code deltas for build_custom_tool
 					if (streamingToolName === 'build_custom_tool' && chunk.argumentsDelta) {
@@ -606,10 +616,21 @@ export class AgentsController {
 			case 'reasoning-delta':
 				if (chunk.delta) send({ thinking: chunk.delta });
 				break;
+			case 'tool-call-delta':
+				// Early announce: emit once when the LLM first commits to a tool
+				// name, before args finish streaming. Subsequent deltas (no name)
+				// are skipped here; the full input arrives with the message chunk.
+				if (chunk.name && chunk.id) {
+					send({ toolCall: { tool: chunk.name, toolCallId: chunk.id } });
+				}
+				break;
 			case 'message':
 				for (const event of extractMessageEvents(chunk.message)) {
 					send(event);
 				}
+				break;
+			case 'tool-execution-start':
+				send({ toolCallExecuting: { toolCallId: chunk.toolCallId, tool: chunk.toolName } });
 				break;
 			case 'error': {
 				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);

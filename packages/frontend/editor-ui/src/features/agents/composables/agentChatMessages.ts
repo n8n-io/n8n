@@ -5,6 +5,13 @@ export interface ToolCall {
 	toolCallId?: string;
 	input?: unknown;
 	output?: unknown;
+	/**
+	 * Lifecycle state:
+	 * - `pending`: the LLM has committed to the call but the handler has not started.
+	 * - `running`: the handler is executing (between tool-execution-start and tool-result).
+	 * - `done`: the handler has returned (also implied by `output` being set).
+	 */
+	status?: 'pending' | 'running' | 'done';
 }
 
 export interface ChatMessage {

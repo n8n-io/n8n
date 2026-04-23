@@ -67,12 +67,14 @@ export function convertChunk(c: TextStreamPart<ToolSet>): StreamChunk | undefine
 		case 'tool-input-start':
 			return {
 				type: 'tool-call-delta',
+				...(c.id !== undefined && { id: c.id }),
 				name: c.toolName,
 			};
 
 		case 'tool-input-delta':
 			return {
 				type: 'tool-call-delta',
+				...(c.id !== undefined && { id: c.id }),
 				...(c.delta !== undefined && { argumentsDelta: c.delta }),
 			};
 
