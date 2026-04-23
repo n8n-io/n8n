@@ -261,7 +261,9 @@ To branch per item inside a batch, nest the \`ifElse\` inside \`.onEachBatch(...
 \`\`\`javascript
 // To branch per batch item, chain the conditional inside onEachBatch:
 sibNode
-  .onEachBatch(ifElse.onTrue(actionA).onFalse(actionB).to(nextBatch(sibNode)))
+  .onEachBatch(ifElse
+    .onTrue(actionA.to(nextBatch(sibNode)))
+    .onFalse(actionB.to(nextBatch(sibNode))))
   .onDone(finalizeResults);
 \`\`\`
 
