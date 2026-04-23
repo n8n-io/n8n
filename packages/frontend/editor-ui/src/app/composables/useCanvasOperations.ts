@@ -2799,6 +2799,10 @@ export function useCanvasOperations() {
 	}
 
 	function getNodesToSave(nodes: INode[]): WorkflowData {
+		if (!workflowDocumentStore.value) {
+			throw new Error('Cannot serialize nodes: workflow document store is unavailable');
+		}
+
 		const data = {
 			nodes: [] as INodeUi[],
 			connections: {} as IConnections,
@@ -2808,7 +2812,6 @@ export function useCanvasOperations() {
 		const exportedNodeNames = new Set<string>();
 
 		for (const node of nodes) {
-			if (!workflowDocumentStore.value) continue;
 			const nodeSaveData = serializeNodeUtil(node, {
 				getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 				hasProxyAuth: (n) => nodeHelpers.hasProxyAuth(n),

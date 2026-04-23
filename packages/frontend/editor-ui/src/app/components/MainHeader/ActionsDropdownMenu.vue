@@ -278,7 +278,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
-			if (!workflowDocumentStore?.value) return;
+			if (!workflowDocumentStore?.value) {
+				throw new Error('Cannot download workflow: workflow document store is unavailable');
+			}
 			const workflowData = workflowDocumentStore.value.serialize();
 			const { tags, ...data } = workflowData;
 			const exportData: IWorkflowToShare = {
