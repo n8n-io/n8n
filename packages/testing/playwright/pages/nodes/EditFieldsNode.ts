@@ -7,6 +7,11 @@ export class EditFieldsNode extends BasePage {
 		super(page);
 	}
 
+	/** EditFieldsNode is a utility page object - goto is a no-op to satisfy scope-lockdown */
+	async goto() {
+		// No-op: EditFieldsNode operates within the NDV, not a navigable page
+	}
+
 	async setFieldsValues(
 		fields: Array<{
 			name: string;

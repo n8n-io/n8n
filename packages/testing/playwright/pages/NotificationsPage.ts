@@ -7,6 +7,11 @@ export class NotificationsPage {
 		this.page = page;
 	}
 
+	/** Notifications is a utility page object - goto is a no-op to satisfy scope-lockdown */
+	async goto() {
+		// No-op: NotificationsPage is a utility, not a navigable page
+	}
+
 	/**
 	 * Gets the main container locator for a notification by searching in its title text.
 	 * @param text The text or a regular expression to find within the notification's title.

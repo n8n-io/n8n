@@ -14,6 +14,11 @@ export class AIBuilderPage {
 		this.wizard = new BuilderSetupWizard(page);
 	}
 
+	/** AIBuilderPage is a utility page object - goto is a no-op to satisfy scope-lockdown */
+	async goto() {
+		// No-op: AIBuilderPage is entered via canvas actions, not direct navigation
+	}
+
 	// #region Locators
 
 	getWorkflowSuggestions() {
