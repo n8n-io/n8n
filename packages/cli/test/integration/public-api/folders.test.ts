@@ -2,6 +2,7 @@ import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-
 import type { Project, User } from '@n8n/db';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ApiKeyScope } from '@n8n/permissions';
 
 import { createFolder } from '../shared/db/folders';
 import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';
@@ -297,8 +298,8 @@ describe('GET /projects/:projectId/folders', () => {
 });
 
 describe('DELETE /projects/:projectId/folders/:folderId', () => {
-	const createDeleteScopedAgent = async () => {
-		const ownerWithDeleteScope = await createOwnerWithApiKey({ scopes: ['folder:delete'] });
+	const createDeleteScopedAgent = async (scopes: ApiKeyScope[] = ['folder:delete']) => {
+		const ownerWithDeleteScope = await createOwnerWithApiKey({ scopes });
 		const projectRepository = Container.get(ProjectRepository);
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			ownerWithDeleteScope.id,
@@ -422,18 +423,45 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(response.statusCode).toBe(204);
 	});
 
-	test('should delete folder with transferToFolderId query', async () => {
+	test('should delete folder and transfer child folders to transferToFolderId', async () => {
 		testServer.license.enable('feat:folders');
-		const { agent, personalProject } = await createDeleteScopedAgent();
+		const { agent, personalProject } = await createDeleteScopedAgent([
+			'folder:delete',
+			'folder:list',
+		]);
 
 		const sourceFolder = await createFolder(personalProject, { name: 'Source Folder' });
 		const targetFolder = await createFolder(personalProject, { name: 'Target Folder' });
+		const childFolder = await createFolder(personalProject, {
+			name: 'Child Folder',
+			parentFolder: sourceFolder,
+		});
 
 		const response = await agent
 			.delete(`/projects/${personalProject.id}/folders/${sourceFolder.id}`)
 			.query({ transferToFolderId: targetFolder.id });
 
 		expect(response.statusCode).toBe(204);
+
+		const transferredFoldersResponse = await agent
+			.get(`/projects/${personalProject.id}/folders`)
+			.query({
+				filter: JSON.stringify({ parentFolderId: targetFolder.id }),
+			});
+		const transferredFolders = transferredFoldersResponse.body as { data: Array<{ id: string }> };
+
+		expect(transferredFoldersResponse.statusCode).toBe(200);
+		expect(transferredFolders.data).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: childFolder.id })]),
+		);
+
+		const sourceFolderResponse = await agent.get(`/projects/${personalProject.id}/folders`).query({
+			filter: JSON.stringify({ name: 'Source Folder' }),
+		});
+		const sourceFolderResults = sourceFolderResponse.body as { count: number };
+
+		expect(sourceFolderResponse.statusCode).toBe(200);
+		expect(sourceFolderResults.count).toBe(0);
 	});
 
 	test('should delete folder in a team project when user has folder:delete scope', async () => {
