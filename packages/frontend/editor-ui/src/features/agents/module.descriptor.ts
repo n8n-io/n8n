@@ -2,6 +2,7 @@ import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.t
 import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_VIEW,
+	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
@@ -29,6 +30,17 @@ export const AgentsModule: FrontendModuleDescription = {
 	description: 'Build and manage AI agents',
 	icon: 'robot',
 	modals: [
+		{
+			key: AGENT_TOOLS_MODAL_KEY,
+			component: async () => await import('./components/AgentToolsModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					tools: [],
+					onConfirm: () => {},
+				},
+			},
+		},
 		{
 			key: AGENT_TOOL_CONFIG_MODAL_KEY,
 			component: async () => await import('./components/AgentToolConfigModal.vue'),
