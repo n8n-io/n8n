@@ -141,7 +141,7 @@ import {
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
-import { serializeNode as serializeNodeUtil } from '@/app/stores/workflowDocument/serializeNode';
+import { serializeNode as serializeNodeUtil } from '@/app/stores/workflowDocument/useWorkflowDocumentNodeSerialization';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;

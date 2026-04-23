@@ -26,7 +26,7 @@ import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentN
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { serializeNode as serializeNodeUtil } from './workflowDocument/serializeNode';
+import { serializeNode as serializeNodeUtil } from './workflowDocument/useWorkflowDocumentNodeSerialization';
 import type { WorkflowObjectAccessors } from '../types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { INode, IPinData } from 'n8n-workflow';
