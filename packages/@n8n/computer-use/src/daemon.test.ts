@@ -26,7 +26,7 @@ jest.mock('node:os', () => {
 jest.mock('./gateway-client', () => ({
 	['GatewayClient']: jest.fn().mockImplementation((options: { onDisconnected?: () => void }) => ({
 		start: jest.fn().mockResolvedValue(undefined),
-		disconnect: jest.fn().mockImplementation(async () => {
+		disconnect: jest.fn().mockImplementation(() => {
 			options.onDisconnected?.();
 		}),
 		tools: [],
