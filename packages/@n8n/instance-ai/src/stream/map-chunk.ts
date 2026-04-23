@@ -4,8 +4,10 @@ import {
 	taskListSchema,
 	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
+	instanceAiEvalMetricProposalSchema,
 } from '@n8n/api-types';
 import type {
+	InstanceAiConfirmation,
 	InstanceAiCredentialRequest,
 	InstanceAiEvent,
 	InstanceAiWorkflowSetupNode,
@@ -291,6 +293,50 @@ export function mapMastraChunkToEvent(
 			}
 		}
 
+		// Extract optional evals-propose suspend fields (from the `evals` tool).
+		// We carry the structured payload on the confirmation so the FE card can render it.
+		let evalsPropose: InstanceAiConfirmation['evalsPropose'] | undefined;
+		if (
+			Array.isArray(suspendPayload.detectedAiNodes) &&
+			Array.isArray(suspendPayload.suggestedMetrics) &&
+			isRecord(suspendPayload.proposedGraphSummary) &&
+			isRecord(suspendPayload.datasetOptions)
+		) {
+			const detectedAiNodes = suspendPayload.detectedAiNodes.filter(
+				(name): name is string => typeof name === 'string',
+			);
+			const metricsParse = z
+				.array(instanceAiEvalMetricProposalSchema)
+				.safeParse(suspendPayload.suggestedMetrics);
+			const proposedGraphSummaryParse = z
+				.object({
+					evalTriggerName: z.string(),
+					setOutputsNodeName: z.string(),
+					setMetricsNodeName: z.string(),
+				})
+				.safeParse(suspendPayload.proposedGraphSummary);
+			const datasetOptionsParse = z
+				.object({
+					suggestedColumns: z.object({
+						input: z.array(z.string()),
+						output: z.array(z.string()),
+					}),
+				})
+				.safeParse(suspendPayload.datasetOptions);
+			if (
+				metricsParse.success &&
+				proposedGraphSummaryParse.success &&
+				datasetOptionsParse.success
+			) {
+				evalsPropose = {
+					detectedAiNodes,
+					proposedGraphSummary: proposedGraphSummaryParse.data,
+					datasetOptions: datasetOptionsParse.data,
+					suggestedMetrics: metricsParse.data,
+				};
+			}
+		}
+
 		return {
 			type: 'confirmation-request',
 			...base,
@@ -316,6 +362,7 @@ export function mapMastraChunkToEvent(
 				...(tasks ? { tasks } : {}),
 				...(planItems ? { planItems } : {}),
 				...(resourceDecision ? { resourceDecision } : {}),
+				...(evalsPropose ? { evalsPropose } : {}),
 			},
 		};
 	}

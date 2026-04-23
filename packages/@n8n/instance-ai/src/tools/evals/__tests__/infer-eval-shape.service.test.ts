@@ -1,18 +1,17 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+import { createEvalAgent, extractText } from '../../../utils/eval-agents';
 import { inferEvalShape, DEFAULT_EVAL_SHAPE } from '../infer-eval-shape.service';
 
 // Mock the eval-agents module so tests never hit a real API
 jest.mock('../../../utils/eval-agents', () => {
-	const actual = jest.requireActual('../../../utils/eval-agents');
+	const actual: object = jest.requireActual('../../../utils/eval-agents');
 	return {
 		...actual,
 		createEvalAgent: jest.fn(),
 		extractText: jest.fn(),
 	};
 });
-
-import { createEvalAgent, extractText } from '../../../utils/eval-agents';
 
 const mockCreateEvalAgent = createEvalAgent as jest.MockedFunction<typeof createEvalAgent>;
 const mockExtractText = extractText as jest.MockedFunction<typeof extractText>;

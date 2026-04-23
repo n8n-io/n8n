@@ -1,13 +1,13 @@
-import { mock } from 'jest-mock-extended';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { mock } from 'jest-mock-extended';
 
 import type { InstanceAiContext } from '../../../types';
 import { applyEvalSetup } from '../apply-eval-setup.service';
+import { generateSampleRows } from '../generate-sample-rows.service';
 
 jest.mock('../generate-sample-rows.service', () => ({
 	generateSampleRows: jest.fn(),
 }));
-import { generateSampleRows } from '../generate-sample-rows.service';
 const mockGenerateSampleRows = generateSampleRows as jest.MockedFunction<typeof generateSampleRows>;
 
 function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
@@ -107,9 +107,12 @@ describe('applyEvalSetup — linear workflow, datasetChoice="later"', () => {
 		let saved: WorkflowJSON | null = null;
 		const ctx = makeContext();
 		ctx.workflowService.getAsWorkflowJSON = jest.fn().mockResolvedValue(wf);
-		ctx.workflowService.updateFromWorkflowJSON = jest.fn(async (_id, json) => {
-			saved = json;
-		});
+		ctx.workflowService.updateFromWorkflowJSON = jest.fn(
+			async (_id: string, json: WorkflowJSON) => {
+				await Promise.resolve();
+				saved = json;
+			},
+		) as unknown as typeof ctx.workflowService.updateFromWorkflowJSON;
 
 		const result = await applyEvalSetup(ctx, {
 			workflowId: 'w1',
@@ -120,17 +123,17 @@ describe('applyEvalSetup — linear workflow, datasetChoice="later"', () => {
 		expect(result.success).toBe(true);
 		expect(saved).not.toBeNull();
 		const savedJson = saved!;
-		const names = savedJson.nodes!.map((n) => n.name);
+		const names = savedJson.nodes.map((n) => n.name);
 		expect(names).toContain('EvaluationTrigger');
 		expect(names).toContain('EvaluationSetOutputs');
 		expect(names).toContain('EvaluationSetMetrics');
-		expect(savedJson.connections!.EvaluationTrigger).toEqual({
+		expect(savedJson.connections.EvaluationTrigger).toEqual({
 			main: [[{ node: 'Agent', type: 'main', index: 0 }]],
 		});
-		expect(savedJson.connections!.Agent).toEqual({
+		expect(savedJson.connections.Agent).toEqual({
 			main: [[{ node: 'EvaluationSetOutputs', type: 'main', index: 0 }]],
 		});
-		expect(savedJson.connections!.EvaluationSetOutputs).toEqual({
+		expect(savedJson.connections.EvaluationSetOutputs).toEqual({
 			main: [[{ node: 'EvaluationSetMetrics', type: 'main', index: 0 }]],
 		});
 	});
@@ -142,9 +145,12 @@ describe('applyEvalSetup — two terminals', () => {
 		let saved: WorkflowJSON | null = null;
 		const ctx = makeContext();
 		ctx.workflowService.getAsWorkflowJSON = jest.fn().mockResolvedValue(wf);
-		ctx.workflowService.updateFromWorkflowJSON = jest.fn(async (_id, json) => {
-			saved = json;
-		});
+		ctx.workflowService.updateFromWorkflowJSON = jest.fn(
+			async (_id: string, json: WorkflowJSON) => {
+				await Promise.resolve();
+				saved = json;
+			},
+		) as unknown as typeof ctx.workflowService.updateFromWorkflowJSON;
 
 		const result = await applyEvalSetup(ctx, {
 			workflowId: 'w1',
@@ -154,15 +160,15 @@ describe('applyEvalSetup — two terminals', () => {
 
 		expect(result.success).toBe(true);
 		const savedJson = saved!;
-		const names = savedJson.nodes!.map((n) => n.name);
+		const names = savedJson.nodes.map((n) => n.name);
 		expect(names).toContain('EvalMerge');
-		expect(savedJson.connections!.A).toEqual({
+		expect(savedJson.connections.A).toEqual({
 			main: [[{ node: 'EvalMerge', type: 'main', index: 0 }]],
 		});
-		expect(savedJson.connections!.B).toEqual({
+		expect(savedJson.connections.B).toEqual({
 			main: [[{ node: 'EvalMerge', type: 'main', index: 1 }]],
 		});
-		expect(savedJson.connections!.EvalMerge).toEqual({
+		expect(savedJson.connections.EvalMerge).toEqual({
 			main: [[{ node: 'EvaluationSetOutputs', type: 'main', index: 0 }]],
 		});
 	});
@@ -174,9 +180,12 @@ describe('applyEvalSetup — datasetChoice="link-existing"', () => {
 		let saved: WorkflowJSON | null = null;
 		const ctx = makeContext();
 		ctx.workflowService.getAsWorkflowJSON = jest.fn().mockResolvedValue(wf);
-		ctx.workflowService.updateFromWorkflowJSON = jest.fn(async (_id, json) => {
-			saved = json;
-		});
+		ctx.workflowService.updateFromWorkflowJSON = jest.fn(
+			async (_id: string, json: WorkflowJSON) => {
+				await Promise.resolve();
+				saved = json;
+			},
+		) as unknown as typeof ctx.workflowService.updateFromWorkflowJSON;
 		ctx.dataTableService.create = jest.fn();
 
 		const result = await applyEvalSetup(ctx, {
@@ -191,7 +200,7 @@ describe('applyEvalSetup — datasetChoice="link-existing"', () => {
 
 		expect(result.success).toBe(true);
 		expect(ctx.dataTableService.create).not.toHaveBeenCalled();
-		const evalTrigger = saved!.nodes!.find((n) => n.name === 'EvaluationTrigger')!;
+		const evalTrigger = saved!.nodes.find((n) => n.name === 'EvaluationTrigger')!;
 		expect((evalTrigger.parameters as Record<string, unknown>).dataTableId).toEqual({
 			mode: 'id',
 			value: 'dt-123',
@@ -210,14 +219,12 @@ describe('applyEvalSetup — datasetChoice="generate"', () => {
 			name: 'Linear AI — eval samples',
 			projectId: 'p1',
 		});
-		ctx.dataTableService.insertRows = jest
-			.fn()
-			.mockResolvedValue({
-				insertedCount: 3,
-				dataTableId: 'dt-new',
-				tableName: 'x',
-				projectId: 'p1',
-			});
+		ctx.dataTableService.insertRows = jest.fn().mockResolvedValue({
+			insertedCount: 3,
+			dataTableId: 'dt-new',
+			tableName: 'x',
+			projectId: 'p1',
+		});
 		mockGenerateSampleRows.mockResolvedValue([
 			{ input: 'q1', expected_output: 'a1' },
 			{ input: 'q2', expected_output: 'a2' },
@@ -254,14 +261,12 @@ describe('applyEvalSetup — datasetChoice="generate"', () => {
 		ctx.dataTableService.create = jest
 			.fn()
 			.mockResolvedValue({ id: 'dt-new', name: 'x', projectId: 'p1' });
-		ctx.dataTableService.insertRows = jest
-			.fn()
-			.mockResolvedValue({
-				insertedCount: 1,
-				dataTableId: 'dt-new',
-				tableName: 'x',
-				projectId: 'p1',
-			});
+		ctx.dataTableService.insertRows = jest.fn().mockResolvedValue({
+			insertedCount: 1,
+			dataTableId: 'dt-new',
+			tableName: 'x',
+			projectId: 'p1',
+		});
 		ctx.dataTableService.delete = jest.fn().mockResolvedValue(undefined);
 		mockGenerateSampleRows.mockResolvedValue([{ input: '', expected_output: '' }]);
 

@@ -2624,6 +2624,9 @@ export class InstanceAiService {
 			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
+			...(data.datasetChoice ? { datasetChoice: data.datasetChoice } : {}),
+			...(data.existingDataTableId ? { existingDataTableId: data.existingDataTableId } : {}),
+			...(data.enabledMetricIds ? { enabledMetricIds: data.enabledMetricIds } : {}),
 		};
 
 		void this.processResumedStream(agent, resumeData, {

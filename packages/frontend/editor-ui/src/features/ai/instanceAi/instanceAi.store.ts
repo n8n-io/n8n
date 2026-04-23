@@ -882,6 +882,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		},
 		answers?: InstanceAiConfirmResponse['answers'],
 		resourceDecision?: string,
+		evalsPropose?: {
+			datasetChoice?: InstanceAiConfirmResponse['datasetChoice'];
+			existingDataTableId?: string;
+			enabledMetricIds?: string[];
+		},
 	): Promise<boolean> {
 		try {
 			await postConfirmation(
@@ -896,6 +901,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				setupWorkflowData,
 				answers,
 				resourceDecision,
+				evalsPropose,
 			);
 			return true;
 		} catch {

@@ -1067,6 +1067,7 @@ describe('useInstanceAiStore - gateway resource-decision confirmation', () => {
 			undefined,
 			undefined,
 			'allowOnce',
+			undefined,
 		);
 	});
 
@@ -1086,6 +1087,7 @@ describe('useInstanceAiStore - gateway resource-decision confirmation', () => {
 			undefined,
 			undefined,
 			'allowForSession',
+			undefined,
 		);
 	});
 

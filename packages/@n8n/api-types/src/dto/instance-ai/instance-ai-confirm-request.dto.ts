@@ -25,4 +25,7 @@ export class InstanceAiConfirmRequestDto extends Z.class({
 		)
 		.optional(),
 	resourceDecision: z.string().optional(),
+	datasetChoice: z.enum(['generate', 'link-existing', 'later']).optional(),
+	existingDataTableId: z.string().optional(),
+	enabledMetricIds: z.array(z.string()).optional(),
 }) {}

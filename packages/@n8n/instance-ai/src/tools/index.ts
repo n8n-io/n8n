@@ -3,6 +3,7 @@ import type { InstanceAiContext, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
 import { createDataTablesTool } from './data-tables.tool';
+import { createEvalsTool } from './evals/evals.tool';
 import { createExecutionsTool } from './executions.tool';
 import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mcp-server';
 import { createNodesTool } from './nodes.tool';
@@ -30,6 +31,7 @@ import { createWorkspaceTool } from './workspace.tool';
 export function createAllTools(context: InstanceAiContext) {
 	return {
 		workflows: createWorkflowsTool(context),
+		evals: createEvalsTool(context),
 		executions: createExecutionsTool(context),
 		credentials: createCredentialsTool(context),
 		'data-tables': createDataTablesTool(context),
@@ -53,6 +55,7 @@ export function createAllTools(context: InstanceAiContext) {
 export function createOrchestratorDomainTools(context: InstanceAiContext) {
 	return {
 		workflows: createWorkflowsTool(context, 'orchestrator'),
+		evals: createEvalsTool(context),
 		executions: createExecutionsTool(context),
 		credentials: createCredentialsTool(context),
 		'data-tables': createDataTablesTool(context, 'orchestrator'),

@@ -59,9 +59,11 @@ export async function inferEvalShape(workflow: WorkflowJSON): Promise<EvalShape>
 			model: HAIKU_MODEL,
 			instructions: SYSTEM_INSTRUCTIONS,
 		});
-		const result = await agent.generate([{ role: 'user', content: buildUserPrompt(workflow) }]);
+		const result = await agent.generate([
+			{ role: 'user', content: [{ type: 'text', text: buildUserPrompt(workflow) }] },
+		]);
 		const text = extractText(result);
-		const parsed = JSON.parse(text);
+		const parsed: unknown = JSON.parse(text);
 		const validated = evalShapeSchema.safeParse(parsed);
 		if (!validated.success) return DEFAULT_EVAL_SHAPE;
 		return validated.data;

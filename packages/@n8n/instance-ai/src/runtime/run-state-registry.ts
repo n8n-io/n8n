@@ -43,6 +43,10 @@ export interface ConfirmationData {
 	}>;
 	/** User's resource-access decision (e.g. 'allowForSession'). */
 	resourceDecision?: string;
+	/** Eval-propose resume fields — forwarded to the `evals` tool. */
+	datasetChoice?: 'generate' | 'link-existing' | 'later';
+	existingDataTableId?: string;
+	enabledMetricIds?: string[];
 }
 
 export interface PendingConfirmation {

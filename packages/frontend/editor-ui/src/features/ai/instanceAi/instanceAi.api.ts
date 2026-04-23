@@ -108,6 +108,11 @@ export async function postConfirmation(
 	},
 	answers?: InstanceAiConfirmResponse['answers'],
 	resourceDecision?: string,
+	evalsPropose?: {
+		datasetChoice?: InstanceAiConfirmResponse['datasetChoice'];
+		existingDataTableId?: string;
+		enabledMetricIds?: string[];
+	},
 ): Promise<void> {
 	const payload: InstanceAiConfirmResponse = {
 		approved,
@@ -132,6 +137,11 @@ export async function postConfirmation(
 			: {}),
 		...(answers ? { answers } : {}),
 		...(resourceDecision ? { resourceDecision } : {}),
+		...(evalsPropose?.datasetChoice ? { datasetChoice: evalsPropose.datasetChoice } : {}),
+		...(evalsPropose?.existingDataTableId
+			? { existingDataTableId: evalsPropose.existingDataTableId }
+			: {}),
+		...(evalsPropose?.enabledMetricIds ? { enabledMetricIds: evalsPropose.enabledMetricIds } : {}),
 	};
 	await makeRestApiRequest(context, 'POST', `/instance-ai/confirm/${requestId}`, payload);
 }

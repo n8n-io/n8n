@@ -2,12 +2,12 @@ import type { InstanceAiEvalMetricProposal } from '@n8n/api-types';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
+import { generateSampleRows } from './generate-sample-rows.service';
 import {
 	findFirstProcessingNodeName,
 	findMainTriggerName,
 	findTerminalNodeNames,
 } from './graph-helpers';
-import { generateSampleRows } from './generate-sample-rows.service';
 import type { EvalShape } from './infer-eval-shape.service';
 import type { InstanceAiContext } from '../../types';
 
@@ -60,7 +60,7 @@ function resolveMetricsParameters(
 	enabledMetricIds: string[],
 	proposal: EvalShape,
 ): Record<string, unknown> {
-	const metrics: Record<string, unknown>[] = [];
+	const metrics: Array<Record<string, unknown>> = [];
 	for (const id of enabledMetricIds) {
 		const m = proposal.suggestedMetrics.find((p) => p.id === id);
 		if (!m) continue;

@@ -31,7 +31,10 @@ export async function generateSampleRows(
 			instructions: SYSTEM_INSTRUCTIONS,
 		});
 		const result = await agent.generate([
-			{ role: 'user', content: buildUserPrompt(workflow, columns, rowCount) },
+			{
+				role: 'user',
+				content: [{ type: 'text', text: buildUserPrompt(workflow, columns, rowCount) }],
+			},
 		]);
 		const text = extractText(result);
 		const parsed: unknown = JSON.parse(text);
@@ -44,7 +47,15 @@ export async function generateSampleRows(
 				typeof rawRow === 'object' && rawRow !== null ? (rawRow as Record<string, unknown>) : {};
 			for (const col of columns) {
 				const v = entries[col];
-				row[col] = v === undefined || v === null ? '' : String(v);
+				if (v === undefined || v === null) {
+					row[col] = '';
+				} else if (typeof v === 'string') {
+					row[col] = v;
+				} else if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') {
+					row[col] = String(v);
+				} else {
+					row[col] = JSON.stringify(v);
+				}
 			}
 			return row;
 		});
