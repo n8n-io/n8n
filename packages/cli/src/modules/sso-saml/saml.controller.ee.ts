@@ -22,7 +22,7 @@ import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedMiddleware,
 } from './middleware/saml-enabled-middleware';
-import { isConnectionTestRequest } from './saml-helpers';
+import { extractTestIdFromRelayState, isConnectionTestRequest } from './saml-helpers';
 import { SamlService } from './saml.service.ee';
 import {
 	getServiceProviderConfigTestReturnUrl,
@@ -129,7 +129,14 @@ export class SamlController {
 		payload: SamlAcsDto = {},
 	) {
 		try {
-			const loginResult = await this.samlService.handleSamlLogin(req, binding);
+			let metadataOverride: string | undefined;
+			if (isConnectionTestRequest(payload)) {
+				const testId = extractTestIdFromRelayState(payload.RelayState);
+				if (testId) {
+					metadataOverride = await this.samlService.consumePendingTestConfig(testId);
+				}
+			}
+			const loginResult = await this.samlService.handleSamlLogin(req, binding, metadataOverride);
 			// if RelayState is set to the test connection Url, this is a test connection
 			if (isConnectionTestRequest(payload)) {
 				if (loginResult.authenticatedUser) {
@@ -213,29 +220,44 @@ export class SamlController {
 	/**
 	 * Test SAML config
 	 * Accepts metadata from the request body so testing works without saving first.
+	 * The metadata is cached for the duration of the test round-trip and looked up
+	 * at the ACS endpoint using a token embedded in the RelayState.
 	 * This endpoint is available if SAML is licensed and the requestor is an instance owner.
 	 */
 	@Post('/config/test', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
 	async configTestPost(_req: AuthenticatedRequest, res: Response, @Body payload: SamlPreferences) {
-		return await this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl(), payload);
-	}
+		let metadata: string | undefined = payload.metadata;
+		if (!metadata && payload.metadataUrl) {
+			metadata =
+				(await this.samlService.fetchMetadataFromUrl(payload.metadataUrl, payload.ignoreSSL)) ??
+				undefined;
+		}
 
-	private async handleInitSSO(res: Response, relayState?: string, config?: SamlPreferences) {
-		let metadata: string | undefined;
-		if (config) {
-			metadata = config.metadata;
-			if (!metadata && config.metadataUrl) {
-				metadata =
-					(await this.samlService.fetchMetadataFromUrl(config.metadataUrl, config.ignoreSSL)) ?? '';
-			}
+		let relayState = getServiceProviderConfigTestReturnUrl();
+		if (metadata) {
+			const testId = await this.samlService.storePendingTestConfig(metadata);
+			const relayStateUrl = new URL(relayState);
+			relayStateUrl.searchParams.set('t', testId);
+			relayState = relayStateUrl.toString();
 		}
 
 		const result = await this.samlService.getLoginRequestUrl(
 			relayState,
-			config?.loginBinding,
+			payload.loginBinding,
 			metadata,
 		);
+		if (result?.binding === 'redirect') {
+			return result.context.context;
+		} else if (result?.binding === 'post') {
+			return res.send(getInitSSOFormView(result.context as PostBindingContext));
+		} else {
+			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
+		}
+	}
+
+	private async handleInitSSO(res: Response, relayState?: string) {
+		const result = await this.samlService.getLoginRequestUrl(relayState);
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {

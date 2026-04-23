@@ -4163,6 +4163,8 @@
 	"dataTable.addRow.label": "Add Row",
 	"dataTable.addRow.error": "Error adding row",
 	"dataTable.updateRow.error": "Error updating row",
+	"dataTable.updateRow.numberPrecisionWarning.title": "Number precision may be lost",
+	"dataTable.updateRow.numberPrecisionWarning.message": "Values above 9,007,199,254,740,991 can lose precision. Store large numbers as text if you need exact values.",
 	"dataTable.deleteRows.title": "Delete Rows",
 	"dataTable.deleteRows.confirmation": "Are you sure you want to delete {count} row? | Are you sure you want to delete {count} rows?",
 	"dataTable.deleteRows.error": "Error deleting rows",
