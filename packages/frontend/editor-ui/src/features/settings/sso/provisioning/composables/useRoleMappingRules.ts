@@ -33,6 +33,7 @@ export function useRoleMappingRules() {
 	const isDirty = ref(false);
 
 	let serverRuleIds = new Set<string>();
+	let serverProjectRuleIds = new Set<string>();
 
 	let fallbackInitialized = false;
 	watch(fallbackInstanceRole, () => {
@@ -111,15 +112,37 @@ export function useRoleMappingRules() {
 			instanceRules.value = allRules.filter((r) => r.type === 'instance');
 			projectRules.value = allRules.filter((r) => r.type === 'project');
 			serverRuleIds = new Set(allRules.map((r) => r.id));
+			serverProjectRuleIds = new Set(allRules.filter((r) => r.type === 'project').map((r) => r.id));
 			isDirty.value = false;
 		} finally {
 			isLoading.value = false;
 		}
 	}
 
+	function discardProjectRules() {
+		projectRules.value = [];
+		for (const id of serverProjectRuleIds) {
+			serverRuleIds.delete(id);
+		}
+		serverProjectRuleIds = new Set();
+	}
+
 	async function save() {
 		isLoading.value = true;
 		try {
+			// Defensive re-sync: the server may have removed rules between the
+			// last loadRules() and now (for example, a provisioning config
+			// patch with deleteProjectRules=true wipes all project rules).
+			// Dropping those stale IDs from the local tracking sets prevents
+			// editor.save() from issuing PATCH/DELETE calls against rules that
+			// no longer exist — which would return 404.
+			const freshServerRules = await api.listRules();
+			const freshServerIds = new Set(freshServerRules.map((r) => r.id));
+			serverRuleIds = new Set([...serverRuleIds].filter((id) => freshServerIds.has(id)));
+			serverProjectRuleIds = new Set(
+				[...serverProjectRuleIds].filter((id) => freshServerIds.has(id)),
+			);
+
 			const allLocalRules = [...instanceRules.value, ...projectRules.value];
 			const localRuleIds = new Set(allLocalRules.map((r) => r.id));
 
@@ -167,5 +190,6 @@ export function useRoleMappingRules() {
 		reorder,
 		loadRules,
 		save,
+		discardProjectRules,
 	};
 }

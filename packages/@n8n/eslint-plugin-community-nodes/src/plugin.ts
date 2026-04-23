@@ -43,6 +43,7 @@ const configs = {
 			'@n8n/community-nodes/require-continue-on-fail': 'error',
 			'@n8n/community-nodes/require-node-api-error': 'error',
 			'@n8n/community-nodes/require-node-description-fields': 'error',
+			'@n8n/community-nodes/webhook-lifecycle-complete': 'error',
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
@@ -72,6 +73,7 @@ const configs = {
 			'@n8n/community-nodes/require-continue-on-fail': 'error',
 			'@n8n/community-nodes/require-node-api-error': 'error',
 			'@n8n/community-nodes/require-node-description-fields': 'error',
+			'@n8n/community-nodes/webhook-lifecycle-complete': 'error',
 		},
 	},
 } satisfies Record<string, Linter.Config>;
