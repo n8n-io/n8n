@@ -205,6 +205,26 @@ describe('NodeCreator - utils', () => {
 				const result = filterAndSearchNodes(aiToolNodes, '', true);
 				expect(result).toEqual([]);
 			});
+
+			test('skips nodes with expression-string outputs without throwing', () => {
+				const nodesWithExpressionOutputs: SimplifiedNodeType[] = [
+					{
+						displayName: 'Dynamic Outputs Node',
+						defaults: { name: 'Dynamic' },
+						description: 'Node with dynamically computed outputs',
+						name: 'n8n-nodes-preview-dynamic.dynamic',
+						group: ['transform'],
+						// INodeTypeDescription.outputs can be an expression string, not an array
+						outputs:
+							'={{ $parameter["mode"] === "tool" ? ["ai_tool"] : ["main"] }}' as unknown as SimplifiedNodeType['outputs'],
+					},
+					...aiToolNodes,
+				];
+
+				const result = filterAndSearchNodes(nodesWithExpressionOutputs, 'dynamic', true);
+
+				expect(result).toEqual([]);
+			});
 		});
 	});
 	describe('prepareCommunityNodeDetailsViewStack', () => {
