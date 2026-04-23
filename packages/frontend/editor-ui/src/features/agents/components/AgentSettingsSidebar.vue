@@ -13,8 +13,11 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import type { AgentResource, AgentJsonConfig } from '../types';
+import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { CustomToolEntry } from '../agent.types';
+import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
+import { getExistingToolNames, replaceToolRefInList } from '../composables/useAgentToolRefAdapter';
+import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import {
 	CHATHUB_TO_CATALOG,
 	CATALOG_TO_CHATHUB,
@@ -26,12 +29,7 @@ import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentIntegrationsPanel from './AgentIntegrationsPanel.vue';
 import AgentConfigJsonEditor from './AgentConfigJsonEditor.vue';
 import AgentCustomToolsList from './AgentCustomToolsList.vue';
-
-const toolCount = computed(() => Object.keys(props.agentTools).length);
-
-const locale = useI18n();
-const usersStore = useUsersStore();
-const chatStore = useChatStore();
+import { useUIStore } from '@/app/stores/ui.store';
 
 const props = defineProps<{
 	config: AgentJsonConfig | null;
@@ -54,6 +52,13 @@ const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 }>();
+
+const toolCount = computed(() => Object.keys(props.agentTools).length);
+
+const locale = useI18n();
+const usersStore = useUsersStore();
+const chatStore = useChatStore();
+const uiStore = useUIStore();
 
 // --- Model & credential state (reusing ChatHub infrastructure) ---
 const { credentialsByProvider, selectCredential } = useChatCredentials(
@@ -172,6 +177,36 @@ function onInstructionsChange(value: string) {
 	emit('update:config', { instructions: value });
 }
 
+const toolTelemetry = useAgentToolTelemetry(props.agentId);
+
+function openToolConfigModal(toolRef: AgentJsonToolRef) {
+	uiStore.openModalWithData({
+		name: AGENT_TOOL_CONFIG_MODAL_KEY,
+		data: {
+			toolRef,
+			existingToolNames: getExistingToolNames(
+				(props.config?.tools ?? []) as AgentJsonToolRef[],
+				toolRef,
+			),
+			onConfirm: (updatedRef: AgentJsonToolRef) => {
+				// Read the latest tools at confirm time — the array may have been
+				// recreated while the modal was open. `replaceToolRefInList`
+				// matches by stable `id` with a reference fallback, so edits land
+				// on the right ref without clobbering concurrent additions.
+				const latestTools = (props.config?.tools ?? []) as AgentJsonToolRef[];
+				emit('update:config', {
+					tools: replaceToolRefInList(latestTools, toolRef, updatedRef),
+				});
+				toolTelemetry.trackEdited(updatedRef);
+			},
+		},
+	});
+}
+
+function onSidebarToolRemoved(toolRef: AgentJsonToolRef) {
+	toolTelemetry.trackRemoved(toolRef);
+}
+
 // --- Collapsible sections ---
 const expandedSections = ref<Record<string, boolean>>({
 	triggers: false,
@@ -183,6 +218,36 @@ const expandedSections = ref<Record<string, boolean>>({
 
 function toggleSection(section: string) {
 	expandedSections.value[section] = !expandedSections.value[section];
+}
+
+// Auto-expand "Tools" once if the agent already has configured tools — users
+// shouldn't need to click to see what's there. Only fires on the first
+// transition to >0 so manual collapse afterwards sticks.
+let autoExpandedTools = false;
+watch(
+	() => (props.config?.tools ?? []).length,
+	(count) => {
+		if (!autoExpandedTools && count > 0) {
+			expandedSections.value.tools = true;
+			autoExpandedTools = true;
+		}
+	},
+	{ immediate: true },
+);
+
+// Integrations status is async — `AgentIntegrationsPanel` fetches on mount
+// and emits `update:connected-triggers` with the current list. Mirror the
+// one-shot auto-expand behaviour: expand "Triggers" the first time we learn
+// the agent has any connected integration, and don't force it re-open on
+// later state changes. The list itself is also re-emitted upward so the
+// builder view can telemetry-track config edits.
+let autoExpandedTriggers = false;
+function onTriggerConnectedTriggers(triggers: string[]) {
+	if (!autoExpandedTriggers && triggers.length > 0) {
+		expandedSections.value.triggers = true;
+		autoExpandedTriggers = true;
+	}
+	emit('update:connected-triggers', triggers);
 }
 
 // Auto-expand the config editor while the builder is actively writing to it.
@@ -285,14 +350,18 @@ watch(
 							}}</N8nText>
 						</div>
 					</button>
-					<div v-if="expandedSections.triggers" :class="$style.sectionContent">
+					<!--
+						v-show (not v-if) so the integrations panel mounts + fetches even
+						while the section is collapsed. That lets it emit `connected-count`
+						so the sidebar can auto-expand the section on load when the agent
+						already has integrations configured.
+					-->
+					<div v-show="expandedSections.triggers" :class="$style.sectionContent">
 						<AgentIntegrationsPanel
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
-							@update:connected-triggers="
-								(list: string[]) => emit('update:connected-triggers', list)
-							"
+							@update:connected-triggers="onTriggerConnectedTriggers"
 							@trigger-added="(payload) => emit('trigger-added', payload)"
 						/>
 					</div>
@@ -316,6 +385,8 @@ watch(
 							:config="config"
 							:agent-tools="agentTools"
 							@update:config="(changes) => emit('update:config', changes)"
+							@configure="openToolConfigModal"
+							@remove="onSidebarToolRemoved"
 						/>
 					</div>
 				</div>

@@ -135,6 +135,10 @@ export function nodeTypeToNewToolRef(nodeType: INodeTypeDescription): AgentJsonT
 	const version = pickLatestVersion(nodeType.version);
 	return {
 		type: 'node',
+		// Stable id assigned on creation so the modal's `onConfirm` callback can
+		// locate this ref in the current tools array by identity, even if the
+		// array has been rebuilt by an intervening reactive update.
+		id: uuidv4(),
 		// Display name may carry the " Tool" suffix the variant adds — strip it
 		// so the sidebar + config modal show the service name, not "Slack Tool".
 		name: nodeType.displayName.replace(/ Tool$/, ''),
@@ -153,9 +157,96 @@ export function nodeTypeToNewToolRef(nodeType: INodeTypeDescription): AgentJsonT
 	};
 }
 
-/** Merge edits made to an `INode` back into the original ref (preserving extra fields). */
+/**
+ * Walk `nodeParameters` (recursively, including arrays + objects) and collect
+ * every `$fromAI(key, description?, type?)` expression the user has planted via
+ * the "Let AI define this parameter" override. Returns the JSON Schema the LLM
+ * should receive for the tool — or `null` if no overrides are present.
+ *
+ * The override is written into the parameter as an n8n expression, e.g.
+ * `={{ $fromAI('channel', 'Slack channel id', 'string') }}`. At runtime the
+ * LangChain side parses that same form; we parse it at config-save time so
+ * `ref.inputSchema` stays in lockstep with `ref.node.nodeParameters` and the
+ * model is told the exact arg shape it's expected to supply.
+ */
+export function extractFromAIInputSchema(
+	nodeParameters: Record<string, unknown>,
+): Record<string, unknown> | null {
+	type Prop = { type: string; description?: string };
+	const properties: Record<string, Prop> = {};
+	const required: string[] = [];
+
+	// $fromAI('key', 'description', 'type', default?)
+	//  - key is required, must be a bare identifier (JSON property name)
+	//  - description + type + default are optional
+	//  - type is one of string | number | boolean | json; maps to JSON Schema types
+	// Allows either single or double quotes, and extra whitespace.
+	const FROM_AI_REGEX =
+		/\$fromAI\s*\(\s*['"]([^'"]+)['"](?:\s*,\s*['"]([^'"]*)['"])?(?:\s*,\s*['"]?(string|number|boolean|json)['"]?)?/g;
+
+	function toJsonSchemaType(raw: string | undefined): string {
+		switch (raw) {
+			case 'number':
+				return 'number';
+			case 'boolean':
+				return 'boolean';
+			case 'json':
+				return 'object';
+			default:
+				return 'string';
+		}
+	}
+
+	function walk(value: unknown): void {
+		if (typeof value === 'string' && value.includes('$fromAI')) {
+			// `lastIndex` must reset per string to avoid the regex skipping matches
+			// after prior invocations.
+			FROM_AI_REGEX.lastIndex = 0;
+			let match: RegExpExecArray | null;
+			while ((match = FROM_AI_REGEX.exec(value)) !== null) {
+				const [, key, description, type] = match;
+				if (!key || properties[key]) continue;
+				properties[key] = {
+					type: toJsonSchemaType(type),
+					...(description ? { description } : {}),
+				};
+				required.push(key);
+			}
+			return;
+		}
+		if (Array.isArray(value)) {
+			for (const item of value) walk(item);
+			return;
+		}
+		if (value !== null && typeof value === 'object') {
+			for (const v of Object.values(value)) walk(v);
+		}
+	}
+
+	walk(nodeParameters);
+
+	if (required.length === 0) return null;
+
+	return {
+		type: 'object',
+		properties,
+		required,
+	};
+}
+
+/**
+ * Merge edits made to an `INode` back into the original ref (preserving extra
+ * fields). `inputSchema` is always regenerated from the `$fromAI` overrides
+ * found in the new parameters — or reset to an empty object when none remain.
+ * Leaving a stale `$fromAI`-derived schema in place after the user cleared all
+ * overrides would mislead the LLM; resetting lets the backend's
+ * `resolveInputSchema` re-introspect at tool-registration time, which
+ * regenerates the native-tool seed or the MCP-introspected shape.
+ */
 export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): AgentJsonToolRef {
 	if (original.type !== 'node' || !original.node) return original;
+
+	const derivedSchema = extractFromAIInputSchema(node.parameters as Record<string, unknown>);
 
 	return {
 		...original,
@@ -167,6 +258,7 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
 			nodeParameters: node.parameters as Record<string, unknown>,
 			credentials: toConfigCredentials(node.credentials),
 		},
+		inputSchema: derivedSchema ?? { type: 'object', properties: {} },
 	};
 }
 
@@ -179,11 +271,32 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
 export function workflowToNewToolRef(workflow: IWorkflowDb): AgentJsonToolRef {
 	return {
 		type: 'workflow',
+		// Stable id: see `nodeTypeToNewToolRef` for rationale.
+		id: uuidv4(),
 		workflow: workflow.name,
 		name: workflow.name,
 		description: workflow.description ?? '',
 		allOutputs: false,
 	};
+}
+
+/**
+ * Replace a tool ref in a list, identifying it by its stable `id` when
+ * available and falling back to reference equality for legacy refs created
+ * before ids were assigned. Relying purely on reference equality is brittle
+ * when the tools array can be rebuilt between open-time and confirm-time of
+ * the config modal (e.g. another reactive update landing mid-edit) — every
+ * element then has a fresh reference and the map would silently no-op.
+ */
+export function replaceToolRefInList(
+	tools: AgentJsonToolRef[],
+	target: AgentJsonToolRef,
+	replacement: AgentJsonToolRef,
+): AgentJsonToolRef[] {
+	if (target.id) {
+		return tools.map((t) => (t.id === target.id ? replacement : t));
+	}
+	return tools.map((t) => (t === target ? replacement : t));
 }
 
 /**
