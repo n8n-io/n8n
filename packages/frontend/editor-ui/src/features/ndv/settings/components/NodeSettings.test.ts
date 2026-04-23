@@ -61,10 +61,12 @@ const renderNodeSettings = (runData?: IRunData) => {
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = useWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStoreId = createWorkflowDocumentId(workflow.id);
-	const ndvStore = useNDVStore(ndvStoreId);
+	const documentId = createWorkflowDocumentId(workflow.id);
+	const ndvStore = useNDVStore(documentId);
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 
-	workflowsStore.setWorkflow(workflow);
+	workflowDocumentStore.hydrate(workflow);
+	workflowsStore.setWorkflowId(workflow.id);
 	nodeTypesStore.setNodeTypes([httpNodeType]);
 	ndvStore.activeNodeName = httpNode.name;
 	vi.mocked(injectNDVStore).mockReturnValue(ndvStore);

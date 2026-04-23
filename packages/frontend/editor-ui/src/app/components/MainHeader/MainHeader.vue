@@ -266,7 +266,7 @@ async function onWorkflowDeactivated() {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
 			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
-			workflowsStore.setWorkflow(updatedWorkflow);
+			workflowDocumentStore?.value?.hydrate(updatedWorkflow);
 			toast.showToast({
 				title: locale.baseText('mcp.workflowDeactivated.title'),
 				message: locale.baseText('mcp.workflowDeactivated.message'),

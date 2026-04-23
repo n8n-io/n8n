@@ -51,8 +51,8 @@ export interface CredentialResolutionResult {
  *
  * `newCredential()` produces `NewCredentialImpl` which serializes to `undefined`
  * in `toJSON()`. Resolution strategy (in order):
- * 1. Match by credential type from the credential map (orchestrator = source of truth)
- * 2. Restore from the existing workflow (for update flows)
+ * 1. Restore from the existing workflow (preserve the user's chosen credential on updates)
+ * 2. Match by credential type from the credential map (fallback for new nodes)
  * 3. Mock: remove the credential key and produce sidecar verification pin data
  *
  * Mocked credentials produce verification-only pin data that is returned separately
@@ -95,18 +95,22 @@ export async function resolveCredentials(
 		for (const [key, value] of Object.entries(creds)) {
 			if (value !== undefined && value !== null) continue;
 
-			// Try 1: look up by credential type from the map (e.g., key="openAiApi")
-			const fromMap = credentialMap.get(key);
-			if (fromMap) {
-				creds[key] = fromMap;
+			// Try 1: restore from existing workflow (preserves the user's chosen credential
+			// when the LLM drops the id during an edit — e.g., emits newCredential('name')
+			// without the id, which serializes to undefined).
+			const existingCreds = node.name ? existingCredsByNode.get(node.name) : undefined;
+			if (existingCreds?.[key]) {
+				creds[key] = existingCreds[key];
 				cleanupMockPinData(json, node.name);
 				continue;
 			}
 
-			// Try 2: restore from existing workflow (for nodes that already existed)
-			const existingCreds = node.name ? existingCredsByNode.get(node.name) : undefined;
-			if (existingCreds?.[key]) {
-				creds[key] = existingCreds[key];
+			// Try 2: look up by credential type from the map (fallback for new nodes).
+			// Note: the map only stores one credential per type, so when multiple
+			// credentials of the same type exist this is an arbitrary pick.
+			const fromMap = credentialMap.get(key);
+			if (fromMap) {
+				creds[key] = fromMap;
 				cleanupMockPinData(json, node.name);
 				continue;
 			}

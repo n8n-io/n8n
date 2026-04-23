@@ -1433,7 +1433,7 @@ const { width } = useElementSize(credNameRef);
 						:class="$style.saveButton"
 						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
 						:is-saving="isSaving || isTesting"
-						:saved="false"
+						:saved="!hasUnsavedChanges && !isTesting && !!credentialId"
 						:saving-label="
 							isTesting
 								? i18n.baseText('credentialEdit.credentialEdit.testing')

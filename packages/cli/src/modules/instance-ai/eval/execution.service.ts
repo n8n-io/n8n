@@ -48,8 +48,8 @@ import { createLlmMockHandler } from './mock-handler';
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Maximum number of output items to include per node in the result */
-const MAX_OUTPUT_ITEMS_PER_NODE = 5;
+/** Max output items per node kept in the artifact. The full count lives in `outputCount`. */
+const MAX_OUTPUT_ITEMS_PER_NODE = 10;
 
 // ---------------------------------------------------------------------------
 // Service
@@ -438,10 +438,9 @@ export class EvalExecutionService {
 			}
 			if (lastRun?.data?.main) {
 				// Capture output from all branches (Switch/IF nodes have multiple outputs)
-				const allOutputs = lastRun.data.main
-					.flat()
-					.filter(Boolean)
-					.slice(0, MAX_OUTPUT_ITEMS_PER_NODE);
+				const flattened = lastRun.data.main.flat().filter(Boolean);
+				entry.outputCount = flattened.length;
+				const allOutputs = flattened.slice(0, MAX_OUTPUT_ITEMS_PER_NODE);
 				if (allOutputs.length > 0) {
 					entry.output = allOutputs;
 				}

@@ -131,7 +131,6 @@ import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
@@ -201,8 +200,6 @@ const collaborationStore = useCollaborationStore();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const chatPanelStore = useChatPanelStore();
 const chatHubPanelStore = useChatHubPanelStore();
-
-const workflowState = injectWorkflowState();
 
 // Initialize activity detection for collaboration
 useActivityDetection();
@@ -1697,7 +1694,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 				await router.push(to);
 				return false;
 			}
-			workflowState.setWorkflowId('');
+			workflowsStore.setWorkflowId('');
 			return true;
 		},
 	});

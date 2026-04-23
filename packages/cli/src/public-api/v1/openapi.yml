@@ -134,6 +134,8 @@ paths:
     $ref: './handlers/insights/spec/paths/insights.yml'
   /projects/{projectId}/folders:
     $ref: './handlers/folders/spec/paths/folders.yml'
+  /projects/{projectId}/folders/{folderId}:
+    $ref: './handlers/folders/spec/paths/folders.folderId.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'
