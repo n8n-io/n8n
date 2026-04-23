@@ -102,6 +102,16 @@ describe('ExpressionEngineConfig', () => {
 			expect(Container.get(ExpressionEngineConfig).slowEvaluationThresholdMs).toBe(100);
 		});
 
+		test('N8N_EXPRESSION_ENGINE_SLOW_EVAL_THRESHOLD_MS falls back to default on non-positive value', () => {
+			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+			jest.replaceProperty(process, 'env', {
+				N8N_EXPRESSION_ENGINE_SLOW_EVAL_THRESHOLD_MS: '0',
+			});
+			expect(Container.get(ExpressionEngineConfig).slowEvaluationThresholdMs).toBe(50);
+			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
+
 		test('N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE overrides sample rate', () => {
 			jest.replaceProperty(process, 'env', {
 				N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE: '0.25',
