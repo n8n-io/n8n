@@ -638,7 +638,10 @@ export class InstanceAiController {
 			res.flush?.();
 		}, KEEP_ALIVE_INTERVAL_MS);
 
+		let cleanedUp = false;
 		const cleanup = () => {
+			if (cleanedUp) return;
+			cleanedUp = true;
 			unsubscribeRequest();
 			unsubscribeDisconnect();
 			clearInterval(keepAlive);

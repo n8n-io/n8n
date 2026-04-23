@@ -288,16 +288,20 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	 * can re-pair via the setup modal.
 	 */
 	async function disconnectComputerUse(): Promise<void> {
+		try {
+			await disconnectGatewaySession(rootStore.restApiContext);
+		} catch {
+			toast.showError(
+				new Error(i18n.baseText('instanceAi.connections.disconnectError.message')),
+				i18n.baseText('instanceAi.connections.disconnectError.title'),
+			);
+			return;
+		}
 		clearGatewayEverConnected();
 		gatewayConnected.value = false;
 		gatewayToolCategories.value = [];
 		gatewayDirectory.value = null;
 		gatewayHostIdentifier.value = null;
-		try {
-			await disconnectGatewaySession(rootStore.restApiContext);
-		} catch {
-			toast.showError(new Error('Failed to disconnect gateway'), 'Gateway disconnect failed');
-		}
 	}
 
 	/** Destructive: disables the user preference and removes the row from the list. */

@@ -111,9 +111,8 @@ function onCommandScroll(e: Event) {
 }
 
 async function copyCommand() {
-	if (!store.setupCommand) return;
 	try {
-		await navigator.clipboard.writeText(store.setupCommand);
+		await navigator.clipboard.writeText(displayCommand.value);
 		copied.value = true;
 		setTimeout(() => {
 			copied.value = false;
