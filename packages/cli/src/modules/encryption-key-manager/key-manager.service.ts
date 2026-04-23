@@ -83,13 +83,17 @@ export class KeyManagerService {
 	 * Encrypts the given plaintext value with the instance encryption key and inserts
 	 * it as a new deployment key row. If setAsActive, atomically deactivates the
 	 * previous active key; otherwise the new key is inserted as inactive.
+	 *
+	 * Data-encryption keys must always be wrapped with the instance key — never with
+	 * the currently active data key — which is why this goes through
+	 * `encryptWithInstanceKey` rather than the generic `encrypt`.
 	 */
 	async addKey(
 		plaintextValue: string,
 		algorithm: CipherAlgorithm,
 		setAsActive = false,
 	): Promise<DeploymentKey> {
-		const encryptedValue = this.cipher.encrypt(plaintextValue);
+		const encryptedValue = this.cipher.encryptWithInstanceKey(plaintextValue);
 
 		if (!setAsActive) {
 			const entity = this.deploymentKeyRepository.create({

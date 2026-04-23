@@ -121,11 +121,11 @@ describe('KeyManagerService', () => {
 			const saved = makeKey({ id: 'new-key', status: 'inactive' });
 			repository.create.mockReturnValue(saved);
 			repository.save.mockResolvedValue(saved);
-			cipher.encrypt.mockReturnValue('encrypted-base64');
+			cipher.encryptWithInstanceKey.mockReturnValue('encrypted-base64');
 
 			const result = await Container.get(KeyManagerService).addKey('secret', 'aes-256-gcm');
 
-			expect(cipher.encrypt).toHaveBeenCalledWith('secret');
+			expect(cipher.encryptWithInstanceKey).toHaveBeenCalledWith('secret');
 			expect(repository.insertAsActive).not.toHaveBeenCalled();
 			expect(repository.create).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -141,11 +141,11 @@ describe('KeyManagerService', () => {
 			const saved = makeKey({ id: 'new-key', status: 'active' });
 			repository.create.mockReturnValue(saved);
 			repository.insertAsActive.mockResolvedValue(saved);
-			cipher.encrypt.mockReturnValue('encrypted-base64');
+			cipher.encryptWithInstanceKey.mockReturnValue('encrypted-base64');
 
 			const result = await Container.get(KeyManagerService).addKey('secret', 'aes-256-gcm', true);
 
-			expect(cipher.encrypt).toHaveBeenCalledWith('secret');
+			expect(cipher.encryptWithInstanceKey).toHaveBeenCalledWith('secret');
 			expect(repository.save).not.toHaveBeenCalled();
 			expect(repository.create).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -164,12 +164,12 @@ describe('KeyManagerService', () => {
 			const saved = makeKey({ id: 'rotated', status: 'active', algorithm: 'aes-256-gcm' });
 			repository.create.mockReturnValue(saved);
 			repository.insertAsActive.mockResolvedValue(saved);
-			cipher.encrypt.mockReturnValue('encrypted-base64');
+			cipher.encryptWithInstanceKey.mockReturnValue('encrypted-base64');
 
 			const result = await Container.get(KeyManagerService).rotateKey();
 
-			expect(cipher.encrypt).toHaveBeenCalledTimes(1);
-			const [rawKey] = cipher.encrypt.mock.calls[0];
+			expect(cipher.encryptWithInstanceKey).toHaveBeenCalledTimes(1);
+			const [rawKey] = cipher.encryptWithInstanceKey.mock.calls[0];
 			expect(typeof rawKey).toBe('string');
 			expect((rawKey as string).length).toBe(64);
 
@@ -188,13 +188,15 @@ describe('KeyManagerService', () => {
 			const saved = makeKey();
 			repository.create.mockReturnValue(saved);
 			repository.insertAsActive.mockResolvedValue(saved);
-			cipher.encrypt.mockImplementation((data: string | object) => `enc:${String(data)}`);
+			cipher.encryptWithInstanceKey.mockImplementation(
+				(data: string | object) => `enc:${String(data)}`,
+			);
 
 			await Container.get(KeyManagerService).rotateKey();
 			await Container.get(KeyManagerService).rotateKey();
 
-			const [first] = cipher.encrypt.mock.calls[0];
-			const [second] = cipher.encrypt.mock.calls[1];
+			const [first] = cipher.encryptWithInstanceKey.mock.calls[0];
+			const [second] = cipher.encryptWithInstanceKey.mock.calls[1];
 			expect(first).not.toBe(second);
 		});
 	});
