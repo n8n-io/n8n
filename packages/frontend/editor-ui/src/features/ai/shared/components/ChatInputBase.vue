@@ -4,16 +4,24 @@ import { N8nIconButton, N8nInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
 
-const props = defineProps<{
-	modelValue: string;
-	placeholder?: string;
-	isStreaming: boolean;
-	canSubmit: boolean;
-	disabled?: boolean;
-	showVoice?: boolean;
-	showAttach?: boolean;
-	acceptedMimeTypes?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		modelValue: string;
+		placeholder?: string;
+		isStreaming: boolean;
+		canSubmit: boolean;
+		disabled?: boolean;
+		showVoice?: boolean;
+		showAttach?: boolean;
+		acceptedMimeTypes?: string;
+		autosize?: boolean | { minRows: number; maxRows: number };
+	}>(),
+	{
+		placeholder: undefined,
+		acceptedMimeTypes: undefined,
+		autosize: () => ({ minRows: 2, maxRows: 6 }),
+	},
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
@@ -122,14 +130,13 @@ defineExpose({
 		/>
 
 		<slot name="attachments" />
-
 		<N8nInput
 			ref="inputRef"
 			:model-value="modelValue"
 			type="textarea"
 			:placeholder="placeholder"
 			autocomplete="off"
-			:autosize="{ minRows: 1, maxRows: 6 }"
+			:autosize="autosize"
 			:disabled="disabled"
 			@update:model-value="emit('update:modelValue', $event)"
 			@keydown="handleKeydown"

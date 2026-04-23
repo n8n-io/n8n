@@ -58,9 +58,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 export const useActions = () => {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -288,7 +286,7 @@ export const useActions = () => {
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 		if (!isCompatibleNode) return false;
 
-		const allNodes = workflowDocumentStore?.value?.allNodes ?? [];
+		const allNodes = workflowDocumentStore.value.allNodes;
 		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
 
@@ -391,7 +389,7 @@ export const useActions = () => {
 		const storeWatcher = onWorkflowStoreAction(({ name, after, args }) => {
 			if (name !== 'addNode' || args[0].type !== action.key) return;
 			after(() => {
-				workflowDocumentStore?.value?.setLastNodeParameters(action);
+				workflowDocumentStore.value.setLastNodeParameters(action);
 				if (telemetry) trackActionSelected(action, telemetry, rootView);
 				// Unsubscribe from the store watcher
 				storeWatcher();

@@ -1,3 +1,4 @@
+export { MAX_STEPS } from './constants/max-steps';
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
 export { generateCompactionSummary } from './compaction';
@@ -49,7 +50,7 @@ export type {
 	ThreadPatch,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
-export { truncateToTitle, generateThreadTitle } from './memory/title-utils';
+export { truncateToTitle, generateTitleForRun } from './memory/title-utils';
 export { McpClientManager } from './mcp/mcp-client-manager';
 export { mapMastraChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';

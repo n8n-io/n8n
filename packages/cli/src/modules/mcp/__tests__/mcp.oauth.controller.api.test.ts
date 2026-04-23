@@ -207,6 +207,33 @@ describe('POST /mcp-oauth/register', () => {
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 	});
 
+	test('should reject registration when client_name is missing', async () => {
+		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code'],
+		});
+
+		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+	});
+
+	test('should reject registration when grant_types is missing', async () => {
+		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Test Client',
+			redirect_uris: ['https://example.com/callback'],
+		});
+
+		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+	});
+
+	test('should reject registration when redirect_uris is missing', async () => {
+		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Test Client',
+			grant_types: ['authorization_code'],
+		});
+
+		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+	});
+
 	test('should reject registration when MCP access is disabled', async () => {
 		await mcpSettingsService.setEnabled(false);
 

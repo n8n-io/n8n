@@ -5,9 +5,8 @@ import type {
 	INodeIssueObjectProperty,
 	INodeParameters,
 	INodeTypeDescription,
-	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -21,6 +20,7 @@ import isEqual from 'lodash/isEqual';
 import findLast from 'lodash/findLast';
 import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
+import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 
 // --- Event types ---
 
@@ -33,6 +33,7 @@ export type NodesChangeEvent = ChangeEvent<NodeAddedPayload> | ChangeEvent<NodeR
 
 export interface WorkflowDocumentNodesDeps {
 	getNodeType: (typeName: string, version?: number) => INodeTypeDescription | null;
+	nodeMetadata: ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 }
 
 // --- Composable ---
@@ -79,10 +80,16 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function applySetNodes(nodes: INodeUi[]) {
 		workflowsStore.setNodes(nodes);
+		// setNodes replaces the full node list, so reset metadata to match
+		deps.nodeMetadata.setAllNodeMetadata({});
+		for (const node of nodes) {
+			deps.nodeMetadata.initPristineNodeMetadata(node.name);
+		}
 	}
 
 	function applyAddNode(node: INodeUi) {
 		workflowsStore.addNode(node);
+		deps.nodeMetadata.initNodeMetadata(node.name);
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.ADD,
 			payload: { node },
@@ -92,6 +99,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function applyRemoveNode(node: INodeUi) {
 		workflowsStore.removeNode(node);
+		deps.nodeMetadata.removeNodeMetadata(node.name);
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { name: node.name, id: node.id },
@@ -102,6 +110,9 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	function applyRemoveNodeById(id: string) {
 		const node = workflowsStore.getNodeById(id);
 		workflowsStore.removeNodeById(id);
+		if (node) {
+			deps.nodeMetadata.removeNodeMetadata(node.name);
+		}
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { name: node?.name ?? '', id },
@@ -135,14 +146,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
 		return workflowsStore.findNodeByPartialId(partialId);
-	}
-
-	function getParentNodes(
-		nodeName: string,
-		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
-		depth = -1,
-	): string[] {
-		return workflowsStore.workflowObject.getParentNodes(nodeName, type, depth);
 	}
 
 	function getNodesByIds(ids: string[]): INodeUi[] {
@@ -193,7 +196,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 		if (changed) {
 			void onStateDirty.trigger();
-			workflowsStore.nodeMetadata[name].parametersLastUpdatedAt = Date.now();
+			deps.nodeMetadata.touchParametersLastUpdatedAt(name);
 		}
 	}
 
@@ -241,9 +244,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		const excludeKeys = ['position', 'notes', 'notesInFlow'];
 
 		if (changed && !excludeKeys.includes(updateInformation.key)) {
-			workflowsStore.nodeMetadata[
-				workflowsStore.workflow.nodes[nodeIndex].name
-			].parametersLastUpdatedAt = Date.now();
+			deps.nodeMetadata.touchParametersLastUpdatedAt(workflowsStore.workflow.nodes[nodeIndex].name);
 		}
 	}
 
@@ -312,7 +313,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	function removeAllNodes(): void {
 		workflowsStore.workflow.nodes.splice(0, workflowsStore.workflow.nodes.length);
 		workflowsStore.workflowObject.setNodes(workflowsStore.workflow.nodes);
-		workflowsStore.nodeMetadata = {};
+		deps.nodeMetadata.setAllNodeMetadata({});
 	}
 
 	function resetAllNodesIssues(): boolean {
@@ -320,13 +321,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 			node.issues = undefined;
 		});
 		return true;
-	}
-
-	function resetParametersLastUpdatedAt(nodeName: string): void {
-		if (!workflowsStore.nodeMetadata[nodeName]) {
-			workflowsStore.nodeMetadata[nodeName] = { pristine: true };
-		}
-		workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt = Date.now();
 	}
 
 	return {
@@ -339,7 +333,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		getNodes,
 		findNodeByPartialId,
 		getNodesByIds,
-		getParentNodes,
 
 		// Write
 		setNodes,
@@ -355,7 +348,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		removeAllNodes,
 		resetAllNodesIssues,
 		setLastNodeParameters,
-		resetParametersLastUpdatedAt,
 
 		// Events
 		onNodesChange: onNodesChange.on,

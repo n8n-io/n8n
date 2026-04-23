@@ -1,4 +1,5 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { WorkflowExpression } from 'n8n-workflow';
 
 // --- Composable ---
 
@@ -13,8 +14,8 @@ export function useWorkflowDocumentExpression() {
 	// Expression resolution
 	// -----------------------------------------------------------------------
 
-	function getExpressionHandler() {
-		return workflowsStore.workflowObject.expression;
+	function getExpressionHandler(): WorkflowExpression {
+		return workflowsStore.workflowObject.expression as WorkflowExpression;
 	}
 
 	return {

@@ -48,9 +48,7 @@ const credentialDocsLinkText = computed(() => {
 			<div :class="$style.contentWrapper">
 				<div :class="$style.body">
 					<N8nIcon icon="hourglass" size="xlarge" color="text-base" :class="$style.icon" />
-					<N8nText :class="$style.title" bold color="text-dark"
-						>Credit top up is coming soon</N8nText
-					>
+					<N8nText :class="$style.title" bold color="text-dark">Top up is coming soon</N8nText>
 
 					<div :class="$style.paragraphs">
 						<p :class="$style.paragraph">

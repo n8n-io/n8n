@@ -9,11 +9,11 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
 const mockGetGatewayUsage = vi.fn();
-const mockGetGatewayCredits = vi.fn();
+const mockGetGatewayWallet = vi.fn();
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	getGatewayConfig: vi.fn(),
-	getGatewayCredits: (...args: unknown[]) => mockGetGatewayCredits(...args),
+	getGatewayWallet: (...args: unknown[]) => mockGetGatewayWallet(...args),
 	getGatewayUsage: (...args: unknown[]) => mockGetGatewayUsage(...args),
 }));
 
@@ -34,7 +34,7 @@ const MOCK_ENTRIES = [
 		timestamp: new Date('2024-01-15T10:30:00Z').getTime(),
 		inputTokens: 100,
 		outputTokens: 50,
-		creditsDeducted: 2,
+		cost: 2,
 	},
 	{
 		provider: 'anthropic',
@@ -42,7 +42,7 @@ const MOCK_ENTRIES = [
 		timestamp: new Date('2024-01-16T14:00:00Z').getTime(),
 		inputTokens: undefined,
 		outputTokens: undefined,
-		creditsDeducted: 5,
+		cost: 5,
 	},
 ];
 
@@ -53,26 +53,26 @@ describe('SettingsAiGatewayView', () => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
 		mockGetGatewayUsage.mockResolvedValue({ entries: [], total: 0 });
-		mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 42, creditsQuota: 100 });
+		mockGetGatewayWallet.mockResolvedValue({ balance: 42, budget: 100 });
 	});
 
-	describe('credits card', () => {
-		it('should display creditsRemaining after fetching', async () => {
+	describe('balance card', () => {
+		it('should display balance after fetching', async () => {
 			renderComponent();
 
 			await waitFor(() => expect(screen.getByTestId('settings-ai-gateway')).toBeInTheDocument());
 			const store = useAiGatewayStore();
-			await waitFor(() => expect(store.creditsRemaining).toBe(42));
-			expect(screen.getByText('42 credits')).toBeInTheDocument();
+			await waitFor(() => expect(store.balance).toBe(42));
+			expect(screen.getByText('$42.00 remaining')).toBeInTheDocument();
 		});
 
-		it('should not render the credits number before data loads', () => {
-			mockGetGatewayCredits.mockReturnValue(new Promise(() => {})); // never resolves
+		it('should not render the balance before data loads', () => {
+			mockGetGatewayWallet.mockReturnValue(new Promise(() => {})); // never resolves
 			renderComponent();
 
 			expect(screen.queryByTestId('ai-gateway-topup-button')).not.toBeNull(); // button present
-			// number not yet visible (creditsRemaining undefined)
-			expect(screen.queryByText('42')).not.toBeInTheDocument();
+			// number not yet visible (balance undefined)
+			expect(screen.queryByText('$42.00 remaining')).not.toBeInTheDocument();
 		});
 
 		it('should open top-up modal when "Top up credits" button is clicked', async () => {

@@ -11,6 +11,8 @@ import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import { TokenExchangeService } from '../services/token-exchange.service';
 import { TokenExchangeConfig } from '../token-exchange.config';
+import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors';
+import { TokenExchangeFailureReason } from '../token-exchange.types';
 import { Container } from '@n8n/di';
 
 const configService = Container.get(TokenExchangeConfig);
@@ -67,21 +69,33 @@ export class EmbedAuthController {
 		res: Response,
 		redirect?: string,
 	) {
-		const { user, subject, issuer, kid } = await this.tokenExchangeService.embedLogin(subjectToken);
+		try {
+			const { user, subject, issuer, kid } =
+				await this.tokenExchangeService.embedLogin(subjectToken);
 
-		this.authService.issueCookie(res, user, true, req.browserId, true, {
-			sameSite: 'none',
-			secure: true,
-		});
+			this.authService.issueCookie(res, user, true, req.browserId, true, {
+				sameSite: 'none',
+				secure: true,
+			});
 
-		this.eventService.emit('embed-login', {
-			subject,
-			issuer,
-			kid,
-			clientIp: req.ip ?? 'unknown',
-		});
+			this.eventService.emit('embed-login', {
+				subject,
+				issuer,
+				kid,
+				clientIp: req.ip ?? 'unknown',
+			});
 
-		const safePath = validateRedirectUrl(redirect ?? '');
-		res.redirect(this.urlService.getInstanceBaseUrl() + safePath);
+			const safePath = validateRedirectUrl(redirect ?? '');
+			res.redirect(this.urlService.getInstanceBaseUrl() + safePath);
+		} catch (error) {
+			this.eventService.emit('embed-login-failed', {
+				failureReason:
+					error instanceof TokenExchangeAuthError || error instanceof TokenExchangeRequestError
+						? error.reason
+						: TokenExchangeFailureReason.InternalError,
+				clientIp: req.ip ?? 'unknown',
+			});
+			throw error;
+		}
 	}
 }

@@ -31,12 +31,10 @@ interface OptionEntry {
 const DECISION_LABELS: Record<string, string> = {
 	allowOnce: i18n.baseText('instanceAi.gatewayConfirmation.allowOnce'),
 	allowForSession: i18n.baseText('instanceAi.gatewayConfirmation.allowForSession'),
-	alwaysAllow: i18n.baseText('instanceAi.gatewayConfirmation.alwaysAllow'),
 	denyOnce: i18n.baseText('instanceAi.gatewayConfirmation.denyOnce'),
-	alwaysDeny: i18n.baseText('instanceAi.gatewayConfirmation.alwaysDeny'),
 };
 
-const KNOWN_DECISIONS = new Set(Object.keys(DECISION_LABELS));
+const KNOWN_DECISIONS = new Set(['allowOnce', 'allowForSession', 'denyOnce']);
 
 function getDecisionLabel(decision: string): string {
 	return DECISION_LABELS[decision] ?? decision;
@@ -50,23 +48,14 @@ const denyPrimary = computed(() =>
 	props.options.includes('denyOnce') ? optionEntry('denyOnce') : undefined,
 );
 
-const denyDropdownItems = computed(() => {
-	const items: Array<ActionDropdownItem<string>> = [];
-	if (props.options.includes('alwaysDeny'))
-		items.push({ id: 'alwaysDeny', label: getDecisionLabel('alwaysDeny') });
-	return items;
-});
-
 const approvePrimary = computed(() =>
-	props.options.includes('allowForSession') ? optionEntry('allowForSession') : undefined,
+	props.options.includes('allowOnce') ? optionEntry('allowOnce') : undefined,
 );
 
 const approveDropdownItems = computed(() => {
 	const items: Array<ActionDropdownItem<string>> = [];
-	if (props.options.includes('allowOnce'))
-		items.push({ id: 'allowOnce', label: getDecisionLabel('allowOnce') });
-	if (props.options.includes('alwaysAllow'))
-		items.push({ id: 'alwaysAllow', label: getDecisionLabel('alwaysAllow') });
+	if (props.options.includes('allowForSession'))
+		items.push({ id: 'allowForSession', label: getDecisionLabel('allowForSession') });
 	return items;
 });
 
@@ -115,17 +104,14 @@ async function confirm(decision: string) {
 			/>
 
 			<!-- Deny side -->
-			<template v-if="denyPrimary">
-				<SplitButton
-					variant="outline"
-					:label="denyPrimary.label"
-					:items="denyDropdownItems"
-					data-test-id="gateway-decision-deny"
-					caret-aria-label="More deny options"
-					@click="confirm(denyPrimary.decision)"
-					@select="confirm"
-				/>
-			</template>
+			<N8nButton
+				v-if="denyPrimary"
+				variant="outline"
+				size="small"
+				:label="denyPrimary.label"
+				data-test-id="gateway-decision-deny"
+				@click="confirm(denyPrimary.decision)"
+			/>
 
 			<!-- Approve side -->
 			<template v-if="approvePrimary">

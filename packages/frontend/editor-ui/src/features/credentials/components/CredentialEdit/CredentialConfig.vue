@@ -5,6 +5,7 @@ import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
+	INode,
 	INodeProperties,
 } from 'n8n-workflow';
 import { isCommunityPackageName } from 'n8n-workflow';
@@ -70,6 +71,7 @@ type Props = {
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
+	contextNode?: INode | null;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -286,6 +288,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				:show-managed-oauth-options="managedOauthAvailable"
 				:quick-connect-available="quickConnectAvailable"
 				:is-quick-connect-mode="isQuickConnectMode"
+				:context-node="contextNode"
 				@update:auth-type="onAuthTypeChange"
 			/>
 

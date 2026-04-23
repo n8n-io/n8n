@@ -28,6 +28,7 @@ import {
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
+import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -43,10 +44,8 @@ import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
-import {
-	createSubmitWorkflowTool,
-	type SubmitWorkflowAttempt,
-} from '../workflows/submit-workflow.tool';
+import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
+import { type SubmitWorkflowAttempt } from '../workflows/submit-workflow.tool';
 
 /** Trigger types that cannot be test-fired programmatically (need an external request). */
 const UNTESTABLE_TRIGGERS = new Set([
@@ -105,8 +104,6 @@ function buildOutcome(
 	};
 }
 
-const BUILDER_MAX_STEPS = 60;
-
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
 
 You are running as a detached background task. Do not stop after a successful submit — verify the workflow works.
@@ -149,6 +146,38 @@ function hashContent(content: string | null): string {
 		.digest('hex');
 }
 
+/**
+ * When the builder's stream errors mid-run, recover a successful-submit outcome
+ * from the submit-attempt history so the orchestrator doesn't redo a build that
+ * already produced a workflow. Scans in reverse so a later failed submit for
+ * the main path cannot mask an earlier success. Returns undefined when nothing
+ * was successfully submitted yet — the caller should rethrow in that case.
+ */
+export function resultFromPostStreamError(input: {
+	error: unknown;
+	submitAttempts: SubmitWorkflowAttempt[];
+	mainWorkflowPath: string;
+	workItemId: string;
+	taskId: string;
+}): BackgroundTaskResult | undefined {
+	let attempt: SubmitWorkflowAttempt | undefined;
+	for (let i = input.submitAttempts.length - 1; i >= 0; i--) {
+		const a = input.submitAttempts[i];
+		if (a.filePath === input.mainWorkflowPath && a.success) {
+			attempt = a;
+			break;
+		}
+	}
+	if (!attempt) return undefined;
+
+	const errorText = input.error instanceof Error ? input.error.message : String(input.error);
+	const text = `Workflow ${attempt.workflowId} submitted successfully. A later step failed: ${errorText}`;
+	return {
+		text,
+		outcome: buildOutcome(input.workItemId, input.taskId, attempt, text),
+	};
+}
+
 export interface StartBuildWorkflowAgentInput {
 	task: string;
 	workflowId?: string;
@@ -188,26 +217,12 @@ export async function startBuildWorkflowAgentTask(
 		credMap = await buildCredentialMap(domainContext.credentialService);
 
 		const toolNames = [
-			'search-nodes',
-			'get-suggested-nodes',
-			'get-workflow-as-code',
-			'get-node-type-definition',
-			'explore-node-resources',
-			'list-workflows',
-			'list-credentials',
-			'test-credential',
+			'nodes',
+			'workflows',
+			'credentials',
+			'executions',
+			'data-tables',
 			'ask-user',
-			'run-workflow',
-			'get-execution',
-			'debug-execution',
-			'publish-workflow',
-			'unpublish-workflow',
-			'list-data-tables',
-			'create-data-table',
-			'get-data-table-schema',
-			'add-data-table-column',
-			'query-data-table-rows',
-			'insert-data-table-rows',
 		];
 
 		builderTools = {};
@@ -224,19 +239,11 @@ export async function startBuildWorkflowAgentTask(
 
 		const toolNames = [
 			'build-workflow',
-			'get-node-type-definition',
-			'get-workflow-as-code',
-			'list-workflows',
-			'search-nodes',
-			'get-suggested-nodes',
+			'nodes',
+			'workflows',
+			'data-tables',
 			'ask-user',
-			'list-data-tables',
-			'create-data-table',
-			'get-data-table-schema',
-			'add-data-table-column',
-			'query-data-table-rows',
-			'insert-data-table-rows',
-			...(context.researchMode ? ['web-search', 'fetch-url'] : []),
+			...(context.researchMode ? ['research'] : []),
 		];
 		for (const name of toolNames) {
 			if (name in context.domainTools) {
@@ -324,6 +331,9 @@ export async function startBuildWorkflowAgentTask(
 			await withTraceContextActor(traceContext, async () => {
 				let builderWs: BuilderWorkspace | undefined;
 				const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
+				// Append-only history so a later failed submit for the main path
+				// cannot mask an earlier successful submit during post-error recovery.
+				const submitAttemptHistory: SubmitWorkflowAttempt[] = [];
 				try {
 					if (useSandbox) {
 						builderWs = await factory.create(subAgentId, domainContext);
@@ -351,12 +361,14 @@ export async function startBuildWorkflowAgentTask(
 						}
 
 						const mainWorkflowPath = `${root}/src/workflow.ts`;
-						builderTools['submit-workflow'] = createSubmitWorkflowTool(
-							domainContext,
+						builderTools['submit-workflow'] = createIdentityEnforcedSubmitWorkflowTool({
+							context: domainContext,
 							workspace,
-							credMap,
-							async (attempt) => {
+							credentialMap: credMap,
+							root,
+							onAttempt: async (attempt) => {
 								submitAttempts.set(attempt.filePath, attempt);
+								submitAttemptHistory.push(attempt);
 								if (attempt.filePath !== mainWorkflowPath || !context.workflowTaskService) {
 									return;
 								}
@@ -372,7 +384,7 @@ export async function startBuildWorkflowAgentTask(
 									),
 								);
 							},
-						);
+						});
 
 						const tracedBuilderTools = traceSubAgentTools(
 							context,
@@ -406,38 +418,51 @@ export async function startBuildWorkflowAgentTask(
 						registerWithMastra(subAgentId, subAgent, context.storage);
 
 						const traceParent = getTraceParentRun();
-						const hitlResult = await withTraceParentContext(traceParent, async () => {
-							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-							const stream = await subAgent.stream(briefing, {
-								maxSteps: BUILDER_MAX_STEPS,
-								abortSignal: signal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-								...(llmStepTraceHooks?.executionOptions ?? {}),
+						let finalText: string;
+						try {
+							const hitlResult = await withTraceParentContext(traceParent, async () => {
+								const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
+								const stream = await subAgent.stream(briefing, {
+									maxSteps: MAX_STEPS.BUILDER,
+									abortSignal: signal,
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
+									},
+									...(llmStepTraceHooks?.executionOptions ?? {}),
+								});
+
+								return await consumeStreamWithHitl({
+									agent: subAgent,
+									stream: stream as {
+										runId?: string;
+										fullStream: AsyncIterable<unknown>;
+										text: Promise<string>;
+									},
+									runId: context.runId,
+									agentId: subAgentId,
+									eventBus: context.eventBus,
+									logger: context.logger,
+									threadId: context.threadId,
+									abortSignal: signal,
+									waitForConfirmation: context.waitForConfirmation,
+									drainCorrections,
+									waitForCorrection,
+									llmStepTraceHooks,
+								});
 							});
 
-							return await consumeStreamWithHitl({
-								agent: subAgent,
-								stream: stream as {
-									runId?: string;
-									fullStream: AsyncIterable<unknown>;
-									text: Promise<string>;
-								},
-								runId: context.runId,
-								agentId: subAgentId,
-								eventBus: context.eventBus,
-								logger: context.logger,
-								threadId: context.threadId,
-								abortSignal: signal,
-								waitForConfirmation: context.waitForConfirmation,
-								drainCorrections,
-								waitForCorrection,
-								llmStepTraceHooks,
+							finalText = await hitlResult.text;
+						} catch (error) {
+							const recovered = resultFromPostStreamError({
+								error,
+								submitAttempts: submitAttemptHistory,
+								mainWorkflowPath,
+								workItemId,
+								taskId,
 							});
-						});
-
-						const finalText = await hitlResult.text;
+							if (recovered) return recovered;
+							throw error;
+						}
 
 						const mainWorkflowAttempt = submitAttempts.get(mainWorkflowPath);
 						const currentMainWorkflow = await readFileViaSandbox(workspace, mainWorkflowPath);
@@ -532,7 +557,7 @@ export async function startBuildWorkflowAgentTask(
 					const hitlResult = await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await subAgent.stream(briefing, {
-							maxSteps: BUILDER_MAX_STEPS,
+							maxSteps: MAX_STEPS.BUILDER,
 							abortSignal: signal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -569,7 +594,7 @@ export async function startBuildWorkflowAgentTask(
 	});
 
 	return {
-		result: `Workflow build started (task: ${taskId}). Reply with one short sentence — e.g. name what's being built. Do NOT summarize the plan or list details.`,
+		result: `Workflow build started (task: ${taskId}). Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};

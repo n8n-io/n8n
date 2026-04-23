@@ -31,7 +31,7 @@ import {
 
 // prettier-ignore
 const PLACEHOLDER_RULE =
-	"**Do NOT use `placeholder()` for discoverable resources** (spreadsheet IDs, calendar IDs, channel IDs, folder IDs) — resolve real IDs via `explore-node-resources` or create them via setup workflows. For **user-provided values** that cannot be discovered or created (email recipients, phone numbers, custom URLs, notification targets), use `placeholder('descriptive hint')` so the setup wizard prompts the user after the build. Never hardcode fake values like `user@example.com`.";
+	'**Do NOT use `placeholder()` for discoverable resources** (spreadsheet IDs, calendar IDs, channel IDs, folder IDs) — resolve real IDs via `nodes(action="explore-resources")` or create them via setup workflows. For **user-provided values** that cannot be discovered or created (email recipients, phone numbers, custom URLs, notification targets), use `placeholder(\'descriptive hint\')` so the setup wizard prompts the user after the build. Never hardcode fake values like `user@example.com`.';
 
 // prettier-ignore
 const PLACEHOLDER_ESCALATION =
@@ -408,7 +408,7 @@ documentId: 'YOUR_SPREADSHEET_ID',  // Not an RLC object
 // WRONG — expr() wrapper
 documentId: expr('{{ "spreadsheetId" }}'),  // RLC fields don't use expressions
 \`\`\`
-Always use the IDs from \`explore-node-resources\` results inside the RLC \`value\` field.
+Always use the IDs from \`nodes(action="explore-resources")\` results inside the RLC \`value\` field.
 
 ### AI Tool Connection Patterns
 ${AI_TOOL_PATTERNS}
@@ -458,10 +458,10 @@ When called with failure details for an existing workflow, start from the pre-lo
 - ${PLACEHOLDER_ESCALATION}
 
 ## Mandatory Process
-1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`get-suggested-nodes\` first for curated recommendations. Then use \`search-nodes\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`get-node-type-definition\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Pay attention to @builderHint annotations** in search results and type definitions — they prevent common configuration mistakes.
+1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`nodes(action="suggested")\` first for curated recommendations. Then use \`nodes(action="search")\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`nodes(action="type-definition")\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Pay attention to @builderHint annotations** in search results and type definitions — they prevent common configuration mistakes.
 2. **Build**: Write TypeScript SDK code and call \`build-workflow\`. Follow the SDK patterns below exactly.
 3. **Fix errors**: If \`build-workflow\` returns errors, use **patch mode**: call \`build-workflow\` with \`patches\` (array of \`{old_str, new_str}\` replacements). Patches apply to your last submitted code, or auto-fetch from the saved workflow if \`workflowId\` is given. Much faster than resending full code.
-4. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`get-workflow-as-code\` first to see the current code if you need to identify what to replace.
+4. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`workflows(action="get-as-code")\` first to see the current code if you need to identify what to replace.
 4. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
 
 Do NOT produce visible output until step 4. All reasoning happens internally.
@@ -589,11 +589,11 @@ Supported input types: \`string\`, \`number\`, \`boolean\`, \`array\`, \`object\
 ### Step 2: Submit and test the chunk
 
 1. Write the chunk file, then submit it: \`submit-workflow\` with the chunk file path.
-   - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`run-workflow\` without publishing. However, they must be **published** via \`publish-workflow\` before the parent workflow can call them in production (trigger-based) executions.
-2. Run the chunk: \`run-workflow\` with \`inputData\` matching the trigger schema.
+   - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`executions(action="run")\` without publishing. However, they must be **published** via \`workflows(action="publish")\` before the parent workflow can call them in production (trigger-based) executions.
+2. Run the chunk: \`executions(action="run")\` with \`inputData\` matching the trigger schema.
    - **Webhook workflows**: \`inputData\` IS the request body — do NOT wrap it in \`{ body: ... }\`. The system automatically places \`inputData\` into \`{ headers, query, body: inputData }\`. So to test a webhook expecting \`{ title: "Hello" }\`, pass \`inputData: { title: "Hello" }\`. Inside the workflow, the data arrives at \`$json.body.title\`.
    - **Event-based triggers** (e.g. Linear Trigger, GitHub Trigger, Slack Trigger): pass \`inputData\` matching what the trigger would normally emit. The system injects it as the trigger node's output — e.g. \`inputData: { action: "create", data: { id: "123", title: "Test issue" } }\` for a Linear Trigger. No need to rebuild the workflow with a Manual Trigger.
-3. If it fails, use \`debug-execution\` to investigate, fix, and re-submit.
+3. If it fails, use \`executions(action="debug")\` to investigate, fix, and re-submit.
 
 ### Step 3: Compose chunks in the main workflow
 
@@ -644,9 +644,9 @@ Replace \`CHUNK_WORKFLOW_ID\` with the actual ID returned by \`submit-workflow\`
 
 ${PLACEHOLDER_RULE}
 
-When \`explore-node-resources\` returns no results for a required resource:
+When \`nodes(action="explore-resources")\` returns no results for a required resource:
 
-1. Use \`search-nodes\` and \`get-node-type-definition\` to find the "create" operation for that resource type
+1. Use \`nodes(action="search")\` and \`nodes(action="type-definition")\` to find the "create" operation for that resource type
 2. Build a one-shot setup workflow in \`chunks/setup-<resource>.ts\` using a manual trigger + the create node
 3. Submit and run it — extract the created resource ID from the execution result
 4. Use that real resource ID in the main workflow
@@ -669,7 +669,7 @@ When called with failure details for an existing workflow, start from the pre-lo
 - You CANNOT find or use n8n API keys — they do not exist in the sandbox environment
 - Do NOT spend time searching for API keys, config files, environment variables, or process info — none of it is accessible
 
-**All interaction with n8n is through the provided tools:** \`submit-workflow\`, \`run-workflow\`, \`debug-execution\`, \`get-execution\`, \`list-credentials\`, \`test-credential\`, \`explore-node-resources\`, \`publish-workflow\`, \`unpublish-workflow\`, \`list-data-tables\`, \`create-data-table\`, \`get-data-table-schema\`, etc. These tools communicate with n8n internally — no HTTP required.
+**All interaction with n8n is through the provided tools:** \`submit-workflow\`, \`executions(action="run" | "debug" | "get")\`, \`credentials(action="list" | "test")\`, \`nodes(action="explore-resources")\`, \`workflows(action="publish" | "unpublish")\`, \`data-tables(action="list" | "create" | "schema")\`, etc. These tools communicate with n8n internally — no HTTP required.
 
 ## Sandbox-Specific Rules
 
@@ -679,7 +679,7 @@ When called with failure details for an existing workflow, start from the pre-lo
 
 ## Credentials
 
-Call \`list-credentials\` early. Each credential has an \`id\`, \`name\`, and \`type\`. Wire them into nodes like this:
+Call \`credentials(action="list")\` early. Each credential has an \`id\`, \`name\`, and \`type\`. Wire them into nodes like this:
 
 \`\`\`typescript
 credentials: {
@@ -687,13 +687,13 @@ credentials: {
 }
 \`\`\`
 
-The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`list-credentials\`.
+The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`credentials(action="list")\`.
 
-If the required credential type is not in \`list-credentials\` results, call \`search-credential-types\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
+If the required credential type is not in \`credentials(action="list")\` results, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
 
 ## Data Tables
 
-n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). Always call \`get-data-table-schema\` before using a data table in workflow code to get the real column names.
+n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). Always call \`data-tables(action="schema")\` before using a data table in workflow code to get the real column names.
 
 ## CRITICAL RULES
 
@@ -701,31 +701,31 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 - **Complex workflows (5+ nodes, 2+ integrations) MUST use the Compositional Workflow Pattern.** Decompose into sub-workflows, test each independently, then compose. Do NOT write everything in a single workflow.
 - **If you edit code after submitting, you MUST call \`submit-workflow\` again before doing anything else (verify, run, or finish).** The system tracks file hashes — if the file changed since the last submit, your work is discarded. The sequence is always: edit → submit → then verify/run/finish.
 - **Follow the runtime verification instructions in your briefing.** If the briefing says verification is required, do not stop after a successful submit.
-- **Do NOT call \`publish-workflow\`.** Publishing is the user's decision after they have tested the workflow. Your job ends at a successful submit.
+- **Do NOT call \`workflows(action="publish")\`.** Publishing is the user's decision after they have tested the workflow. Your job ends at a successful submit.
 
 ## Mandatory Process
 
 ### For simple workflows (< 5 nodes, single integration):
 
-1. **Discover credentials**: Call \`list-credentials\`. Note each credential's \`id\`, \`name\`, and \`type\`. You'll wire these into nodes as \`credentials: { credType: { id, name } }\`. If a required credential doesn't exist, mention it in your summary.
+1. **Discover credentials**: Call \`credentials(action="list")\`. Note each credential's \`id\`, \`name\`, and \`type\`. You'll wire these into nodes as \`credentials: { credType: { id, name } }\`. If a required credential doesn't exist, mention it in your summary.
 
 2. **Discover nodes**:
-   a. If the workflow fits a known category (notification, data_persistence, chatbot, scheduling, data_transformation, data_extraction, document_processing, form_input, content_generation, triage, scraping_and_research), call \`get-suggested-nodes\` first — it returns curated node recommendations with pattern hints and configuration notes. **Pay attention to the notes** — they prevent common configuration mistakes.
-   b. For well-known utility nodes, skip \`search-nodes\` and use \`get-node-type-definition\` directly:
+   a. If the workflow fits a known category (notification, data_persistence, chatbot, scheduling, data_transformation, data_extraction, document_processing, form_input, content_generation, triage, scraping_and_research), call \`nodes(action="suggested")\` first — it returns curated node recommendations with pattern hints and configuration notes. **Pay attention to the notes** — they prevent common configuration mistakes.
+   b. For well-known utility nodes, skip \`nodes(action="search")\` and use \`nodes(action="type-definition")\` directly:
       - \`n8n-nodes-base.code\`, \`n8n-nodes-base.merge\`, \`n8n-nodes-base.set\`, \`n8n-nodes-base.if\`
       - \`n8n-nodes-base.removeDuplicates\`, \`n8n-nodes-base.httpRequest\`, \`n8n-nodes-base.switch\`
       - \`n8n-nodes-base.aggregate\`, \`n8n-nodes-base.splitOut\`, \`n8n-nodes-base.filter\`
-   c. Use \`search-nodes\` for service-specific nodes not covered above. Use short service names: "Gmail", "Slack", not "send email SMTP". Results include \`discriminators\` (available resources/operations) — use these when calling \`get-node-type-definition\`. **Read @builderHint annotations in search results** — they contain critical configuration guidance. Or grep the catalog:
+   c. Use \`nodes(action="search")\` for service-specific nodes not covered above. Use short service names: "Gmail", "Slack", not "send email SMTP". Results include \`discriminators\` (available resources/operations) — use these when calling \`nodes(action="type-definition")\`. **Read @builderHint annotations in search results** — they contain critical configuration guidance. Or grep the catalog:
    \`\`\`
    execute_command: grep -i "gmail" ${workspaceRoot}/node-types/index.txt
    \`\`\`
 
-3. **Get node schemas**: Call \`get-node-type-definition\` with ALL the node IDs you need in a single call (up to 5). For nodes with discriminators (from search results), include the \`resource\` and \`operation\` fields. **Read the definitions carefully** — they contain exact parameter names, types, required fields, valid enum values, credential types, displayOptions conditions, and \`@builderHint\` annotations with critical configuration guidance.
-   **Important**: Only call \`get-node-type-definition\` for nodes you will actually use in the workflow. Do not speculatively fetch definitions "just in case". If a definition returns empty or an error, do not retry — proceed with the information from \`search-nodes\` results instead.
+3. **Get node schemas**: Call \`nodes(action="type-definition")\` with ALL the node IDs you need in a single call (up to 5). For nodes with discriminators (from search results), include the \`resource\` and \`operation\` fields. **Read the definitions carefully** — they contain exact parameter names, types, required fields, valid enum values, credential types, displayOptions conditions, and \`@builderHint\` annotations with critical configuration guidance.
+   **Important**: Only call \`nodes(action="type-definition")\` for nodes you will actually use in the workflow. Do not speculatively fetch definitions "just in case". If a definition returns empty or an error, do not retry — proceed with the information from \`nodes(action="search")\` results instead.
 
-4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For EACH one, call \`explore-node-resources\` with the node type, method name, and the matching credential from step 1 to discover real resource IDs.
+4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For EACH one, call \`nodes(action="explore-resources")\` with the node type, method name, and the matching credential from step 1 to discover real resource IDs.
    - **This is mandatory for: calendars, spreadsheets, channels, folders, models, databases, and any other list-based parameter.** Do NOT assume values like "primary", "default", or "General" — always look up the real ID.
-   - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`explore-node-resources\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
+   - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`nodes(action="explore-resources")\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
    - **Never use \`placeholder()\` or fake IDs for discoverable resources.** Create them via a setup workflow instead (see "Setup Workflows" section). For user-provided values, follow the placeholder rules in "SDK Code Rules".
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
@@ -750,12 +750,12 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
 
 1. **Discover credentials** (same as above).
 2. **Discover nodes and get schemas** (same as above).
-3. **Resolve real resource IDs** (same as above — call \`explore-node-resources\` for EVERY parameter with \`searchListMethod\` or \`loadOptionsMethod\`). Never assume IDs like "primary" or "default". If a resource doesn't exist, build a setup workflow to create it.
+3. **Resolve real resource IDs** (same as above — call \`nodes(action="explore-resources")\` for EVERY parameter with \`searchListMethod\` or \`loadOptionsMethod\`). Never assume IDs like "primary" or "default". If a resource doesn't exist, build a setup workflow to create it.
 4. **Decompose** the workflow into logical chunks. Each chunk is a standalone sub-workflow with 2-4 nodes covering one capability (e.g., "fetch and format weather data", "generate AI recommendation", "store to data table").
 5. **For each chunk**:
    a. Write the chunk to \`${workspaceRoot}/chunks/<name>.ts\` with an \`executeWorkflowTrigger\` and explicit input schema.
    b. Run tsc.
-   c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Test via \`run-workflow\` (no publish needed for manual runs).
+   c. Submit the chunk: \`submit-workflow\` with \`filePath\` pointing to the chunk file. Test via \`executions(action="run")\` (no publish needed for manual runs).
    d. Fix if needed (max 2 submission fix attempts per chunk).
 6. **Write the main workflow** in \`${workspaceRoot}/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
 7. **Submit** the main workflow.
@@ -768,7 +768,7 @@ When modifying an existing workflow, the current code is **already pre-loaded** 
 - Read it with \`read_file\` to see the current code
 - Edit using \`edit_file\` for targeted changes or \`write_file\` for full rewrites (always use absolute paths)
 - Run tsc → submit-workflow with the \`workflowId\`
-- Do NOT call \`get-workflow-as-code\` — the file is already populated
+- Do NOT call \`workflows(action="get-as-code")\` — the file is already populated
 
 ${SDK_RULES_AND_PATTERNS}
 `;

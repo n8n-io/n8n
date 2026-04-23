@@ -64,12 +64,10 @@ export const useWorkflowSetupState = (
 	const environmentsStore = useEnvironmentsStore();
 	const templatesStore = useTemplatesStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
-	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore.value?.allNodes ?? []);
+	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore.value.allNodes);
 
 	/**
 	 * Synchronous: detects resource locator parameters from the current workflow
@@ -77,7 +75,7 @@ export const useWorkflowSetupState = (
 	 * Only active for template-based workflows (templateId is set).
 	 */
 	const resourceLocatorsByNode = computed(() => {
-		if (!workflowDocumentStore?.value?.meta?.templateId) return new Map<string, string[]>();
+		if (!workflowDocumentStore.value.meta?.templateId) return new Map<string, string[]>();
 
 		const paramMap = new Map<string, string[]>();
 		for (const node of sourceNodes.value) {
@@ -201,7 +199,7 @@ export const useWorkflowSetupState = (
 	};
 
 	async function loadTemplateMissingParameters() {
-		const templateId = workflowDocumentStore?.value?.meta?.templateId;
+		const templateId = workflowDocumentStore.value.meta?.templateId;
 		if (!templateId) return;
 
 		try {
@@ -272,15 +270,9 @@ export const useWorkflowSetupState = (
 	 */
 	const resolveExpressionUrl = (expressionUrl: string, nodeName: string): string | null => {
 		try {
-			const result = workflowsStore.workflowObject.expression.getParameterValue(
-				expressionUrl,
-				null,
-				0,
-				0,
-				nodeName,
-				[],
-				'manual',
-				{
+			const result = workflowDocumentStore.value
+				?.getExpressionHandler()
+				.getParameterValue(expressionUrl, null, 0, 0, nodeName, [], 'manual', {
 					$execution: {
 						id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 						mode: 'test',
@@ -288,8 +280,7 @@ export const useWorkflowSetupState = (
 						resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 					},
 					$vars: environmentsStore.variablesAsObject,
-				},
-			);
+				});
 			return typeof result === 'string' ? result : null;
 		} catch {
 			return null;
@@ -345,8 +336,8 @@ export const useWorkflowSetupState = (
 
 		return sortNodesByExecutionOrder(
 			nodesForSetup,
-			workflowDocumentStore.value?.connectionsBySourceNode ?? {},
-			workflowDocumentStore.value?.connectionsByDestinationNode ?? {},
+			workflowDocumentStore.value.connectionsBySourceNode,
+			workflowDocumentStore.value.connectionsByDestinationNode,
 			allNodeTypes,
 		);
 	});
@@ -824,7 +815,7 @@ export const useWorkflowSetupState = (
 		void testCredentialInBackground(credentialId, credential.name, credentialType);
 
 		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
-			const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
+			const node = workflowDocumentStore.value.getNodeByName(nodeName);
 			if (!node) continue;
 			if (skipHttpRequestType && isHttpRequestNodeType(node.type)) continue;
 
@@ -834,7 +825,7 @@ export const useWorkflowSetupState = (
 			const prevCred = node.credentials?.[credentialType];
 			const prevId = typeof prevCred === 'string' ? undefined : prevCred?.id;
 			if (prevId) autoAppliedCredentialIds.value.delete(prevId);
-			workflowDocumentStore?.value?.updateNodeProperties({
+			workflowDocumentStore.value.updateNodeProperties({
 				name: nodeName,
 				properties: {
 					credentials: {
@@ -857,13 +848,13 @@ export const useWorkflowSetupState = (
 	 */
 	const unsetCredential = (credentialType: string, sourceNodeName?: string): void => {
 		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
-			const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
+			const node = workflowDocumentStore.value.getNodeByName(nodeName);
 			if (!node) continue;
 
 			const updatedCredentials = { ...node.credentials };
 			delete updatedCredentials[credentialType];
 
-			workflowDocumentStore?.value?.updateNodeProperties({
+			workflowDocumentStore.value.updateNodeProperties({
 				name: nodeName,
 				properties: {
 					credentials: updatedCredentials,
