@@ -33,7 +33,7 @@ async function setLatestForMonorepoPackages() {
 
 	const publishedPackages = packages //
 		.filter((pkg) => !pkg.private)
-		.filter((pkg) => pkg.name.startsWith('@n8n'))
+		.filter((pkg) => pkg.name.startsWith('@n8n/'))
 		.filter((pkg) => pkg.version);
 
 	const failures = [];
