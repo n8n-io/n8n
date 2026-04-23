@@ -182,17 +182,31 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						tool: event.toolName,
 						toolCallId: event.toolCallId,
 						input: event.input,
-						state: 'running',
+						// Start as 'pending'; the runtime emits `toolExecutionStart`
+						// when it actually invokes the handler.
+						state: 'pending',
 					});
 				} else {
 					existing.input = event.input;
-					existing.state = 'running';
+					// Don't downgrade a call that is already running/done/etc.
+					if (existing.state !== 'running' && existing.state !== 'done') {
+						existing.state = 'pending';
+					}
 				}
 				break;
 			}
 			case 'toolCallDelta': {
 				// Streaming tool input — used for `build_custom_tool` codeDelta.
 				// No state change to a ToolCall here (it may not exist yet).
+				break;
+			}
+			case 'toolExecutionStart': {
+				// Handler started running for this tool call. Flip the indicator
+				// from "pending" → "running" so the FE shows mid-flight progress.
+				const found = findToolCall(event.messageId, event.toolCallId, session);
+				if (found && found.tc.state !== 'done' && found.tc.state !== 'error') {
+					found.tc.state = 'running';
+				}
 				break;
 			}
 			case 'toolResult': {

@@ -35,6 +35,7 @@ import { AgentExecutionService } from './agent-execution.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
@@ -411,14 +412,25 @@ export class AgentsService {
 			params;
 
 		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
-		try {
-			const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
-			agent.tool(createRichInteractionTool(integrationType));
-		} catch (toolError) {
-			this.logger.warn('Failed to inject rich_interaction tool', {
-				agentId,
-				error: toolError instanceof Error ? toolError.message : String(toolError),
-			});
+		// Platforms opt in by declaring `supportedComponents`; integrations that
+		// omit it (e.g. Linear) are treated as having no rich_interaction surface
+		// and the tool is skipped. Draft/editor contexts (no integrationType)
+		// always get the tool.
+		const integration = integrationType
+			? Container.get(ChatIntegrationRegistry).get(integrationType)
+			: undefined;
+		const hasRichInteraction = !integration || integration.supportedComponents !== undefined;
+
+		if (hasRichInteraction) {
+			try {
+				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
+				agent.tool(createRichInteractionTool(integrationType));
+			} catch (toolError) {
+				this.logger.warn('Failed to inject rich_interaction tool', {
+					agentId,
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
 		}
 
 		if (nodeToolsEnabled) {
@@ -951,22 +963,14 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		// Store tool code + descriptor
+		// Store tool code + descriptor. Registering the tool in the agent config
+		// (adding `{ type: "custom", id }` to `schema.tools`) is the caller's
+		// responsibility — typically via a follow-up patch_config / write_config —
+		// so this method does not touch `entity.schema`.
 		entity.tools = {
 			...entity.tools,
 			[toolId]: { code, descriptor },
 		};
-
-		// Add to config tools array if not already present
-		if (entity.schema) {
-			const tools = entity.schema.tools ?? [];
-			const alreadyLinked = tools.some(
-				(t: AgentJsonToolConfig) => t.type === 'custom' && 'id' in t && t.id === toolId,
-			);
-			if (!alreadyLinked) {
-				entity.schema.tools = [...tools, { type: 'custom' as const, id: toolId }];
-			}
-		}
 
 		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);

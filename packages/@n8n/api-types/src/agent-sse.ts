@@ -53,6 +53,19 @@ export type AgentSseEvent =
 			toolName?: string;
 			argumentsDelta: string;
 	  }
+	| {
+			/**
+			 * Mid-flight indicator: the LLM has finished emitting the tool call and
+			 * the runtime has started invoking the handler. Sent between the
+			 * `toolCall` and the eventual `toolResult` so the FE can flip the
+			 * indicator from "pending" (LLM committed) to "running" (handler in
+			 * flight).
+			 */
+			type: 'toolExecutionStart';
+			messageId: string;
+			toolCallId: string;
+			toolName: string;
+	  }
 	| { type: 'toolSuspended'; messageId: string; payload: ToolSuspendedPayload }
 	| { type: 'codeDelta'; delta: string }
 	| { type: 'configUpdated' }

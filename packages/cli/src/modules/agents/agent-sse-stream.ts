@@ -75,6 +75,14 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): void {
 		case 'message':
 			emitMessageParts(chunk.message, ctx);
 			break;
+		case 'tool-execution-start':
+			send({
+				type: 'toolExecutionStart',
+				messageId: getMessageId(),
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+			});
+			break;
 		case 'error': {
 			const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
 			send({ type: 'error', message: errMsg });

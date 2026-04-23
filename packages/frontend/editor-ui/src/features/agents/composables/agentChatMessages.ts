@@ -26,12 +26,15 @@ import {
 /**
  * Lifecycle state of a single tool call inside a ChatMessage.
  *
- * - `running` — call has been issued, waiting for the tool's handler to return
+ * - `pending` — LLM has committed to the call but the handler hasn't started
+ *   executing yet (e.g. arguments still streaming, or runtime hasn't dispatched)
+ * - `running` — handler is executing (received `tool-execution-start`); waiting
+ *   for it to return
  * - `suspended` — handler called `ctx.suspend(...)`; awaiting user resume
  * - `done` — tool returned (either via the handler or via `agent.resume()`)
  * - `error` — tool threw or the input failed validation
  */
-export type ToolCallState = 'running' | 'suspended' | 'done' | 'error';
+export type ToolCallState = 'pending' | 'running' | 'suspended' | 'done' | 'error';
 
 export interface ToolCall {
 	tool: string;
