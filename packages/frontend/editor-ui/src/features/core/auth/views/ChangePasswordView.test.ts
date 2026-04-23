@@ -41,6 +41,14 @@ describe('ChangePasswordView', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
 
+	it('should default to 8-character minimum when passwordMinLength is not configured', async () => {
+		const pinia = createTestingPinia();
+
+		const { findByText } = renderComponent({ pinia });
+
+		expect(await findByText(/8\+ characters/)).toBeInTheDocument();
+	});
+
 	it('should reflect configured passwordMinLength in password hint text', async () => {
 		const pinia = createTestingPinia();
 		const settingsStore = mockedStore(useSettingsStore);

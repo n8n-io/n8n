@@ -197,6 +197,12 @@ describe('SignupView', () => {
 		expect(payload).not.toHaveProperty('inviteeId');
 	});
 
+	it('should default to 8-character minimum when passwordMinLength is not configured', () => {
+		const { getByText } = renderComponent();
+
+		expect(getByText(/8\+ characters/)).toBeInTheDocument();
+	});
+
 	it('should reflect configured passwordMinLength in password hint text', () => {
 		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.userManagement.passwordMinLength = 12;

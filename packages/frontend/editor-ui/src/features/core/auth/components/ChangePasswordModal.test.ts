@@ -33,6 +33,12 @@ describe('ChangePasswordModal', () => {
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
+	it('should default to 8-character minimum when passwordMinLength is not configured', () => {
+		renderComponent({ pinia });
+
+		expect(createPasswordRules).toHaveBeenCalledWith(8);
+	});
+
 	it('should pass configured passwordMinLength to createPasswordRules', () => {
 		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.userManagement.passwordMinLength = 12;

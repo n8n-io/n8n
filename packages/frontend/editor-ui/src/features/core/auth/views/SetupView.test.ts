@@ -40,6 +40,14 @@ describe('SetupView', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
 
+	it('should default to 8-character minimum when passwordMinLength is not configured', () => {
+		const pinia = createTestingPinia();
+
+		const { getByText } = renderComponent({ pinia });
+
+		expect(getByText(/8\+ characters/)).toBeInTheDocument();
+	});
+
 	it('should reflect configured passwordMinLength in password hint text', () => {
 		const pinia = createTestingPinia();
 		const settingsStore = mockedStore(useSettingsStore);
