@@ -449,6 +449,28 @@ describe('POST /disconnect', () => {
 			await close();
 		}
 	});
+
+	it('is idempotent and fires onStatusChange("disconnected") exactly once', async () => {
+		const onStatusChange = jest.fn();
+		const { port, close } = await startTestDaemon(
+			{ filesystem: { dir: tmpDir } },
+			{ confirmConnect: jest.fn().mockResolvedValue(true), onStatusChange },
+		);
+		try {
+			await post(port, '/connect', { url: 'http://localhost:5678', token: 'tok' });
+			onStatusChange.mockClear();
+
+			const first = await post(port, '/disconnect');
+			const second = await post(port, '/disconnect');
+
+			expect(first.status).toBe(200);
+			expect(second.status).toBe(200);
+			expect(onStatusChange).toHaveBeenCalledTimes(1);
+			expect(onStatusChange).toHaveBeenCalledWith('disconnected');
+		} finally {
+			await close();
+		}
+	});
 });
 
 // ---------------------------------------------------------------------------

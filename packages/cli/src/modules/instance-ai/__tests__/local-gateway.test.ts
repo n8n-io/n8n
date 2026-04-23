@@ -57,6 +57,30 @@ describe('LocalGateway', () => {
 
 			await expect(callPromise).rejects.toThrow('disconnected');
 		});
+
+		it('should emit gateway-disconnect event before clearing state', () => {
+			gateway.init({ rootPath: 'my-project', tools: [SAMPLE_TOOL], toolCategories: [] });
+
+			const observedConnectedAtEmit: boolean[] = [];
+			gateway.onDisconnect(() => {
+				observedConnectedAtEmit.push(gateway.isConnected);
+			});
+
+			gateway.disconnect();
+
+			expect(observedConnectedAtEmit).toEqual([true]);
+			expect(gateway.isConnected).toBe(false);
+		});
+
+		it('should deliver gateway-disconnect event with the expected shape', () => {
+			gateway.init(EMPTY_CAPABILITIES);
+			const events: Array<{ type: string }> = [];
+			gateway.onDisconnect((event) => events.push(event));
+
+			gateway.disconnect();
+
+			expect(events).toEqual([{ type: 'gateway-disconnect' }]);
+		});
 	});
 
 	describe('callTool (gateway round-trip)', () => {
