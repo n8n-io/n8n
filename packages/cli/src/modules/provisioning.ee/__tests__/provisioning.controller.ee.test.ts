@@ -1,21 +1,23 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
 import { ProvisioningController } from '../provisioning.controller.ee';
 import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type { OidcInstanceSettingsLoader } from '@/instance-settings-loader/loaders/oidc.instance-settings-loader';
 import { type Response } from 'express';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { type ProvisioningConfigDto } from '@n8n/api-types';
 
 const provisioningService = mock<ProvisioningService>();
 const licenseState = mock<LicenseState>();
-const oidcSettingsLoader = mock<OidcInstanceSettingsLoader>();
+const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
+	ssoManagedByEnv: false,
+});
 
 const controller = new ProvisioningController(
 	provisioningService,
 	licenseState,
-	oidcSettingsLoader,
+	instanceSettingsLoaderConfig,
 );
 
 describe('ProvisioningController', () => {
@@ -68,6 +70,21 @@ describe('ProvisioningController', () => {
 			await controller.patchConfig(req, res);
 
 			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should reject writes when managed by env', async () => {
+			const envManagedConfig = mock<InstanceSettingsLoaderConfig>({ ssoManagedByEnv: true });
+			const envManagedController = new ProvisioningController(
+				provisioningService,
+				licenseState,
+				envManagedConfig,
+			);
+
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+
+			await expect(envManagedController.patchConfig(req, res)).rejects.toThrow(
+				'cannot be modified through the API',
+			);
 		});
 
 		it('should patch the provisioning config', async () => {

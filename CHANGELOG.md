@@ -1,3 +1,87 @@
+# [2.18.0](https://github.com/n8n-io/n8n/compare/n8n@2.17.0...n8n@2.18.0) (2026-04-21)
+
+
+### Bug Fixes
+
+* **ai-builder:** Increase orchestrator max steps from default 5 to 60 ([#28429](https://github.com/n8n-io/n8n/issues/28429)) ([3c850f2](https://github.com/n8n-io/n8n/commit/3c850f2711d53ded62a3540c67b9ec02143cbb3f))
+* **ai-builder:** Scope artifacts panel to resources produced in-thread ([#28678](https://github.com/n8n-io/n8n/issues/28678)) ([7b3696f](https://github.com/n8n-io/n8n/commit/7b3696f3f7d95ab3cbaeb8ca58fdc74264a83b52))
+* **ai-builder:** Use placeholders for user-provided values instead of hardcoding fake addresses ([#28407](https://github.com/n8n-io/n8n/issues/28407)) ([39c6217](https://github.com/n8n-io/n8n/commit/39c62171092618149fa67ccb9a384a5a3aadd4e8))
+* **Alibaba Cloud Chat Model Node:** Add credential-level url field for AI gateway compatibility ([#28697](https://github.com/n8n-io/n8n/issues/28697)) ([dd6c28c](https://github.com/n8n-io/n8n/commit/dd6c28c6d16274354b83d3cc6a731f2f7a859a14))
+* **ClickUp Node:** Unclear error message when using OAuth credentials ([#28584](https://github.com/n8n-io/n8n/issues/28584)) ([19aadf1](https://github.com/n8n-io/n8n/commit/19aadf19f753d64cc2cd80af3c5b3dd957a4ede7))
+* **core:** Add required field validation to MCP OAuth client registration ([#28490](https://github.com/n8n-io/n8n/issues/28490)) ([8716316](https://github.com/n8n-io/n8n/commit/87163163e67001f69a2a2d7b4a650e0511614d62))
+* **core:** Cascade-cancel dependent planned tasks when a parent task fails ([#28656](https://github.com/n8n-io/n8n/issues/28656)) ([35f9bed](https://github.com/n8n-io/n8n/commit/35f9bed4de39350717192d9f272ad044ad50b323))
+* **core:** Enforce credential access checks in dynamic node parameter requests ([#28446](https://github.com/n8n-io/n8n/issues/28446)) ([ac41112](https://github.com/n8n-io/n8n/commit/ac411127314921aaf82b7b97d76eeaa2703b708c))
+* **core:** Ensure single zod instance across workspace packages ([#28604](https://github.com/n8n-io/n8n/issues/28604)) ([107c48f](https://github.com/n8n-io/n8n/commit/107c48f65c10d26f8f01d1bee5d2eb77b9d26084))
+* **core:** Filter stale credentials from setup wizard requests ([#28478](https://github.com/n8n-io/n8n/issues/28478)) ([657bdf1](https://github.com/n8n-io/n8n/commit/657bdf136fd0fc01cee3629baf65e130ee80840a))
+* **core:** Fix public API package update process ([#28475](https://github.com/n8n-io/n8n/issues/28475)) ([34430ae](https://github.com/n8n-io/n8n/commit/34430aedb15fa5305be475582e04f08967415e38))
+* **core:** Fix workflow-sdk validation for plain workflow objects ([#28416](https://github.com/n8n-io/n8n/issues/28416)) ([62dc073](https://github.com/n8n-io/n8n/commit/62dc073b3d954dc885359962c02ae8aa84d17c43))
+* **core:** Guard against undefined config properties in credential overwrites ([#28573](https://github.com/n8n-io/n8n/issues/28573)) ([77d27bc](https://github.com/n8n-io/n8n/commit/77d27bc826e4e91c2c589a62cbb6b997cacccd16))
+* **core:** Handle git fetch failure during source control startup ([#28422](https://github.com/n8n-io/n8n/issues/28422)) ([fa3299d](https://github.com/n8n-io/n8n/commit/fa3299d0425dfa2eaeaca6732dc46e0181e6fd68))
+* **core:** Handle invalid percent sequences and equals signs in HTTP response headers ([#27691](https://github.com/n8n-io/n8n/issues/27691)) ([ca71d89](https://github.com/n8n-io/n8n/commit/ca71d89d885d01f8663e29a2a5b1f06c713aede8))
+* **core:** Implement data tables name collision detection on pull ([#26416](https://github.com/n8n-io/n8n/issues/26416)) ([e5aaeb5](https://github.com/n8n-io/n8n/commit/e5aaeb53a93c63a04978e2a6eb7aa7255fcf510b))
+* **core:** Prevent nodes tool crash on flattened required fields ([#28670](https://github.com/n8n-io/n8n/issues/28670)) ([3e72430](https://github.com/n8n-io/n8n/commit/3e724303c537739319e91f8bcaf7070fe105ffc7))
+* **core:** Resolve additional keys lazily in VM expression engine ([#28430](https://github.com/n8n-io/n8n/issues/28430)) ([98b833a](https://github.com/n8n-io/n8n/commit/98b833a07d6d0f705633d7cb48298ee953688bd1))
+* **core:** Skip disabled Azure Key Vault secrets and handle partial fetch failures ([#28325](https://github.com/n8n-io/n8n/issues/28325)) ([6217d08](https://github.com/n8n-io/n8n/commit/6217d08ce9b53d6fd5277fa0708ed13d36e0e934))
+* **core:** Skip npm outdated check for verified-only community packages ([#28335](https://github.com/n8n-io/n8n/issues/28335)) ([2959b4d](https://github.com/n8n-io/n8n/commit/2959b4dc2a6cfd3733cc83bd6442dddd4cff08d2))
+* Disable axios built-in proxy for OAuth2 token requests ([#28513](https://github.com/n8n-io/n8n/issues/28513)) ([56f36a6](https://github.com/n8n-io/n8n/commit/56f36a6d1961d95780fb8258e8876d7d512503c2))
+* **editor:** Advance wizard step on Continue instead of applying setup ([#28698](https://github.com/n8n-io/n8n/issues/28698)) ([3b15e47](https://github.com/n8n-io/n8n/commit/3b15e470b54b13e9fe68e81c81a757c06b264783))
+* **editor:** Center sub-node icons and refresh triggers panel icons ([#28515](https://github.com/n8n-io/n8n/issues/28515)) ([6739856](https://github.com/n8n-io/n8n/commit/6739856aa32689b43d143ae4909e1f3d85dc4106))
+* **editor:** Display placeholder sentinels as hint text in setup wizard ([#28482](https://github.com/n8n-io/n8n/issues/28482)) ([bb7d137](https://github.com/n8n-io/n8n/commit/bb7d137cf735bcdf65bbcf8ff58fa911d83121f5))
+* **editor:** Gate Instance AI input while setup wizard is open ([#28685](https://github.com/n8n-io/n8n/issues/28685)) ([db83a95](https://github.com/n8n-io/n8n/commit/db83a95522957c10a3466f0b57944c8b8827347a))
+* **editor:** Hide setup parameter issue icons until user interacts with input ([#28010](https://github.com/n8n-io/n8n/issues/28010)) ([00b0558](https://github.com/n8n-io/n8n/commit/00b0558c2b1ed6bc4d47a86cb1bfca8eb55a47bc))
+* **editor:** Improve disabled Google sign-in button styling and tooltip alignment ([#28536](https://github.com/n8n-io/n8n/issues/28536)) ([e848230](https://github.com/n8n-io/n8n/commit/e8482309478eed05793dcaa4d82185936439663f))
+* **editor:** Improve setup wizard placeholder detection and card completion scoping ([#28474](https://github.com/n8n-io/n8n/issues/28474)) ([d172113](https://github.com/n8n-io/n8n/commit/d17211342e4ee8c8ec89a9c918017884e2de0763))
+* **editor:** Only show role assignment warning modal when value actually changed ([#28387](https://github.com/n8n-io/n8n/issues/28387)) ([9c97931](https://github.com/n8n-io/n8n/commit/9c97931ca06d407bec1c6a8bab510d206afba394))
+* **editor:** Prevent setup wizard disappearing on requestId-driven remount ([#28473](https://github.com/n8n-io/n8n/issues/28473)) ([04d57c5](https://github.com/n8n-io/n8n/commit/04d57c5fd62a5b9a2e086a3f540b7f50a932b62d))
+* **editor:** Re-initialize SSO store after login to populate OIDC redirect URL ([#28386](https://github.com/n8n-io/n8n/issues/28386)) ([21317b8](https://github.com/n8n-io/n8n/commit/21317b8945dec9169e36b7e5fdf867713018661d))
+* **editor:** Refine resource dependency badge ([#28087](https://github.com/n8n-io/n8n/issues/28087)) ([f216fda](https://github.com/n8n-io/n8n/commit/f216fda511062a40199b986351693677ebb2919e))
+* **editor:** Reset OIDC form dirty state after saving IdP settings ([#28388](https://github.com/n8n-io/n8n/issues/28388)) ([1042350](https://github.com/n8n-io/n8n/commit/1042350f4e0f6ed44b51a1d707de665f71437faa))
+* **editor:** Reset remote values on credentials change ([#26282](https://github.com/n8n-io/n8n/issues/26282)) ([5e11197](https://github.com/n8n-io/n8n/commit/5e111975d4086c060ac3d29d07da7c00ea2103a1))
+* **editor:** Resolve nodes stuck on loading after execution in instance-ai preview ([#28450](https://github.com/n8n-io/n8n/issues/28450)) ([c97c3b4](https://github.com/n8n-io/n8n/commit/c97c3b4d12e166091be9ea1de969a17d64c36ec2))
+* **editor:** Restore WASM file paths for cURL import in HTTP Request node ([#28610](https://github.com/n8n-io/n8n/issues/28610)) ([51bc71e](https://github.com/n8n-io/n8n/commit/51bc71e897e2baaf729963bf0f373a73505aee43))
+* **editor:** Show auth type selector in Instance AI workflow setup ([#28707](https://github.com/n8n-io/n8n/issues/28707)) ([1b13d32](https://github.com/n8n-io/n8n/commit/1b13d325f12a5a27d139c75164114ee41583a902))
+* **editor:** Show relevant node in workflow activation errors ([#26691](https://github.com/n8n-io/n8n/issues/26691)) ([c9cab11](https://github.com/n8n-io/n8n/commit/c9cab112f99a5da2742012773450bf7721484c28))
+* **Google Cloud Firestore Node:** Fix empty array serialization in jsonToDocument ([#28213](https://github.com/n8n-io/n8n/issues/28213)) ([7094395](https://github.com/n8n-io/n8n/commit/7094395cef8e71f767df6fa5e242cf2fa42366ed))
+* **Google Drive Node:** Continue on error support for download file operation ([#28276](https://github.com/n8n-io/n8n/issues/28276)) ([30128c9](https://github.com/n8n-io/n8n/commit/30128c9254be2214e746e0158296c1f1bd8ab4d8))
+* **Google Gemini Node:** Determine the file extention from MIME type for image and video operations ([#28616](https://github.com/n8n-io/n8n/issues/28616)) ([73659cb](https://github.com/n8n-io/n8n/commit/73659cb3e7eccd48a739829be0a4d7a6557ce4a1))
+* **GraphQL Node:** Improve error response handling ([#28209](https://github.com/n8n-io/n8n/issues/28209)) ([357fb72](https://github.com/n8n-io/n8n/commit/357fb7210ab201e13e2d3256a7886cf382656f22))
+* **HubSpot Node:** Rename HubSpot "App Token" auth to "Service Key" ([#28479](https://github.com/n8n-io/n8n/issues/28479)) ([8c3e692](https://github.com/n8n-io/n8n/commit/8c3e6921741f0e28ba28f8fb39797d5e19db71c9))
+* **HubSpot Trigger Node:** Add missing property selectors ([#28595](https://github.com/n8n-io/n8n/issues/28595)) ([d179f66](https://github.com/n8n-io/n8n/commit/d179f667c0044fd246d8e8535cd3a741d3f96b6f))
+* **IMAP Node:** Fix out-of-memory crash after ECONNRESET on reconnect ([#28290](https://github.com/n8n-io/n8n/issues/28290)) ([2d0b231](https://github.com/n8n-io/n8n/commit/2d0b231e31f265f39dd95d6794bd74d9b5592056))
+* Link to n8n website broken in n8n forms ([#28627](https://github.com/n8n-io/n8n/issues/28627)) ([ff950e5](https://github.com/n8n-io/n8n/commit/ff950e5840214c515d413b45f174d9638a51dd39))
+* **LinkedIn Node:** Update LinkedIn API version in request headers ([#28564](https://github.com/n8n-io/n8n/issues/28564)) ([25e07ca](https://github.com/n8n-io/n8n/commit/25e07cab5a66b04960753055131d355e0323d971))
+* **OpenAI Node:** Replace hardcoded models with RLC ([#28226](https://github.com/n8n-io/n8n/issues/28226)) ([4070930](https://github.com/n8n-io/n8n/commit/4070930e4c080c634df9b241175941c48afed9dc))
+* **Schedule Node:** Use elapsed-time check to self-heal after missed triggers ([#28423](https://github.com/n8n-io/n8n/issues/28423)) ([5f8ab01](https://github.com/n8n-io/n8n/commit/5f8ab01f9bb26f4d27f6f882fe1024f27caf4d67))
+* Update working memory using tools ([#28467](https://github.com/n8n-io/n8n/issues/28467)) ([39189c3](https://github.com/n8n-io/n8n/commit/39189c39859fbb4c1562a03ae3e6cd29195f7d1d))
+
+
+### Features
+
+* Add deployment_key table, entity, repository, and migration ([#28329](https://github.com/n8n-io/n8n/issues/28329)) ([59edd6a](https://github.com/n8n-io/n8n/commit/59edd6ae5421aa6be34ee009a3024e0ca9843467))
+* Add Prometheus counters for token exchange ([#28453](https://github.com/n8n-io/n8n/issues/28453)) ([c6534fa](https://github.com/n8n-io/n8n/commit/c6534fa0b389a394e7591d3fc5ec565409279004))
+* AI Gateway credentials endpoint instance url ([#28520](https://github.com/n8n-io/n8n/issues/28520)) ([d012346](https://github.com/n8n-io/n8n/commit/d012346c777455de5bde9cab218f0c4f2d712fa0))
+* **API:** Add missing credential endpoints (GET by ID and test) ([#28519](https://github.com/n8n-io/n8n/issues/28519)) ([9a65549](https://github.com/n8n-io/n8n/commit/9a65549575bb201c3f55888d71e04663f622eb5b))
+* **core:** Add `require-node-description-fields` ESLint rule for icon and subtitle ([#28400](https://github.com/n8n-io/n8n/issues/28400)) ([5504099](https://github.com/n8n-io/n8n/commit/550409923a3d8d6961648674024eabb0d0749cfc))
+* **core:** Add KeyManagerService for encryption key lifecycle management ([#28533](https://github.com/n8n-io/n8n/issues/28533)) ([9dd3e59](https://github.com/n8n-io/n8n/commit/9dd3e59acb6eb94bb38ffe01677ea1c9a108d87b))
+* **core:** Configure OIDC settings via env vars ([#28185](https://github.com/n8n-io/n8n/issues/28185)) ([36261fb](https://github.com/n8n-io/n8n/commit/36261fbe7ad55a7b3bcc19809b6decb401b245bb))
+* **core:** Persist deployment_key entries for stability across restarts and key rotation ([#28518](https://github.com/n8n-io/n8n/issues/28518)) ([bb96d2e](https://github.com/n8n-io/n8n/commit/bb96d2e50a6b7cd77ea6256bb1446e8b3b348bd2))
+* **core:** Support npm dist-tags in community node installation ([#28067](https://github.com/n8n-io/n8n/issues/28067)) ([ca871cc](https://github.com/n8n-io/n8n/commit/ca871cc10aca97de8c0892e0735c9fa2ed16d251))
+* **core:** Support npm registry token authentication to install private community node packages ([#28228](https://github.com/n8n-io/n8n/issues/28228)) ([8b105cc](https://github.com/n8n-io/n8n/commit/8b105cc0cf6e84e069f6b7f3a98c334cd44876c1))
+* **core:** Track workflow action source for external API and MCP requests ([#28483](https://github.com/n8n-io/n8n/issues/28483)) ([575c34e](https://github.com/n8n-io/n8n/commit/575c34eae1bdf8e9d5d5fe7d31c92f57f27fcc27))
+* **core:** Workflow tracing - add workflow version id ([#28424](https://github.com/n8n-io/n8n/issues/28424)) ([9a22fe5](https://github.com/n8n-io/n8n/commit/9a22fe5a255b20be7d0e78fff7e03bf79e50a62f))
+* **editor:** Add favoriting for projects, folders, workflows and data tables ([#26228](https://github.com/n8n-io/n8n/issues/26228)) ([b1a075f](https://github.com/n8n-io/n8n/commit/b1a075f7609045620563f86df0e15d27b1176d45))
+* **editor:** Enable workflow execution from instance AI preview canvas ([#28412](https://github.com/n8n-io/n8n/issues/28412)) ([5b376cb](https://github.com/n8n-io/n8n/commit/5b376cb12d6331e4e458a1f1880fcddce76d1db9))
+* Enable security policy settings via env vars ([#28321](https://github.com/n8n-io/n8n/issues/28321)) ([1108467](https://github.com/n8n-io/n8n/commit/1108467f44bf987c0f5a5a0eafb6396e2745b8ce))
+* **Linear Trigger Node:** Add signing secret validation ([#28522](https://github.com/n8n-io/n8n/issues/28522)) ([3b248ee](https://github.com/n8n-io/n8n/commit/3b248eedc289c62f32f16da677c75b25df0fcb9f))
+* **MiniMax Chat Model Node:** Add MiniMax Chat Model sub-node ([#28305](https://github.com/n8n-io/n8n/issues/28305)) ([bd927d9](https://github.com/n8n-io/n8n/commit/bd927d93503a65e0be18c4c40e68dcad96f68d82))
+* **Slack Node:** Add app_home_opened as a dedicated trigger event ([#28626](https://github.com/n8n-io/n8n/issues/28626)) ([f1dab3e](https://github.com/n8n-io/n8n/commit/f1dab3e29530ee596d68db474024ddbae5fa055a))
+
+
+### Reverts
+
+* Make Wait node fully durable by removing in-memory execution path ([#28538](https://github.com/n8n-io/n8n/issues/28538)) ([bb9bec3](https://github.com/n8n-io/n8n/commit/bb9bec3ba419d46450122411839f20cd614db920))
+
+
 # [2.17.0](https://github.com/n8n-io/n8n/compare/n8n@2.16.0...n8n@2.17.0) (2026-04-13)
 
 

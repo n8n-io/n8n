@@ -75,4 +75,17 @@ export class InstanceSettingsLoaderConfig {
 
 	@Env('N8N_PERSONAL_SPACE_SHARING_ENABLED')
 	personalSpaceSharingEnabled: boolean = true;
+
+	// --- SAML ---
+
+	/** XML metadata string from the identity provider. */
+	@Env('N8N_SSO_SAML_METADATA')
+	samlMetadata: string = '';
+
+	/** URL to fetch SAML metadata from (mutually exclusive with metadata). */
+	@Env('N8N_SSO_SAML_METADATA_URL')
+	samlMetadataUrl: string = '';
+
+	@Env('N8N_SSO_SAML_LOGIN_ENABLED')
+	samlLoginEnabled: boolean = false;
 }

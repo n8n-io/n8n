@@ -4,6 +4,7 @@ import type { INode } from 'n8n-workflow';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
@@ -87,6 +88,7 @@ describe('update-workflow MCP tool', () => {
 	let credentialsService: CredentialsService;
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
+	let collaborationService: CollaborationService;
 
 	const mockExistingWorkflow = Object.assign(new WorkflowEntity(), {
 		id: 'wf-1',
@@ -121,6 +123,10 @@ describe('update-workflow MCP tool', () => {
 			findOneOrFail: jest.fn().mockResolvedValue({ projectId: 'project-1' }),
 		});
 		nodeTypes = mockInstance(NodeTypes);
+		collaborationService = mockInstance(CollaborationService, {
+			ensureWorkflowEditable: jest.fn().mockResolvedValue(undefined),
+			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
+		});
 
 		mockParseAndValidate.mockImplementation(async () => ({
 			workflow: { ...mockWorkflowJson, nodes: mockNodes.map((n) => ({ ...n })) },
@@ -139,6 +145,7 @@ describe('update-workflow MCP tool', () => {
 			nodeTypes,
 			credentialsService,
 			sharedWorkflowRepository,
+			collaborationService,
 		);
 
 	// Helper to call handler with proper typing (optional fields default to undefined)
@@ -182,6 +189,19 @@ describe('update-workflow MCP tool', () => {
 	});
 
 	describe('handler tests', () => {
+		test('returns error when workflow has active write lock', async () => {
+			(collaborationService.ensureWorkflowEditable as jest.Mock).mockRejectedValue(
+				new Error('Cannot modify workflow while it is being edited by a user in the editor.'),
+			);
+
+			const result = await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain('being edited by a user');
+			expect(workflowService.update).not.toHaveBeenCalled();
+		});
+
 		test('successfully updates workflow and returns expected response', async () => {
 			const result = await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
 
@@ -192,6 +212,8 @@ describe('update-workflow MCP tool', () => {
 			expect(response.url).toBe('https://n8n.example.com/workflow/wf-1');
 			expect(response.autoAssignedCredentials).toEqual([]);
 			expect(result.isError).toBeUndefined();
+
+			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
 		});
 
 		test('sets correct workflow entity defaults', async () => {
