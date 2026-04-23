@@ -4,7 +4,7 @@ import type {
 	StreamChunk,
 	StreamResult,
 } from '@n8n/agents';
-import { Agent, Memory } from '@n8n/agents';
+import { Agent, Memory, providerTools } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
@@ -177,7 +177,8 @@ export class AgentsBuilderService {
 			.model({ id: BUILDER_MODEL, apiKey: envAnthropicKey })
 			.instructions(instructions)
 			.memory(builderMemory)
-			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
+			.providerTool(providerTools.anthropicWebSearch({ maxUses: 5 }));
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);

@@ -2,9 +2,9 @@
 import { N8nCard, N8nText, N8nActionDropdown } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { deleteAgent } from '../composables/useAgentApi';
+import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import type { AgentResource } from '../types';
 
@@ -22,7 +22,7 @@ const emit = defineEmits<{
 
 const locale = useI18n();
 const rootStore = useRootStore();
-const message = useMessage();
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const { publish, unpublish } = useAgentPublish();
 
 function getActions() {
@@ -40,20 +40,19 @@ async function onAction(action: string) {
 		const updated = await publish(props.projectId, props.agent.id);
 		if (updated) emit('published', updated);
 	} else if (action === 'unpublish') {
-		const updated = await unpublish(props.projectId, props.agent.id);
+		const updated = await unpublish(props.projectId, props.agent.id, props.agent.name);
 		if (updated) emit('unpublished', updated);
 	} else if (action === 'delete') {
-		const confirmed = await message.confirm(
-			locale.baseText('agents.builder.deleteConfirmMessage', {
+		const confirmed = await openAgentConfirmationModal({
+			title: locale.baseText('agents.delete.modal.title', {
 				interpolate: { name: props.agent.name },
 			}),
-			locale.baseText('agents.builder.deleteAgent'),
-			{
-				confirmButtonText: locale.baseText('agents.builder.deleteConfirmButton'),
-				cancelButtonText: locale.baseText('generic.cancel'),
-				type: 'warning',
-			},
-		);
+			description: locale.baseText('agents.delete.modal.description', {
+				interpolate: { name: props.agent.name },
+			}),
+			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
+			cancelButtonText: locale.baseText('generic.cancel'),
+		});
 		if (confirmed !== MODAL_CONFIRM) return;
 		await deleteAgent(rootStore.restApiContext, props.projectId, props.agent.id);
 		emit('deleted', props.agent.id);

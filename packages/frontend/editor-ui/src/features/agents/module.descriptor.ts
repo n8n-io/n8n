@@ -86,6 +86,7 @@ export const AgentsModule: FrontendModuleDescription = {
 			{
 				label: 'Agents',
 				value: AGENTS_LIST_VIEW,
+				tag: 'Preview',
 				to: {
 					name: AGENTS_LIST_VIEW,
 				},
@@ -95,6 +96,7 @@ export const AgentsModule: FrontendModuleDescription = {
 			{
 				label: 'Agents',
 				value: PROJECT_AGENTS,
+				tag: 'Preview',
 				dynamicRoute: {
 					name: PROJECT_AGENTS,
 					includeProjectId: true,

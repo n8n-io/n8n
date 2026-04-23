@@ -9,6 +9,7 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
 export type * from './agents';
+export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from './agent-sse';
 export {
 	ASK_LLM_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
@@ -32,9 +33,6 @@ export {
 	type AskQuestionResume,
 	type InteractiveResumeData,
 } from './agent-builder-interactive';
-export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from './agent-sse';
-export { AgentChatMessageDto } from './dto/agents/agent-chat-message.dto';
-export { AgentBuildResumeDto } from './dto/agents/agent-build-resume.dto';
 export * from './instance-registry-types';
 export {
 	chatHubConversationModelSchema,

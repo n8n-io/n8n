@@ -141,8 +141,7 @@ export async function generateTitleAndEmojiFromMessage(
 		try {
 			const parsed = JSON.parse(jsonMatch[0]) as { title?: string; emoji?: string };
 			rawTitle = parsed.title?.trim() ?? '';
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-			emoji = parsed.emoji?.trim() || undefined;
+			emoji = parsed.emoji?.trim() ?? undefined;
 		} catch {
 			// Model returned something that looked like JSON but wasn't parseable —
 			// fall back to using the whole response as the title.

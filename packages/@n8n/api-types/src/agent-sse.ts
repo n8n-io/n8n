@@ -82,5 +82,14 @@ export type AgentSseEvent =
 	| { type: 'code-delta'; delta: string }
 	| { type: 'config-updated' }
 	| { type: 'tool-updated' }
-	| { type: 'error'; message: string }
+	| {
+			type: 'error';
+			message: string;
+			/**
+			 * Optional discriminator for distinct error classes.
+			 */
+			errorCode?: string;
+			/** Backend-emitted ids of the missing config slots; only set when `errorCode` is `agent_misconfigured`. */
+			missing?: string[];
+	  }
 	| { type: 'done'; sessionId?: string };

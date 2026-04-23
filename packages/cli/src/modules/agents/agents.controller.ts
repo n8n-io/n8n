@@ -1,9 +1,13 @@
 import {
 	type AgentBuilderMessagesResponse,
-	AgentBuildResumeDto,
-	AgentChatMessageDto,
 	type AgentPersistedMessageDto,
 	type AgentSseEvent,
+	AgentBuildResumeDto,
+	AgentChatMessageDto,
+	AgentIntegrationDto,
+	CreateAgentDto,
+	UpdateAgentConfigDto,
+	UpdateAgentDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
@@ -23,12 +27,6 @@ import {
 	pumpChunks,
 	type ToolEventCallbacks,
 } from './agent-sse-stream';
-import {
-	AgentIntegrationDto,
-	CreateAgentDto,
-	UpdateAgentConfigDto,
-	UpdateAgentDto,
-} from './agents.dto';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
@@ -298,6 +296,22 @@ export class AgentsController {
 		}
 
 		const threadId = sessionId ?? randomUUID();
+
+		const { missing } = await this.agentsService.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			credentialProvider,
+		);
+		if (missing.length > 0) {
+			send({
+				type: 'error',
+				message: 'This agent is not ready to run yet.',
+				errorCode: 'agent_misconfigured',
+				missing,
+			});
+			res.end();
+			return;
+		}
 
 		try {
 			await pumpChunks(

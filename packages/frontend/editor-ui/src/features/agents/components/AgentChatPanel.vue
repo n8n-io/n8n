@@ -44,6 +44,7 @@ const emit = defineEmits<{
 	'continue-loaded': [count: number];
 	'initial-consumed': [];
 	back: [];
+	'open-build': [];
 }>();
 
 const locale = useI18n();
@@ -56,19 +57,46 @@ const displayTitle = computed(() => props.sessionTitle ?? locale.baseText('agent
 
 const inputText = ref('');
 
-const { messages, isStreaming, messagingState, loadHistory, sendMessage, stopGenerating, resume } =
-	useAgentChatStream({
-		projectId: toRef(props, 'projectId'),
-		agentId: toRef(props, 'agentId'),
-		endpoint: toRef(props, 'endpoint'),
-		continueSessionId: toRef(props, 'continueSessionId'),
-		onCodeUpdated: () => emit('codeUpdated'),
-		onCodeDelta: (d) => emit('codeDelta', d),
-		onConfigUpdated: () => emit('configUpdated'),
-		onHistoryLoaded: (count) => {
-			if (props.continueSessionId) emit('continue-loaded', count);
-		},
-	});
+const {
+	messages,
+	isStreaming,
+	messagingState,
+	fatalError,
+	loadHistory,
+	sendMessage,
+	stopGenerating,
+	resume,
+	dismissFatalError,
+} = useAgentChatStream({
+	projectId: toRef(props, 'projectId'),
+	agentId: toRef(props, 'agentId'),
+	endpoint: toRef(props, 'endpoint'),
+	continueSessionId: toRef(props, 'continueSessionId'),
+	onCodeUpdated: () => emit('codeUpdated'),
+	onCodeDelta: (d) => emit('codeDelta', d),
+	onConfigUpdated: () => emit('configUpdated'),
+	onHistoryLoaded: (count) => {
+		if (props.continueSessionId) emit('continue-loaded', count);
+	},
+});
+
+function humaniseMissingField(field: string): string {
+	// Map backend-emitted field ids onto i18n keys. Unknown fields fall back to
+	// their raw id so a new backend-side value still renders something useful.
+	const key = `agents.chat.misconfigured.missing.${field}`;
+	const translated = locale.baseText(key as never);
+	return translated === key ? field : translated;
+}
+
+const missingFields = computed(() => {
+	if (!fatalError.value) return '';
+	return fatalError.value.missing.map(humaniseMissingField).join(', ');
+});
+
+function onOpenBuild() {
+	dismissFatalError();
+	emit('open-build');
+}
 
 watch(isStreaming, (v) => emit('update:streaming', v));
 
@@ -99,24 +127,37 @@ function sendMessageFromOutside(message: string) {
 
 defineExpose({ sendMessageFromOutside });
 
+// Capture the seed message locally so later clearing of `props.initialMessage`
+// by the parent (which does so on `nextTick` to prevent the same prompt
+// bleeding into the other chat panel) can't race the `onMounted` guard below.
+const seedMessage = props.initialMessage;
+
+// Seed the initial message synchronously during setup (not onMounted) so the
+// user bubble is in `messages` before Vue performs the first render. Without
+// this, the panel renders once with an empty message list and THEN the user
+// message appears — visible as a 1-frame flash of the blank/centered layout.
+//
+// `sendMessage` is an async function but the push to `messages` happens
+// before any await, so calling it here runs the sync prefix (push + set
+// `isStreaming = true` inside streamFromEndpoint) before setup returns. The
+// fetch itself continues to run async in the background.
+if (seedMessage) {
+	void sendMessage(seedMessage);
+}
+
 onMounted(() => {
 	// A supplied `initialMessage` means the parent just minted a fresh session
 	// and wants us to seed it with the first message — there's no thread to
-	// load yet, and hitting the history endpoint would 404.
-	//
-	// We emit `initial-consumed` right after reading the prop so the parent
-	// can clear its source ref. This guards against re-sending on HMR / any
-	// re-mount where the parent's prompt ref is still populated. We can't
-	// wait for the parent to clear the prop *before* we mount (the home →
-	// chat <Transition mode="out-in"> delays our mount, and clearing on
-	// `nextTick` would wipe the prompt before this hook runs) — so the
-	// consume-then-emit pattern is the right ordering.
-	if (props.initialMessage) {
-		sendMessageFromOutside(props.initialMessage);
+	// load yet, and hitting the history endpoint would 404. The seed was
+	// already sent synchronously during setup (see the `seedMessage` block
+	// above) — here we just emit `initial-consumed` so the parent can clear
+	// its source ref. This guards against re-sending on HMR / any re-mount
+	// where the parent's prompt ref is still populated.
+	if (seedMessage) {
 		emit('initial-consumed');
-	} else {
-		void loadHistory();
+		return;
 	}
+	void loadHistory();
 });
 
 // Abort any in-flight stream when the panel unmounts (e.g. route change,
@@ -144,7 +185,44 @@ onBeforeUnmount(() => {
 			<span :class="$style.sessionTitle">{{ displayTitle }}</span>
 		</div>
 
-		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :endpoint="endpoint" />
+		<div v-if="fatalError" :class="$style.errorBanner" role="alert">
+			<N8nIcon icon="triangle-alert" :size="16" :class="$style.errorBannerIcon" />
+			<div :class="$style.errorBannerBody">
+				<span :class="$style.errorBannerTitle">
+					{{ locale.baseText('agents.chat.misconfigured.title') }}
+				</span>
+				<span v-if="missingFields" :class="$style.errorBannerDetail">
+					{{ locale.baseText('agents.chat.misconfigured.missingPrefix') }} {{ missingFields }}
+				</span>
+			</div>
+			<div :class="$style.errorBannerActions">
+				<button
+					:class="$style.errorBannerBtn"
+					data-testid="agent-misconfigured-open-build"
+					@click="onOpenBuild"
+				>
+					{{ locale.baseText('agents.chat.misconfigured.openBuild') }}
+				</button>
+				<button
+					:class="$style.errorBannerDismiss"
+					:title="locale.baseText('agents.chat.misconfigured.dismiss')"
+					@click="dismissFatalError"
+				>
+					<N8nIcon icon="x" :size="14" />
+				</button>
+			</div>
+		</div>
+
+		<!--
+			Suppress the centered empty state when we have an `initialMessage` to
+			seed. Without this, the panel briefly renders the empty view before
+			the seedMessage push (during setup) lands in `messages` — visible as
+			a flicker of the centered layout under the mode transition.
+		-->
+		<AgentChatEmptyState
+			v-if="messages.length === 0 && !isStreaming && !initialMessage"
+			:endpoint="endpoint"
+		/>
 		<AgentChatMessageList
 			v-else
 			:messages="messages"
@@ -239,5 +317,86 @@ onBeforeUnmount(() => {
 
 .inputArea {
 	padding: var(--spacing--sm);
+}
+
+.errorBanner {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	margin: var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
+	background-color: var(--color--danger--tint-4);
+	border-radius: var(--radius);
+	color: var(--color--text);
+	flex-shrink: 0;
+}
+
+.errorBannerIcon {
+	color: var(--color--danger);
+	margin-top: 2px;
+	flex-shrink: 0;
+}
+
+.errorBannerBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	flex: 1;
+	min-width: 0;
+}
+
+.errorBannerTitle {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--xl);
+}
+
+.errorBannerDetail {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	line-height: var(--line-height--xl);
+}
+
+.errorBannerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	flex-shrink: 0;
+}
+
+.errorBannerBtn {
+	display: inline-flex;
+	align-items: center;
+	border: var(--border-width) var(--border-style) var(--color--primary);
+	background-color: transparent;
+	color: var(--color--primary);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--radius);
+	cursor: pointer;
+
+	&:hover {
+		background-color: var(--color--primary--tint-3);
+	}
+}
+
+.errorBannerDismiss {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: none;
+	color: var(--color--text--tint-2);
+	width: 24px;
+	height: 24px;
+	border-radius: var(--radius);
+	cursor: pointer;
+
+	&:hover {
+		background-color: var(--color--foreground--tint-2);
+		color: var(--color--text);
+	}
 }
 </style>

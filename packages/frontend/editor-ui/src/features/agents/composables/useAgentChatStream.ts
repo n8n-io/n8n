@@ -23,6 +23,11 @@ import {
 	type ToolCall,
 } from './agentChatMessages';
 
+export interface FatalAgentError {
+	message: string;
+	missing: string[];
+}
+
 export interface UseAgentChatStreamParams {
 	projectId: Ref<string>;
 	agentId: Ref<string>;
@@ -48,6 +53,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const isStreaming = ref(false);
 	const abortController = ref<AbortController | null>(null);
 	const historyLoaded = ref(false);
+	/**
+	 * Set when the backend rejects the stream because the agent itself is
+	 * misconfigured (missing instructions / model / credential). Cleared on the
+	 * next send so users can fix the config and retry without a manual dismiss.
+	 */
+	const fatalError = ref<FatalAgentError | null>(null);
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
@@ -302,6 +313,25 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'error': {
+				if (event.errorCode === 'agent_misconfigured') {
+					// Misconfiguration is a distinct class of error: the agent
+					// can't run until its config is fixed. Surface it via the
+					// banner (`fatalError`) rather than an inline error bubble
+					// so the user sees what's missing and can act on it.
+					// Drop any orphan empty assistant bubble we minted before
+					// the error arrived so the banner is the only surface.
+					fatalError.value = {
+						message: event.message,
+						missing: event.missing ?? [],
+					};
+					for (const msg of session.minted) {
+						if (!msg.content && (msg.toolCalls?.length ?? 0) === 0) {
+							messages.value = messages.value.filter((m) => m !== msg);
+							session.minted.delete(msg);
+						}
+					}
+					break;
+				}
 				const lastMsg = messages.value[messages.value.length - 1];
 				if (lastMsg) {
 					lastMsg.content += `\n\nError: ${event.message}`;
@@ -442,6 +472,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function sendMessage(text: string): Promise<void> {
 		const trimmed = text.trim();
 		if (!trimmed || isStreaming.value) return;
+		// Any new send invalidates a prior misconfig banner — the user is retrying.
+		fatalError.value = null;
 		messages.value.push({
 			id: crypto.randomUUID(),
 			role: 'user',
@@ -449,6 +481,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			status: 'success',
 		});
 		await streamFromEndpoint(params.endpoint.value, trimmed);
+	}
+
+	function dismissFatalError(): void {
+		fatalError.value = null;
 	}
 
 	function stopGenerating(): void {
@@ -459,10 +495,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		messages,
 		isStreaming,
 		messagingState,
+		fatalError,
 		loadHistory,
 		clearHistory,
 		sendMessage,
 		stopGenerating,
 		resume,
+		dismissFatalError,
 	};
 }

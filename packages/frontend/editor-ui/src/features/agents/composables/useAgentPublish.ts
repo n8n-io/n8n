@@ -1,12 +1,12 @@
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { publishAgent, unpublishAgent } from './useAgentApi';
 import { useAgentTelemetry } from './useAgentTelemetry';
 import { buildAgentConfigFingerprint } from './agentTelemetry.utils';
+import { useAgentConfirmationModal } from './useAgentConfirmationModal';
 import type { AgentResource } from '../types';
 
 /**
@@ -18,8 +18,8 @@ export function useAgentPublish() {
 	const rootStore = useRootStore();
 	const locale = useI18n();
 	const { showMessage, showError } = useToast();
-	const message = useMessage();
 	const agentTelemetry = useAgentTelemetry();
+	const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 	const publishing = ref(false);
 
@@ -51,17 +51,20 @@ export function useAgentPublish() {
 		}
 	}
 
-	async function unpublish(projectId: string, agentId: string): Promise<AgentResource | null> {
+	async function unpublish(
+		projectId: string,
+		agentId: string,
+		agentName?: string,
+	): Promise<AgentResource | null> {
 		if (publishing.value) return null;
-		const confirmed = await message.confirm(
-			locale.baseText('agents.unpublish.modal.description'),
-			locale.baseText('agents.unpublish.modal.title'),
-			{
-				confirmButtonText: locale.baseText('agents.unpublish.modal.button.unpublish'),
-				cancelButtonText: locale.baseText('generic.cancel'),
-				type: 'warning',
-			},
-		);
+		const confirmed = await openAgentConfirmationModal({
+			title: locale.baseText('agents.unpublish.modal.title', {
+				interpolate: { name: agentName ?? '' },
+			}),
+			description: locale.baseText('agents.unpublish.modal.description'),
+			confirmButtonText: locale.baseText('agents.unpublish.modal.button.unpublish'),
+			cancelButtonText: locale.baseText('generic.cancel'),
+		});
 		if (confirmed !== MODAL_CONFIRM) return null;
 
 		publishing.value = true;

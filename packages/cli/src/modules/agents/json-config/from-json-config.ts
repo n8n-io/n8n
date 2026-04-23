@@ -15,6 +15,7 @@ import type {
 	AgentJsonToolConfig,
 } from './agent-json-config';
 import { mapCredentialForProvider } from './credential-field-mapping';
+import { resolveProviderToolName } from './provider-tool-aliases';
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -81,7 +82,8 @@ export async function buildFromJson(
 	// Provider tools
 	if (config.providerTools) {
 		for (const [name, args] of Object.entries(config.providerTools)) {
-			agent.providerTool({ name: name as `${string}.${string}`, args });
+			const resolved = resolveProviderToolName(name);
+			agent.providerTool({ name: resolved as `${string}.${string}`, args });
 		}
 	}
 
