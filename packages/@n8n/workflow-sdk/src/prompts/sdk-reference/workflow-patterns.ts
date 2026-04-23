@@ -175,7 +175,7 @@ export default workflow('id', 'name')
 
 Switch rules use \`rules.values\` (NOT \`rules.rules\`). Each rule needs \`outputKey\` and a complete \`conditions\` object.
 
-\`onCase(index, target)\` takes a **numeric index** — entry 0 targets the first rule's \`outputKey\`, entry 1 the second, and so on. String keys do not compile. To cover a fallback route, add a final rule whose condition matches everything and wire it via its positional index.
+\`onCase(index, target)\` takes a **numeric index** — entry 0 targets the first rule's \`outputKey\`, entry 1 the second, and so on.
 
 \`\`\`javascript
 const routeByPriority = switchCase({
@@ -187,7 +187,6 @@ const routeByPriority = switchCase({
         values: [
           { outputKey: 'urgent', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.priority }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'urgent' }], combinator: 'and' } },
           { outputKey: 'normal', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.priority }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'normal' }], combinator: 'and' } },
-          { outputKey: 'other', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ true }}', operator: { type: 'boolean', operation: 'true', singleValue: true } }], combinator: 'and' } },
         ]
       }
     }
@@ -198,8 +197,34 @@ export default workflow('id', 'name')
   .add(startTrigger)
   .to(routeByPriority
     .onCase(0, processUrgent.to(notifyTeam.to(escalate)))
-    .onCase(1, processNormal)
-    .onCase(2, archive));
+    .onCase(1, processNormal));
+\`\`\`
+
+For a catch-all route, enable \`options.fallbackOutput: 'extra'\` — the Switch node appends an extra output for unmatched items. Target it from the builder using the positional index *after* the last rule:
+
+\`\`\`javascript
+const routeByStatus = switchCase({
+  version: 3.2,
+  config: {
+    name: 'Route by Status',
+    parameters: {
+      rules: {
+        values: [
+          { outputKey: 'active', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.status }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'active' }], combinator: 'and' } },
+          { outputKey: 'inactive', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.status }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'inactive' }], combinator: 'and' } },
+        ]
+      },
+      options: { fallbackOutput: 'extra', renameFallbackOutput: 'Other' }
+    }
+  }
+});
+
+export default workflow('id', 'name')
+  .add(startTrigger)
+  .to(routeByStatus
+    .onCase(0, handleActive)
+    .onCase(1, handleInactive)
+    .onCase(2, handleOther)); // index after the last rule = the extra fallback output
 \`\`\`
 
 </multi_way_routing>
@@ -231,7 +256,7 @@ export default workflow('id', 'name')
 
 <batch_processing>
 
-**Nesting constraint:** \`SplitInBatchesBuilder\` is NOT a valid \`IfElseTarget\` or \`SwitchCaseTarget\` — you cannot pass a split-in-batches builder into \`onTrue\`, \`onFalse\`, or \`onCase\`. Do not batch inside a conditional; batch first, branch per-item inside \`.onEachBatch(...)\` via a \`NodeChain\`:
+To branch per item inside a batch, nest the \`ifElse\` inside \`.onEachBatch(...)\` via a \`NodeChain\`:
 
 \`\`\`javascript
 // To branch per batch item, chain the conditional inside onEachBatch:
