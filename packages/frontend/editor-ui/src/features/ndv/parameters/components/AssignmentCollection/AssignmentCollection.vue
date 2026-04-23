@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import isEqual from 'lodash/isEqual';
 import type {
 	AssignmentCollectionValue,
@@ -60,7 +60,7 @@ const state = reactive<{ paramValue: AssignmentCollectionValue }>({
 	paramValue: createParamValue(props.value),
 });
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const { callDebounced } = useDebounce();
 
@@ -70,7 +70,9 @@ const issues = computed(() => {
 });
 
 const empty = computed(() => state.paramValue.assignments.length === 0);
-const activeDragField = computed(() => propertyNameFromExpression(ndvStore.draggableData));
+const activeDragField = computed(() =>
+	propertyNameFromExpression(ndvStore.draggableData),
+);
 const inputData = computed(() => ndvStore.ndvInputData?.[0]?.json);
 const actions = computed(() => {
 	return [

@@ -5,7 +5,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'workflow-resources-locator-test@latest' as NDVStoreId;
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
@@ -20,7 +27,7 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 
 describe('useWorkflowResourcesLocator', () => {
 	let workflowsListStoreMock: MockedStore<typeof useWorkflowsListStore>;
-	let ndvStoreMock: MockedStore<typeof useNDVStore>;
+	let ndvStoreMock: MockedStore<() => ReturnType<typeof useNDVStore>>;
 
 	const renameNodeMock = vi.fn();
 	const routerMock = {
@@ -32,7 +39,10 @@ describe('useWorkflowResourcesLocator', () => {
 
 		createTestingPinia();
 		workflowsListStoreMock = mockedStore(useWorkflowsListStore);
-		ndvStoreMock = mockedStore(useNDVStore);
+		ndvStoreMock = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStoreMock as unknown as ReturnType<typeof injectNDVStore>,
+		);
 
 		useCanvasOperations.mockReturnValue({ renameNode: renameNodeMock });
 	});

@@ -196,7 +196,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	};
 
 	const isWaitingExecution = computed(() => {
-		const activeNode = useNDVStore().activeNode;
+		const activeNode = useNDVStore(createWorkflowDocumentId(workflowId.value)).activeNode;
 
 		if (activeNode) {
 			if (willNodeWait(activeNode)) return true;
@@ -1226,7 +1226,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function activeNode(): INodeUi | null {
 		// kept here for FE hooks
-		const ndvStore = useNDVStore();
+		const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId.value));
 		return ndvStore.activeNode;
 	}
 

@@ -19,7 +19,7 @@ import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/app/models/hi
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	createTestNode,
 	createTestNodeProperties,
@@ -148,6 +148,11 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 	};
 });
 
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
 const canPinNodeMock = vi.fn();
 const setDataMock = vi.fn();
 const unsetDataMock = vi.fn();
@@ -214,6 +219,9 @@ describe('useCanvasOperations', () => {
 		workflowsStore.workflow.id = workflowId;
 		workflowDocumentStoreInstance = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		vi.mocked(injectNDVStore).mockReturnValue(
+			useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 		);
 
 		// These actions are stubbed by createTestingPinia, so provide safe defaults.
@@ -352,7 +360,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should open NDV when specified', async () => {
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			const nodeTypeDescription = mockNodeTypeDescription({ name: 'type' });
 
 			const { addNode } = useCanvasOperations();
@@ -372,7 +380,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should not set sticky node type as active node', async () => {
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			const nodeTypeDescription = mockNodeTypeDescription({ name: STICKY_NODE_TYPE });
 
 			const { addNode } = useCanvasOperations();
@@ -1589,7 +1597,7 @@ describe('useCanvasOperations', () => {
 	describe('renameNode', () => {
 		it('should rename node and return the actual new name on success', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(() => useNDVStore(createWorkflowDocumentId(workflowId)));
 			const oldName = 'Old Node';
 			const newName = 'New Node';
 
@@ -1613,7 +1621,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should return false when new name is same as old name', async () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(() => useNDVStore(createWorkflowDocumentId(workflowId)));
 			const oldName = 'Old Node';
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue({
 				name: oldName,
@@ -1629,7 +1637,7 @@ describe('useCanvasOperations', () => {
 
 		it('should show error toast and return false when renameNode throws an error', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(() => useNDVStore(createWorkflowDocumentId(workflowId)));
 			const toast = useToast();
 			const oldName = 'Old Node';
 			const newName = 'New Node';
@@ -1661,7 +1669,7 @@ describe('useCanvasOperations', () => {
 
 		it('should not show error toast when showErrorToast is false', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(() => useNDVStore(createWorkflowDocumentId(workflowId)));
 			const toast = useToast();
 			const oldName = 'Old Node';
 			const newName = 'New Node';
@@ -1688,7 +1696,7 @@ describe('useCanvasOperations', () => {
 	describe('revertRenameNode', () => {
 		it('should revert node renaming', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(() => useNDVStore(createWorkflowDocumentId(workflowId)));
 			const oldName = 'Old Node';
 			const currentName = 'New Node';
 
@@ -1707,7 +1715,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should not revert node renaming when old name is same as new name', async () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(() => useNDVStore(createWorkflowDocumentId(workflowId)));
 			const oldName = 'Old Node';
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue({
 				name: oldName,
@@ -1723,7 +1731,7 @@ describe('useCanvasOperations', () => {
 
 	describe('setNodeActive', () => {
 		it('should set active node name when node exists', () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(() => useNDVStore(createWorkflowDocumentId(workflowId)));
 			const nodeId = 'node1';
 			const nodeName = 'Node 1';
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue({
@@ -1738,7 +1746,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should not change active node name when node does not exist', () => {
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(() => useNDVStore(createWorkflowDocumentId(workflowId)));
 			const nodeId = 'node1';
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(undefined);
 			ndvStore.activeNodeName = 'Existing Node';
@@ -1763,7 +1771,7 @@ describe('useCanvasOperations', () => {
 
 	describe('setNodeActiveByName', () => {
 		it('should set active node name', () => {
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			const nodeName = 'Node 1';
 			ndvStore.activeNodeName = '';
 
@@ -4179,7 +4187,7 @@ describe('useCanvasOperations', () => {
 		});
 		it('should set active node when nodeId is provided and node exists', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(() => useNDVStore(createWorkflowDocumentId(workflowId)));
 			const { openExecution } = useCanvasOperations();
 
 			const executionId = '123';

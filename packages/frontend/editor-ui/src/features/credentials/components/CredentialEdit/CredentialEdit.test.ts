@@ -7,7 +7,17 @@ import { retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
+
+const TEST_NDV_STORE_ID = 'credential-edit-test@latest' as NDVStoreId;
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return {
+		...original,
+		injectNDVStore: vi.fn(() => original.useNDVStore(TEST_NDV_STORE_ID)),
+	};
+});
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
@@ -516,7 +526,7 @@ describe('CredentialEdit', () => {
 		};
 		credStore.getNewCredentialName.mockResolvedValue('Beta API');
 
-		const ndvStore = mockedStore(useNDVStore);
+		const ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
 		ndvStore.activeNode = {
 			name: 'DualCredTest',
 			type: 'n8n-nodes-base.dualCredTest',
@@ -524,6 +534,9 @@ describe('CredentialEdit', () => {
 			position: [0, 0],
 			parameters: {},
 		} as INode;
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 
 		const nodeTypesStore = mockedStore(useNodeTypesStore);
 		const mockNodeType = {

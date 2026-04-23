@@ -5,7 +5,7 @@ import NodeDetailsView from '@/features/ndv/shared/views/NodeDetailsView.vue';
 import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -23,6 +23,11 @@ import {
 } from '@/__tests__/mocks';
 import { computed } from 'vue';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
 
 vi.mock('vue-router', () => {
 	return {
@@ -45,7 +50,9 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = useNDVStore();
+	const ndvStoreId = createWorkflowDocumentId(workflow.id);
+	const ndvStore = useNDVStore(ndvStoreId);
+	vi.mocked(injectNDVStore).mockReturnValue(ndvStore);
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
@@ -64,6 +71,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 		workflow,
 		workflowObject: createTestWorkflowObject(workflow),
 		nodeName: node.name,
+		ndvStoreId,
 	};
 }
 
@@ -154,8 +162,9 @@ describe('NodeDetailsView', () => {
 		});
 
 		test('should unregister keydown listener on unmount', async () => {
-			const { pinia, workflow, workflowObject, nodeName } = await createPiniaStore(false);
-			const ndvStore = useNDVStore(pinia);
+			const { pinia, workflow, workflowObject, nodeName, ndvStoreId } =
+				await createPiniaStore(false);
+			const ndvStore = useNDVStore(ndvStoreId);
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				props: {

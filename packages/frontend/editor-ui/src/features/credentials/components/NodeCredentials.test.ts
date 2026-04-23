@@ -15,7 +15,7 @@ import type { INodeUi } from '@/Interface';
 import { useCredentialsStore } from '../credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -26,6 +26,11 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
 
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
@@ -148,7 +153,7 @@ function createCredential(
 
 describe('NodeCredentials', () => {
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
-	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+	let ndvStore: ReturnType<typeof mockedStore<() => ReturnType<typeof useNDVStore>>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
@@ -189,7 +194,10 @@ describe('NodeCredentials', () => {
 		renderComponent = createComponentRenderer(NodeCredentials, defaultRenderOptions);
 
 		credentialsStore = mockedStore(useCredentialsStore);
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = mockedStore(() => useNDVStore('node-credentials-test@latest' as NDVStoreId));
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 		uiStore = mockedStore(useUIStore);
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);

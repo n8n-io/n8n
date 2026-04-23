@@ -4,7 +4,7 @@ import { computed, ref, toRaw, watch } from 'vue';
 import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
@@ -60,7 +60,7 @@ const emit = defineEmits<{
 	closeDialog: [];
 }>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
@@ -80,7 +80,7 @@ const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
 const outputRenderMode = ref<'text' | 'html' | 'markdown'>('text');
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.activeNode ?? null);
 const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;

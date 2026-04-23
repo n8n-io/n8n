@@ -8,7 +8,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { FormFieldValueUpdate } from '@n8n/design-system';
 import { N8nButton, N8nCallout, N8nFormInputs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -38,7 +38,7 @@ const inputs = ref<{
 }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const modalBus = createEventBus();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>

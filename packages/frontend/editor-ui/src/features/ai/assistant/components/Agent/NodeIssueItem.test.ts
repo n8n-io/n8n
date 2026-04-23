@@ -7,7 +7,14 @@ import NodeIssueItem from './NodeIssueItem.vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'node-issue-item-test@latest' as NDVStoreId;
 
 vi.mock('@/app/components/NodeIcon.vue', () => ({
 	default: {
@@ -22,14 +29,17 @@ function formatIssueMessage(value: string | string[]) {
 }
 
 describe('NodeIssueItem', () => {
-	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+	let ndvStore: ReturnType<typeof mockedStore<() => ReturnType<typeof useNDVStore>>>;
 	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
 		ndvStore.setActiveNodeName = vi.fn();
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 	});
 
 	it('renders issue information using provided formatter', () => {

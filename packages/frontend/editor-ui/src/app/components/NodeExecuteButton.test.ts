@@ -26,7 +26,14 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'abc123@latest' as NDVStoreId;
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { usePinnedData } from '@/app/composables/usePinnedData';
@@ -121,7 +128,7 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
-let ndvStore: MockedStore<typeof useNDVStore>;
+let ndvStore: MockedStore<() => ReturnType<typeof useNDVStore>>;
 
 let runWorkflow: ReturnType<typeof useRunWorkflow>;
 let externalHooks: ReturnType<typeof useExternalHooks>;
@@ -151,7 +158,10 @@ describe('NodeExecuteButton', () => {
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 
 		runWorkflow = useRunWorkflow({ router: useRouter() });
 		externalHooks = useExternalHooks();

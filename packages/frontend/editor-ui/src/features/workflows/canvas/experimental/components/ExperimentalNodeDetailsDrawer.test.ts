@@ -1,7 +1,7 @@
 import { createTestNode } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { SET_NODE_TYPE } from '@/app/constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -33,6 +33,11 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 		...actual,
 		injectWorkflowDocumentStore: vi.fn(),
 	};
+});
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
 });
 
 const renderComponent = createComponentRenderer(ExperimentalNodeDetailsDrawer);
@@ -83,7 +88,8 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 				description: '',
 			},
 		]);
-		ndvStore = useNDVStore();
+		ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
+		vi.mocked(injectNDVStore).mockReturnValue(ndvStore);
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);

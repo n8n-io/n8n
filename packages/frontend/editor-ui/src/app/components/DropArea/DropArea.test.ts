@@ -1,17 +1,24 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import DropArea from './DropArea.vue';
 
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'test-wf@latest' as NDVStoreId;
+
 const renderComponent = createComponentRenderer(DropArea, {
 	pinia: createTestingPinia(),
 });
 
 async function fireDrop(dropArea: HTMLElement): Promise<void> {
-	useNDVStore().draggableStartDragging({
+	useNDVStore(TEST_NDV_STORE_ID).draggableStartDragging({
 		type: 'mapping',
 		data: '{{ $json.something }}',
 		dimensions: null,
@@ -29,6 +36,7 @@ describe('DropArea.vue', () => {
 	it('renders default state correctly and emits drop events', async () => {
 		const pinia = createPinia();
 		setActivePinia(pinia);
+		vi.mocked(injectNDVStore).mockReturnValue(useNDVStore(TEST_NDV_STORE_ID));
 
 		const { getByTestId, emitted } = renderComponent({ pinia });
 		expect(getByTestId('drop-area')).toBeInTheDocument();

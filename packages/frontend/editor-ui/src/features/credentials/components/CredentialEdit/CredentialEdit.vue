@@ -27,7 +27,7 @@ import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -83,7 +83,7 @@ type Props = {
 const props = withDefaults(defineProps<Props>(), { mode: 'new', activeId: undefined });
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -498,7 +498,7 @@ onMounted(async () => {
 	await externalHooks.run('credentialsEdit.credentialModalOpened', {
 		credentialType: credentialTypeName.value,
 		isEditingCredential: props.mode === 'edit',
-		activeNode: ndvStore.activeNode,
+		activeNode: ndvStore.activeNode ?? null,
 	});
 
 	setTimeout(async () => {
@@ -677,7 +677,7 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 function onTabSelect(tab: string) {
 	activeTab.value = tab;
 	const credType: string = credentialType.value ? credentialType.value.name : '';
-	const activeNode: INode | null = ndvStore.activeNode;
+	const activeNode: INode | null = ndvStore.activeNode ?? null;
 
 	telemetry.track('User viewed credential tab', {
 		credential_type: credType,

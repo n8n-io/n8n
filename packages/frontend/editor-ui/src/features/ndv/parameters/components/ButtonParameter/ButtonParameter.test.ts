@@ -3,14 +3,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import ButtonParameter, { type Props } from './ButtonParameter.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import type { INodeProperties } from 'n8n-workflow';
 
-vi.mock('@/features/ndv/shared/ndv.store');
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, useNDVStore: vi.fn(), injectNDVStore: vi.fn() };
+});
 vi.mock('@/app/stores/workflows.store');
 vi.mock('@/app/stores/posthog.store');
 vi.mock('@n8n/stores/useRootStore');
@@ -61,11 +64,13 @@ describe('ButtonParameter', () => {
 	};
 
 	beforeEach(() => {
-		vi.mocked(useNDVStore).mockReturnValue({
+		const ndvStoreMock = {
 			ndvInputData: [{}],
 			activeNode: { name: 'TestNode', parameters: {} },
 			isDraggableDragging: false,
-		} as any);
+		};
+		vi.mocked(useNDVStore).mockReturnValue(ndvStoreMock as any);
+		vi.mocked(injectNDVStore).mockReturnValue(ndvStoreMock as any);
 
 		vi.mocked(useWorkflowsStore).mockReturnValue({
 			workflowId: 'test-workflow-id',
@@ -114,9 +119,9 @@ describe('ButtonParameter', () => {
 	});
 
 	it('disables submit button when there is no execution data', async () => {
-		vi.mocked(useNDVStore).mockReturnValue({
-			ndvInputData: [],
-		} as any);
+		const ndvStoreMock = { ndvInputData: [] };
+		vi.mocked(useNDVStore).mockReturnValue(ndvStoreMock as any);
+		vi.mocked(injectNDVStore).mockReturnValue(ndvStoreMock as any);
 		const wrapper = mountComponent();
 		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
 	});

@@ -7,7 +7,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { N8nButton, N8nInput, N8nInputLabel, N8nNotice } from '@n8n/design-system';
 const telemetry = useTelemetry();
@@ -15,7 +15,7 @@ const toast = useToast();
 const i18n = useI18n();
 
 const uiStore = useUIStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const curlCommand = ref('');
 const modalBus = createEventBus();

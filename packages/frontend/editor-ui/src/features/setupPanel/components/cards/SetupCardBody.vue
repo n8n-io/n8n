@@ -17,7 +17,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 const NESTED_PARAM_TYPES = new Set([
 	'collection',
@@ -52,7 +52,7 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
 const workflowState = injectWorkflowState();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),

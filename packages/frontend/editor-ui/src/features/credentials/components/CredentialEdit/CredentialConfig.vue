@@ -23,7 +23,7 @@ import {
 } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useCredentialsStore } from '../../credentials.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -92,7 +92,7 @@ const emit = defineEmits<{
 }>();
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -138,7 +138,7 @@ const credentialOwnerName = computed(() =>
 );
 const documentationUrl = computed(() => {
 	const type = props.credentialType;
-	const activeNode = ndvStore.activeNode;
+	const activeNode = ndvStore.activeNode ?? null;
 	const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
 	const docUrl = type?.documentationUrl;
@@ -216,7 +216,7 @@ const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.activeNode ?? null);
 
 const quickConnectOption = computed(() => {
 	if (!activeNode.value) return undefined;

@@ -12,7 +12,17 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { STORES } from '@n8n/stores';
 import { vi } from 'vitest';
 import { useCredentialsStore } from '../../credentials.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
+
+const TEST_NDV_STORE_ID = 'credential-config-test@latest' as NDVStoreId;
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return {
+		...original,
+		injectNDVStore: vi.fn(() => original.useNDVStore(TEST_NDV_STORE_ID)),
+	};
+});
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import { addCredentialTranslation } from '@n8n/i18n';
@@ -521,7 +531,10 @@ describe('CredentialConfig', () => {
 				},
 			});
 
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
+			vi.mocked(injectNDVStore).mockReturnValue(
+				ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+			);
 			ndvStore.activeNode = {
 				parameters: { authentication: 'accessToken' },
 				type: 'n8n-nodes-base.dropbox',

@@ -1,6 +1,13 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'node-settings-params-test@latest' as NDVStoreId;
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -21,13 +28,16 @@ describe('useNodeSettingsParameters', () => {
 	});
 
 	describe('handleFocus', () => {
-		let ndvStore: MockedStore<typeof useNDVStore>;
+		let ndvStore: MockedStore<() => ReturnType<typeof useNDVStore>>;
 		let focusPanelStore: MockedStore<typeof useFocusPanelStore>;
 
 		beforeEach(() => {
 			setActivePinia(createTestingPinia());
 
-			ndvStore = mockedStore(useNDVStore);
+			ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
+			vi.mocked(injectNDVStore).mockReturnValue(
+				ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+			);
 			focusPanelStore = mockedStore(useFocusPanelStore);
 
 			ndvStore.activeNode = {

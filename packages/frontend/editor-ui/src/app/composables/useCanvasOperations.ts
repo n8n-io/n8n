@@ -48,7 +48,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -177,7 +177,7 @@ export function useCanvasOperations() {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const canvasStore = useCanvasStore();
 	const settingsStore = useSettingsStore();

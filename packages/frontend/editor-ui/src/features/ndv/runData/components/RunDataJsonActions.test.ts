@@ -7,13 +7,18 @@ import { waitFor, cleanup, fireEvent, within, screen } from '@testing-library/vu
 import RunDataJsonActions from './RunDataJsonActions.vue';
 import { nonExistingJsonPath, VIEWS } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
@@ -56,7 +61,9 @@ async function createPiniaWithActiveNode() {
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = useNDVStore();
+	const ndvStoreId = createWorkflowDocumentId(workflow.id) as NDVStoreId;
+	const ndvStore = useNDVStore(ndvStoreId);
+	vi.mocked(injectNDVStore).mockReturnValue(ndvStore);
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;

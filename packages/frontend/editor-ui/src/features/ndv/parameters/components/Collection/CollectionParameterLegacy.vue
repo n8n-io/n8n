@@ -14,10 +14,9 @@ import { deepCopy, isINodeProperties, isINodePropertyCollection } from 'n8n-work
 
 import get from 'lodash/get';
 
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
-import { storeToRefs } from 'pinia';
 
 import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { isPresent } from '@/app/utils/typesUtils';
@@ -38,11 +37,11 @@ const emit = defineEmits<{
 }>();
 
 const props = defineProps<Props>();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
 
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.activeNode ?? null);
 
 const newlyAddedParameters = ref<Set<string>>(new Set());
 
@@ -79,7 +78,12 @@ function displayNodeParameter(parameter: INodeProperties) {
 		// If it is not defined no need to do a proper check
 		return true;
 	}
-	return nodeHelpers.displayParameter(props.nodeValues, parameter, props.path, ndvStore.activeNode);
+	return nodeHelpers.displayParameter(
+		props.nodeValues,
+		parameter,
+		props.path,
+		ndvStore.activeNode ?? null,
+	);
 }
 
 function getOptionProperties(

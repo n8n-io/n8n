@@ -22,9 +22,10 @@ export type TextareaRowData = {
 };
 
 export function getParentNodes() {
-	const activeNode = useNDVStore().activeNode;
 	const { getNodeByName, workflowId } = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+	const workflowDocumentId = createWorkflowDocumentId(workflowId);
+	const activeNode = useNDVStore(workflowDocumentId).activeNode;
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 
 	if (!activeNode) return [];
 
@@ -193,7 +194,7 @@ export async function generateCodeForAiTransform(prompt: string, path: string, r
 		context: {
 			schema: schemas.parentNodesSchemas,
 			inputSchema: schemas.inputSchema!,
-			ndvPushRef: useNDVStore().pushRef,
+			ndvPushRef: useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)).pushRef,
 			pushRef: useRootStore().pushRef,
 		},
 		forNode: 'transform',

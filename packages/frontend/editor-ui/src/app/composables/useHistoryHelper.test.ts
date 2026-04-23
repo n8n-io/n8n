@@ -37,6 +37,19 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 		activeNode: {},
 		isNDVOpen: false,
 	}),
+	injectNDVStore: () => ({
+		activeNodeName: null,
+		activeNode: {},
+		isNDVOpen: false,
+	}),
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	createWorkflowDocumentId: (id: string) => `${id}@latest`,
+}));
+
+vi.mock('@/app/stores/workflows.store', () => ({
+	useWorkflowsStore: () => ({ workflowId: 'test-workflow' }),
 }));
 
 vi.mock('@/app/stores/history.store', () => ({

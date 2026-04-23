@@ -10,7 +10,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { codeNodeEditorEventBus } from '@/app/event-bus';
@@ -26,7 +26,7 @@ export interface UseCodeDiffOptions {
 
 export function useCodeDiff(options: UseCodeDiffOptions) {
 	const rootStore = useRootStore();
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const locale = useI18n();
 
 	const suggestions = ref<{

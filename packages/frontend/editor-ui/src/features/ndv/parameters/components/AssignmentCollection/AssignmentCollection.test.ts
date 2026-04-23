@@ -1,5 +1,5 @@
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
@@ -9,6 +9,13 @@ import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createTestNodeProperties } from '@/__tests__/mocks';
 import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'test-wf@latest' as NDVStoreId;
 
 vi.mock('vue-router');
 
@@ -57,7 +64,7 @@ async function dropAssignment({
 	value: unknown;
 	dropArea: HTMLElement;
 }): Promise<void> {
-	useNDVStore().draggableStartDragging({
+	useNDVStore(TEST_NDV_STORE_ID).draggableStartDragging({
 		type: 'mapping',
 		data: `{{ $json.${key} }}`,
 		dimensions: null,
@@ -70,6 +77,11 @@ async function dropAssignment({
 }
 
 describe('AssignmentCollection.vue', () => {
+	beforeEach(() => {
+		const ndvStore = useNDVStore(TEST_NDV_STORE_ID);
+		vi.mocked(injectNDVStore).mockReturnValue(ndvStore);
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});

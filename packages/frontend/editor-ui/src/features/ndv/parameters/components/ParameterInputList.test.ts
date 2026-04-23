@@ -3,7 +3,7 @@ import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils'
 import ParameterInputList from './ParameterInputList.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
 import { shallowRef } from 'vue';
@@ -21,6 +21,13 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 		getPinDataSnapshot: () => ({}),
 	}),
 }));
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'parameter-input-list-test@latest' as NDVStoreId;
 
 // Mock i18n to return translation keys instead of translated strings
 vi.mock('@n8n/i18n', () => {
@@ -91,7 +98,7 @@ vi.mock('vue-router', async () => {
 	};
 });
 
-let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+let ndvStore: ReturnType<typeof mockedStore<() => ReturnType<typeof useNDVStore>>>;
 
 const workflowDocumentStoreMock = {
 	getChildNodes: vi.fn().mockReturnValue([]),
@@ -120,7 +127,10 @@ const renderComponent = createComponentRenderer(ParameterInputList, {
 describe('ParameterInputList', () => {
 	beforeEach(() => {
 		createTestingPinia();
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 		workflowDocumentStoreMock.getChildNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);

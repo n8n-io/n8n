@@ -29,6 +29,7 @@ import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
 
 export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const route = useRoute();
@@ -72,6 +73,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const currentWorkflowDocumentStore = shallowRef<ReturnType<
 		typeof useWorkflowDocumentStore
 	> | null>(null);
+	const currentNDVStore = shallowRef<ReturnType<typeof useNDVStore> | null>(null);
 
 	const { fetchParentFolder } = useParentFolder();
 
@@ -82,7 +84,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 				currentWorkflowDocumentStore.value.workflowVersion,
 			);
 			disposeWorkflowDocumentStore(storeId);
+			disposeNDVStore(storeId);
 			currentWorkflowDocumentStore.value = null;
+			currentNDVStore.value = null;
 		}
 	}
 
@@ -165,6 +169,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+			currentNDVStore.value = useNDVStore(workflowDocumentId);
 		}
 
 		return true;
@@ -238,6 +243,12 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const { workflowDocumentStore } = await initializeWorkspace(data);
 		currentWorkflowDocumentStore.value = workflowDocumentStore;
+		currentNDVStore.value = useNDVStore(
+			createWorkflowDocumentId(
+				workflowDocumentStore.workflowId,
+				workflowDocumentStore.workflowVersion,
+			),
+		);
 
 		void externalHooks.run('workflow.open', {
 			workflowId: data.id,
@@ -257,6 +268,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
 		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+		currentNDVStore.value = useNDVStore(workflowDocumentId);
 
 		// Sync document store name → list cache (mirrors initializeWorkflowDocument)
 		currentWorkflowDocumentStore.value.onNameChange(({ payload }) => {
@@ -424,6 +436,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		initializedWorkflowId,
 		workflowId,
 		currentWorkflowDocumentStore,
+		currentNDVStore,
 		isNewWorkflowRoute,
 		isDemoRoute,
 		isTemplateRoute,

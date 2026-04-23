@@ -28,7 +28,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -87,7 +87,7 @@ const i18n = useI18n();
 const { confirm } = useMessage();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),

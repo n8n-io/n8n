@@ -14,7 +14,11 @@ import AppHeader from '@/app/components/app/AppHeader.vue';
 import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import LoadingView from '@/app/views/LoadingView.vue';
-import { WorkflowStateKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	WorkflowStateKey,
+	WorkflowDocumentStoreKey,
+	NDVStoreKey,
+} from '@/app/constants/injectionKeys';
 import { useProvideWorkflowId } from '@/app/composables/useProvideWorkflowId';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
@@ -32,6 +36,7 @@ const {
 	isLoading,
 	workflowId,
 	currentWorkflowDocumentStore,
+	currentNDVStore,
 	isDebugRoute,
 	initializeData,
 	initializeWorkflow,
@@ -41,6 +46,7 @@ const {
 
 useProvideWorkflowId();
 provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
+provide(NDVStoreKey, currentNDVStore);
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
 	workflowState,

@@ -21,7 +21,7 @@ import {
 	EXPRESSION_EDITOR_PARSER_TIMEOUT,
 	ExpressionLocalResolveContextSymbol,
 } from '@/app/constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import type { TargetItem, TargetNodeParameterContext } from '@/Interface';
 import {
@@ -75,7 +75,7 @@ export const useExpressionEditor = ({
 	disableSearchDialog?: MaybeRefOrGetter<boolean>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const { isMacOs } = useDeviceSupport();
@@ -404,7 +404,7 @@ export const useExpressionEditor = ({
 		return result;
 	}
 
-	const targetItem = computed<TargetItem | null>(() => ndvStore.expressionTargetItem);
+	const targetItem = computed<TargetItem | null>(() => ndvStore.expressionTargetItem ?? null);
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
 		return segments.value.filter((s): s is Resolvable => s.kind === 'resolvable');

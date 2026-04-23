@@ -9,7 +9,7 @@ import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import NodeSettings from './NodeSettings.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -22,6 +22,11 @@ import {
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
 	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
+});
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
 });
 
 vi.mock('vue-router', () => ({
@@ -56,11 +61,13 @@ const renderNodeSettings = (runData?: IRunData) => {
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = useWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = useNDVStore();
+	const ndvStoreId = createWorkflowDocumentId(workflow.id);
+	const ndvStore = useNDVStore(ndvStoreId);
 
 	workflowsStore.setWorkflow(workflow);
 	nodeTypesStore.setNodeTypes([httpNodeType]);
 	ndvStore.activeNodeName = httpNode.name;
+	vi.mocked(injectNDVStore).mockReturnValue(ndvStore);
 
 	if (runData) {
 		workflowState.setWorkflowExecutionData({

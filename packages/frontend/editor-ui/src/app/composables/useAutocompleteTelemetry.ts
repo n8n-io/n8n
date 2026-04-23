@@ -2,7 +2,7 @@ import { type MaybeRefOrGetter, computed, toValue, watchEffect } from 'vue';
 import { ExpressionExtensions } from 'n8n-workflow';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '../composables/useTelemetry';
 import type { Compartment } from '@codemirror/state';
@@ -17,7 +17,7 @@ export const useAutocompleteTelemetry = ({
 	parameterPath: MaybeRefOrGetter<string>;
 	compartment: MaybeRefOrGetter<Compartment>;
 }) => {
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const rootStore = useRootStore();
 	const telemetry = useTelemetry();
 

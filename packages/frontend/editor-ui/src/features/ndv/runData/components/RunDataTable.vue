@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getMappedExpression } from '@/app/utils/mappingUtils';
@@ -15,7 +15,6 @@ import TextWithHighlights from './TextWithHighlights.vue';
 import BinaryEntryDataTable from './BinaryEntryDataTable.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { storeToRefs } from 'pinia';
 import { useExecutionHelpers } from '@/features/execution/executions/composables/useExecutionHelpers';
 import { I18nT } from 'vue-i18n';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
@@ -76,7 +75,7 @@ const columnLimitExceeded = ref(false);
 const draggableRef = ref<DraggableRef>();
 const fixedColumnWidths = ref<number[] | undefined>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -85,11 +84,9 @@ const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext();
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
-const {
-	hoveringItem,
-	focusedMappableInput,
-	highlightDraggables: highlight,
-} = storeToRefs(ndvStore);
+const hoveringItem = computed(() => ndvStore.hoveringItem ?? null);
+const focusedMappableInput = computed(() => ndvStore.focusedMappableInput);
+const highlight = computed(() => ndvStore.highlightDraggables);
 
 const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
 const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);

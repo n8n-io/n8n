@@ -5,7 +5,7 @@ import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n
 import { clearJsonKey, convertPath } from '@/app/utils/typesUtils';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -43,13 +43,13 @@ const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 const isInPopOutWindow = computed(() => popOutWindow?.value !== undefined);
 
 const workflowId = useInjectWorkflowId();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const clipboard = useClipboard();
 
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const { activeNode } = ndvStore;
+const activeNode = computed(() => ndvStore.activeNode ?? null);
 const pinnedData = usePinnedData(activeNode);
 const { showToast } = useToast();
 const telemetry = useTelemetry();
@@ -179,7 +179,7 @@ function handleCopyClick(commandData: { command: string }) {
 	}[commandData.command];
 
 	telemetry.track('User copied ndv data', {
-		node_type: activeNode?.type,
+		node_type: activeNode.value?.type,
 		push_ref: props.pushRef,
 		run_index: props.runIndex,
 		view: 'json',

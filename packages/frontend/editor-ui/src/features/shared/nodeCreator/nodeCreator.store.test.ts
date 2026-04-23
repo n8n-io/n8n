@@ -17,6 +17,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -71,18 +72,21 @@ describe('useNodeCreatorStore', () => {
 	let nodeCreatorStore: ReturnType<typeof useNodeCreatorStore>;
 	let mockUseNodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 	let mockUseWorkflowsStore: MockedStore<typeof useWorkflowsStore>;
-	let mockUseNDVStore: MockedStore<typeof useNDVStore>;
+	let mockUseNDVStore: MockedStore<() => ReturnType<typeof useNDVStore>>;
 	let mockUseViewStacks: MockedStore<typeof useViewStacks>;
 
 	beforeEach(async () => {
 		vi.useFakeTimers();
 		vi.resetAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
-		nodeCreatorStore = useNodeCreatorStore();
 		mockUseNodeTypesStore = mockedStore(useNodeTypesStore);
 		mockUseWorkflowsStore = mockedStore(useWorkflowsStore);
-		mockUseNDVStore = mockedStore(useNDVStore);
+		mockUseWorkflowsStore.workflowId = 'dummy-workflow-id';
+		mockUseNDVStore = mockedStore(() =>
+			useNDVStore(createWorkflowDocumentId(mockUseWorkflowsStore.workflowId)),
+		);
 		mockUseViewStacks = mockedStore(useViewStacks);
+		nodeCreatorStore = useNodeCreatorStore();
 
 		mockUseWorkflowsStore.getNodeByName = vi.fn((name?: string) => {
 			return name ? ({ id: 'Test Node', name, type: name } as INodeUi) : null;
@@ -90,7 +94,6 @@ describe('useNodeCreatorStore', () => {
 		mockUseWorkflowsStore.getNodeById = vi.fn((id?: string) => {
 			return id ? ({ id, name: 'Test Node', type: 'test-type' } as INodeUi) : undefined;
 		});
-		mockUseWorkflowsStore.workflowId = 'dummy-workflow-id';
 
 		mockedPrepareCommunityNodeDetailsViewStack.mockReturnValue({
 			title: 'Test Node',

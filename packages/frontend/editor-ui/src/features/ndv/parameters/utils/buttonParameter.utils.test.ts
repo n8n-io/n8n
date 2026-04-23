@@ -27,6 +27,9 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: () => ({
 		pushRef: 'mockNdvPushRef',
 	}),
+	injectNDVStore: () => ({
+		pushRef: 'mockNdvPushRef',
+	}),
 }));
 
 vi.mock('@/app/stores/settings.store', () => ({

@@ -2,7 +2,7 @@ import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import * as workFlowHelpers from '@/app/composables/useWorkflowHelpers';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -12,6 +12,13 @@ import type { FilterOptionsValue, FilterTypeOptions, FilterValue } from 'n8n-wor
 import FilterConditions from './FilterConditions.vue';
 import { getFilterOperator } from './utils';
 import { flushPromises } from '@vue/test-utils';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'test-wf@latest' as NDVStoreId;
 
 vi.mock('vue-router');
 
@@ -49,7 +56,11 @@ const DEFAULT_SETUP = {
 const renderComponent = createComponentRenderer(FilterConditions, DEFAULT_SETUP);
 
 describe('FilterConditions.vue', () => {
-	beforeEach(cleanup);
+	beforeEach(() => {
+		cleanup();
+		const ndvStore = useNDVStore(TEST_NDV_STORE_ID);
+		vi.mocked(injectNDVStore).mockReturnValue(ndvStore);
+	});
 
 	afterEach(async () => {
 		vi.clearAllMocks();
@@ -158,7 +169,7 @@ describe('FilterConditions.vue', () => {
 	});
 
 	it('renders parameter issues', async () => {
-		const ndvStore = useNDVStore();
+		const ndvStore = useNDVStore(TEST_NDV_STORE_ID);
 		vi.spyOn(ndvStore, 'activeNode', 'get').mockReturnValue({
 			...DEFAULT_SETUP.props.node,
 			issues: { parameters: { 'conditions.1': ['not a number sir'] } },

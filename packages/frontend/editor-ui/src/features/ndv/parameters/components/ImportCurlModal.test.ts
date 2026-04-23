@@ -5,7 +5,14 @@ import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { nextTick } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'import-curl-modal-test@latest' as NDVStoreId;
 import userEvent from '@testing-library/user-event';
 
 const mockTelemetryTrack = vi.fn();
@@ -69,8 +76,11 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
 		ndvStore.activeNode = testNode;
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 
 		const { getByTestId } = renderModal();
 		await nextTick();
@@ -93,8 +103,11 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
 		ndvStore.activeNode = testNode;
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 
 		const { getByTestId } = renderModal();
 		await nextTick();
@@ -116,8 +129,11 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
 		ndvStore.activeNode = testNode;
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 
 		const { getByTestId } = renderModal();
 		await nextTick();
@@ -145,8 +161,11 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
 		ndvStore.activeNode = testNode;
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 
 		const { getByTestId } = renderModal();
 		await nextTick();
@@ -174,8 +193,11 @@ describe('ImportCurlModal', () => {
 			},
 		};
 		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
-		const ndvStore = mockedStore(useNDVStore);
+		const ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
 		ndvStore.activeNode = testNode;
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 
 		const { getByTestId } = renderModal();
 		await nextTick();

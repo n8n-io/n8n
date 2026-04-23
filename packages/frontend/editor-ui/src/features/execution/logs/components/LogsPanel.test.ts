@@ -24,7 +24,14 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/app/constants';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'logs-panel-test@latest' as NDVStoreId;
 import { createRunExecutionData, deepCopy } from 'n8n-workflow';
 import { createTestTaskData } from '@/__tests__/mocks';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -77,7 +84,7 @@ describe('LogsPanel', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
-	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+	let ndvStore: ReturnType<typeof mockedStore<() => ReturnType<typeof useNDVStore>>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let workflowState: WorkflowState;
 
@@ -127,7 +134,10 @@ describe('LogsPanel', () => {
 		nodeTypeStore = mockedStore(useNodeTypesStore);
 		nodeTypeStore.setNodeTypes(nodeTypes);
 
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 
 		uiStore = mockedStore(useUIStore);
 

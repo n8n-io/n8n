@@ -7,7 +7,14 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'credential-mode-selector-test@latest' as NDVStoreId;
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
 
@@ -130,8 +137,11 @@ function setupStores(opts: {
 }) {
 	const pinia = createTestingPinia({ stubActions: false });
 
-	const ndvStore = mockedStore(useNDVStore);
+	const ndvStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
 	ndvStore.activeNode = opts.node;
+	vi.mocked(injectNDVStore).mockReturnValue(
+		ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+	);
 
 	const nodeTypesStore = mockedStore(useNodeTypesStore);
 	nodeTypesStore.setNodeTypes([opts.nodeType]);

@@ -20,7 +20,12 @@ import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow'
 import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -70,7 +75,7 @@ describe('RunData', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 	let schemaPreviewStore: MockedStore<typeof useSchemaPreviewStore>;
-	let ndvStore: MockedStore<typeof useNDVStore>;
+	let ndvStore: MockedStore<() => ReturnType<typeof useNDVStore>>;
 
 	beforeAll(() => {
 		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');
@@ -1400,7 +1405,11 @@ describe('RunData', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
 		schemaPreviewStore = mockedStore(useSchemaPreviewStore);
-		ndvStore = mockedStore(useNDVStore);
+		const testWorkflowIdForNdv = workflowId ?? 'test-workflow';
+		ndvStore = mockedStore(() => useNDVStore(`${testWorkflowIdForNdv}@latest` as NDVStoreId));
+		vi.mocked(injectNDVStore).mockReturnValue(
+			ndvStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 		workflowsStore.getNodeByName.mockReturnValue(workflowNodes[0]);

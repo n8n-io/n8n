@@ -1,6 +1,6 @@
 import { defaultSettings } from '@/__tests__/defaults';
 import { useLogsStore } from '@/app/stores/logs.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -14,6 +14,11 @@ import { reactive } from 'vue';
 import { EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { createTestNode } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
 
 let currentRouteName = '';
 
@@ -35,22 +40,25 @@ describe(useFloatingUiOffsets, () => {
 		currentRouteName = '';
 		const workflowsStore = useWorkflowsStore();
 		workflowsStore.workflow.id = 'test-workflow';
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
+		const ndvStoreId = createWorkflowDocumentId(workflowsStore.workflowId);
+		const workflowDocumentStore = useWorkflowDocumentStore(ndvStoreId);
 		workflowDocumentStore.setNodes([createTestNode({ name: 'n0' })]);
+		vi.mocked(injectNDVStore).mockReturnValue(useNDVStore(ndvStoreId));
 	});
 
 	describe('toastBottomOffset', () => {
 		it('should account for the height of log view only when NDV is closed', () => {
 			useLogsStore().setHeight(3);
-			useNDVStore().setActiveNodeName('n0', 'other'); // set NDV to be opened
+			useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)).setActiveNodeName(
+				'n0',
+				'other',
+			); // set NDV to be opened
 
 			const { toastBottomOffset } = useFloatingUiOffsets();
 
 			expect(toastBottomOffset.value).toBe('0px');
 
-			useNDVStore().unsetActiveNodeName(); // close NDV
+			useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)).unsetActiveNodeName(); // close NDV
 
 			expect(toastBottomOffset.value).toBe('3px');
 		});
@@ -80,7 +88,10 @@ describe(useFloatingUiOffsets, () => {
 
 				expect(toastBottomOffset.value).toBe('0px');
 
-				useNDVStore().setActiveNodeName('n0', 'other');
+				useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)).setActiveNodeName(
+					'n0',
+					'other',
+				);
 
 				expect(toastBottomOffset.value).toBe('58px'); // 42px button + 16px NDV offset
 			},

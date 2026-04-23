@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { computed, ref } from 'vue';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
@@ -24,7 +24,7 @@ const NODES_WITH_OPEN_AI_API_CREDENTIAL = [
 
 const showSuccessCallout = ref(false);
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const i18n = useI18n();
 
 const { aiCreditsQuota, userCanClaimOpenAiCredits, claimingCredits, claimCredits } =

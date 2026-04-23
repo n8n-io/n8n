@@ -23,7 +23,7 @@ import {
 } from '@/features/ndv/shared/ndv.utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { CHAT_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/app/constants';
 import {
@@ -49,6 +49,7 @@ export function useNodeSettingsParameters() {
 	const workflowHelpers = useWorkflowHelpers();
 	const canvasOperations = useCanvasOperations();
 	const externalHooks = useExternalHooks();
+	const ndvStore = injectNDVStore();
 
 	function updateNodeParameter(
 		nodeValues: Ref<INodeParameters>,
@@ -155,7 +156,6 @@ export function useNodeSettingsParameters() {
 	function handleFocus(node: INodeUi | undefined, path: string, parameter: INodeProperties) {
 		if (!node) return;
 
-		const ndvStore = useNDVStore();
 		const focusPanelStore = useFocusPanelStore();
 
 		focusPanelStore.openWithFocusedNodeParameter({

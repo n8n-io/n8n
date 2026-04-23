@@ -13,7 +13,7 @@ import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
@@ -99,7 +99,7 @@ export function useNodeExecution(
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const uiStore = useUIStore();
 	const workflowState = injectWorkflowState();
 

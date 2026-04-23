@@ -9,7 +9,14 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import NodeErrorView from './NodeErrorView.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'test-workflow-id@latest' as NDVStoreId;
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const mockRouterResolve = vi.fn(() => ({
@@ -32,7 +39,7 @@ Object.defineProperty(window, 'open', {
 
 let mockChatPanelStore: ReturnType<typeof mockedStore<typeof useChatPanelStore>>;
 let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
-let mockNDVStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+let mockNDVStore: ReturnType<typeof mockedStore<() => ReturnType<typeof useNDVStore>>>;
 let mockWorkflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
 const renderComponent = createComponentRenderer(NodeErrorView, {
@@ -50,7 +57,10 @@ describe('NodeErrorView.vue', () => {
 		createTestingPinia();
 		mockChatPanelStore = mockedStore(useChatPanelStore);
 		mockNodeTypeStore = mockedStore(useNodeTypesStore);
-		mockNDVStore = mockedStore(useNDVStore);
+		mockNDVStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
+		vi.mocked(injectNDVStore).mockReturnValue(
+			mockNDVStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 		mockWorkflowsStore = mockedStore(useWorkflowsStore);
 
 		//@ts-expect-error

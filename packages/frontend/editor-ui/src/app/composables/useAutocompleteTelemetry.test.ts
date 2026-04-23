@@ -7,19 +7,25 @@ import { setActivePinia } from 'pinia';
 import { beforeEach, describe, vi } from 'vitest';
 import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 
-const trackSpy = vi.fn();
-const setAutocompleteOnboardedSpy = vi.fn();
+const { trackSpy, setAutocompleteOnboardedSpy } = vi.hoisted(() => ({
+	trackSpy: vi.fn(),
+	setAutocompleteOnboardedSpy: vi.fn(),
+}));
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
 }));
 
-vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: vi.fn(() => ({
+vi.mock('@/features/ndv/shared/ndv.store', () => {
+	const store = {
 		activeNode: { type: 'n8n-nodes-base.test' },
 		setAutocompleteOnboarded: setAutocompleteOnboardedSpy,
-	})),
-}));
+	};
+	return {
+		useNDVStore: vi.fn(() => store),
+		injectNDVStore: vi.fn(() => store),
+	};
+});
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(() => ({

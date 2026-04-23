@@ -15,7 +15,7 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -27,6 +27,13 @@ import { fireEvent } from '@testing-library/dom';
 import { userEvent } from '@testing-library/user-event';
 import { cleanup, waitFor } from '@testing-library/vue';
 import { computed, shallowRef } from 'vue';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = '123@latest' as import('@/features/ndv/shared/ndv.store').NDVStoreId;
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
 	createResultOk,
@@ -173,7 +180,8 @@ async function setupStore() {
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
-	const ndvStore = useNDVStore();
+	const ndvStore = useNDVStore(TEST_NDV_STORE_ID);
+	vi.mocked(injectNDVStore).mockReturnValue(ndvStore);
 	settingsStore.setSettings(defaultSettings);
 
 	nodeTypesStore.setNodeTypes([
@@ -583,7 +591,7 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('should show connections', async () => {
-		const ndvStore = useNDVStore();
+		const ndvStore = useNDVStore(TEST_NDV_STORE_ID);
 		vi.spyOn(ndvStore, 'ndvNodeInputNumber', 'get').mockReturnValue({
 			[defaultNodes[0].name]: [0],
 			[defaultNodes[1].name]: [0, 1, 2],
@@ -601,7 +609,7 @@ describe('VirtualSchema.vue', () => {
 
 	describe('telemetry', () => {
 		function dragDropPill(pill: HTMLElement) {
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(TEST_NDV_STORE_ID);
 			const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
 			fireEvent(
 				pill,

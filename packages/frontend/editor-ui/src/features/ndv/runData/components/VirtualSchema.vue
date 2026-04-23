@@ -18,7 +18,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -85,7 +85,7 @@ const props = withDefaults(defineProps<Props>(), {
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext();
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();

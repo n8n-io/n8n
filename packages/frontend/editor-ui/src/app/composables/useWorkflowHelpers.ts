@@ -97,16 +97,16 @@ export async function resolveParameter<T = IDataObject>(
 	}
 
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+	const workflowDocumentId = createWorkflowDocumentId(workflowsStore.workflowId);
+	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+	const ndvStore = useNDVStore(workflowDocumentId);
 
 	return await resolveParameterImpl(
 		parameter,
 		workflowDocumentStore.getSnapshot(),
 		workflowDocumentStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
-		useNDVStore().activeNode,
+		ndvStore.activeNode,
 		workflowsStore.workflowExecutionData,
 		workflowDocumentStore.getPinDataSnapshot(),
 		opts,

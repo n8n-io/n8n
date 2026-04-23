@@ -3,7 +3,7 @@ import { useDebounce } from '@/app/composables/useDebounce';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { autocompletableNodeNames } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { forceParse } from '@/app/utils/forceParse';
@@ -32,7 +32,7 @@ export function useTypescript(
 	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext | undefined>,
 ) {
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { debounce } = useDebounce();

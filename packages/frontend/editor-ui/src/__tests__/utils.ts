@@ -114,7 +114,20 @@ export const mockedStore = <TStoreDef extends () => unknown>(
 		> & {
 			[K in keyof Getters]: Getters[K] extends ComputedRef<infer T> ? T : never;
 		}
-	: ReturnType<TStoreDef> => {
+	: ReturnType<TStoreDef> extends Store<infer Id, infer State, infer Getters, infer Actions>
+		? Store<
+				Id,
+				State,
+				Record<string, never>,
+				{
+					[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
+						? Mock<(...args: Args) => ReturnT>
+						: Actions[K];
+				}
+			> & {
+				[K in keyof Getters]: Getters[K] extends ComputedRef<infer T> ? T : never;
+			}
+		: ReturnType<TStoreDef> => {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	return useStore() as any;
 };

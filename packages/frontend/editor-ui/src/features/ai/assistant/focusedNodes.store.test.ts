@@ -7,6 +7,7 @@ import { useFocusedNodesStore } from './focusedNodes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useChatPanelStateStore } from './chatPanelState.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { mockedStore } from '@/__tests__/utils';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
@@ -902,12 +903,16 @@ describe('useFocusedNodesStore', () => {
 			const chatPanelStateStore = useChatPanelStateStore();
 			chatPanelStateStore.isOpen = true;
 
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(() =>
+				useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+			);
 			ndvStore.activeNode = createMockNode(
 				'node-2',
 				'Code',
 				'n8n-nodes-base.code',
-			) as unknown as ReturnType<typeof mockedStore<typeof useNDVStore>>['activeNode'];
+			) as unknown as ReturnType<
+				typeof mockedStore<() => ReturnType<typeof useNDVStore>>
+			>['activeNode'];
 			await nextTick();
 
 			expect(focusedNodesStore.focusedNodesMap['node-2']).toBeDefined();

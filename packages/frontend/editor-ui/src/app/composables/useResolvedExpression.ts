@@ -1,4 +1,4 @@
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	isExpression as isExpressionUtil,
@@ -38,7 +38,7 @@ export function useResolvedExpression({
 	stringifyObject?: MaybeRefOrGetter<boolean>;
 	contextNodeName?: MaybeRefOrGetter<string>;
 }) {
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
@@ -55,7 +55,7 @@ export function useResolvedExpression({
 	const resolvedExpressionString = ref('');
 
 	const targetItem = computed(() => ndvStore.expressionTargetItem ?? undefined);
-	const activeNode = computed(() => ndvStore.activeNode);
+	const activeNode = computed(() => ndvStore.activeNode ?? null);
 	const hasRunData = computed(() =>
 		Boolean(
 			workflowsStore.workflowExecutionData?.data?.resultData?.runData[activeNode.value?.name ?? ''],

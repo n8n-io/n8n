@@ -3,7 +3,7 @@ import { renderComponent } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { type NodeTypesByTypeNameAndVersion } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -14,6 +14,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { vi, type MockedFunction } from 'vitest';
 import { ref } from 'vue';
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return { ...original, injectNDVStore: vi.fn() };
+});
+
+const TEST_NDV_STORE_ID = 'invalid-node-warning-test@latest' as NDVStoreId;
 import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue';
 
 vi.mock('@/features/settings/communityNodes/composables/useInstallNode');
@@ -38,7 +45,7 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 	let mockUseUsersStore: MockedStore<typeof useUsersStore>;
 	let mockUseNodeCreatorStore: MockedStore<typeof useNodeCreatorStore>;
 	let mockUseNodeTypesStore: MockedStore<typeof useNodeTypesStore>;
-	let mockUseNDVStore: MockedStore<typeof useNDVStore>;
+	let mockUseNDVStore: MockedStore<() => ReturnType<typeof useNDVStore>>;
 	let mockUseUIStore: MockedStore<typeof useUIStore>;
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -46,7 +53,10 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 		mockUseUsersStore = mockedStore(useUsersStore);
 		mockUseNodeCreatorStore = mockedStore(useNodeCreatorStore);
 		mockUseNodeTypesStore = mockedStore(useNodeTypesStore);
-		mockUseNDVStore = mockedStore(useNDVStore);
+		mockUseNDVStore = mockedStore(() => useNDVStore(TEST_NDV_STORE_ID));
+		vi.mocked(injectNDVStore).mockReturnValue(
+			mockUseNDVStore as unknown as ReturnType<typeof injectNDVStore>,
+		);
 		mockUseUIStore = mockedStore(useUIStore);
 		mockUseInstallNode.mockReturnValue({
 			installNode: mockInstallNode,

@@ -17,7 +17,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	executionDataToJson,
@@ -41,7 +41,7 @@ const WORKFLOW_LIST_VIEWS = [VIEWS.WORKFLOWS, VIEWS.PROJECTS_WORKFLOWS];
 const CREDENTIALS_LIST_VIEWS = [VIEWS.CREDENTIALS, VIEWS.PROJECTS_CREDENTIALS];
 
 export const useAIAssistantHelpers = () => {
-	const ndvStore = useNDVStore();
+	const ndvStore = injectNDVStore();
 	const nodeTypesStore = useNodeTypesStore();
 
 	const workflowHelpers = useWorkflowHelpers();
