@@ -119,8 +119,6 @@
       "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",
       "ws": ">=8.17.1",
-      "brace-expansion@1": "1.1.12",
-      "brace-expansion@2": "2.0.3",
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
       "form-data": "4.0.4",
@@ -167,8 +165,8 @@
       "path-to-regexp@<0.1.13": "0.1.13",
       "picomatch@2": "2.3.2",
       "picomatch@4": "4.0.4",
-      "brace-expansion@5": "5.0.5",
-      "avsc": "5.7.9"
+      "avsc": "5.7.9",
+      "brace-expansion@<=2.1.0": "2.1.0"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

@@ -1,5 +1,7 @@
+import { DeploymentKeyRepository, type DeploymentKey } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DeploymentKeyRepository } from '@n8n/db';
+import { Cipher, type CipherAlgorithm } from 'n8n-core';
+import { randomBytes } from 'node:crypto';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -7,7 +9,10 @@ type KeyInfo = { id: string; value: string; algorithm: string };
 
 @Service()
 export class KeyManagerService {
-	constructor(private readonly deploymentKeyRepository: DeploymentKeyRepository) {}
+	constructor(
+		private readonly deploymentKeyRepository: DeploymentKeyRepository,
+		private readonly cipher: Cipher,
+	) {}
 
 	/** Returns the current active encryption key. Throws if none exists or if multiple are found. */
 	async getActiveKey(): Promise<KeyInfo> {
@@ -59,25 +64,56 @@ export class KeyManagerService {
 		});
 	}
 
-	/** Inserts a new encryption key. If setAsActive, atomically deactivates the current key first. */
-	async addKey(value: string, algorithm: string, setAsActive = false): Promise<{ id: string }> {
+	/** Lists encryption keys, optionally filtered by type. */
+	async listKeys(type?: string): Promise<DeploymentKey[]> {
+		if (type) return await this.deploymentKeyRepository.findAllByType(type);
+		return await this.deploymentKeyRepository.find();
+	}
+
+	/**
+	 * Generates a new 256-bit data-encryption key and inserts it as the active key,
+	 * atomically deactivating the previous active key.
+	 */
+	async rotateKey(): Promise<DeploymentKey> {
+		const rawKey = randomBytes(32).toString('hex');
+		return await this.addKey(rawKey, 'aes-256-gcm', true);
+	}
+
+	/**
+	 * Encrypts the given plaintext value with the instance encryption key and inserts
+	 * it as a new deployment key row. If setAsActive, atomically deactivates the
+	 * previous active key; otherwise the new key is inserted as inactive.
+	 *
+	 * Data-encryption keys must always be wrapped with the instance key — never with
+	 * the currently active data key — which is why this goes through
+	 * `encryptWithInstanceKey` rather than the generic `encrypt`.
+	 */
+	async addKey(
+		plaintextValue: string,
+		algorithm: CipherAlgorithm,
+		setAsActive = false,
+	): Promise<DeploymentKey> {
+		const encryptedValue = this.cipher.encryptWithInstanceKey(plaintextValue);
+
 		if (!setAsActive) {
 			const entity = this.deploymentKeyRepository.create({
 				type: 'data_encryption',
-				value,
+				value: encryptedValue,
 				algorithm,
 				status: 'inactive',
 			});
-			const saved = await this.deploymentKeyRepository.save(entity);
-			return { id: saved.id };
+			return await this.deploymentKeyRepository.save(entity);
 		}
 
 		const entity = Object.assign(
-			this.deploymentKeyRepository.create({ type: 'data_encryption', value, algorithm }),
+			this.deploymentKeyRepository.create({
+				type: 'data_encryption',
+				value: encryptedValue,
+				algorithm,
+			}),
 			{ status: 'active' as const },
 		);
-		const saved = await this.deploymentKeyRepository.insertAsActive(entity);
-		return { id: saved.id };
+		return await this.deploymentKeyRepository.insertAsActive(entity);
 	}
 
 	/** Atomically deactivates the current active key and promotes the given key. */
