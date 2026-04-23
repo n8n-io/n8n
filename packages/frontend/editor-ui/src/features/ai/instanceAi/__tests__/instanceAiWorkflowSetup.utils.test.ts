@@ -104,6 +104,110 @@ describe('credGroupKey', () => {
 		});
 		expect(credGroupKey(req)).toContain('httpBasicAuth:http:');
 	});
+
+	test('groups two non-HTTP nodes sharing a credential type under one key', () => {
+		const slackA = makeSetupNode({
+			credentialType: 'slackApi',
+			node: {
+				name: 'Slack A',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2,
+				parameters: {},
+				position: [0, 0] as [number, number],
+				id: 'a',
+			},
+		});
+		const slackB = makeSetupNode({
+			credentialType: 'slackApi',
+			node: {
+				name: 'Slack B',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2,
+				parameters: {},
+				position: [0, 0] as [number, number],
+				id: 'b',
+			},
+		});
+		expect(credGroupKey(slackA)).toBe(credGroupKey(slackB));
+	});
+
+	test('splits HTTP Request nodes with different static URLs even for same credential type', () => {
+		const httpA = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP A',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: 'https://a.example.com' },
+				position: [0, 0] as [number, number],
+				id: 'a',
+			},
+		});
+		const httpB = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP B',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: 'https://b.example.com' },
+				position: [0, 0] as [number, number],
+				id: 'b',
+			},
+		});
+		expect(credGroupKey(httpA)).not.toBe(credGroupKey(httpB));
+	});
+
+	test('groups HTTP Request nodes with the same static URL and credential type', () => {
+		const httpA = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP A',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: 'https://api.example.com' },
+				position: [0, 0] as [number, number],
+				id: 'a',
+			},
+		});
+		const httpB = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP B',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: 'https://api.example.com' },
+				position: [0, 0] as [number, number],
+				id: 'b',
+			},
+		});
+		expect(credGroupKey(httpA)).toBe(credGroupKey(httpB));
+	});
+
+	test('splits HTTP Request nodes with expression URLs regardless of string equality', () => {
+		const exprA = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP A',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: '={{ $json.url }}' },
+				position: [0, 0] as [number, number],
+				id: 'a',
+			},
+		});
+		const exprB = makeSetupNode({
+			credentialType: 'httpBasicAuth',
+			node: {
+				name: 'HTTP B',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				parameters: { url: '={{ $json.url }}' },
+				position: [0, 0] as [number, number],
+				id: 'b',
+			},
+		});
+		expect(credGroupKey(exprA)).not.toBe(credGroupKey(exprB));
+	});
 });
 
 // ---------------------------------------------------------------------------
