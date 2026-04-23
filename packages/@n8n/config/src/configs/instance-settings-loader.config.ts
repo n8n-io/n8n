@@ -88,4 +88,44 @@ export class InstanceSettingsLoaderConfig {
 
 	@Env('N8N_SSO_SAML_LOGIN_ENABLED')
 	samlLoginEnabled: boolean = false;
+
+	// --- Log streaming ---
+
+	/**
+	 * When true, log streaming destinations are reconciled from env vars on every
+	 * startup
+	 */
+	@Env('N8N_LOG_STREAMING_MANAGED_BY_ENV')
+	logStreamingManagedByEnv: boolean = false;
+
+	/**
+	 * JSON-encoded array of log streaming destinations.
+	 *
+	 * @example
+	 * ```json
+	 * [
+	 *   {
+	 *     "type": "webhook",
+	 *     "url": "https://hooks.example.com",
+	 *     "method": "POST",
+	 *     "headerParameters": {
+	 *       "parameters": [{ "name": "Authorization", "value": "Bearer abc123" }]
+	 *     }
+	 *   },
+	 *   {
+	 *     "type": "syslog",
+	 *     "host": "syslog.example.com",
+	 *     "port": 514,
+	 *     "protocol": "udp"
+	 *   },
+	 *   {
+	 *     "type": "sentry",
+	 *     "dsn": "https://public@sentry.example.com/1",
+	 *     "tracesSampleRate": 0.1
+	 *   }
+	 * ]
+	 * ```
+	 */
+	@Env('N8N_LOG_STREAMING_DESTINATIONS')
+	logStreamingDestinations: string = '';
 }
