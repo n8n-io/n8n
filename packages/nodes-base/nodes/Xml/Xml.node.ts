@@ -4,7 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, deepCopy, sanitizeXmlName } from 'n8n-workflow';
 import { Builder, Parser } from 'xml2js';
 
 export class Xml implements INodeType {
@@ -236,16 +236,18 @@ export class Xml implements INodeType {
 		const options = this.getNodeParameter('options', 0, {});
 
 		const forbiddenKeys = ['__proto__', 'constructor', 'prototype'];
-		if (typeof options.attrkey === 'string' && forbiddenKeys.includes(options.attrkey)) {
+		const attrkey = String(options.attrkey ?? '');
+		const charkey = String(options.charkey ?? '');
+		if (forbiddenKeys.includes(attrkey)) {
 			throw new NodeOperationError(
 				this.getNode(),
-				`The "Attribute Key" option value "${options.attrkey}" is not allowed`,
+				`The "Attribute Key" option value "${attrkey}" is not allowed`,
 			);
 		}
-		if (typeof options.charkey === 'string' && forbiddenKeys.includes(options.charkey)) {
+		if (forbiddenKeys.includes(charkey)) {
 			throw new NodeOperationError(
 				this.getNode(),
-				`The "Character Key" option value "${options.charkey}" is not allowed`,
+				`The "Character Key" option value "${charkey}" is not allowed`,
 			);
 		}
 
@@ -262,6 +264,10 @@ export class Xml implements INodeType {
 							explicitArray: false,
 						},
 						options,
+						{
+							tagNameProcessors: [sanitizeXmlName],
+							attrNameProcessors: [sanitizeXmlName],
+						},
 					);
 
 					const parser = new Parser(parserOptions);

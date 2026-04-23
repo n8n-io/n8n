@@ -15,6 +15,10 @@ from src.constants import (
     ERROR_DYNAMIC_IMPORT,
     ERROR_DANGEROUS_STRING_PATTERN,
     ERROR_MATCH_PATTERN_ATTRIBUTE,
+    ERROR_MATCH_POSITIONAL_PATTERN,
+    ERROR_GLOBAL_BLOCKED_NAME,
+    ERROR_FUNCDEF_BLOCKED_NAME,
+    ERROR_CLASSDEF_BLOCKED_NAME,
     BLOCKED_ATTRIBUTES,
     BLOCKED_NAMES,
 )
@@ -141,8 +145,48 @@ class SecurityValidator(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_Global(self, node: ast.Global) -> None:
+        """Detect global declarations of blocked names, e.g. `global __builtins__`"""
+
+        for name in node.names:
+            if name in BLOCKED_NAMES:
+                self._add_violation(
+                    node.lineno, ERROR_GLOBAL_BLOCKED_NAME.format(name=name)
+                )
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        """Detect function definitions with blocked names, e.g. `def __builtins__(): pass`"""
+
+        if node.name in BLOCKED_NAMES:
+            self._add_violation(
+                node.lineno, ERROR_FUNCDEF_BLOCKED_NAME.format(name=node.name)
+            )
+        self.generic_visit(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        """Detect async function definitions with blocked names."""
+
+        if node.name in BLOCKED_NAMES:
+            self._add_violation(
+                node.lineno, ERROR_FUNCDEF_BLOCKED_NAME.format(name=node.name)
+            )
+        self.generic_visit(node)
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        """Detect class definitions with blocked names, e.g. `class __builtins__: pass`"""
+
+        if node.name in BLOCKED_NAMES:
+            self._add_violation(
+                node.lineno, ERROR_CLASSDEF_BLOCKED_NAME.format(name=node.name)
+            )
+        self.generic_visit(node)
+
     def visit_MatchClass(self, node: ast.MatchClass) -> None:
         """Detect match patterns that extract blocked attributes, e.g. `case AttributeError(obj=x)`"""
+
+        if node.patterns:
+            self._add_violation(node.lineno, ERROR_MATCH_POSITIONAL_PATTERN)
 
         for attr in node.kwd_attrs:
             if attr in BLOCKED_ATTRIBUTES:

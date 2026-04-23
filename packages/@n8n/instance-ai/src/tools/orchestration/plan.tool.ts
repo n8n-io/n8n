@@ -25,7 +25,52 @@ const plannedTaskSchema = z.object({
 
 const planInputSchema = z.object({
 	tasks: z.array(plannedTaskSchema).min(1).describe('Dependency-aware execution plan'),
+	skipPlannerDiscovery: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set to true to intentionally bypass the planner and call create-tasks for initial (non-replan) work. ' +
+				'Requires `reason`. Use sparingly — the planner sub-agent discovers credentials, data tables, and ' +
+				'best practices you would otherwise miss.',
+		),
+	reason: z
+		.string()
+		.optional()
+		.describe(
+			'One sentence explaining why the planner is being bypassed. Required when skipPlannerDiscovery is true.',
+		),
 });
+
+function isReplanContext(context: OrchestrationContext): boolean {
+	return context.isReplanFollowUp === true;
+}
+
+/**
+ * Returns true when the thread has a non-terminal planned-task graph — meaning
+ * `create-tasks` is being called as a revision (after user rejection of a
+ * previous plan) or a mid-flight follow-up, not as initial planning. The guard
+ * should not fire in these cases because a planner cycle has already run for
+ * this thread and is still in progress. Terminal graphs (`completed`,
+ * `cancelled`) must not bypass the guard — a fresh user request on a long-
+ * lived thread needs to go through `plan` for discovery, same as any first
+ * request.
+ */
+async function threadHasExistingPlan(context: OrchestrationContext): Promise<boolean> {
+	if (!context.plannedTaskService) return false;
+	try {
+		const graph = await context.plannedTaskService.getGraph(context.threadId);
+		if (!graph) return false;
+		return graph.status === 'active' || graph.status === 'awaiting_replan';
+	} catch {
+		return false;
+	}
+}
+
+function isReplanGuardEnabled(): boolean {
+	const raw = process.env.N8N_INSTANCE_AI_ENFORCE_CREATE_TASKS_REPLAN;
+	if (raw === undefined) return true;
+	return raw.toLowerCase() !== 'false' && raw !== '0';
+}
 
 const planOutputSchema = z.object({
 	result: z.string(),
@@ -44,6 +89,9 @@ export function createPlanTool(context: OrchestrationContext) {
 			'Submit a pre-built task list for detached multi-step execution. ' +
 			'Use ONLY for replanning after a failure — when you already have the task context ' +
 			'and do not need resource discovery. For initial planning, call `plan` instead. ' +
+			'A runtime guard rejects this tool when no replan context (`<planned-task-follow-up type="replan">`) ' +
+			'is present; if you intentionally need to bypass the planner, set `skipPlannerDiscovery: true` ' +
+			'and pass a one-sentence `reason`. ' +
 			'The task list is shown to the user for approval before execution starts. ' +
 			'After calling create-tasks, reply briefly and end your turn.',
 		inputSchema: planInputSchema,
@@ -67,8 +115,46 @@ export function createPlanTool(context: OrchestrationContext) {
 			const resumeData = ctx?.agent?.resumeData as z.infer<typeof planResumeSchema> | undefined;
 			const suspend = ctx?.agent?.suspend;
 
+			// Replan-only guard: reject initial-planning misuse on the first call.
+			// Legitimate callers pass the guard when any of these hold:
+			//   - `<planned-task-follow-up type="replan">` is present in the user message
+			//   - the thread already has a planned-task graph (revision loop after a
+			//     user rejection, or replan after a failed background task)
+			//   - the orchestrator opts in with `skipPlannerDiscovery: true` + a `reason`
+			const isFirstCall = resumeData === undefined || resumeData === null;
+			const hasExistingPlan = await threadHasExistingPlan(context);
+			if (isFirstCall && isReplanGuardEnabled() && !isReplanContext(context) && !hasExistingPlan) {
+				if (!input.skipPlannerDiscovery) {
+					context.logger.warn('create-tasks called without replan context — rejecting', {
+						threadId: context.threadId,
+						taskCount: input.tasks.length,
+					});
+					return {
+						result:
+							'Error: `create-tasks` is for replanning only. For initial planning, call `plan` instead — ' +
+							'the planner sub-agent will discover credentials, data tables, and best practices for you. ' +
+							'If you intentionally want to skip the planner (rare), call `create-tasks` again with ' +
+							'`skipPlannerDiscovery: true` and a one-sentence `reason`.',
+						taskCount: 0,
+					};
+				}
+				if (!input.reason || input.reason.trim().length === 0) {
+					return {
+						result:
+							'Error: `skipPlannerDiscovery: true` requires a one-sentence `reason` explaining ' +
+							'why the planner is being bypassed.',
+						taskCount: 0,
+					};
+				}
+				context.logger.warn('create-tasks bypassing planner with skipPlannerDiscovery=true', {
+					threadId: context.threadId,
+					taskCount: input.tasks.length,
+					reason: input.reason,
+				});
+			}
+
 			// First call — persist plan, show to user, suspend for approval
-			if (resumeData === undefined || resumeData === null) {
+			if (isFirstCall) {
 				await context.plannedTaskService.createPlan(
 					context.threadId,
 					input.tasks as PlannedTask[],
