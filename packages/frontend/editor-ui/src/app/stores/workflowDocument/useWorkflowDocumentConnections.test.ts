@@ -131,23 +131,6 @@ describe('useWorkflowDocumentConnections', () => {
 
 			expect(composable.incomingConnectionsByNodeName('NonExistent')).toEqual({});
 		});
-
-		it('nodeHasOutputConnection returns true when node has outgoing connections', () => {
-			const connections = {
-				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
-			};
-
-			const composable = useWorkflowDocumentConnections(deps);
-			composable.setConnections(connections);
-
-			expect(composable.nodeHasOutputConnection('A')).toBe(true);
-		});
-
-		it('nodeHasOutputConnection returns false when node has no outgoing connections', () => {
-			const composable = useWorkflowDocumentConnections(deps);
-
-			expect(composable.nodeHasOutputConnection('A')).toBe(false);
-		});
 	});
 
 	describe('round-trip: addConnection → read', () => {
@@ -212,7 +195,7 @@ describe('useWorkflowDocumentConnections', () => {
 			composable.removeConnection(createConnectionData('NonExistent', 'B'));
 
 			// No connection for NonExistent was created
-			expect(composable.nodeHasOutputConnection('NonExistent')).toBe(false);
+			expect(composable.outgoingConnectionsByNodeName('NonExistent')).toEqual({});
 		});
 	});
 
@@ -227,7 +210,7 @@ describe('useWorkflowDocumentConnections', () => {
 			composable.removeAllNodeConnection(nodeA);
 
 			// Outgoing from A should be gone
-			expect(composable.nodeHasOutputConnection('A')).toBe(false);
+			expect(composable.connectionsBySourceNode.value.A?.main?.[0] ?? []).toHaveLength(0);
 			// Incoming to A (from C) should also be gone
 			const cConnections = composable.connectionsBySourceNode.value.C?.main?.[0] ?? [];
 			const connectionsToA = cConnections.filter((c) => c.node === 'A');
@@ -244,7 +227,7 @@ describe('useWorkflowDocumentConnections', () => {
 			composable.removeAllNodeConnection(nodeA, { preserveInputConnections: true });
 
 			// Outgoing from A should be gone
-			expect(composable.nodeHasOutputConnection('A')).toBe(false);
+			expect(composable.connectionsBySourceNode.value.A?.main?.[0] ?? []).toHaveLength(0);
 			// Incoming to A (from C) should still exist
 			const cConnections = composable.connectionsBySourceNode.value.C?.main?.[0] ?? [];
 			const connectionsToA = cConnections.filter((c) => c.node === 'A');
@@ -261,7 +244,9 @@ describe('useWorkflowDocumentConnections', () => {
 			composable.removeAllNodeConnection(nodeA, { preserveOutputConnections: true });
 
 			// Outgoing from A should still exist
-			expect(composable.nodeHasOutputConnection('A')).toBe(true);
+			expect((composable.connectionsBySourceNode.value.A?.main?.[0] ?? []).length).toBeGreaterThan(
+				0,
+			);
 			// Incoming to A (from C) should be gone
 			const cConnections = composable.connectionsBySourceNode.value.C?.main?.[0] ?? [];
 			const connectionsToA = cConnections.filter((c) => c.node === 'A');
@@ -281,7 +266,7 @@ describe('useWorkflowDocumentConnections', () => {
 
 			composable.removeNodeConnectionsById(nodeA.id);
 
-			expect(composable.nodeHasOutputConnection('A')).toBe(false);
+			expect(composable.connectionsBySourceNode.value.A?.main?.[0] ?? []).toHaveLength(0);
 		});
 
 		it('removeNodeConnectionsById is a no-op when node ID not found', () => {
@@ -292,7 +277,9 @@ describe('useWorkflowDocumentConnections', () => {
 			composable.removeNodeConnectionsById('nonexistent');
 
 			// Connection should still exist
-			expect(composable.nodeHasOutputConnection('A')).toBe(true);
+			expect((composable.connectionsBySourceNode.value.A?.main?.[0] ?? []).length).toBeGreaterThan(
+				0,
+			);
 		});
 	});
 
