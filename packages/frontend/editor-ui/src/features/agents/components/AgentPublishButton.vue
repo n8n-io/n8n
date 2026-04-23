@@ -82,7 +82,7 @@ async function onDropdownSelect(action: string) {
 		return;
 	}
 	if (action !== 'unpublish') return;
-	const updated = await unpublish(props.projectId, props.agentId);
+	const updated = await unpublish(props.projectId, props.agentId, props.agent?.name);
 	if (updated) emit('unpublished', updated);
 }
 </script>

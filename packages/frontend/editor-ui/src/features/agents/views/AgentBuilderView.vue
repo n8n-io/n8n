@@ -13,7 +13,6 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM, MODAL_CANCEL, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
@@ -21,6 +20,7 @@ import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables
 import type { AgentResource, AgentJsonConfig } from '../types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
+import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentSessionsStore } from '../agentSessions.store';
@@ -35,9 +35,9 @@ const locale = useI18n();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
-const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
 const { showError } = useToast();
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
@@ -347,15 +347,20 @@ function onTriggerAdded(payload: { triggerType: string; triggers: string[] }) {
 	builderTelemetry.trackTriggerAdded(payload);
 }
 
-const headerActions = [{ id: 'delete', label: 'Delete agent' }];
+const headerActions = [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }];
 
 async function onHeaderAction(action: string) {
 	if (action === 'delete') {
-		const confirmed = await message.confirm(
-			`Are you sure you want to delete "${agentName.value}"?`,
-			'Delete agent',
-			{ confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
-		);
+		const confirmed = await openAgentConfirmationModal({
+			title: locale.baseText('agents.delete.modal.title', {
+				interpolate: { name: agentName.value },
+			}),
+			description: locale.baseText('agents.delete.modal.description', {
+				interpolate: { name: agentName.value },
+			}),
+			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
+			cancelButtonText: locale.baseText('generic.cancel'),
+		});
 		if (confirmed !== MODAL_CONFIRM) return;
 
 		// Cancel any pending autosave so it doesn't fire against the now-deleted
@@ -429,16 +434,12 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 		return;
 	}
 
-	const response = await message.confirm(
-		locale.baseText('agents.builder.unsavedPublish.modal.description'),
-		locale.baseText('agents.builder.unsavedPublish.modal.title'),
-		{
-			confirmButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.publish'),
-			cancelButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.leave'),
-			showClose: true,
-			type: 'warning',
-		},
-	);
+	const response = await openAgentConfirmationModal({
+		title: locale.baseText('agents.builder.unsavedPublish.modal.title'),
+		description: locale.baseText('agents.builder.unsavedPublish.modal.description'),
+		confirmButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.publish'),
+		cancelButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.leave'),
+	});
 
 	if (response === MODAL_CONFIRM) {
 		try {
