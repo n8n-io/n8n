@@ -137,6 +137,93 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 
 			await expect(loader.run()).rejects.toThrow(/duplicate \(type,label\)/);
 		});
+
+		it('rejects unknown top-level fields', async () => {
+			const loader = createLoader({
+				logStreamingDestinations: JSON.stringify([
+					{ type: 'webhook', label: 'W', url: 'https://w.test', nope: 'extra' },
+				]),
+			});
+
+			await expect(loader.run()).rejects.toThrow(/validation failed/);
+		});
+
+		it('rejects webhook method values outside GET/POST/PUT', async () => {
+			const loader = createLoader({
+				logStreamingDestinations: JSON.stringify([
+					{ type: 'webhook', label: 'W', url: 'https://w.test', method: 'DELETE' },
+				]),
+			});
+
+			await expect(loader.run()).rejects.toThrow(/validation failed/);
+		});
+
+		it('rejects syslog facility outside the 0–23 range', async () => {
+			const loader = createLoader({
+				logStreamingDestinations: JSON.stringify([
+					{ type: 'syslog', label: 'S', host: 'host.test', facility: 24 },
+				]),
+			});
+
+			await expect(loader.run()).rejects.toThrow(/validation failed/);
+		});
+
+		it('requires tlsCa when syslog protocol is "tls"', async () => {
+			const loader = createLoader({
+				logStreamingDestinations: JSON.stringify([
+					{ type: 'syslog', label: 'S', host: 'host.test', protocol: 'tls' },
+				]),
+			});
+
+			await expect(loader.run()).rejects.toThrow(/must provide "tlsCa"/);
+		});
+	});
+
+	describe('accepts', () => {
+		it('circuitBreaker on any destination type', async () => {
+			tx.find.mockResolvedValue([]);
+			const loader = createLoader({
+				logStreamingDestinations: JSON.stringify([
+					{
+						type: 'webhook',
+						label: 'W',
+						url: 'https://w.test',
+						circuitBreaker: { maxFailures: 3, failureWindow: 30000 },
+					},
+					{
+						type: 'syslog',
+						label: 'S',
+						host: 'syslog.test',
+						circuitBreaker: { maxFailures: 5 },
+					},
+				]),
+			});
+
+			await expect(loader.run()).resolves.toBe('created');
+		});
+
+		it('a fully-populated webhook options block', async () => {
+			tx.find.mockResolvedValue([]);
+			const loader = createLoader({
+				logStreamingDestinations: JSON.stringify([
+					{
+						type: 'webhook',
+						label: 'W',
+						url: 'https://w.test',
+						options: {
+							allowUnauthorizedCerts: true,
+							queryParameterArrays: 'brackets',
+							redirect: { redirect: { followRedirects: true, maxRedirects: 5 } },
+							proxy: { proxy: { protocol: 'https', host: 'proxy.test', port: 8080 } },
+							timeout: 5000,
+							socket: { keepAlive: true, maxSockets: 10, maxFreeSockets: 5 },
+						},
+					},
+				]),
+			});
+
+			await expect(loader.run()).resolves.toBe('created');
+		});
 	});
 
 	describe('reconciliation', () => {

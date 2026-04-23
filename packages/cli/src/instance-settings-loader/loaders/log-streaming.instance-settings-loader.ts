@@ -11,65 +11,118 @@ import { z } from 'zod';
 import { EventDestinations } from '@/modules/log-streaming.ee/database/entities';
 import { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
 
-const webhookParameterItemSchema = z.object({
-	parameters: z.array(
-		z.object({
-			name: z.string(),
-			value: z.union([z.string(), z.number(), z.boolean(), z.null()]).nullable(),
-		}),
-	),
-});
+// The env schema mirrors the UI fields exactly (see logStreaming.constants.ts):
+// fields hidden from the UI are not accepted here, and closed enums (method,
+// facility, protocol) match the UI's dropdown values.
+
+const circuitBreakerSchema = z
+	.object({
+		maxFailures: z.number().int().positive().optional(),
+		failureWindow: z.number().int().min(100).optional(),
+	})
+	.strict()
+	.optional();
+
+const webhookParameterItemSchema = z
+	.object({
+		parameters: z.array(
+			z
+				.object({
+					name: z.string(),
+					value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+				})
+				.strict(),
+		),
+	})
+	.strict();
+
+const webhookOptionsSchema = z
+	.object({
+		allowUnauthorizedCerts: z.boolean().optional(),
+		queryParameterArrays: z.enum(['indices', 'brackets', 'repeat']).optional(),
+		redirect: z
+			.object({
+				redirect: z
+					.object({
+						followRedirects: z.boolean().optional(),
+						maxRedirects: z.number().int().positive().optional(),
+					})
+					.strict(),
+			})
+			.strict()
+			.optional(),
+		proxy: z
+			.object({
+				proxy: z
+					.object({
+						protocol: z.enum(['https', 'http']),
+						host: z.string().min(1),
+						port: z.number().int().positive(),
+					})
+					.strict(),
+			})
+			.strict()
+			.optional(),
+		timeout: z.number().int().positive().optional(),
+		socket: z
+			.object({
+				keepAlive: z.boolean().optional(),
+				maxSockets: z.number().int().positive().optional(),
+				maxFreeSockets: z.number().int().positive().optional(),
+			})
+			.strict()
+			.optional(),
+	})
+	.strict()
+	.optional();
 
 const commonFields = {
 	id: z.string().uuid().optional(),
 	label: z.string().min(1).optional(),
 	enabled: z.boolean().optional(),
-	subscribedEvents: z.array(z.string()).optional(),
+	subscribedEvents: z.array(z.string().min(1)).optional(),
 	anonymizeAuditMessages: z.boolean().optional(),
-	credentials: z.record(z.unknown()).optional(),
-};
+	circuitBreaker: circuitBreakerSchema,
+} as const;
 
-const webhookEnvSchema = z.object({
-	...commonFields,
-	type: z.literal('webhook'),
-	url: z.string().url(),
-	method: z.string().optional(),
-	headerParameters: webhookParameterItemSchema.optional(),
-	queryParameters: webhookParameterItemSchema.optional(),
-	sendQuery: z.boolean().optional(),
-	sendHeaders: z.boolean().optional(),
-	sendPayload: z.boolean().optional(),
-	responseCodeMustMatch: z.boolean().optional(),
-	expectedStatusCode: z.number().int().optional(),
-	authentication: z.enum(['predefinedCredentialType', 'genericCredentialType', 'none']).optional(),
-	genericAuthType: z.string().optional(),
-	nodeCredentialType: z.string().optional(),
-	specifyHeaders: z.string().optional(),
-	specifyQuery: z.string().optional(),
-	jsonHeaders: z.string().optional(),
-	jsonQuery: z.string().optional(),
-	options: z.record(z.unknown()).optional(),
-});
+const webhookEnvSchema = z
+	.object({
+		...commonFields,
+		type: z.literal('webhook'),
+		url: z.string().url(),
+		method: z.enum(['GET', 'POST', 'PUT']).optional(),
+		sendQuery: z.boolean().optional(),
+		specifyQuery: z.enum(['keypair', 'json']).optional(),
+		queryParameters: webhookParameterItemSchema.optional(),
+		jsonQuery: z.string().optional(),
+		sendHeaders: z.boolean().optional(),
+		specifyHeaders: z.enum(['keypair', 'json']).optional(),
+		headerParameters: webhookParameterItemSchema.optional(),
+		jsonHeaders: z.string().optional(),
+		options: webhookOptionsSchema,
+	})
+	.strict();
 
-const syslogEnvSchema = z.object({
-	...commonFields,
-	type: z.literal('syslog'),
-	host: z.string().min(1),
-	port: z.number().int().positive().optional(),
-	protocol: z.enum(['udp', 'tcp', 'tls']).optional(),
-	facility: z.number().int().min(0).max(23).optional(),
-	app_name: z.string().optional(),
-	eol: z.string().optional(),
-	expectedStatusCode: z.number().int().optional(),
-});
+const syslogEnvSchema = z
+	.object({
+		...commonFields,
+		type: z.literal('syslog'),
+		host: z.string().min(1),
+		port: z.number().int().positive().optional(),
+		protocol: z.enum(['udp', 'tcp', 'tls']).optional(),
+		facility: z.number().int().min(0).max(23).optional(),
+		app_name: z.string().min(1).optional(),
+		tlsCa: z.string().min(1).optional(),
+	})
+	.strict();
 
-const sentryEnvSchema = z.object({
-	...commonFields,
-	type: z.literal('sentry'),
-	dsn: z.string().url(),
-	tracesSampleRate: z.number().min(0).max(1).optional(),
-	sendPayload: z.boolean().optional(),
-});
+const sentryEnvSchema = z
+	.object({
+		...commonFields,
+		type: z.literal('sentry'),
+		dsn: z.string().url(),
+	})
+	.strict();
 
 const envDestinationSchema = z.discriminatedUnion('type', [
 	webhookEnvSchema,
@@ -157,6 +210,11 @@ export class LogStreamingInstanceSettingsLoader {
 			if (!item.id && !item.label) {
 				throw new Error(
 					`N8N_LOG_STREAMING_DESTINATIONS[${index}] must have either "id" or "label" for stable reconciliation`,
+				);
+			}
+			if (item.type === 'syslog' && item.protocol === 'tls' && !item.tlsCa) {
+				throw new Error(
+					`N8N_LOG_STREAMING_DESTINATIONS[${index}] must provide "tlsCa" when "protocol" is "tls"`,
 				);
 			}
 			if (item.id) {

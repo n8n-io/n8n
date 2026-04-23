@@ -106,22 +106,29 @@ export class InstanceSettingsLoaderConfig {
 	 * [
 	 *   {
 	 *     "type": "webhook",
+	 *     "label": "Audit webhook",
 	 *     "url": "https://hooks.example.com",
 	 *     "method": "POST",
+	 *     "sendHeaders": true,
+	 *     "specifyHeaders": "keypair",
 	 *     "headerParameters": {
 	 *       "parameters": [{ "name": "Authorization", "value": "Bearer abc123" }]
-	 *     }
+	 *     },
+	 *     "subscribedEvents": ["n8n.workflow", "n8n.audit"]
 	 *   },
 	 *   {
 	 *     "type": "syslog",
+	 *     "label": "SIEM",
 	 *     "host": "syslog.example.com",
 	 *     "port": 514,
-	 *     "protocol": "udp"
+	 *     "protocol": "udp",
+	 *     "facility": 16,
+	 *     "app_name": "n8n"
 	 *   },
 	 *   {
 	 *     "type": "sentry",
-	 *     "dsn": "https://public@sentry.example.com/1",
-	 *     "tracesSampleRate": 0.1
+	 *     "label": "Ops sentry",
+	 *     "dsn": "https://public@sentry.example.com/1"
 	 *   }
 	 * ]
 	 * ```
