@@ -1,10 +1,12 @@
-import { BUILDER_AGENT_PROMPT } from '@n8n/instance-ai';
+import { BUILDER_AGENT_PROMPT, MAX_STEPS } from '@n8n/instance-ai';
 
 export interface SubAgentRoleConfig {
 	/** System prompt that drives the agent's behavior. */
 	systemPrompt: string;
 	/** Human-readable role label injected into the agent's id. */
 	label: string;
+	/** Default step budget, sourced from the same `MAX_STEPS` table production uses. */
+	defaultMaxSteps: number;
 }
 
 /**
@@ -19,6 +21,7 @@ export const SUB_AGENT_ROLES: Record<string, SubAgentRoleConfig> = {
 	builder: {
 		systemPrompt: BUILDER_AGENT_PROMPT,
 		label: 'builder',
+		defaultMaxSteps: MAX_STEPS.BUILDER,
 	},
 };
 

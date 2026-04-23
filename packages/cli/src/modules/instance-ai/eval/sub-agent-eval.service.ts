@@ -20,7 +20,12 @@ import { InstanceAiService } from '../instance-ai.service';
 
 import { resolveSubAgentRole } from './sub-agent-roles';
 
-const DEFAULT_MAX_STEPS = 40;
+/**
+ * Eval-only fallback timeout. Production sub-agents don't impose their own
+ * wall-clock cap — the orchestrator's abort signal governs that — so there's
+ * no shared constant to borrow. Step budgets come from the role config, which
+ * re-uses the same `MAX_STEPS` table the real sub-agents use.
+ */
 const DEFAULT_TIMEOUT_MS = 120_000;
 
 @Service()
@@ -41,7 +46,7 @@ export class SubAgentEvalService {
 	): Promise<InstanceAiEvalSubAgentResponse> {
 		const startMs = Date.now();
 		const role = resolveSubAgentRole(request.role);
-		const maxSteps = request.maxSteps ?? DEFAULT_MAX_STEPS;
+		const maxSteps = request.maxSteps ?? role.defaultMaxSteps;
 		const timeoutMs = request.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
 		const capturedWorkflowIds: string[] = [];

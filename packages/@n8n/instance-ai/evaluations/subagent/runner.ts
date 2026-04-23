@@ -78,6 +78,7 @@ export async function runSubAgent(
 			prompt: testCase.prompt,
 			modelId: modelId ?? BINARY_CHECK_DEFAULT_MODEL,
 			agentTextResponse: response.text,
+			...(testCase.annotations ? { annotations: testCase.annotations } : {}),
 		});
 
 		// Surface the server-side run error both as feedback (so LangSmith scores
@@ -146,6 +147,7 @@ async function evaluateCapturedWorkflows(args: {
 	prompt: string;
 	modelId: string;
 	agentTextResponse: string;
+	annotations?: Record<string, unknown>;
 }): Promise<Feedback[]> {
 	const feedback: Feedback[] = [];
 
@@ -167,6 +169,7 @@ async function evaluateCapturedWorkflows(args: {
 		prompt: args.prompt,
 		modelId: args.modelId,
 		...(args.agentTextResponse ? { agentTextResponse: args.agentTextResponse } : {}),
+		...(args.annotations ? { annotations: args.annotations } : {}),
 	};
 	const binaryFeedback = await runBinaryChecks(last, ctx);
 	feedback.push(...binaryFeedback);

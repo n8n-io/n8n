@@ -130,6 +130,11 @@ export function mapExampleToTestCase(
 		tools = (inputs.tools as unknown[]).filter((t): t is string => typeof t === 'string');
 	}
 
+	const annotations =
+		typeof inputs.annotations === 'object' && inputs.annotations !== null
+			? (inputs.annotations as Record<string, unknown>)
+			: undefined;
+
 	return {
 		id: exampleId ?? `ls-${Date.now()}`,
 		prompt,
@@ -138,5 +143,6 @@ export function mapExampleToTestCase(
 		tools,
 		modelId: typeof inputs.model === 'string' ? inputs.model : undefined,
 		maxSteps: typeof inputs.maxSteps === 'number' ? inputs.maxSteps : undefined,
+		annotations,
 	};
 }

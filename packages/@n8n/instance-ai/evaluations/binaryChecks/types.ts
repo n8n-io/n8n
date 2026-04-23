@@ -34,6 +34,12 @@ export interface BinaryCheckContext {
 	agentTextResponse?: string;
 	/** The workflow before the agent's turn (used by response-matches-workflow-changes check) */
 	existingWorkflow?: WorkflowResponse;
+	/**
+	 * Per-test-case annotations that let authors flag false positives
+	 * (e.g. `code_necessary: true` for prompts where a Code node is the right answer).
+	 * Sourced from the test case JSON's `annotations` field.
+	 */
+	annotations?: Record<string, unknown>;
 }
 
 /**

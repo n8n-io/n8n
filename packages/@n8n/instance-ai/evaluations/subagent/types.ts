@@ -34,6 +34,12 @@ export interface SubAgentTestCase {
 	modelId?: string;
 	/** Max agent steps before timeout. Defaults to 40 (see `SubAgentEvalService.DEFAULT_MAX_STEPS`). */
 	maxSteps?: number;
+	/**
+	 * Per-test-case annotations forwarded to binary checks.
+	 * Use `code_necessary: true` to suppress `no_unnecessary_code_nodes` on
+	 * prompts where a Code node is a legitimate answer.
+	 */
+	annotations?: Record<string, unknown>;
 }
 
 /**

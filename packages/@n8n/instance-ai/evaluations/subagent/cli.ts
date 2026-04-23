@@ -136,6 +136,7 @@ function loadLocalTestCases(filter?: string, subagent?: string): SubAgentTestCas
 			systemPrompt?: string;
 			tools?: string[];
 			maxSteps?: number;
+			annotations?: Record<string, unknown>;
 		};
 		try {
 			parsed = JSON.parse(raw) as typeof parsed;
@@ -152,6 +153,7 @@ function loadLocalTestCases(filter?: string, subagent?: string): SubAgentTestCas
 		if (parsed.systemPrompt) tc.systemPrompt = parsed.systemPrompt;
 		if (parsed.tools) tc.tools = parsed.tools;
 		if (parsed.maxSteps) tc.maxSteps = parsed.maxSteps;
+		if (parsed.annotations) tc.annotations = parsed.annotations;
 		cases.push(tc);
 	}
 	return cases;
