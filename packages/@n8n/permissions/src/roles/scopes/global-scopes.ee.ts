@@ -123,6 +123,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'breakingChanges:list',
 	'execution:reveal',
 	'apiKey:manage',
+	'encryptionKey:manage',
 	'credentialResolver:create',
 	'credentialResolver:read',
 	'credentialResolver:update',
