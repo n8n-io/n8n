@@ -639,21 +639,84 @@ export const buildWorkflowAgentInputSchema = z.object({
 		.describe(
 			'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered (e.g., which credentials are available). The builder uses this to avoid repeating information the user already knows.',
 		),
+	bypassPlan: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set to true for a narrow one-off change on an existing workflow (expression patch, single-parameter fix, rename) where a full plan + orchestrator-run verification checkpoint is overkill. Requires `reason`. ' +
+				'A runtime guard otherwise rejects direct calls: new workflow builds must go through `plan` so the build gets its checkpoint.',
+		),
+	reason: z
+		.string()
+		.optional()
+		.describe(
+			'One sentence explaining why the planner is being bypassed. Required when bypassPlan is true.',
+		),
 });
+
+/**
+ * Replan / checkpoint follow-ups have already paid the planner's discovery cost
+ * and carry the checkpoint task graph from the original plan — direct builder
+ * calls in those contexts are legitimate (e.g. retry the one failing task).
+ */
+function isPostPlanFollowUp(context: OrchestrationContext): boolean {
+	return context.isReplanFollowUp === true || context.isCheckpointFollowUp === true;
+}
+
+function isBuildViaPlanGuardEnabled(): boolean {
+	const raw = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
+	if (raw === undefined) return true;
+	return raw.toLowerCase() !== 'false' && raw !== '0';
+}
 
 export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'build-workflow-with-agent',
 		description:
 			'Build or modify an n8n workflow using a specialized builder agent. ' +
-			'The agent handles node discovery, schema lookups, code generation, ' +
-			'and validation internally.',
+			'The agent handles node discovery, schema lookups, code generation, and validation internally. ' +
+			'New workflow builds should go through `plan` so the build gets an orchestrator-run verification checkpoint — ' +
+			'a runtime guard rejects direct calls outside a replan/checkpoint follow-up. For a narrow one-off fix on ' +
+			'an existing workflow where a full plan is overkill, set `bypassPlan: true` with a one-sentence `reason`.',
 		inputSchema: buildWorkflowAgentInputSchema,
 		outputSchema: z.object({
 			result: z.string(),
 			taskId: z.string(),
 		}),
 		execute: async (input: z.infer<typeof buildWorkflowAgentInputSchema>) => {
+			if (isBuildViaPlanGuardEnabled() && !isPostPlanFollowUp(context)) {
+				if (!input.bypassPlan) {
+					context.logger.warn(
+						'build-workflow-with-agent called outside plan/replan context — rejecting',
+						{
+							threadId: context.threadId,
+							hasWorkflowId: Boolean(input.workflowId),
+						},
+					);
+					return {
+						result:
+							'Error: new workflow builds must go through `plan` so an orchestrator-run ' +
+							'verification checkpoint is scheduled. Call `plan` with a `build-workflow` task ' +
+							'instead — the planner will discover credentials, data tables, and best practices ' +
+							'for you. For a narrow one-off fix on an existing workflow (expression patch, ' +
+							'rename, single-parameter change) where a full plan is overkill, call again with ' +
+							'`bypassPlan: true` and a one-sentence `reason`.',
+						taskId: '',
+					};
+				}
+				if (!input.reason || input.reason.trim().length === 0) {
+					return {
+						result:
+							'Error: `bypassPlan: true` requires a one-sentence `reason` explaining why the ' +
+							'planner is being bypassed.',
+						taskId: '',
+					};
+				}
+				context.logger.warn('build-workflow-with-agent bypassing plan with bypassPlan=true', {
+					threadId: context.threadId,
+					reason: input.reason,
+				});
+			}
 			const result = await startBuildWorkflowAgentTask(context, input);
 			return { result: result.result, taskId: result.taskId };
 		},
