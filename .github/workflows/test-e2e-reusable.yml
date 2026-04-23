@@ -105,7 +105,7 @@ jobs:
         # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
         run: ${{ inputs.test-command }} --workers=${{ env.PLAYWRIGHT_WORKERS }} ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
         env:
-          CURRENTS_RECORD_KEY: ${{ vars.CURRENTS_RECORD_VAR }}
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
