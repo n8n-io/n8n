@@ -7,6 +7,23 @@ const mocks = vi.hoisted(() => ({
 	getVariant: vi.fn(),
 }));
 
+const storage = vi.hoisted(() => {
+	const values = new Map<string, string>();
+
+	return {
+		getItem: vi.fn((key: string) => values.get(key) ?? null),
+		setItem: vi.fn((key: string, value: string) => {
+			values.set(key, value);
+		}),
+		removeItem: vi.fn((key: string) => {
+			values.delete(key);
+		}),
+		reset: () => {
+			values.clear();
+		},
+	};
+});
+
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mocks.track }),
 }));
@@ -31,10 +48,21 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: vi.fn() }),
 }));
 
+const resetResourceCenterStorage = () => {
+	storage.reset();
+	storage.getItem.mockClear();
+	storage.setItem.mockClear();
+	storage.removeItem.mockClear();
+};
+
 describe('resourceCenter.store', () => {
 	beforeEach(() => {
+		Object.defineProperty(window, 'localStorage', {
+			value: storage,
+			configurable: true,
+		});
 		setActivePinia(createPinia());
-		localStorage.clear();
+		resetResourceCenterStorage();
 		mocks.track.mockClear();
 		mocks.getVariant.mockReset();
 	});

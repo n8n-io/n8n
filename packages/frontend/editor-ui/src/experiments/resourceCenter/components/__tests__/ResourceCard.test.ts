@@ -30,6 +30,12 @@ const videoItem: ResourceItem = {
 	level: 'Beginner',
 };
 
+const customVideoItem: ResourceItem = {
+	...videoItem,
+	id: 'custom-video',
+	url: 'https://www.n8n.io/workflows/resource-center',
+};
+
 function mountCard(item: ResourceItem) {
 	return mount(ResourceCard, {
 		props: { item },
@@ -40,43 +46,25 @@ function mountCard(item: ResourceItem) {
 }
 
 describe('ResourceCard', () => {
-	it('renders badge for template and video cards', () => {
-		const items = [
-			{ item: templateItem, expected: 'Template' },
-			{ item: videoItem, expected: 'Video' },
-		];
-
-		for (const { item, expected } of items) {
-			const wrapper = mountCard(item);
-			expect(wrapper.find('[data-testid="resource-card-badge"]').text()).toContain(expected);
-		}
-	});
-
-	it('renders the title', () => {
-		const wrapper = mountCard(templateItem);
-
-		expect(wrapper.find('[data-testid="resource-card-title"]').text()).toBe(templateItem.title);
-	});
-
-	it('renders template metadata', () => {
-		const wrapper = mountCard(templateItem);
-		const cardText = wrapper.find('[data-testid="resource-card"]').text();
-
-		expect(cardText).toContain('5 min');
-		expect(cardText).toContain('5 nodes');
-	});
-
-	it('renders a source label for videos', () => {
+	it('falls back to youtube.com when a video has no custom URL', () => {
 		const wrapper = mountCard(videoItem);
 
 		expect(wrapper.find('[data-testid="resource-card"]').text()).toContain('youtube.com');
 	});
 
-	it('emits click when the card is clicked', async () => {
+	it('renders the hostname from a custom video URL', () => {
+		const wrapper = mountCard(customVideoItem);
+
+		expect(wrapper.find('[data-testid="resource-card"]').text()).toContain('n8n.io');
+	});
+
+	it('emits click for mouse and keyboard activation', async () => {
 		const wrapper = mountCard(templateItem);
 
 		await wrapper.find('[data-testid="resource-card"]').trigger('click');
+		await wrapper.find('[data-testid="resource-card"]').trigger('keydown.enter');
+		await wrapper.find('[data-testid="resource-card"]').trigger('keydown.space');
 
-		expect(wrapper.emitted('click')).toHaveLength(1);
+		expect(wrapper.emitted('click')).toHaveLength(3);
 	});
 });

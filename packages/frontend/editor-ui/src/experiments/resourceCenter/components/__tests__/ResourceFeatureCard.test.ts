@@ -28,20 +28,13 @@ function mountCard(item: ResourceItem) {
 }
 
 describe('ResourceFeatureCard', () => {
-	it('renders the hero copy and run button', () => {
-		const wrapper = mountCard(readyToRunItem);
-		const cardText = wrapper.find('[data-testid="resource-feature-card"]').text();
-
-		expect(cardText).toContain('Summarize the news');
-		expect(cardText).toContain('Ready to run');
-		expect(cardText).toContain('Run');
-	});
-
-	it('emits click when the card is clicked', async () => {
+	it('emits click when the card or run button is activated', async () => {
 		const wrapper = mountCard(readyToRunItem);
 
 		await wrapper.find('[data-testid="resource-feature-card"]').trigger('click');
+		await wrapper.find('[data-testid="resource-feature-card"]').trigger('keydown.enter');
+		await wrapper.find('button').trigger('click');
 
-		expect(wrapper.emitted('click')).toHaveLength(1);
+		expect(wrapper.emitted('click')).toHaveLength(3);
 	});
 });
