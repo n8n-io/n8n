@@ -344,11 +344,7 @@ export async function startBuildWorkflowAgentTask(
 						if (workflowId && domainContext) {
 							try {
 								const json = await domainContext.workflowService.getAsWorkflowJSON(workflowId);
-								let rawCode = generateWorkflowCode(json);
-								rawCode = rawCode.replace(
-									/newCredential\('([^']*)',\s*'[^']*'\)/g,
-									"newCredential('$1')",
-								);
+								const rawCode = generateWorkflowCode(json);
 								const code = `${SDK_IMPORT_STATEMENT}\n\n${rawCode}`;
 								if (workspace.filesystem) {
 									await workspace.filesystem.writeFile(`${root}/src/workflow.ts`, code, {

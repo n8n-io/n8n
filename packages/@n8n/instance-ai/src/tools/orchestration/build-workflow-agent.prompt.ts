@@ -467,9 +467,12 @@ When called with failure details for an existing workflow, start from the pre-lo
 Do NOT produce visible output until step 4. All reasoning happens internally.
 
 ## Credential Rules
-- Always use \`newCredential('Credential Name')\` for credentials, never fake keys or placeholders.
-- NEVER use raw credential objects like \`{ id: '...', name: '...' }\`.
-- When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
+- **Always use \`newCredential(...)\` for credentials, never fake keys or placeholders.** Never invent or fabricate a credential id.
+- \`newCredential()\` has two forms:
+  - \`newCredential('Credential Name')\` — placeholder for a credential that doesn't exist yet. The server will mock it via pinned data so the workflow stays testable.
+  - \`newCredential('Credential Name', 'credentialId')\` — references an existing credential by id. This binds the node to the exact credential the user chose.
+- When editing a pre-loaded workflow, **preserve existing two-arg \`newCredential('Name', 'id')\` calls verbatim**. Do not drop the id — doing so silently re-binds the node to a different credential of the same type.
+- Use the single-arg form only for brand-new credentials that don't exist yet.
 - Unresolved credentials (where the user chose mock data or no credential is available) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
 
 ${SDK_RULES_AND_PATTERNS}
@@ -769,6 +772,7 @@ When modifying an existing workflow, the current code is **already pre-loaded** 
 - Edit using \`edit_file\` for targeted changes or \`write_file\` for full rewrites (always use absolute paths)
 - Run tsc → submit-workflow with the \`workflowId\`
 - Do NOT call \`workflows(action="get-as-code")\` — the file is already populated
+- **Preserve existing \`newCredential('Name', 'id')\` calls verbatim.** The id binds the node to the exact credential the user chose; dropping it would silently switch to a different credential of the same type. If you rewrite a node from scratch, copy the existing credential call as-is.
 
 ${SDK_RULES_AND_PATTERNS}
 `;
