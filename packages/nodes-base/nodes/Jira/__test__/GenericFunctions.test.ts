@@ -4,7 +4,7 @@ import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import {
 	handlePagination,
 	jiraSoftwareCloudApiRequestAllItems,
-	type jiraSoftwareCloudApiRequest,
+	type jiraSoftwareCloudApiRequest as JiraSoftwareCloudApiRequest,
 } from '../GenericFunctions';
 
 describe('Jira -> GenericFunctions', () => {
@@ -61,7 +61,7 @@ describe('Jira -> GenericFunctions', () => {
 
 	describe('jiraSoftwareCloudApiRequest credential routing', () => {
 		let mockExecuteFunctions: DeepMockProxy<IExecuteFunctions>;
-		let jiraSoftwareCloudApiRequest: jiraSoftwareCloudApiRequest;
+		let jiraSoftwareCloudApiRequest: JiraSoftwareCloudApiRequest;
 
 		beforeEach(async () => {
 			jest.resetModules();
