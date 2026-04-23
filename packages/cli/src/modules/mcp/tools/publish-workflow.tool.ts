@@ -7,6 +7,7 @@ import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -40,6 +41,7 @@ export const createPublishWorkflowTool = (
 	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
 	telemetry: Telemetry,
+	collaborationService: CollaborationService,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'publish_workflow',
 	config: {
@@ -65,10 +67,14 @@ export const createPublishWorkflowTool = (
 		try {
 			await getMcpWorkflow(workflowId, user, ['workflow:publish'], workflowFinderService);
 
+			await collaborationService.ensureWorkflowEditable(workflowId);
+
 			const activatedWorkflow = await workflowService.activateWorkflow(user, workflowId, {
 				versionId,
 				source: 'n8n-mcp',
 			});
+
+			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
 			const output: PublishWorkflowOutput = {
 				success: true,

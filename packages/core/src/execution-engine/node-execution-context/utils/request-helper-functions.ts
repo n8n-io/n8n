@@ -541,7 +541,7 @@ export function convertN8nRequestToAxios(
 	}
 
 	const host = getHostFromRequestObject(n8nRequest);
-	const agentOptions: AgentOptions = {};
+	const agentOptions: AgentOptions = { ...n8nRequest.agentOptions };
 	if (host) {
 		agentOptions.servername = host;
 	}

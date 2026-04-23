@@ -54,6 +54,13 @@ vi.mock('@/app/composables/useToast', () => ({
 	})),
 }));
 
+const mockFetchAllCredentialsForWorkflow = vi.hoisted(() => vi.fn());
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: vi.fn(() => ({
+		fetchAllCredentialsForWorkflow: mockFetchAllCredentialsForWorkflow,
+	})),
+}));
+
 const mockCanvasEventBusEmit = vi.hoisted(() => vi.fn());
 vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 	canvasEventBus: {
@@ -326,10 +333,70 @@ describe('usePostMessageHandler', () => {
 			window.dispatchEvent(messageEvent);
 
 			await vi.waitFor(() => {
-				expect(mockOpenExecution).toHaveBeenCalled();
+				expect(mockFetchAllCredentialsForWorkflow).toHaveBeenCalled();
 			});
 
 			expect(storeRef.value).not.toBeNull();
+
+			cleanup();
+		});
+
+		it('should fetch workflow credentials after opening execution', async () => {
+			mockOpenExecution.mockResolvedValue({
+				workflowData: { id: 'test-wf-id', name: 'Test' },
+				mode: 'trigger',
+				finished: true,
+			});
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			const messageEvent = new MessageEvent('message', {
+				data: JSON.stringify({
+					command: 'openExecution',
+					executionId: 'exec-1',
+					executionMode: 'trigger',
+				}),
+			});
+			window.dispatchEvent(messageEvent);
+
+			await vi.waitFor(() => {
+				expect(mockFetchAllCredentialsForWorkflow).toHaveBeenCalled();
+			});
+
+			expect(mockFetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				workflowId: 'test-wf-id',
+			});
+
+			cleanup();
+		});
+
+		it('should not fetch workflow credentials when execution data is missing', async () => {
+			mockOpenExecution.mockResolvedValue(null);
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			const messageEvent = new MessageEvent('message', {
+				data: JSON.stringify({
+					command: 'openExecution',
+					executionId: 'exec-1',
+					executionMode: 'trigger',
+				}),
+			});
+			window.dispatchEvent(messageEvent);
+
+			await vi.waitFor(() => {
+				expect(mockOpenExecution).toHaveBeenCalled();
+			});
+
+			expect(mockFetchAllCredentialsForWorkflow).not.toHaveBeenCalled();
 
 			cleanup();
 		});
