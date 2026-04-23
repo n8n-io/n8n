@@ -1,6 +1,7 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 
+import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { ASK_USER_FALLBACK, SUBAGENT_OUTPUT_CONTRACT } from './shared-prompts';
 import { getDateTimeSection } from './system-prompt';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
@@ -42,7 +43,8 @@ Keep diagnostics to 2-3 sentences maximum. Omit entirely when the task succeeded
 ### Delegate Rules
 - One tool call at a time unless truly independent. Minimum tool calls needed.
 - You cannot delegate to other agents or create plans.
-- ${ASK_USER_FALLBACK}`;
+- ${ASK_USER_FALLBACK}
+- ${SECRET_ASK_GUARDRAIL}`;
 
 export { SUB_AGENT_PROTOCOL };
 
