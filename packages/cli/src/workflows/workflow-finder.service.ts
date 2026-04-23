@@ -122,6 +122,17 @@ export class WorkflowFinderService {
 		return new Set(sharedWorkflows.map((sw) => sw.workflowId));
 	}
 
+	/**
+	 * Returns the distinct workflow ids the user can access (within the given
+	 * scope, folder, and/or project).
+	 *
+	 * `SharedWorkflow` is keyed by `(workflowId, projectId)`, so a workflow
+	 * shared with multiple projects legitimately appears in several rows.
+	 * We dedupe here so callers that size decisions off `.length` (e.g.
+	 * skippedCount accounting) don't miscount the same workflow multiple
+	 * times. Callers that feed the result into a SQL `IN` clause are
+	 * unaffected since `IN` is a set operation.
+	 */
 	async findAllWorkflowIdsForUser(
 		user: User,
 		scopes: Scope[],
@@ -134,7 +145,7 @@ export class WorkflowFinderService {
 			where,
 		});
 
-		return sharedWorkflows.map(({ workflowId }) => workflowId);
+		return Array.from(new Set(sharedWorkflows.map(({ workflowId }) => workflowId)));
 	}
 
 	async findAllWorkflowsForUser(
