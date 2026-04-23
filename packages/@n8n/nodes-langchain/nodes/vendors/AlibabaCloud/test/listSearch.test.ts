@@ -137,39 +137,16 @@ describe('AlibabaCloud listSearch', () => {
 		});
 	});
 
-	describe('pagination', () => {
-		it('should paginate through multiple pages', async () => {
-			const page1Models = Array.from({ length: 100 }, (_, i) => `model-${i}`);
-			const page2Models = ['qwen3.5-flash', 'qwen3-vl-plus'];
-
-			mockApiRequest
-				.mockResolvedValueOnce({
-					data: page1Models.map((m) => ({ model: m, name: m })),
-				})
-				.mockResolvedValueOnce({
-					data: page2Models.map((m) => ({ model: m, name: m })),
-				});
-
-			const result = await textModelSearch.call(mockLoadOptionsFunctions);
-
-			expect(mockApiRequest).toHaveBeenCalledTimes(2);
-			expect(mockApiRequest).toHaveBeenCalledWith('GET', '/api/v1/models', {
-				qs: { page_no: 1, page_size: 100 },
-			});
-			expect(mockApiRequest).toHaveBeenCalledWith('GET', '/api/v1/models', {
-				qs: { page_no: 2, page_size: 100 },
-			});
-
-			const values = result.results.map((r) => r.value);
-			expect(values).toContain('qwen3.5-flash');
-		});
-
-		it('should stop paginating when a page returns fewer items than page size', async () => {
-			setupMockModels(['qwen3.5-flash']);
+	describe('API request', () => {
+		it('should fetch all models in a single request', async () => {
+			setupMockModels(allModels);
 
 			await textModelSearch.call(mockLoadOptionsFunctions);
 
 			expect(mockApiRequest).toHaveBeenCalledTimes(1);
+			expect(mockApiRequest).toHaveBeenCalledWith('GET', '/api/v1/models', {
+				qs: { page_size: 200 },
+			});
 		});
 	});
 });

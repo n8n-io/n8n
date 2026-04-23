@@ -2,32 +2,21 @@ import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow'
 
 import { apiRequest } from '../transport';
 
-const PAGE_SIZE = 100;
-
 async function baseModelSearch(
 	this: ILoadOptionsFunctions,
 	modelFilter: (model: string) => boolean,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const allIds: string[] = [];
+	const response = await apiRequest.call(this, 'GET', '/api/v1/models', {
+		qs: { page_size: 200 },
+	});
 
-	for (let page = 1; ; page++) {
-		const response = await apiRequest.call(this, 'GET', '/api/v1/models', {
-			qs: { page_no: page, page_size: PAGE_SIZE },
-		});
+	const output = response?.output ?? response;
+	const items = (output?.models ?? output?.data ?? []) as Array<{ model: string }>;
 
-		const output = response?.output ?? response;
-		const items = (output?.models ?? output?.data ?? []) as Array<{ model: string }>;
-		if (!items.length) break;
-
-		for (const item of items) {
-			if (item.model) allIds.push(item.model);
-		}
-
-		if (items.length < PAGE_SIZE) break;
-	}
-
-	let models = allIds.filter((id) => modelFilter(id));
+	let models = items
+		.filter((item) => item.model && modelFilter(item.model))
+		.map((item) => item.model);
 
 	if (filter) {
 		models = models.filter((id) => id.toLowerCase().includes(filter.toLowerCase()));
