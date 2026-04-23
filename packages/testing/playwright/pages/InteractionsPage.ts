@@ -8,9 +8,8 @@ export class InteractionsPage extends BasePage {
 		super(page);
 	}
 
-	/** Interactions is a utility page object - goto is a no-op to satisfy scope-lockdown */
-	async goto() {
-		// No-op: InteractionsPage is a utility, not a navigable page
+	get container(): Locator {
+		return this.page.locator('body');
 	}
 
 	async precisionDragToTarget(

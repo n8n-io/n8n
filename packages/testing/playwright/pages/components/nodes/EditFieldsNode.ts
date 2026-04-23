@@ -1,15 +1,10 @@
 import type { Locator, Page } from '@playwright/test';
 
-import { BasePage } from '../BasePage';
+import { BasePage } from '../../BasePage';
 
 export class EditFieldsNode extends BasePage {
 	constructor(page: Page) {
 		super(page);
-	}
-
-	/** EditFieldsNode is a utility page object - goto is a no-op to satisfy scope-lockdown */
-	async goto() {
-		// No-op: EditFieldsNode operates within the NDV, not a navigable page
 	}
 
 	async setFieldsValues(

@@ -5,7 +5,7 @@ import { BasePage } from './BasePage';
 import { RunDataPanel } from './components/RunDataPanel';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
-import { EditFieldsNode } from './nodes/EditFieldsNode';
+import { EditFieldsNode } from './components/nodes/EditFieldsNode';
 import { locatorByIndex } from '../utils/index-helper';
 
 export class NodeDetailsViewPage extends BasePage {
