@@ -30,6 +30,13 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn() }),
 }));
 
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({
+		openModalWithData: vi.fn(),
+		closeModal: vi.fn(),
+	}),
+}));
+
 const updateAgentMock = vi.fn();
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
