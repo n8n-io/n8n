@@ -41,9 +41,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const route = useRoute();
 	const streaming = ref<boolean>();
@@ -709,7 +707,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		  }
 	)) {
 		const canvasStatus =
-			(workflowDocumentStore.value?.allNodes ?? []).length === 0 ? 'empty' : 'existing_workflow';
+			workflowDocumentStore.value.allNodes.length === 0 ? 'empty' : 'existing_workflow';
 		telemetry.track('User opened assistant', {
 			source,
 			task,

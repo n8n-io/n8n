@@ -87,7 +87,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		const result: ArtifactTab[] = [];
 		const liveExecMap = workflowExecutions?.value;
 		const historicalExecMap = historicalExecutions.value;
-		for (const entry of store.resourceRegistry.values()) {
+		for (const entry of store.producedArtifacts.values()) {
 			if (entry.type === 'workflow' || entry.type === 'data-table') {
 				// Live push event state takes priority over historical message data.
 				// Historical data already has stale executions filtered out.

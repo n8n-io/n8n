@@ -9,7 +9,6 @@ import type {
 	IRunData,
 	ITaskData,
 	IPinData,
-	Workflow,
 	StartNodeData,
 	INode,
 	IDataObject,
@@ -84,9 +83,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
 
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	const nodeHelpers = useNodeHelpers();
@@ -99,12 +96,10 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const { startChat } = useCanvasOperations();
 	const chatStore = useChat();
 
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
-
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {
-			const nodeA = workflowDocumentStore.value?.getNodeByName(a)?.position ?? [0, 0];
-			const nodeB = workflowDocumentStore.value?.getNodeByName(b)?.position ?? [0, 0];
+			const nodeA = workflowDocumentStore.value.getNodeByName(a)?.position ?? [0, 0];
+			const nodeB = workflowDocumentStore.value.getNodeByName(b)?.position ?? [0, 0];
 
 			const nodeAYPosition = nodeA[1];
 			const nodeBYPosition = nodeB[1];
@@ -165,7 +160,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			// Get the direct parents of the node
 			let directParentNodes: string[] = [];
 			if (options.destinationNode !== undefined) {
-				directParentNodes = workflowObject.value.getParentNodes(
+				directParentNodes = workflowDocumentStore.value.getParentNodes(
 					options.destinationNode.nodeName,
 					NodeConnectionTypes.Main,
 					-1,
@@ -196,12 +191,12 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				directParentNodes,
 				runData,
 				workflowData.pinData,
-				workflowObject.value,
+				workflowDocumentStore.value.getSnapshot(),
 			);
 
 			const { startNodeNames } = consolidatedData;
 			const destinationNodeType = options.destinationNode
-				? (workflowDocumentStore.value?.getNodeByName(options.destinationNode.nodeName)?.type ?? '')
+				? (workflowDocumentStore.value.getNodeByName(options.destinationNode.nodeName)?.type ?? '')
 				: '';
 
 			let executedNode: string | undefined;
@@ -217,7 +212,11 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			} else if (options.triggerNode && options.nodeData && !options.rerunTriggerNode) {
 				// starts execution from downstream nodes of trigger node
 				startNodeNames.push(
-					...workflowObject.value.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
+					...workflowDocumentStore.value.getChildNodes(
+						options.triggerNode,
+						NodeConnectionTypes.Main,
+						1,
+					),
 				);
 			} else if (options.destinationNode) {
 				executedNode = options.destinationNode.nodeName;
@@ -239,7 +238,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				options.source !== 'RunData.ManualChatMessage' &&
 				options.source !== 'RunData.ManualChatTrigger'
 			) {
-				const startNode = workflowObject.value.getStartNode(options.destinationNode.nodeName);
+				const startNode = workflowDocumentStore.value.getStartNode(
+					options.destinationNode.nodeName,
+				);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
 					// Check if the chat node has input data or pin data
 					const chatHasInputData =
@@ -308,13 +309,13 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					// Find for each start node the source data
 					let sourceData = get(runData, [name, 0, 'source', 0], null);
 					if (sourceData === null) {
-						const parentNodes = workflowObject.value.getParentNodes(
+						const parentNodes = workflowDocumentStore.value.getParentNodes(
 							name,
 							NodeConnectionTypes.Main,
 							1,
 						);
 						const executeData = workflowHelpers.executeData(
-							workflowObject.value.connectionsBySourceNode,
+							workflowDocumentStore.value.connectionsBySourceNode,
 							parentNodes,
 							name,
 							NodeConnectionTypes.Main,
@@ -350,11 +351,14 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
-				const nodeId = workflowDocumentStore.value?.getNodeByName(
+				const nodeId = workflowDocumentStore.value.getNodeByName(
 					options.destinationNode?.nodeName ?? '',
 				)?.id;
-				if (workflowObject.value.id && nodeId) {
-					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
+				if (workflowDocumentStore.value.workflowId && nodeId) {
+					const agentRequest = agentRequestStore.getAgentRequest(
+						workflowDocumentStore.value.workflowId,
+						nodeId,
+					);
 
 					if (agentRequest) {
 						startRunData.agentRequest = {
@@ -386,7 +390,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				createdAt: new Date(),
 				startedAt: new Date(),
 				stoppedAt: undefined,
-				workflowId: workflowObject.value.id,
+				workflowId: workflowDocumentStore.value.workflowId,
 				executedNode,
 				triggerNode: triggerToStartFrom?.name,
 				data: createRunExecutionData({
@@ -407,7 +411,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			workflowState.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
-			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
+			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 
 			if (
@@ -453,7 +457,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		} catch (error) {
 			console.error(error);
 			workflowState.setWorkflowExecutionData(null);
-			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'ERROR');
+			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
 		}
@@ -584,7 +588,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	async function runEntireWorkflow(source: 'node' | 'main', triggerNode?: string) {
 		void workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 			const telemetryPayload = {
-				workflow_id: workflowObject.value.id,
+				workflow_id: workflowDocumentStore.value.workflowId,
 				node_graph_string: JSON.stringify(
 					TelemetryHelpers.generateNodesGraph(
 						workflowData as IWorkflowBase,
@@ -603,7 +607,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		// When no trigger is explicitly selected (e.g. chat trigger is the only trigger
 		// and the Run button doesn't offer it for selection), resolve it from the workflow.
 		if (!resolvedTriggerNode) {
-			const triggers = Object.values(workflowObject.value.nodes).filter(
+			const triggers = workflowDocumentStore.value.allNodes.filter(
 				(node) => !node.disabled && node.type.toLowerCase().includes('trigger'),
 			);
 			if (triggers.length === 1) {

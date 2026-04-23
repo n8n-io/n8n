@@ -33,4 +33,8 @@ export class ExpressionEngineConfig {
 	/** Memory limit in MB for the V8 isolate used by the VM bridge. */
 	@Env('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT')
 	bridgeMemoryLimit: number = 128;
+
+	/** If set, scale the pool to 0 warm isolates after this many seconds with no acquire. */
+	@Env('N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT')
+	idleTimeout?: number;
 }
