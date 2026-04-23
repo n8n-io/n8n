@@ -18,8 +18,8 @@ export class VersionMismatchCheck implements IClusterCheck {
 		const allInstanceVersions = [...context.currentState.values()].map((i) => i.version);
 		const versions = [...new Set<string>(allInstanceVersions)];
 
-		if (versions.length === 1) {
-			// There is only one version, the check succeeded
+		if (versions.length <= 1) {
+			// Zero instances or a single version — no mismatch.
 			return {};
 		}
 
