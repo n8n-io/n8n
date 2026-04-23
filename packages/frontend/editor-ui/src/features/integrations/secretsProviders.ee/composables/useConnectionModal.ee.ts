@@ -1,6 +1,10 @@
 import { computed, ref, watch, type Ref, type ComponentPublicInstance } from 'vue';
+import {
+	SECRETS_PROVIDER_KEY_REGEX,
+	type SecretProviderTypeResponse,
+	type ConnectionProjectSummary,
+} from '@n8n/api-types';
 import type { IUpdateInformation } from '@/Interface';
-import type { SecretProviderTypeResponse, ConnectionProjectSummary } from '@n8n/api-types';
 import type { INodeProperties } from 'n8n-workflow';
 import { useSecretsProviderConnection } from './useSecretsProviderConnection.ee';
 import { useRBACStore } from '@/app/stores/rbac.store';
@@ -13,7 +17,6 @@ import type { ProjectSharingData } from '@/features/collaboration/projects/proje
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
-const CONNECTION_NAME_REGEX = /^[a-zA-Z][a-zA-Z0-9]*$/;
 interface UseConnectionModalOptions {
 	providerTypes: Ref<SecretProviderTypeResponse[]>;
 	existingProviderNames?: Ref<string[]>;
@@ -28,7 +31,7 @@ interface UseConnectionModalOptions {
  */
 
 function isValidConnectionName(name: string): boolean {
-	return CONNECTION_NAME_REGEX.test(name);
+	return SECRETS_PROVIDER_KEY_REGEX.test(name);
 }
 
 export function useConnectionModal(options: UseConnectionModalOptions) {

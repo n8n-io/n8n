@@ -52,12 +52,26 @@ const projectRole: Role = {
 };
 
 describe('RoleMappingRuleService', () => {
+	const defaultUpdateSpy = jest.fn().mockResolvedValue(undefined);
+	const defaultTransactionSpy = jest
+		.fn()
+		.mockImplementation(async (cb: (tx: { update: typeof defaultUpdateSpy }) => Promise<void>) => {
+			await cb({ update: defaultUpdateSpy });
+		});
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		roleMappingRuleRepository.findOne.mockResolvedValue(null);
 		// normalizeOrderForType calls find after every mutation; default to empty
 		// so existing tests hit the early-exit path and require no transaction mock.
 		roleMappingRuleRepository.find.mockResolvedValue([]);
+		// create() always calls applyOrder (which uses a transaction) to splice the
+		// newly-saved rule into the existing order. Inner describes may override.
+		(roleMappingRuleRepository as unknown as Record<string, unknown>).manager = {
+			transaction: defaultTransactionSpy,
+		};
+		defaultUpdateSpy.mockClear();
+		defaultTransactionSpy.mockClear();
 	});
 
 	describe('create', () => {
@@ -132,22 +146,6 @@ describe('RoleMappingRuleService', () => {
 					projectIds: ['p1'],
 				}),
 			).rejects.toThrow(BadRequestError);
-		});
-
-		it('should reject when another rule already uses the same type and order', async () => {
-			roleRepository.findOne.mockResolvedValue(globalRole);
-			roleMappingRuleRepository.findOne.mockResolvedValue({
-				id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
-			} as RoleMappingRule);
-
-			await expect(
-				service.create({
-					expression: 'true',
-					role: globalRole.slug,
-					type: 'instance',
-					order: 2,
-				}),
-			).rejects.toThrow(ConflictError);
 		});
 
 		it('should reject when some project ids do not exist', async () => {
@@ -284,6 +282,146 @@ describe('RoleMappingRuleService', () => {
 
 			expect(result.projectIds).toEqual([projA.id]);
 			expect(projectRepository.findBy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should append when order is omitted', async () => {
+			roleRepository.findOne.mockResolvedValue(globalRole);
+			roleMappingRuleRepository.find.mockResolvedValue([
+				{ id: 'rule-a', order: 0 } as RoleMappingRule,
+				{ id: 'rule-b', order: 1 } as RoleMappingRule,
+			]);
+
+			const savedRule = {
+				id: 'rule-c',
+				expression: 'claims.c',
+				role: globalRole,
+				type: 'instance',
+				order: 2,
+				projects: [],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.save.mockImplementation(async (r) => ({
+				...(r as RoleMappingRule),
+				id: 'rule-c',
+			}));
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
+
+			await service.create({
+				expression: 'claims.c',
+				role: globalRole.slug,
+				type: 'instance',
+			});
+
+			// applyOrder should renumber [rule-a, rule-b, rule-c] to [0, 1, 2]
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-a' },
+				{ order: 0 },
+			);
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-b' },
+				{ order: 1 },
+			);
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-c' },
+				{ order: 2 },
+			);
+		});
+
+		it('should insert at index 0 and shift existing rules down', async () => {
+			roleRepository.findOne.mockResolvedValue(globalRole);
+			roleMappingRuleRepository.find.mockResolvedValue([
+				{ id: 'rule-a', order: 0 } as RoleMappingRule,
+				{ id: 'rule-b', order: 1 } as RoleMappingRule,
+			]);
+
+			const savedRule = {
+				id: 'rule-new',
+				expression: 'claims.new',
+				role: globalRole,
+				type: 'instance',
+				order: 0,
+				projects: [],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.save.mockImplementation(async (r) => ({
+				...(r as RoleMappingRule),
+				id: 'rule-new',
+			}));
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
+
+			await service.create({
+				expression: 'claims.new',
+				role: globalRole.slug,
+				type: 'instance',
+				order: 0,
+			});
+
+			// applyOrder should renumber [rule-new, rule-a, rule-b] to [0, 1, 2]
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-new' },
+				{ order: 0 },
+			);
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-a' },
+				{ order: 1 },
+			);
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-b' },
+				{ order: 2 },
+			);
+		});
+
+		it('should clamp supplied order beyond existing list length to the end', async () => {
+			roleRepository.findOne.mockResolvedValue(globalRole);
+			roleMappingRuleRepository.find.mockResolvedValue([
+				{ id: 'rule-a', order: 0 } as RoleMappingRule,
+			]);
+
+			const savedRule = {
+				id: 'rule-new',
+				expression: 'claims.new',
+				role: globalRole,
+				type: 'instance',
+				order: 1,
+				projects: [],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.save.mockImplementation(async (r) => ({
+				...(r as RoleMappingRule),
+				id: 'rule-new',
+			}));
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
+
+			await service.create({
+				expression: 'claims.new',
+				role: globalRole.slug,
+				type: 'instance',
+				order: 999,
+			});
+
+			// Clamped to end: [rule-a, rule-new] → orders [0, 1]
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-a' },
+				{ order: 0 },
+			);
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-new' },
+				{ order: 1 },
+			);
 		});
 	});
 
@@ -642,35 +780,6 @@ describe('RoleMappingRuleService', () => {
 			// Phase 2 should assign contiguous orders 0, 1, 2
 			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { id: 'a' }, { order: 0 });
 			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { id: 'b' }, { order: 1 });
-			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { id: 'c' }, { order: 2 });
-		});
-
-		it('should compact a large gap after create', async () => {
-			// Simulates [0, 1, 100] after creating a rule at order 100
-			roleMappingRuleRepository.find.mockResolvedValue([
-				makeRule('a', 0),
-				makeRule('b', 1),
-				makeRule('c', 100),
-			]);
-
-			roleRepository.findOne.mockResolvedValue(globalRole);
-			roleMappingRuleRepository.save.mockResolvedValue(makeRule('c', 100));
-			roleMappingRuleRepository.findOneOrFail.mockResolvedValue({
-				...makeRule('c', 2),
-				role: globalRole,
-				projects: [],
-				createdAt: new Date('2025-01-01T00:00:00.000Z'),
-				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
-			} as unknown as RoleMappingRule);
-
-			await service.create({
-				expression: 'true',
-				role: globalRole.slug,
-				type: 'instance',
-				order: 100,
-			});
-
-			expect(transactionSpy).toHaveBeenCalledTimes(1);
 			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { id: 'c' }, { order: 2 });
 		});
 

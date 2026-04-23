@@ -72,6 +72,9 @@ catalogs:
     '@mastra/memory':
       specifier: 1.10.0
       version: 1.10.0
+    '@n8n/tournament':
+      specifier: 1.0.7
+      version: 1.0.7
     '@n8n/typeorm':
       specifier: 0.3.20-16
       version: 0.3.20-16
@@ -1455,8 +1458,8 @@ importers:
         specifier: workspace:*
         version: link:../errors
       '@n8n/tournament':
-        specifier: 1.0.6
-        version: 1.0.6
+        specifier: 'catalog:'
+        version: 1.0.7
       isolated-vm:
         specifier: ^6.0.2
         version: 6.0.2
@@ -4516,8 +4519,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/expression-runtime
       '@n8n/tournament':
-        specifier: 1.0.6
-        version: 1.0.6
+        specifier: 'catalog:'
+        version: 1.0.7
       ast-types:
         specifier: 0.16.1
         version: 0.16.1
@@ -8104,8 +8107,8 @@ packages:
     resolution: {integrity: sha512-AAwRb5vXFcY4L+FvZ7LZusDuZ0vEe0Zm8ohn1FM6/X7A3bj4mqmkAcGRWuvC2JwSygNwHAAmMnAI73vPHeqsHA==}
     engines: {node: '>=18'}
 
-  '@n8n/tournament@1.0.6':
-    resolution: {integrity: sha512-UGSxYXXVuOX0yL6HTLBStKYwLIa0+JmRKiSZSCMcM2s2Wax984KWT6XIA1TR/27i7yYpDk1MY14KsTPnuEp27A==}
+  '@n8n/tournament@1.0.7':
+    resolution: {integrity: sha512-ozFSc+iSKWsG6+ZkMgPAJoOw36tfH/6syZTE7PdxJJKBdN0UOj7Q63vBAIQGVI14Y8tQSI264yEKuR7hES52sg==}
     engines: {node: '>=20.15', pnpm: '>=9.5'}
 
   '@n8n/typeorm@0.3.20-16':
@@ -8139,9 +8142,6 @@ packages:
   '@n8n_io/license-sdk@2.25.0':
     resolution: {integrity: sha512-6pNo09XHhBb+igaHfpuvLez+IxcerzRWMFUH1eqAOOE0Uf5orQp8j5p5RE7ohNZYtxlMoL/PcsQIXK5uHBycwg==}
     engines: {node: '>=18.12.1'}
-
-  '@n8n_io/riot-tmpl@4.0.1':
-    resolution: {integrity: sha512-/zdRbEfTFjsm1NqnpPQHgZTkTdbp5v3VUxGeMA9098sps8jRCTraQkc3AQstJgHUm7ylBXJcIVhnVeLUMWAfwQ==}
 
   '@napi-rs/canvas-android-arm64@0.1.70':
     resolution: {integrity: sha512-I/YOuQ0wbkVYxVaYtCgN42WKTYxNqFA0gTcTrHIGG1jfpDSyZWII/uHcjOo4nzd19io6Y4+/BqP8E5hJgf9OmQ==}
@@ -14351,9 +14351,6 @@ packages:
     hasBin: true
     peerDependencies:
       eslint: '>=7.0.0'
-
-  eslint-config-riot@1.0.0:
-    resolution: {integrity: sha512-NB/L/1Y30qyJcG5xZxCJKW/+bqyj+llbcCwo9DEz8bESIP0SLTOQ8T1DWCCFc+wJ61AMEstj4511PSScqMMfCw==}
 
   eslint-doc-generator@2.2.2:
     resolution: {integrity: sha512-LBr0Nz1AZnkifkOMyE0sfx+IvS/V+TK1Sp8fCYDdk4Eb5gZCpEcK4t/ImT23oJAwso26rkHzBCRMrd/bc7bddQ==}
@@ -27793,9 +27790,8 @@ snapshots:
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
 
-  '@n8n/tournament@1.0.6':
+  '@n8n/tournament@1.0.7':
     dependencies:
-      '@n8n_io/riot-tmpl': 4.0.1
       ast-types: 0.16.1
       esprima-next: 5.8.4
       recast: 0.22.0
@@ -27831,10 +27827,6 @@ snapshots:
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
       undici: 7.24.6
-
-  '@n8n_io/riot-tmpl@4.0.1':
-    dependencies:
-      eslint-config-riot: 1.0.0
 
   '@napi-rs/canvas-android-arm64@0.1.70':
     optional: true
@@ -35395,8 +35387,6 @@ snapshots:
   eslint-config-prettier@10.1.5(eslint@9.29.0(jiti@2.6.1)):
     dependencies:
       eslint: 9.29.0(jiti@2.6.1)
-
-  eslint-config-riot@1.0.0: {}
 
   eslint-doc-generator@2.2.2(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2):
     dependencies:
