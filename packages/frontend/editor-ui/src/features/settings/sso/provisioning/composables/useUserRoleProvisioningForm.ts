@@ -11,6 +11,8 @@ import { type SupportedProtocolType } from '../../sso.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+export type RoleAssignmentTransitionType = 'none' | 'backup' | 'switchToManual';
+
 type DropdownValues = {
 	roleAssignment: RoleAssignmentSetting;
 	mappingMethod: RoleMappingMethodSetting;
@@ -87,6 +89,11 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 
 	const roleAssignment = ref<RoleAssignmentSetting>('manual');
 	const mappingMethod = ref<RoleMappingMethodSetting>('idp');
+	const storedHasProjectRules = ref(false);
+
+	const storedValues = computed(() =>
+		getDropdownValuesFromConfig(provisioningStore.provisioningConfig, storedHasProjectRules.value),
+	);
 
 	const formValue = computed<UserRoleProvisioningSetting>({
 		get: () => toLegacyValue(roleAssignment.value, mappingMethod.value),
@@ -98,7 +105,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	});
 
 	const isUserRoleProvisioningChanged = computed<boolean>(() => {
-		const stored = getDropdownValuesFromConfig(provisioningStore.provisioningConfig);
+		const stored = storedValues.value;
 		return (
 			stored.roleAssignment !== roleAssignment.value || stored.mappingMethod !== mappingMethod.value
 		);
@@ -120,43 +127,66 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 			? 'idp'
 			: mappingMethod.value;
 
-		const stored = getDropdownValuesFromConfig(provisioningStore.provisioningConfig);
-		if (
+		// Whenever the effective assignment isn't 'instance_and_project', any project
+		// mapping rules on the server are stale and must be cleaned up. We send this
+		// flag even when the config appears unchanged because storedHasProjectRules
+		// can be out of sync (e.g. rules were created via the editor after load).
+		const shouldDeleteProjectRules = effectiveRoleAssignment !== 'instance_and_project';
+
+		const stored = storedValues.value;
+		const configUnchanged =
 			effectiveRoleAssignment === stored.roleAssignment &&
-			effectiveMappingMethod === stored.mappingMethod
-		) {
+			effectiveMappingMethod === stored.mappingMethod;
+
+		if (configUnchanged && !shouldDeleteProjectRules) {
 			return;
 		}
 
-		await provisioningStore.saveProvisioningConfig(
-			getProvisioningConfigFromDropdowns(effectiveRoleAssignment, effectiveMappingMethod),
-		);
+		await provisioningStore.saveProvisioningConfig({
+			...getProvisioningConfigFromDropdowns(effectiveRoleAssignment, effectiveMappingMethod),
+			...(shouldDeleteProjectRules ? { deleteProjectRules: true } : {}),
+		});
 
 		roleAssignment.value = effectiveRoleAssignment;
 		mappingMethod.value = effectiveMappingMethod;
+
+		if (shouldDeleteProjectRules) {
+			storedHasProjectRules.value = false;
+		}
 
 		sendTrackingEventForUserProvisioning(
 			toLegacyValue(effectiveRoleAssignment, effectiveMappingMethod),
 		);
 	};
 
-	const shouldPromptUserToConfirmUserRoleProvisioningChange = ({
-		currentLoginEnabled,
-		loginEnabledFormValue,
-	}: {
-		currentLoginEnabled: boolean;
-		loginEnabledFormValue: boolean;
-	}) => {
-		const isLoginEnabledChanged = currentLoginEnabled !== loginEnabledFormValue;
-		const isEnablingSsoLogin = isLoginEnabledChanged && !currentLoginEnabled;
-		const isDisablingSsoLogin = isLoginEnabledChanged && currentLoginEnabled;
-		const isEnablingSsoAlongSideProvisioning = isEnablingSsoLogin && formValue.value !== 'disabled';
-		const isChangingProvisioningSettingWhileLoginWasAlreadyEnabled =
-			isUserRoleProvisioningChanged.value && currentLoginEnabled && !isDisablingSsoLogin;
+	const roleAssignmentTransition = computed<RoleAssignmentTransitionType>(() => {
+		const stored = storedValues.value;
+		if (
+			stored.roleAssignment === roleAssignment.value &&
+			stored.mappingMethod === mappingMethod.value
+		) {
+			return 'none';
+		}
+		if (roleAssignment.value === 'manual') {
+			return 'switchToManual';
+		}
+		return 'backup';
+	});
 
-		return (
-			isEnablingSsoAlongSideProvisioning || isChangingProvisioningSettingWhileLoginWasAlreadyEnabled
-		);
+	const storedHasProjectRoles = computed(
+		() => storedValues.value.roleAssignment === 'instance_and_project',
+	);
+
+	const isDroppingProjectRules = computed(
+		() =>
+			storedValues.value.roleAssignment === 'instance_and_project' &&
+			roleAssignment.value !== 'instance_and_project',
+	);
+
+	const revertRoleAssignment = () => {
+		const stored = storedValues.value;
+		roleAssignment.value = stored.roleAssignment;
+		mappingMethod.value = stored.mappingMethod;
 	};
 
 	const initFormValue = () => {
@@ -170,6 +200,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 				hasProjectRules = rules.some((r) => r.type === 'project');
 			}
 
+			storedHasProjectRules.value = hasProjectRules;
 			const values = getDropdownValuesFromConfig(config, hasProjectRules);
 			roleAssignment.value = values.roleAssignment;
 			mappingMethod.value = values.mappingMethod;
@@ -184,6 +215,9 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		formValue,
 		isUserRoleProvisioningChanged,
 		saveProvisioningConfig,
-		shouldPromptUserToConfirmUserRoleProvisioningChange,
+		roleAssignmentTransition,
+		storedHasProjectRoles,
+		isDroppingProjectRules,
+		revertRoleAssignment,
 	};
 }

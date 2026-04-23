@@ -23,18 +23,18 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const telemetry = useTelemetry();
 
-const { creditsRemaining, fetchCredits } = useAiGateway();
+const { balance, fetchWallet } = useAiGateway();
 
 // Fetch when enabled (on mount if already enabled, or when toggled on)
 watch(
 	() => props.aiGatewayEnabled,
 	(enabled) => {
-		if (enabled) void fetchCredits();
+		if (enabled) void fetchWallet();
 	},
 	{ immediate: true },
 );
 
-// Refresh after each execution completes so the badge reflects consumed credits.
+// Refresh after each execution completes so the badge reflects consumed balance.
 watch(
 	() => workflowsStore.workflowExecutionData,
 	(executionData) => {
@@ -42,7 +42,7 @@ watch(
 			(executionData?.finished || executionData?.stoppedAt !== undefined) &&
 			props.aiGatewayEnabled
 		) {
-			void fetchCredits();
+			void fetchWallet();
 		}
 	},
 );
@@ -101,12 +101,12 @@ function onBadgeClick(event: MouseEvent): void {
 					</span>
 				</span>
 				<N8nActionPill
-					v-if="aiGatewayEnabled && creditsRemaining !== undefined"
+					v-if="aiGatewayEnabled && balance !== undefined"
 					:clickable="!readonly"
 					size="small"
 					:text="
-						i18n.baseText('aiGateway.credentialMode.creditsShort', {
-							interpolate: { count: String(creditsRemaining) },
+						i18n.baseText('aiGateway.wallet.balanceRemaining', {
+							interpolate: { balance: `$${Number(balance).toFixed(2)}` },
 						})
 					"
 					:hover-text="!readonly ? i18n.baseText('aiGateway.toggle.topUp') : undefined"

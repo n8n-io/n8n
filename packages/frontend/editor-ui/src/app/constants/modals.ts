@@ -44,3 +44,4 @@ export const WORKFLOW_HISTORY_DIFF_MODAL_KEY = 'workflowHistoryDiff';
 export const CREDENTIAL_RESOLVER_EDIT_MODAL_KEY = 'credentialResolverEdit';
 export const AI_BUILDER_DIFF_MODAL_KEY = 'aiBuilderDiff';
 export const INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY = 'instanceAiCredentialSetup';
+export const INSTANCE_AI_OPTIN_MODAL_KEY = 'instanceAiOptin';

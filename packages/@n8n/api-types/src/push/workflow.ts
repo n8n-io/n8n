@@ -11,6 +11,8 @@ export type WorkflowFailedToActivate = {
 	data: {
 		workflowId: string;
 		errorMessage: string;
+		errorDescription?: string;
+		nodeId?: string;
 	};
 };
 

@@ -11,6 +11,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
+import { EventService } from '@/events/event.service';
 import type { ListQuery } from '@/requests';
 // eslint-disable-next-line import-x/no-cycle
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -34,6 +35,7 @@ export class FolderService {
 		private readonly folderTagMappingRepository: FolderTagMappingRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
+		private readonly eventService: EventService,
 	) {}
 
 	async createFolder({ parentFolderId, name }: CreateFolderDto, projectId: string) {
@@ -170,6 +172,7 @@ export class FolderService {
 		if (!transferToFolderId) {
 			await this.flattenAndArchive(user, folderId, projectId);
 			await this.folderRepository.delete({ id: folderId });
+			this.eventService.emit('folder-deleted', { folderId, projectId });
 			return;
 		}
 
@@ -181,12 +184,12 @@ export class FolderService {
 			await this.findFolderInProjectOrFail(transferToFolderId, projectId);
 		}
 
-		return await this.folderRepository.manager.transaction(async (tx) => {
+		await this.folderRepository.manager.transaction(async (tx) => {
 			await this.folderRepository.moveAllToFolder(folderId, transferToFolderId, tx);
 			await this.workflowRepository.moveAllToFolder(folderId, transferToFolderId, tx);
 			await tx.delete(Folder, { id: folderId });
-			return;
 		});
+		this.eventService.emit('folder-deleted', { folderId, projectId });
 	}
 
 	async transferAllFoldersToProject(

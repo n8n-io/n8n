@@ -25,7 +25,7 @@ import {
 	type ResourceDecision,
 	type ToolDefinition,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
-	RESOURCE_DECISION_KEYS,
+	INSTANCE_RESOURCE_DECISION_KEYS,
 } from './tools/types';
 import { formatErrorResult } from './tools/utils';
 
@@ -443,7 +443,7 @@ export class GatewayClient {
 						toolGroup: resource.toolGroup,
 						resource: resource.resource,
 						description: resource.description,
-						options: RESOURCE_DECISION_KEYS,
+						options: INSTANCE_RESOURCE_DECISION_KEYS,
 					})}`,
 				);
 			} else {

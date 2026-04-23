@@ -27,7 +27,7 @@ export = {
 
 			try {
 				const installedPackage = await lifecycle.install(
-					{ name: req.body.name, version: req.body.version, verify: req.body.verify ?? false },
+					{ name: req.body.name, version: req.body.version, verify: req.body.verify ?? true },
 					req.user,
 					'publicApi',
 				);
@@ -56,7 +56,11 @@ export = {
 	updatePackage: [
 		publicApiScope('communityPackage:update'),
 		async (
-			req: AuthenticatedRequest<{ name: string }, Record<string, never>, { version?: string }>,
+			req: AuthenticatedRequest<
+				{ name: string },
+				Record<string, never>,
+				{ version?: string; verify?: boolean }
+			>,
 			res: express.Response,
 		): Promise<express.Response> => {
 			const lifecycle = Container.get(CommunityPackagesLifecycleService);
@@ -66,6 +70,7 @@ export = {
 					{
 						name: req.params.name,
 						version: req.body?.version,
+						verify: req.body?.verify ?? true,
 					},
 					req.user,
 					'notFound',

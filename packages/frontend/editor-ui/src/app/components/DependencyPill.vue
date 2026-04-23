@@ -48,7 +48,7 @@ const effectiveCount = computed(() => {
 const hasHiddenDeps = computed(() => (depsResult.value?.inaccessibleCount ?? 0) > 0);
 
 const tooltipText = computed(() =>
-	i18n.baseText(`workflows.dependencies.tooltip.${props.resourceType}` as BaseTextKey),
+	i18n.baseText(`workflows.dependencies.tooltip.${props.resourceType}` satisfies BaseTextKey),
 );
 
 const hasFullDeps = computed(() => depsResult.value !== undefined);
@@ -204,7 +204,7 @@ async function onDropdownToggle(open: boolean) {
 </script>
 
 <template>
-	<N8nTooltip :content="tooltipText" placement="left" :show-after="200">
+	<N8nTooltip :content="tooltipText" placement="bottom" :show-after="300">
 		<N8nDropdownMenu
 			:items="menuItems"
 			trigger="hover"
@@ -221,9 +221,10 @@ async function onDropdownToggle(open: boolean) {
 			@update:model-value="onDropdownToggle"
 		>
 			<template #trigger>
-				<N8nBadge theme="tertiary" :class="$style.badge">
+				<!-- We use a custom border to align color with the other related badges -->
+				<N8nBadge theme="tertiary" :show-border="false" :class="$style.badge">
 					<span :class="$style.badgeText">
-						<N8nIcon icon="link" size="medium" />
+						<N8nIcon icon="link" size="small" />
 						{{ effectiveCount }}
 					</span>
 				</N8nBadge>
@@ -245,9 +246,10 @@ async function onDropdownToggle(open: boolean) {
 <style lang="scss" module>
 .badge {
 	cursor: pointer;
+	border: var(--border);
+	border-radius: var(--radius);
+
 	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--spacing--4xs);
-	border-color: var(--color--foreground);
 	color: var(--color--text);
 }
 
@@ -261,7 +263,7 @@ async function onDropdownToggle(open: boolean) {
 .hiddenNotice {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-top: var(--border);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size--3xs);
 	font-style: italic;
 	line-height: var(--line-height--lg);

@@ -1,5 +1,5 @@
 {
-	"prompt": "Every hour, check the current weather for London, New York, and Tokyo using the OpenWeatherMap API (GET https://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&appid=YOUR_API_KEY). Use 3 separate HTTP Request nodes, one per city. If any city has a temperature above 30°C, send a Telegram alert to chat ID -1001234567890 listing the hot cities. Log all readings to an Airtable table with columns: city, temperature, humidity, timestamp. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"prompt": "Every hour, check the current weather for London, New York, and Tokyo using the OpenWeatherMap API (GET https://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&appid=YOUR_API_KEY). Use 3 separate HTTP Request nodes, one per city. If any city has a temperature above 30°C, send a Telegram alert to chat ID -1001234567890 listing the hot cities. Log all readings to an Airtable table (base ID: 'appK2xGfGNOIrl2gT', table name: 'Weather Logs') with columns: city, temperature, humidity, timestamp. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
 	"complexity": "complex",
 	"tags": [
 		"build",

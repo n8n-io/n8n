@@ -416,8 +416,8 @@ describe('EvalExecutionService', () => {
 			expect(result.nodeResults['HTTP Request'].startTime).toBe(1710000000);
 		});
 
-		it('captures output from run data, limited to MAX_OUTPUT_ITEMS_PER_NODE', async () => {
-			const items = Array.from({ length: 10 }, (_, i) => ({ json: { idx: i } }));
+		it('captures output limited to MAX_OUTPUT_ITEMS_PER_NODE and reports full outputCount', async () => {
+			const items = Array.from({ length: 15 }, (_, i) => ({ json: { idx: i } }));
 			mockProcessRunExecutionData.mockResolvedValue(
 				makeIRun({
 					data: {
@@ -440,8 +440,8 @@ describe('EvalExecutionService', () => {
 
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
 
-			// MAX_OUTPUT_ITEMS_PER_NODE is 5
-			expect(result.nodeResults['HTTP Request'].output).toHaveLength(5);
+			expect(result.nodeResults['HTTP Request'].output).toHaveLength(10);
+			expect(result.nodeResults['HTTP Request'].outputCount).toBe(15);
 		});
 	});
 

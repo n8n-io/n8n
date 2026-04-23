@@ -94,21 +94,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private config: Required<BridgeConfig>;
 	private logger: Required<BridgeConfig>['logger'];
 
-	// Script compilation cache for performance
-	// Maps expression code -> compiled ivm.Script
-	private scriptCache = new Map<string, ivm.Script>();
-
-	// Active ivm.Reference callbacks — released before each re-registration
-	// to prevent reference accumulation across execute() calls
-	private valueAtPathRef?: ivm.Reference;
-	private arrayElementRef?: ivm.Reference;
-	private callFunctionRef?: ivm.Reference;
-
-	// Pre-resolved reference to resetDataProxies() inside the isolate.
-	// Using applySync on a stored reference avoids the per-call
-	// ScriptCompiler::Compile() cost that evalSync incurs.
-	private resetDataProxiesRef?: ivm.Reference;
-
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
 			...DEFAULT_BRIDGE_CONFIG,
@@ -157,11 +142,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Inject E() error handler needed by tournament-generated try-catch code
 		await this.injectErrorHandler();
 
-		// Store a reference to resetDataProxies for efficient per-call invocation
-		this.resetDataProxiesRef = await this.context.global.get('resetDataProxies', {
-			reference: true,
-		});
-
 		this.initialized = true;
 
 		this.logger.info('[IsolatedVmBridge] Initialized successfully');
@@ -174,7 +154,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * - DateTime, extend, extendOptional (expression engine globals)
 	 * - SafeObject and SafeError wrappers
 	 * - createDeepLazyProxy function
-	 * - __data object initialization
+	 * - buildContext function
 	 *
 	 * @private
 	 * @throws {Error} If context not initialized or bundle loading fails
@@ -189,7 +169,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			const runtimeBundle = await readRuntimeBundle();
 
 			// Evaluate bundle in isolate context
-			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, resetDataProxies, __data)
+			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, buildContext)
 			await this.context.eval(runtimeBundle);
 
 			this.logger.info('[IsolatedVmBridge] Runtime bundle loaded');
@@ -228,17 +208,16 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		try {
 			// Verify proxy system components loaded correctly
 			const hasProxyCreator = await this.context.eval('typeof createDeepLazyProxy !== "undefined"');
-			const hasData = await this.context.eval('typeof __data !== "undefined"');
 			const hasSafeObject = await this.context.eval('typeof SafeObject !== "undefined"');
 			const hasSafeError = await this.context.eval('typeof SafeError !== "undefined"');
-			const hasResetFunction = await this.context.eval('typeof resetDataProxies !== "undefined"');
+			const hasBuildContext = await this.context.eval('typeof buildContext !== "undefined"');
 
-			if (!hasProxyCreator || !hasData || !hasSafeObject || !hasSafeError || !hasResetFunction) {
+			if (!hasProxyCreator || !hasSafeObject || !hasSafeError || !hasBuildContext) {
 				throw new Error(
 					`Proxy system verification failed: ` +
-						`createDeepLazyProxy=${hasProxyCreator}, __data=${hasData}, ` +
+						`createDeepLazyProxy=${hasProxyCreator}, ` +
 						`SafeObject=${hasSafeObject}, SafeError=${hasSafeError}, ` +
-						`resetDataProxies=${hasResetFunction}`,
+						`buildContext=${hasBuildContext}`,
 				);
 			}
 
@@ -297,59 +276,16 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Reset data proxies in the isolate context.
+	 * Create an ivm.Reference callback for getting value/metadata at a path.
 	 *
-	 * This method should be called before each execute() to:
-	 * 1. Clear proxy caches from previous evaluations
-	 * 2. Initialize fresh workflow data references
-	 * 3. Expose workflow properties to globalThis
-	 *
-	 * The reset function runs in the isolate and calls back to the host
-	 * via ivm.Reference callbacks to fetch workflow data.
-	 *
-	 * @private
-	 * @throws {Error} If context not initialized or reset fails
-	 */
-	private resetDataProxies(timezone?: string): void {
-		if (!this.resetDataProxiesRef) {
-			throw new Error('Context not initialized');
-		}
-
-		try {
-			this.resetDataProxiesRef.applySync(null, [timezone ?? null], {
-				arguments: { copy: true },
-			});
-
-			this.logger.debug('[IsolatedVmBridge] Data proxies reset successfully');
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			throw new Error(`Failed to reset data proxies: ${errorMessage}`);
-		}
-	}
-
-	/**
-	 * Register callback functions for cross-isolate communication.
-	 *
-	 * Creates three ivm.Reference callbacks that the runtime bundle uses
-	 * to fetch data from the host process:
-	 *
-	 * - __getValueAtPath: Returns metadata or primitive for a property path
-	 * - __getArrayElement: Returns individual array elements
-	 * - __callFunctionAtPath: Executes functions in host context
-	 *
-	 * These callbacks are called synchronously from isolate proxy traps.
+	 * Used by createDeepLazyProxy when accessing properties. Returns metadata
+	 * markers for functions, arrays, and objects, or the primitive value directly.
 	 *
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private registerCallbacks(data: Record<string, unknown>): void {
-		if (!this.context) {
-			throw new Error('Context not initialized');
-		}
-
-		// Callback 1: Get value/metadata at path
-		// Used by createDeepLazyProxy when accessing properties
-		const getValueAtPath = new (getIvm().Reference)((path: string[]) => {
+	private createGetValueAtPathRef(data: Record<string, unknown>): ivm.Reference {
+		return new (getIvm().Reference)((path: string[]) => {
 			try {
 				// Navigate to value
 				// Special-case: paths starting with ['$item', index] call data.$item(index)
@@ -410,10 +346,18 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				return serializeError(err);
 			}
 		});
+	}
 
-		// Callback 2: Get array element at index
-		// Used by array proxy when accessing numeric indices
-		const getArrayElement = new (getIvm().Reference)((path: string[], index: number) => {
+	/**
+	 * Create an ivm.Reference callback for getting array elements at an index.
+	 *
+	 * Used by array proxy when accessing numeric indices.
+	 *
+	 * @param data - Current workflow data to use for callback responses
+	 * @private
+	 */
+	private createGetArrayElementRef(data: Record<string, unknown>): ivm.Reference {
+		return new (getIvm().Reference)((path: string[], index: number) => {
 			try {
 				// Navigate to array
 				// Special-case: paths starting with ['$item', index] call data.$item(index)
@@ -467,10 +411,18 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				return serializeError(err);
 			}
 		});
+	}
 
-		// Callback 3: Call function at path with arguments
-		// Used when expressions invoke functions from workflow data
-		const callFunctionAtPath = new (getIvm().Reference)((path: string[], ...args: unknown[]) => {
+	/**
+	 * Create an ivm.Reference callback for calling functions at a path.
+	 *
+	 * Used when expressions invoke functions from workflow data.
+	 *
+	 * @param data - Current workflow data to use for callback responses
+	 * @private
+	 */
+	private createCallFunctionAtPathRef(data: Record<string, unknown>): ivm.Reference {
+		return new (getIvm().Reference)((path: string[], ...args: unknown[]) => {
 			try {
 				// Navigate to function, tracking parent to preserve `this` context
 				let fn: unknown = data;
@@ -501,34 +453,20 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				return serializeError(err);
 			}
 		});
-
-		// Release previous references before replacing to avoid accumulation
-		this.valueAtPathRef?.release();
-		this.arrayElementRef?.release();
-		this.callFunctionRef?.release();
-
-		// Store references so they can be released on the next call or on dispose()
-		this.valueAtPathRef = getValueAtPath;
-		this.arrayElementRef = getArrayElement;
-		this.callFunctionRef = callFunctionAtPath;
-
-		// Register all callbacks in isolate global context
-		this.context.global.setSync('__getValueAtPath', getValueAtPath);
-		this.context.global.setSync('__getArrayElement', getArrayElement);
-		this.context.global.setSync('__callFunctionAtPath', callFunctionAtPath);
-
-		this.logger.debug('[IsolatedVmBridge] Callbacks registered successfully');
 	}
 
 	/**
 	 * Execute JavaScript code in the isolated context.
 	 *
 	 * Flow:
-	 * 1. Register callbacks as ivm.Reference for cross-isolate communication
-	 * 2. Call resetDataProxies() to initialize workflow data proxies
-	 * 3. Compile script (with caching for performance)
-	 * 4. Execute with timeout enforcement
-	 * 5. Return result (copied from isolate)
+	 * 1. Create three ivm.Reference callbacks scoped to the current data
+	 * 2. Use evalClosureSync to run the code in a closure where $0/$1/$2
+	 *    are the callback references — no global mutable state
+	 * 3. buildContext() inside the isolate creates a fresh evaluation context
+	 *    from the closure-scoped references
+	 *
+	 * Each call gets its own closure, so nested and concurrent evaluations
+	 * cannot interfere with each other.
 	 *
 	 * @param code - JavaScript expression to evaluate
 	 * @param data - Workflow data (e.g., { $json: {...}, $runIndex: 0 })
@@ -540,65 +478,50 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
 
+		const getValueAtPath = this.createGetValueAtPathRef(data);
+		const getArrayElement = this.createGetArrayElementRef(data);
+		const callFunctionAtPath = this.createCallFunctionAtPathRef(data);
+
 		try {
-			// Step 1: Register callbacks with current data context
-			this.registerCallbacks(data);
+			const timezone = options?.timezone ? JSON.stringify(options.timezone) : 'undefined';
 
-			// Step 2: Reset proxies for this evaluation
-			// This initializes $json, $binary, etc. as lazy proxies
-			this.resetDataProxies(options?.timezone);
-
-			// Step 3: Wrap transformed code so 'this' === __data in the isolate.
+			// Wrap transformed code so 'this' === the closure-scoped context.
 			// Tournament generates: this.$json.email, this.$items(), etc.
-			// __data has $json, $items, etc. as lazy proxies (set in resetDataProxies).
+			// buildContext() creates a fresh context with lazy proxies from the
+			// closure-scoped callback references ($0, $1, $2) — no globals touched.
 			// The outer try-catch serializes errors into a sentinel object and returns
 			// it as the result. Errors from host callbacks arrive as sentinels already
 			// (via serializeError), so we pass them through. This avoids a round-trip
 			// callback and keeps Error reconstruction on the host side only.
 			const wrappedCode = `
-(function() {
-  try {
-    var __result = (function() {
-      ${code}
-    }).call(__data);
-    return __prepareForTransfer(__result);
-  } catch(e) {
-    if (e && e.__isError) return e;
-    if (e == null) return { __isError: true, name: "Error", message: String(e), stack: "", extra: {} };
-    var extra = {};
-    for (var k in e) {
-      if (Object.prototype.hasOwnProperty.call(e, k) && k !== "name" && k !== "message" && k !== "stack") extra[k] = e[k];
-    }
-    return {
-      __isError: true,
-      name: e.name || "Error",
-      message: e.message || "",
-      stack: e.stack || "",
-      extra: extra
-    };
+var __ctx = buildContext($0, $1, $2, ${timezone});
+try {
+  var __result = (function() {
+    ${code}
+  }).call(__ctx);
+  return __prepareForTransfer(__result);
+} catch(e) {
+  if (e && e.__isError) return e;
+  if (e == null) return { __isError: true, name: "Error", message: String(e), stack: "", extra: {} };
+  var extra = {};
+  for (var k in e) {
+    if (Object.prototype.hasOwnProperty.call(e, k) && k !== "name" && k !== "message" && k !== "stack") extra[k] = e[k];
   }
-})()`;
+  return {
+    __isError: true,
+    name: e.name || "Error",
+    message: e.message || "",
+    stack: e.stack || "",
+    extra: extra
+  };
+}`;
 
-			// Cache key is `code` (tournament output), but the compiled script uses
-			// `wrappedCode` which adds the try-catch/reportError wrapper. This works
-			// because wrappedCode is a deterministic transform of code. If the wrapper
-			// ever becomes parameterized (e.g., different wrapping based on options),
-			// the cache key must include those parameters to avoid serving stale scripts.
-			let script = this.scriptCache.get(code);
-			if (!script) {
-				script = this.isolate.compileScriptSync(wrappedCode);
-				this.scriptCache.set(code, script);
+			const result = this.context.evalClosureSync(
+				wrappedCode,
+				[getValueAtPath, getArrayElement, callFunctionAtPath],
+				{ result: { copy: true }, timeout: this.config.timeout },
+			);
 
-				this.logger.debug('[IsolatedVmBridge] Script compiled and cached');
-			}
-
-			// Step 5: Execute with timeout and copy result back
-			const result = script.runSync(this.context, {
-				timeout: this.config.timeout,
-				copy: true,
-			});
-
-			// Step 6: If the result is an error sentinel, reconstruct and throw
 			if (isErrorSentinel(result)) {
 				throw this.reconstructError(result);
 			}
@@ -629,6 +552,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				);
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
+		} finally {
+			getValueAtPath.release();
+			getArrayElement.release();
+			callFunctionAtPath.release();
 		}
 	}
 
@@ -668,14 +595,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			this.isolate.dispose();
 		}
 
-		// Release callback references
-		this.valueAtPathRef?.release();
-		this.arrayElementRef?.release();
-		this.callFunctionRef?.release();
-
 		this.disposed = true;
 		this.initialized = false;
-		this.scriptCache.clear();
 
 		this.logger.info('[IsolatedVmBridge] Disposed');
 	}

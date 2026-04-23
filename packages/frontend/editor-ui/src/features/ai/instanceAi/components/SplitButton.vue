@@ -16,7 +16,7 @@ const props = withDefaults(
 	}>(),
 	{
 		variant: 'solid',
-		size: 'small',
+		size: 'medium',
 		caretAriaLabel: 'More options',
 	},
 );

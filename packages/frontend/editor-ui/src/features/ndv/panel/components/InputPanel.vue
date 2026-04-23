@@ -18,11 +18,11 @@ import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
-	type Workflow,
 	type NodeConnectionType,
 	NodeConnectionTypes,
 	NodeHelpers,
 } from 'n8n-workflow';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
@@ -42,7 +42,7 @@ type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
 	runIndex: number;
-	workflowObject: Workflow;
+	workflowObject: WorkflowObjectAccessors;
 	pushRef: string;
 	activeNodeName: string;
 	currentNodeName?: string;
@@ -463,7 +463,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<InputNodeSelect
 				v-if="parentNodes.length && currentNodeName"
 				:model-value="currentNodeName"
-				:workflow="workflowObject"
 				:nodes="parentNodes"
 				@update:model-value="onInputNodeChange"
 			/>
@@ -477,7 +476,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<div :class="$style.mappedNode">
 				<InputNodeSelect
 					:model-value="mappedNode"
-					:workflow="workflowObject"
 					:nodes="rootNodesParents"
 					@update:model-value="onMappedNodeSelected"
 				/>
