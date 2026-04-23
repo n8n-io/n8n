@@ -6,6 +6,7 @@ import type { SuspendComponent } from './component-mapper';
 export interface AgentChatIntegrationContext {
 	agentId: string;
 	projectId: string;
+	credentialId: string;
 	credential: Record<string, unknown>;
 	/** Returns the inbound webhook URL this n8n instance exposes for the given platform. */
 	webhookUrlFor: (platform: string) => string;
@@ -42,6 +43,13 @@ export abstract class AgentChatIntegration {
 
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
+
+	/**
+	 * Optional hook run BEFORE the adapter is built. Use it to reject the
+	 * connect early — e.g. a webhook-based platform checking that the
+	 * credential isn't already claimed elsewhere. Throwing aborts the connect.
+	 */
+	onBeforeConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */
 	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;

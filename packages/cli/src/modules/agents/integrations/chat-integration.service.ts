@@ -5,7 +5,6 @@ import { Container, Service } from '@n8n/di';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
 import { AgentChatBridge } from './agent-chat-bridge';
@@ -101,14 +100,16 @@ export class ChatIntegrationService {
 		const ctx: AgentChatIntegrationContext = {
 			agentId,
 			projectId,
+			credentialId,
 			credential: decryptedData,
 			webhookUrlFor: (platform) => this.buildWebhookUrl(agentId, projectId, platform),
 		};
 
-		// Telegram: each bot token can serve only one webhook at a time. Enforce
-		// one-agent-per-credential before we touch Telegram's API.
-		if (integrationType === 'telegram') {
-			await this.ensureTelegramCredentialAvailable(agentId, credentialId, projectId, decryptedData);
+		// Pre-connect hook — webhook-based platforms use this to detect
+		// credential conflicts (e.g. a Telegram bot token already in use) and
+		// abort the connect before we touch any external API.
+		if (integration.onBeforeConnect) {
+			await integration.onBeforeConnect(ctx);
 		}
 
 		// Delegate adapter construction to the platform implementation.
@@ -349,64 +350,5 @@ export class ChatIntegrationService {
 		// WEBHOOK_URL env var used by n8n's other webhook triggers.
 		const base = this.urlService.getWebhookBaseUrl();
 		return `${base}rest/projects/${projectId}/agents/v2/${agentId}/webhooks/${platform}`;
-	}
-
-	/**
-	 * Block the connect flow if this Telegram credential is already claimed — either
-	 * by another agent in our DB, or by an unrelated webhook registered directly on
-	 * Telegram (stale state, different n8n instance, or a Telegram-trigger workflow).
-	 *
-	 * The DB check is the primary signal (gives us the owning agent's name); the
-	 * Telegram `getWebhookInfo` probe catches leftover webhooks no agent claims.
-	 * The probe fails open — if Telegram's API is flaky, we log a warning and
-	 * proceed rather than blocking a legitimate connect.
-	 */
-	private async ensureTelegramCredentialAvailable(
-		agentId: string,
-		credentialId: string,
-		projectId: string,
-		decryptedData: Record<string, unknown>,
-	): Promise<void> {
-		const others = await this.agentRepository.findByIntegrationCredential(
-			'telegram',
-			credentialId,
-			projectId,
-			agentId,
-		);
-		if (others.length > 0) {
-			throw new ConflictError(
-				`Telegram credential is already connected to agent "${others[0].name}"`,
-			);
-		}
-
-		// Only probe Telegram when we'd actually register a webhook (public URL).
-		const baseUrl = this.urlService.getWebhookBaseUrl();
-		const isPublic = baseUrl.startsWith('https://') && !baseUrl.includes('localhost');
-		if (!isPublic) return;
-
-		const botToken = typeof decryptedData.accessToken === 'string' ? decryptedData.accessToken : '';
-		if (!botToken) return;
-
-		let info: { url: string };
-		try {
-			const resp = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`, {
-				method: 'POST',
-			});
-			if (!resp.ok) throw new Error(await resp.text());
-			const body = (await resp.json()) as { result?: { url?: string } };
-			info = { url: body.result?.url ?? '' };
-		} catch (error) {
-			this.logger.warn(
-				`[ChatIntegrationService] getWebhookInfo probe failed, proceeding: ${error instanceof Error ? error.message : String(error)}`,
-			);
-			return;
-		}
-
-		const ourUrl = this.buildWebhookUrl(agentId, projectId, 'telegram');
-		if (info.url && info.url !== ourUrl) {
-			throw new ConflictError(
-				`Telegram bot already has a webhook registered elsewhere: ${info.url}`,
-			);
-		}
 	}
 }
