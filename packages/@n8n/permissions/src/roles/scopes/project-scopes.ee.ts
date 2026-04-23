@@ -50,6 +50,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'insights:list',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -87,6 +88,7 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'dataTable:listProject',
 	'dataTable:readRow',
 	'dataTable:writeRow',
+	'insights:list',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -123,6 +125,7 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'insights:list',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -140,6 +143,7 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'dataTable:readRow',
 	'projectVariable:list',
 	'projectVariable:read',
+	'insights:list',
 ];
 
 export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['workflow:execute-chat'];

@@ -10,6 +10,7 @@ import { Container } from '@n8n/di';
 export class InsightsModule implements ModuleInterface {
 	async init() {
 		await import('./insights.controller');
+		await import('./insights-project.controller');
 
 		const { InsightsService } = await import('./insights.service');
 		await Container.get(InsightsService).init();

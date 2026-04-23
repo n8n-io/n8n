@@ -6,22 +6,23 @@ import type {
 } from '@n8n/api-types';
 import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
+import { Get, Licensed, Param, ProjectScope, Query, RestController } from '@n8n/decorators';
 
 import { InsightsBaseController } from './insights-base.controller';
 import { InsightsService } from './insights.service';
 
-@RestController('/insights')
-export class InsightsController extends InsightsBaseController {
+@RestController('/insights/projects')
+export class InsightsProjectController extends InsightsBaseController {
 	constructor(protected readonly insightsService: InsightsService) {
 		super();
 	}
 
-	@Get('/summary')
-	@GlobalScope('insights:list')
-	async getInsightsSummary(
+	@Get('/:projectId/summary')
+	@ProjectScope('insights:list')
+	async getProjectInsightsSummary(
 		_req: AuthenticatedRequest,
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Query query: InsightsDateFilterDto = {},
 	): Promise<InsightsSummary> {
 		const { startDate, endDate } = this.prepareDateFilters(query);
@@ -29,16 +30,17 @@ export class InsightsController extends InsightsBaseController {
 		return await this.insightsService.getInsightsSummary({
 			startDate,
 			endDate,
-			projectId: query.projectId,
+			projectId,
 		});
 	}
 
-	@Get('/by-workflow')
-	@GlobalScope('insights:list')
+	@Get('/:projectId/by-workflow')
+	@ProjectScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
-	async getInsightsByWorkflow(
+	async getProjectInsightsByWorkflow(
 		_req: AuthenticatedRequest,
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Query query: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
 		const { startDate, endDate } = this.prepareDateFilters(query);
@@ -47,49 +49,43 @@ export class InsightsController extends InsightsBaseController {
 			skip: query.skip,
 			take: query.take,
 			sortBy: query.sortBy,
-			projectId: query.projectId,
+			projectId,
 			startDate,
 			endDate,
 		});
 	}
 
-	@Get('/by-time')
-	@GlobalScope('insights:list')
+	@Get('/:projectId/by-time')
+	@ProjectScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
-	async getInsightsByTime(
+	async getProjectInsightsByTime(
 		_req: AuthenticatedRequest,
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Query query: InsightsDateFilterDto,
 	): Promise<InsightsByTime[]> {
 		const { startDate, endDate } = this.prepareDateFilters(query);
 
-		// Cast to full insights by time type
-		// as the service returns all types by default
 		return (await this.insightsService.getInsightsByTime({
-			projectId: query.projectId,
+			projectId,
 			startDate,
 			endDate,
 		})) as InsightsByTime[];
 	}
 
-	/**
-	 * This endpoint is used to get the time saved insights by time.
-	 * time data for time saved insights is not restricted by the license
-	 */
-	@Get('/by-time/time-saved')
-	@GlobalScope('insights:list')
-	async getTimeSavedInsightsByTime(
+	@Get('/:projectId/by-time/time-saved')
+	@ProjectScope('insights:list')
+	async getProjectTimeSavedInsightsByTime(
 		_req: AuthenticatedRequest,
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Query query: InsightsDateFilterDto,
 	): Promise<RestrictedInsightsByTime[]> {
 		const { startDate, endDate } = this.prepareDateFilters(query);
 
-		// Cast to restricted insights by time type
-		// as the service returns only time saved data
 		return (await this.insightsService.getInsightsByTime({
 			insightTypes: ['time_saved_min'],
-			projectId: query.projectId,
+			projectId,
 			startDate,
 			endDate,
 		})) as RestrictedInsightsByTime[];
