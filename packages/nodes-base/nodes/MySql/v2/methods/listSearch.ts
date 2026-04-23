@@ -3,7 +3,10 @@ import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from '
 import type { MysqlNodeCredentials } from '../helpers/interfaces';
 import { createPool } from '../transport';
 
-export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+export async function searchTables(
+	this: ILoadOptionsFunctions, 
+	tableName?: string
+): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials<MysqlNodeCredentials>('mySql');
 
 	const nodeOptions = this.getNodeParameter('options', 0) as IDataObject;
@@ -13,9 +16,14 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 	try {
 		const connection = await pool.getConnection();
 
-		const query = 'SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ?';
-		const values = [credentials.database];
+		const query = `SELECT table_name
+FROM   information_schema.tables
+WHERE  table_schema = ?
+AND table_name LIKE ?
+ORDER  BY table_name`;
 
+		const values = [credentials.database, `%${tableName ?? ''}%`];
+		
 		const formatedQuery = connection.format(query, values);
 
 		const response = (await connection.query(formatedQuery))[0];
