@@ -1,6 +1,7 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 
+import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { getDateTimeSection } from './system-prompt';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { InstanceAiTraceRun, ModelConfig } from '../types';
@@ -44,6 +45,7 @@ Keep diagnostics to 2-3 sentences maximum. Omit entirely when the task succeeded
 - One tool call at a time unless truly independent. Minimum tool calls needed.
 - You cannot delegate to other agents or create plans.
 - If you are stuck or need information only a human can provide, use the ask-user tool.
+- ${SECRET_ASK_GUARDRAIL}
 - Do NOT retry the same failing approach more than twice — ask the user instead.`;
 
 export { SUB_AGENT_PROTOCOL };

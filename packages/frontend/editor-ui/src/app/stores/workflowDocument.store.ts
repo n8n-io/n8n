@@ -28,6 +28,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IPinData } from 'n8n-workflow';
+import type { IWorkflowDb } from '@/Interface';
+import { DEFAULT_SETTINGS } from './workflowDocument/useWorkflowDocumentSettings';
 
 export {
 	getPinDataSize,
@@ -169,6 +171,75 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentPinData.setPinData({});
 		}
 
+		function hydrate(workflow: IWorkflowDb) {
+			if (workflow.id !== workflowId) {
+				throw new Error(
+					`workflowDocumentStore(${id}).hydrate(): workflow id mismatch — ` +
+						`expected "${workflowId}", got "${workflow.id}"`,
+				);
+			}
+			if (workflowVersion !== 'latest' && workflow.versionId !== workflowVersion) {
+				throw new Error(
+					`workflowDocumentStore(${id}).hydrate(): workflow version mismatch — ` +
+						`expected "${workflowVersion}", got "${workflow.versionId}"`,
+				);
+			}
+
+			workflowDocumentName.setName(workflow.name ?? '');
+			workflowDocumentDescription.setDescription(workflow.description ?? '');
+			workflowDocumentActive.setActiveState({
+				activeVersionId: workflow.activeVersionId ?? null,
+				activeVersion: workflow.activeVersion ?? null,
+			});
+			workflowDocumentIsArchived.setIsArchived(workflow.isArchived ?? false);
+			workflowDocumentHomeProject.setHomeProject(workflow.homeProject ?? null);
+			workflowDocumentSharedWithProjects.setSharedWithProjects(workflow.sharedWithProjects ?? []);
+			workflowDocumentScopes.setScopes(workflow.scopes ?? []);
+			workflowDocumentTags.setTags(workflow.tags ?? []);
+			workflowDocumentMeta.setMeta(workflow.meta ?? {});
+			workflowDocumentSettings.setSettings(workflow.settings ?? { ...DEFAULT_SETTINGS });
+			workflowDocumentParentFolder.setParentFolder(workflow.parentFolder ?? null);
+			workflowDocumentUsedCredentials.setUsedCredentials(workflow.usedCredentials ?? []);
+			workflowDocumentTimestamps.setCreatedAt(workflow.createdAt);
+			workflowDocumentTimestamps.setUpdatedAt(workflow.updatedAt);
+			workflowDocumentChecksum.setChecksum(workflow.checksum ?? '');
+			workflowDocumentVersionData.setVersionData({
+				versionId: workflow.versionId,
+				name: workflow.name ?? null,
+				description: workflow.description ?? null,
+			});
+			workflowDocumentNodes.setNodes(workflow.nodes ?? []);
+			workflowDocumentConnections.setConnections(workflow.connections ?? {});
+			workflowDocumentPinData.setPinData(workflow.pinData ?? {});
+		}
+
+		function reset() {
+			workflowDocumentName.setName('');
+			workflowDocumentDescription.setDescription('');
+			workflowDocumentActive.setActiveState({ activeVersionId: null, activeVersion: null });
+			workflowDocumentIsArchived.setIsArchived(false);
+			workflowDocumentHomeProject.setHomeProject(null);
+			workflowDocumentSharedWithProjects.setSharedWithProjects([]);
+			workflowDocumentScopes.setScopes([]);
+			workflowDocumentTags.setTags([]);
+			workflowDocumentMeta.setMeta({});
+			workflowDocumentSettings.setSettings({ ...DEFAULT_SETTINGS });
+			workflowDocumentParentFolder.setParentFolder(null);
+			workflowDocumentUsedCredentials.setUsedCredentials([]);
+			workflowDocumentTimestamps.setCreatedAt(-1);
+			workflowDocumentTimestamps.setUpdatedAt(-1);
+			workflowDocumentChecksum.setChecksum('');
+			workflowDocumentVersionData.setVersionData({
+				versionId: '',
+				name: null,
+				description: null,
+			});
+			workflowDocumentNodes.setNodes([]);
+			workflowDocumentConnections.setConnections({});
+			workflowDocumentPinData.setPinData({});
+			workflowDocumentViewport.setViewport(null);
+		}
+
 		function getSnapshot(): WorkflowObjectAccessors {
 			return {
 				id: workflowId,
@@ -210,6 +281,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
 			removeAllNodes,
+			hydrate,
+			reset,
 			getSnapshot,
 		};
 	})();
