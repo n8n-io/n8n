@@ -70,7 +70,7 @@ export class UserService {
 		return this.userRepository.manager;
 	}
 
-	async assertGetUsersAccess(user: User, projectId?: string) {
+	async assertGetUsersAccess(user: User, projectId?: string): Promise<void> {
 		if (projectId) {
 			const project = await this.projectService.getProjectWithScope(user, projectId, [
 				'project:list',
@@ -78,14 +78,18 @@ export class UserService {
 			if (!project) {
 				throw new NotFoundError('Project not found');
 			}
-		} else if (!['global:owner', 'global:admin'].includes(user.role.slug)) {
-			const hasProjectUpdateScope =
-				(await this.projectService.getProjectIdsWithScope(user, ['project:update'])).length > 0;
-			if (!hasProjectUpdateScope) {
-				throw new ForbiddenError(
-					'Listing all users is limited to instance administrators and project admins. Filter by project to list project members.',
-				);
-			}
+			return;
+		}
+		const isInstanceAdmin = ['global:owner', 'global:admin'].includes(user.role.slug);
+		if (isInstanceAdmin) {
+			return;
+		}
+		const hasProjectUpdateScope =
+			(await this.projectService.getProjectIdsWithScope(user, ['project:update'])).length > 0;
+		if (!hasProjectUpdateScope) {
+			throw new ForbiddenError(
+				'Listing all users is limited to instance administrators and project admins. Filter by project to list project members.',
+			);
 		}
 	}
 

@@ -667,6 +667,17 @@ describe('UserService', () => {
 			]);
 		});
 
+		it('should allow non-admin members to list users by projectId', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+			projectService.getProjectWithScope.mockResolvedValueOnce(mock<Project>());
+
+			await expect(userService.assertGetUsersAccess(member, 'project-1')).resolves.toBeUndefined();
+
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(member, 'project-1', [
+				'project:list',
+			]);
+		});
+
 		it('should throw ForbiddenError for member without project admin scope', async () => {
 			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
 			projectService.getProjectIdsWithScope.mockResolvedValueOnce([]);
