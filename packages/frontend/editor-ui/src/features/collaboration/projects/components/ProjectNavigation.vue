@@ -15,15 +15,8 @@ import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import FavoritesSidebarCompact from './FavoritesSidebarCompact.vue';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
-import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '@/features/agents/constants';
-import { listAllAgents, deleteAgent } from '@/features/agents/composables/useAgentApi';
-import { useAgentConfirmationModal } from '@/features/agents/composables/useAgentConfirmationModal';
-import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
-import { agentsEventBus } from '@/features/agents/agents.eventBus';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { MODAL_CONFIRM } from '@/app/constants';
 
 const PROJECTS_COLLAPSED_KEY = 'n8n:sidebar:projects-collapsed';
 
@@ -40,11 +33,7 @@ const globalEntityCreation = useGlobalEntityCreation();
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
-const rootStore = useRootStore();
-const telemetry = useTelemetry();
-const agentTelemetry = useAgentTelemetry();
 const favoritesStore = useFavoritesStore();
-const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 const { favoriteGroups, activeTabId, onFavoriteProjectClick, onFavoriteWorkflowClick } =
 	useFavoriteNavItems();
@@ -63,87 +52,6 @@ const isInstanceAiNavVisible = computed(() => {
 });
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
-);
-
-// Agents sidebar section
-// Gate: isModuleActive('agents') is false when the module isn't registered.
-// The PostHog flag (0XX_first_class_agents) controls module registration on the
-// backend side — when the flag is off, 'agents' won't appear in activeModules.
-const isAgentsAvailable = computed(() => settingsStore.isModuleActive('agents'));
-const agentsList = ref<Array<{ id: string; name: string }>>([]);
-const isCoachmarkVisible = computed(
-	() => isAgentsAvailable.value && !isCalloutDismissed('agents_sidebar_coachmark'),
-);
-
-const activeAgentId = computed(() => {
-	if (route.name === AGENT_BUILDER_VIEW) {
-		return route.params.agentId as string;
-	}
-	return undefined;
-});
-
-const getAgentMenuItem = (agent: { id: string; name: string }): IMenuItem => ({
-	id: `agent-${agent.id}`,
-	label: agent.name,
-	icon: { type: 'icon', value: 'robot' },
-	route: {
-		to: {
-			name: AGENT_BUILDER_VIEW,
-			params: {
-				projectId: projectsStore.personalProject?.id,
-				agentId: agent.id,
-			},
-		},
-	},
-});
-
-const newAgentItem = computed<IMenuItem>(() => ({
-	id: 'new-agent',
-	label: 'New agent',
-	icon: { type: 'icon', value: 'plus' },
-	route: { to: { name: NEW_AGENT_VIEW } },
-}));
-
-const agentActions = [{ id: 'delete', label: 'Delete' }];
-
-async function fetchAgents() {
-	if (!isAgentsAvailable.value) return;
-	const personalProjectId = projectsStore.personalProject?.id;
-	if (!personalProjectId) return;
-	try {
-		agentsList.value = await listAllAgents(rootStore.restApiContext, personalProjectId);
-	} catch {
-		agentsList.value = [];
-	}
-}
-
-async function onAgentAction(action: string, agent: { id: string; name: string }) {
-	if (action === 'delete') {
-		const confirmed = await openAgentConfirmationModal({
-			title: locale.baseText('agents.delete.modal.title', {
-				interpolate: { name: agent.name },
-			}),
-			description: locale.baseText('agents.delete.modal.description', {
-				interpolate: { name: agent.name },
-			}),
-			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
-			cancelButtonText: locale.baseText('generic.cancel'),
-		});
-		if (confirmed !== MODAL_CONFIRM) return;
-		const personalProjectId = projectsStore.personalProject?.id ?? '';
-		await deleteAgent(rootStore.restApiContext, personalProjectId, agent.id);
-		agentsList.value = agentsList.value.filter((a) => a.id !== agent.id);
-	}
-}
-
-// Refresh agents list when returning from agent builder
-watch(
-	() => route.name,
-	() => {
-		if (isAgentsAvailable.value) {
-			void fetchAgents();
-		}
-	},
 );
 
 const FAVORITES_COLLAPSED_KEY = computed(
