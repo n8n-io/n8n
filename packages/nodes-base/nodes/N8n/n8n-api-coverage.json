@@ -217,6 +217,9 @@
 		"POST /projects/{projectId}/folders": {
 			"status": "gap"
 		},
+		"DELETE /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
 		"GET /projects/{projectId}/users": {
 			"status": "gap"
 		},
