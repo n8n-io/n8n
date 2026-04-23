@@ -28,27 +28,36 @@ export class SidebarPage {
 	}
 
 	async clickWorkflowsLink(): Promise<void> {
-		await this.page.getByRole('link', { name: 'Workflows' }).click();
+		await this.container.getByRole('link', { name: 'Workflows' }).click();
 	}
 
 	async clickCredentialsLink(): Promise<void> {
-		await this.page.getByRole('link', { name: 'Credentials' }).click();
+		await this.container.getByRole('link', { name: 'Credentials' }).click();
 	}
 
 	getProjectButtonInUniversalAdd(): Locator {
-		return this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' });
+		return this.container.getByTestId('navigation-menu-item').filter({ hasText: 'Project' });
 	}
 
 	async addWorkflowFromUniversalAdd(projectName: string) {
 		await this.universalAdd();
-		await this.page.getByTestId('universal-add').getByText('Workflow').click();
-		await this.page.getByTestId('universal-add').getByRole('link', { name: projectName }).click();
+		await this.container.getByTestId('universal-add').getByText('Workflow').click();
+		await this.container
+			.getByTestId('universal-add')
+			.getByRole('link', { name: projectName })
+			.click();
 	}
 
 	async openNewCredentialDialogForProject(projectName: string) {
 		await this.universalAdd();
-		await this.page.getByTestId('universal-add').getByText('Credential', { exact: true }).click();
-		await this.page.getByTestId('universal-add').getByRole('link', { name: projectName }).click();
+		await this.container
+			.getByTestId('universal-add')
+			.getByText('Credential', { exact: true })
+			.click();
+		await this.container
+			.getByTestId('universal-add')
+			.getByRole('link', { name: projectName })
+			.click();
 	}
 
 	getProjectMenuItems(): Locator {
