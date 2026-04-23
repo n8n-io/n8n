@@ -122,6 +122,7 @@ export function useRoleMappingRules() {
 		try {
 			const allLocalRules = [...instanceRules.value, ...projectRules.value];
 			const localRuleIds = new Set(allLocalRules.map((r) => r.id));
+
 			const rulePayload = (r: RoleMappingRuleResponse) => ({
 				expression: r.expression,
 				role: r.role,
@@ -130,15 +131,23 @@ export function useRoleMappingRules() {
 				projectIds: r.projectIds,
 			});
 
+			const deleteIds = [...serverRuleIds].filter((id) => !localRuleIds.has(id));
+			const updateRules = allLocalRules.filter(
+				(r) => !r.id.startsWith('local-') && serverRuleIds.has(r.id),
+			);
+			const createRules = allLocalRules.filter((r) => r.id.startsWith('local-'));
+
+			// Deletes and updates can run concurrently. Creates must be sequential
+			// because the backend reshuffles orders on each create, and race
+			// conditions between concurrent creates can collide on temp orders.
 			await Promise.all([
-				...[...serverRuleIds]
-					.filter((id) => !localRuleIds.has(id))
-					.map(async (id) => await api.deleteRule(id)),
-				...allLocalRules.map(async (rule): Promise<void> => {
-					if (rule.id.startsWith('local-')) await api.createRule(rulePayload(rule));
-					else if (serverRuleIds.has(rule.id)) await api.updateRule(rule.id, rulePayload(rule));
-				}),
+				...deleteIds.map(async (id) => await api.deleteRule(id)),
+				...updateRules.map(async (r) => await api.updateRule(r.id, rulePayload(r))),
 			]);
+
+			for (const rule of createRules) {
+				await api.createRule(rulePayload(rule));
+			}
 
 			await loadRules();
 		} finally {

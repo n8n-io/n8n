@@ -476,6 +476,18 @@ export type RelayEventMap = {
 		deleteBefore?: Date;
 	};
 
+	'execution-waiting': {
+		executionId: string;
+		workflowId: string;
+	};
+
+	'execution-resumed': {
+		executionId: string;
+		workflowId: string;
+		resumeSource: 'webhook';
+		responseAt: Date;
+	};
+
 	'execution-data-revealed': {
 		user: UserLike;
 		executionId: string;

@@ -32,7 +32,7 @@
   "license": "SEE LICENSE IN LICENSE.md",
   "dependencies": {
     "@n8n/errors": "workspace:*",
-    "@n8n/tournament": "1.0.6",
+    "@n8n/tournament": "catalog:",
     "isolated-vm": "^6.0.2",
     "js-base64": "catalog:",
     "jssha": "3.3.1",
