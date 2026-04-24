@@ -1,3 +1,11 @@
+## [1.123.35](https://github.com/n8n-io/n8n/compare/n8n@1.123.34...n8n@1.123.35) (2026-04-24)
+
+
+### Bug Fixes
+
+* Fix critical dependency vulnerabilities and build errors on 1.x ([#29026](https://github.com/n8n-io/n8n/issues/29026)) ([5ce4b5d](https://github.com/n8n-io/n8n/commit/5ce4b5d46c788c2f63f7e130f10cc70324060f0e))
+
+
 ## [1.123.34](https://github.com/n8n-io/n8n/compare/n8n@1.123.33...n8n@1.123.34) (2026-04-23)
 
 
