@@ -24,50 +24,60 @@ export interface ChatMessage {
 }
 
 /**
- * Presentation group for the message list. The builder persists one assistant
- * message per tool-use turn, so a single conversation fragments into many robot
- * avatars on reload. We fold consecutive tool-only assistant messages into a
- * single `toolRun` block to match the live-stream look.
+ * Presentation group for the message list. We fold every consecutive assistant
+ * message into one `agentTurn` — thinking, tool calls, and final text are
+ * rendered inside a single robot avatar so the list matches the live-stream
+ * shape (one turn = one bubble) regardless of how many persisted assistant
+ * messages the builder emitted.
  */
 export type DisplayGroup =
 	| { kind: 'message'; id: string; message: ChatMessage }
 	| {
-			kind: 'toolRun';
+			kind: 'agentTurn';
 			id: string;
 			thinking: string;
 			toolCalls: ToolCall[];
+			/** The final assistant message in the turn — the one that carries text. */
+			finalMessage?: ChatMessage;
 	  };
-
-export function isGroupable(msg: ChatMessage): boolean {
-	return (
-		msg.role === 'assistant' &&
-		!!msg.toolCalls?.length &&
-		!msg.content.trim() &&
-		msg.status !== 'streaming'
-	);
-}
 
 export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
 	const groups: DisplayGroup[] = [];
 	for (const msg of messages) {
-		if (isGroupable(msg)) {
-			const last = groups[groups.length - 1];
-			if (last && last.kind === 'toolRun') {
-				last.toolCalls = [...last.toolCalls, ...(msg.toolCalls ?? [])];
-				if (msg.thinking) {
-					last.thinking = last.thinking ? `${last.thinking}\n\n${msg.thinking}` : msg.thinking;
-				}
-				continue;
-			}
-			groups.push({
-				kind: 'toolRun',
-				id: msg.id,
-				thinking: msg.thinking ?? '',
-				toolCalls: [...(msg.toolCalls ?? [])],
-			});
+		if (msg.role === 'user') {
+			groups.push({ kind: 'message', id: msg.id, message: msg });
 			continue;
 		}
-		groups.push({ kind: 'message', id: msg.id, message: msg });
+
+		// Assistant — extend the current turn if one is open, else start a new one.
+		const last = groups[groups.length - 1];
+		const turn =
+			last && last.kind === 'agentTurn'
+				? last
+				: (() => {
+						const fresh = {
+							kind: 'agentTurn' as const,
+							id: msg.id,
+							thinking: '',
+							toolCalls: [] as ToolCall[],
+							finalMessage: undefined as ChatMessage | undefined,
+						};
+						groups.push(fresh);
+						return fresh;
+					})();
+
+		if (msg.thinking) {
+			turn.thinking = turn.thinking ? `${turn.thinking}\n\n${msg.thinking}` : msg.thinking;
+		}
+		if (msg.toolCalls?.length) {
+			turn.toolCalls = [...turn.toolCalls, ...msg.toolCalls];
+		}
+		// Last assistant message that has actual text (or is still streaming) wins
+		// the "final message" slot. A later tool-only message won't overwrite it
+		// with empty content, but a later text message will replace the previous.
+		if (msg.content.trim() || msg.status === 'streaming') {
+			turn.finalMessage = msg;
+		}
 	}
 	return groups;
 }

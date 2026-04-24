@@ -115,6 +115,7 @@ function onSelectCredential(provider: ChatHubProvider, credentialId: string | nu
 }
 
 const name = ref(props.config?.name ?? '');
+const description = ref(props.config?.description ?? '');
 const instructions = ref(props.config?.instructions ?? '');
 
 watch(
@@ -122,6 +123,7 @@ watch(
 	(config) => {
 		if (!config) return;
 		name.value = config.name ?? '';
+		description.value = config.description ?? '';
 		instructions.value = config.instructions ?? '';
 	},
 	{ deep: true },
@@ -131,6 +133,10 @@ const emitName = useDebounceFn((value: string) => {
 	emit('update:config', { name: value });
 }, getDebounceTime(DEBOUNCE_TIME.INPUT.TEXT_CHANGE));
 
+const emitDescription = useDebounceFn((value: string) => {
+	emit('update:config', { description: value || undefined });
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.TEXT_CHANGE));
+
 const emitInstructions = useDebounceFn(() => {
 	emit('update:config', { instructions: instructions.value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
@@ -138,6 +144,11 @@ const emitInstructions = useDebounceFn(() => {
 function onNameInput(value: string) {
 	name.value = value;
 	void emitName(value);
+}
+
+function onDescriptionInput(value: string) {
+	description.value = value;
+	void emitDescription(value);
 }
 
 function onInstructionsInput(value: string) {
@@ -162,6 +173,16 @@ function onInstructionsInput(value: string) {
 				placeholder="My agent"
 				data-testid="agent-name-input"
 				@update:model-value="onNameInput"
+			/>
+		</div>
+
+		<div :class="$style.field">
+			<label :class="$style.label"><N8nText size="small" :bold="true">Description</N8nText></label>
+			<N8nInput
+				:model-value="description"
+				placeholder="What does this agent do?"
+				data-testid="agent-description-input"
+				@update:model-value="onDescriptionInput"
 			/>
 		</div>
 

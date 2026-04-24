@@ -50,10 +50,6 @@ onMounted(() => {
 
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
-		id: 'workspace',
-		label: i18n.baseText('agents.builder.header.workspaceCrumb'),
-	},
-	{
 		id: props.projectId,
 		label: props.projectName ?? i18n.baseText('agents.builder.header.projectFallback'),
 	},

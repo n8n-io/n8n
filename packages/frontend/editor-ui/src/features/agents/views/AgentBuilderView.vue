@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import { N8nIcon, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nNavigationDropdown,
+	N8nRadioButtons,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
 import { MODAL_CONFIRM, MODAL_CANCEL, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
@@ -18,11 +26,25 @@ import { useAgentConfirmationModal } from '../composables/useAgentConfirmationMo
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { agentsEventBus } from '../agents.eventBus';
-import { AGENTS_LIST_VIEW, AGENT_BUILDER_VIEW } from '../constants';
+import {
+	AGENTS_LIST_VIEW,
+	AGENT_BUILDER_VIEW,
+	AGENT_SECTION_KEY,
+	CONFIG_JSON_SECTION_KEY,
+	EXECUTIONS_SECTION_KEY,
+	AGENT_TOOLS_MODAL_KEY,
+	AGENT_ADD_TRIGGER_MODAL_KEY,
+} from '../constants';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentConfigTree from '../components/AgentConfigTree.vue';
 import AgentSectionEditor from '../components/AgentSectionEditor.vue';
+import AgentCustomToolViewer from '../components/AgentCustomToolViewer.vue';
+import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
+import AgentSessionsListView from './AgentSessionsListView.vue';
+import AgentIntegrationsPanel from '../components/AgentIntegrationsPanel.vue';
+import AgentToolsListPanel from '../components/AgentToolsListPanel.vue';
+import AgentInfoPanel from '../components/AgentInfoPanel.vue';
 import AgentChatQuickActions from '../components/AgentChatQuickActions.vue';
 
 const route = useRoute();
@@ -32,6 +54,7 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
+const uiStore = useUIStore();
 const { showError } = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
@@ -58,7 +81,13 @@ const initialized = ref(false);
 // Both panels used to mount together on first chat entry and each fire a
 // loadHistory() call — only mount one until the user actually opens the other.
 const chatModeOpened = ref<Record<ChatMode, boolean>>({ test: false, build: false });
-const selectedSection = ref<string | null>(null);
+const selectedSection = ref<string | null>(AGENT_SECTION_KEY);
+// Tracks which tabs the user has flipped into raw-JSON view. Keyed by section
+// key so each tab remembers its own state independently.
+const rawSectionByKey = ref<Record<string, boolean>>({});
+const showRawSection = computed(() =>
+	selectedSection.value ? !!rawSectionByKey.value[selectedSection.value] : false,
+);
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
 const initialPrompt = ref<string | undefined>(undefined);
@@ -134,8 +163,8 @@ watch(
 
 const gridColumns = computed(() =>
 	chatColumnCollapsed.value
-		? '0 minmax(200px, 260px) 1fr'
-		: 'minmax(360px, 440px) minmax(200px, 260px) 1fr',
+		? '0 1fr minmax(200px, 260px)'
+		: 'minmax(480px, 600px) 1fr minmax(200px, 260px)',
 );
 
 const projectName = computed<string | null>(() => {
@@ -196,6 +225,25 @@ function onBuildChatStreamingChange(streaming: boolean) {
 	isBuildChatStreaming.value = streaming;
 }
 
+/**
+ * Pick the session the Test tab should bind to when no explicit one has been
+ * chosen yet. Prefer the most recent thread — users land back where they left
+ * off — and only mint a fresh ephemeral session when there is no history.
+ */
+function bindTestSession() {
+	if (continueSessionId.value || activeChatSessionId.value) return;
+	const latest = sessionsStore.threads?.[0];
+	if (latest) {
+		void router.replace({ query: { ...route.query, continueSessionId: latest.id } });
+		return;
+	}
+	// Still loading — defer the decision; the watcher below will rebind once
+	// threads arrive, falling back to a fresh ephemeral session if the list
+	// comes back empty.
+	if (sessionsStore.loading) return;
+	activeChatSessionId.value = crypto.randomUUID();
+}
+
 function setChatMode(next: ChatMode) {
 	if (chatMode.value === next) return;
 	// Test is locked until the agent has instructions — see chatModeOptions
@@ -203,9 +251,7 @@ function setChatMode(next: ChatMode) {
 	// user doesn't get bounced into a half-configured chat.
 	if (next === 'test' && !isBuilt.value) return;
 	chatMode.value = next;
-	if (next === 'test' && !continueSessionId.value && !activeChatSessionId.value) {
-		activeChatSessionId.value = crypto.randomUUID();
-	}
+	if (next === 'test') bindTestSession();
 
 	telemetry.track('User switched agent chat mode', {
 		agent_id: agentId.value,
@@ -299,6 +345,13 @@ async function settleAutosave() {
 		autosaveTimer = null;
 	}
 	if (autosaveInFlight) await autosaveInFlight;
+}
+
+function onSectionEditorUpdate(nextConfig: AgentJsonConfig) {
+	if (!localConfig.value) return;
+	builderTelemetry.recordConfigEdit(nextConfig);
+	localConfig.value = nextConfig;
+	scheduleAutosave();
 }
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
@@ -434,7 +487,12 @@ async function initialize() {
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
 	builderTelemetry.captureToolsBaseline();
-	void sessionsStore.fetchThreads(projectId.value, agentId.value);
+	// Stop any in-flight auto-refresh from the previous agent before kicking
+	// off a new fetch — keeps the store tied to the current project/agent.
+	sessionsStore.stopAutoRefresh();
+	void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
+		sessionsStore.startAutoRefresh();
+	});
 	void (async () => {
 		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 		// will correct it once the user expands the Triggers section.
@@ -444,21 +502,15 @@ async function initialize() {
 		if (connected) connectedTriggers.value = connected;
 	})();
 
-	// Pick the initial chat tab based on whether the agent is ready. Unbuilt
-	// agents default to Build (Test is locked anyway); built agents default to
-	// Test. Read from `config.value` directly rather than `isBuilt.value` —
-	// `localConfig` is populated by a watcher that fires on the next flush, so
-	// `isBuilt` would still be stale here.
-	const hasInstructions = !!config.value?.instructions?.trim();
-	chatMode.value = hasInstructions ? 'test' : 'build';
+	// Always land on Build on initial load — it's the default entry point into
+	// iterating on the agent. Users can flip to Test manually when they want
+	// to chat with the current config.
+	chatMode.value = 'build';
 	// Explicitly open the target mode. The `chatMode` watcher only fires on a
 	// value change, but on agent-switch we just reset `chatModeOpened` above —
 	// if both agents share the same default mode the watcher doesn't fire and
 	// the chat panel's v-if gate stays false, leaving the chat pane blank.
 	chatModeOpened.value[chatMode.value] = true;
-	if (chatMode.value === 'test' && !continueSessionId.value && !activeChatSessionId.value) {
-		activeChatSessionId.value = crypto.randomUUID();
-	}
 
 	// If the user arrived via NewAgentView with a seed prompt, jump straight
 	// into the build chat.
@@ -473,12 +525,30 @@ async function initialize() {
 
 watch(agentId, initialize, { immediate: true });
 
+onBeforeUnmount(() => {
+	sessionsStore.stopAutoRefresh();
+});
+
 watch(
 	chatMode,
 	(cm) => {
 		chatModeOpened.value[cm] = true;
 	},
 	{ immediate: true },
+);
+
+// If the user is on Test before the sessions list finishes loading, latch onto
+// the most recent thread as soon as it arrives. Also fires when loading
+// finishes with no threads so we can mint a fresh ephemeral session instead
+// of leaving the chat panel empty.
+watch(
+	() => sessionsStore.loading,
+	(isLoading, wasLoading) => {
+		if (!wasLoading || isLoading) return;
+		if (chatMode.value !== 'test') return;
+		if (continueSessionId.value || activeChatSessionId.value) return;
+		bindTestSession();
+	},
 );
 
 function clearContinueSessionParam() {
@@ -493,6 +563,164 @@ function exitContinueMode() {
 function onTreeSelect(key: string) {
 	selectedSection.value = key;
 }
+
+/**
+ * Whether the current tab has a non-raw custom view that the user can flip away
+ * from. For plain JSON slices the toggle isn't offered (it's already raw).
+ */
+const canToggleRaw = computed(() => {
+	const key = selectedSection.value;
+	if (!key) return false;
+	if (key === AGENT_SECTION_KEY || key === 'memory') return true;
+	return customToolSelection.value !== null;
+});
+
+const AGENT_RAW_PICK_KEYS = ['name', 'model', 'credential', 'instructions'];
+
+/** Path passed to AgentSectionEditor when `showRawSection` is on. */
+const rawSectionPath = computed<string | null>(() => {
+	const key = selectedSection.value;
+	if (!key) return null;
+	// `__agent` is synthetic — its raw view uses `pickKeys` instead.
+	if (key === AGENT_SECTION_KEY) return null;
+	return key;
+});
+
+const rawPickKeys = computed<string[] | null>(() =>
+	selectedSection.value === AGENT_SECTION_KEY ? AGENT_RAW_PICK_KEYS : null,
+);
+
+function toggleRawSection() {
+	const key = selectedSection.value;
+	if (!key) return;
+	rawSectionByKey.value = {
+		...rawSectionByKey.value,
+		[key]: !rawSectionByKey.value[key],
+	};
+}
+
+function onOpenToolFromList(index: number) {
+	selectedSection.value = `tools.${index}`;
+}
+
+function onRemoveTool(index: number) {
+	const currentTools = localConfig.value?.tools ?? [];
+	if (index < 0 || index >= currentTools.length) return;
+	const nextTools = currentTools.filter((_, i) => i !== index);
+	onConfigFieldUpdate({ tools: nextTools });
+	// If the removed tool's per-slice tab was open, drop back to the Tools list.
+	if (selectedSection.value === `tools.${index}`) {
+		selectedSection.value = 'tools';
+	}
+}
+
+interface SessionMenuItem {
+	id: string;
+	title: string;
+	disabled?: boolean;
+	divided?: boolean;
+}
+
+const NEW_SESSION_ID = '__new_session__';
+
+const sessionMenu = computed<SessionMenuItem[]>(() => {
+	const items: SessionMenuItem[] = [{ id: NEW_SESSION_ID, title: 'New chat' }];
+	const threads = sessionsStore.threads ?? [];
+	if (threads.length === 0) {
+		items.push({ id: '__empty__', title: 'No previous chats', disabled: true, divided: true });
+		return items;
+	}
+	threads.forEach((thread, i) => {
+		items.push({
+			id: thread.id,
+			title: thread.title ?? `Session ${thread.sessionNumber}`,
+			divided: i === 0,
+		});
+	});
+	return items;
+});
+
+function onSessionPick(id: string) {
+	if (id === '__empty__') return;
+	if (id === NEW_SESSION_ID) {
+		if (continueSessionId.value) clearContinueSessionParam();
+		activeChatSessionId.value = crypto.randomUUID();
+		return;
+	}
+	// Switching to an existing thread — clear the ephemeral session so the
+	// continue-session id from the URL drives the chat panel.
+	activeChatSessionId.value = null;
+	void router.replace({ query: { ...route.query, continueSessionId: id } });
+}
+
+function onOpenAddToolModal() {
+	uiStore.openModalWithData({
+		name: AGENT_TOOLS_MODAL_KEY,
+		data: {
+			tools: localConfig.value?.tools ?? [],
+			projectId: projectId.value,
+			agentId: agentId.value,
+			onConfirm: (tools: AgentJsonToolRef[]) => onConfigFieldUpdate({ tools }),
+		},
+	});
+}
+
+function onOpenAddTriggerModal() {
+	uiStore.openModalWithData({
+		name: AGENT_ADD_TRIGGER_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			connectedTriggers: connectedTriggers.value,
+			onConnectedTriggersChange: (triggers: string[]) => onConnectedTriggersUpdate(triggers),
+			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
+				onTriggerAdded(payload),
+		},
+	});
+}
+
+/**
+ * When the tree selects a custom-tool child (`tools.<i>` whose ref has
+ * `type: 'custom'`), we show its compiled TS source instead of the JSON ref.
+ * The source lives on `agent.tools[id].code` (populated server-side on compile).
+ */
+/** Active trigger type when the tree selection is `triggers.<type>`. */
+const selectedTriggerType = computed<string | null>(() => {
+	const key = selectedSection.value;
+	if (!key?.startsWith('triggers.')) return null;
+	return key.slice('triggers.'.length) || null;
+});
+
+/** True when a tree selection points at a specific tool slice (tools.<i>). */
+const isToolSliceSelection = computed(() => selectedSection.value?.startsWith('tools.') ?? false);
+
+/** Filename-like label for the currently-open tool. */
+const toolHeaderTitle = computed(() => {
+	const key = selectedSection.value;
+	if (!key?.startsWith('tools.')) return '';
+	const idx = Number(key.slice('tools.'.length));
+	if (!Number.isInteger(idx)) return '';
+	const ref = localConfig.value?.tools?.[idx];
+	if (!ref) return `Tool ${idx + 1}`;
+	const name = ref.name?.trim();
+	if (ref.type === 'custom') {
+		const base = name || ref.id || `tool-${idx + 1}`;
+		return `${base}.ts`;
+	}
+	return name || `${ref.type ?? 'tool'}-${idx + 1}`;
+});
+
+const customToolSelection = computed<{ code: string } | null>(() => {
+	const key = selectedSection.value;
+	if (!key?.startsWith('tools.')) return null;
+	const idx = Number(key.slice('tools.'.length));
+	if (!Number.isInteger(idx)) return null;
+	const ref = localConfig.value?.tools?.[idx];
+	if (!ref || ref.type !== 'custom' || !ref.id) return null;
+	const entry = agent.value?.tools?.[ref.id];
+	if (!entry) return null;
+	return { code: entry.code ?? '' };
+});
 
 function onQuickActionAddTool(tools: AgentJsonToolRef[]) {
 	onConfigFieldUpdate({ tools });
@@ -555,6 +783,23 @@ function onSwitchAgent(nextAgentId: string) {
 				:aria-label="locale.baseText('agents.builder.chatColumn.ariaLabel')"
 				data-testid="agent-builder-chat-column"
 			>
+				<N8nNavigationDropdown
+					v-if="initialized && chatMode === 'test'"
+					:menu="sessionMenu"
+					:class="$style.historyBtnAnchor"
+					submenu-class="agent-chat-session-menu"
+					data-testid="agent-chat-session-picker"
+					@select="onSessionPick"
+				>
+					<button
+						type="button"
+						:class="$style.historyBtn"
+						aria-label="Session history"
+						data-testid="agent-chat-session-picker-btn"
+					>
+						<N8nIcon icon="history" :size="14" />
+					</button>
+				</N8nNavigationDropdown>
 				<div :class="$style.chatBody">
 					<AgentChatPanel
 						v-if="initialized && chatModeOpened.test && effectiveSessionId"
@@ -696,23 +941,155 @@ function onSwitchAgent(nextAgentId: string) {
 				</div>
 			</aside>
 
-			<!-- Column 2: tree -->
-			<aside :class="$style.treeColumn" data-testid="agent-builder-tree-column">
-				<AgentConfigTree
-					:config="localConfig"
-					:selected-key="selectedSection"
-					@select="onTreeSelect"
-				/>
-			</aside>
-
-			<!-- Column 3: editor -->
+			<!-- Column 2: editor -->
 			<section
 				:class="$style.editorColumn"
 				:aria-label="locale.baseText('agents.builder.editorColumn.ariaLabel')"
 				data-testid="agent-builder-editor-column"
 			>
-				<AgentSectionEditor :config="localConfig" @update:config="onConfigFieldUpdate" />
+				<div :class="$style.panelArea">
+					<div
+						v-if="isToolSliceSelection"
+						:class="$style.panelToolbar"
+						data-testid="agent-tool-header"
+					>
+						<button
+							type="button"
+							:class="$style.backBtn"
+							aria-label="Back to tools"
+							data-testid="agent-tool-back"
+							@click="selectedSection = 'tools'"
+						>
+							<N8nIcon icon="arrow-left" :size="16" />
+						</button>
+						<span :class="$style.panelToolbarTitle" data-testid="agent-tool-header-title">
+							{{ toolHeaderTitle }}
+						</span>
+						<button
+							v-if="canToggleRaw"
+							type="button"
+							:class="[
+								$style.rawToggle,
+								$style.rawToggleInline,
+								showRawSection && $style.rawToggleActive,
+							]"
+							:aria-pressed="showRawSection"
+							:title="showRawSection ? 'Show formatted view' : 'Show raw JSON'"
+							data-testid="agent-section-raw-toggle"
+							@click="toggleRawSection"
+						>
+							<N8nIcon icon="code" :size="12" />
+							<span>Raw</span>
+						</button>
+					</div>
+					<button
+						v-if="canToggleRaw && !isToolSliceSelection"
+						type="button"
+						:class="[$style.rawToggle, showRawSection && $style.rawToggleActive]"
+						:aria-pressed="showRawSection"
+						:title="showRawSection ? 'Show formatted view' : 'Show raw JSON'"
+						data-testid="agent-section-raw-toggle"
+						@click="toggleRawSection"
+					>
+						<N8nIcon icon="code" :size="12" />
+						<span>Raw</span>
+					</button>
+					<AgentSectionEditor
+						v-if="showRawSection && canToggleRaw"
+						:config="localConfig"
+						:section-path="rawSectionPath"
+						:pick-keys="rawPickKeys"
+						:offset-copy-for-toggle="true"
+						@update:config="onSectionEditorUpdate"
+					/>
+					<AgentCustomToolViewer v-else-if="customToolSelection" :code="customToolSelection.code" />
+					<AgentInfoPanel
+						v-else-if="selectedSection === AGENT_SECTION_KEY"
+						:config="localConfig"
+						@update:config="onConfigFieldUpdate"
+					/>
+					<AgentSessionsListView
+						v-else-if="selectedSection === EXECUTIONS_SECTION_KEY"
+						data-testid="agent-executions-panel"
+					/>
+					<AgentToolsListPanel
+						v-else-if="selectedSection === 'tools'"
+						:tools="localConfig?.tools ?? []"
+						:config="localConfig"
+						@open-tool="onOpenToolFromList"
+						@add-tool="onOpenAddToolModal"
+						@remove-tool="onRemoveTool"
+						@update:config="onConfigFieldUpdate"
+					/>
+					<div
+						v-else-if="selectedTriggerType"
+						:class="$style.triggersTab"
+						data-testid="agent-triggers-tab"
+					>
+						<AgentIntegrationsPanel
+							:project-id="projectId"
+							:agent-id="agentId"
+							:agent-name="agentName"
+							:focus-type="selectedTriggerType"
+							@update:connected-triggers="onConnectedTriggersUpdate"
+							@trigger-added="onTriggerAdded"
+						/>
+					</div>
+					<div
+						v-else-if="selectedSection === 'triggers'"
+						:class="$style.triggersTab"
+						data-testid="agent-triggers-tab"
+					>
+						<div :class="$style.triggersHeader">
+							<div :class="$style.triggersHeaderText">
+								<N8nText tag="h3" size="large" :bold="true">Triggers</N8nText>
+								<N8nText size="small" color="text-light">
+									Channels that can invoke this agent
+								</N8nText>
+							</div>
+							<N8nButton
+								type="primary"
+								size="small"
+								data-testid="agent-triggers-add"
+								@click="onOpenAddTriggerModal"
+							>
+								<template #prefix><N8nIcon icon="plus" :size="14" /></template>
+								Add trigger
+							</N8nButton>
+						</div>
+						<AgentIntegrationsPanel
+							:project-id="projectId"
+							:agent-id="agentId"
+							:agent-name="agentName"
+							:only-connected="true"
+							@update:connected-triggers="onConnectedTriggersUpdate"
+							@trigger-added="onTriggerAdded"
+						/>
+					</div>
+					<AgentMemoryPanel
+						v-else-if="selectedSection === 'memory'"
+						:config="localConfig"
+						@update:config="onConfigFieldUpdate"
+					/>
+					<AgentSectionEditor
+						v-else
+						:config="localConfig"
+						:section-path="selectedSection === CONFIG_JSON_SECTION_KEY ? null : selectedSection"
+						@update:config="onSectionEditorUpdate"
+					/>
+				</div>
 			</section>
+
+			<!-- Column 3: tree -->
+			<aside :class="$style.treeColumn" data-testid="agent-builder-tree-column">
+				<AgentConfigTree
+					:config="localConfig"
+					:selected-key="selectedSection"
+					:connected-triggers="connectedTriggers"
+					:executions-count="sessionsStore.threads.length"
+					@select="onTreeSelect"
+				/>
+			</aside>
 		</div>
 	</div>
 </template>
@@ -733,12 +1110,20 @@ function onSwitchAgent(nextAgentId: string) {
 }
 
 .chatColumn {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	border-right: var(--border);
 	min-height: 0;
 	min-width: 0;
 	overflow: hidden;
+}
+
+.historyBtnAnchor {
+	position: absolute;
+	top: var(--spacing--4xs);
+	right: var(--spacing--4xs);
+	z-index: 2;
 }
 
 .quickActionsRow {
@@ -752,8 +1137,49 @@ function onSwitchAgent(nextAgentId: string) {
 	min-width: 0;
 }
 
+/* The session picker can grow with the thread list — cap it at ~5 visible rows
+   so it never eats the whole viewport. `.agent-chat-session-menu` is the
+   popper class we pass through to `N8nNavigationDropdown`'s submenuClass prop;
+   it's teleported, so the rule has to escape the CSS-module scope. */
+:global(.agent-chat-session-menu) :global(.el-menu) {
+	max-height: 220px;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--color--foreground--shade-1) transparent;
+}
+
+:global(.agent-chat-session-menu) :global(.el-menu)::-webkit-scrollbar {
+	width: 6px;
+}
+
+:global(.agent-chat-session-menu) :global(.el-menu)::-webkit-scrollbar-thumb {
+	background: var(--color--foreground--shade-1);
+	border-radius: 999px;
+}
+
 .chatModeToggle {
 	flex-shrink: 0;
+}
+
+.historyBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	background: transparent;
+	border: var(--border);
+	border-color: transparent;
+	border-radius: var(--radius);
+	color: var(--color--text--tint-1);
+	cursor: pointer;
+	flex-shrink: 0;
+
+	&:hover {
+		background: var(--color--background--light-2);
+		color: var(--color--text);
+	}
 }
 
 .chatModeOption {
@@ -781,14 +1207,159 @@ function onSwitchAgent(nextAgentId: string) {
 .treeColumn {
 	display: flex;
 	flex-direction: column;
-	border-right: var(--border);
+	border-left: var(--border);
 	min-height: 0;
 	overflow: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--color--foreground--shade-1) transparent;
+
+	&::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	&::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	&::-webkit-scrollbar-thumb {
+		background: var(--color--foreground--shade-1);
+		border-radius: 999px;
+	}
 }
 
 .editorColumn {
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
+}
+
+.triggersTab {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg);
+	height: 100%;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--color--foreground--shade-1) transparent;
+
+	&::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	&::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	&::-webkit-scrollbar-thumb {
+		background: var(--color--foreground--shade-1);
+		border-radius: 999px;
+	}
+}
+
+.triggersHeader {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.triggersHeaderText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	flex: 1;
+	min-width: 0;
+}
+
+.panelArea {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.panelArea > * {
+	flex: 1;
+	min-height: 0;
+}
+
+.panelToolbar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-bottom: var(--border);
+	/* Overrides `.panelArea > *` which sets flex:1. The toolbar should size to
+	   its content, not share height with the panel below. */
+	flex: 0 0 auto !important;
+	min-height: auto !important;
+}
+
+.panelToolbarTitle {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-family: var(--font-family--mono, monospace);
+	font-size: var(--font-size--xs);
+	color: var(--color--text);
+}
+
+.backBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	background: transparent;
+	border: var(--border);
+	border-color: transparent;
+	border-radius: var(--radius);
+	color: var(--color--text);
+	cursor: pointer;
+	flex-shrink: 0;
+
+	&:hover {
+		background: var(--color--background--light-2);
+	}
+}
+
+.rawToggleInline {
+	position: static;
+	top: auto;
+	right: auto;
+}
+
+.rawToggle {
+	position: absolute;
+	top: var(--spacing--sm);
+	right: var(--spacing--md);
+	z-index: 1;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	background: var(--color--background);
+	border: var(--border);
+	border-radius: var(--radius);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
+	cursor: pointer;
+
+	&:hover {
+		background: var(--color--background--light-2);
+		color: var(--color--text);
+	}
+}
+
+.rawToggleActive {
+	background: var(--color--background--light-3);
+	color: var(--color--text);
+	border-color: var(--color--foreground);
 }
 </style>

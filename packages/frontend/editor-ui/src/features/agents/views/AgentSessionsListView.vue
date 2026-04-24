@@ -10,7 +10,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nTableBase, N8nText } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const i18n = useI18n();
@@ -100,6 +100,13 @@ async function loadMore() {
 
 <template>
 	<div :class="$style.wrapper">
+		<div :class="$style.header">
+			<N8nText tag="h3" size="large" :bold="true">Executions</N8nText>
+			<N8nText size="small" color="text-light">
+				{{ sessionsStore.threads.length }}
+				{{ sessionsStore.threads.length === 1 ? 'execution' : 'executions' }}
+			</N8nText>
+		</div>
 		<div :class="$style.tableContainer">
 			<N8nTableBase>
 				<thead>
@@ -171,13 +178,39 @@ async function loadMore() {
 
 <style module lang="scss">
 .wrapper {
-	padding: var(--spacing--lg) var(--spacing--2xl);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg);
 	height: 100%;
-	overflow: auto;
+	min-height: 0;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--color--foreground--shade-1) transparent;
+
+	&::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	&::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	&::-webkit-scrollbar-thumb {
+		background: var(--color--foreground--shade-1);
+		border-radius: 999px;
+	}
+}
+
+.header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .tableContainer {
-	max-width: var(--content-container--width);
+	width: 100%;
+	overflow-x: auto;
 }
 
 .clickableRow {

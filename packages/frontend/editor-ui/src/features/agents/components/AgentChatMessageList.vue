@@ -105,23 +105,8 @@ watch(
 <template>
 	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
-			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
-				<div :class="$style.avatar">
-					<N8nIcon icon="robot" width="20" height="20" />
-				</div>
-				<div :class="$style.content">
-					<details v-if="group.thinking" :class="$style.thinkingBlock">
-						<summary :class="$style.thinkingSummary">
-							<N8nIcon icon="brain" :size="12" />
-							Thinking...
-						</summary>
-						<div :class="$style.thinkingContent">{{ group.thinking }}</div>
-					</details>
-					<AgentChatToolSteps :tool-calls="group.toolCalls" />
-				</div>
-			</div>
 			<div
-				v-else
+				v-if="group.kind === 'message'"
 				:class="[$style.message, group.message.role === 'user' ? $style.user : $style.assistant]"
 			>
 				<div :class="$style.avatar">
@@ -129,17 +114,6 @@ watch(
 					<N8nIcon v-else icon="robot" width="20" height="20" />
 				</div>
 				<div :class="$style.content">
-					<details v-if="group.message.thinking" :class="$style.thinkingBlock">
-						<summary :class="$style.thinkingSummary">
-							<N8nIcon icon="brain" :size="12" />
-							Thinking...
-						</summary>
-						<div :class="$style.thinkingContent">{{ group.message.thinking }}</div>
-					</details>
-					<AgentChatToolSteps
-						v-if="group.message.toolCalls?.length"
-						:tool-calls="group.message.toolCalls"
-					/>
 					<div
 						v-if="group.message.role === 'user'"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
@@ -160,12 +134,40 @@ watch(
 							/>
 						</div>
 					</div>
+				</div>
+			</div>
+			<div v-else :class="[$style.message, $style.assistant]">
+				<div :class="$style.avatar">
+					<N8nIcon icon="robot" width="20" height="20" />
+				</div>
+				<div :class="$style.content">
+					<details v-if="group.thinking" :class="$style.thinkingBlock">
+						<summary :class="$style.thinkingSummary">
+							<N8nIcon icon="brain" :size="12" />
+							Thinking...
+						</summary>
+						<div :class="$style.thinkingContent">{{ group.thinking }}</div>
+					</details>
+					<AgentChatToolSteps v-if="group.toolCalls.length" :tool-calls="group.toolCalls" />
+					<div
+						v-if="group.finalMessage?.content"
+						:class="[
+							$style.chatMessage,
+							{ [$style.chatMessageError]: group.finalMessage.status === 'error' },
+						]"
+					>
+						<div :class="$style.markdownContent">
+							<ChatMarkdownChunk
+								:source="{ type: 'text', content: group.finalMessage.content }"
+								@open-artifact="() => {}"
+							/>
+						</div>
+					</div>
 					<ChatTypingIndicator
 						v-if="
-							group.message.role === 'assistant' &&
-							group.message.status === 'streaming' &&
-							!group.message.content &&
-							!group.message.toolCalls?.length
+							group.finalMessage?.status === 'streaming' &&
+							!group.finalMessage.content &&
+							!group.toolCalls.length
 						"
 						:class="$style.typingIndicator"
 					/>
@@ -193,11 +195,35 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+	/* Slimmer scrollbar — still visible on hover/scroll but less intrusive. */
+	scrollbar-width: thin;
+	scrollbar-color: var(--color--foreground--shade-1) transparent;
+
+	&::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	&::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	&::-webkit-scrollbar-thumb {
+		background: var(--color--foreground--shade-1);
+		border-radius: 999px;
+	}
 }
 
 .message {
 	position: relative;
+	padding-top: var(--spacing--4xs);
 	padding-left: 40px;
+}
+
+/* Flip user messages so the avatar sits on the right and the bubble aligns to
+   that side. */
+.message.user {
+	padding-left: 0;
+	padding-right: 40px;
 }
 
 .avatar {
@@ -213,15 +239,24 @@ watch(
 	color: var(--color--text--tint-1);
 }
 
+.message.user .avatar {
+	left: auto;
+	right: 0;
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
 }
 
+.message.user .content {
+	align-items: flex-end;
+}
+
 .chatMessage {
 	overflow-wrap: break-word;
-	font-size: var(--font-size--md);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 }
 
@@ -244,7 +279,7 @@ watch(
 
 .markdownContent {
 	color: var(--color--text--shade-1);
-	font-size: var(--font-size--md);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
 	> *:last-child > *:last-child {

@@ -21,12 +21,32 @@ describe('AgentConfigTree', () => {
 		expect(items.map((i) => i.attributes('data-key'))).toEqual(['model', 'instructions', 'tools']);
 	});
 
-	it('emits select when an entry is clicked', async () => {
+	it('emits select when a non-folder entry is clicked', async () => {
 		const wrapper = mount(AgentConfigTree, {
 			props: { config: { model: {}, tools: [] } as unknown as AgentJsonConfig, selectedKey: null },
 		});
+		await wrapper.find('[data-key="model"]').trigger('click');
+		expect(wrapper.emitted('select')?.[0]).toEqual(['model']);
+	});
+
+	it('expands the tools folder on click and reveals one child per tool', async () => {
+		const wrapper = mount(AgentConfigTree, {
+			props: {
+				config: {
+					tools: [
+						{ type: 'custom', name: 'Alpha' },
+						{ type: 'workflow', name: 'Beta' },
+					],
+				} as unknown as AgentJsonConfig,
+				selectedKey: null,
+			},
+		});
 		await wrapper.find('[data-key="tools"]').trigger('click');
-		expect(wrapper.emitted('select')?.[0]).toEqual(['tools']);
+		const children = wrapper.findAll('[data-testid="agent-config-tree-child"]');
+		expect(children).toHaveLength(2);
+		expect(children.map((c) => c.attributes('data-key'))).toEqual(['tools.0', 'tools.1']);
+		await children[1].trigger('click');
+		expect(wrapper.emitted('select')?.at(-1)).toEqual(['tools.1']);
 	});
 
 	it('renders an empty state when the config has no keys', () => {
