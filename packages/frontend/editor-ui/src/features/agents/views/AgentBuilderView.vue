@@ -673,7 +673,7 @@ function onContinueLoaded(count: number) {
 <style lang="scss" module>
 .builder {
 	display: grid;
-	grid-template-columns: minmax(280px, 360px) minmax(200px, 260px) 1fr;
+	grid-template-columns: minmax(360px, 440px) minmax(200px, 260px) 1fr;
 	height: 100%;
 	min-height: 0;
 	overflow: hidden;
