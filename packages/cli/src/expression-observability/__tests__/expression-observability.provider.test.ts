@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import { ExpressionEngineConfig } from '@n8n/config';
+import { ExpressionEngineConfig, type GlobalConfig } from '@n8n/config';
 import { EXPRESSION_METRICS } from '@n8n/expression-runtime';
 import { trace } from '@opentelemetry/api';
 import { mock } from 'jest-mock-extended';
@@ -23,6 +23,10 @@ function buildLogger(): Logger {
 	return logger;
 }
 
+function buildGlobalConfig(prefix = 'n8n_'): GlobalConfig {
+	return { endpoints: { metrics: { prefix } } } as GlobalConfig;
+}
+
 describe('ExpressionObservabilityProvider', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -34,6 +38,7 @@ describe('ExpressionObservabilityProvider', () => {
 			const provider = new ExpressionObservabilityProvider(
 				buildConfig({ observabilityEnabled: false }),
 				buildLogger(),
+				buildGlobalConfig(),
 			);
 
 			expect(() => {
@@ -48,7 +53,11 @@ describe('ExpressionObservabilityProvider', () => {
 
 	describe('metrics adapter', () => {
 		it('registers a prom counter with _total suffix', async () => {
-			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig(),
+				buildLogger(),
+				buildGlobalConfig(),
+			);
 			provider.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 2);
 
 			const metric = promClient.register.getSingleMetric('n8n_expression_pool_acquired_total');
@@ -58,7 +67,11 @@ describe('ExpressionObservabilityProvider', () => {
 		});
 
 		it('registers a prom gauge with the cleaned name', async () => {
-			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig(),
+				buildLogger(),
+				buildGlobalConfig(),
+			);
 			provider.metrics.gauge(EXPRESSION_METRICS.codeCacheSize.name, 42);
 
 			const output = await promClient.register.metrics();
@@ -66,7 +79,11 @@ describe('ExpressionObservabilityProvider', () => {
 		});
 
 		it('registers a prom histogram with bucketed observations', async () => {
-			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig(),
+				buildLogger(),
+				buildGlobalConfig(),
+			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 3, {
 				status: 'success',
 				type: 'none',
@@ -97,6 +114,7 @@ describe('ExpressionObservabilityProvider', () => {
 			const provider = new ExpressionObservabilityProvider(
 				buildConfig({ slowEvaluationThresholdMs: 50, tracesSampleRate: 0 }),
 				buildLogger(),
+				buildGlobalConfig(),
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.01, {
 				status: 'success',
@@ -109,6 +127,7 @@ describe('ExpressionObservabilityProvider', () => {
 			const provider = new ExpressionObservabilityProvider(
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
+				buildGlobalConfig(),
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.1, {
 				status: 'success',
@@ -129,6 +148,7 @@ describe('ExpressionObservabilityProvider', () => {
 			const provider = new ExpressionObservabilityProvider(
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
+				buildGlobalConfig(),
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.005, {
 				status: 'error',
@@ -149,6 +169,7 @@ describe('ExpressionObservabilityProvider', () => {
 			const provider = new ExpressionObservabilityProvider(
 				buildConfig({ tracesEnabled: false, slowEvaluationThresholdMs: 10 }),
 				buildLogger(),
+				buildGlobalConfig(),
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.5, {
 				status: 'error',
@@ -160,7 +181,11 @@ describe('ExpressionObservabilityProvider', () => {
 
 	describe('label-set stability (eager registration)', () => {
 		it('logs a warning and does not throw when an unknown metric is emitted', () => {
-			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig(),
+				buildLogger(),
+				buildGlobalConfig(),
+			);
 			expect(() => {
 				provider.metrics.counter('test.unknown', 1);
 			}).not.toThrow();
@@ -170,7 +195,11 @@ describe('ExpressionObservabilityProvider', () => {
 		});
 
 		it('uses the schema-registered label set regardless of call order', async () => {
-			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig(),
+				buildLogger(),
+				buildGlobalConfig(),
+			);
 
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.01, {
 				status: 'error',
@@ -195,7 +224,11 @@ describe('ExpressionObservabilityProvider', () => {
 
 	describe('logs adapter', () => {
 		it('delegates to scoped logger', () => {
-			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig(),
+				buildLogger(),
+				buildGlobalConfig(),
+			);
 			provider.logs.info('hello', { k: 'v' });
 			provider.logs.warn('warn', { k: 'v' });
 			provider.logs.error('boom', new Error('x'), { k: 'v' });

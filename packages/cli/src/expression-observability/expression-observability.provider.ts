@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { ExpressionEngineConfig } from '@n8n/config';
+import { ExpressionEngineConfig, GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
 	LogsAPI,
@@ -44,13 +44,17 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	private readonly scopedLogger: Logger;
 
+	private readonly prefix: string;
+
 	private tracer?: Tracer;
 
 	constructor(
 		private readonly config: ExpressionEngineConfig,
 		private readonly logger: Logger,
+		globalConfig: GlobalConfig,
 	) {
 		this.scopedLogger = this.logger.scoped('expression-engine');
+		this.prefix = globalConfig.endpoints.metrics.prefix;
 
 		if (!this.config.observabilityEnabled) {
 			this.metrics = NoOpProvider.metrics;
@@ -81,7 +85,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	private registerMetrics(): void {
 		for (const def of Object.values(EXPRESSION_METRICS) as MetricDef[]) {
-			const promName = toPromName(def.name, def.kind);
+			const promName = toPromName(def.name, def.kind, this.prefix);
 			switch (def.kind) {
 				case 'counter':
 					this.countersByName.set(
@@ -123,7 +127,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 	}
 
 	private counter(name: string, value: number, tags?: Record<string, string>): void {
-		const promName = toPromName(name, 'counter');
+		const promName = toPromName(name, 'counter', this.prefix);
 		const counter = this.countersByName.get(promName);
 		if (!counter) {
 			this.scopedLogger.warn('Emitted unknown expression metric', { name });
@@ -134,7 +138,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 	}
 
 	private gauge(name: string, value: number, tags?: Record<string, string>): void {
-		const promName = toPromName(name, 'gauge');
+		const promName = toPromName(name, 'gauge', this.prefix);
 		const gauge = this.gaugesByName.get(promName);
 		if (!gauge) {
 			this.scopedLogger.warn('Emitted unknown expression metric', { name });
@@ -145,7 +149,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 	}
 
 	private histogram(name: string, value: number, tags?: Record<string, string>): void {
-		const promName = toPromName(name, 'histogram');
+		const promName = toPromName(name, 'histogram', this.prefix);
 		const histogram = this.histogramsByName.get(promName);
 		if (!histogram) {
 			this.scopedLogger.warn('Emitted unknown expression metric', { name });

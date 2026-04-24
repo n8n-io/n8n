@@ -1,11 +1,13 @@
 import type { Attributes } from '@opentelemetry/api';
 
-import { METRIC_PREFIX } from './expression-observability.constants';
-
 const MAX_EXPRESSION_TEXT_LENGTH = 256;
 
-export function toPromName(name: string, kind: 'counter' | 'gauge' | 'histogram'): string {
-	const base = METRIC_PREFIX + name.replace(/\./g, '_');
+export function toPromName(
+	name: string,
+	kind: 'counter' | 'gauge' | 'histogram',
+	prefix: string,
+): string {
+	const base = prefix + name.replace(/\./g, '_');
 	return kind === 'counter' && !base.endsWith('_total') ? base + '_total' : base;
 }
 
