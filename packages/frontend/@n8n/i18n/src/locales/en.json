@@ -5130,7 +5130,7 @@
 	"instanceAi.connections.disconnectError.title": "Gateway disconnect failed",
 	"instanceAi.connections.disconnectError.message": "Failed to disconnect gateway",
 	"instanceAi.connections.row.remove": "Remove",
-	"instanceAi.connections.row.settings": "Settings",
+	"instanceAi.connections.row.settings": "Setup",
 	"instanceAi.connections.row.status.connected": "Connected",
 	"instanceAi.connections.row.status.waiting": "Waiting…",
 	"instanceAi.connections.row.status.disconnected": "Disconnected",
