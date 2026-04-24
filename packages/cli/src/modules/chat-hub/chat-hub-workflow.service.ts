@@ -528,7 +528,7 @@ export class ChatHubWorkflowService {
 				: {}),
 		};
 
-		const nodeExecutionStack = this.prepareExecutionData(
+		const nodeExecutionStack = await this.prepareExecutionData(
 			chatTriggerNode,
 			sessionId,
 			humanMessage,
@@ -1154,14 +1154,14 @@ Respond the title only:`,
 		return 'file';
 	}
 
-	prepareExecutionData(
+	async prepareExecutionData(
 		triggerNode: INode,
 		sessionId: string,
 		message: string,
 		attachments: IBinaryData[],
 		executionMetadata: ChatHubAuthenticationMetadata,
-	): IExecuteData[] {
-		const encryptedMetadata = this.cipher.encrypt(executionMetadata);
+	): Promise<IExecuteData[]> {
+		const encryptedMetadata = await this.cipher.encryptV2(executionMetadata);
 		// Attachments are already processed (id field populated) by the caller
 		return [
 			{
@@ -1461,7 +1461,7 @@ Respond the title only:`,
 			);
 		}
 
-		const nodeExecutionStack = this.prepareExecutionData(
+		const nodeExecutionStack = await this.prepareExecutionData(
 			chatTrigger,
 			sessionId,
 			message,
