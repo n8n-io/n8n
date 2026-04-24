@@ -16,6 +16,15 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	readonly credentialTypes = ['slackApi', 'slackOAuth2Api'];
 
+	readonly displayLabel = 'Slack';
+
+	readonly displayIcon = 'hashtag';
+
+	readonly displayHelpText =
+		'Connect a Slack bot credential to allow this agent to receive and respond to Slack messages.';
+
+	readonly displayConnectedText = 'Your agent is connected to Slack and can receive messages.';
+
 	readonly supportedComponents = [
 		'section',
 		'button',

@@ -14,6 +14,19 @@ import {
 } from 'n8n-workflow';
 
 /**
+ * Describes a chat platform integration that agents can connect to.
+ * Source of truth: the backend `ChatIntegrationRegistry`.
+ */
+export interface ChatIntegrationDescriptor {
+	type: string;
+	label: string;
+	icon: string;
+	credentialTypes: string[];
+	helpText: string;
+	connectedText: string;
+}
+
+/**
  * Node types a workflow can use as its trigger to be eligible as an agent
  * tool. Single source of truth for both the backend compatibility check
  * (`workflow-tool-factory.ts:SUPPORTED_TRIGGERS`) and the frontend Available

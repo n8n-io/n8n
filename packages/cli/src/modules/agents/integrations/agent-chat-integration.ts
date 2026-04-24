@@ -28,6 +28,23 @@ export abstract class AgentChatIntegration {
 	/** Credential types accepted by the frontend selector. */
 	abstract readonly credentialTypes: string[];
 
+	// ---------------------------------------------------------------------------
+	// FE display metadata — shown in the trigger-picker and integration cards.
+	// These are user-facing; keep them distinct from `description` (LLM-facing).
+	// ---------------------------------------------------------------------------
+
+	/** Human-readable label shown in UI. */
+	abstract readonly displayLabel: string;
+
+	/** Lucide icon name (from the shared icon set) for the integration card. */
+	abstract readonly displayIcon: string;
+
+	/** Help text shown in the trigger-picker before the user connects. */
+	abstract readonly displayHelpText: string;
+
+	/** Confirmation text shown after the integration is connected. */
+	abstract readonly displayConnectedText: string;
+
 	/**
 	 * Component types this platform supports in rich_interaction cards.
 	 * Omit to signal that the platform has no rich_interaction surface — the

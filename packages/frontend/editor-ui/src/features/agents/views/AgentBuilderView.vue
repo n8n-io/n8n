@@ -16,6 +16,7 @@ import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM, MODAL_CANCEL, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
+import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
@@ -87,6 +88,8 @@ const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 
+const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
+
 const builderTelemetry = useAgentBuilderTelemetry({
 	agentId,
 	projectId,
@@ -112,9 +115,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-// Keep in sync with AgentIntegrationsPanel.integrationConfigs
-const KNOWN_TRIGGER_TYPES = ['slack', 'telegram'] as const;
 
 async function fetchAgent() {
 	const data = await getAgent(rootStore.restApiContext, projectId.value, agentId.value);
@@ -397,7 +397,9 @@ async function initialize() {
 	void (async () => {
 		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 		// will correct it once the user expands the Triggers section.
-		const connected = await builderTelemetry.fetchInitialTriggersBaseline(KNOWN_TRIGGER_TYPES);
+		const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
+		const triggerTypes = integrations.map((i) => i.type);
+		const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 		if (connected) connectedTriggers.value = connected;
 	})();
 

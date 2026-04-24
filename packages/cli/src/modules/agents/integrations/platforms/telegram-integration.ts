@@ -30,6 +30,15 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly credentialTypes = ['telegramApi'];
 
+	readonly displayLabel = 'Telegram';
+
+	readonly displayIcon = 'paper-plane';
+
+	readonly displayHelpText =
+		'Connect a Telegram bot credential to allow this agent to receive and respond to Telegram messages.';
+
+	readonly displayConnectedText = 'Your agent is connected to Telegram and can receive messages.';
+
 	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
 
 	readonly description =

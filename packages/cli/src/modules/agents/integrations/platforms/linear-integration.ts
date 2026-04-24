@@ -24,6 +24,16 @@ export class LinearIntegration extends AgentChatIntegration {
 
 	readonly credentialTypes = ['linearApi', 'linearOAuth2Api'];
 
+	readonly displayLabel = 'Linear';
+
+	readonly displayIcon = 'list-checks';
+
+	readonly displayHelpText =
+		'Connect a Linear API credential to let this agent respond to comments in Linear issues. ' +
+		'Point a Linear webhook at the URL below and paste its signing secret into the credential.';
+
+	readonly displayConnectedText = 'Your agent is connected to Linear and can reply to @-mentions.';
+
 	constructor(private readonly logger: Logger) {
 		super();
 	}

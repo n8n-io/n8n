@@ -1,5 +1,5 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
-import type { AgentPersistedMessageDto } from '@n8n/api-types';
+import type { AgentPersistedMessageDto, ChatIntegrationDescriptor } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
 import { randomUUID } from 'crypto';
@@ -138,6 +138,11 @@ export class AgentsController {
 	async getModelCatalog() {
 		const { fetchProviderCatalog } = await import('@n8n/agents');
 		return await fetchProviderCatalog();
+	}
+
+	@Get('/catalog/integrations')
+	listIntegrations(): ChatIntegrationDescriptor[] {
+		return this.agentsService.listChatIntegrations();
 	}
 
 	@Get('/threads')

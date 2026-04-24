@@ -5,6 +5,7 @@ import type {
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
+import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import * as agents from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
@@ -145,6 +146,23 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 	) {}
+
+	/**
+	 * Return the list of registered chat platform integrations with their
+	 * FE display metadata. Used by `GET /agents/integrations`.
+	 */
+	listChatIntegrations(): ChatIntegrationDescriptor[] {
+		return Container.get(ChatIntegrationRegistry)
+			.list()
+			.map((i) => ({
+				type: i.type,
+				label: i.displayLabel,
+				icon: i.displayIcon,
+				credentialTypes: i.credentialTypes,
+				helpText: i.displayHelpText,
+				connectedText: i.displayConnectedText,
+			}));
+	}
 
 	async create(projectId: string, name: string): Promise<Agent> {
 		// New agents start with no instructions so the home screen routes the

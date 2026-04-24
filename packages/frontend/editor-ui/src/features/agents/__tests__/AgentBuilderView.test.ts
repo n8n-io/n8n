@@ -103,6 +103,13 @@ vi.mock('../agentSessions.store', () => ({
 	}),
 }));
 
+vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
+	useAgentIntegrationsCatalog: () => ({
+		catalog: { value: [] },
+		ensureLoaded: vi.fn().mockResolvedValue([]),
+	}),
+}));
+
 const baseTextFn = (key: string) => {
 	const map: Record<string, string> = {
 		'agents.builder.chatMode.build': 'Build',

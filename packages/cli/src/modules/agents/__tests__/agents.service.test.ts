@@ -9,6 +9,11 @@ import { AgentsService, chatThreadId } from '../agents.service';
 import type { AgentPublishedVersion } from '../entities/agent-published-version.entity';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+	type AgentChatIntegrationContext,
+} from '../integrations/agent-chat-integration';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { AgentPublishedVersionRepository } from '../repositories/agent-published-version.repository';
@@ -294,6 +299,49 @@ describe('AgentsService', () => {
 			// Second arg must be absent — undefined means "all users".
 			expect(n8nMemory.deleteMessagesByThread.mock.calls[0]).toHaveLength(1);
 			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+		});
+	});
+
+	describe('listChatIntegrations', () => {
+		class TestIntegration extends AgentChatIntegration {
+			readonly type = 'test-platform';
+			readonly credentialTypes = ['testApi'];
+			readonly displayLabel = 'Test Platform';
+			readonly displayIcon = 'circle';
+			readonly displayHelpText = 'Connect a Test credential.';
+			readonly displayConnectedText = 'Connected to Test.';
+			async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+				return {};
+			}
+		}
+
+		it('returns one descriptor per registered integration', () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new TestIntegration());
+			Container.set(ChatIntegrationRegistry, registry);
+
+			const result = service.listChatIntegrations();
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				type: 'test-platform',
+				label: 'Test Platform',
+				icon: 'circle',
+				credentialTypes: ['testApi'],
+				helpText: 'Connect a Test credential.',
+				connectedText: 'Connected to Test.',
+			});
+		});
+
+		it('returns an empty array when no integrations are registered', () => {
+			const registry = new ChatIntegrationRegistry();
+			Container.set(ChatIntegrationRegistry, registry);
+
+			expect(service.listChatIntegrations()).toEqual([]);
+		});
+
+		afterEach(() => {
+			Container.reset();
 		});
 	});
 
