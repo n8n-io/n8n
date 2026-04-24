@@ -9,12 +9,22 @@ const props = defineProps<{
 	item: ResourceItem;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
 	click: [];
 }>();
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+
+const emitClick = () => emit('click');
+
+const onCardKeyActivate = (event: KeyboardEvent) => {
+	if (event.target !== event.currentTarget) {
+		return;
+	}
+
+	emitClick();
+};
 
 const tagLabel = computed(() =>
 	props.item.type === 'video'
@@ -75,9 +85,9 @@ const videoSourceLabel = computed(() => {
 		role="button"
 		tabindex="0"
 		data-testid="resource-card"
-		@click="$emit('click')"
-		@keydown.enter="$emit('click')"
-		@keydown.space.prevent="$emit('click')"
+		@click="emitClick"
+		@keydown.enter.prevent="onCardKeyActivate"
+		@keyup.space.prevent="onCardKeyActivate"
 	>
 		<div :class="$style.tag" data-testid="resource-card-badge">
 			{{ tagLabel }}

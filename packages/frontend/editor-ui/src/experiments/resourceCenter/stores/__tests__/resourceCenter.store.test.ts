@@ -77,6 +77,19 @@ describe('resourceCenter.store', () => {
 		});
 	});
 
+	describe('sidebar auto-expand', () => {
+		it('stops auto-expanding after the sidebar is marked as expanded', () => {
+			mocks.getVariant.mockReturnValue('variant');
+			const store = useResourceCenterStore();
+
+			expect(store.shouldAutoExpandSidebar).toBe(true);
+
+			store.markSidebarAutoExpanded();
+
+			expect(store.shouldAutoExpandSidebar).toBe(false);
+		});
+	});
+
 	describe('experiment participation tracking', () => {
 		it('does not emit "User is part of experiment" from the store', () => {
 			// The participation event is emitted once via EXPERIMENTS_TO_TRACK in posthog.store.

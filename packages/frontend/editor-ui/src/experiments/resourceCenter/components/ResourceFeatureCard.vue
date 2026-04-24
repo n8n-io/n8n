@@ -14,7 +14,7 @@ const props = defineProps<{
 	tone: FeatureCardTone;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
 	click: [];
 }>();
 
@@ -24,6 +24,16 @@ const uiStore = useUIStore();
 
 const toneClass = computed(() => (props.tone === 'amber' ? 'toneAmber' : 'toneRose'));
 const isDarkTheme = computed(() => uiStore.appliedTheme === 'dark');
+
+const emitClick = () => emit('click');
+
+const onCardKeyActivate = (event: KeyboardEvent) => {
+	if (event.target !== event.currentTarget) {
+		return;
+	}
+
+	emitClick();
+};
 
 const resolvedArtworkNodeTypes = computed(() => {
 	if (!props.item.nodeTypes?.length) {
@@ -52,9 +62,9 @@ const resolvedArtworkNodeTypes = computed(() => {
 		role="button"
 		tabindex="0"
 		data-testid="resource-feature-card"
-		@click="$emit('click')"
-		@keydown.enter="$emit('click')"
-		@keydown.space.prevent="$emit('click')"
+		@click="emitClick"
+		@keydown.enter.prevent="onCardKeyActivate"
+		@keyup.space.prevent="onCardKeyActivate"
 	>
 		<div :class="$style.content">
 			<div :class="$style.copy">
@@ -66,7 +76,7 @@ const resolvedArtworkNodeTypes = computed(() => {
 				</p>
 			</div>
 
-			<button type="button" :class="$style.runButton" @click.stop="$emit('click')">
+			<button type="button" :class="$style.runButton" @click.stop="emitClick">
 				<N8nIcon icon="play" size="xsmall" />
 				{{ i18n.baseText('ndv.output.run') }}
 			</button>

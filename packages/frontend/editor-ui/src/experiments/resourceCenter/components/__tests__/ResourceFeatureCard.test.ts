@@ -37,4 +37,14 @@ describe('ResourceFeatureCard', () => {
 
 		expect(wrapper.emitted('click')).toHaveLength(3);
 	});
+
+	it('does not treat run button keyboard events as card activation', async () => {
+		const wrapper = mountCard(readyToRunItem);
+		const runButton = wrapper.find('button');
+
+		await runButton.trigger('keydown.enter');
+		await runButton.trigger('keyup.space');
+
+		expect(wrapper.emitted('click')).toBeUndefined();
+	});
 });

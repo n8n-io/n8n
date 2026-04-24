@@ -63,7 +63,7 @@ describe('ResourceCard', () => {
 
 		await wrapper.find('[data-testid="resource-card"]').trigger('click');
 		await wrapper.find('[data-testid="resource-card"]').trigger('keydown.enter');
-		await wrapper.find('[data-testid="resource-card"]').trigger('keydown.space');
+		await wrapper.find('[data-testid="resource-card"]').trigger('keyup.space');
 
 		expect(wrapper.emitted('click')).toHaveLength(3);
 	});

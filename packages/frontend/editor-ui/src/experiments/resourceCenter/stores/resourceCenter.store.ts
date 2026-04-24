@@ -15,6 +15,7 @@ import { quickStartWorkflows } from '../data/quickStartWorkflows';
 
 const LOCAL_STORAGE_CREDENTIAL_KEY = 'N8N_READY_TO_RUN_OPENAI_CREDENTIAL_ID';
 const TOOLTIP_STORAGE_KEY = 'n8n-resourceCenter-tooltipDismissed';
+const SIDEBAR_AUTO_EXPANDED_KEY = 'n8n-resourceCenter-sidebarAutoExpanded';
 
 export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	const posthogStore = usePostHog();
@@ -26,6 +27,9 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 
 	const isLoadingTemplates = ref(false);
 	const hasTooltipBeenDismissed = ref(localStorage.getItem(TOOLTIP_STORAGE_KEY) === 'true');
+	const hasSidebarBeenAutoExpanded = ref(
+		localStorage.getItem(SIDEBAR_AUTO_EXPANDED_KEY) === 'true',
+	);
 
 	const isFeatureEnabled = () =>
 		posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name) === RESOURCE_CENTER_EXPERIMENT.variant;
@@ -123,14 +127,12 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 		});
 	}
 
-	// Sidebar auto-expand
-	const SIDEBAR_AUTO_EXPANDED_KEY = 'n8n-resourceCenter-sidebarAutoExpanded';
-
 	const shouldAutoExpandSidebar = computed(() => {
-		return isFeatureEnabled() && localStorage.getItem(SIDEBAR_AUTO_EXPANDED_KEY) !== 'true';
+		return isFeatureEnabled() && !hasSidebarBeenAutoExpanded.value;
 	});
 
 	function markSidebarAutoExpanded() {
+		hasSidebarBeenAutoExpanded.value = true;
 		localStorage.setItem(SIDEBAR_AUTO_EXPANDED_KEY, 'true');
 	}
 
