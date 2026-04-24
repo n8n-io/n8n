@@ -18,8 +18,8 @@ export type ToggleWorkflowsMcpAccessTarget =
 
 export type ToggleWorkflowsMcpAccessResponse = {
 	updatedCount: number;
-	updatedIds: string[];
 	skippedCount: number;
+	updatedIds?: string[];
 };
 
 export async function getMcpSettings(context: IRestApiContext): Promise<McpSettingsResponse> {

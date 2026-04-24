@@ -188,9 +188,9 @@ describe('mcp.store', () => {
 		});
 
 		it('forwards projectId scope to the API', async () => {
+			// Project-scoped responses from the backend omit `updatedIds`.
 			const spy = vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 0,
-				updatedIds: [],
 				skippedCount: 0,
 			});
 
@@ -200,15 +200,36 @@ describe('mcp.store', () => {
 		});
 
 		it('forwards folderId scope to the API', async () => {
+			// Folder-scoped responses from the backend omit `updatedIds`.
 			const spy = vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
 				updatedCount: 0,
-				updatedIds: [],
 				skippedCount: 0,
 			});
 
 			await store.toggleWorkflowsMcpAccess({ folderId: 'folder-1' }, true);
 
 			expect(spy).toHaveBeenCalledWith({}, { folderId: 'folder-1' }, true);
+		});
+
+		it('does not patch local stores when the response omits updatedIds (scope mode)', async () => {
+			workflowsListStore.workflowsById = {
+				'wf-1': {
+					id: 'wf-1',
+					name: 'wf-1',
+					settings: { availableInMCP: false, executionOrder: 'v1' },
+				},
+			} as unknown as typeof workflowsListStore.workflowsById;
+
+			vi.spyOn(mcpApi, 'toggleWorkflowsMcpAccessApi').mockResolvedValue({
+				updatedCount: 5,
+				skippedCount: 0,
+			});
+
+			await expect(
+				store.toggleWorkflowsMcpAccess({ projectId: 'project-1' }, true),
+			).resolves.toEqual({ updatedCount: 5, skippedCount: 0 });
+
+			expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(false);
 		});
 	});
 });

@@ -18,8 +18,8 @@ const BULK_CHUNK_SIZE = 500;
 
 type BulkSetAvailableInMCPResult = {
 	updatedCount: number;
-	updatedIds: string[];
 	skippedCount: number;
+	updatedIds?: string[];
 };
 
 @Service()
@@ -74,10 +74,15 @@ export class McpSettingsService {
 			folderId,
 		});
 
-		const baselineSize = workflowIds ? new Set(workflowIds).size : candidateIds.length;
+		const isWorkflowIdsScope = Boolean(workflowIds);
+		const baselineSize = isWorkflowIdsScope ? new Set(workflowIds).size : candidateIds.length;
 
 		if (candidateIds.length === 0) {
-			return { updatedCount: 0, updatedIds: [], skippedCount: baselineSize };
+			return {
+				updatedCount: 0,
+				skippedCount: baselineSize,
+				...(isWorkflowIdsScope ? { updatedIds: [] } : {}),
+			};
 		}
 
 		const writtenIds: string[] = [];
@@ -122,8 +127,8 @@ export class McpSettingsService {
 
 		return {
 			updatedCount: confirmedIds.length,
-			updatedIds: confirmedIds,
 			skippedCount: baselineSize - confirmedIds.length,
+			...(isWorkflowIdsScope ? { updatedIds: confirmedIds } : {}),
 		};
 	}
 

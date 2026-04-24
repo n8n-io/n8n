@@ -115,7 +115,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		if (!response.updatedIds.includes(workflowId)) {
+		if (!(response.updatedIds ?? []).includes(workflowId)) {
 			throw new Error(
 				`Workflow ${workflowId} could not be updated. It may be archived or you may no longer have permission to edit it.`,
 			);
@@ -128,10 +128,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	/**
 	 * Bulk-toggle MCP availability, scoped by an id list, a project, or a
-	 * folder (+ descendants). Local stores are patched only for workflows that
-	 * the backend confirmed were updated. Unlike the single-workflow variant,
-	 * this does not throw on partial skips — callers need the full
-	 * `{ updatedIds, skippedCount }` response to drive bulk UX.
+	 * folder (+ descendants). Local stores are patched only for workflows
+	 * that the backend confirmed were updated.
+	 * For project/folder-scoped calls the backend omits `updatedIds`
 	 */
 	async function toggleWorkflowsMcpAccess(
 		target: ToggleWorkflowsMcpAccessTarget,
@@ -143,7 +142,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		for (const id of response.updatedIds) {
+		for (const id of response.updatedIds ?? []) {
 			applyAvailableInMCPToLocalStores(id, availableInMCP);
 		}
 

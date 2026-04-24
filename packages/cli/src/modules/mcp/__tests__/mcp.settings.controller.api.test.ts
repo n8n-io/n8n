@@ -316,7 +316,7 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			.send({ availableInMCP: true, projectId: project.id });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.updatedIds.sort()).toEqual([projectWf1.id, projectWf2.id].sort());
+		expect(response.body.data).toEqual({ updatedCount: 2, skippedCount: 0 });
 		expect(await readAvailableInMCP(projectWf1.id)).toBe(true);
 		expect(await readAvailableInMCP(projectWf2.id)).toBe(true);
 		expect(await readAvailableInMCP(unrelatedWf.id)).toBeUndefined();
@@ -346,12 +346,7 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			.send({ availableInMCP: true, folderId: rootFolder.id });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.updatedIds.sort()).toEqual(
-			[workflowInRoot.id, workflowInChild.id].sort(),
-		);
-		// Verify the DB actually reflects the change — relying on the
-		// response alone is insufficient because no-ops are also reported
-		// in `updatedIds`.
+		expect(response.body.data).toEqual({ updatedCount: 2, skippedCount: 0 });
 		expect(await readAvailableInMCP(workflowInRoot.id)).toBe(true);
 		expect(await readAvailableInMCP(workflowInChild.id)).toBe(true);
 		expect(await readAvailableInMCP(workflowOutsideFolder.id)).toBeUndefined();
@@ -384,9 +379,9 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			.send({ availableInMCP: true, folderId: folder.id });
 
 		expect(response.statusCode).toBe(200);
+		// Folder-scoped — `updatedIds` is omitted from the response.
 		expect(response.body.data).toEqual({
 			updatedCount: 1,
-			updatedIds: [workflow.id],
 			skippedCount: 0,
 		});
 		expect(await readAvailableInMCP(workflow.id)).toBe(true);

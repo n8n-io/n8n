@@ -289,7 +289,40 @@ describe('McpSettingsService', () => {
 				'project-1',
 			);
 			expect(stubs.update).toHaveBeenCalledTimes(1);
-			expect(result.updatedIds).toEqual(['wf-1']);
+			expect(result.updatedCount).toBe(1);
+		});
+
+		test('omits updatedIds from the response when scoped by projectId', async () => {
+			setupRepository([
+				{ id: 'wf-1', settings: {} },
+				{ id: 'wf-2', settings: {} },
+			]);
+			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1', 'wf-2']);
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				projectId: 'project-1',
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(result).toEqual({ updatedCount: 2, skippedCount: 0 });
+			expect(result).not.toHaveProperty('updatedIds');
+		});
+
+		test('omits updatedIds from the response when scoped by folderId', async () => {
+			setupRepository([{ id: 'wf-1', settings: {} }]);
+			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1']);
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				folderId: 'folder-1',
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(result).toEqual({ updatedCount: 1, skippedCount: 0 });
+			expect(result).not.toHaveProperty('updatedIds');
 		});
 
 		test('resolves candidates via findAllWorkflowIdsForUser when scoped by folderId', async () => {
@@ -325,8 +358,26 @@ describe('McpSettingsService', () => {
 			expect(stubs.manager.transaction).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				updatedCount: 0,
-				updatedIds: [],
 				skippedCount: 0,
+			});
+			expect(result).not.toHaveProperty('updatedIds');
+		});
+
+		test('returns an empty updatedIds array when scoped by workflowIds and none are accessible', async () => {
+			setupRepository([]);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				workflowIds: ['wf-1', 'wf-2'],
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(result).toEqual({
+				updatedCount: 0,
+				skippedCount: 2,
+				updatedIds: [],
 			});
 		});
 
