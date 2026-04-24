@@ -26,6 +26,21 @@ export class Cipher {
 		return this.decryptWithKey(data, key, 'aes-256-cbc');
 	}
 
+	/**
+	 * Encrypts with the instance encryption key specifically. Use this for payloads
+	 * that must be protected by the instance key (e.g. data-encryption keys
+	 * themselves), independently of any future change to the default `encrypt` key.
+	 */
+	encryptWithInstanceKey(data: string | object): string {
+		const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
+		return this.encryptWithKey(plaintext, this.instanceSettings.encryptionKey, 'aes-256-cbc');
+	}
+
+	/** Counterpart of {@link encryptWithInstanceKey}. */
+	decryptWithInstanceKey(data: string): string {
+		return this.decryptWithKey(data, this.instanceSettings.encryptionKey, 'aes-256-cbc');
+	}
+
 	encryptWithKey(data: string, key: string, algorithm: CipherAlgorithm): string {
 		switch (algorithm) {
 			case 'aes-256-cbc':
