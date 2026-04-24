@@ -29,15 +29,15 @@ export class EncryptionKeyProxy {
 		return this.provider !== undefined;
 	}
 
-	getActiveKey(): Promise<KeyInfo> {
-		return this.provider!.getActiveKey();
+	async getActiveKey(): Promise<KeyInfo> {
+		return await this.provider!.getActiveKey();
 	}
 
-	getKeyById(id: string): Promise<KeyInfo | null> {
-		return this.provider!.getKeyById(id);
+	async getKeyById(id: string): Promise<KeyInfo | null> {
+		return await this.provider!.getKeyById(id);
 	}
 
-	getLegacyKey(): Promise<KeyInfo> {
-		return this.provider!.getLegacyKey();
+	async getLegacyKey(): Promise<KeyInfo> {
+		return await this.provider!.getLegacyKey();
 	}
 }
