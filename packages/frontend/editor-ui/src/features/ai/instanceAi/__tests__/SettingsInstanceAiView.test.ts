@@ -56,7 +56,6 @@ const renderComponent = createComponentRenderer(SettingsInstanceAiView, {
 	global: {
 		stubs: {
 			ModelSection: makeStub('ModelSection'),
-			LocalGatewaySection: makeStub('LocalGatewaySection'),
 			SandboxSection: makeStub('SandboxSection'),
 			MemorySection: makeStub('MemorySection'),
 			SearchSection: makeStub('SearchSection'),

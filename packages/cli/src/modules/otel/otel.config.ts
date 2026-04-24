@@ -25,4 +25,7 @@ export class OtelConfig {
 
 	@Env('N8N_OTEL_TRACES_INCLUDE_NODE_SPANS')
 	includeNodeSpans: boolean = true;
+
+	@Env('N8N_OTEL_TRACES_INJECT_OUTBOUND')
+	injectOutbound: boolean = true;
 }

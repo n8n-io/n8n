@@ -20,11 +20,15 @@ jest.mock('node:os', () => {
 	return { ...actual, homedir: jest.fn(() => actual.homedir()) };
 });
 
-// Prevent GatewayClient.start() from making real network calls
+// Prevent GatewayClient.start() from making real network calls. Mirror the
+// real contract: disconnect() invokes the onDisconnected hook so the daemon
+// can clear its state.
 jest.mock('./gateway-client', () => ({
-	['GatewayClient']: jest.fn().mockImplementation(() => ({
+	['GatewayClient']: jest.fn().mockImplementation((options: { onDisconnected?: () => void }) => ({
 		start: jest.fn().mockResolvedValue(undefined),
-		disconnect: jest.fn().mockResolvedValue(undefined),
+		disconnect: jest.fn().mockImplementation(() => {
+			options.onDisconnected?.();
+		}),
 		tools: [],
 	})),
 }));
@@ -441,6 +445,28 @@ describe('POST /disconnect', () => {
 			await post(port, '/disconnect');
 			const healthAfter = await get(port, '/health');
 			expect(healthAfter.body.connected).toBe(false);
+		} finally {
+			await close();
+		}
+	});
+
+	it('is idempotent and fires onStatusChange("disconnected") exactly once', async () => {
+		const onStatusChange = jest.fn();
+		const { port, close } = await startTestDaemon(
+			{ filesystem: { dir: tmpDir } },
+			{ confirmConnect: jest.fn().mockResolvedValue(true), onStatusChange },
+		);
+		try {
+			await post(port, '/connect', { url: 'http://localhost:5678', token: 'tok' });
+			onStatusChange.mockClear();
+
+			const first = await post(port, '/disconnect');
+			const second = await post(port, '/disconnect');
+
+			expect(first.status).toBe(200);
+			expect(second.status).toBe(200);
+			expect(onStatusChange).toHaveBeenCalledTimes(1);
+			expect(onStatusChange).toHaveBeenCalledWith('disconnected');
 		} finally {
 			await close();
 		}

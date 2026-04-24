@@ -2475,6 +2475,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../@n8n/errors
+      '@n8n/expression-runtime':
+        specifier: workspace:*
+        version: link:../@n8n/expression-runtime
       '@n8n/instance-ai':
         specifier: workspace:*
         version: link:../@n8n/instance-ai
