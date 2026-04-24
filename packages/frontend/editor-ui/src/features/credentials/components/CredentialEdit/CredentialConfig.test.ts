@@ -17,6 +17,7 @@ import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/sha
 const TEST_NDV_STORE_ID = 'credential-config-test@latest' as NDVStoreId;
 
 vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
 	return {
 		...original,

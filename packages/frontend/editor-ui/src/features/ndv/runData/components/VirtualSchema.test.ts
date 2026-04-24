@@ -15,7 +15,7 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
-import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -29,11 +29,12 @@ import { cleanup, waitFor } from '@testing-library/vue';
 import { computed, shallowRef } from 'vue';
 
 vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
 	return { ...original, injectNDVStore: vi.fn() };
 });
 
-const TEST_NDV_STORE_ID = '123@latest' as import('@/features/ndv/shared/ndv.store').NDVStoreId;
+const TEST_NDV_STORE_ID = '123@latest' as NDVStoreId;
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
 	createResultOk,

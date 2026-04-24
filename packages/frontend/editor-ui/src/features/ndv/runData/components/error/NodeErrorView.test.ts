@@ -12,6 +12,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectNDVStore, useNDVStore, type NDVStoreId } from '@/features/ndv/shared/ndv.store';
 
 vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const original = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
 	return { ...original, injectNDVStore: vi.fn() };
 });
