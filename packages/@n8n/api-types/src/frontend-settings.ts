@@ -35,6 +35,7 @@ export interface IUserManagementSettings {
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;
+	passwordMinLength: number;
 }
 
 export interface IEnterpriseSettings {
