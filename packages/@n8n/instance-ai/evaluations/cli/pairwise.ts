@@ -174,9 +174,15 @@ async function runExample(
 	logger: EvalLogger,
 ): Promise<ExampleRecord> {
 	logger.verbose(`[${example.id} #${iteration}] building workflow...`);
+	const logPath = path.join(
+		args.outputDir,
+		'chunks',
+		`${safeFilename(`${example.id}_${iteration}`)}.jsonl`,
+	);
 	const build = await buildInProcess({
 		prompt: example.prompt,
 		timeoutMs: args.timeoutMs,
+		logPath,
 	});
 
 	const record: ExampleRecord = {

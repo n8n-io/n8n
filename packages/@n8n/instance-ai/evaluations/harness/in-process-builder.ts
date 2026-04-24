@@ -11,16 +11,32 @@
 //
 // The built workflow is captured through the stub `workflowService`'s
 // `createFromWorkflowJSON` hook — the `build-workflow` tool calls it.
+//
+// HITL: several domain tools (data-tables create, delete workflow, etc.)
+// suspend the stream waiting for user approval. We run the stream through
+// `executeResumableStream` with `mode: 'auto'` so every confirmation
+// request auto-approves — otherwise the stream silently ends at the
+// first suspension and the builder never completes.
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiEvent } from '@n8n/api-types';
 import { Agent } from '@mastra/core/agent';
+import { InMemoryStore } from '@mastra/core/storage';
+import { createWriteStream, type WriteStream } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
 import { nanoid } from 'nanoid';
 
 import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 
+import { registerWithMastra } from '../../src/agent/register-with-mastra';
+import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
+import type { Logger } from '../../src/logger';
+import { executeResumableStream } from '../../src/runtime/resumable-stream-executor';
 import { createAllTools } from '../../src/tools';
 import { BUILDER_AGENT_PROMPT } from '../../src/tools/orchestration/build-workflow-agent.prompt';
 import type { ModelConfig } from '../../src/types';
+import { asResumable } from '../../src/utils/stream-helpers';
 import { createStubServices, defaultNodesJsonPath, type StubServiceHandle } from './stub-services';
 import { normalizeWorkflow } from './normalize-workflow';
 
@@ -53,6 +69,13 @@ export interface BuildInProcessOptions {
 	timeoutMs?: number;
 	/** Max builder steps — matches production default when omitted. */
 	maxSteps?: number;
+	/**
+	 * Path to a chunk log file. When set, every tool-call, tool-result,
+	 * suspension, text-delta, and lifecycle event is appended to this
+	 * file. Parent dirs are created as needed. Used for root-causing
+	 * build failures (`no_workflow_built`, `agent_error`, etc.).
+	 */
+	logPath?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,18 +97,21 @@ export async function buildInProcess(
 		mockedCredentialTypes: new Set<string>(),
 	};
 
+	const chunkLog = options.logPath ? await openChunkLog(options.logPath) : null;
+	chunkLog?.writeHeader(options.prompt, { modelId, maxSteps, timeoutMs });
+
 	let services: StubServiceHandle;
 	try {
 		services = await createStubServices({
 			nodesJsonPath: options.nodesJsonPath ?? defaultNodesJsonPath(),
 		});
 	} catch (error) {
+		chunkLog?.write({ kind: 'error', stage: 'stub-services', message: String(error) });
+		await chunkLog?.close();
 		return failResult(started, 'agent_error', error, interactivity);
 	}
 
 	const allTools = createAllTools(services.context);
-	// Subset matching the builder sub-agent's tool-mode toolset (see
-	// `build-workflow-agent.tool.ts` lines 241-249).
 	const builderToolNames = [
 		'build-workflow',
 		'nodes',
@@ -99,8 +125,9 @@ export async function buildInProcess(
 		if (tool) builderTools[name] = tool;
 	}
 
+	const agentId = 'eval-builder-' + nanoid(6);
 	const agent = new Agent({
-		id: 'eval-builder-' + nanoid(6),
+		id: agentId,
 		name: 'Eval Workflow Builder',
 		instructions: {
 			role: 'system' as const,
@@ -113,8 +140,20 @@ export async function buildInProcess(
 		tools: builderTools,
 	});
 
+	// Register with Mastra so HITL-suspending tools can persist a snapshot
+	// and `resumeStream` can pick it back up on auto-approve.
+	const mastraStorage = new InMemoryStore({ id: 'eval-' + nanoid(6) });
+	registerWithMastra(agentId, agent, mastraStorage);
+
 	const abortController = new AbortController();
 	const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
+	const threadId = 'eval-thread-' + nanoid(6);
+	const runId = 'eval-run-' + nanoid(6);
+	const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
+		observeEvent(event, interactivity);
+		chunkLog?.writeEvent(event);
+	});
+	const logger = silentLogger();
 
 	let finalText: string | undefined;
 	try {
@@ -126,40 +165,85 @@ export async function buildInProcess(
 			},
 		});
 
-		// Drain the stream — count tool calls of interest for the report.
-		if (streamSource.fullStream) {
-			for await (const chunk of streamSource.fullStream) {
-				observeChunk(chunk, interactivity);
-			}
-		}
-		if (streamSource.text) {
-			finalText = await streamSource.text;
-		}
+		const result = await executeResumableStream({
+			agent: asResumable(agent),
+			stream: streamSource,
+			context: {
+				threadId,
+				runId,
+				agentId: 'eval-builder',
+				eventBus,
+				signal: abortController.signal,
+				logger,
+			},
+			control: {
+				mode: 'auto',
+				waitForConfirmation: async (requestId): Promise<Record<string, unknown>> => {
+					interactivity.autoApprovedSuspensions++;
+					chunkLog?.write({ kind: 'auto-approve', requestId });
+					return { approved: true };
+				},
+				onSuspension: (suspension) => {
+					chunkLog?.write({ kind: 'suspension', ...suspension });
+					if (suspension.toolName === 'ask-user') {
+						interactivity.askUserCount++;
+					}
+				},
+			},
+		});
 
-		if (abortController.signal.aborted) {
+		if (result.text) {
+			finalText = await result.text;
+		}
+		chunkLog?.write({ kind: 'stream-finish', status: result.status });
+		if (finalText) chunkLog?.write({ kind: 'final-text', text: finalText });
+
+		if (abortController.signal.aborted || result.status === 'cancelled') {
+			await chunkLog?.close();
 			return failResult(
 				started,
 				'build_timeout',
 				new Error(`Build exceeded ${timeoutMs}ms`),
 				interactivity,
+				finalText,
+			);
+		}
+		if (result.status === 'errored') {
+			await chunkLog?.close();
+			return failResult(
+				started,
+				'agent_error',
+				new Error('Stream errored'),
+				interactivity,
+				finalText,
 			);
 		}
 	} catch (error) {
+		chunkLog?.write({
+			kind: 'error',
+			stage: 'stream',
+			message: error instanceof Error ? error.message : String(error),
+		});
 		if (abortController.signal.aborted) {
+			await chunkLog?.close();
 			return failResult(
 				started,
 				'build_timeout',
 				new Error(`Build exceeded ${timeoutMs}ms`),
 				interactivity,
+				finalText,
 			);
 		}
-		return failResult(started, 'agent_error', error, interactivity);
+		await chunkLog?.close();
+		return failResult(started, 'agent_error', error, interactivity, finalText);
 	} finally {
 		clearTimeout(timeoutHandle);
 	}
 
 	const captured = services.capturedWorkflows;
+	chunkLog?.write({ kind: 'captured-workflows', count: captured.length });
 	if (captured.length === 0) {
+		await chunkLog?.close();
 		return failResult(
 			started,
 			'no_workflow_built',
@@ -170,6 +254,7 @@ export async function buildInProcess(
 	}
 
 	const [first, ...extras] = captured.map(normalizeWorkflow);
+	await chunkLog?.close();
 
 	return {
 		success: true,
@@ -190,25 +275,22 @@ export async function buildInProcess(
 // Helpers
 // ---------------------------------------------------------------------------
 
-function observeChunk(
-	chunk: unknown,
-	interactivity: {
-		askUserCount: number;
-		planToolCount: number;
-		autoApprovedSuspensions: number;
-		mockedCredentialTypes: Set<string>;
-	},
-): void {
-	if (!isRecord(chunk)) return;
-	const type = typeof chunk.type === 'string' ? chunk.type : undefined;
-	const payload = isRecord(chunk.payload) ? chunk.payload : chunk;
+interface InteractivityState {
+	askUserCount: number;
+	planToolCount: number;
+	autoApprovedSuspensions: number;
+	mockedCredentialTypes: Set<string>;
+}
 
-	if (type === 'tool-call') {
+function observeEvent(event: InstanceAiEvent, interactivity: InteractivityState): void {
+	if (event.type === 'tool-call') {
+		const payload: unknown = event.payload;
+		if (!isRecord(payload)) return;
 		const toolName = typeof payload.toolName === 'string' ? payload.toolName : undefined;
-		if (toolName === 'ask-user') interactivity.askUserCount++;
-	} else if (type === 'tool-result') {
-		const toolName = typeof payload.toolName === 'string' ? payload.toolName : undefined;
-		if (toolName !== 'build-workflow') return;
+		if (toolName === 'plan') interactivity.planToolCount++;
+	} else if (event.type === 'tool-result') {
+		const payload: unknown = event.payload;
+		if (!isRecord(payload)) return;
 		const result = isRecord(payload.result) ? payload.result : undefined;
 		const mocked = result?.mockedCredentialTypes;
 		if (Array.isArray(mocked)) {
@@ -223,12 +305,7 @@ function failResult(
 	startedAt: number,
 	errorClass: BuildErrorClass,
 	error: unknown,
-	interactivity: {
-		askUserCount: number;
-		planToolCount: number;
-		autoApprovedSuspensions: number;
-		mockedCredentialTypes: Set<string>;
-	},
+	interactivity: InteractivityState,
 	finalText?: string,
 ): InProcessBuildResult {
 	return {
@@ -249,4 +326,154 @@ function failResult(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function silentLogger(): Logger {
+	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+}
+
+// ---------------------------------------------------------------------------
+// In-memory event bus — the stream executor publishes mapped events here.
+// ---------------------------------------------------------------------------
+
+function createInMemoryEventBus(): InstanceAiEventBus {
+	const storeByThread = new Map<string, StoredEvent[]>();
+	const subscribersByThread = new Map<string, Array<(event: StoredEvent) => void>>();
+
+	return {
+		publish(threadId, event) {
+			const list = storeByThread.get(threadId) ?? [];
+			const stored: StoredEvent = { id: list.length + 1, event };
+			list.push(stored);
+			storeByThread.set(threadId, list);
+			const subs = subscribersByThread.get(threadId);
+			if (subs) for (const sub of subs) sub(stored);
+		},
+		subscribe(threadId, handler) {
+			const subs = subscribersByThread.get(threadId) ?? [];
+			subs.push(handler);
+			subscribersByThread.set(threadId, subs);
+			return () => {
+				const current = subscribersByThread.get(threadId) ?? [];
+				subscribersByThread.set(
+					threadId,
+					current.filter((h) => h !== handler),
+				);
+			};
+		},
+		getEventsAfter(threadId, afterId) {
+			return (storeByThread.get(threadId) ?? []).filter((e) => e.id > afterId);
+		},
+		getEventsForRun(threadId, runId) {
+			return (storeByThread.get(threadId) ?? [])
+				.map((e) => e.event)
+				.filter((e) => 'runId' in e && e.runId === runId);
+		},
+		getEventsForRuns(threadId, runIds) {
+			const set = new Set(runIds);
+			return (storeByThread.get(threadId) ?? [])
+				.map((e) => e.event)
+				.filter((e) => 'runId' in e && set.has(e.runId));
+		},
+		getNextEventId(threadId) {
+			return (storeByThread.get(threadId) ?? []).length + 1;
+		},
+	};
+}
+
+function wrapEventBusWithObserver(
+	bus: InstanceAiEventBus,
+	observe: (event: InstanceAiEvent) => void,
+): InstanceAiEventBus {
+	return {
+		...bus,
+		publish(threadId, event) {
+			observe(event);
+			bus.publish(threadId, event);
+		},
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Chunk log — writes one JSONL record per observed event to a file so
+// failures can be diagnosed after the fact.
+// ---------------------------------------------------------------------------
+
+interface ChunkLog {
+	writeHeader(
+		prompt: string,
+		config: { modelId: ModelConfig; maxSteps: number; timeoutMs: number },
+	): void;
+	writeEvent(event: InstanceAiEvent): void;
+	write(record: Record<string, unknown>): void;
+	close(): Promise<void>;
+}
+
+async function openChunkLog(filePath: string): Promise<ChunkLog> {
+	await mkdir(path.dirname(filePath), { recursive: true });
+	const stream: WriteStream = createWriteStream(filePath, { flags: 'w' });
+
+	const emit = (obj: Record<string, unknown>): void => {
+		stream.write(JSON.stringify({ t: new Date().toISOString(), ...obj }) + '\n');
+	};
+
+	return {
+		writeHeader(prompt, config) {
+			emit({
+				kind: 'start',
+				modelId: typeof config.modelId === 'string' ? config.modelId : '<non-string>',
+				maxSteps: config.maxSteps,
+				timeoutMs: config.timeoutMs,
+				prompt,
+			});
+		},
+		writeEvent(event) {
+			// Summarise the common events to one-line records. Full payload
+			// is serialised for tool-call / tool-result so judges can see
+			// exactly what arguments / outputs flowed.
+			if (event.type === 'tool-call' && isRecord(event.payload)) {
+				emit({
+					kind: 'tool-call',
+					runId: event.runId,
+					agentId: event.agentId,
+					toolName: event.payload.toolName,
+					toolCallId: event.payload.toolCallId,
+					args: truncate(event.payload.args, 2000),
+				});
+			} else if (event.type === 'tool-result' && isRecord(event.payload)) {
+				emit({
+					kind: 'tool-result',
+					runId: event.runId,
+					toolCallId: event.payload.toolCallId,
+					result: truncate(event.payload.result, 2000),
+				});
+			} else if (event.type === 'confirmation-request') {
+				emit({ kind: 'confirmation-request', payload: event.payload });
+			} else if (event.type === 'agent-spawned' || event.type === 'run-start') {
+				emit({ kind: event.type, payload: event.payload });
+			} else if (event.type === 'run-finish') {
+				emit({ kind: 'run-finish', payload: event.payload });
+			} else {
+				// Compact catch-all for less-common events — keeps file readable.
+				emit({ kind: event.type });
+			}
+		},
+		write(record) {
+			emit(record);
+		},
+		async close() {
+			await new Promise<void>((resolve) => stream.end(() => resolve()));
+		},
+	};
+}
+
+function truncate(value: unknown, max: number): unknown {
+	if (value === null || value === undefined) return value;
+	try {
+		const str = typeof value === 'string' ? value : JSON.stringify(value);
+		if (str.length <= max) return value;
+		return str.substring(0, max) + '... [truncated]';
+	} catch {
+		return '<unserializable>';
+	}
 }
