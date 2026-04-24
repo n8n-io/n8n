@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { verifySignature } from '../../utils/webhook-signature-verification';
 import { getAutomaticSecret, woocommerceApiRequest } from './GenericFunctions';
 
 export class WooCommerceTrigger implements INodeType {
@@ -133,7 +134,7 @@ export class WooCommerceTrigger implements INodeType {
 									{ force: true },
 								);
 							} catch (error) {
-								this.logger.debug('Failed to delete orphaned webhook during checkExists', {
+								this.logger.warn('Failed to delete orphaned webhook during checkExists', {
 									webhookId: webhook.id,
 									error,
 								});
@@ -197,12 +198,12 @@ export class WooCommerceTrigger implements INodeType {
 			});
 		}
 
-		const providedSignature = headerData['x-wc-webhook-signature'] as string | undefined;
-		const computedSignature = providedSignature
-			? createHmac('sha256', secret).update(req.rawBody).digest('base64')
-			: undefined;
+		const isValid = verifySignature({
+			getExpectedSignature: () => createHmac('sha256', secret).update(req.rawBody).digest('base64'),
+			getActualSignature: () => (headerData['x-wc-webhook-signature'] as string) ?? null,
+		});
 
-		if (!providedSignature || providedSignature !== computedSignature) {
+		if (!isValid) {
 			const res = this.getResponseObject();
 			res.status(401).send('Unauthorized').end();
 			return { noWebhookResponse: true };

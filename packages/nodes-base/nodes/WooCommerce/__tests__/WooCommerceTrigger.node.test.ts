@@ -106,12 +106,12 @@ describe('WooCommerceTrigger Node', () => {
 		const event = 'order.created';
 
 		let webhookData: Record<string, unknown>;
-		let logger: { debug: jest.Mock };
+		let logger: { warn: jest.Mock };
 		let mockThis: any;
 
 		beforeEach(() => {
 			webhookData = { secret: 'stored-secret' };
-			logger = { debug: jest.fn() };
+			logger = { warn: jest.fn() };
 
 			mockThis = {
 				getNodeWebhookUrl: jest.fn().mockReturnValue(webhookUrl),
@@ -162,7 +162,7 @@ describe('WooCommerceTrigger Node', () => {
 				{},
 				{ force: true },
 			);
-			expect(logger.debug).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('returns false without throwing when deleting the orphaned webhook fails', async () => {
@@ -179,7 +179,7 @@ describe('WooCommerceTrigger Node', () => {
 
 			expect(result).toBe(false);
 			expect(webhookData.webhookId).toBeUndefined();
-			expect(logger.debug).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to delete orphaned webhook during checkExists',
 				{ webhookId: 99, error: deleteError },
 			);
