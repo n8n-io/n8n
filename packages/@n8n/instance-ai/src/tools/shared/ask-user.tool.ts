@@ -47,7 +47,8 @@ export function createAskUserTool() {
 			'the options array — they duplicate the built-in input and confuse users. ' +
 			'Also NEVER add a separate follow-up question asking the user to elaborate ' +
 			'on a previous "other" choice. Keep questions concise and ' +
-			'avoid questions that reference answers to previous questions.',
+			'avoid questions that reference answers to previous questions. ' +
+			'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
 		inputSchema: askUserInputSchema,
 		outputSchema: z.object({
 			answered: z.boolean(),

@@ -10,6 +10,11 @@ import { consoleErrorFixtures } from './console-error-monitor';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { observabilityFixtures, type ObservabilityTestFixtures } from '../fixtures/observability';
+import {
+	quarantineFixtures,
+	type QuarantineTestFixtures,
+	type QuarantineWorkerFixtures,
+} from '../fixtures/quarantine';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
 import { TestError, type TestRequirements } from '../Types';
@@ -50,14 +55,15 @@ type CapabilityOption = Capability | N8NConfig;
 type ProjectUse = { containerConfig?: N8NConfig };
 
 export const test = base.extend<
-	TestFixtures & CurrentsFixtures & ObservabilityTestFixtures,
-	WorkerFixtures & CurrentsWorkerFixtures
+	TestFixtures & CurrentsFixtures & ObservabilityTestFixtures & QuarantineTestFixtures,
+	WorkerFixtures & CurrentsWorkerFixtures & QuarantineWorkerFixtures
 >({
 	...currentsFixtures.baseFixtures,
 	...currentsFixtures.coverageFixtures,
 	...currentsFixtures.actionFixtures,
 	...observabilityFixtures,
 	...consoleErrorFixtures,
+	...quarantineFixtures,
 
 	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
 	capability: [undefined, { scope: 'worker', option: true }],

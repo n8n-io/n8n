@@ -128,9 +128,14 @@ export class UsersController {
 				throw new NotFoundError('Project not found');
 			}
 		} else if (!['global:owner', 'global:admin'].includes(req.user.role.slug)) {
-			throw new ForbiddenError(
-				'Listing all users is limited to instance administrators. Filter by project to list project members.',
-			);
+			// Project admins need to search all users to invite them into their projects
+			const isProjectAdmin =
+				(await this.projectService.getProjectIdsWithScope(req.user, ['project:update'])).length > 0;
+			if (!isProjectAdmin) {
+				throw new ForbiddenError(
+					'Listing all users is limited to instance administrators and project admins. Filter by project to list project members.',
+				);
+			}
 		}
 
 		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
