@@ -97,6 +97,13 @@ export class SnapshotManager {
 	}
 
 	private buildImage(): Image {
+		// Daytona's cache key is the underlying ref (hashed from Dockerfile +
+		// build context). The snapshot *name* (e.g. `n8n-instance-ai-1.97.0`)
+		// is just an alias we use for lookup — it does not affect caching, and
+		// neither do image tags. Two snapshot names whose images produce the
+		// same ref are deduped server-side and share storage, so versioning
+		// by name is free: identical Dockerfiles across n8n versions activate
+		// instantly, and different Dockerfiles get distinct refs as expected.
 		const base = this.baseImage ?? 'daytonaio/sandbox:0.5.0';
 		return Image.base(base)
 			.runCommands(
