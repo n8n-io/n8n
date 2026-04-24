@@ -9,12 +9,26 @@ export type ObservabilityWorkerFixtures = {
 	n8nContainer: N8NStack;
 };
 
+/**
+ * `stack.services` is a Proxy whose factory throws when a service isn't in the
+ * project config (e.g. sqlite:e2e has no observability services). Optional
+ * chaining doesn't help — the throw happens inside the factory invocation.
+ */
+function tryGetObservability(stack: N8NStack | undefined) {
+	if (!stack) return undefined;
+	try {
+		return stack.services?.observability;
+	} catch {
+		return undefined;
+	}
+}
+
 async function attachLogsOnFailure(
 	stack: N8NStack,
 	testInfo: TestInfo,
 	options: { lookbackMinutes?: number } = {},
 ): Promise<void> {
-	const obs = stack.services?.observability;
+	const obs = tryGetObservability(stack);
 	if (!obs) return;
 
 	const lookback = options.lookbackMinutes ?? 5;
@@ -62,7 +76,7 @@ async function attachLogsOnFailure(
 }
 
 async function attachMetricsOnFailure(stack: N8NStack, testInfo: TestInfo): Promise<void> {
-	const obs = stack.services?.observability;
+	const obs = tryGetObservability(stack);
 	if (!obs) return;
 
 	try {
@@ -91,12 +105,16 @@ export const observabilityFixtures: Fixtures<
 		async ({ n8nContainer }, use, testInfo) => {
 			await use(undefined);
 
-			if (testInfo.status !== testInfo.expectedStatus && n8nContainer?.services?.observability) {
-				await Promise.all([
-					attachLogsOnFailure(n8nContainer, testInfo),
-					attachMetricsOnFailure(n8nContainer, testInfo),
-				]);
-			}
+			// n8nContainer is undefined when fixture setup failed (e.g. postgres timeout);
+			// observability may be unconfigured for this project (sqlite:e2e).
+			// Both cases must be handled gracefully so teardown never masks the real failure.
+			if (testInfo.status === testInfo.expectedStatus) return;
+			if (!tryGetObservability(n8nContainer)) return;
+
+			await Promise.all([
+				attachLogsOnFailure(n8nContainer, testInfo),
+				attachMetricsOnFailure(n8nContainer, testInfo),
+			]);
 		},
 		{ auto: true },
 	],

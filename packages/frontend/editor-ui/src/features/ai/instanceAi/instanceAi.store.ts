@@ -18,6 +18,7 @@ import {
 	postCancel,
 	postCancelTask,
 	postConfirmation,
+	postFeedback,
 	getInstanceAiCredits,
 } from './instanceAi.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -172,7 +173,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// Response feedback — rateability selector + submission
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
-		useResponseFeedback({ messages, currentThreadId, telemetry });
+		useResponseFeedback({
+			messages,
+			currentThreadId,
+			telemetry,
+			postFeedback: async (threadId, responseId, payload) =>
+				await postFeedback(rootStore.restApiContext, threadId, responseId, payload),
+		});
 
 	/** The latest task list, preferring explicit tasks-update events over tree snapshots. */
 	const currentTasks = computed(

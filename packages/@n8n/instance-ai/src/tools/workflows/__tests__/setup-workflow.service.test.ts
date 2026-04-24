@@ -814,6 +814,42 @@ describe('applyNodeChanges', () => {
 		});
 	});
 
+	it('persists merged parameter values into the saved workflow JSON', async () => {
+		// Regression: the FE was sending `nodeParameters` correctly on apply but
+		// the saved workflow still had the original (empty) parameter value.
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			parameters: { method: 'GET', url: '', authentication: 'none' },
+		});
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+		(context.workflowService.updateFromWorkflowJSON as jest.Mock).mockResolvedValue(undefined);
+
+		const result = await applyNodeChanges(context, 'wf-1', undefined, {
+			'HTTP Request': { url: 'https://example.com/api' },
+		});
+
+		expect(result.applied).toContain('HTTP Request');
+		expect(result.failed).toHaveLength(0);
+
+		const calls = (context.workflowService.updateFromWorkflowJSON as jest.Mock).mock.calls as Array<
+			[string, WorkflowJSON]
+		>;
+		expect(calls).toHaveLength(1);
+		const savedNode = calls[0][1].nodes.find((n) => n.name === 'HTTP Request');
+		expect(savedNode?.parameters).toEqual({
+			method: 'GET',
+			url: 'https://example.com/api',
+			authentication: 'none',
+		});
+	});
+
 	it('keeps credentials matching description displayOptions', async () => {
 		const node = makeNode({
 			name: 'HTTP Request',
