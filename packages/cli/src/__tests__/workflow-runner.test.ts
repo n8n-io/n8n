@@ -689,9 +689,6 @@ describe('pre-persist context establishment', () => {
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		jest.spyOn(permissionChecker, 'check').mockResolvedValue();
 
-		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
-
 		establishSpy = jest
 			.spyOn(core, 'establishExecutionContext')
 			.mockImplementation(async (_workflow, runExecutionData) => {

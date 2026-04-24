@@ -174,7 +174,11 @@ export class WorkflowRunner {
 		// The runtimeData early-exit guard in establishExecutionContext keeps
 		// the subsequent worker-side call at workflow-execute.ts idempotent.
 		if (data.executionData) {
-			const workflowSettings = data.workflowData.settings ?? {};
+			// Deliberately lightweight: no pinData, no staticData loading,
+			// no additionalData. establishExecutionContext only needs the
+			// workflow's settings (for redactionPolicy) and node lookups.
+			// runMainProcess() builds its own fully-configured Workflow for
+			// actual execution.
 			const contextWorkflow = new Workflow({
 				id: data.workflowData.id,
 				name: data.workflowData.name,
@@ -183,17 +187,12 @@ export class WorkflowRunner {
 				active: data.workflowData.activeVersionId !== null,
 				nodeTypes: this.nodeTypes,
 				staticData: data.workflowData.staticData,
-				settings: workflowSettings,
-			});
-			const contextAdditionalData = await WorkflowExecuteAdditionalData.getBase({
-				userId: data.userId,
-				workflowId: data.workflowData.id,
-				workflowSettings,
+				settings: data.workflowData.settings ?? {},
 			});
 			await establishExecutionContext(
 				contextWorkflow,
 				data.executionData,
-				contextAdditionalData,
+				undefined,
 				data.executionMode,
 			);
 		}
