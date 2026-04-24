@@ -177,6 +177,9 @@ function onBuildChatStreamingChange(streaming: boolean) {
 function setChatMode(next: ChatMode) {
 	if (chatMode.value === next) return;
 	chatMode.value = next;
+	if (next === 'test' && !continueSessionId.value && !activeChatSessionId.value) {
+		activeChatSessionId.value = crypto.randomUUID();
+	}
 
 	telemetry.track('User switched agent chat mode', {
 		agent_id: agentId.value,
@@ -412,6 +415,9 @@ async function initialize() {
 	// `isBuilt` would still be stale here.
 	const hasInstructions = !!config.value?.instructions?.trim();
 	chatMode.value = hasInstructions ? 'test' : 'build';
+	if (chatMode.value === 'test' && !continueSessionId.value && !activeChatSessionId.value) {
+		activeChatSessionId.value = crypto.randomUUID();
+	}
 
 	// If the user arrived via NewAgentView with a seed prompt, jump straight
 	// into the build chat.
@@ -507,6 +513,12 @@ function onContinueLoaded(count: number) {
 					</N8nRadioButtons>
 				</N8nTooltip>
 			</div>
+			<AgentChatQuickActions
+				:tools="localConfig?.tools ?? []"
+				:project-id="projectId"
+				:agent-id="agentId"
+				@update:tools="onQuickActionAddTool"
+			/>
 			<div :class="$style.chatBody">
 				<AgentChatPanel
 					v-if="initialized && chatModeOpened.test && effectiveSessionId"
@@ -544,12 +556,6 @@ function onContinueLoaded(count: number) {
 					@back="onBackFromChat"
 				/>
 			</div>
-			<AgentChatQuickActions
-				:tools="localConfig?.tools ?? []"
-				:project-id="projectId"
-				:agent-id="agentId"
-				@update:tools="onQuickActionAddTool"
-			/>
 		</aside>
 
 		<!-- Column 2: tree -->
