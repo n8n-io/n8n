@@ -7,18 +7,14 @@ export class NotificationsPage {
 		this.page = page;
 	}
 
-	get container(): Locator {
-		return this.page.locator('body');
-	}
-
 	/**
 	 * Gets the main container locator for a notification by searching in its title text.
 	 * @param text The text or a regular expression to find within the notification's title.
 	 * @returns A Locator for the notification container element.
 	 */
 	getNotificationByTitle(text: string | RegExp): Locator {
-		return this.container.getByRole('alert').filter({
-			has: this.container.locator('.el-notification__title').filter({ hasText: text }),
+		return this.page.getByRole('alert').filter({
+			has: this.page.locator('.el-notification__title').filter({ hasText: text }),
 		});
 	}
 
@@ -30,8 +26,8 @@ export class NotificationsPage {
 	 * @returns A Locator for the notification container element.
 	 */
 	getNotificationByContent(text: string | RegExp): Locator {
-		return this.container.getByRole('alert').filter({
-			has: this.container.locator('.el-notification__content').filter({ hasText: text }),
+		return this.page.getByRole('alert').filter({
+			has: this.page.locator('.el-notification__content').filter({ hasText: text }),
 		});
 	}
 
@@ -43,7 +39,7 @@ export class NotificationsPage {
 	 * @returns A Locator for the notification container element.
 	 */
 	getNotificationByTitleOrContent(text: string | RegExp): Locator {
-		return this.container.getByRole('alert').filter({ hasText: text });
+		return this.page.getByRole('alert').filter({ hasText: text });
 	}
 
 	/**
@@ -113,7 +109,7 @@ export class NotificationsPage {
 	 */
 	async getAllNotificationTexts(): Promise<string[]> {
 		try {
-			const titles = this.container.getByRole('alert').locator('.el-notification__title');
+			const titles = this.page.getByRole('alert').locator('.el-notification__title');
 			return await titles.allTextContents();
 		} catch {
 			return [];
@@ -126,7 +122,7 @@ export class NotificationsPage {
 	 */
 	async quickCloseAll(): Promise<void> {
 		try {
-			const closeButtons = this.container.locator('.el-notification__closeBtn');
+			const closeButtons = this.page.locator('.el-notification__closeBtn');
 			const count = await closeButtons.count();
 
 			for (let i = 0; i < count; i++) {
@@ -142,18 +138,18 @@ export class NotificationsPage {
 	}
 
 	getModalOverlay(): Locator {
-		return this.container.locator('.el-overlay').first();
+		return this.page.locator('.el-overlay').first();
 	}
 
 	getErrorNotifications(): Locator {
-		return this.container.locator('.el-notification:has(.el-notification--error)');
+		return this.page.locator('.el-notification:has(.el-notification--error)');
 	}
 
 	getSuccessNotifications(): Locator {
-		return this.container.locator('.el-notification:has(.el-notification--success)');
+		return this.page.locator('.el-notification:has(.el-notification--success)');
 	}
 
 	getWarningNotifications(): Locator {
-		return this.container.locator('.el-notification:has(.el-notification--warning)');
+		return this.page.locator('.el-notification:has(.el-notification--warning)');
 	}
 }
