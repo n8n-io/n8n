@@ -819,6 +819,23 @@ function onSwitchAgent(nextAgentId: string) {
 				:aria-label="locale.baseText('agents.builder.chatColumn.ariaLabel')"
 				data-testid="agent-builder-chat-column"
 			>
+				<N8nNavigationDropdown
+					v-if="initialized && chatMode === 'test'"
+					:menu="sessionMenu"
+					:class="$style.historyBtnAnchor"
+					submenu-class="agent-chat-session-menu"
+					data-testid="agent-chat-session-picker"
+					@select="onSessionPick"
+				>
+					<button
+						type="button"
+						:class="$style.historyBtn"
+						aria-label="Session history"
+						data-testid="agent-chat-session-picker-btn"
+					>
+						<N8nIcon icon="history" :size="14" />
+					</button>
+				</N8nNavigationDropdown>
 				<div :class="$style.chatBody">
 					<AgentChatPanel
 						v-if="initialized && chatModeOpened.test && effectiveSessionId"
@@ -839,22 +856,7 @@ function onSwitchAgent(nextAgentId: string) {
 					>
 						<template #above-input>
 							<div :class="$style.quickActionsRow">
-								<div :class="$style.chatSessionControls">
-									<N8nNavigationDropdown
-										:menu="sessionMenu"
-										submenu-class="agent-chat-session-menu"
-										data-testid="agent-chat-session-picker"
-										@select="onSessionPick"
-									>
-										<button
-											type="button"
-											:class="$style.historyBtn"
-											aria-label="Session history"
-											data-testid="agent-chat-session-picker-btn"
-										>
-											<N8nIcon icon="history" :size="14" />
-										</button>
-									</N8nNavigationDropdown>
+								<div :class="$style.quickActionsStart">
 									<button
 										v-if="currentSessionHasMessages"
 										type="button"
@@ -1174,10 +1176,17 @@ function onSwitchAgent(nextAgentId: string) {
 	gap: var(--spacing--2xs);
 }
 
-.chatSessionControls {
+.quickActionsStart {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
+}
+
+.historyBtnAnchor {
+	position: absolute;
+	top: var(--spacing--5xs);
+	right: var(--spacing--4xs);
+	z-index: 2;
 }
 
 .quickActionsRow > :first-child {
@@ -1194,14 +1203,6 @@ function onSwitchAgent(nextAgentId: string) {
 	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--color--foreground--shade-1) transparent;
-}
-
-/* Flip the popper upward. ElSubMenu doesn't expose a `placement` prop, so we
-   translate by the popper's own height + the trigger height (28px) to seat
-   the menu above the button instead of below. `!important` beats the inline
-   transform element-plus writes. */
-:global(.agent-chat-session-menu) {
-	transform: translateY(calc(-100% - 36px)) !important;
 }
 
 :global(.agent-chat-session-menu) :global(.el-menu)::-webkit-scrollbar {
