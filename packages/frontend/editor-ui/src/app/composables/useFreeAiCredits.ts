@@ -36,6 +36,7 @@ export function useFreeAiCredits() {
 	const userCanClaimOpenAiCredits = computed(
 		() =>
 			isAiCreditsEnabled.value &&
+			!settingsStore.isAiGatewayEnabled &&
 			!userHasOpenAiCredentialAlready.value &&
 			!userHasClaimedAiCreditsAlready.value,
 	);
