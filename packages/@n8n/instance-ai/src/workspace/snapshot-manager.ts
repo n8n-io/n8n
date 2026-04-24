@@ -23,9 +23,9 @@ function b64(s: string): string {
 	return Buffer.from(s, 'utf-8').toString('base64');
 }
 
-function isAlreadyExistsError(erroror: unknown): boolean {
-	if (!(erroror instanceof Error)) return false;
-	const msg = erroror.message.toLowerCase();
+function isAlreadyExistsError(error: unknown): boolean {
+	if (!(error instanceof Error)) return false;
+	const msg = error.message.toLowerCase();
 	return msg.includes('already exists') || msg.includes('conflict');
 }
 
