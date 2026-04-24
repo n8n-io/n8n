@@ -1292,7 +1292,7 @@ describe('narrowDisplayOptionsByDisabled', () => {
 		expect(result.displayOptions).toEqual({ show: { promptType: ['define'] } });
 	});
 
-	it('leaves disabledOptions on keys absent from displayOptions.show alone', () => {
+	it('converts disabledOptions on keys absent from displayOptions.show into hide constraints', () => {
 		const prop: NodeProperty = {
 			name: 'field',
 			displayName: 'Field',
@@ -1305,7 +1305,57 @@ describe('narrowDisplayOptionsByDisabled', () => {
 		const result = narrowDisplayOptionsByDisabled(prop);
 
 		expect(result.fullyDisabled).toBe(false);
-		expect(result.displayOptions).toEqual({ show: { mode: ['a'] } });
+		expect(result.displayOptions).toEqual({
+			show: { mode: ['a'] },
+			hide: { otherField: ['x'] },
+		});
+	});
+
+	it('converts disabledOptions into hide when the property has no displayOptions.show', () => {
+		const prop: NodeProperty = {
+			name: 'inputType',
+			displayName: 'Input Type',
+			type: 'options',
+			default: 'binary',
+			disabledOptions: { show: { 'options.batch': [true] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ hide: { 'options.batch': [true] } });
+	});
+
+	it('merges disabledOptions into an existing displayOptions.hide for the same key', () => {
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { hide: { mode: ['x'] } },
+			disabledOptions: { show: { mode: ['y'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ hide: { mode: ['x', 'y'] } });
+	});
+
+	it('does not mutate the original displayOptions.hide when merging', () => {
+		const originalHide = { mode: ['x'] };
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { hide: originalHide },
+			disabledOptions: { show: { mode: ['y'] } },
+		};
+
+		narrowDisplayOptionsByDisabled(prop);
+
+		expect(originalHide).toEqual({ mode: ['x'] });
 	});
 });
 

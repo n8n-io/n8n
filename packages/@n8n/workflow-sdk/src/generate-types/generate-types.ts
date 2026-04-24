@@ -1072,6 +1072,75 @@ function generateFixedCollectionType(
 }
 
 /**
+ * Translate a property's disabledOptions into effective displayOptions that
+ * exclude the disabled states from the generated type. Returns
+ * { displayOptions, fullyDisabled } where fullyDisabled is true when every
+ * visible state is read-only.
+ *
+ * - For keys present in both displayOptions.show and disabledOptions.show, the
+ *   disabled values are subtracted from the show list. If any key is left with
+ *   no settable values, the property is fully disabled.
+ * - For keys in disabledOptions.show that aren't covered by displayOptions.show,
+ *   they are merged into displayOptions.hide — "disabled" is equivalent to
+ *   "unsettable" for schema purposes, so the field is excluded from those
+ *   states.
+ */
+export function narrowDisplayOptionsByDisabled(prop: NodeProperty): {
+	displayOptions: NodeProperty['displayOptions'];
+	fullyDisabled: boolean;
+} {
+	const { displayOptions, disabledOptions } = prop;
+	if (!disabledOptions?.show) {
+		return { displayOptions, fullyDisabled: false };
+	}
+
+	const currentShow = displayOptions?.show;
+	const narrowedShow: Record<string, unknown[]> = {};
+	const mergedHide: Record<string, unknown[]> = {};
+	for (const [key, values] of Object.entries(displayOptions?.hide ?? {})) {
+		mergedHide[key] = [...values];
+	}
+
+	if (currentShow) {
+		for (const [key, values] of Object.entries(currentShow)) {
+			const disabledValues = disabledOptions.show[key];
+			if (!disabledValues) {
+				narrowedShow[key] = values;
+				continue;
+			}
+			const remaining = values.filter(
+				(v) => !disabledValues.some((d) => JSON.stringify(d) === JSON.stringify(v)),
+			);
+			if (remaining.length === 0) {
+				return { displayOptions: undefined, fullyDisabled: true };
+			}
+			narrowedShow[key] = remaining;
+		}
+	}
+
+	for (const [key, values] of Object.entries(disabledOptions.show)) {
+		if (currentShow && key in currentShow) continue;
+		const existing = mergedHide[key] ?? [];
+		const seen = new Set(existing.map((v) => JSON.stringify(v)));
+		for (const v of values) {
+			if (!seen.has(JSON.stringify(v))) {
+				existing.push(v);
+			}
+		}
+		mergedHide[key] = existing;
+	}
+
+	const result: NonNullable<NodeProperty['displayOptions']> = {};
+	if (Object.keys(narrowedShow).length > 0) result.show = narrowedShow;
+	if (Object.keys(mergedHide).length > 0) result.hide = mergedHide;
+
+	return {
+		displayOptions: Object.keys(result).length > 0 ? result : undefined,
+		fullyDisabled: false,
+	};
+}
+
+/**
  * Merge properties with the same name for collection/fixedCollection types.
  * When multiple properties have the same name (e.g., multiple 'options' collections
  * with different displayOptions), their nested options should be merged.
@@ -1079,47 +1148,6 @@ function generateFixedCollectionType(
  * @param properties - Array of node properties, possibly with duplicates
  * @returns Array of properties with duplicates merged
  */
-/**
- * Narrow a property's displayOptions.show by subtracting any states covered by
- * disabledOptions.show on the same key. Returns { displayOptions, fullyDisabled }
- * where fullyDisabled is true when any key in show has no settable values left.
- *
- * Only handles overlapping keys. disabledOptions on keys absent from
- * displayOptions.show is left alone, since its effect can't be expressed as a
- * pure show-based constraint.
- */
-export function narrowDisplayOptionsByDisabled(prop: NodeProperty): {
-	displayOptions: NodeProperty['displayOptions'];
-	fullyDisabled: boolean;
-} {
-	const { displayOptions, disabledOptions } = prop;
-	if (!disabledOptions?.show || !displayOptions?.show) {
-		return { displayOptions, fullyDisabled: false };
-	}
-
-	const narrowedShow: Record<string, unknown[]> = {};
-
-	for (const [key, values] of Object.entries(displayOptions.show)) {
-		const disabledValues = disabledOptions.show[key];
-		if (!disabledValues) {
-			narrowedShow[key] = values;
-			continue;
-		}
-		const remaining = values.filter(
-			(v) => !disabledValues.some((d) => JSON.stringify(d) === JSON.stringify(v)),
-		);
-		if (remaining.length === 0) {
-			return { displayOptions: undefined, fullyDisabled: true };
-		}
-		narrowedShow[key] = remaining;
-	}
-
-	return {
-		displayOptions: { ...displayOptions, show: narrowedShow },
-		fullyDisabled: false,
-	};
-}
-
 function mergeCollectionProperties(properties: NodeProperty[]): NodeProperty[] {
 	const seenProps = new Map<string, NodeProperty>();
 
