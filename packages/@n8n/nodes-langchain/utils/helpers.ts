@@ -130,6 +130,11 @@ export function getSessionId(
 		}
 	}
 
+	// Scoping uses the memory node's own name, so connecting a single memory
+	// node to multiple callers (e.g. an agent and a sub-agent) will still
+	// produce the same session key for all of them and they will share the
+	// same memory bucket. To isolate memory per caller, duplicate the memory
+	// node instead of reusing one.
 	if (selectorType === autoSelect && shouldScopeSessionKey(ctx)) {
 		sessionId = `${sessionId}__${sanitizeForSessionKey(ctx.getNode().name)}`;
 	}
