@@ -1,3 +1,11 @@
+## [2.18.3](https://github.com/n8n-io/n8n/compare/n8n@2.18.2...n8n@2.18.3) (2026-04-24)
+
+
+### Features
+
+* **Google Gemini Node:** Gemini default models update ([#28938](https://github.com/n8n-io/n8n/issues/28938)) ([548f90d](https://github.com/n8n-io/n8n/commit/548f90d22258e5aff22b4fd08d7b8eb14ce57147))
+
+
 ## [2.18.2](https://github.com/n8n-io/n8n/compare/n8n@2.18.1...n8n@2.18.2) (2026-04-23)
 
 
