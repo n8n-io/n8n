@@ -21,14 +21,24 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-// TODO: restore full seeding assertions when bootstrap logic is re-enabled in encryption-bootstrap.service.ts
 describe('EncryptionBootstrapService (integration)', () => {
-	it('completes without error and does not write any keys while bootstrap is disabled', async () => {
+	it('seeds the legacy aes-256-cbc key on first run', async () => {
 		await Container.get(EncryptionBootstrapService).run();
 
 		const rows = await Container.get(DeploymentKeyRepository).find({
 			where: { type: 'data_encryption' },
 		});
-		expect(rows).toHaveLength(0);
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({ algorithm: 'aes-256-cbc', status: 'active' });
+	});
+
+	it('is idempotent: running twice does not create duplicate keys', async () => {
+		await Container.get(EncryptionBootstrapService).run();
+		await Container.get(EncryptionBootstrapService).run();
+
+		const rows = await Container.get(DeploymentKeyRepository).find({
+			where: { type: 'data_encryption' },
+		});
+		expect(rows).toHaveLength(1);
 	});
 });
