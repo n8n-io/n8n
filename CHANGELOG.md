@@ -1,3 +1,11 @@
+## [1.123.37](https://github.com/n8n-io/n8n/compare/n8n@1.123.36...n8n@1.123.37) (2026-04-24)
+
+
+### Bug Fixes
+
+* **core:** Fix InstanceSettings.isMultiMain still returning false for multi-main cli command ([#29101](https://github.com/n8n-io/n8n/issues/29101)) ([31f5508](https://github.com/n8n-io/n8n/commit/31f55085e258ae44fba42cd110fb11f9c57fffd6))
+
+
 ## [1.123.36](https://github.com/n8n-io/n8n/compare/n8n@1.123.35...n8n@1.123.36) (2026-04-24)
 
 
