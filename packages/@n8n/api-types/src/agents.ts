@@ -76,6 +76,8 @@ export interface AgentJsonToolRef {
 export interface AgentJsonConfig {
 	name: string;
 	description?: string;
+	/** Optional icon/emoji shown in the agent builder header. */
+	icon?: { type: 'icon' | 'emoji'; value: string };
 	model: string;
 	credential?: string;
 	instructions: string;
