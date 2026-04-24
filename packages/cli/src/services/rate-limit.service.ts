@@ -93,6 +93,6 @@ export class RateLimitService {
 	}
 
 	private extractUserIdentifier(req: AuthenticatedRequest): string {
-		return `user:${req.user?.id}`;
+		return `user:${req.user.id}`;
 	}
 }

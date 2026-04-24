@@ -8,7 +8,7 @@ export function isPushRequest(req: Request): req is PushRequest {
 
 export function isSSEPushRequest(req: Request): req is SSEPushRequest {
 	const hasWs = 'ws' in req;
-	return isPushRequest(req) && (!hasWs || (hasWs && req.ws === undefined));
+	return isPushRequest(req) && (!hasWs || req.ws === undefined);
 }
 
 export function isWebSocketPushRequest(req: Request): req is WebSocketPushRequest {

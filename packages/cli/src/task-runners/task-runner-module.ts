@@ -97,7 +97,7 @@ export class TaskRunnerModule {
 			'@/task-runners/task-managers/local-task-requester'
 		);
 		this.taskRequester = Container.get(LocalTaskRequester);
-		Container.set(TaskRequester as ServiceIdentifier<TaskRequester>, this.taskRequester);
+		Container.set(TaskRequester, this.taskRequester);
 	}
 
 	private async loadTaskBroker() {

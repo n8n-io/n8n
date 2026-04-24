@@ -27,6 +27,7 @@ import {
 } from './types';
 import { WebSocketPush } from './websocket.push';
 import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 type PushEvents = {
 	editorUiConnected: string;
@@ -106,7 +107,7 @@ export class Push extends TypedEmitter<PushEvents> {
 					throw new BadRequestError('Request is not a PushRequest');
 				}
 				if (!isPushResponse(res)) {
-					throw new BadRequestError('Malformed response object');
+					throw new InternalServerError('Malformed response object');
 				}
 				return this.handleRequest(req, res);
 			},

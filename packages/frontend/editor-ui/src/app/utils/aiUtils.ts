@@ -1,12 +1,6 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, LlmTokenUsageData } from '@/Interface';
-import type {
-	IDataObject,
-	IDataObjectValue,
-	INodeExecutionData,
-	NodeConnectionType,
-} from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, NodeConnectionType } from 'n8n-workflow';
 import { isObjectEmpty, NodeConnectionTypes } from 'n8n-workflow';
 
 interface MemoryMessage {
@@ -31,6 +25,27 @@ const fallbackParser = (execData: IDataObject) => ({
 	data: execData,
 	parsed: false,
 });
+
+function isMemoryMessage(message: unknown): message is MemoryMessage {
+	if (typeof message !== 'object' || message === null || Array.isArray(message)) {
+		return false;
+	}
+	if (!('lc' in message) || typeof message.lc !== 'number') {
+		return false;
+	}
+	if (!('type' in message) || typeof message.type !== 'string') {
+		return false;
+	}
+	if (
+		!('id' in message) ||
+		!Array.isArray(message.id) ||
+		!message.id.every((item): item is string => typeof item === 'string')
+	) {
+		return false;
+	}
+
+	return true;
+}
 
 const outputTypeParsers: {
 	[key in AllowedEndpointType]: (execData: IDataObject) => {
@@ -208,26 +223,6 @@ const outputTypeParsers: {
 		};
 	},
 };
-
-function isMemoryMessage(message: IDataObjectValue): message is MemoryMessage {
-	if (typeof message !== 'object' || message === null || Array.isArray(message)) {
-		return false;
-	}
-	if ('lc' in message && typeof message.lc !== 'number') {
-		return false;
-	}
-	if ('type' in message && typeof message.type !== 'string') {
-		return false;
-	}
-	if (
-		'id' in message &&
-		(!Array.isArray(message.id) ||
-			!message.id.every((item): item is string => typeof item === 'string'))
-	)
-		return false;
-
-	return true;
-}
 
 export type ParsedAiContent = Array<{
 	raw: IDataObject | IDataObject[];

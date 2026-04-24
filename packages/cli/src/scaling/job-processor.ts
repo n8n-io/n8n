@@ -21,7 +21,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 	CloseFunction,
-	IDataObjectValue,
+	GenericValue,
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
@@ -546,7 +546,7 @@ export class JobProcessor {
 
 				const result = await nodeType.execute.call(context as unknown as IExecuteFunctions);
 
-				let response: IDataObjectValue[] = [];
+				let response: IDataObject | IDataObject[] | GenericValue | GenericValue[] = [];
 				if (Array.isArray(result)) {
 					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
 				}

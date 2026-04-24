@@ -118,7 +118,7 @@ class ModulesHooksRegistry {
 							type: 'workflowExecuteResume' as const,
 							workflow: this.workflowData,
 							workflowInstance,
-							executionData: executionData!,
+							executionData,
 							executionId: this.executionId,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return

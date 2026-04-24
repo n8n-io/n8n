@@ -424,10 +424,8 @@ export type GenericValue = string | object | number | boolean | undefined | null
 export type CloseFunction = () => Promise<void>;
 
 export interface IDataObject {
-	[key: string]: IDataObjectValue;
+	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
-
-export type IDataObjectValue = GenericValue | IDataObject | GenericValue[] | IDataObject[];
 
 export type IExecuteResponsePromiseData = IDataObject | IN8nHttpFullResponse;
 
