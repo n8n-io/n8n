@@ -261,7 +261,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn(),
+				decryptV2: jest.fn().mockResolvedValue(undefined),
 			});
 
 			const ldapService = new LdapService(
@@ -274,15 +274,15 @@ describe('LdapService', () => {
 
 			await ldapService.loadConfig();
 
-			expect(cipherMock.decrypt).toHaveBeenCalledTimes(1);
-			expect(cipherMock.decrypt).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
+			expect(cipherMock.decryptV2).toHaveBeenCalledTimes(1);
+			expect(cipherMock.decryptV2).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
 		});
 
 		it('should return the expected LDAP configuration', async () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: jest.fn().mockResolvedValue('decryptedPassword'),
 			});
 
 			const ldapService = new LdapService(
@@ -324,7 +324,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+				encryptV2: jest.fn().mockResolvedValue('encryptedPassword'),
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
@@ -339,8 +339,8 @@ describe('LdapService', () => {
 			const newConfig = { ...ldapConfig };
 			await ldapService.updateConfig(newConfig);
 
-			expect(cipherMock.encrypt).toHaveBeenCalledTimes(1);
-			expect(cipherMock.encrypt).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
+			expect(cipherMock.encryptV2).toHaveBeenCalledTimes(1);
+			expect(cipherMock.encryptV2).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
 			expect(newConfig.bindingAdminPassword).toEqual('encryptedPassword');
 		});
 
@@ -353,7 +353,7 @@ describe('LdapService', () => {
 			});
 
 			const cipherMock = mock<Cipher>({
-				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+				encryptV2: jest.fn().mockResolvedValue('encryptedPassword'),
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
@@ -382,7 +382,7 @@ describe('LdapService', () => {
 			});
 
 			const cipherMock = mock<Cipher>({
-				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+				encryptV2: jest.fn().mockResolvedValue('encryptedPassword'),
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
@@ -411,7 +411,7 @@ describe('LdapService', () => {
 			});
 
 			const cipherMock = mock<Cipher>({
-				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+				encryptV2: jest.fn().mockResolvedValue('encryptedPassword'),
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
@@ -440,7 +440,7 @@ describe('LdapService', () => {
 				delete: jest.fn(),
 			});
 			const cipherMock = mock<Cipher>({
-				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+				encryptV2: jest.fn().mockResolvedValue('encryptedPassword'),
 			});
 			const globalConfig = Container.get(GlobalConfig);
 			config.set('userManagement.authenticationMethod', 'email');
@@ -553,7 +553,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: jest.fn().mockResolvedValue('decryptedPassword'),
 			});
 
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
@@ -582,7 +582,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: jest.fn().mockResolvedValue('decryptedPassword'),
 			});
 
 			const filter = '';
@@ -620,7 +620,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail({ ...ldapConfig, searchPageSize: 0 });
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: jest.fn().mockResolvedValue('decryptedPassword'),
 			});
 
 			const filter = '';
@@ -658,7 +658,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: jest.fn().mockResolvedValue('decryptedPassword'),
 			});
 
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
@@ -683,7 +683,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: jest.fn().mockResolvedValue('decryptedPassword'),
 			});
 
 			const userList = [

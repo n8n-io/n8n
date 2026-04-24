@@ -91,7 +91,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		}
 
 		// Build credential context from execution context
-		const credentialContext = this.buildCredentialContext(executionContext);
+		const credentialContext = await this.buildCredentialContext(executionContext);
 
 		if (!credentialContext) {
 			return this.handleMissingContext(credentialsResolveMetadata);
@@ -105,7 +105,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			const sharedFields = extractSharedFields(credentialType.type);
 
 			// Decrypt and parse resolver configuration
-			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
+			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
 			const parsedConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
 			// Resolve expressions in resolver configuration using global data only
@@ -146,14 +146,14 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	/**
 	 * Builds credential context from execution context by decrypting the credentials field
 	 */
-	private buildCredentialContext(executionContext: IExecutionContext | undefined) {
+	private async buildCredentialContext(executionContext: IExecutionContext | undefined) {
 		if (!executionContext?.credentials) {
 			return undefined;
 		}
 
 		try {
 			// Decrypt credential context from execution context
-			const decrypted = this.cipher.decrypt(executionContext.credentials);
+			const decrypted = await this.cipher.decryptV2(executionContext.credentials);
 			return toCredentialContext(decrypted);
 		} catch (error) {
 			this.logger.error('Failed to decrypt credential context from execution context', {
