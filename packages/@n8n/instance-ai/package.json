@@ -13,7 +13,8 @@
     "eval:instance-ai": "tsx evaluations/cli/index.ts",
     "eval:pairwise": "tsx evaluations/cli/pairwise.ts",
     "eval:pairwise:langsmith": "tsx evaluations/cli/pairwise.ts --backend langsmith",
-    "eval:pairwise:report": "tsx evaluations/cli/report.ts"
+    "eval:pairwise:report": "tsx evaluations/cli/report.ts",
+    "eval:subagent": "tsx evaluations/subagent/cli.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

@@ -55,6 +55,33 @@ const GENERIC_AUTH_TYPE_VALUES = [
 ] as const;
 
 /**
+ * Property types that render UI affordances but carry no data in the saved
+ * workflow JSON. They are skipped entirely from generated schemas so that
+ * Zod validation does not reject configurations that omit them.
+ *
+ * Note: `button` and `icon` are not in this list — they can carry data.
+ * See mapNestedPropertyToZodSchemaInner / mapPropertyToZodSchemaInner for
+ * their dedicated schemas.
+ */
+const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credentials', 'callout']);
+
+/**
+ * Runtime shape for `type: 'icon'` properties (see N8nIconPicker).
+ * Values are stored as `{ type: 'icon' | 'emoji'; value: string }`.
+ */
+const ICON_ZOD_SCHEMA =
+	"z.object({ type: z.union([z.literal('icon'), z.literal('emoji')]), value: z.string() })";
+
+/**
+ * Runtime shape for `type: 'workflowSelector'` properties.
+ * The UI hardcodes two modes (see useWorkflowResourceLocatorModes.ts): `list` and `id`.
+ * Stored as an `INodeParameterResourceLocator` object, or as an `={{...}}` expression
+ * string when the user enters an expression.
+ */
+const WORKFLOW_SELECTOR_ZOD_SCHEMA =
+	"z.union([z.object({ __rl: z.literal(true), mode: z.union([z.literal('list'), z.literal('id')]), value: z.union([z.string(), z.number()]), cachedResultName: z.string().optional(), cachedResultUrl: z.string().optional() }), expressionSchema])";
+
+/**
  * TypeScript reserved words that need quoting
  */
 const RESERVED_WORDS = new Set([
@@ -399,7 +426,7 @@ function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
 
 function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 	// Skip display-only types
-	if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+	if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
 		return '';
 	}
 
@@ -471,6 +498,18 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 		case 'collection':
 			return generateCollectionZodSchema(prop);
 
+		case 'button':
+			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
+			// store the user-typed text; pure-action buttons store the default ''.
+			// In both cases the value is a string.
+			return 'stringOrExpression';
+
+		case 'icon':
+			return ICON_ZOD_SCHEMA;
+
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
+
 		case 'hidden':
 			return 'z.unknown()';
 
@@ -500,7 +539,7 @@ function generateFixedCollectionZodSchema(prop: NodeProperty): string {
 		const nestedProps: string[] = [];
 
 		for (const nestedProp of group.values) {
-			if (['notice', 'curlImport', 'credentials'].includes(nestedProp.type)) {
+			if (DISPLAY_ONLY_PROPERTY_TYPES.has(nestedProp.type)) {
 				continue;
 			}
 
@@ -559,7 +598,7 @@ function generateCollectionZodSchema(prop: NodeProperty): string {
 
 		// Cast to NodeProperty since collection options are actually NodeProperty-like
 		const asNodeProp = nestedProp as unknown as NodeProperty;
-		if (['notice', 'curlImport', 'credentials'].includes(asNodeProp.type)) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(asNodeProp.type)) {
 			continue;
 		}
 
@@ -691,7 +730,20 @@ function mapPropertyToZodSchemaInner(prop: NodeProperty): string {
 		case 'notice':
 		case 'curlImport':
 		case 'credentials':
-			return ''; // Skip these types
+		case 'callout':
+			return ''; // Skip display-only types
+
+		case 'button':
+			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
+			// store the user-typed text; pure-action buttons store the default ''.
+			// In both cases the value is a string.
+			return 'stringOrExpression';
+
+		case 'icon':
+			return ICON_ZOD_SCHEMA;
+
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
 
 		case 'credentialsSelect':
 			return 'stringOrExpression';
@@ -835,7 +887,7 @@ export function mergePropertiesByName(properties: NodeProperty[]): Map<string, N
 
 	for (const prop of properties) {
 		// Skip display-only types
-		if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
 			continue;
 		}
 
