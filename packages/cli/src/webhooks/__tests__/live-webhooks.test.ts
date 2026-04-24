@@ -13,6 +13,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type { NodeTypes } from '@/node-types';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -105,7 +106,7 @@ describe('LiveWebhooks', () => {
 				httpMethod,
 				path: webhookPath,
 				node: nodeName,
-				webhookDescription: {},
+				webhookDescription: { nodeType: undefined } as never,
 				workflowId,
 			});
 
@@ -218,7 +219,7 @@ describe('LiveWebhooks', () => {
 				httpMethod,
 				path: webhookPath,
 				node: nodeName,
-				webhookDescription: {},
+				webhookDescription: { nodeType: undefined } as never,
 				workflowId,
 			});
 
@@ -259,6 +260,143 @@ describe('LiveWebhooks', () => {
 			// Verify it does NOT have draft nodes
 			expect(capturedWorkflowData!.nodes[0].id).not.toBe('webhook-node-draft');
 			expect(capturedWorkflowData!.nodes[1].id).not.toBe('set-node-draft');
+		});
+	});
+
+	describe('route family scoping', () => {
+		const workflowId = 'workflow-1';
+		const nodeName = 'Trigger';
+		const webhookPath = 'my-path';
+		const httpMethod: IHttpRequestMethods = 'GET';
+
+		const setupMocks = (
+			declaredNodeType: 'form' | 'webhook' | 'mcp' | undefined,
+			nodeTypeName = 'n8n-nodes-base.webhook',
+		) => {
+			const node: INode = {
+				id: 'trigger-node',
+				name: nodeName,
+				type: nodeTypeName,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { path: webhookPath, httpMethod },
+			};
+
+			const activeVersion = mock<WorkflowHistory>({
+				versionId: 'v1',
+				workflowId,
+				nodes: [node],
+				connections: {},
+			});
+
+			const workflowEntity = mock<WorkflowEntity>({
+				id: workflowId,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'v1',
+				nodes: [node],
+				connections: {},
+				activeVersion,
+				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
+			});
+
+			const webhookEntity = mock<WebhookEntity>({
+				workflowId,
+				node: nodeName,
+				webhookPath,
+				method: httpMethod,
+				isDynamic: false,
+			});
+
+			const webhookNodeType = mock<INodeType>({
+				description: {
+					name: nodeTypeName,
+					properties: [],
+					webhooks: [{ nodeType: declaredNodeType, name: 'default' } as never],
+				},
+				webhook: jest.fn(),
+			});
+
+			const webhookData = mock<IWebhookData>({
+				httpMethod,
+				path: webhookPath,
+				node: nodeName,
+				webhookDescription: { nodeType: declaredNodeType } as never,
+				workflowId,
+			});
+
+			webhookService.findWebhook.mockResolvedValue(webhookEntity);
+			webhookService.getWebhookMethods.mockResolvedValue([httpMethod]);
+			workflowRepository.findOne.mockResolvedValue(workflowEntity);
+			nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
+			webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
+
+			(WebhookHelpers.executeWebhook as jest.Mock).mockImplementation((...args: unknown[]) => {
+				const webhookCallback = args[args.length - 1] as (
+					error: Error | null,
+					data: object,
+				) => void;
+				void webhookCallback(null, {});
+			});
+		};
+
+		const buildRequest = () =>
+			mock<WebhookRequest>({ method: httpMethod, params: { path: webhookPath } });
+
+		it('executes a form trigger on the form route family', async () => {
+			setupMocks('form', 'n8n-nodes-base.formTrigger');
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'form'),
+			).resolves.toBeDefined();
+		});
+
+		it('returns a not-found error when a form trigger is requested on the webhook route family', async () => {
+			setupMocks('form', 'n8n-nodes-base.formTrigger');
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'webhook'),
+			).rejects.toBeInstanceOf(WebhookNotFoundError);
+		});
+
+		it('executes a regular webhook on the webhook route family', async () => {
+			setupMocks(undefined);
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'webhook'),
+			).resolves.toBeDefined();
+		});
+
+		it('returns a not-found error when a regular webhook is requested on the form route family', async () => {
+			setupMocks(undefined);
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'form'),
+			).rejects.toBeInstanceOf(WebhookNotFoundError);
+		});
+
+		it('executes an mcp trigger on the mcp route family', async () => {
+			setupMocks('mcp', '@n8n/n8n-nodes-langchain.mcpTrigger');
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'mcp'),
+			).resolves.toBeDefined();
+		});
+
+		it('returns a not-found error when an mcp trigger is requested on the form route family', async () => {
+			setupMocks('mcp', '@n8n/n8n-nodes-langchain.mcpTrigger');
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>(), 'form'),
+			).rejects.toBeInstanceOf(WebhookNotFoundError);
+		});
+
+		it('executes without family scoping when expectedNodeType is not provided', async () => {
+			setupMocks('form', 'n8n-nodes-base.formTrigger');
+
+			await expect(
+				liveWebhooks.executeWebhook(buildRequest(), mock<Response>()),
+			).resolves.toBeDefined();
 		});
 	});
 });

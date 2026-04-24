@@ -23,7 +23,9 @@ import type { IUserSettings } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation } from '@/interfaces';
 import { PostHogClient } from '@/posthog';
@@ -33,6 +35,7 @@ import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';
 import { OwnershipService } from './ownership.service';
+import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
 
@@ -50,6 +53,7 @@ export class UserService {
 		private readonly roleService: RoleService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly jwtService: JwtService,
+		private readonly projectService: ProjectService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -64,6 +68,29 @@ export class UserService {
 
 	getManager() {
 		return this.userRepository.manager;
+	}
+
+	async assertGetUsersAccess(user: User, projectId?: string): Promise<void> {
+		if (projectId) {
+			const project = await this.projectService.getProjectWithScope(user, projectId, [
+				'project:list',
+			]);
+			if (!project) {
+				throw new NotFoundError('Project not found');
+			}
+			return;
+		}
+		const isInstanceAdmin = ['global:owner', 'global:admin'].includes(user.role.slug);
+		if (isInstanceAdmin) {
+			return;
+		}
+		const hasProjectUpdateScope =
+			(await this.projectService.getProjectIdsWithScope(user, ['project:update'])).length > 0;
+		if (!hasProjectUpdateScope) {
+			throw new ForbiddenError(
+				'Listing all users is limited to instance administrators and project admins. Filter by project to list project members.',
+			);
+		}
 	}
 
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
