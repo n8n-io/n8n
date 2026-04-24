@@ -340,7 +340,7 @@ const createRequestParams = async (methodName: string) => {
 		methodName,
 		credentials: props.node.credentials,
 		projectId: projectsStore.currentProjectId,
-		workflowId: workflowsStore.workflow.id,
+		workflowId: workflowsStore.workflowId,
 	};
 
 	return requestParams;
