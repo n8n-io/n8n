@@ -69,15 +69,13 @@ export class McpSettingsService {
 			throw new BadRequestError('Provide exactly one of workflowIds, projectId or folderId');
 		}
 
-		const requestedSize = workflowIds ? new Set(workflowIds).size : 0;
-
 		const candidateIds = await this.resolveCandidateIds(user, {
 			workflowIds,
 			projectId,
 			folderId,
 		});
 
-		const baselineSize = workflowIds ? requestedSize : candidateIds.length;
+		const baselineSize = workflowIds ? new Set(workflowIds).size : candidateIds.length;
 
 		if (candidateIds.length === 0) {
 			return { updatedCount: 0, updatedIds: [], skippedCount: baselineSize };
