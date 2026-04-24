@@ -340,3 +340,34 @@ test('`import:workflow --projectId ... --userId ...` fails explaining that only 
 		'You cannot use `--userId` and `--projectId` together. Use one or the other.',
 	);
 });
+
+test('import:workflow --activeState=fromJson should respect the JSON active field', async () => {
+	await createOwner();
+
+	await command.run([
+		'--separate',
+		'--input=./test/integration/commands/import-workflows/separate',
+		'--activeState=fromJson',
+	]);
+
+	const workflowsInDB = await getAllWorkflows();
+	expect(workflowsInDB).toMatchObject([
+		expect.objectContaining({ name: 'active-workflow', active: true }),
+		expect.objectContaining({ name: 'inactive-workflow', active: false, activeVersionId: null }),
+	]);
+	const activeWorkflow = workflowsInDB.find((w) => w.name === 'active-workflow');
+	expect(activeWorkflow?.activeVersionId).toBe(activeWorkflow?.versionId);
+});
+
+test('import:workflow --activeState with an invalid value fails', async () => {
+	await createOwner();
+
+	await expect(
+		command.run([
+			'--input=./test/integration/commands/import-workflows/combined/single.json',
+			'--activeState=bogus',
+		]),
+	).rejects.toThrowError(
+		/Valid values for flag \\?"--activeState\\?" are only \\?"false\\?" or \\?"fromJson\\?"\./,
+	);
+});
