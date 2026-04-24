@@ -181,3 +181,5 @@ minimumReleaseAgeExclude:
   - follow-redirects
   # Renovate security update: zod@3.25.76
   - zod@3.25.76
+  # Renovate security update: electron@39.8.5
+  - electron@39.8.5

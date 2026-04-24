@@ -32,7 +32,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "concurrently": "^8.2.0",
-    "electron": "^36.0.0",
+    "electron": "^39.0.0",
     "electron-builder": "^25.0.0",
     "rimraf": "catalog:"
   }
