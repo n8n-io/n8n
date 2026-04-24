@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { N8nButton, N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
@@ -122,10 +122,6 @@ async function copyCommand() {
 	}
 }
 
-async function onConnect() {
-	await store.connectLocalGateway();
-}
-
 // Fetch the paste-ready setup command from the server. No daemon calls here —
 // the local daemon is only contacted when the user clicks Connect.
 onMounted(() => {
@@ -175,8 +171,8 @@ onMounted(() => {
 
 		<template v-else>
 			<div
-				:class="$style.textBlock"
 				v-n8n-html="i18n.baseText('instanceAi.welcomeModal.gateway.description')"
+				:class="$style.textBlock"
 			/>
 			<div :class="$style.osTabs">
 				<button
@@ -216,22 +212,6 @@ onMounted(() => {
 					<N8nIcon icon="spinner" color="primary" spin size="small" />
 					<span>{{ i18n.baseText('instanceAi.welcomeModal.gateway.waiting') }}</span>
 				</div>
-			</div>
-
-			<div :class="$style.alreadyRunningRow">
-				<N8nText
-					v-n8n-html="i18n.baseText('instanceAi.welcomeModal.gateway.alreadyRunning')"
-					size="xsmall"
-					color="text-light"
-				/>
-				<N8nButton
-					variant="ghost"
-					size="mini"
-					:loading="store.isDaemonConnecting"
-					:label="i18n.baseText('instanceAi.welcomeModal.gateway.connect')"
-					data-test-id="computer-use-setup-connect"
-					@click="onConnect"
-				/>
 			</div>
 
 			<N8nText v-n8n-html="browserAutomationHint" color="text-light" :class="$style.browserHint" />
@@ -413,15 +393,6 @@ onMounted(() => {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	border-top: var(--border);
 	color: var(--color--text--tint-1);
-}
-
-.alreadyRunningRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--5xs);
-	margin-top: calc(var(--spacing--4xs) - var(--spacing--sm));
-	padding-bottom: var(--spacing--sm);
-	border-bottom: var(--border);
 }
 
 .instructions {

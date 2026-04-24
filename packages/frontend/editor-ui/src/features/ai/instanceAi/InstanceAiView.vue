@@ -23,7 +23,6 @@ import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from './instanceAi.store';
@@ -61,7 +60,6 @@ const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
-const pushConnectionStore = usePushConnectionStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
 const route = useRoute();
@@ -120,7 +118,6 @@ const showEmptyStateLayout = computed(() => !props.threadId);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
-	pushConnectionStore.pushConnect();
 	void store.loadThreads().then((loaded) => {
 		if (!loaded || !props.threadId) return;
 		// After threads load, validate deep-link: redirect if thread doesn't exist
@@ -307,7 +304,6 @@ onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
 	executionTracking.cleanup();
-	pushConnectionStore.pushDisconnect();
 	store.closeSSE();
 	store.stopCreditsPushListener();
 	settingsStore.stopGatewayPushListener();

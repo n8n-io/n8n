@@ -1,9 +1,8 @@
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import ComputerUseSetupContent from './ComputerUseSetupContent.vue';
 
@@ -12,23 +11,11 @@ import { CHROME_EXTENSION_URL } from './constants';
 const props = defineProps<{ modalName: string }>();
 
 const i18n = useI18n();
-const pushConnectionStore = usePushConnectionStore();
 const store = useInstanceAiSettingsStore();
 
 type Step = 'gateway' | 'extension';
 
 const step = ref<Step>(store.isGatewayConnected ? 'extension' : 'gateway');
-
-onMounted(() => {
-	pushConnectionStore.pushConnect();
-	store.startGatewayPushListener();
-	void store.fetchGatewayStatus();
-});
-
-onBeforeUnmount(() => {
-	store.stopGatewayPushListener();
-	pushConnectionStore.pushDisconnect();
-});
 
 // Advance from gateway step once the daemon connects.
 watch(
