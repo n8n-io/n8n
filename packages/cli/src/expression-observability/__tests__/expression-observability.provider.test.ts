@@ -14,7 +14,9 @@ const scopedLogger = mock<Logger>();
 
 function buildConfig(overrides: Partial<ExpressionEngineConfig> = {}): ExpressionEngineConfig {
 	const config = new ExpressionEngineConfig();
-	return Object.assign(config, overrides);
+	// The provider is a no-op unless engine === 'vm'. Default tests to the active
+	// engine so shared assertions exercise the real code path.
+	return Object.assign(config, { engine: 'vm' as const, ...overrides });
 }
 
 function buildLogger(): Logger {
@@ -34,7 +36,7 @@ describe('ExpressionObservabilityProvider', () => {
 	});
 
 	describe('when disabled', () => {
-		it('delegates to NoOpProvider for metrics/traces/logs', () => {
+		it('delegates to NoOpProvider when observabilityEnabled=false', () => {
 			const provider = new ExpressionObservabilityProvider(
 				buildConfig({ observabilityEnabled: false }),
 				buildLogger(),
@@ -48,6 +50,19 @@ describe('ExpressionObservabilityProvider', () => {
 				provider.logs.info('hello');
 				provider.traces.startSpan('x').end();
 			}).not.toThrow();
+		});
+
+		it('delegates to NoOpProvider when engine is not vm', async () => {
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig({ engine: 'legacy' }),
+				buildLogger(),
+				buildGlobalConfig(),
+			);
+
+			provider.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
+
+			const output = await promClient.register.metrics();
+			expect(output).not.toContain('n8n_expression_');
 		});
 	});
 

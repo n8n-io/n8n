@@ -34,7 +34,11 @@ export class ExpressionEngineConfig {
 	@Env('N8N_EXPRESSION_ENGINE_MEMORY_LIMIT')
 	bridgeMemoryLimit: number = 128;
 
-	/** Whether to emit observability signals (metrics, traces, logs) for the VM evaluator. */
+	/**
+	 * Whether to emit observability signals (metrics, traces, logs) for the VM evaluator.
+	 * Only takes effect when `engine === 'vm'`; legacy mode never emits expression metrics
+	 * regardless of this setting.
+	 */
 	@Env('N8N_EXPRESSION_ENGINE_OBSERVABILITY_ENABLED')
 	observabilityEnabled: boolean = true;
 

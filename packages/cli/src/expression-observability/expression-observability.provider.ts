@@ -50,7 +50,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 		this.scopedLogger = this.logger.scoped('expression-engine');
 		this.prefix = globalConfig.endpoints.metrics.prefix;
 
-		if (!this.config.observabilityEnabled) {
+		if (!this.config.observabilityEnabled || this.config.engine !== 'vm') {
 			this.metrics = NoOpProvider.metrics;
 			this.traces = NoOpProvider.traces;
 			this.logs = NoOpProvider.logs;
