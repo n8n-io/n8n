@@ -15,6 +15,7 @@ import type {
 } from '../../types/base';
 import { isNodeChain, isNodeInstance } from '../../types/base';
 import { isIfElseBuilder, isSwitchCaseBuilder } from '../node-builders/node-builder';
+import { assertPlainObject } from '../validation-helpers';
 
 /**
  * Internal split in batches node implementation
@@ -343,6 +344,11 @@ export function splitInBatches(
 		| NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>,
 	branches?: SplitInBatchesBranches,
 ): SplitInBatchesBuilder<unknown> {
+	assertPlainObject(
+		configOrNode,
+		'splitInBatches',
+		'a config object { version, config } or a NodeInstance',
+	);
 	// Named object syntax: splitInBatches(node, { done, each })
 	if (
 		branches !== undefined &&

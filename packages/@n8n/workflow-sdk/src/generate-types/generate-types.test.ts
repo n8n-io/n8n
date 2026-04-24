@@ -1953,6 +1953,36 @@ describe('generate-types', () => {
 			// Should indicate it's a trigger
 			expect(result).toContain('isTrigger: true');
 		});
+
+		// Regression: required string with default: '' used to emit
+		// `fieldToSplitOut?: ...` in the TS type, which dropped the required
+		// signal to LLMs consuming the type. Empty defaults don't satisfy
+		// required at runtime, so the type must not carry a `?` marker.
+		it('marks required string with empty default as non-optional (no "?" in type)', () => {
+			const splitOutLike: NodeTypeDescription = {
+				name: 'n8n-nodes-base.splitOut',
+				displayName: 'Split Out',
+				description: 'Turn a list inside item(s) into separate items',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'fieldToSplitOut',
+						displayName: 'Fields To Split Out',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(splitOutLike);
+
+			expect(result).toMatch(/fieldToSplitOut:\s*string\s*\|/);
+			expect(result).not.toMatch(/fieldToSplitOut\?:/);
+		});
 	});
 
 	describe('generateIndexFile', () => {
