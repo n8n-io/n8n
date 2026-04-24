@@ -7,6 +7,7 @@ import type {
 	FindOneOptions,
 	FindOperator,
 	FindOptionsWhere,
+	ObjectLiteral,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
 import {
@@ -57,6 +58,7 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '../entities/types-db';
+import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { separate } from '../utils/separate';
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
@@ -883,11 +885,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return [...summariesById.values()];
 	}
 
-	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
-		// Due to performance reasons, we use custom query builder with raw SQL.
-		// IMPORTANT: it produces duplicate rows for executions with multiple tags, which we need to reduce manually
-		const qb = this.toQueryBuilderWithAnnotations(query);
-
+	private async getSummariesFromAnnotatedQuery(
+		qb: SelectQueryBuilder<ObjectLiteral>,
+	): Promise<ExecutionSummary[]> {
 		const rawExecutionsWithTags: Array<
 			ExecutionSummary & {
 				annotation_id: number;
@@ -900,6 +900,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executions = this.reduceExecutionsWithAnnotations(rawExecutionsWithTags);
 
 		return executions.map((execution) => this.toSummary(execution));
+	}
+
+	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
+		// Due to performance reasons, we use custom query builder with raw SQL.
+		// IMPORTANT: it produces duplicate rows for executions with multiple tags, which we need to reduce manually
+		const qb = this.toQueryBuilderWithAnnotations(query, () => this.toQueryBuilder(query));
+		return await this.getSummariesFromAnnotatedQuery(qb);
+	}
+
+	async findManyByMcpRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
+		const qb = this.toQueryBuilderWithAnnotations(query, () => this.toMcpQueryBuilder(query));
+		return await this.getSummariesFromAnnotatedQuery(qb);
 	}
 
 	// @tech_debt: These transformations should not be needed
@@ -950,6 +962,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async fetchCount(query: ExecutionSummaries.CountQuery) {
 		return await this.toQueryBuilder(query).getCount();
+	}
+
+	async fetchMcpCount(query: ExecutionSummaries.CountQuery) {
+		return await this.toMcpQueryBuilder(query).getCount();
 	}
 
 	async getLiveExecutionRowsOnPostgres() {
@@ -1092,6 +1108,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return qb;
 	}
 
+	private toMcpQueryBuilder(query: ExecutionSummaries.Query) {
+		const qb = this.toQueryBuilder(query);
+
+		qb.andWhere('workflow.isArchived = :isArchived', { isArchived: false });
+		applyWorkflowBooleanSettingFilter(qb, this.globalConfig, 'availableInMCP', true);
+
+		return qb;
+	}
+
 	/**
 	 * This method is used to add the annotation fields to the executions query
 	 * It uses original query builder as a subquery and adds the annotation fields to it
@@ -1099,12 +1124,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 *  this is intended, as we are working with raw query.
 	 *  The duplicates are reduced in the *reduceExecutionsWithAnnotations* method.
 	 */
-	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
+	private toQueryBuilderWithAnnotations(
+		query: ExecutionSummaries.Query,
+		buildBaseQuery: () => SelectQueryBuilder<ExecutionEntity>,
+	) {
 		const annotationFields = Object.keys(this.annotationFields).map(
 			(key) => `annotation.${key} AS "annotation_${key}"`,
 		);
 
-		const subQuery = this.toQueryBuilder(query).addSelect(annotationFields);
+		const subQuery = buildBaseQuery().addSelect(annotationFields);
 
 		// Ensure the join with annotations is made only once
 		// It might be already present as an inner join if the query includes filter by annotation tags

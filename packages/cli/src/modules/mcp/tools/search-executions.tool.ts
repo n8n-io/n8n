@@ -49,7 +49,6 @@ const outputSchema = {
 					.string()
 					.nullable()
 					.describe('ISO timestamp until when the execution is waiting'),
-				finished: z.boolean().describe('Whether the execution has finished'),
 			}),
 		)
 		.describe('List of executions matching the query'),
@@ -117,7 +116,7 @@ export const createSearchExecutionsTool = (
 				...(status?.length ? { status } : {}),
 			};
 
-			const { results, count, estimated } = await executionService.findRangeWithCount(query);
+			const { results, count, estimated } = await executionService.findMcpRangeWithCount(query);
 
 			const data = results.map((execution) => ({
 				id: execution.id,
@@ -127,7 +126,6 @@ export const createSearchExecutionsTool = (
 				startedAt: execution.startedAt ?? null,
 				stoppedAt: execution.stoppedAt ?? null,
 				waitTill: execution.waitTill ?? null,
-				finished: execution.status === 'success',
 			}));
 
 			const payload = { data, count, estimated };

@@ -30,7 +30,7 @@ describe('search-executions MCP tool', () => {
 
 	beforeEach(() => {
 		executionService = mockInstance(ExecutionService, {
-			findRangeWithCount: jest.fn().mockResolvedValue({
+			findMcpRangeWithCount: jest.fn().mockResolvedValue({
 				results: [],
 				count: 0,
 				estimated: false,
@@ -76,7 +76,7 @@ describe('search-executions MCP tool', () => {
 				stoppedAt: '2024-06-01T10:02:00.000Z',
 			}),
 		];
-		(executionService.findRangeWithCount as jest.Mock).mockResolvedValue({
+		(executionService.findMcpRangeWithCount as jest.Mock).mockResolvedValue({
 			results: executions,
 			count: 2,
 			estimated: false,
@@ -94,7 +94,6 @@ describe('search-executions MCP tool', () => {
 					startedAt: '2024-06-01T10:00:00.000Z',
 					stoppedAt: '2024-06-01T10:01:00.000Z',
 					waitTill: null,
-					finished: true,
 				},
 				{
 					id: 'exec-2',
@@ -104,7 +103,6 @@ describe('search-executions MCP tool', () => {
 					startedAt: '2024-06-01T10:00:00.000Z',
 					stoppedAt: '2024-06-01T10:02:00.000Z',
 					waitTill: null,
-					finished: false,
 				},
 			],
 			count: 2,
@@ -122,35 +120,35 @@ describe('search-executions MCP tool', () => {
 			{ includeActiveVersion: undefined },
 		);
 
-		const query = (executionService.findRangeWithCount as jest.Mock).mock.calls[0][0];
+		const query = (executionService.findMcpRangeWithCount as jest.Mock).mock.calls[0][0];
 		expect(query.workflowId).toBe('wf-1');
 	});
 
 	test('filters by status', async () => {
 		await createTool().handler({ status: ['error', 'crashed'] } as never, {} as never);
 
-		const query = (executionService.findRangeWithCount as jest.Mock).mock.calls[0][0];
+		const query = (executionService.findMcpRangeWithCount as jest.Mock).mock.calls[0][0];
 		expect(query.status).toEqual(['error', 'crashed']);
 	});
 
 	test('respects limit parameter and clamps to max', async () => {
 		await createTool().handler({ limit: 500 } as never, {} as never);
 
-		const query = (executionService.findRangeWithCount as jest.Mock).mock.calls[0][0];
+		const query = (executionService.findMcpRangeWithCount as jest.Mock).mock.calls[0][0];
 		expect(query.range.limit).toBe(200);
 	});
 
 	test('uses default limit when not provided', async () => {
 		await createTool().handler({} as never, {} as never);
 
-		const query = (executionService.findRangeWithCount as jest.Mock).mock.calls[0][0];
+		const query = (executionService.findMcpRangeWithCount as jest.Mock).mock.calls[0][0];
 		expect(query.range.limit).toBe(100);
 	});
 
 	test('handles pagination with lastId', async () => {
 		await createTool().handler({ lastId: 'exec-50' } as never, {} as never);
 
-		const query = (executionService.findRangeWithCount as jest.Mock).mock.calls[0][0];
+		const query = (executionService.findMcpRangeWithCount as jest.Mock).mock.calls[0][0];
 		expect(query.range.lastId).toBe('exec-50');
 	});
 
@@ -171,7 +169,7 @@ describe('search-executions MCP tool', () => {
 	});
 
 	test('tracks telemetry on success', async () => {
-		(executionService.findRangeWithCount as jest.Mock).mockResolvedValue({
+		(executionService.findMcpRangeWithCount as jest.Mock).mockResolvedValue({
 			results: [createExecution()],
 			count: 1,
 			estimated: false,
@@ -190,7 +188,7 @@ describe('search-executions MCP tool', () => {
 	});
 
 	test('tracks telemetry on failure', async () => {
-		(executionService.findRangeWithCount as jest.Mock).mockRejectedValue(
+		(executionService.findMcpRangeWithCount as jest.Mock).mockRejectedValue(
 			new Error('DB connection lost'),
 		);
 
