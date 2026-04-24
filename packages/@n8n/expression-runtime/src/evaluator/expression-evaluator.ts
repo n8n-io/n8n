@@ -30,10 +30,6 @@ function recordOutcome(
 		status,
 		type: errorType ?? '',
 	});
-	observability.metrics.counter('expression.evaluations', 1, { status });
-	if (errorType) {
-		observability.metrics.counter('expression.errors', 1, { type: errorType });
-	}
 }
 
 export class ExpressionEvaluator implements IExpressionEvaluator {

@@ -45,7 +45,7 @@ describe('ExpressionEvaluator metrics', () => {
 		observability = createMockObservability();
 	});
 
-	it('emits duration histogram and success counter on successful evaluation', async () => {
+	it('emits duration histogram on successful evaluation', async () => {
 		const bridge = createMockBridge(vi.fn().mockReturnValue('result'));
 		const evaluator = new ExpressionEvaluator({
 			createBridge: () => bridge,
@@ -63,9 +63,6 @@ describe('ExpressionEvaluator metrics', () => {
 			expect.any(Number),
 			{ status: 'success', type: '' },
 		);
-		expect(observability.metrics.counter).toHaveBeenCalledWith('expression.evaluations', 1, {
-			status: 'success',
-		});
 	});
 
 	it.each([
@@ -74,7 +71,7 @@ describe('ExpressionEvaluator metrics', () => {
 		[new SecurityViolationError('s', {}), 'security'],
 		[new SyntaxError('y', {}), 'syntax'],
 		[new Error('anything'), 'unknown'],
-	])('emits error counter with type=%s for %o', async (err, expectedType) => {
+	])('emits duration histogram with type=%s for %o', async (err, expectedType) => {
 		const bridge = createMockBridge(
 			vi.fn().mockImplementation(() => {
 				throw err;
@@ -91,12 +88,6 @@ describe('ExpressionEvaluator metrics', () => {
 
 		expect(() => evaluator.evaluate('={{ fail() }}', {}, caller)).toThrow();
 
-		expect(observability.metrics.counter).toHaveBeenCalledWith('expression.evaluations', 1, {
-			status: 'error',
-		});
-		expect(observability.metrics.counter).toHaveBeenCalledWith('expression.errors', 1, {
-			type: expectedType,
-		});
 		expect(observability.metrics.histogram).toHaveBeenCalledWith(
 			'expression.evaluation.duration_ms',
 			expect.any(Number),
