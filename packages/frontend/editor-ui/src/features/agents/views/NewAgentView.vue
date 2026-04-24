@@ -9,6 +9,7 @@ import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { createAgent } from '../composables/useAgentApi';
 import { AGENT_BUILDER_VIEW } from '../constants';
+import AgentBuilderProgress from '../components/AgentBuilderProgress.vue';
 
 const router = useRouter();
 const rootStore = useRootStore();
@@ -21,6 +22,10 @@ const firstName = computed(() => usersStore.currentUser?.firstName ?? '');
 
 const inputText = ref('');
 const isCreating = ref(false);
+
+// When set, we've created the agent and the progress overlay is streaming
+// the build. We only route into the builder once the stream reports `done`.
+const building = ref<{ agentId: string; message: string } | null>(null);
 
 interface SuggestionTemplate {
 	icon: string;
@@ -77,20 +82,29 @@ async function createBlank() {
 async function submitDescription() {
 	if (isCreating.value || !inputText.value.trim()) return;
 	isCreating.value = true;
+	const message = inputText.value.trim();
 	try {
 		const agent = await createAgent(rootStore.restApiContext, projectId.value, 'New Agent');
 		telemetry.track('User created agent', {
 			agent_id: agent.id,
 			source: 'description_prompt',
 		});
-		void router.push({
-			name: AGENT_BUILDER_VIEW,
-			params: { projectId: projectId.value, agentId: agent.id },
-			query: { prompt: inputText.value.trim() },
-		});
-	} finally {
+		// Hand off to the progress overlay; it streams `/build` and fires `done`
+		// once the agent is ready, at which point we route into the builder.
+		building.value = { agentId: agent.id, message };
+	} catch (e) {
 		isCreating.value = false;
+		throw e;
 	}
+}
+
+function onBuildDone() {
+	const target = building.value;
+	if (!target) return;
+	void router.push({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId: target.agentId },
+	});
 }
 
 function selectSuggestion(suggestion: SuggestionTemplate) {
@@ -103,6 +117,14 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 <template>
 	<div :class="$style.page">
+		<div v-if="building" :class="$style.buildingOverlay">
+			<AgentBuilderProgress
+				:project-id="projectId"
+				:agent-id="building.agentId"
+				:initial-message="building.message"
+				@done="onBuildDone"
+			/>
+		</div>
 		<div :class="$style.topBar">
 			<N8nText tag="span" bold size="large">New agent</N8nText>
 			<N8nButton
@@ -167,10 +189,20 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 <style module>
 .page {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	width: 100%;
+}
+
+.buildingOverlay {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: flex;
+	background: var(--color--background--light-3);
+	backdrop-filter: blur(4px);
 }
 
 .topBar {
