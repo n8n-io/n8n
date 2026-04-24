@@ -189,14 +189,14 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 					</div>
 				</template>
 
-				<div v-if="!store.isProxyEnabled" :class="$style.card">
+				<div v-if="!store.isProxyEnabled && !store.isCloudManaged" :class="$style.card">
 					<div :class="$style.sectionBlock">
 						<ModelSection />
 					</div>
 				</div>
 
 				<template v-if="isAdmin">
-					<div v-if="!store.isProxyEnabled" :class="$style.card">
+					<div v-if="!store.isProxyEnabled && !store.isCloudManaged" :class="$style.card">
 						<div :class="$style.sectionBlock">
 							<SandboxSection />
 						</div>

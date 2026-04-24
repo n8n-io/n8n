@@ -149,6 +149,20 @@ describe('SettingsAiGatewayView', () => {
 			await waitFor(() => expect(mockGetGatewayUsage).toHaveBeenCalledOnce());
 			expect(mockGetGatewayUsage).toHaveBeenCalledWith(expect.anything(), 0, 50);
 		});
+
+		it('should re-fetch wallet balance when refresh is clicked', async () => {
+			mockGetGatewayUsage.mockResolvedValue({ entries: MOCK_ENTRIES, total: 100 });
+			renderComponent();
+			await waitFor(() => expect(screen.getByText('gemini-pro')).toBeInTheDocument());
+			await waitFor(() => expect(screen.getByText('$42.00 remaining')).toBeInTheDocument());
+
+			mockGetGatewayWallet.mockClear();
+			mockGetGatewayWallet.mockResolvedValue({ balance: 35, budget: 100 });
+			await userEvent.click(screen.getByRole('button', { name: /refresh/i }));
+
+			await waitFor(() => expect(mockGetGatewayWallet).toHaveBeenCalledOnce());
+			await waitFor(() => expect(screen.getByText('$35.00 remaining')).toBeInTheDocument());
+		});
 	});
 
 	describe('loadMore()', () => {

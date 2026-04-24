@@ -37,7 +37,6 @@ import * as workflowUtils from 'n8n-workflow/common';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
-import { isPresent } from '@/app/utils/typesUtils';
 import { makeRestApiRequest, ResponseError, type WorkflowHistory } from '@n8n/rest-api-client';
 import {
 	unflattenExecutionData,
@@ -346,29 +345,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return {};
 	}
 
-	/** @deprecated Use `workflowDocumentStore.nodeHasOutputConnection()` instead. */
-	function nodeHasOutputConnection(nodeName: string): boolean {
-		return workflow.value.connections.hasOwnProperty(nodeName);
-	}
-
-	/** @deprecated Use `workflowDocumentStore.isNodeInOutgoingNodeConnections()` instead. */
-	function isNodeInOutgoingNodeConnections(
-		rootNodeName: string,
-		searchNodeName: string,
-		depth = -1,
-	): boolean {
-		if (depth === 0) return false;
-		const firstNodeConnections = outgoingConnectionsByNodeName(rootNodeName);
-		if (!firstNodeConnections?.main?.[0]) return false;
-
-		const connections = firstNodeConnections.main[0];
-		if (connections.some((node) => node.node === searchNodeName)) return true;
-
-		return connections.some((node) =>
-			isNodeInOutgoingNodeConnections(node.node, searchNodeName, depth - 1),
-		);
-	}
-
 	/** @deprecated Use `workflowDocumentStore.getNodeByName()` instead. */
 	function getNodeByName(nodeName: string): INodeUi | null {
 		return workflowUtils.getNodeByName(nodesByName.value, nodeName);
@@ -377,11 +353,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	/** @deprecated Use `workflowDocumentStore.getNodeById()` instead. */
 	function getNodeById(nodeId: string): INodeUi | undefined {
 		return workflow.value.nodes.find((node) => node.id === nodeId);
-	}
-
-	/** @deprecated Use `workflowDocumentStore.findNodeByPartialId()` instead. */
-	function findNodeByPartialId(partialId: string): INodeUi | undefined {
-		return workflow.value.nodes.find((node) => node.id.startsWith(partialId));
 	}
 
 	// Finds a uniquely identifying partial id for a node, relying on order for uniqueness in edge cases
@@ -393,11 +364,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			}
 		}
 		return fullId;
-	}
-
-	/** @deprecated Use `workflowDocumentStore.getNodesByIds()` instead. */
-	function getNodesByIds(nodeIds: string[]): INodeUi[] {
-		return nodeIds.map(getNodeById).filter(isPresent);
 	}
 
 	function getExecutionDataById(id: string): ExecutionSummary | undefined {
@@ -1226,26 +1192,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		selectedTriggerNodeName.value = value;
 	}
 
-	/**
-	 * Get the webhook URL for a node
-	 * @param nodeId - The ID of the node
-	 * @param webhookType - The type of webhook ('test' or 'production')
-	 * @returns The webhook URL or undefined if the node doesn't have webhooks
-	 */
-	async function getWebhookUrl(
-		nodeId: string,
-		webhookType: 'test' | 'production',
-	): Promise<string | undefined> {
-		const node = getNodeById(nodeId);
-		if (!node) return;
-
-		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		if (!nodeType?.webhooks?.length) return;
-
-		const webhook = nodeType.webhooks[0];
-		return await workflowHelpers.getWebhookUrl(webhook, node, webhookType);
-	}
-
 	watch(
 		[selectableTriggerNodes, workflowExecutionTriggerNodeName],
 		([newSelectable, currentTrigger], [oldSelectable]) => {
@@ -1315,11 +1261,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionTriggerNodeName,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
-		nodeHasOutputConnection,
-		isNodeInOutgoingNodeConnections,
 		getNodeByName,
-		getNodeById,
-		getNodesByIds,
 		getExecutionDataById,
 		getNodeTypes,
 		getNodes,
@@ -1361,12 +1303,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetChatMessages,
 		appendChatMessage,
 		removeNodeExecutionDataById,
-		findNodeByPartialId,
 		getPartialIdForNode,
 		setSelectedTriggerNodeName,
 		fetchLastSuccessfulExecution,
 		lastSuccessfulExecution,
-		getWebhookUrl,
 		canViewWorkflows,
 		// This is exposed to ease the refactoring to the injected workflowState composable
 		// Please do not use outside this context

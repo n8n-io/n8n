@@ -8,6 +8,7 @@
  */
 
 import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
+import { Readable } from 'node:stream';
 
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from './index';
 
@@ -109,17 +110,55 @@ export function buildEvalMockCredentials(properties: INodeProperties[]): Record<
 // ---------------------------------------------------------------------------
 
 /**
- * Convert an EvalMockHttpResponse into the full-response shape that callers expect
- * when `returnFullResponse` / `resolveWithFullResponse` is true.
- * Body is serialized to a Buffer so downstream processing (binary detection,
- * encoding detection, stream handling) works exactly as with a real HTTP response.
+ * Shape a mock response to match what axios's `result.data` would be for the
+ * same request. Node code reads body based on the request's `encoding` field,
+ * which maps 1:1 onto axios `responseType`.
+ *
+ * `__bodyResolved` tells HttpRequestV3 the body is already consumer-ready so
+ * it skips its Buffer→string→JSON.parse pipeline (which would crash on a
+ * plain object with "stream.on is not a function").
  */
-export function serializeMockToHttpResponse(mock: EvalMockHttpResponse) {
-	const body =
+export function serializeMockToHttpResponse(
+	mock: EvalMockHttpResponse,
+	requestOptions?: IHttpRequestOptions,
+) {
+	const common = {
+		headers: mock.headers,
+		statusCode: mock.statusCode,
+		statusMessage: 'OK',
+	};
+
+	const bytes = () =>
 		mock.body instanceof Buffer
 			? mock.body
-			: Buffer.from(typeof mock.body === 'string' ? mock.body : JSON.stringify(mock.body));
-	return { body, headers: mock.headers, statusCode: mock.statusCode, statusMessage: 'OK' };
+			: Buffer.from(typeof mock.body === 'string' ? mock.body : JSON.stringify(mock.body ?? ''));
+
+	switch (requestOptions?.encoding) {
+		case 'stream':
+			return { ...common, body: Readable.from(bytes()) };
+		case 'arraybuffer':
+		case 'blob':
+			return { ...common, body: bytes() };
+		case 'text':
+			return {
+				...common,
+				body:
+					mock.body instanceof Buffer
+						? mock.body.toString()
+						: typeof mock.body === 'string'
+							? mock.body
+							: JSON.stringify(mock.body ?? ''),
+				__bodyResolved: true,
+			};
+	}
+
+	// Default path (encoding is 'json' or undefined) — axios would return
+	// parsed data. If the mock already produced a parsed object, hand it
+	// through. If it handed us raw bytes, return them and let the node decode.
+	if (mock.body instanceof Buffer) {
+		return { ...common, body: mock.body };
+	}
+	return { ...common, body: mock.body, __bodyResolved: true };
 }
 
 /** Normalize legacy IRequestOptions or (uri, options) args into IHttpRequestOptions for the eval mock handler. */
@@ -167,7 +206,7 @@ export async function callEvalMockHandler(
 		throwHttpError(response, httpLibrary);
 	}
 
-	return returnFullResponse ? serializeMockToHttpResponse(response) : response.body;
+	return returnFullResponse ? serializeMockToHttpResponse(response, requestOptions) : response.body;
 }
 
 /**

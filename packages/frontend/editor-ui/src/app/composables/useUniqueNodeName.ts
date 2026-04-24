@@ -27,11 +27,9 @@ export function useUniqueNodeName() {
 	 * all nodes on canvas and any extra names that cannot be used.
 	 */
 	function uniqueNodeName(originalName: string, extraNames: string[] = []) {
-		const workflowsStore = useWorkflowsStore();
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+		const { canvasNames } = useWorkflowDocumentStore(
+			createWorkflowDocumentId(useWorkflowsStore().workflowId),
 		);
-		const canvasNames = workflowDocumentStore.canvasNames;
 
 		const isUnique = !canvasNames.has(originalName) && !extraNames.includes(originalName);
 
