@@ -233,7 +233,7 @@ describe('Project members endpoints', () => {
 		afterEach(() => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
-			delete process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+			delete process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING;
 		});
 
 		test('should return 403 when SSO provider controls project roles', async () => {
@@ -253,7 +253,7 @@ describe('Project members endpoints', () => {
 		});
 
 		test('should return 403 when expression-based role mapping is active', async () => {
-			process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = 'true';
+			process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING = 'true';
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
 

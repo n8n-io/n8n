@@ -40,6 +40,7 @@ const {
 	saveProvisioningConfig,
 	roleAssignmentTransition,
 	storedHasProjectRoles,
+	isDroppingProjectRules,
 	revertRoleAssignment,
 } = useUserRoleProvisioningForm(SupportedProtocols.OIDC);
 
@@ -159,6 +160,16 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			authenticationContextClassReference: acrArray,
 		});
 		await saveProvisioningConfig(isDisablingOidcLogin);
+
+		// If the user's effective role assignment doesn't include project roles,
+		// discard any project-rule state in the editor (both locally-added and
+		// server-backed entries) so editor.save() doesn't try to POST/PATCH rules
+		// that shouldn't exist. Checking the current dropdown at save-time is
+		// robust against storedHasProjectRules drift.
+		const effectiveRoleAssignment = isDisablingOidcLogin ? 'manual' : roleAssignment.value;
+		if (effectiveRoleAssignment !== 'instance_and_project') {
+			roleMappingRuleEditorRef.value?.discardProjectRules();
+		}
 
 		if (userRoleProvisioning.value === 'expression_based') {
 			await roleMappingRuleEditorRef.value?.save();
@@ -313,6 +324,7 @@ onMounted(async () => {
 				v-model="showUserRoleProvisioningDialog"
 				:transition-type="roleAssignmentTransition"
 				:show-project-roles-csv="storedHasProjectRoles || roleAssignment === 'instance_and_project'"
+				:will-delete-project-rules="isDroppingProjectRules"
 				auth-protocol="oidc"
 				@confirm-provisioning="onOidcSettingsSave(true)"
 				@cancel="
