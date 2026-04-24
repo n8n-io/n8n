@@ -11,6 +11,10 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { N8nIcon } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 const MAX_RECENT_ITEMS = 5;
 const MAX_RECENT_WORKFLOWS_TO_DISPLAY = 3;
@@ -33,6 +37,9 @@ export function useRecentResources() {
 	const i18n = useI18n();
 	const router = useRouter();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 	const workflowsListStore = useWorkflowsListStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const { setNodeActive } = useCanvasOperations();
@@ -99,7 +106,7 @@ export function useRecentResources() {
 			const nodesForWorkflow = recentNodes.value[currentWorkflowId];
 
 			for (const recentNode of nodesForWorkflow) {
-				const node = workflowsStore.findNodeByPartialId(recentNode.nodeId);
+				const node = workflowDocumentStore.value.findNodeByPartialId(recentNode.nodeId);
 				if (!node) {
 					continue;
 				}
@@ -120,7 +127,7 @@ export function useRecentResources() {
 						},
 					},
 					handler: () => {
-						const node = workflowsStore.findNodeByPartialId(recentNode.nodeId);
+						const node = workflowDocumentStore.value.findNodeByPartialId(recentNode.nodeId);
 						if (node) {
 							setNodeActive(node.id, 'command_bar');
 						}
