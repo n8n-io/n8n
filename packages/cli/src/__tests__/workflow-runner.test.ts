@@ -739,7 +739,7 @@ describe('pre-persist context establishment', () => {
 
 		expect(capturedAddData).toBeDefined();
 		const stack = capturedAddData!.executionData!.executionData!.nodeExecutionStack;
-		expect(stack[0].data.main[0][0].json).toMatchObject({
+		expect(stack[0].data.main[0]![0].json).toMatchObject({
 			headers: { authorization: '**********' },
 		});
 		expect(capturedAddData!.executionData!.executionData!.runtimeData).toBeDefined();
