@@ -229,7 +229,10 @@ onMounted(async () => {
 					:items-length="entries.length"
 					:loading="isLoading && isAppending"
 					:item-value="rowId"
-					:row-props="(row) => (rowExecutionId(row) ? { class: $style.clickableRow } : {})"
+					:row-props="
+						(row) =>
+							rowExecutionId(row) && rowWorkflowId(row) ? { class: $style.clickableRow } : {}
+					"
 					@click:row="(_, { item }) => onRowClick(item)"
 				>
 					<template #[`item.timestamp`]="{ item }">

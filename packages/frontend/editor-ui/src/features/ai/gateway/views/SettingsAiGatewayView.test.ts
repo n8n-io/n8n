@@ -265,5 +265,35 @@ describe('SettingsAiGatewayView', () => {
 
 			expect(mockRouterPush).not.toHaveBeenCalled();
 		});
+
+		it('does not navigate when row has executionId but no workflowId', async () => {
+			const entryWithExecutionOnly = {
+				...entryWithExecution,
+				metadata: { executionId: '29021' },
+			};
+			mockGetGatewayUsage.mockResolvedValue({ entries: [entryWithExecutionOnly], total: 1 });
+			renderComponent();
+
+			await waitFor(() => expect(screen.getByText('gemini-pro')).toBeInTheDocument());
+
+			await userEvent.click(screen.getByText('gemini-pro'));
+
+			expect(mockRouterPush).not.toHaveBeenCalled();
+		});
+
+		it('does not navigate when row has workflowId but no executionId', async () => {
+			const entryWithWorkflowOnly = {
+				...entryWithExecution,
+				metadata: { workflowId: 'R9JFXwkUCL1jZBuw' },
+			};
+			mockGetGatewayUsage.mockResolvedValue({ entries: [entryWithWorkflowOnly], total: 1 });
+			renderComponent();
+
+			await waitFor(() => expect(screen.getByText('gemini-pro')).toBeInTheDocument());
+
+			await userEvent.click(screen.getByText('gemini-pro'));
+
+			expect(mockRouterPush).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -38,6 +38,8 @@ export class AiGatewayService {
 	private configFetchedAt = 0;
 	private static readonly CONFIG_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
@@ -209,8 +211,8 @@ export class AiGatewayService {
 		context: { executionId?: string; workflowId?: string },
 	): string {
 		if (context.executionId && context.workflowId) {
-			const providerSuffix = gatewayPath.replace('/v1/gateway', '');
-			return `${baseUrl}/v1/gateway/exec/${encodeURIComponent(context.executionId)}/${encodeURIComponent(context.workflowId)}${providerSuffix}`;
+			const providerSuffix = gatewayPath.replace(AiGatewayService.GATEWAY_PATH_PREFIX, '');
+			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${encodeURIComponent(context.workflowId)}${providerSuffix}`;
 		}
 		return `${baseUrl}${gatewayPath}`;
 	}
