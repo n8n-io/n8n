@@ -273,7 +273,21 @@ function setChatMode(next: ChatMode) {
 	// user doesn't get bounced into a half-configured chat.
 	if (next === 'test' && !isBuilt.value) return;
 	chatMode.value = next;
-	if (next === 'test') bindTestSession();
+	if (next === 'test') {
+		// Restore the currently-bound Test session to the URL so refresh and
+		// shared links point at the same chat.
+		if (activeChatSessionId.value && !continueSessionId.value) {
+			void router.replace({
+				query: { ...route.query, continueSessionId: activeChatSessionId.value },
+			});
+		} else {
+			bindTestSession();
+		}
+	} else {
+		// Build mode doesn't use continueSessionId — drop it from the URL so a
+		// refresh while on Build doesn't bounce back to Test.
+		if (continueSessionId.value) clearContinueSessionParam();
+	}
 
 	telemetry.track('User switched agent chat mode', {
 		agent_id: agentId.value,
