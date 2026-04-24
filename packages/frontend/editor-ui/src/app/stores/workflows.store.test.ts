@@ -404,73 +404,6 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('isNodeInOutgoingNodeConnections()', () => {
-		it('should return false when no outgoing connections from root node', () => {
-			workflowsStore.workflow.connections = {};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
-			expect(result).toBe(false);
-		});
-
-		it('should return true when search node is directly connected to root node', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
-			expect(result).toBe(true);
-		});
-
-		it('should return true when search node is indirectly connected to root node', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
-				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
-			expect(result).toBe(true);
-		});
-
-		it('should return false when search node is not connected to root node', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
-				IntermediateNode: { main: [[{ node: 'AnotherNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
-			expect(result).toBe(false);
-		});
-
-		it('should return true if connection is indirect within `depth`', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
-				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 2);
-			expect(result).toBe(true);
-		});
-
-		it('should return false if connection is indirect beyond `depth`', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
-				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 1);
-			expect(result).toBe(false);
-		});
-
-		it('should return false if depth is 0', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 0);
-			expect(result).toBe(false);
-		});
-	});
-
 	describe('fetchAllWorkflows()', () => {
 		it('should fetch workflows successfully', async () => {
 			const workflowsListStore = useWorkflowsListStore();
@@ -1075,26 +1008,6 @@ describe('useWorkflowsStore', () => {
 				},
 			});
 		});
-	});
-
-	describe('findNodeByPartialId', () => {
-		test.each([
-			[[], 'D', undefined],
-			[['A', 'B', 'C'], 'D', undefined],
-			[['A', 'B', 'C'], 'B', 1],
-			[['AA', 'BB', 'CC'], 'B', 1],
-			[['AA', 'BB', 'BC'], 'B', 1],
-			[['AA', 'BB', 'BC'], 'BC', 2],
-		] as Array<[string[], string, number | undefined]>)(
-			'with input %s , %s returns node with index %s',
-			(ids, id, expectedIndex) => {
-				workflowsStore.workflow.nodes = ids.map((x) => ({ id: x }) as never);
-
-				expect(workflowsStore.findNodeByPartialId(id)).toBe(
-					workflowsStore.workflow.nodes[expectedIndex ?? -1],
-				);
-			},
-		);
 	});
 
 	describe('getPartialIdForNode', () => {
@@ -1880,108 +1793,6 @@ describe('useWorkflowsStore', () => {
 			});
 
 			expect(result).toBe(0); // No nodes to update (only current node exists)
-		});
-	});
-
-	describe('getWebhookUrl', () => {
-		it('should return undefined when node does not exist', async () => {
-			workflowsStore.workflow.nodes = [];
-
-			const result = await workflowsStore.getWebhookUrl('non-existent-node', 'test');
-
-			expect(result).toBeUndefined();
-		});
-
-		it('should return undefined when node type does not exist', async () => {
-			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
-			workflowsStore.workflow.nodes = [testNode];
-			getNodeType.mockReturnValue(null);
-
-			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
-
-			expect(result).toBeUndefined();
-		});
-
-		it('should return undefined when node type has no webhooks', async () => {
-			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
-			workflowsStore.workflow.nodes = [testNode];
-			getNodeType.mockReturnValue({
-				inputs: [],
-				group: [],
-				webhooks: [],
-				properties: [],
-			});
-
-			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
-
-			expect(result).toBeUndefined();
-		});
-
-		it('should return webhook URL for test type', async () => {
-			const testNode = createTestNode({
-				id: 'node-1',
-				name: 'Webhook Node',
-				type: 'n8n-nodes-base.webhook',
-			});
-			workflowsStore.workflow.nodes = [testNode];
-			getNodeType.mockReturnValue({
-				inputs: [],
-				group: [],
-				webhooks: [{ name: 'default', httpMethod: 'GET', path: 'webhook' }],
-				properties: [],
-			});
-
-			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
-
-			expect(result).toBeDefined();
-			expect(typeof result).toBe('string');
-			expect(result).toContain('webhook');
-		});
-
-		it('should return webhook URL for production type', async () => {
-			const testNode = createTestNode({
-				id: 'node-1',
-				name: 'Webhook Node',
-				type: 'n8n-nodes-base.webhook',
-			});
-			workflowsStore.workflow.nodes = [testNode];
-			getNodeType.mockReturnValue({
-				inputs: [],
-				group: [],
-				webhooks: [{ name: 'default', httpMethod: 'POST', path: 'webhook' }],
-				properties: [],
-			});
-
-			const result = await workflowsStore.getWebhookUrl('node-1', 'production');
-
-			expect(result).toBeDefined();
-			expect(typeof result).toBe('string');
-			expect(result).toContain('webhook');
-		});
-
-		it('should use the first webhook when node has multiple webhooks', async () => {
-			workflowsStore.workflow.id = 'test-workflow-id';
-			const testNode = createTestNode({
-				id: 'node-1',
-				name: 'Webhook Node',
-				type: 'n8n-nodes-base.webhook',
-			});
-			workflowsStore.workflow.nodes = [testNode];
-			getNodeType.mockReturnValue({
-				inputs: [],
-				group: [],
-				webhooks: [
-					{ name: 'default', httpMethod: 'GET', path: 'webhook1' },
-					{ name: 'default', httpMethod: 'POST', path: 'webhook2' },
-				],
-				properties: [],
-			});
-
-			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
-
-			expect(result).toBeDefined();
-			expect(typeof result).toBe('string');
-			expect(result).toContain('webhook1');
 		});
 	});
 
