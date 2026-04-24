@@ -598,7 +598,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
-		credentials.updateData({ oauthTokenData: data.oauthTokenData });
+		await credentials.updateData({ oauthTokenData: data.oauthTokenData });
 		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
 		// Add special database related data
