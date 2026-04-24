@@ -12,10 +12,9 @@ import { IsolateError } from '@n8n/errors';
 import { IdleScalingPool } from '../pool/idle-scaling-pool';
 import type { IPool } from '../pool/isolate-pool';
 import { IsolatePool, PoolDisposedError, PoolExhaustedError } from '../pool/isolate-pool';
+import { EXPRESSION_METRICS } from '../observability/metrics';
 import { classifyExpressionError } from './error-classification';
 import { LruCache } from './lru-cache';
-
-export const EVALUATION_DURATION_METRIC = 'expression.evaluation.duration_ms';
 
 function recordOutcome(
 	observability: ObservabilityProvider | undefined,
@@ -26,7 +25,7 @@ function recordOutcome(
 	if (!observability) return;
 	const durationMs = performance.now() - start;
 	const errorType = error !== undefined ? classifyExpressionError(error) : undefined;
-	observability.metrics.histogram(EVALUATION_DURATION_METRIC, durationMs, {
+	observability.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, durationMs, {
 		status,
 		type: errorType ?? '',
 	});
@@ -53,7 +52,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	constructor(config: EvaluatorConfig) {
 		this.config = config;
 		this.codeCache = new LruCache<string, string>(config.maxCodeCacheSize, () => {
-			this.config.observability?.metrics.counter('expression.code_cache.eviction', 1);
+			this.config.observability?.metrics.counter(EXPRESSION_METRICS.codeCacheEviction.name, 1);
 		});
 		const logger = config.logger ?? DEFAULT_BRIDGE_CONFIG.logger;
 		this.createBridge = async () => {
@@ -64,7 +63,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 		const onReplenishFailed = (error: unknown) => {
 			logger.error('[IsolatePool] Failed to replenish bridge', { error });
-			config.observability?.metrics.counter('expression.pool.replenish_failed', 1);
+			config.observability?.metrics.counter(EXPRESSION_METRICS.poolReplenishFailed.name, 1);
 		};
 
 		this.pool =
@@ -94,7 +93,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 			if (!(error instanceof PoolExhaustedError)) throw error;
 			bridge = await this.createBridge();
 		}
-		this.config.observability?.metrics.counter('expression.pool.acquired', 1);
+		this.config.observability?.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
 		this.bridgesByCaller.set(caller, bridge);
 	}
 
@@ -164,11 +163,11 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	private getTransformedCode(expression: string): string {
 		const cached = this.codeCache.get(expression);
 		if (cached !== undefined) {
-			this.config.observability?.metrics.counter('expression.code_cache.hit', 1);
+			this.config.observability?.metrics.counter(EXPRESSION_METRICS.codeCacheHit.name, 1);
 			return cached;
 		}
 
-		this.config.observability?.metrics.counter('expression.code_cache.miss', 1);
+		this.config.observability?.metrics.counter(EXPRESSION_METRICS.codeCacheMiss.name, 1);
 
 		if (!this.tournament) {
 			// Tournament requires an errorHandler but we only use getExpressionCode()
@@ -184,14 +183,17 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 		const [transformedCode] = this.tournament.getExpressionCode(expression);
 		this.codeCache.set(expression, transformedCode);
-		this.config.observability?.metrics.gauge('expression.code_cache.size', this.codeCache.size);
+		this.config.observability?.metrics.gauge(
+			EXPRESSION_METRICS.codeCacheSize.name,
+			this.codeCache.size,
+		);
 		return transformedCode;
 	}
 
 	async dispose(): Promise<void> {
 		this.disposed = true;
 		this.codeCache.clear();
-		this.config.observability?.metrics.gauge('expression.code_cache.size', 0);
+		this.config.observability?.metrics.gauge(EXPRESSION_METRICS.codeCacheSize.name, 0);
 		await this.pool.dispose();
 	}
 

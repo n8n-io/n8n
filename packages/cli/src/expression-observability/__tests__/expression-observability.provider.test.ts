@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import { ExpressionEngineConfig } from '@n8n/config';
+import { EXPRESSION_METRICS } from '@n8n/expression-runtime';
 import { trace } from '@opentelemetry/api';
 import { mock } from 'jest-mock-extended';
 import promClient from 'prom-client';
@@ -36,9 +37,9 @@ describe('ExpressionObservabilityProvider', () => {
 			);
 
 			expect(() => {
-				provider.metrics.counter('expression.evaluations', 1, { status: 'success' });
-				provider.metrics.gauge('expression.code_cache.size', 5);
-				provider.metrics.histogram('expression.evaluation.duration_ms', 10);
+				provider.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
+				provider.metrics.gauge(EXPRESSION_METRICS.codeCacheSize.name, 5);
+				provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 10);
 				provider.logs.info('hello');
 				provider.traces.startSpan('x').end();
 			}).not.toThrow();
@@ -46,21 +47,19 @@ describe('ExpressionObservabilityProvider', () => {
 	});
 
 	describe('metrics adapter', () => {
-		it('registers a prom counter with _total suffix and records labeled increments', async () => {
+		it('registers a prom counter with _total suffix', async () => {
 			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
-			provider.metrics.counter('expression.evaluations', 1, { status: 'success' });
-			provider.metrics.counter('expression.evaluations', 1, { status: 'error' });
+			provider.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 2);
 
-			const metric = promClient.register.getSingleMetric('n8n_expression_evaluations_total');
+			const metric = promClient.register.getSingleMetric('n8n_expression_pool_acquired_total');
 			expect(metric).toBeDefined();
 			const output = await promClient.register.metrics();
-			expect(output).toContain('n8n_expression_evaluations_total{status="success"} 1');
-			expect(output).toContain('n8n_expression_evaluations_total{status="error"} 1');
+			expect(output).toContain('n8n_expression_pool_acquired_total 2');
 		});
 
 		it('registers a prom gauge with the cleaned name', async () => {
 			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
-			provider.metrics.gauge('expression.code_cache.size', 42);
+			provider.metrics.gauge(EXPRESSION_METRICS.codeCacheSize.name, 42);
 
 			const output = await promClient.register.metrics();
 			expect(output).toContain('n8n_expression_code_cache_size 42');
@@ -68,11 +67,14 @@ describe('ExpressionObservabilityProvider', () => {
 
 		it('registers a prom histogram with bucketed observations', async () => {
 			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
-			provider.metrics.histogram('expression.evaluation.duration_ms', 3);
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 3, {
+				status: 'success',
+				type: '',
+			});
 
 			const output = await promClient.register.metrics();
 			expect(output).toContain('n8n_expression_evaluation_duration_ms_bucket');
-			expect(output).toContain('n8n_expression_evaluation_duration_ms_count 1');
+			expect(output).toContain('n8n_expression_evaluation_duration_ms_count');
 		});
 	});
 
@@ -96,7 +98,10 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50, tracesSampleRate: 0 }),
 				buildLogger(),
 			);
-			provider.metrics.histogram('expression.evaluation.duration_ms', 10, { status: 'success' });
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 10, {
+				status: 'success',
+				type: '',
+			});
 			expect(startSpanMock).not.toHaveBeenCalled();
 		});
 
@@ -105,7 +110,10 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
 			);
-			provider.metrics.histogram('expression.evaluation.duration_ms', 100, { status: 'success' });
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 100, {
+				status: 'success',
+				type: '',
+			});
 			expect(startSpanMock).toHaveBeenCalledWith(
 				'expression.evaluate',
 				expect.objectContaining({
@@ -122,7 +130,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
 			);
-			provider.metrics.histogram('expression.evaluation.duration_ms', 5, {
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 5, {
 				status: 'error',
 				type: 'timeout',
 			});
@@ -142,8 +150,46 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ tracesEnabled: false, slowEvaluationThresholdMs: 10 }),
 				buildLogger(),
 			);
-			provider.metrics.histogram('expression.evaluation.duration_ms', 500, { status: 'error' });
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 500, {
+				status: 'error',
+				type: 'timeout',
+			});
 			expect(startSpanMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('label-set stability (eager registration)', () => {
+		it('logs a warning and does not throw when an unknown metric is emitted', () => {
+			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+			expect(() => {
+				provider.metrics.counter('test.unknown', 1);
+			}).not.toThrow();
+			expect(scopedLogger.warn).toHaveBeenCalledWith('Emitted unknown expression metric', {
+				name: 'test.unknown',
+			});
+		});
+
+		it('uses the schema-registered label set regardless of call order', async () => {
+			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
+
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 10, {
+				status: 'error',
+				type: 'timeout',
+			});
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 20, {
+				status: 'success',
+				type: '',
+			});
+
+			const output = await promClient.register.metrics();
+			const countLines = output
+				.split('\n')
+				.filter((line) => line.startsWith('n8n_expression_evaluation_duration_ms_count{'));
+			expect(countLines.length).toBeGreaterThan(0);
+			for (const line of countLines) {
+				expect(line).toContain('status=');
+				expect(line).toContain('type=');
+			}
 		});
 	});
 

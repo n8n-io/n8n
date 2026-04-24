@@ -3,14 +3,16 @@ import { ExpressionEngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
 	LogsAPI,
+	MetricDef,
 	MetricsAPI,
 	ObservabilityProvider,
 	Span,
 	TracesAPI,
 } from '@n8n/expression-runtime';
-import { EVALUATION_DURATION_METRIC, NoOpProvider } from '@n8n/expression-runtime';
+import { EXPRESSION_METRICS, NoOpProvider } from '@n8n/expression-runtime';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import type { Tracer } from '@opentelemetry/api';
+import { UnexpectedError } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 
 import { ATTRIBUTE, DURATION_BUCKETS_MS, TRACER_NAME } from './expression-observability.constants';
@@ -30,11 +32,13 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	readonly logs: LogsAPI;
 
-	private readonly counters = new Map<string, Counter<string>>();
+	private readonly countersByName = new Map<string, Counter<string>>();
 
-	private readonly gauges = new Map<string, Gauge<string>>();
+	private readonly gaugesByName = new Map<string, Gauge<string>>();
 
-	private readonly histograms = new Map<string, Histogram<string>>();
+	private readonly histogramsByName = new Map<string, Histogram<string>>();
+
+	private readonly scopedLogger: Logger;
 
 	private tracer?: Tracer;
 
@@ -42,6 +46,8 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 		private readonly config: ExpressionEngineConfig,
 		private readonly logger: Logger,
 	) {
+		this.scopedLogger = this.logger.scoped('expression-engine');
+
 		if (!this.config.observabilityEnabled) {
 			this.metrics = NoOpProvider.metrics;
 			this.traces = NoOpProvider.traces;
@@ -49,7 +55,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 			return;
 		}
 
-		const scopedLogger = this.logger.scoped('expression-engine');
+		this.registerMetrics();
 
 		this.metrics = {
 			counter: (name, value, tags) => this.counter(name, value, tags),
@@ -62,23 +68,62 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 		};
 
 		this.logs = {
-			error: (message, error, context) => scopedLogger.error(message, { error, ...context }),
-			warn: (message, context) => scopedLogger.warn(message, context),
-			info: (message, context) => scopedLogger.info(message, context),
-			debug: (message, context) => scopedLogger.debug(message, context),
+			error: (message, error, context) => this.scopedLogger.error(message, { error, ...context }),
+			warn: (message, context) => this.scopedLogger.warn(message, context),
+			info: (message, context) => this.scopedLogger.info(message, context),
+			debug: (message, context) => this.scopedLogger.debug(message, context),
 		};
+	}
+
+	private registerMetrics(): void {
+		for (const def of Object.values(EXPRESSION_METRICS) as MetricDef[]) {
+			const promName = toPromName(def.name, def.kind);
+			switch (def.kind) {
+				case 'counter':
+					this.countersByName.set(
+						promName,
+						new promClient.Counter({
+							name: promName,
+							help: def.help,
+							labelNames: def.labels,
+						}),
+					);
+					break;
+				case 'gauge':
+					this.gaugesByName.set(
+						promName,
+						new promClient.Gauge({
+							name: promName,
+							help: def.help,
+							labelNames: def.labels,
+						}),
+					);
+					break;
+				case 'histogram':
+					this.histogramsByName.set(
+						promName,
+						new promClient.Histogram({
+							name: promName,
+							help: def.help,
+							labelNames: def.labels,
+							buckets: DURATION_BUCKETS_MS,
+						}),
+					);
+					break;
+				default: {
+					const _exhaustive: never = def.kind;
+					throw new UnexpectedError(`Unknown metric kind: ${String(_exhaustive)}`);
+				}
+			}
+		}
 	}
 
 	private counter(name: string, value: number, tags?: Record<string, string>): void {
 		const promName = toPromName(name, 'counter');
-		let counter = this.counters.get(promName);
+		const counter = this.countersByName.get(promName);
 		if (!counter) {
-			counter = new promClient.Counter({
-				name: promName,
-				help: `Total ${name} events.`,
-				labelNames: tags ? Object.keys(tags) : [],
-			});
-			this.counters.set(promName, counter);
+			this.scopedLogger.warn('Emitted unknown expression metric', { name });
+			return;
 		}
 		if (tags) counter.inc(tags, value);
 		else counter.inc(value);
@@ -86,14 +131,10 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	private gauge(name: string, value: number, tags?: Record<string, string>): void {
 		const promName = toPromName(name, 'gauge');
-		let gauge = this.gauges.get(promName);
+		const gauge = this.gaugesByName.get(promName);
 		if (!gauge) {
-			gauge = new promClient.Gauge({
-				name: promName,
-				help: `Current ${name}.`,
-				labelNames: tags ? Object.keys(tags) : [],
-			});
-			this.gauges.set(promName, gauge);
+			this.scopedLogger.warn('Emitted unknown expression metric', { name });
+			return;
 		}
 		if (tags) gauge.set(tags, value);
 		else gauge.set(value);
@@ -101,20 +142,15 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	private histogram(name: string, value: number, tags?: Record<string, string>): void {
 		const promName = toPromName(name, 'histogram');
-		let histogram = this.histograms.get(promName);
+		const histogram = this.histogramsByName.get(promName);
 		if (!histogram) {
-			histogram = new promClient.Histogram({
-				name: promName,
-				help: `Distribution of ${name}.`,
-				labelNames: tags ? Object.keys(tags) : [],
-				buckets: DURATION_BUCKETS_MS,
-			});
-			this.histograms.set(promName, histogram);
+			this.scopedLogger.warn('Emitted unknown expression metric', { name });
+			return;
 		}
 		if (tags) histogram.observe(tags, value);
 		else histogram.observe(value);
 
-		if (name === EVALUATION_DURATION_METRIC) this.maybeRecordSpan(value, tags);
+		if (name === EXPRESSION_METRICS.evaluationDuration.name) this.maybeRecordSpan(value, tags);
 	}
 
 	private maybeRecordSpan(durationMs: number, tags?: Record<string, string>): void {
