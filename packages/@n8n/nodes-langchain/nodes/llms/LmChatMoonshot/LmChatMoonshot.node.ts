@@ -118,6 +118,10 @@ export class LmChatMoonshot implements INodeType {
 					},
 				},
 				default: 'kimi-k2.5',
+				builderHint: {
+					message:
+						'Default to the latest Kimi model (kimi-k2.6). Avoid kimi-k2.5, kimi-k2, kimi-k1, and earlier.',
+				},
 				displayOptions: {
 					show: {
 						'@version': [1],
