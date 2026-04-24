@@ -840,40 +840,33 @@ function onSwitchAgent(nextAgentId: string) {
 					>
 						<template #above-input>
 							<div :class="$style.quickActionsRow">
-								<AgentChatQuickActions
-									:tools="localConfig?.tools ?? []"
-									:project-id="projectId"
-									:agent-id="agentId"
-									:connected-triggers="connectedTriggers"
-									@update:tools="onQuickActionAddTool"
-									@update:connected-triggers="onConnectedTriggersUpdate"
-									@trigger-added="onTriggerAdded"
-								/>
-								<button
-									v-if="currentSessionHasMessages"
-									type="button"
-									:class="$style.historyBtn"
-									aria-label="New chat"
-									data-testid="agent-chat-new-chat-btn"
-									@click="onNewChat"
-								>
-									<N8nIcon icon="plus" :size="14" />
-								</button>
-								<N8nNavigationDropdown
-									:menu="sessionMenu"
-									submenu-class="agent-chat-session-menu"
-									data-testid="agent-chat-session-picker"
-									@select="onSessionPick"
-								>
+								<div :class="$style.chatSessionControls">
+									<N8nNavigationDropdown
+										:menu="sessionMenu"
+										submenu-class="agent-chat-session-menu"
+										data-testid="agent-chat-session-picker"
+										@select="onSessionPick"
+									>
+										<button
+											type="button"
+											:class="$style.historyBtn"
+											aria-label="Session history"
+											data-testid="agent-chat-session-picker-btn"
+										>
+											<N8nIcon icon="history" :size="14" />
+										</button>
+									</N8nNavigationDropdown>
 									<button
+										v-if="currentSessionHasMessages"
 										type="button"
 										:class="$style.historyBtn"
-										aria-label="Session history"
-										data-testid="agent-chat-session-picker-btn"
+										aria-label="New chat"
+										data-testid="agent-chat-new-chat-btn"
+										@click="onNewChat"
 									>
-										<N8nIcon icon="history" :size="14" />
+										<N8nIcon icon="plus" :size="14" />
 									</button>
-								</N8nNavigationDropdown>
+								</div>
 								<N8nTooltip
 									v-if="initialized"
 									:class="$style.chatModeToggle"
@@ -1179,6 +1172,13 @@ function onSwitchAgent(nextAgentId: string) {
 .quickActionsRow {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.chatSessionControls {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 	gap: var(--spacing--2xs);
 }
 
