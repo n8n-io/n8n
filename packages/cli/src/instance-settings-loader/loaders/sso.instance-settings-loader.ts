@@ -185,12 +185,13 @@ export class SsoInstanceSettingsLoader {
 		clientSecret: string;
 		[key: string]: unknown;
 	}): Promise<void> {
+		const encryptedSecret = await this.cipher.encryptV2(preferences.clientSecret);
 		await this.settingsRepository.upsert(
 			{
 				key: OIDC_PREFERENCES_DB_KEY,
 				value: JSON.stringify({
 					...preferences,
-					clientSecret: this.cipher.encrypt(preferences.clientSecret),
+					clientSecret: encryptedSecret,
 				}),
 				loadOnStartup: true,
 			},
