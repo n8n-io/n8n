@@ -8,9 +8,9 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Instance AI' }],
 	},
 	() => {
-		// Reproduces AI-2392: when the AI produces a workflow with a required parameter
-		// left empty, the per-input issue indicator in the setup card does not clear
-		// after the user fills the value in. Root cause: `workflowsStore.workflowObject`
+		// B1 — Build handoff smoke (AI-2392): the AI produces a workflow with a required
+		// parameter left empty and the per-input issue indicator in the setup card does
+		// not clear after the user fills the value in. Root cause: `workflowsStore.workflowObject`
 		// holds a deep copy of the nodes (see `createWorkflowObject(..., copyData=true)`
 		// in `workflows.store.ts`). `onParameterValueChanged` in `useSetupCardParameters`
 		// only mutates the live Pinia node, so `ParameterInput`'s issue check — which

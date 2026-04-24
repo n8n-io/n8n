@@ -22,3 +22,7 @@ export function assertExecutionDataExists(
 		});
 	}
 }
+
+export function assertUnreachable(value: never): never {
+	throw new UnexpectedError(`Unhandled value in exhaustive switch: ${String(value)}`);
+}

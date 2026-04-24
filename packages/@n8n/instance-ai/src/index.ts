@@ -10,8 +10,10 @@ export {
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
 	releaseTraceClient,
+	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } from './tracing/langsmith-tracing';
+export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
 export {
 	IdRemapper,
 	TraceIndex,
@@ -27,8 +29,11 @@ export type {
 	TraceToolResume,
 } from './tracing/trace-replay';
 export { createInstanceAgent } from './agent/instance-agent';
+export { createSubAgent } from './agent/sub-agent-factory';
+export type { SubAgentOptions } from './agent/sub-agent-factory';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
+export { BUILDER_AGENT_PROMPT } from './tools/orchestration/build-workflow-agent.prompt';
 export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';
 export { startDetachedDelegateTask } from './tools/orchestration/delegate.tool';
 export { startResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
