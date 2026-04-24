@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
+import { useEvalModeStore } from '@/features/ai/evaluation.ee/evalMode.store';
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const experimentalNdvStore = useExperimentalNdvStore();
+const evalModeStore = useEvalModeStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(props.zoom));
 
@@ -126,6 +128,28 @@ function onTidyUp() {
 				@click="onResetZoom"
 			/>
 		</KeyboardShortcutTooltip>
+		<N8nTooltip
+			v-if="evalModeStore.isFeatureEnabled"
+			placement="top"
+			:content="
+				i18n.baseText(
+					evalModeStore.isEvalMode ? 'nodeView.leaveEvalMode' : 'nodeView.enterEvalMode',
+				)
+			"
+		>
+			<N8nIconButton
+				:variant="evalModeStore.isEvalMode ? 'solid' : 'subtle'"
+				size="large"
+				icon="flask-conical"
+				:aria-label="
+					i18n.baseText(
+						evalModeStore.isEvalMode ? 'nodeView.leaveEvalMode' : 'nodeView.enterEvalMode',
+					)
+				"
+				data-test-id="eval-mode-toggle"
+				@click="evalModeStore.toggle"
+			/>
+		</N8nTooltip>
 		<KeyboardShortcutTooltip
 			v-if="!readOnly"
 			:label="i18n.baseText('nodeView.tidyUp')"

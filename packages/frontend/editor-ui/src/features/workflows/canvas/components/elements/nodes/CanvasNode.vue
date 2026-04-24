@@ -26,6 +26,7 @@ import { useContextMenu } from '@/features/shared/contextMenu/composables/useCon
 import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
 import { useCanvas } from '../../../composables/useCanvas';
+import { useEvalModeStore } from '@/features/ai/evaluation.ee/evalMode.store';
 import {
 	createCanvasConnectionHandleString,
 	insertSpacersBetweenEndpoints,
@@ -101,9 +102,13 @@ const {
 
 const isDisabled = computed(() => props.data.disabled);
 
+const evalModeStore = useEvalModeStore();
+const isDimmedForEvalMode = computed(() => evalModeStore.shouldDim(props.data.type));
+
 const classes = computed(() => ({
 	[style.canvasNode]: true,
 	[style.showToolbar]: showToolbar.value,
+	[style.dimmedForEvalMode]: isDimmedForEvalMode.value,
 	hovered: props.hovered,
 	highlighted: props.highlighted,
 	selected: props.selected,
@@ -473,5 +478,10 @@ onBeforeUnmount(() => {
 	left: 50%;
 	transform: translateX(-50%);
 	z-index: 1;
+}
+
+.dimmedForEvalMode {
+	opacity: 0.3;
+	transition: opacity 150ms ease;
 }
 </style>

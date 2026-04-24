@@ -10,6 +10,8 @@ import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getEdgeRenderData } from './utils';
 import { useCanvas } from '../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
+import { useEvalModeStore } from '@/features/ai/evaluation.ee/evalMode.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
@@ -68,8 +70,20 @@ const edgeStyle = computed(() => ({
 	...(isMainConnection.value ? {} : { strokeDasharray: '5,6' }),
 }));
 
+const evalModeStore = useEvalModeStore();
+const workflowsStore = useWorkflowsStore();
+const isDimmedForEvalMode = computed(() => {
+	if (!evalModeStore.isFeatureEnabled || evalModeStore.isEvalMode) return false;
+	const sourceName = data.value?.source?.node;
+	const targetName = data.value?.target?.node;
+	const sourceType = sourceName ? workflowsStore.getNodeByName(sourceName)?.type : undefined;
+	const targetType = targetName ? workflowsStore.getNodeByName(targetName)?.type : undefined;
+	return evalModeStore.isEvalNodeType(sourceType) || evalModeStore.isEvalNodeType(targetType);
+});
+
 const edgeClasses = computed(() => ({
 	[$style.edge]: true,
+	[$style.dimmedForEvalMode]: isDimmedForEvalMode.value,
 	hovered: delayedHovered.value,
 	'bring-to-front': props.bringToFront,
 }));
@@ -228,5 +242,10 @@ function onEdgeLabelMouseLeave() {
 	color: var(--canvas--label--color);
 	font-size: var(--font-size--xs);
 	background-color: var(--canvas--label--color--background);
+}
+
+.dimmedForEvalMode {
+	opacity: 0.3;
+	transition: opacity 150ms ease;
 }
 </style>

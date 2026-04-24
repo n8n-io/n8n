@@ -2206,6 +2206,8 @@
 	"nodeView.collapseAllNodes": "Collapse all nodes",
 	"nodeView.enterZoomMode": "Enter zoom mode",
 	"nodeView.leaveZoomMode": "Leave zoom mode",
+	"nodeView.enterEvalMode": "Enter eval mode",
+	"nodeView.leaveEvalMode": "Leave eval mode",
 	"nodeViewV2.showError.editingNotAllowed": "Editing is not allowed",
 	"nodeViewV2.showError.failedToCreateNode": "Failed to create node",
 	"contextMenu.node": "node | nodes",
