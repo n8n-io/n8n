@@ -145,7 +145,9 @@ export class ObjectStoreService {
 				if (!body) throw new UnexpectedError('Received empty response body');
 
 				if (!(body instanceof Readable)) {
-					throw new UnexpectedError(`Expected stream but received ${typeof body}.`);
+					throw new UnexpectedError('Expected stream but received different type', {
+						extra: { bodyType: typeof body },
+					});
 				}
 
 				// Wrap to prevent socket pool exhaustion when callers destroy the
