@@ -27,6 +27,7 @@ import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentConfigTree from '../components/AgentConfigTree.vue';
 import AgentSectionEditor from '../components/AgentSectionEditor.vue';
 import AgentChatQuickActions from '../components/AgentChatQuickActions.vue';
+import AgentPublishButton from '../components/AgentPublishButton.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -152,6 +153,14 @@ function startChat(msg: string) {
 	void nextTick(() => {
 		initialPrompt.value = undefined;
 	});
+}
+
+function onPublished(updated: AgentResource) {
+	agent.value = updated;
+}
+
+function onUnpublished(updated: AgentResource) {
+	agent.value = updated;
 }
 
 function onBuildChatStreamingChange(streaming: boolean) {
@@ -573,6 +582,14 @@ function onContinueLoaded(count: number) {
 					}}</N8nText>
 				</div>
 				<div :class="$style.editorHeaderRight">
+					<AgentPublishButton
+						:agent="agent"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:is-saving="false"
+						@published="onPublished"
+						@unpublished="onUnpublished"
+					/>
 					<N8nActionDropdown
 						:items="headerActions"
 						activator-icon="ellipsis-vertical"
