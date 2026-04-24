@@ -1,4 +1,4 @@
-import { AddDataTableColumnDto } from '@n8n/api-types';
+import { AddDataTableColumnDto, updateDataTableColumnSchema } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type express from 'express';
 
@@ -61,6 +61,43 @@ export = {
 			const projectId = await getProjectIdForDataTable(dataTableId);
 			await Container.get(DataTableService).deleteColumn(dataTableId, projectId, columnId);
 			return res.status(204).send();
+		},
+	],
+
+	updateDataTableColumn: [
+		publicApiScope('dataTableColumn:create'),
+		projectScope('dataTable:writeColumn', 'dataTable'),
+		async (req: DataTableRequest.UpdateColumn, res: express.Response) => {
+			try {
+				const { dataTableId, columnId } = req.params;
+				const payload = updateDataTableColumnSchema.safeParse(req.body);
+				if (!payload.success) {
+					throw new BadRequestError(payload.error.errors[0]?.message);
+				}
+
+				const { name, index } = payload.data;
+
+				const projectId = await getProjectIdForDataTable(dataTableId);
+				const service = Container.get(DataTableService);
+
+				if (name !== undefined) {
+					await service.renameColumn(dataTableId, projectId, columnId, { name });
+				}
+				if (index !== undefined) {
+					await service.moveColumn(dataTableId, projectId, columnId, { targetIndex: index });
+				}
+
+				const updatedColumn = await service.getColumnById({ projectId, dataTableId, columnId });
+				return res.json(updatedColumn);
+			} catch (error) {
+				if (
+					error instanceof DataTableColumnNameConflictError ||
+					error instanceof DataTableSystemColumnNameConflictError
+				) {
+					throw new ConflictError(error.message);
+				}
+				throw error;
+			}
 		},
 	],
 };

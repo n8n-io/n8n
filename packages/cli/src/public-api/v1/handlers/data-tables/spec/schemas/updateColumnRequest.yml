@@ -1,0 +1,13 @@
+type: object
+properties:
+  name:
+    type: string
+    description: New column name
+  index:
+    type: integer
+    minimum: 0
+    description: New zero-based position for the column
+additionalProperties: false
+anyOf:
+  - required: [name]
+  - required: [index]
