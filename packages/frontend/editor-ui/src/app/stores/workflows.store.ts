@@ -162,9 +162,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	/** @deprecated Use `workflowDocumentStore.allConnections` instead. */
 	const allConnections = computed(() => workflow.value.connections);
 
-	/** @deprecated Use `workflowDocumentStore.allNodes` instead. */
-	const allNodes = computed<INodeUi[]>(() => workflow.value.nodes);
-
 	const isWorkflowRunning = computed(() => {
 		if (activeExecutionId.value === null) {
 			return true;
@@ -179,9 +176,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		return false;
 	});
-
-	/** @deprecated Use `workflowDocumentStore.canvasNames` instead. */
-	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
 	/** @deprecated Use `workflowDocumentStore.nodesByName` instead. */
 	const nodesByName = computed(() => {
@@ -1304,11 +1298,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowRunData,
 		getWorkflowResultDataByNodeName,
 		allConnections,
-		allNodes,
 		connectionsBySourceNode,
 		connectionsByDestinationNode,
 		isWorkflowRunning,
-		canvasNames,
 		nodesByName,
 		nodesWithIssuesCount,
 		nodesWithIssues,

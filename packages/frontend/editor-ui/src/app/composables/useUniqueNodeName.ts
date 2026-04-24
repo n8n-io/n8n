@@ -1,5 +1,9 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '../stores/workflowDocument.store';
 
 export function useUniqueNodeName() {
 	/**
@@ -23,7 +27,11 @@ export function useUniqueNodeName() {
 	 * all nodes on canvas and any extra names that cannot be used.
 	 */
 	function uniqueNodeName(originalName: string, extraNames: string[] = []) {
-		const { canvasNames } = useWorkflowsStore();
+		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		const canvasNames = workflowDocumentStore.canvasNames;
 
 		const isUnique = !canvasNames.has(originalName) && !extraNames.includes(originalName);
 

@@ -176,13 +176,11 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	// Read API
 	// -----------------------------------------------------------------------
 
-	const allNodes = computed<INodeUi[]>(() => workflowsStore.allNodes);
+	const allNodes = computed<INodeUi[]>(() => workflowsStore.workflow.nodes);
 
 	const nodesByName = computed<Record<string, INodeUi>>(() => workflowsStore.nodesByName);
 
-	const canvasNames = computed<Set<string>>(
-		() => new Set(workflowsStore.allNodes.map((n) => n.name)),
-	);
+	const canvasNames = computed<Set<string>>(() => new Set(allNodes.value.map((n) => n.name)));
 
 	function getNodeById(id: string): INodeUi | undefined {
 		return workflowsStore.getNodeById(id);
