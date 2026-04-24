@@ -276,6 +276,18 @@ async function getPodIdentityCredentials() {
 	}
 }
 
+/**
+ * Retrieves AWS credentials by assuming a role via OIDC web identity (IRSA).
+ * Used when running in EKS with IAM Roles for Service Accounts configured.
+ * Reads the OIDC token from the file at AWS_WEB_IDENTITY_TOKEN_FILE and calls
+ * STS AssumeRoleWithWebIdentity to exchange it for temporary credentials.
+ *
+ * @returns Promise resolving to credentials object or null if IRSA is not configured
+ *
+ * @see {@link https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html IRSA}
+ * @see {@link https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html STS API}
+ * @see {@link https://github.com/aws/aws-sdk-js-v3/blob/main/packages-internal/credential-provider-web-identity/src/fromWebToken.ts AWS SDK v3 implementation}
+ */
 async function getRoleForServiceAccountCredentials() {
 	const iamRole = envGetter('AWS_ROLE_ARN');
 	const webIdentityTokenFile = envGetter('AWS_WEB_IDENTITY_TOKEN_FILE');
@@ -292,10 +304,11 @@ async function getRoleForServiceAccountCredentials() {
 
 		const headers: Record<string, string> = {
 			'User-Agent': 'n8n-aws-credential',
+			'Content-Type': 'application/x-www-form-urlencoded',
 			Accept: 'application/json',
 		};
 
-		const qs = new URLSearchParams({
+		const body = new URLSearchParams({
 			Action: 'AssumeRoleWithWebIdentity',
 			RoleArn: iamRole,
 			RoleSessionName: 'n8n-web-identity-session',
@@ -304,9 +317,11 @@ async function getRoleForServiceAccountCredentials() {
 		});
 
 		// Global STS endpoint; China/GovCloud regions unsupported until region is passed through getSystemCredentials
-		const credentialsResponse = await fetch(`https://sts.amazonaws.com?${qs.toString()}`, {
-			method: 'GET',
+		// STS supports Accept: application/json (undocumented) to return JSON instead of XML.
+		const credentialsResponse = await fetch('https://sts.amazonaws.com', {
+			method: 'POST',
 			headers,
+			body: body.toString(),
 			signal: AbortSignal.timeout(2000),
 		});
 

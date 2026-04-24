@@ -862,19 +862,18 @@ describe('system-credentials-utils', () => {
 
 			expect(mockReadFile).toHaveBeenCalledWith('/tmp/token', 'utf8');
 			expect(global.fetch).toHaveBeenCalledWith(
-				expect.stringContaining('https://sts.amazonaws.com?'),
+				'https://sts.amazonaws.com',
 				expect.objectContaining({
-					method: 'GET',
+					method: 'POST',
 					headers: {
 						'User-Agent': 'n8n-aws-credential',
+						'Content-Type': 'application/x-www-form-urlencoded',
 						Accept: 'application/json',
 					},
+					body: expect.stringContaining('Action=AssumeRoleWithWebIdentity'),
 				}),
 			);
-			expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain(
-				'Action=AssumeRoleWithWebIdentity',
-			);
-			expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain(
+			expect((global.fetch as jest.Mock).mock.calls[0][1].body).toContain(
 				'RoleArn=arn%3Aaws%3Aiam%3A%3A123456789012%3Arole%2Ftest-role',
 			);
 		});
