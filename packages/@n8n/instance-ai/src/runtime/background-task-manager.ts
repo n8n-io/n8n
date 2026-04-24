@@ -74,9 +74,16 @@ export interface BackgroundTaskMessageOptions<
 
 export class BackgroundTaskManager {
 	private readonly tasks = new Map<string, ManagedBackgroundTask>();
-	/** plannedTaskId → taskId for the currently-running task. Populated only when the caller provides a dedupeKey. */
+	/** plannedTaskId → taskId for the currently-running task. Populated only when the caller provides a dedupeKey with plannedTaskId. */
 	private readonly byPlannedTaskId = new Map<string, string>();
-	/** `${role}:${workflowId}` → taskId for the currently-running task. Populated only when the caller provides a dedupeKey without plannedTaskId. */
+	/**
+	 * `${role}:${workflowId}` → taskId for the currently-running task. Only
+	 * populated (and only consulted) when the caller provides a dedupeKey
+	 * WITHOUT a plannedTaskId. When both keys are present we treat
+	 * plannedTaskId as the canonical identity — two distinct planned tasks may
+	 * legitimately target the same workflow (e.g., build + later patch) and
+	 * must not collapse into each other.
+	 */
 	private readonly byRoleAndWorkflowId = new Map<string, string>();
 
 	constructor(private readonly maxConcurrentPerThread = 5) {}
@@ -90,11 +97,15 @@ export class BackgroundTaskManager {
 	): ManagedBackgroundTask | undefined {
 		if (!dedupeKey) return undefined;
 		if (dedupeKey.plannedTaskId) {
+			// plannedTaskId is the canonical identity when present — we must NOT
+			// fall back to the workflowId index, otherwise distinct planned tasks
+			// targeting the same (role, workflowId) would falsely collapse.
 			const existingId = this.byPlannedTaskId.get(dedupeKey.plannedTaskId);
 			if (existingId) {
 				const existing = this.tasks.get(existingId);
 				if (existing && existing.status === 'running') return existing;
 			}
+			return undefined;
 		}
 		if (dedupeKey.workflowId) {
 			const existingId = this.byRoleAndWorkflowId.get(
@@ -202,8 +213,10 @@ export class BackgroundTaskManager {
 		this.tasks.set(options.taskId, task);
 		if (options.dedupeKey?.plannedTaskId) {
 			this.byPlannedTaskId.set(options.dedupeKey.plannedTaskId, options.taskId);
-		}
-		if (options.dedupeKey?.workflowId) {
+		} else if (options.dedupeKey?.workflowId) {
+			// Only index by (role, workflowId) when there is no plannedTaskId.
+			// Otherwise a later spawn for a different planned task targeting the
+			// same workflow would be wrongly matched against this one.
 			this.byRoleAndWorkflowId.set(
 				this.workflowKey(options.dedupeKey.role, options.dedupeKey.workflowId),
 				options.taskId,
@@ -216,8 +229,11 @@ export class BackgroundTaskManager {
 	private releaseDedupeIndices(task: ManagedBackgroundTask): void {
 		const key = task.dedupeKey;
 		if (!key) return;
-		if (key.plannedTaskId && this.byPlannedTaskId.get(key.plannedTaskId) === task.taskId) {
-			this.byPlannedTaskId.delete(key.plannedTaskId);
+		if (key.plannedTaskId) {
+			if (this.byPlannedTaskId.get(key.plannedTaskId) === task.taskId) {
+				this.byPlannedTaskId.delete(key.plannedTaskId);
+			}
+			return;
 		}
 		if (key.workflowId) {
 			const wfKey = this.workflowKey(key.role, key.workflowId);

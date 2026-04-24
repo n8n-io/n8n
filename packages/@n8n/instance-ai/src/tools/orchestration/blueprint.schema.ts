@@ -68,7 +68,7 @@ export const blueprintCheckpointItemSchema = z.object({
 		),
 	dependsOn: z
 		.array(z.string())
-		.default([])
+		.min(1)
 		.describe('IDs of items this checkpoint verifies. Must include at least one workflow item ID.'),
 });
 

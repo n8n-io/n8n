@@ -185,15 +185,29 @@ async function clearDraftChecklist(context: OrchestrationContext): Promise<void>
 }
 
 /**
- * Remove any persisted planned-task graph for this thread. Called on planner
- * give-up / error paths to prevent a later schedulePlannedTasks() tick from
- * dispatching a plan the user never approved. submit-plan persists the graph
- * before HITL approval so the checklist renders, which makes this cleanup
- * mandatory when the planner exits unapproved.
+ * Remove any persisted planned-task graph for this thread *if and only if* it
+ * belongs to this planner run's unapproved plan. Called on planner give-up /
+ * error paths to prevent a later schedulePlannedTasks() tick from dispatching
+ * a plan the user never approved.
+ *
+ * Guarded because the thread may already carry an unrelated active graph (a
+ * prior approved plan with pending checkpoints / in-flight tasks); an
+ * unconditional `clear()` here would strand that work. We only touch the graph
+ * when its `planRunId` matches this run AND its `status` is `awaiting_approval`
+ * — the single window where submit-plan has persisted but approval hasn't
+ * happened yet.
  */
+export async function __testClearPlannedTaskGraph(context: OrchestrationContext): Promise<void> {
+	return await clearPlannedTaskGraph(context);
+}
+
 async function clearPlannedTaskGraph(context: OrchestrationContext): Promise<void> {
 	if (!context.plannedTaskService) return;
 	try {
+		const graph = await context.plannedTaskService.getGraph(context.threadId);
+		if (!graph) return;
+		if (graph.planRunId !== context.runId) return;
+		if (graph.status !== 'awaiting_approval') return;
 		await context.plannedTaskService.clear(context.threadId);
 	} catch {
 		// Best-effort — don't let cleanup failures block the return path

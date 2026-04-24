@@ -187,11 +187,29 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		);
 	});
 
+	it('rejects bypassPlan=true without a workflowId (new builds must go through plan)', async () => {
+		const context = createMockContext();
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute({
+			task: 'build something shiny',
+			bypassPlan: true,
+			reason: 'I feel like skipping the plan today',
+		});
+
+		expect(out.taskId).toBe('');
+		expect(out.result).toContain('narrow one-off fixes on an existing workflow');
+	});
+
 	it('rejects bypassPlan=true without a reason', async () => {
 		const context = createMockContext();
 		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
 
-		const out = await tool.execute({ task: 'patch one expression', bypassPlan: true });
+		const out = await tool.execute({
+			task: 'patch one expression',
+			workflowId: 'WF_EXISTING',
+			bypassPlan: true,
+		});
 
 		expect(out.taskId).toBe('');
 		expect(out.result).toContain('requires a one-sentence `reason`');

@@ -243,6 +243,42 @@ describe('BackgroundTaskManager', () => {
 			expect(run).not.toHaveBeenCalled();
 		});
 
+		it('does not collapse two distinct plannedTaskIds that target the same workflowId', () => {
+			// A planner may emit two work items for the same workflow — e.g., initial
+			// build (planned-A) followed by a patch (planned-B). They are distinct
+			// planned tasks and must both run; collapsing them on workflowId would
+			// skip work the user approved.
+			const first = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'task-A',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: {
+						role: 'workflow-builder',
+						plannedTaskId: 'planned-A',
+						workflowId: 'wf-shared',
+					},
+				}),
+			);
+			expect(first.status).toBe('started');
+
+			const run = jest.fn(async (): Promise<string> => await new Promise(() => {}));
+			const second = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'task-B',
+					run,
+					dedupeKey: {
+						role: 'workflow-builder',
+						plannedTaskId: 'planned-B',
+						workflowId: 'wf-shared',
+					},
+				}),
+			);
+
+			expect(second.status).toBe('started');
+			expect(run).toHaveBeenCalledTimes(1);
+			expect(manager.getRunningTasks('thread-1')).toHaveLength(2);
+		});
+
 		it('does not dedupe across roles for the same workflowId', () => {
 			manager.spawn(
 				makeSpawnOptions({

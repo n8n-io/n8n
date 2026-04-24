@@ -707,6 +707,15 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 						taskId: '',
 					};
 				}
+				if (!input.workflowId) {
+					return {
+						result:
+							'Error: `bypassPlan: true` is only allowed for narrow one-off fixes on an existing ' +
+							'workflow. New workflow builds must go through `plan` so an orchestrator-run verification ' +
+							'checkpoint is scheduled. Call `plan` with a `build-workflow` task instead.',
+						taskId: '',
+					};
+				}
 				if (!input.reason || input.reason.trim().length === 0) {
 					return {
 						result:
@@ -717,6 +726,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				}
 				context.logger.warn('build-workflow-with-agent bypassing plan with bypassPlan=true', {
 					threadId: context.threadId,
+					workflowId: input.workflowId,
 					reason: input.reason,
 				});
 			}
