@@ -12,7 +12,12 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import type { AgentJsonConfig } from '../types';
-import { AGENT_SECTION_KEY, CONFIG_JSON_SECTION_KEY, EXECUTIONS_SECTION_KEY } from '../constants';
+import {
+	AGENT_SECTION_KEY,
+	BEHAVIOR_SECTION_KEY,
+	CONFIG_JSON_SECTION_KEY,
+	EXECUTIONS_SECTION_KEY,
+} from '../constants';
 
 type IconProp = ComponentProps<typeof N8nIcon>['icon'];
 
@@ -74,6 +79,11 @@ const sections = computed<SectionDescriptor[]>(() => {
 		key: AGENT_SECTION_KEY,
 		label: i18n.baseText('agents.builder.sections.agent'),
 		icon: 'bot',
+	});
+	out.push({
+		key: BEHAVIOR_SECTION_KEY,
+		label: 'Behavior',
+		icon: 'settings',
 	});
 	out.push({
 		key: 'memory',

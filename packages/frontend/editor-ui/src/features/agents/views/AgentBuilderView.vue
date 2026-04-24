@@ -30,6 +30,7 @@ import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_VIEW,
 	AGENT_SECTION_KEY,
+	BEHAVIOR_SECTION_KEY,
 	CONFIG_JSON_SECTION_KEY,
 	EXECUTIONS_SECTION_KEY,
 	AGENT_TOOLS_MODAL_KEY,
@@ -45,6 +46,7 @@ import AgentSessionsListView from './AgentSessionsListView.vue';
 import AgentIntegrationsPanel from '../components/AgentIntegrationsPanel.vue';
 import AgentToolsListPanel from '../components/AgentToolsListPanel.vue';
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
+import AgentBehaviorPanel from '../components/AgentBehaviorPanel.vue';
 import AgentChatQuickActions from '../components/AgentChatQuickActions.vue';
 
 const route = useRoute();
@@ -571,7 +573,7 @@ function onTreeSelect(key: string) {
 const canToggleRaw = computed(() => {
 	const key = selectedSection.value;
 	if (!key) return false;
-	if (key === AGENT_SECTION_KEY || key === 'memory') return true;
+	if (key === AGENT_SECTION_KEY || key === BEHAVIOR_SECTION_KEY || key === 'memory') return true;
 	return customToolSelection.value !== null;
 });
 
@@ -583,6 +585,8 @@ const rawSectionPath = computed<string | null>(() => {
 	if (!key) return null;
 	// `__agent` is synthetic — its raw view uses `pickKeys` instead.
 	if (key === AGENT_SECTION_KEY) return null;
+	// `__behavior` maps to the `config` subtree in raw view.
+	if (key === BEHAVIOR_SECTION_KEY) return 'config';
 	return key;
 });
 
@@ -1003,6 +1007,11 @@ function onSwitchAgent(nextAgentId: string) {
 						@update:config="onSectionEditorUpdate"
 					/>
 					<AgentCustomToolViewer v-else-if="customToolSelection" :code="customToolSelection.code" />
+					<AgentBehaviorPanel
+						v-else-if="selectedSection === BEHAVIOR_SECTION_KEY"
+						:config="localConfig"
+						@update:config="onConfigFieldUpdate"
+					/>
 					<AgentInfoPanel
 						v-else-if="selectedSection === AGENT_SECTION_KEY"
 						:config="localConfig"

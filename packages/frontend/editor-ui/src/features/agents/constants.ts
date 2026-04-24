@@ -11,6 +11,8 @@ export const AGENT_ADD_TRIGGER_MODAL_KEY = 'agentAddTriggerModal';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */
 export const AGENT_SECTION_KEY = '__agent';
+/** Synthetic tree key for the behavior panel (thinking/concurrency/approval). */
+export const BEHAVIOR_SECTION_KEY = '__behavior';
 /** Synthetic tree key for the full raw config.json view. */
 export const CONFIG_JSON_SECTION_KEY = '__config_json';
 /** Synthetic tree key for the agent executions tab. */
