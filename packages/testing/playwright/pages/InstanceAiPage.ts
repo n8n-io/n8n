@@ -105,14 +105,12 @@ export class InstanceAiPage extends BasePage {
 	/**
 	 * Returns a locator that matches ANY type of approve/continue button.
 	 * Uses Playwright's `or()` to race between confirmation types.
-	 * Workflow setup is always skipped to avoid blocking the benchmark on credential dialogs.
 	 */
 	getAnyApproveButton(): Locator {
 		return this.getConfirmApproveButton()
 			.or(this.getDomainAccessApprove())
 			.or(this.getPlanApproveButton())
-			.or(this.getCredentialContinue())
-			.or(this.getWorkflowSetupSkip());
+			.or(this.getCredentialContinue());
 	}
 
 	// ── Questions ─────────────────────────────────────────────────────
@@ -193,85 +191,6 @@ export class InstanceAiPage extends BasePage {
 
 	getPreviewNdvOutputPanel(): Locator {
 		return this.getPreviewIframe().getByTestId('output-panel');
-	}
-
-	// ── Workflow Setup ────────────────────────────────────────────────
-
-	getWorkflowSetupCard(): Locator {
-		return this.page.getByTestId('instance-ai-workflow-setup-card');
-	}
-
-	getWorkflowSetupStepCounter(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-step-counter');
-	}
-
-	getWorkflowSetupPrevButton(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-prev');
-	}
-
-	getWorkflowSetupNextButton(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-next');
-	}
-
-	getWorkflowSetupLaterButton(): Locator {
-		return this.page.getByTestId('instance-ai-workflow-setup-later');
-	}
-
-	getWorkflowSetupApplyButton(): Locator {
-		return this.page.getByTestId('instance-ai-workflow-setup-apply-button');
-	}
-
-	getWorkflowSetupTestTriggerButton(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-test-trigger');
-	}
-
-	getWorkflowSetupCredentialButton(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-credential-button');
-	}
-
-	getWorkflowSetupCredCheck(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-cred-check');
-	}
-
-	getWorkflowSetupStepCheck(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-step-check');
-	}
-
-	getWorkflowSetupNodesHint(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-nodes-hint');
-	}
-
-	getWorkflowSetupListeningCallout(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-listening-callout');
-	}
-
-	getWorkflowSetupErrorBanner(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('instance-ai-workflow-setup-error-banner');
-	}
-
-	getWorkflowSetupApplyingState(): Locator {
-		return this.page.getByTestId('instance-ai-workflow-setup-applying');
-	}
-
-	getWorkflowSetupPartialState(): Locator {
-		return this.page.getByTestId('instance-ai-workflow-setup-partial');
-	}
-
-	getWorkflowSetupParameterIssues(): Locator {
-		return this.getWorkflowSetupCard().getByTestId('parameter-issues');
-	}
-
-	/** The editable `<input>` / `<textarea>` of the nth `parameter-item` in the setup card. */
-	getWorkflowSetupParameterInput(index = 0): Locator {
-		return this.getWorkflowSetupCard()
-			.getByTestId('parameter-item')
-			.nth(index)
-			.locator('input, textarea')
-			.first();
-	}
-
-	getWorkflowSetupSkip(): Locator {
-		return this.page.getByTestId('instance-ai-workflow-setup-later');
 	}
 
 	// ── Artifacts ─────────────────────────────────────────────────────

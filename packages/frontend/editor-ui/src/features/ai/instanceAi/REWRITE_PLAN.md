@@ -5,17 +5,17 @@
 Full rewrite of the Instance AI "Workflow Setup" frontend under
 `packages/frontend/editor-ui/src/features/ai/instanceAi/`. The existing
 implementation is a 1,225-line monolithic component backed by five composables
-(~1,240 LOC) and a utils file (~117 LOC), with ~2,720 LOC of unit tests.
+(~1,240 LOC) and a utils file (~117 LOC), with ~3,050 LOC of unit tests plus
+two Playwright e2e specs.
 
 The rewrite happens on a feature branch; each numbered PR below merges into
 that branch. `master` is unaffected until the whole feature branch is merged.
 
 ## Files being replaced
 
-All under `packages/frontend/editor-ui/src/features/ai/instanceAi/`:
+Under `packages/frontend/editor-ui/src/features/ai/instanceAi/`:
 
 - `components/InstanceAiWorkflowSetup.vue` (1,225 LOC — main)
-- `components/ConfirmationFooter.vue` (44 LOC — helper)
 - `instanceAiWorkflowSetup.utils.ts` (117 LOC)
 - `composables/useSetupCards.ts` (434 LOC)
 - `composables/useSetupActions.ts` (353 LOC)
@@ -27,6 +27,14 @@ All under `packages/frontend/editor-ui/src/features/ai/instanceAi/`:
 - `__tests__/composableIntegration.test.ts`
 - `__tests__/useSetupCards.test.ts`
 - `__tests__/useCredentialTesting.test.ts`
+- `__tests__/useCredentialGroupSelection.test.ts`
+
+Under `packages/testing/playwright/`:
+
+- `tests/e2e/instance-ai/instance-ai-workflow-setup.spec.ts` (48 LOC)
+- `tests/e2e/instance-ai/instance-ai-workflow-setup-actions.spec.ts` (240 LOC)
+- `pages/InstanceAiPage.ts` — remove the "Workflow Setup" section (~75 LOC of
+  `getWorkflowSetup*` methods); the rest of the file is shared and stays.
 
 **Not touched:**
 
@@ -34,6 +42,12 @@ All under `packages/frontend/editor-ui/src/features/ai/instanceAi/`:
   types (`InstanceAiWorkflowSetupNode`, `InstanceAiCredentialFlow`) stay as-is.
 - `instanceAi.store.ts` — not consumed for setup data (`setupRequests` flow
   through props, not through store state).
+- `packages/testing/playwright/tests/e2e/instance-ai/fixtures.ts` — shared
+  across all instance-ai specs.
+- `components/ConfirmationFooter.vue` — shared by six other instance-ai
+  components (`InstanceAiCredentialSetup`, `DomainAccessApproval`,
+  `GatewayResourceDecision`, `InstanceAiQuestions`,
+  `InstanceAiConfirmationPanel`, `PlanReviewPanel`). Reuse in the rewrite.
 
 **Only external consumer of the component:** `InstanceAiConfirmationPanel.vue`
 in the same feature directory. No imports from outside
@@ -50,9 +64,11 @@ in the same feature directory. No imports from outside
 
 ### PR 1 — Delete legacy FE
 
-Remove the existing component, composables, utils, and their tests. Leave a
-minimal placeholder component so `InstanceAiConfirmationPanel.vue` still
-renders. The feature branch is intentionally non-functional after this PR.
+Remove the existing component, composables, utils, their unit tests, the two
+Playwright specs for this flow, and the workflow-setup page-object methods in
+`InstanceAiPage.ts`. Leave a minimal placeholder component so
+`InstanceAiConfirmationPanel.vue` still renders. The feature branch is
+intentionally non-functional after this PR.
 
 ### PR 2 — Credentials-only setup
 
@@ -108,13 +124,15 @@ with the current wizard minus the dropped testing features.
 **Working after this PR:** complete feature, with the nicer UX shortcut for
 pre-resolved cases.
 
-### PR 6 (optional) — Playwright e2e
+### PR 6 — Rebuild Playwright e2e
 
-Happy-path e2e coverage. No Playwright tests exist for this flow today.
+Rebuild the two specs deleted in PR 1 plus the `getWorkflowSetup*` methods in
+`InstanceAiPage.ts`. Optional in the sense that the feature can ship without
+it, but recommended since CI had e2e coverage before the rewrite.
 
 ## Test strategy
 
 - Unit tests added per PR for new model / composables / components.
-- The ~2,720 LOC of existing unit tests is deleted in PR 1 — accepted
+- The existing ~3,050 LOC of unit tests is deleted in PR 1 — accepted
   coverage gap while the rewrite is in progress.
-- E2E coverage deferred to PR 6 (optional).
+- E2E coverage rebuilt in PR 6.
