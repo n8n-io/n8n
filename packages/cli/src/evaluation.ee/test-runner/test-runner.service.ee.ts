@@ -588,6 +588,9 @@ export class TestRunnerService {
 			// merge them sequentially after `Promise.all`. DB writes, telemetry counter
 			// bumps, and error handling all stay inside the per-case task — they're
 			// independent across cases and don't need a serialised aggregator.
+			// `telemetryMeta.*++` increments across tasks are safe: JS is single-threaded
+			// and `++` is synchronous between awaits, so no interleaving can land between
+			// the read and the write.
 			const contributions = await Promise.all(
 				testCases.map(
 					async (testCase) =>
