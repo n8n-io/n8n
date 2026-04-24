@@ -19,6 +19,16 @@ import {
 
 import { searchModels } from './methods/searchModels';
 
+const ANTHROPIC_MODEL_BUILDER_HINT = {
+	message:
+		'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. ' +
+		'Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices. ' +
+		"When a credential is attached, look up the live model list via the node's `@searchListMethod` (`searchModels`) " +
+		"to see what the credential can actually access — don't guess from memory. " +
+		'Use whatever the list returns — do not substitute a different Claude variant from memory. ' +
+		"When no credential is attached, the node's @default applies automatically — do not write a specific model ID in that case.",
+};
+
 const modelField: INodeProperties = {
 	displayName: 'Model',
 	name: 'model',
@@ -69,10 +79,7 @@ const modelField: INodeProperties = {
 	description:
 		'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
 	default: 'claude-2',
-	builderHint: {
-		message:
-			"When a credential is attached, look up the live model list via the node's `@searchListMethod` (`searchModels`) to see what the credential can actually access — don't guess from memory. From that list, prefer the Claude Sonnet family for general use, or the Opus family when the user asks for maximum capability. Use whatever the list returns — do not substitute a different Claude variant from memory. When no credential is attached, the node's @default applies automatically — do not write a specific model ID in that case.",
-	},
+	builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
 };
 
 const MIN_THINKING_BUDGET = 1024;
@@ -162,10 +169,7 @@ export class LmChatAnthropic implements INodeType {
 					value: 'claude-sonnet-4-5-20250929',
 					cachedResultName: 'Claude Sonnet 4.5',
 				},
-				builderHint: {
-					message:
-						'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices.',
-				},
+				builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
 				required: true,
 				modes: [
 					{
