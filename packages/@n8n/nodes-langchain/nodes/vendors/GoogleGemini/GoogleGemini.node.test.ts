@@ -731,6 +731,94 @@ describe('GoogleGemini Node', () => {
 				);
 			});
 
+			it('should handle multi-iteration tool responses with Google Search enabled', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Generate a tweet about PSG vs Liverpool' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {
+								googleSearch: true,
+							};
+						case 'options':
+							return {};
+						case 'options.maxToolsIterations':
+							return 15;
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock
+					.mockResolvedValueOnce({
+						candidates: [
+							{
+								content: {
+									parts: [
+										undefined,
+										{
+											functionCall: {
+												id: 'search-round-1',
+												name: 'googleSearch',
+												args: { query: 'PSG vs Liverpool latest updates' },
+											},
+										},
+										{
+											functionResponse: {
+												id: 'search-round-1',
+												name: 'googleSearch',
+												response: { result: 'search results' },
+											},
+										},
+									],
+									role: 'model',
+								},
+							},
+						],
+					})
+					.mockResolvedValueOnce({
+						candidates: [
+							{
+								content: {
+									parts: [{ text: 'PSG and Liverpool are trending after a dramatic match.' }],
+									role: 'model',
+								},
+							},
+						],
+					});
+
+				const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+				expect(apiRequestMock).toHaveBeenCalledTimes(2);
+				expect(apiRequestMock).toHaveBeenNthCalledWith(
+					1,
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([{ googleSearch: {} }]),
+						}),
+					}),
+				);
+				expect(result).toEqual([
+					{
+						json: {
+							content: {
+								parts: [{ text: 'PSG and Liverpool are trending after a dramatic match.' }],
+								role: 'model',
+							},
+						},
+						pairedItem: { item: 0 },
+					},
+				]);
+			});
+
 			describe('includeMergedResponse', () => {
 				it('should include mergedResponse per candidate when enabled and simplify is true', async () => {
 					executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {

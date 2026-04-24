@@ -346,8 +346,20 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+function isObject(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object';
+}
+
+function hasFunctionCallPart(
+	part: unknown,
+): part is { functionCall: { id?: string; name: string; args?: IDataObject } } {
+	return isObject(part) && 'functionCall' in part && isObject(part.functionCall);
+}
+
 function getToolCalls(response: GenerateContentResponse) {
-	return response.candidates.flatMap((c) => c.content.parts).filter((p) => 'functionCall' in p);
+	return response.candidates
+		.flatMap((candidate) => candidate.content?.parts ?? [])
+		.filter(hasFunctionCallPart);
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
