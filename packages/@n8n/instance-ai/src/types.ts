@@ -829,6 +829,17 @@ export interface SpawnBackgroundTaskOptions {
 		workflowId?: string;
 		role: string;
 	};
+	/**
+	 * Link this background task to a running checkpoint in the planned-task
+	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
+	 * research, data-table, delegate) from inside a
+	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
+	 * net defers failing the checkpoint while a child with this id is still
+	 * running, and settlement re-emits the checkpoint follow-up when the last
+	 * child settles — so the orchestrator re-enters the checkpoint context
+	 * instead of a bare `<background-task-completed>` shell.
+	 */
+	parentCheckpointId?: string;
 	run: (
 		signal: AbortSignal,
 		drainCorrections: () => string[],

@@ -545,6 +545,70 @@ describe('BackgroundTaskManager', () => {
 			expect(manager.getRunningTasks('thread-1')).toHaveLength(0);
 		});
 	});
+
+	describe('getRunningTasksByParentCheckpoint', () => {
+		it('returns running tasks tagged with the given checkpoint id', () => {
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'child-1',
+					run: async () => await new Promise(() => {}),
+					parentCheckpointId: 'cp-verify-1',
+				}),
+			);
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'child-2',
+					run: async () => await new Promise(() => {}),
+					parentCheckpointId: 'cp-verify-1',
+				}),
+			);
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'unrelated',
+					run: async () => await new Promise(() => {}),
+				}),
+			);
+
+			const children = manager.getRunningTasksByParentCheckpoint('thread-1', 'cp-verify-1');
+			expect(children.map((c) => c.taskId).sort()).toEqual(['child-1', 'child-2']);
+		});
+
+		it('excludes tasks tagged under a different checkpoint', () => {
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'child-a',
+					run: async () => await new Promise(() => {}),
+					parentCheckpointId: 'cp-A',
+				}),
+			);
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'child-b',
+					run: async () => await new Promise(() => {}),
+					parentCheckpointId: 'cp-B',
+				}),
+			);
+
+			const childrenA = manager.getRunningTasksByParentCheckpoint('thread-1', 'cp-A');
+			expect(childrenA.map((c) => c.taskId)).toEqual(['child-a']);
+		});
+
+		it('excludes tasks that have already settled', async () => {
+			const { promise, resolve } = createDeferred<string>();
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'child-done',
+					parentCheckpointId: 'cp-verify-1',
+					run: async () => await promise,
+				}),
+			);
+
+			resolve('done');
+			await flushPromises();
+
+			expect(manager.getRunningTasksByParentCheckpoint('thread-1', 'cp-verify-1')).toHaveLength(0);
+		});
+	});
 });
 
 describe('enrichMessageWithRunningTasks', () => {

@@ -110,6 +110,8 @@ export async function startResearchAgentTask(
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		dedupeKey: { role: 'web-researcher', plannedTaskId: input.plannedTaskId },
+		parentCheckpointId:
+			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
 		run: async (signal, drainCorrections, waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent({

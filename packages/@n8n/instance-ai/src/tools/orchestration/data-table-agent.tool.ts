@@ -109,6 +109,8 @@ export async function startDataTableAgentTask(
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		dedupeKey: { role: 'data-table-manager', plannedTaskId: input.plannedTaskId },
+		parentCheckpointId:
+			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
 		run: async (signal, _drainCorrections, _waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent({

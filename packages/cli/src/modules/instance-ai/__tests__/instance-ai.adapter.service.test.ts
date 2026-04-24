@@ -15,6 +15,7 @@ import {
 	extractExecutionResult,
 	extractExecutionDebugInfo,
 	extractNodeOutput,
+	resolveDataTableByIdOrName,
 	truncateNodeOutput,
 	truncateResultData,
 } from '../instance-ai.adapter.service';
@@ -824,7 +825,7 @@ function createDataTableAdapterForTests(overrides?: {
 	};
 
 	const mockDataTableRepository = {
-		findOneByOrFail: jest
+		findOneBy: jest
 			.fn()
 			.mockResolvedValue({ id: 'dt-1', name: 'Orders', projectId: 'team-project-id' }),
 	};
@@ -1424,5 +1425,67 @@ describe('createExecutionAdapter', () => {
 
 		const query = mockExecutionRepository.findManyByRangeQuery.mock.calls[0][0];
 		expect(query).not.toHaveProperty('accessibleWorkflowIds');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// resolveDataTableByIdOrName
+// ---------------------------------------------------------------------------
+
+describe('resolveDataTableByIdOrName', () => {
+	const table = { id: 'dt_uuid_123', name: 'kb_sources', projectId: 'proj_1' };
+
+	function makeRepo(table?: { id: string; name: string; projectId: string }) {
+		return {
+			findOneBy: jest.fn(async (where: { id?: string; name?: string }) => {
+				if (!table) return null;
+				if (where.id && where.id === table.id) return table;
+				if (where.name && where.name === table.name) return table;
+				return null;
+			}),
+		};
+	}
+
+	function makeLogger() {
+		return { warn: jest.fn() };
+	}
+
+	it('returns the table on an id hit without logging a warning', async () => {
+		const repo = makeRepo(table);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'dt_uuid_123');
+
+		expect(result).toEqual(table);
+		expect(repo.findOneBy).toHaveBeenCalledWith({ id: 'dt_uuid_123' });
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('falls back to name lookup when the id lookup misses, and warns', async () => {
+		const repo = makeRepo(table);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'kb_sources');
+
+		expect(result).toEqual(table);
+		expect(repo.findOneBy).toHaveBeenNthCalledWith(1, { id: 'kb_sources' });
+		expect(repo.findOneBy).toHaveBeenNthCalledWith(2, { name: 'kb_sources' });
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn.mock.calls[0][0]).toMatch(/called with table name instead of id/);
+		expect(logger.warn.mock.calls[0][1]).toEqual({
+			passedValue: 'kb_sources',
+			resolvedId: 'dt_uuid_123',
+		});
+	});
+
+	it('returns null when neither id nor name matches', async () => {
+		const repo = makeRepo(table);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'does_not_exist');
+
+		expect(result).toBeNull();
+		expect(repo.findOneBy).toHaveBeenCalledTimes(2);
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 });

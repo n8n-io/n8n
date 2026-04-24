@@ -175,6 +175,8 @@ export async function startDetachedDelegateTask(
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		dedupeKey: { role, plannedTaskId: input.plannedTaskId },
+		parentCheckpointId:
+			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
 		run: async (signal, drainCorrections, waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = createSubAgent({

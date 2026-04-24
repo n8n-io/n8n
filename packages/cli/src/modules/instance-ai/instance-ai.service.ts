@@ -2193,6 +2193,75 @@ export class InstanceAiService {
 	 * terminal (marking it failed if the orchestrator abandoned it) and re-ticks
 	 * the scheduler so the next planned action can fire.
 	 */
+	/**
+	 * When a direct background task (builder/research/data-table/delegate)
+	 * settles, check whether it was spawned inside a checkpoint follow-up by
+	 * the orchestrator. If yes AND that checkpoint is still `running` AND no
+	 * other parent-tagged children are still in-flight, re-dispatch the
+	 * checkpoint follow-up so the orchestrator re-enters the same context and
+	 * can call `complete-checkpoint`.
+	 *
+	 * Returns `true` when a follow-up was started (so the caller should skip
+	 * the default `<background-task-completed>` auto-follow-up path); `false`
+	 * otherwise (task was not parent-tagged, checkpoint no longer running,
+	 * siblings still running, or the follow-up couldn't start).
+	 */
+	private async maybeReenterParentCheckpoint(
+		user: User,
+		threadId: string,
+		task: ManagedBackgroundTask,
+	): Promise<boolean> {
+		const parentCheckpointId = task.parentCheckpointId;
+		if (!parentCheckpointId) return false;
+
+		// If other parent-tagged children are still running, let the LAST one
+		// re-drive the checkpoint; emitting multiple re-dispatches would race.
+		const siblings = this.backgroundTasks
+			.getRunningTasksByParentCheckpoint(threadId, parentCheckpointId)
+			.filter((t) => t.taskId !== task.taskId);
+		if (siblings.length > 0) return false;
+
+		try {
+			const { plannedTaskService } = await this.createPlannedTaskState();
+			const graph = await plannedTaskService.getGraph(threadId);
+			const checkpoint = graph?.tasks.find((t) => t.id === parentCheckpointId);
+			if (!graph || !checkpoint || checkpoint.kind !== 'checkpoint') return false;
+			if (checkpoint.status !== 'running') return false;
+
+			const startedRunId = await this.startInternalFollowUpRun(
+				user,
+				threadId,
+				this.buildPlannedTaskFollowUpMessage('checkpoint', graph, { checkpoint }),
+				this.runState.getThreadResearchMode(threadId),
+				task.messageGroupId,
+				false,
+				{ isCheckpointFollowUp: true, checkpointTaskId: parentCheckpointId },
+			);
+
+			if (!startedRunId) {
+				// A race with another dispatcher — let the scheduler re-tick path
+				// below handle it. We return false so the caller falls through to
+				// the background-task-completed path only if its own pre-checks
+				// also pass; those pre-checks already excluded the "active run"
+				// case, so in practice the follow-up will fire cleanly.
+				return false;
+			}
+			this.logger.debug('Re-dispatched checkpoint follow-up after child task settled', {
+				threadId,
+				checkpointTaskId: parentCheckpointId,
+				settledTaskId: task.taskId,
+			});
+			return true;
+		} catch (error) {
+			this.logger.error('Failed to re-enter parent checkpoint after child settlement', {
+				threadId,
+				checkpointTaskId: parentCheckpointId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return false;
+		}
+	}
+
 	private async finalizeCheckpointFollowUp(
 		user: User,
 		threadId: string,
@@ -2203,16 +2272,37 @@ export class InstanceAiService {
 			const graph = await plannedTaskService.getGraph(threadId);
 			const task = graph?.tasks.find((t) => t.id === checkpointTaskId);
 			if (task && task.status === 'running') {
-				this.logger.warn('Checkpoint run ended without reporting completion — marking failed', {
+				// If the orchestrator spawned a detached sub-agent inside this
+				// checkpoint's turn (builder, research, data-table, delegate) and
+				// that child is still running, leave the checkpoint running. The
+				// child's settlement path re-emits `orchestrate-checkpoint` so the
+				// orchestrator re-enters the same checkpoint context and can then
+				// call `complete-checkpoint`.
+				const inflightChildren = this.backgroundTasks.getRunningTasksByParentCheckpoint(
 					threadId,
 					checkpointTaskId,
-				});
-				await plannedTaskService.markCheckpointFailed(threadId, checkpointTaskId, {
-					error: 'Checkpoint run ended without reporting completion',
-				});
-				const nextGraph = await plannedTaskService.getGraph(threadId);
-				if (nextGraph) {
-					await this.syncPlannedTasksToUi(threadId, nextGraph);
+				);
+				if (inflightChildren.length > 0) {
+					this.logger.debug(
+						'Checkpoint run ended with in-flight child tasks — deferring finalization',
+						{
+							threadId,
+							checkpointTaskId,
+							inflightTaskIds: inflightChildren.map((t) => t.taskId),
+						},
+					);
+				} else {
+					this.logger.warn('Checkpoint run ended without reporting completion — marking failed', {
+						threadId,
+						checkpointTaskId,
+					});
+					await plannedTaskService.markCheckpointFailed(threadId, checkpointTaskId, {
+						error: 'Checkpoint run ended without reporting completion',
+					});
+					const nextGraph = await plannedTaskService.getGraph(threadId);
+					if (nextGraph) {
+						await this.syncPlannedTasksToUi(threadId, nextGraph);
+					}
 				}
 			}
 		} catch (error) {
@@ -2513,6 +2603,7 @@ export class InstanceAiService {
 			workItemId: opts.workItemId,
 			traceContext: opts.traceContext,
 			dedupeKey: opts.dedupeKey,
+			parentCheckpointId: opts.parentCheckpointId,
 			run: opts.run,
 			onLimitReached: async (errorMessage) => {
 				await this.finalizeDetachedTraceRun(opts.taskId, opts.traceContext, {
@@ -2587,6 +2678,18 @@ export class InstanceAiService {
 					if (remaining.length === 0 && !hasActiveRun && !hasSuspendedRun) {
 						const user = this.runState.getThreadUser(opts.threadId);
 						if (user) {
+							// If this direct task was spawned inside a checkpoint follow-up
+							// (patch-builder, research, etc.), re-enter the same checkpoint
+							// context on settlement instead of emitting a bare
+							// `<background-task-completed>` shell. That way the orchestrator
+							// resumes with checkpoint tools in scope and the prompt's
+							// checkpoint rules in force — it can re-verify the patch and
+							// call `complete-checkpoint`. Without this, the checkpoint
+							// would be orphaned: its parent follow-up ended before the
+							// child spawn settled, so nothing re-drives completion.
+							const reentered = await this.maybeReenterParentCheckpoint(user, opts.threadId, task);
+							if (reentered) return;
+
 							const payload = JSON.stringify(
 								{
 									role: opts.role,

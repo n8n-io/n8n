@@ -70,4 +70,35 @@ describe('getSystemPrompt', () => {
 			);
 		});
 	});
+
+	describe('replan branch — must call create-tasks', () => {
+		it('requires the orchestrator to call create-tasks (or plan) in the replan turn', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toMatch(/You MUST call `create-tasks` \(or `plan`/);
+			expect(prompt).toContain('awaiting_replan');
+			expect(prompt).toMatch(/Do not reply with acknowledgements or status updates alone/);
+		});
+	});
+
+	describe('checkpoint branch — in-turn patch rule', () => {
+		it('tells the orchestrator it may patch during a checkpoint and will re-enter the same checkpoint', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('patch in place');
+			expect(prompt).toMatch(
+				/you will receive another `<planned-task-follow-up type="checkpoint">` for the SAME checkpoint/,
+			);
+			expect(prompt).toContain('re-verify');
+			expect(prompt).toContain('complete-checkpoint');
+		});
+
+		it('still warns not to end a checkpoint turn with an unsettled in-turn patch', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toMatch(
+				/Do NOT end a checkpoint turn that had an in-turn patch spawned without a plan to call `complete-checkpoint`/,
+			);
+		});
+	});
 });

@@ -1127,24 +1127,33 @@ export class InstanceAiAdapterService {
 
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 
+		const resolveDataTable = async (idOrName: string) =>
+			await resolveDataTableByIdOrName(dataTableRepository, this.logger, idOrName);
+
 		// Check scope for a data table and return its projectId for downstream service calls
 		const resolveProjectIdForTable = async (scopes: Scope[], dataTableId: string) => {
-			const allowed = await userHasScopes(user, scopes, false, { dataTableId });
+			const table = await resolveDataTable(dataTableId);
+			if (!table) {
+				throw new Error(`Data table "${dataTableId}" not found`);
+			}
+			const allowed = await userHasScopes(user, scopes, false, { dataTableId: table.id });
 			if (!allowed) {
 				throw new Error(`Data table "${dataTableId}" not found`);
 			}
-			const table = await dataTableRepository.findOneByOrFail({ id: dataTableId });
 			return table.projectId;
 		};
 
-		// Like resolveProjectIdForTable but also returns the table name for artifact display
+		// Like resolveProjectIdForTable but also returns the table name + resolved id for callers
 		const resolveTableMeta = async (scopes: Scope[], dataTableId: string) => {
-			const allowed = await userHasScopes(user, scopes, false, { dataTableId });
+			const table = await resolveDataTable(dataTableId);
+			if (!table) {
+				throw new Error(`Data table "${dataTableId}" not found`);
+			}
+			const allowed = await userHasScopes(user, scopes, false, { dataTableId: table.id });
 			if (!allowed) {
 				throw new Error(`Data table "${dataTableId}" not found`);
 			}
-			const table = await dataTableRepository.findOneByOrFail({ id: dataTableId });
-			return { projectId: table.projectId, tableName: table.name };
+			return { projectId: table.projectId, tableName: table.name, resolvedId: table.id };
 		};
 
 		return {
@@ -2093,6 +2102,51 @@ const MAX_RESULT_CHARS = 20_000;
 
 /** Maximum characters for a single node's output preview when truncating. */
 const MAX_NODE_OUTPUT_CHARS = 1_000;
+
+/**
+ * Minimal DataTable shape the resolver needs. Kept narrow so tests can mock
+ * the repository without depending on the full TypeORM entity.
+ */
+interface DataTableRecord {
+	id: string;
+	name: string;
+	projectId: string;
+}
+
+interface DataTableIdOrNameRepository {
+	findOneBy: (where: { id?: string; name?: string }) => Promise<DataTableRecord | null>;
+}
+
+interface DataTableResolverLogger {
+	warn: (message: string, meta?: Record<string, unknown>) => void;
+}
+
+/**
+ * Look up a data table by the orchestrator-supplied identifier. Tries `id`
+ * first; if that misses, tries `name`. The name fallback exists because the
+ * orchestrator occasionally passes the human-readable table name it saw in a
+ * `data-tables list` response instead of the numeric id. On a name hit we
+ * warn so the miscall surfaces in logs. Returns `null` when neither lookup
+ * matches — callers translate that into a "not found" error, preserving the
+ * original behaviour for real misses.
+ */
+export async function resolveDataTableByIdOrName(
+	repository: DataTableIdOrNameRepository,
+	logger: DataTableResolverLogger,
+	idOrName: string,
+): Promise<DataTableRecord | null> {
+	const byId = await repository.findOneBy({ id: idOrName });
+	if (byId) return byId;
+	const byName = await repository.findOneBy({ name: idOrName });
+	if (byName) {
+		logger.warn(
+			'data-tables tool called with table name instead of id — resolved by name fallback',
+			{ passedValue: idOrName, resolvedId: byName.id },
+		);
+		return byName;
+	}
+	return null;
+}
 
 /**
  * Truncate execution result data to stay within context budget.
