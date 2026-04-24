@@ -14,6 +14,17 @@ import type { ParseAndValidateResult, ValidationWarning } from '../types';
 import { stripImportStatements } from '../utils/extract-code';
 
 /**
+ * Error thrown when workflow code parsing fails.
+ * Used by MCP tools to distinguish parse errors from other failures.
+ */
+export class WorkflowCodeParseError extends Error {
+	constructor(message: string, options?: ErrorOptions) {
+		super(message, options);
+		this.name = 'WorkflowCodeParseError';
+	}
+}
+
+/**
  * Configuration for ParseValidateHandler
  */
 export interface ParseValidateHandlerConfig {
@@ -201,7 +212,7 @@ export class ParseValidateHandler {
 				code: code.substring(0, 500),
 			});
 
-			throw new Error(
+			throw new WorkflowCodeParseError(
 				`Failed to parse generated workflow code: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			);
 		}

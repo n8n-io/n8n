@@ -268,22 +268,6 @@ export function parseStoredMessages(
 		// in the assistant message's content
 	}
 
-	// Deduplicate user messages by content.
-	// The user message may be pre-saved for HITL refresh recovery and then
-	// saved again by Mastra's incremental save queue — remove the duplicate.
-	// Dedup by content regardless of adjacency (an AI message may appear between
-	// the pre-saved and stream-saved copies).
-	const seenUserContent = new Set<string>();
-	for (let i = 0; i < messages.length; i++) {
-		if (messages[i].role !== 'user') continue;
-		if (seenUserContent.has(messages[i].content)) {
-			messages.splice(i, 1);
-			i--;
-		} else {
-			seenUserContent.add(messages[i].content);
-		}
-	}
-
 	// Deduplicate assistant messages by messageGroupId.
 	// Follow-up runs in the same group produce separate DB rows; keep only
 	// the latest (which carries the full runIds array and complete tree).

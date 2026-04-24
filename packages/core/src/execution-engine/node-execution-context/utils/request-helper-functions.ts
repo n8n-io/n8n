@@ -541,7 +541,7 @@ export function convertN8nRequestToAxios(
 	}
 
 	const host = getHostFromRequestObject(n8nRequest);
-	const agentOptions: AgentOptions = {};
+	const agentOptions: AgentOptions = { ...n8nRequest.agentOptions };
 	if (host) {
 		agentOptions.servername = host;
 	}
@@ -889,6 +889,7 @@ export async function requestOAuth2(
 		});
 	}
 	const tokenExpiredStatusCode = resolveTokenExpiredStatusCode(oAuth2Options, credentials);
+	const shouldSkipTokenRefresh = oAuth2Options?.skipTokenRefresh === true;
 
 	const refreshCtx: RefreshOAuth2TokenContext = {
 		credentials,
@@ -916,7 +917,7 @@ export async function requestOAuth2(
 
 	if (isN8nRequest) {
 		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
-			if (error.response?.status === tokenExpiredStatusCode) {
+			if (!shouldSkipTokenRefresh && error.response?.status === tokenExpiredStatusCode) {
 				return await retryWithNewToken(async (opts) => await this.helpers.httpRequest(opts));
 			}
 			throw error;
@@ -928,6 +929,7 @@ export async function requestOAuth2(
 		.then((response) => {
 			const requestOptions = newRequestOptions as any;
 			if (
+				!shouldSkipTokenRefresh &&
 				requestOptions.resolveWithFullResponse === true &&
 				requestOptions.simple === false &&
 				response.statusCode === tokenExpiredStatusCode
@@ -937,7 +939,7 @@ export async function requestOAuth2(
 			return response;
 		})
 		.catch(async (error: IResponseError) => {
-			if (error.statusCode === tokenExpiredStatusCode) {
+			if (!shouldSkipTokenRefresh && error.statusCode === tokenExpiredStatusCode) {
 				return await retryWithNewToken(
 					async (opts) => await this.helpers.request(opts as IRequestOptions),
 				);

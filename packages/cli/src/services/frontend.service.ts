@@ -59,6 +59,9 @@ export type PublicFrontendSettings = {
 
 		/** Determines forgot password page UX */
 		smtpSetup: FrontendSettings['userManagement']['smtpSetup'];
+
+		/** Configurable minimum password length for password requirement display */
+		passwordMinLength: FrontendSettings['userManagement']['passwordMinLength'];
 	};
 
 	enterprise: {
@@ -249,8 +252,10 @@ export class FrontendService {
 				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
+				passwordMinLength: this.globalConfig.userManagement.password.minLength,
 			},
 			sso: {
+				managedByEnv: this.globalConfig.instanceSettingsLoader.ssoManagedByEnv,
 				saml: {
 					loginEnabled: false,
 					loginLabel: '',
@@ -528,7 +533,7 @@ export class FrontendService {
 		if (isAiGatewayEnabled) {
 			this.settings.aiGateway = {
 				enabled: true,
-				creditsQuota: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_CREDITS) ?? 0,
+				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
 			};
 		}
 
@@ -568,7 +573,7 @@ export class FrontendService {
 		// Get full settings to ensure all required properties are initialized
 		const {
 			defaultLocale,
-			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup, passwordMinLength },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
 			previewMode,
@@ -583,6 +588,7 @@ export class FrontendService {
 				authenticationMethod,
 				showSetupOnFirstLoad,
 				smtpSetup,
+				passwordMinLength,
 			},
 			sso: {
 				saml: {

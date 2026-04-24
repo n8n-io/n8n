@@ -12,17 +12,29 @@ on:
         default: 'master'
 
 jobs:
-  e2e-vm-expressions:
-    uses: ./.github/workflows/test-e2e-ci-reusable.yml
+  prepare-docker:
+    uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
       branch: ${{ github.event_name == 'schedule' && 'master' || inputs.branch }}
+    secrets: inherit
+
+  e2e:
+    name: E2E
+    needs: [prepare-docker]
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ github.event_name == 'schedule' && 'master' || inputs.branch }}
+      test-mode: docker-artifact
+      test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
+      workers: '1'
+      pre-generated-matrix: '[{"shard":1},{"shard":2},{"shard":3},{"shard":4},{"shard":5},{"shard":6},{"shard":7},{"shard":8},{"shard":9},{"shard":10},{"shard":11},{"shard":12},{"shard":13},{"shard":14},{"shard":15},{"shard":16}]'
       n8n-env: '{"N8N_EXPRESSION_ENGINE":"vm"}'
     secrets: inherit
 
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-slim
-    needs: [e2e-vm-expressions]
+    needs: [e2e]
     if: failure() && github.event_name == 'schedule'
     steps:
       - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0

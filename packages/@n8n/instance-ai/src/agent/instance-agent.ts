@@ -7,14 +7,12 @@ import { MCPClient } from '@mastra/mcp';
 import { nanoid } from 'nanoid';
 
 import { createMemory } from '../memory/memory-config';
-import { createAllTools, createOrchestrationTools } from '../tools';
+import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
+import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
+import { getSystemPrompt } from './system-prompt';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
-import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
-import { getSystemPrompt } from './system-prompt';
-import { getOrchestratorDomainTools } from './tool-access';
-
 function buildMcpServers(
 	configs: McpServerConfig[],
 ): Record<
@@ -49,14 +47,7 @@ let cachedMastraStorageKey = '';
 // Tools that are always loaded into the orchestrator's context (no search required).
 // These are used in nearly every conversation per system prompt analysis.
 // All other tools are deferred behind ToolSearchProcessor for on-demand discovery.
-const ALWAYS_LOADED_TOOLS = new Set([
-	'plan',
-	'create-tasks',
-	'delegate',
-	'ask-user',
-	'web-search',
-	'fetch-url',
-]);
+const ALWAYS_LOADED_TOOLS = new Set(['plan', 'delegate', 'ask-user', 'research']);
 
 function getOrCreateToolSearchProcessor(tools: ToolsInput): ToolSearchProcessor {
 	// Deferred tools capture per-run closures via the orchestration context.
@@ -128,7 +119,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	// Build native n8n domain tools (context captured via closures — per-run)
 	const domainTools = createAllTools(context);
 
-	const orchestratorDomainTools = getOrchestratorDomainTools(domainTools);
+	const orchestratorDomainTools = createOrchestratorDomainTools(context);
 
 	// Load MCP tools (cached — only spawns processes on first call or config change)
 	const mcpTools = await getMcpTools(mcpServers);

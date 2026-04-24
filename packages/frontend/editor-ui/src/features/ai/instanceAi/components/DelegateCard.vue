@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { N8nBadge, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed } from 'vue';
 import { useToolLabel } from '../toolLabels';
 import TimelineStepButton from './TimelineStepButton.vue';
@@ -47,7 +48,7 @@ const briefing = computed(() => {
 				<N8nText bold>{{ role }}</N8nText>
 			</TimelineStepButton>
 		</CollapsibleTrigger>
-		<CollapsibleContent>
+		<AnimatedCollapsibleContent>
 			<N8nCard>
 				<N8nText bold>{{ i18n.baseText('instanceAi.delegateCard.tools') }}</N8nText>
 				<div v-if="tools.length" :class="$style.toolsRow">
@@ -55,7 +56,7 @@ const briefing = computed(() => {
 				</div>
 				<N8nText tag="div">{{ briefing }}</N8nText>
 			</N8nCard>
-		</CollapsibleContent>
+		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 	<!-- Result is intentionally NOT shown here.
 			 The sub-agent's full activity (tool calls + text) is rendered by

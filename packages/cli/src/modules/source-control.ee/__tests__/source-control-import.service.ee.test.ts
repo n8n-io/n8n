@@ -3077,6 +3077,80 @@ describe('SourceControlImportService', () => {
 				// Assert
 				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
 			});
+
+			it('should throw UserError when a data table with the same name but different ID exists locally', async () => {
+				// Arrange
+				const mockDataTable = {
+					id: 'dt1',
+					name: 'Test Table',
+					ownedBy: {
+						type: 'team',
+						teamId: 'project1',
+						teamName: 'Team Project 1',
+					},
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
+				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+
+				// Return a different ID for the same name — simulates name collision
+				dataTableRepository.findOne.mockResolvedValueOnce({ id: 'dt-other' } as any);
+
+				// Act & Assert
+				await expect(
+					service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id),
+				).rejects.toThrow(
+					'A data table with the name <strong>Test Table</strong> already exists locally.',
+				);
+
+				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
+			});
+
+			it('should not partially import when a name collision exists among multiple tables', async () => {
+				// Arrange — two tables: dt1 is valid, dt2 has a name collision
+				const validTable = {
+					id: 'dt1',
+					name: 'Valid Table',
+					ownedBy: { type: 'team', teamId: 'project1', teamName: 'Team Project 1' },
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+				const collidingTable = {
+					id: 'dt2',
+					name: 'Colliding Table',
+					ownedBy: { type: 'team', teamId: 'project1', teamName: 'Team Project 1' },
+					columns: [{ id: 'col2', name: 'Column 2', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(validTable) as any)
+					.mockResolvedValueOnce(JSON.stringify(collidingTable) as any);
+				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+
+				// First call (for "Valid Table") → no collision
+				dataTableRepository.findOne.mockResolvedValueOnce(null as any);
+				// Second call (for "Colliding Table") → collision with a different ID
+				dataTableRepository.findOne.mockResolvedValueOnce({ id: 'dt-other' } as any);
+
+				const candidate1 = { ...mockCandidate, id: 'dt1', name: 'Valid Table' };
+				const candidate2 = { ...mockCandidate, id: 'dt2', name: 'Colliding Table' };
+
+				// Act & Assert — the whole operation should fail
+				await expect(
+					service.importDataTablesFromWorkFolder([candidate1, candidate2], mockUser.id),
+				).rejects.toThrow(
+					'A data table with the name <strong>Colliding Table</strong> already exists locally.',
+				);
+
+				// No table should have been imported (no partial import)
+				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

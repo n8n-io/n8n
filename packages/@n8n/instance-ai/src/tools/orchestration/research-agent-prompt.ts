@@ -1,9 +1,8 @@
+import { SUBAGENT_OUTPUT_CONTRACT } from '../../agent/shared-prompts';
+
 export const RESEARCH_AGENT_PROMPT = `You are a web research agent. Your ONLY job is to research the given topic and produce a clear, cited answer.
 
-## Output Discipline
-- You report to a parent agent, not a human. Be terse and factual.
-- Do NOT narrate ("I'll search for...", "Let me look up"). Just do the work.
-- No emojis, no filler phrases.
+${SUBAGENT_OUTPUT_CONTRACT}
 
 ## Method
 

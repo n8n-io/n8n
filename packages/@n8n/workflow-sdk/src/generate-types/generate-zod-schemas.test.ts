@@ -5,6 +5,7 @@ import {
 	stripDiscriminatorKeysFromDisplayOptions,
 	generateDiscriminatorSchemaFile,
 	generateSubnodeConfigSchemaCode,
+	isPropertyOptional,
 	mapPropertyToZodSchema,
 	mergeDisplayOptions,
 	extractDefaultsForDisplayOptions,
@@ -82,6 +83,114 @@ describe('mapPropertyToZodSchema for resourceLocator', () => {
 		const schema = mapPropertyToZodSchema(prop);
 
 		expect(schema).toContain("z.union([z.literal('list'), z.literal('id')]");
+	});
+});
+
+describe('isPropertyOptional', () => {
+	// Regression: required: true + default: '' on a `string` field used to be
+	// treated as optional, because any defined default short-circuited the
+	// check. The runtime required-check (getNodeParametersIssues) rejects an
+	// empty string, so the generated schema must match.
+	it('treats required string with empty default as required', () => {
+		const prop: NodeProperty = {
+			name: 'fieldToSplitOut',
+			displayName: 'Fields To Split Out',
+			type: 'string',
+			required: true,
+			default: '',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(false);
+	});
+
+	it.each(['options', 'dateTime'] as const)(
+		'treats required %s with empty default as required',
+		(type) => {
+			const prop: NodeProperty = {
+				name: 'field',
+				displayName: 'Field',
+				type,
+				required: true,
+				default: '',
+			};
+
+			expect(isPropertyOptional(prop)).toBe(false);
+		},
+	);
+
+	it('treats required multiOptions with empty-array default as required', () => {
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'multiOptions',
+			required: true,
+			default: [],
+		};
+
+		expect(isPropertyOptional(prop)).toBe(false);
+	});
+
+	it('treats required string with meaningful default as optional', () => {
+		// Expression defaults like '={{ $json.chatInput }}' do satisfy required.
+		const prop: NodeProperty = {
+			name: 'text',
+			displayName: 'Text',
+			type: 'string',
+			required: true,
+			default: '={{ $json.chatInput }}',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(true);
+	});
+
+	it('treats required string with non-empty literal default as optional', () => {
+		const prop: NodeProperty = {
+			name: 'method',
+			displayName: 'Method',
+			type: 'string',
+			required: true,
+			default: 'GET',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(true);
+	});
+
+	it('treats non-required string with empty default as optional', () => {
+		const prop: NodeProperty = {
+			name: 'note',
+			displayName: 'Note',
+			type: 'string',
+			default: '',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(true);
+	});
+
+	it('emits a non-optional schema line for required string with empty default end-to-end', () => {
+		// End-to-end check: the generated .schema.js line for splitOut's
+		// fieldToSplitOut (required: true, default: '') must NOT be .optional().
+		const node: NodeTypeDescription = {
+			name: 'n8n-nodes-base.splitOut',
+			displayName: 'Split Out',
+			version: 1,
+			group: ['transform'],
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					name: 'fieldToSplitOut',
+					displayName: 'Fields To Split Out',
+					type: 'string',
+					required: true,
+					default: '',
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toMatch(/fieldToSplitOut:\s*stringOrExpression\s*,/);
+		expect(code).not.toMatch(/fieldToSplitOut:\s*stringOrExpression\.optional\(\)/);
 	});
 });
 
@@ -1236,5 +1345,191 @@ describe('mapPropertyToZodSchema with noDataExpression', () => {
 		};
 		const schema = mapPropertyToZodSchema(prop);
 		expect(schema).toBe('stringOrExpression');
+	});
+});
+
+describe('mapPropertyToZodSchema for fixedCollection with field-count constraints', () => {
+	const buildFilters = (typeOptions: NodeProperty['typeOptions']): NodeProperty => ({
+		name: 'filters',
+		displayName: 'Filters',
+		type: 'fixedCollection',
+		default: {},
+		typeOptions,
+		options: [
+			{
+				name: 'conditions',
+				displayName: 'Conditions',
+				values: [{ name: 'keyName', displayName: 'Key', type: 'string', default: '' }],
+			},
+		],
+	});
+
+	it('applies .min() to the array when multipleValues and minRequiredFields are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 1 }),
+		);
+		expect(schema).toContain('conditions: z.array(');
+		expect(schema).toContain(').min(1)');
+	});
+
+	it('applies .max() to the array when multipleValues and maxAllowedFields are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, maxAllowedFields: 3 }),
+		);
+		expect(schema).toContain(').max(3)');
+	});
+
+	it('combines .min() and .max() when both constraints are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 1, maxAllowedFields: 5 }),
+		);
+		expect(schema).toContain('.min(1).max(5)');
+	});
+
+	it('omits .min() when minRequiredFields is 0', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 0 }),
+		);
+		expect(schema).not.toContain('.min(');
+	});
+
+	it('does not apply .min() when multipleValues is false', () => {
+		const schema = mapPropertyToZodSchema(buildFilters({ minRequiredFields: 1 }));
+		expect(schema).not.toContain('z.array(');
+		expect(schema).not.toContain('.min(');
+	});
+});
+
+describe('mapPropertyToZodSchema recursion for nested collection/fixedCollection', () => {
+	const stringLeaf: NodeProperty = {
+		name: 'leaf',
+		displayName: 'Leaf',
+		type: 'string',
+		default: '',
+	};
+
+	const typeOptionsField: NodeProperty = {
+		name: 'type',
+		displayName: 'Type',
+		type: 'options',
+		default: 'qs',
+		options: [
+			{ name: 'Body', value: 'body' },
+			{ name: 'Header', value: 'headers' },
+			{ name: 'Query', value: 'qs' },
+		],
+	};
+
+	it('walks into a fixedCollection nested inside another fixedCollection', () => {
+		const prop: NodeProperty = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'inner',
+							displayName: 'Inner',
+							type: 'fixedCollection',
+							default: {},
+							options: [
+								{
+									name: 'innerGroup',
+									displayName: 'Inner Group',
+									values: [stringLeaf],
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('inner: z.object({');
+		expect(schema).toContain('innerGroup: z.object({');
+		expect(schema).toContain('leaf: stringOrExpression.optional()');
+	});
+
+	it('walks into a fixedCollection nested inside a collection (HTTP pagination shape)', () => {
+		const nestedPagination: NodeProperty = {
+			name: 'pagination',
+			displayName: 'Pagination',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'pagination',
+					displayName: 'Pagination',
+					values: [
+						{
+							name: 'parameters',
+							displayName: 'Parameters',
+							type: 'fixedCollection',
+							default: {},
+							typeOptions: { multipleValues: true },
+							options: [
+								{
+									name: 'parameters',
+									displayName: 'Parameter',
+									values: [typeOptionsField],
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [nestedPagination],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain("z.literal('body')");
+		expect(schema).toContain("z.literal('headers')");
+		expect(schema).toContain("z.literal('qs')");
+		expect(schema).toContain('expressionSchema');
+	});
+
+	it('walks into a collection nested inside a fixedCollection', () => {
+		const prop: NodeProperty = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'inner',
+							displayName: 'Inner',
+							type: 'collection',
+							default: {},
+							options: [stringLeaf],
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('inner: z.object({');
+		expect(schema).toContain('leaf: stringOrExpression.optional()');
 	});
 });

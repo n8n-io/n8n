@@ -113,6 +113,36 @@ describe('CredentialsOverwrites', () => {
 			expect(result).toEqual(data);
 		});
 
+		it('should not crash when skipTypes is undefined', () => {
+			// Simulate version mismatch where skipTypes is not present on the config object
+			globalConfig.credentials.overwrite.skipTypes =
+				undefined as unknown as CommaSeparatedStringArray<string>;
+
+			const result = credentialsOverwrites.applyOverwrite('test', {
+				username: '',
+				password: '',
+			});
+
+			expect(result).toEqual({ username: 'user', password: 'pass' });
+		});
+
+		it('should not crash when overwrite config object is undefined', () => {
+			// Simulate a DI/version mismatch where the nested overwrite config is undefined
+			const savedOverwrite = globalConfig.credentials.overwrite;
+			globalConfig.credentials.overwrite = undefined as never;
+
+			try {
+				const result = credentialsOverwrites.applyOverwrite('test', {
+					username: '',
+					password: '',
+				});
+
+				expect(result).toEqual({ username: 'user', password: 'pass' });
+			} finally {
+				globalConfig.credentials.overwrite = savedOverwrite;
+			}
+		});
+
 		describe('N8N_SKIP_CREDENTIAL_OVERWRITE', () => {
 			beforeEach(() => {
 				globalConfig.credentials.overwrite.skipTypes = [

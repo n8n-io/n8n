@@ -35,6 +35,7 @@ export interface IUserManagementSettings {
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;
+	passwordMinLength: number;
 }
 
 export interface IEnterpriseSettings {
@@ -131,6 +132,7 @@ export interface FrontendSettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
+		managedByEnv: boolean;
 		saml: {
 			loginLabel: string;
 			loginEnabled: boolean;
@@ -217,7 +219,7 @@ export interface FrontendSettings {
 	};
 	aiGateway?: {
 		enabled: boolean;
-		creditsQuota: number;
+		budget: number;
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
@@ -280,6 +282,8 @@ export type FrontendModuleSettings = {
 		enabled: boolean;
 		localGatewayDisabled: boolean;
 		proxyEnabled: boolean;
+		optinModalDismissed: boolean;
+		cloudManaged: boolean;
 	};
 
 	/**

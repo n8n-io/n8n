@@ -4,6 +4,7 @@ import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import type { IconName } from '@n8n/design-system';
 import {
 	getLatestBuildResult,
+	getLatestWorkflowSetupResult,
 	getLatestExecutionId,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
@@ -38,7 +39,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	const workflowsListStore = useWorkflowsListStore();
 
 	// --- Tab state ---
-	const activeTabId = ref<string | null>(null);
+	const activeTabId = ref<string>();
 	const activeExecutionId = ref<string | null>(null);
 
 	// --- Preview state persistence ---
@@ -49,10 +50,12 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		return typeof id === 'string' ? id : store.currentThreadId;
 	}
 
-	const debouncedSavePreviewState = useDebounceFn((tabId: string | null) => {
+	const debouncedSavePreviewState = useDebounceFn((tabId: string | undefined) => {
 		const threadId = currentThreadId();
 		if (!threadId) return;
-		void store.updateThreadMetadata(threadId, { activePreviewTab: tabId });
+		// Coalesce undefined → null: JSON.stringify drops undefined keys, which
+		// would leave a stale activePreviewTab in backend metadata after close.
+		void store.updateThreadMetadata(threadId, { activePreviewTab: tabId ?? null });
 	}, 500);
 
 	// Save activeTabId to thread metadata when it changes (skip during restore)
@@ -86,7 +89,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		const result: ArtifactTab[] = [];
 		const liveExecMap = workflowExecutions?.value;
 		const historicalExecMap = historicalExecutions.value;
-		for (const entry of store.resourceRegistry.values()) {
+		for (const entry of store.producedArtifacts.values()) {
 			if (entry.type === 'workflow' || entry.type === 'data-table') {
 				// Live push event state takes priority over historical message data.
 				// Historical data already has stale executions filtered out.
@@ -141,7 +144,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 	const dataTableRefreshKey = ref(0);
 
-	const isPreviewVisible = computed(() => activeTabId.value !== null);
+	const isPreviewVisible = computed(() => activeTabId.value !== undefined);
 
 	// Tracks whether the user sent a message in the current thread session.
 	// Used to distinguish live operations (should auto-open preview) from
@@ -159,7 +162,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	}
 
 	function closePreview() {
-		activeTabId.value = null;
+		activeTabId.value = undefined;
 		activeExecutionId.value = null;
 	}
 
@@ -213,7 +216,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
 
 	watch(allArtifactTabs, (tabs) => {
-		if (activeTabId.value === null || tabs.length === 0) return;
+		if (activeTabId.value === undefined || tabs.length === 0) return;
 		const stillExists = tabs.some((t) => t.id === activeTabId.value);
 		if (!stillExists) {
 			activeTabId.value = tabs[0].id;
@@ -224,10 +227,16 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 	watch(
 		() => route.params.threadId,
-		() => {
+		(threadId, oldThreadId) => {
+			// Skip if this is the initial route setup (e.g. URL updated from
+			// /instance-ai to /instance-ai/:threadId after the first message)
+			if (!oldThreadId) return;
+			// Skip if the thread ID hasn't actually changed
+			if (threadId === oldThreadId) return;
+
 			wasCanvasOpenBeforeSwitch.value = isPreviewVisible.value;
 			pendingRestore.value = true;
-			activeTabId.value = null;
+			activeTabId.value = undefined;
 			activeExecutionId.value = null;
 			userSentMessage.value = false;
 		},
@@ -251,8 +260,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
 	// Auto-open logic:
 	//   - Preview closed + live build/user message: auto-open to this workflow
-	//   - Preview open on same workflow: refresh it (workflowRefreshKey++)
-	//   - Preview open on different artifact: don't switch — user chose that tab
+	//   - Preview open: switch to this workflow and refresh (workflowRefreshKey++)
 	//   - Thread switch with canvas open: restore canvas with new thread's workflow
 	//   - Thread switch with canvas closed: stay closed
 	watch(
@@ -279,16 +287,39 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 				workflowExecutions.value = next;
 			}
 
-			// If preview is already open on a different artifact, don't switch
-			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== targetId) {
-				workflowRefreshKey.value++;
-				return;
-			}
-
 			wasCanvasOpenBeforeSwitch.value = false;
 			activeExecutionId.value = null;
 			activeTabId.value = targetId;
 			workflowRefreshKey.value++;
+		},
+	);
+
+	// --- Refresh preview when setup-workflow / apply-workflow-credentials completes ---
+	// These tools modify the workflow (credentials, parameters) but aren't detected
+	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
+
+	const latestSetupResult = computed(() => {
+		for (let i = store.messages.length - 1; i >= 0; i--) {
+			const msg = store.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestWorkflowSetupResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestSetupResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestSetupResult.value) return;
+
+			const targetId = latestSetupResult.value.workflowId;
+
+			// Only refresh if the setup targeted the currently active workflow tab
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
+			}
 		},
 	);
 
@@ -312,15 +343,6 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 			if (!exec) return;
 
 			if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
-
-			// If preview is already open on a different artifact, don't switch
-			if (
-				isPreviewVisible.value &&
-				activeTabId.value !== null &&
-				activeTabId.value !== exec.workflowId
-			) {
-				return;
-			}
 
 			activeExecutionId.value = exec.executionId;
 			activeTabId.value = exec.workflowId;
@@ -359,12 +381,6 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 				return;
 			}
 
-			// If preview is already open on a different artifact, don't switch
-			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== targetId) {
-				dataTableRefreshKey.value++;
-				return;
-			}
-
 			wasCanvasOpenBeforeSwitch.value = false;
 			activeExecutionId.value = null;
 			activeTabId.value = targetId;
@@ -388,7 +404,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	watch(latestDeletedDataTableId, (deletedId) => {
 		if (deletedId && deletedId === activeTabId.value) {
 			const remaining = allArtifactTabs.value.filter((t) => t.id !== deletedId);
-			activeTabId.value = remaining.length > 0 ? remaining[0].id : null;
+			activeTabId.value = remaining.length > 0 ? remaining[0].id : undefined;
 		}
 	});
 
