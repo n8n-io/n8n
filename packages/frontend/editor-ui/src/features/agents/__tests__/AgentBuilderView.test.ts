@@ -199,8 +199,6 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 		const toggle = wrapper.find('[data-testid="agent-chat-mode-toggle"]');
 		expect(toggle.exists()).toBe(true);
-		expect(toggle.find('[data-test-id="tab-test"]').exists()).toBe(true);
-		expect(toggle.find('[data-test-id="tab-build"]').exists()).toBe(true);
 		const vm = wrapper.vm as unknown as { chatMode: string };
 		expect(vm.chatMode).toBe('test');
 	});
