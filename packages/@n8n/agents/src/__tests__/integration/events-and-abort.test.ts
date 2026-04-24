@@ -175,53 +175,42 @@ describe('event system — stream', () => {
 });
 
 // ---------------------------------------------------------------------------
-// getState()
+// result.getState()
 // ---------------------------------------------------------------------------
 
-describe('getState()', () => {
-	it('returns idle before first run', () => {
+describe('result.getState()', () => {
+	it('generate() result reports success after a successful run', async () => {
 		const agent = createSimpleAgent();
-		const state = agent.getState();
-		expect(state.status).toBe('idle');
-		expect(state.messageList.messages).toHaveLength(0);
+		const result = await agent.generate('Say hello');
+		expect(result.getState().status).toBe('success');
 	});
 
-	it('returns success after a successful generate()', async () => {
+	it('stream() result reports success after the stream is fully consumed', async () => {
 		const agent = createSimpleAgent();
-		await agent.generate('Say hello');
-		const state = agent.getState();
-		expect(state.status).toBe('success');
-	});
-
-	it('returns success after a completed stream()', async () => {
-		const agent = createSimpleAgent();
-		const { stream } = await agent.stream('Say hello');
+		const { stream, getState } = await agent.stream('Say hello');
 		await collectStreamChunks(stream);
-		const state = agent.getState();
-		expect(state.status).toBe('success');
+		expect(getState().status).toBe('success');
 	});
 
-	it('state is running during the generate loop (observed via event)', async () => {
+	it('stream() getState() is running while the stream is being consumed', async () => {
 		const agent = createSimpleAgent();
+		const { stream, getState } = await agent.stream('Say hello');
 
-		let stateWhileRunning: string | undefined;
-		agent.on(AgentEvent.TurnStart, () => {
-			stateWhileRunning = agent.getState().status;
-		});
+		// State is running before the stream is consumed
+		expect(getState().status).toBe('running');
 
-		await agent.generate('Say hello');
+		await collectStreamChunks(stream);
 
-		expect(stateWhileRunning).toBe('running');
+		expect(getState().status).toBe('success');
 	});
 
-	it('reflects resourceId and threadId from RunOptions', async () => {
+	it('generate() result reflects resourceId and threadId from RunOptions', async () => {
 		const agent = createSimpleAgent();
-		await agent.generate('Say hello', {
+		const result = await agent.generate('Say hello', {
 			persistence: { resourceId: 'user-123', threadId: 'thread-abc' },
 		});
-		const state = agent.getState();
-		expect(state.persistence?.resourceId).toBe('user-123');
-		expect(state.persistence?.threadId).toBe('thread-abc');
+		expect(result.getState().persistence?.resourceId).toBe('user-123');
+		expect(result.getState().persistence?.threadId).toBe('thread-abc');
 	});
 });
 

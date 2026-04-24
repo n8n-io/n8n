@@ -28,6 +28,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
 		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		passwordMinLength: 8,
 	});
 	const templatesEndpointHealthy = ref(false);
 	const api = ref({

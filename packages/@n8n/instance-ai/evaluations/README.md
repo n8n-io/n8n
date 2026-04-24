@@ -6,17 +6,21 @@ Tests whether workflows built by Instance AI actually work by executing them wit
 
 ### CLI
 
+Two harnesses (`eval:instance-ai` and `eval:subagent`) drive a running n8n
+instance over HTTP. Start n8n locally with `N8N_ENABLED_MODULES=instance-ai`
+before running either one. The sub-agent harness also requires `E2E_TESTS=true`
+on the n8n instance — the `/eval/run-sub-agent` endpoint is disabled otherwise.
+
 ```bash
 # From packages/@n8n/instance-ai/, with n8n running via pnpm dev:ai
 
-# Run all test cases
+# End-to-end workflow evaluation (builder + mock execution + verification)
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --verbose
-
-# Run a single test case
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-form --verbose
-
-# Keep built workflows for inspection
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-form --keep-workflows --verbose
+
+# Sub-agent evaluation (builder only, real tools on live n8n, binary checks)
+dotenvx run -f ../../../.env.local -- pnpm eval:subagent --filter webhook-to-slack --verbose
 ```
 
 ### Outputs
@@ -68,6 +72,7 @@ curl -sf -X POST http://localhost:5678/rest/e2e/reset \
 
 # Run evals against it
 pnpm eval:instance-ai --base-url http://localhost:5678 --verbose
+pnpm eval:subagent --base-url http://localhost:5678 --verbose
 ```
 
 ### CI
@@ -80,18 +85,34 @@ The eval job is **non-blocking**. Results are posted as a PR comment and uploade
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `N8N_INSTANCE_AI_MODEL_API_KEY` | Yes | Anthropic API key for the Instance AI agent, mock generation, and verification |
-| `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
-| `N8N_EVAL_PASSWORD` | No | n8n login password (defaults to E2E test owner) |
-| `LANGSMITH_API_KEY` | No | Enables LangSmith experiment tracking + tracing. Without it, the CLI still runs and writes JSON/HTML. |
-| `LANGSMITH_ENDPOINT` | No | LangSmith region endpoint (`https://api.smith.langchain.com` for US, `https://eu.api.smith.langchain.com` for EU) |
-| `LANGSMITH_REVISION_ID` | No | Commit SHA to tag the experiment with (set automatically in CI) |
-| `LANGSMITH_BRANCH` | No | Branch name to tag the experiment with (set automatically in CI) |
-| `CONTEXT7_API_KEY` | No | Context7 API key for higher rate limits on API doc lookups. Free tier is 1,000 req/month |
+| `N8N_EVAL_BASE_URL` | No | n8n base URL. Defaults to `http://localhost:5678`. |
+| `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner). |
+| `N8N_EVAL_PASSWORD` | No | n8n login password (defaults to E2E test owner). |
+| `N8N_INSTANCE_AI_MODEL_API_KEY` | On server | Anthropic key for the Instance AI agent, mock generation, and verification. Set on the n8n instance, not the eval CLI — the sub-agent runs inside n8n. |
+| `E2E_TESTS` | On server, for `eval:subagent` | Must be `true` on the n8n instance. The `/eval/run-sub-agent` endpoint returns 403 otherwise. |
+| `LANGSMITH_API_KEY` | For `--dataset` mode | Enables LangSmith experiment tracking + tracing. Without it, the CLI still runs and writes JSON/HTML. Required for `eval:subagent --dataset` mode. |
+| `LANGSMITH_ENDPOINT` | No | LangSmith region endpoint (`https://api.smith.langchain.com` for US, `https://eu.api.smith.langchain.com` for EU). |
+| `LANGSMITH_REVISION_ID` | No | Commit SHA to tag the experiment with (set automatically in CI). |
+| `LANGSMITH_BRANCH` | No | Branch name to tag the experiment with (set automatically in CI). |
+| `CONTEXT7_API_KEY` | No | Higher API-doc rate limits. Set on the n8n instance. Free tier is 1,000 req/month. |
 
-## How it works
+### Sub-agent evaluation flags
 
-Each test run:
+| Flag | Description |
+|------|-------------|
+| `--base-url <url>` | n8n base URL (overrides `N8N_EVAL_BASE_URL`) |
+| `--filter <substring>` | Run only test cases whose file name matches |
+| `--prompt <text>` | Run a single ad-hoc prompt |
+| `--dataset <name>` | Run against a LangSmith dataset |
+| `--experiment <name>` | LangSmith experiment label |
+| `--subagent <role>` | Sub-agent role. Default: `builder` |
+| `--max-steps <n>` | Max agent steps. Default: 40 |
+| `--timeout <ms>` | Per-test timeout. Default: 120000 |
+| `--concurrency <n>` | Parallel test cases. Default: 5 |
+| `--keep-workflows` | Do not archive/delete workflows created during the run |
+| `--verbose` | Verbose output |
+
+## How the e2e harness works
 
 1. **Build** — sends the test case prompt to Instance AI, which builds a workflow
 2. **Phase 1** — analyzes the workflow and generates consistent mock data hints (one Sonnet call per scenario)
@@ -105,6 +126,16 @@ Each test run:
 - **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute their actual code on the mocked/pinned data.
 
 No real credentials or API connections are needed. ~95% of node types are covered; the main gaps are binary-data nodes (file attachments, image generation) and streaming nodes.
+
+## How the sub-agent harness works
+
+1. The CLI logs in to n8n with `N8N_EVAL_EMAIL` / `N8N_EVAL_PASSWORD`.
+2. For each test case it POSTs `/rest/instance-ai/eval/run-sub-agent`.
+3. The server builds a real `InstanceAiContext` via `InstanceAiAdapterService.createContext`, wraps the workflow service to record created IDs, resolves the `builder` (or other) role's system prompt, instantiates the sub-agent with the full `createAllTools(context)` tool surface, and runs it to completion.
+4. The server returns `{ text, toolCalls, toolResults, capturedWorkflowIds, ... }`.
+5. The CLI fetches each captured workflow via `GET /rest/workflows/:id` (this doubles as a round-trip check through the real importer), scores it with the binary-check suite, and archives+deletes it (unless `--keep-workflows`).
+
+No tools, services, or workflow imports are mocked. The server path exercised here is the same one the orchestrator takes when it spawns a builder sub-agent.
 
 ## LangSmith integration
 
