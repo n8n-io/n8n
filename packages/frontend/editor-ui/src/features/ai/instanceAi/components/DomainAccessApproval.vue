@@ -49,26 +49,32 @@ const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() =>
 			],
 );
 
-function handleAction(approved: boolean, domainAccessAction?: string) {
+function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 	resolved.value = true;
 	store.resolveConfirmation(props.requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(
-		props.requestId,
+	void store.confirmAction(props.requestId, {
+		kind: 'domainAccess',
 		approved,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
 		domainAccessAction,
-	);
+	});
 }
 
 function onPrimaryClick() {
 	handleAction(true, primaryAction.value);
 }
 
+const DOMAIN_ACTIONS: readonly DomainAction[] = [
+	'allow_once',
+	'allow_domain',
+	'allow_all',
+] as const;
+
+function isDomainAction(value: string): value is DomainAction {
+	return (DOMAIN_ACTIONS as readonly string[]).includes(value);
+}
+
 function onDropdownSelect(action: string) {
-	handleAction(true, action);
+	if (isDomainAction(action)) handleAction(true, action);
 }
 </script>
 

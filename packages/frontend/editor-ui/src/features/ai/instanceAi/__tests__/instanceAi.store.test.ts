@@ -1040,53 +1040,30 @@ describe('useInstanceAiStore - gateway resource-decision confirmation', () => {
 		vi.clearAllMocks();
 	});
 
-	it('confirmAction passes resourceDecision to postConfirmation', async () => {
-		await store.confirmAction(
-			'req-1',
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			'allowOnce',
-		);
+	it('confirmAction passes resourceDecision payload through to postConfirmation', async () => {
+		await store.confirmAction('req-1', {
+			kind: 'resourceDecision',
+			approved: true,
+			resourceDecision: 'allowOnce',
+		});
 
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
-		expect(mockPostConfirmation).toHaveBeenCalledWith(
-			expect.anything(),
-			'req-1',
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			'allowOnce',
-		);
+		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-1', {
+			kind: 'resourceDecision',
+			approved: true,
+			resourceDecision: 'allowOnce',
+		});
 	});
 
 	it('confirmResourceDecision calls postConfirmation with approved=true and the decision', async () => {
 		await store.confirmResourceDecision('req-2', 'allowForSession');
 
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
-		expect(mockPostConfirmation).toHaveBeenCalledWith(
-			expect.anything(),
-			'req-2',
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			'allowForSession',
-		);
+		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-2', {
+			kind: 'resourceDecision',
+			approved: true,
+			resourceDecision: 'allowForSession',
+		});
 	});
 
 	it('confirmResourceDecision does not call postConfirmation when confirmAction throws', async () => {

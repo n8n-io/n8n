@@ -2,6 +2,7 @@ import {
 	UNLIMITED_CREDITS,
 	applyBranchReadOnlyOverrides,
 	type InstanceAiAttachment,
+	type InstanceAiConfirmRequest,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 	type InstanceAiGatewayCapabilities,
@@ -135,6 +136,39 @@ interface MessageTraceFinalization {
 	outputs?: Record<string, unknown>;
 	metadata?: Record<string, unknown>;
 	error?: string;
+}
+
+/** Collapse the frontend's typed confirmation union into the flat payload
+ *  consumed by Mastra tool resume schemas and sub-agent HITL. Only the fields
+ *  relevant to the submitted kind are populated — everything else stays undefined. */
+function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
+	switch (request.kind) {
+		case 'approval':
+			return { approved: request.approved, userInput: request.userInput };
+		case 'questions':
+			return { approved: true, answers: request.answers };
+		case 'credentialSelection':
+			return { approved: true, credentials: request.credentials };
+		case 'domainAccess':
+			return { approved: request.approved, domainAccessAction: request.domainAccessAction };
+		case 'resourceDecision':
+			return { approved: true, resourceDecision: request.resourceDecision };
+		case 'setupWorkflowApply':
+			return {
+				approved: true,
+				action: 'apply',
+				nodeCredentials: request.nodeCredentials,
+				nodeParameters: request.nodeParameters,
+			};
+		case 'setupWorkflowTestTrigger':
+			return {
+				approved: true,
+				action: 'test-trigger',
+				testTriggerNode: request.testTriggerNode,
+				nodeCredentials: request.nodeCredentials,
+				nodeParameters: request.nodeParameters,
+			};
+	}
 }
 
 @Service()
@@ -2114,8 +2148,10 @@ export class InstanceAiService {
 	async resolveConfirmation(
 		requestingUserId: string,
 		requestId: string,
-		data: ConfirmationData,
+		request: InstanceAiConfirmRequest,
 	): Promise<boolean> {
+		const data = toConfirmationData(request);
+
 		if (this.runState.resolvePendingConfirmation(requestingUserId, requestId, data)) {
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
@@ -2157,9 +2193,7 @@ export class InstanceAiService {
 		const credentialsPayload = data.nodeCredentials ?? data.credentials;
 		const resumeData = {
 			approved: data.approved,
-			...(data.credentialId ? { credentialId: data.credentialId } : {}),
 			...(credentialsPayload ? { credentials: credentialsPayload } : {}),
-			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
 			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
 			...(data.action ? { action: data.action } : {}),

@@ -167,20 +167,13 @@ export function useSetupActions(deps: {
 		isApplying.value = true;
 		applyError.value = null;
 
-		const postSuccess = await deps.store.confirmAction(
-			deps.requestId.value,
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				action: 'apply',
-				nodeCredentials,
-				nodeParameters,
-			},
-		);
+		const postSuccess = await deps.store.confirmAction(deps.requestId.value, {
+			kind: 'setupWorkflowApply',
+			approved: true,
+			action: 'apply',
+			nodeCredentials,
+			nodeParameters,
+		});
 
 		if (!postSuccess) {
 			isApplying.value = false;
@@ -214,21 +207,14 @@ export function useSetupActions(deps: {
 
 		applyError.value = null;
 
-		const postSuccess = await deps.store.confirmAction(
-			deps.requestId.value,
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				action: 'test-trigger',
-				testTriggerNode: nodeName,
-				nodeCredentials,
-				nodeParameters,
-			},
-		);
+		const postSuccess = await deps.store.confirmAction(deps.requestId.value, {
+			kind: 'setupWorkflowTestTrigger',
+			approved: true,
+			action: 'test-trigger',
+			testTriggerNode: nodeName,
+			nodeCredentials,
+			nodeParameters,
+		});
 
 		if (!postSuccess) {
 			applyError.value = 'Failed to send trigger test request. Try again.';
@@ -307,7 +293,10 @@ export function useSetupActions(deps: {
 		isSubmitted.value = true;
 		isDeferred.value = true;
 
-		const success = await deps.store.confirmAction(deps.requestId.value, false);
+		const success = await deps.store.confirmAction(deps.requestId.value, {
+			kind: 'approval',
+			approved: false,
+		});
 		if (success) {
 			deps.store.resolveConfirmation(deps.requestId.value, 'deferred');
 		} else {
