@@ -653,14 +653,14 @@ export const buildWorkflowAgentInputSchema = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'Set to true for a narrow one-off change on an existing workflow (expression patch, single-parameter fix, rename) where a full plan + orchestrator-run verification checkpoint is overkill. Requires `reason`. ' +
-				'A runtime guard otherwise rejects direct calls: new workflow builds must go through `plan` so the build gets its checkpoint.',
+			'Set to true for any edit to an existing workflow — adding/removing/rewiring a node, changing an expression, swapping a credential, changing a schedule, fixing a Code node. Requires an existing `workflowId` and a one-sentence `reason`. The orchestrator verifies the result afterwards via `verify-built-workflow` when the trigger is mockable. ' +
+				'A runtime guard rejects direct calls without `bypassPlan: true` outside replan/checkpoint follow-ups: new workflow builds, multi-workflow work, and data-table schema changes must go through `plan` so the build gets its orchestrator-run checkpoint.',
 		),
 	reason: z
 		.string()
 		.optional()
 		.describe(
-			'One sentence explaining why the planner is being bypassed. Required when bypassPlan is true.',
+			'One sentence explaining why the planner is being bypassed (e.g. "swap Slack channel on workflow X", "fix Code node shape issue"). Required when bypassPlan is true.',
 		),
 });
 
@@ -685,9 +685,9 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 		description:
 			'Build or modify an n8n workflow using a specialized builder agent. ' +
 			'The agent handles node discovery, schema lookups, code generation, and validation internally. ' +
-			'New workflow builds should go through `plan` so the build gets an orchestrator-run verification checkpoint — ' +
-			'a runtime guard rejects direct calls outside a replan/checkpoint follow-up. For a narrow one-off fix on ' +
-			'an existing workflow where a full plan is overkill, set `bypassPlan: true` with a one-sentence `reason`.',
+			'For edits to an existing workflow, call directly with `bypassPlan: true`, the existing `workflowId`, and a one-sentence `reason` — the orchestrator runs a lightweight verify afterwards. ' +
+			'For new workflows, multi-workflow builds, or data-table schema changes, go through `plan` — ' +
+			'a runtime guard rejects direct calls without `bypassPlan: true` outside replan/checkpoint follow-ups, because those paths need the orchestrator-run checkpoint for end-to-end verification.',
 		inputSchema: buildWorkflowAgentInputSchema,
 		outputSchema: z.object({
 			result: z.string(),
@@ -705,29 +705,30 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					);
 					return {
 						result:
-							'Error: new workflow builds must go through `plan` so an orchestrator-run ' +
-							'verification checkpoint is scheduled. Call `plan` with a `build-workflow` task ' +
-							'instead — the planner will discover credentials, data tables, and best practices ' +
-							'for you. For a narrow one-off fix on an existing workflow (expression patch, ' +
-							'rename, single-parameter change) where a full plan is overkill, call again with ' +
-							'`bypassPlan: true` and a one-sentence `reason`.',
+							'Error: direct builder calls require `bypassPlan: true` + an existing ' +
+							'`workflowId` + a one-sentence `reason`. Use that combination for any edit to ' +
+							'an existing workflow. For new workflows, multi-workflow builds, or data-table ' +
+							'schema changes, call `plan` with a `build-workflow` task instead — the planner ' +
+							'discovers credentials, data tables, and best practices, and schedules an ' +
+							'orchestrator-run verification checkpoint.',
 						taskId: '',
 					};
 				}
 				if (!input.workflowId) {
 					return {
 						result:
-							'Error: `bypassPlan: true` is only allowed for narrow one-off fixes on an existing ' +
-							'workflow. New workflow builds must go through `plan` so an orchestrator-run verification ' +
-							'checkpoint is scheduled. Call `plan` with a `build-workflow` task instead.',
+							'Error: `bypassPlan: true` is for edits to an EXISTING workflow and requires a ' +
+							'`workflowId`. New workflow builds must go through `plan` so an orchestrator-run ' +
+							'verification checkpoint is scheduled. Call `plan` with a `build-workflow` task ' +
+							'instead.',
 						taskId: '',
 					};
 				}
 				if (!input.reason || input.reason.trim().length === 0) {
 					return {
 						result:
-							'Error: `bypassPlan: true` requires a one-sentence `reason` explaining why the ' +
-							'planner is being bypassed.',
+							'Error: `bypassPlan: true` requires a one-sentence `reason` describing the edit ' +
+							'(e.g. "swap Slack channel", "fix Code node shape issue").',
 						taskId: '',
 					};
 				}

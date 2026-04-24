@@ -89,12 +89,31 @@ export const workflowVerificationEvidenceSchema = z.object({
 
 export type WorkflowVerificationEvidence = z.infer<typeof workflowVerificationEvidenceSchema>;
 
+/**
+ * Structured trigger descriptor for each trigger node in the submitted workflow.
+ * The orchestrator uses `nodeType` to decide whether the bypassPlan post-build
+ * flow can invoke `verify-built-workflow` (mockable types) or must defer to a
+ * manual user test (polling / OAuth-bound triggers).
+ */
+export const triggerNodeDescriptorSchema = z.object({
+	nodeName: z.string(),
+	nodeType: z.string(),
+});
+
+export type TriggerNodeDescriptor = z.infer<typeof triggerNodeDescriptorSchema>;
+
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	taskId: z.string(),
 	workflowId: z.string().optional(),
 	submitted: z.boolean(),
 	triggerType: triggerTypeSchema,
+	/**
+	 * Trigger nodes in the submitted workflow. Populated on successful submits;
+	 * absent on failed or pre-submit outcomes. The orchestrator reads `nodeType`
+	 * to pick a `verify-built-workflow` `inputData` shape for bypassPlan builds.
+	 */
+	triggerNodes: z.array(triggerNodeDescriptorSchema).optional(),
 	needsUserInput: z.boolean(),
 	blockingReason: z.string().optional(),
 	failureSignature: z.string().optional(),

@@ -179,8 +179,11 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		const out = await tool.execute({ task: 'Build a Slack notifier' });
 
 		expect(out.taskId).toBe('');
-		expect(out.result).toContain('must go through `plan`');
 		expect(out.result).toContain('bypassPlan');
+		expect(out.result).toMatch(
+			/For new workflows, multi-workflow builds, or data-table schema changes/,
+		);
+		expect(out.result).toContain('`plan`');
 		expect(context.logger.warn).toHaveBeenCalledWith(
 			'build-workflow-with-agent called outside plan/replan context — rejecting',
 			expect.objectContaining({ threadId: 'test-thread' }),
@@ -198,7 +201,7 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		});
 
 		expect(out.taskId).toBe('');
-		expect(out.result).toContain('narrow one-off fixes on an existing workflow');
+		expect(out.result).toMatch(/edits to an EXISTING workflow and requires a `workflowId`/);
 	});
 
 	it('rejects bypassPlan=true without a reason', async () => {
@@ -223,13 +226,13 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 			task: 'patch one expression',
 			workflowId: 'WF_EXISTING',
 			bypassPlan: true,
-			reason: 'Single expression tweak — full plan + checkpoint is overkill.',
+			reason: 'Swap Slack channel on this notifier.',
 		});
 
 		// Guard passes → reaches startBuildWorkflowAgentTask, which short-circuits on
 		// missing spawnBackgroundTask. The point is we got past the guard, not what
-		// the downstream does. (No "must go through plan" rejection text.)
-		expect(out.result).not.toContain('must go through `plan`');
+		// the downstream does.
+		expect(out.result).not.toMatch(/`bypassPlan: true` is for edits/);
 		const warnMock = context.logger.warn as jest.Mock<void, [string, Record<string, unknown>?]>;
 		expect(warnMock.mock.calls.some((c) => c[0].includes('bypassing plan'))).toBe(true);
 	});
@@ -240,7 +243,7 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 
 		const out = await tool.execute({ task: 'retry after failure' });
 
-		expect(out.result).not.toContain('must go through `plan`');
+		expect(out.result).not.toContain('direct builder calls require');
 		expect(context.logger.warn).not.toHaveBeenCalledWith(
 			'build-workflow-with-agent called outside plan/replan context — rejecting',
 			expect.anything(),
@@ -253,7 +256,7 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 
 		const out = await tool.execute({ task: 'checkpoint branch' });
 
-		expect(out.result).not.toContain('must go through `plan`');
+		expect(out.result).not.toContain('direct builder calls require');
 	});
 
 	it('skips the guard when the env flag is disabled', async () => {
@@ -263,6 +266,6 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 
 		const out = await tool.execute({ task: 'build directly' });
 
-		expect(out.result).not.toContain('must go through `plan`');
+		expect(out.result).not.toContain('direct builder calls require');
 	});
 });

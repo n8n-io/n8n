@@ -354,6 +354,18 @@ export interface DataTableFilterInput {
 
 // ── Data table service ───────────────────────────────────────────────────────
 
+/**
+ * Optional disambiguator accepted by every id-based data-table service call.
+ * When the orchestrator passes a table NAME instead of a UUID, the adapter's
+ * resolver filters the name lookup to this project so collisions across
+ * projects don't require the orchestrator to guess the right UUID. When the
+ * orchestrator passes a UUID AND a mismatched `projectId`, the adapter rejects
+ * the call (the resolver never silently drops `projectId`).
+ */
+export interface DataTableIdOptions {
+	projectId?: string;
+}
+
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
@@ -361,30 +373,44 @@ export interface InstanceAiDataTableService {
 		columns: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'date' }>,
 		options?: { projectId?: string },
 	): Promise<DataTableSummary>;
-	delete(dataTableId: string): Promise<void>;
-	getSchema(dataTableId: string): Promise<DataTableColumnInfo[]>;
+	delete(dataTableId: string, options?: DataTableIdOptions): Promise<void>;
+	getSchema(dataTableId: string, options?: DataTableIdOptions): Promise<DataTableColumnInfo[]>;
 	addColumn(
 		dataTableId: string,
 		column: { name: string; type: 'string' | 'number' | 'boolean' | 'date' },
+		options?: DataTableIdOptions,
 	): Promise<DataTableColumnInfo>;
-	deleteColumn(dataTableId: string, columnId: string): Promise<void>;
-	renameColumn(dataTableId: string, columnId: string, newName: string): Promise<void>;
+	deleteColumn(dataTableId: string, columnId: string, options?: DataTableIdOptions): Promise<void>;
+	renameColumn(
+		dataTableId: string,
+		columnId: string,
+		newName: string,
+		options?: DataTableIdOptions,
+	): Promise<void>;
 	queryRows(
 		dataTableId: string,
-		options?: { filter?: DataTableFilterInput; limit?: number; offset?: number },
+		options?: {
+			filter?: DataTableFilterInput;
+			limit?: number;
+			offset?: number;
+			projectId?: string;
+		},
 	): Promise<{ count: number; data: Array<Record<string, unknown>> }>;
 	insertRows(
 		dataTableId: string,
 		rows: Array<Record<string, unknown>>,
+		options?: DataTableIdOptions,
 	): Promise<{ insertedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 	updateRows(
 		dataTableId: string,
 		filter: DataTableFilterInput,
 		data: Record<string, unknown>,
+		options?: DataTableIdOptions,
 	): Promise<{ updatedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 	deleteRows(
 		dataTableId: string,
 		filter: DataTableFilterInput,
+		options?: DataTableIdOptions,
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 

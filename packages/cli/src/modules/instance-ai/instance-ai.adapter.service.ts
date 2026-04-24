@@ -1127,32 +1127,64 @@ export class InstanceAiAdapterService {
 
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 
-		const resolveDataTable = async (idOrName: string) =>
-			await resolveDataTableByIdOrName(dataTableRepository, this.logger, idOrName);
+		const logger = this.logger;
 
-		// Check scope for a data table and return its projectId for downstream service calls
-		const resolveProjectIdForTable = async (scopes: Scope[], dataTableId: string) => {
-			const table = await resolveDataTable(dataTableId);
-			if (!table) {
+		/**
+		 * Resolve a data-table identifier (UUID or name) to a concrete row the
+		 * caller can access. Returns the resolved `id`, `name`, and `projectId`.
+		 * Throws on not-found, ambiguous-name (when multiple accessible projects
+		 * share the name and no `projectId` disambiguator was given), or
+		 * UUID+projectId mismatch (when both are provided but the UUID's actual
+		 * project differs from the one passed).
+		 */
+		const resolveAccessibleTable = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		): Promise<DataTableRecord> => {
+			const projectIdFilter = disambiguator?.projectId;
+			const result = await resolveDataTableByIdOrName(dataTableRepository, logger, dataTableId, {
+				projectIdFilter,
+				accessFilter: async (id) => await userHasScopes(user, scopes, false, { dataTableId: id }),
+			});
+			if (result.kind === 'miss') {
 				throw new Error(`Data table "${dataTableId}" not found`);
 			}
-			const allowed = await userHasScopes(user, scopes, false, { dataTableId: table.id });
-			if (!allowed) {
-				throw new Error(`Data table "${dataTableId}" not found`);
+			if (result.kind === 'ambiguous') {
+				const projectIds = result.candidates.map((c) => c.projectId).join(', ');
+				throw new Error(
+					`Data table name "${dataTableId}" is ambiguous across accessible projects ` +
+						`(${projectIds}); pass the UUID or include a \`projectId\` to disambiguate.`,
+				);
 			}
-			return table.projectId;
+			// UUID + projectId mismatch: the id hit resolved, but the caller's
+			// disambiguator points at a different project. Never silently drop
+			// the projectId — return mismatch so the caller fixes the call.
+			if (projectIdFilter && result.table.projectId !== projectIdFilter) {
+				throw new Error(
+					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}".`,
+				);
+			}
+			return result.table;
 		};
 
-		// Like resolveProjectIdForTable but also returns the table name + resolved id for callers
-		const resolveTableMeta = async (scopes: Scope[], dataTableId: string) => {
-			const table = await resolveDataTable(dataTableId);
-			if (!table) {
-				throw new Error(`Data table "${dataTableId}" not found`);
-			}
-			const allowed = await userHasScopes(user, scopes, false, { dataTableId: table.id });
-			if (!allowed) {
-				throw new Error(`Data table "${dataTableId}" not found`);
-			}
+		// Check scope and return projectId + resolved UUID for downstream service calls
+		const resolveProjectIdForTable = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		) => {
+			const table = await resolveAccessibleTable(scopes, dataTableId, disambiguator);
+			return { projectId: table.projectId, resolvedId: table.id };
+		};
+
+		// Like resolveProjectIdForTable but also returns the table name
+		const resolveTableMeta = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		) => {
+			const table = await resolveAccessibleTable(scopes, dataTableId, disambiguator);
 			return { projectId: table.projectId, tableName: table.name, resolvedId: table.id };
 		};
 
@@ -1190,15 +1222,23 @@ export class InstanceAiAdapterService {
 				};
 			},
 
-			async delete(dataTableId) {
+			async delete(dataTableId, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:delete'], dataTableId);
-				await dataTableService.deleteDataTable(dataTableId, projectId);
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:delete'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.deleteDataTable(resolvedId, projectId);
 			},
 
-			async getSchema(dataTableId) {
-				const projectId = await resolveProjectIdForTable(['dataTable:read'], dataTableId);
-				const columns = await dataTableService.getColumns(dataTableId, projectId);
+			async getSchema(dataTableId, options) {
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:read'],
+					dataTableId,
+					options,
+				);
+				const columns = await dataTableService.getColumns(resolvedId, projectId);
 				return columns.map(
 					(c, index): DataTableColumnInfo => ({
 						id: c.id,
@@ -1209,10 +1249,14 @@ export class InstanceAiAdapterService {
 				);
 			},
 
-			async addColumn(dataTableId, column) {
+			async addColumn(dataTableId, column, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				const result = await dataTableService.addColumn(dataTableId, projectId, column);
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				const result = await dataTableService.addColumn(resolvedId, projectId, column);
 				return {
 					id: result.id,
 					name: result.name,
@@ -1221,84 +1265,99 @@ export class InstanceAiAdapterService {
 				};
 			},
 
-			async deleteColumn(dataTableId, columnId) {
+			async deleteColumn(dataTableId, columnId, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				await dataTableService.deleteColumn(dataTableId, projectId, columnId);
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.deleteColumn(resolvedId, projectId, columnId);
 			},
 
-			async renameColumn(dataTableId, columnId, newName) {
+			async renameColumn(dataTableId, columnId, newName, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				await dataTableService.renameColumn(dataTableId, projectId, columnId, {
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.renameColumn(resolvedId, projectId, columnId, {
 					name: newName,
 				});
 			},
 
 			async queryRows(dataTableId, options) {
-				const projectId = await resolveProjectIdForTable(['dataTable:readRow'], dataTableId);
-				return await dataTableService.getManyRowsAndCount(dataTableId, projectId, {
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:readRow'],
+					dataTableId,
+					options,
+				);
+				return await dataTableService.getManyRowsAndCount(resolvedId, projectId, {
 					take: options?.limit ?? 50,
 					skip: options?.offset ?? 0,
 					filter: options?.filter as DataTableFilter | undefined,
 				});
 			},
 
-			async insertRows(dataTableId, rows) {
+			async insertRows(dataTableId, rows, options) {
 				assertNotReadOnly();
-				const { projectId, tableName } = await resolveTableMeta(
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
+					options,
 				);
 				const result = await dataTableService.insertRows(
-					dataTableId,
+					resolvedId,
 					projectId,
 					rows as DataTableRows,
 					'count',
 				);
 				return {
 					insertedCount: typeof result === 'number' ? result : rows.length,
-					dataTableId,
+					dataTableId: resolvedId,
 					tableName,
 					projectId,
 				};
 			},
 
-			async updateRows(dataTableId, filter, data) {
+			async updateRows(dataTableId, filter, data, options) {
 				assertNotReadOnly();
-				const { projectId, tableName } = await resolveTableMeta(
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
+					options,
 				);
 				const result = await dataTableService.updateRows(
-					dataTableId,
+					resolvedId,
 					projectId,
 					{ filter: filter as DataTableFilter, data: data as DataTableRow },
 					true,
 				);
 				return {
 					updatedCount: Array.isArray(result) ? result.length : 0,
-					dataTableId,
+					dataTableId: resolvedId,
 					tableName,
 					projectId,
 				};
 			},
 
-			async deleteRows(dataTableId, filter) {
+			async deleteRows(dataTableId, filter, options) {
 				assertNotReadOnly();
-				const { projectId, tableName } = await resolveTableMeta(
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
+					options,
 				);
 				const result = await dataTableService.deleteRows(
-					dataTableId,
+					resolvedId,
 					projectId,
 					{ filter: filter as DataTableFilter },
 					true,
 				);
 				return {
 					deletedCount: Array.isArray(result) ? result.length : 0,
-					dataTableId,
+					dataTableId: resolvedId,
 					tableName,
 					projectId,
 				};
@@ -2114,38 +2173,70 @@ interface DataTableRecord {
 }
 
 interface DataTableIdOrNameRepository {
-	findOneBy: (where: { id?: string; name?: string }) => Promise<DataTableRecord | null>;
+	findOneBy: (where: { id: string }) => Promise<DataTableRecord | null>;
+	findBy: (where: { name: string; projectId?: string }) => Promise<DataTableRecord[]>;
 }
 
 interface DataTableResolverLogger {
 	warn: (message: string, meta?: Record<string, unknown>) => void;
 }
 
+export type ResolveDataTableResult =
+	| { kind: 'hit'; table: DataTableRecord }
+	| { kind: 'miss' }
+	| { kind: 'ambiguous'; candidates: DataTableRecord[] };
+
 /**
  * Look up a data table by the orchestrator-supplied identifier. Tries `id`
  * first; if that misses, tries `name`. The name fallback exists because the
  * orchestrator occasionally passes the human-readable table name it saw in a
- * `data-tables list` response instead of the numeric id. On a name hit we
- * warn so the miscall surfaces in logs. Returns `null` when neither lookup
- * matches — callers translate that into a "not found" error, preserving the
- * original behaviour for real misses.
+ * `data-tables list` response instead of the numeric id.
+ *
+ * When the caller provides an `accessFilter`, candidates the user cannot
+ * access are filtered out BEFORE the ambiguity check — so a collision across
+ * projects the caller can't see still resolves cleanly to the one they can.
+ * `projectIdFilter` narrows the name lookup at the database level when the
+ * caller already knows the target project (table names are unique per
+ * project).
  */
 export async function resolveDataTableByIdOrName(
 	repository: DataTableIdOrNameRepository,
 	logger: DataTableResolverLogger,
 	idOrName: string,
-): Promise<DataTableRecord | null> {
+	options?: {
+		projectIdFilter?: string;
+		accessFilter?: (id: string) => Promise<boolean>;
+	},
+): Promise<ResolveDataTableResult> {
 	const byId = await repository.findOneBy({ id: idOrName });
-	if (byId) return byId;
-	const byName = await repository.findOneBy({ name: idOrName });
-	if (byName) {
-		logger.warn(
-			'data-tables tool called with table name instead of id — resolved by name fallback',
-			{ passedValue: idOrName, resolvedId: byName.id },
-		);
-		return byName;
+	if (byId) {
+		if (options?.accessFilter && !(await options.accessFilter(byId.id))) {
+			return { kind: 'miss' };
+		}
+		return { kind: 'hit', table: byId };
 	}
-	return null;
+
+	const candidates = await repository.findBy({
+		name: idOrName,
+		...(options?.projectIdFilter ? { projectId: options.projectIdFilter } : {}),
+	});
+	let filtered = candidates;
+	if (options?.accessFilter) {
+		filtered = [];
+		for (const c of candidates) {
+			if (await options.accessFilter(c.id)) filtered.push(c);
+		}
+	}
+	if (filtered.length === 0) return { kind: 'miss' };
+	if (filtered.length > 1) return { kind: 'ambiguous', candidates: filtered };
+
+	const hit = filtered[0];
+	logger.warn('data-tables tool called with table name instead of id — resolved by name fallback', {
+		passedValue: idOrName,
+		resolvedId: hit.id,
+		projectId: hit.projectId,
+	});
+	return { kind: 'hit', table: hit };
 }
 
 /**
