@@ -7,3 +7,4 @@ export const PROJECT_AGENTS = 'ProjectAgents';
 
 export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
+export const AGENT_ADD_TRIGGER_MODAL_KEY = 'agentAddTriggerModal';

@@ -452,6 +452,16 @@ function onQuickActionAddTool(tools: AgentJsonToolRef[]) {
 	onConfigFieldUpdate({ tools });
 }
 
+function onConnectedTriggersUpdate(triggers: string[]) {
+	connectedTriggers.value = triggers;
+	builderTelemetry.trackTriggerListChanged(triggers);
+}
+
+function onTriggerAdded(payload: { triggerType: string; triggers: string[] }) {
+	connectedTriggers.value = payload.triggers;
+	builderTelemetry.trackTriggerAdded(payload);
+}
+
 function onContinueLoaded(count: number) {
 	// Only kick back to home for a URL-supplied session that turned out to be
 	// empty/stale. Ephemeral in-tab sessions always start empty and fill in as
@@ -531,7 +541,10 @@ function onContinueLoaded(count: number) {
 							:tools="localConfig?.tools ?? []"
 							:project-id="projectId"
 							:agent-id="agentId"
+							:connected-triggers="connectedTriggers"
 							@update:tools="onQuickActionAddTool"
+							@update:connected-triggers="onConnectedTriggersUpdate"
+							@trigger-added="onTriggerAdded"
 						/>
 					</template>
 				</AgentChatPanel>
@@ -554,7 +567,10 @@ function onContinueLoaded(count: number) {
 							:tools="localConfig?.tools ?? []"
 							:project-id="projectId"
 							:agent-id="agentId"
+							:connected-triggers="connectedTriggers"
 							@update:tools="onQuickActionAddTool"
+							@update:connected-triggers="onConnectedTriggersUpdate"
+							@trigger-added="onTriggerAdded"
 						/>
 					</template>
 				</AgentChatPanel>

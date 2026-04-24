@@ -173,8 +173,8 @@ const commonStubs = {
 	AgentChatQuickActions: {
 		name: 'AgentChatQuickActions',
 		template: '<div data-testid="stub-agent-chat-quick-actions" />',
-		props: ['tools', 'projectId', 'agentId'],
-		emits: ['update:tools'],
+		props: ['tools', 'projectId', 'agentId', 'connectedTriggers'],
+		emits: ['update:tools', 'update:connected-triggers', 'trigger-added'],
 	},
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
