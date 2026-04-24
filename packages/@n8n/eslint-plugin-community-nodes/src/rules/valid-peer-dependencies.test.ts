@@ -85,6 +85,19 @@ ruleTester.run('valid-peer-dependencies', ValidPeerDependenciesRule, {
 			],
 		},
 		{
+			name: 'completely empty package.json gets peerDependencies inserted',
+			filename: 'package.json',
+			code: '{}',
+			output: '{ "peerDependencies": { "n8n-workflow": "*" } }',
+			errors: [{ messageId: 'missingPeerDependencies' }],
+		},
+		{
+			name: 'n8n-workflow value is a non-literal (object) — not auto-fixable',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "peerDependencies": { "n8n-workflow": { "version": "*" } } }',
+			errors: [{ messageId: 'pinnedN8nWorkflow', data: { value: 'non-literal' } }],
+		},
+		{
 			name: 'peerDependencies is a string instead of an object',
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "peerDependencies": "n8n-workflow" }',
