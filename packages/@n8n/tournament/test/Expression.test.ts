@@ -9,7 +9,7 @@ describe('Expression', () => {
 		testExpressionsWithEvaluator(FunctionEvaluator);
 	});
 
-	describe('Should throw error when using import', () => {
+	test('Should throw error when using import', () => {
 		expect(() =>
 			evaluator.execute('{{ import("").then(fs => fs.writeFileSync("/tmp/flag", "flag")) }}', {}),
 		).toThrow('Imports are not supported');
