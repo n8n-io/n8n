@@ -392,6 +392,8 @@ function createNewCredential(
 		forceManualMode,
 		props.projectId,
 		props.suggestedCredentialName,
+		props.node.name,
+		props.node,
 	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,

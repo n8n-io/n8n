@@ -138,6 +138,9 @@ const workflowDocumentStore = computed(() =>
 const contextNode = computed<INode | null>(() => {
 	if (ndvStore.activeNode) return ndvStore.activeNode;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	if (isCredentialModalState(modalState) && modalState.contextNode) {
+		return modalState.contextNode;
+	}
 	const fallbackName = isCredentialModalState(modalState) ? modalState.nodeName : undefined;
 	return fallbackName ? (workflowDocumentStore.value?.getNodeByName(fallbackName) ?? null) : null;
 });
