@@ -1,3 +1,17 @@
+## [2.18.2](https://github.com/n8n-io/n8n/compare/n8n@2.18.1...n8n@2.18.2) (2026-04-23)
+
+
+### Bug Fixes
+
+* **ai-builder:** Validate merge node connections matches 'numberInputs' parameter ([#28857](https://github.com/n8n-io/n8n/issues/28857)) ([51aa79b](https://github.com/n8n-io/n8n/commit/51aa79b3f0476cc8e10df6ea375c28a990b53852))
+* **core:**  Fixes user search functionality in ProjectSettings for pr… ([#28948](https://github.com/n8n-io/n8n/issues/28948)) ([c1ab423](https://github.com/n8n-io/n8n/commit/c1ab423ab5aa6453744c2d1c2be8041848986b91))
+
+
+### Features
+
+* **MiniMax Node:** Add standalone MiniMax vendor node ([#28868](https://github.com/n8n-io/n8n/issues/28868)) ([eb70651](https://github.com/n8n-io/n8n/commit/eb70651b314141a8a39f17301411c1aa972b6e83))
+
+
 ## [2.18.1](https://github.com/n8n-io/n8n/compare/n8n@2.18.0...n8n@2.18.1) (2026-04-22)
 
 

@@ -17,7 +17,7 @@ interface SystemPromptOptions {
 	branchReadOnly?: boolean;
 }
 
-function getDateTimeSection(timeZone?: string): string {
+export function getDateTimeSection(timeZone?: string): string {
 	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
 	const isoTime = now.toISO({ includeOffset: true });
 	const tzLabel = timeZone ? ` (timezone: ${timeZone})` : '';

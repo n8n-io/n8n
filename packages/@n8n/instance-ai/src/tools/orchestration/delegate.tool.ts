@@ -184,6 +184,7 @@ export async function startDetachedDelegateTask(
 					tools: tracedTools,
 					modelId: context.modelId,
 					traceRun: traceContext?.actorRun,
+					timeZone: context.timeZone,
 				});
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
@@ -293,6 +294,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					tools: tracedTools,
 					modelId: context.modelId,
 					traceRun,
+					timeZone: context.timeZone,
 				});
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
