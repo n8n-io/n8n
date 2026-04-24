@@ -179,7 +179,6 @@ const commonStubs = {
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
 	N8nActionDropdown: { template: '<div />' },
-	N8nTooltip: { template: '<div><slot/></div>' },
 	Transition: { template: '<div><slot/></div>' },
 };
 
@@ -198,12 +197,12 @@ describe('AgentBuilderView — chat mode toggle', () => {
 	it('renders the chat mode toggle with Test selected by default', async () => {
 		const wrapper = await renderView();
 
-		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(true);
-		const radios = wrapper.findAll('[role="radio"]');
-		const testRadio = radios.find((r) => r.text().includes('Test'));
-		const buildRadio = radios.find((r) => r.text().includes('Build'));
-		expect(testRadio?.attributes('aria-checked')).toBe('true');
-		expect(buildRadio?.attributes('aria-checked')).toBe('false');
+		const toggle = wrapper.find('[data-testid="agent-chat-mode-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.find('[data-test-id="tab-test"]').exists()).toBe(true);
+		expect(toggle.find('[data-test-id="tab-build"]').exists()).toBe(true);
+		const vm = wrapper.vm as unknown as { chatMode: string };
+		expect(vm.chatMode).toBe('test');
 	});
 
 	it('lazy-mounts each chat panel on first activation and toggles visibility via v-show afterwards', async () => {
@@ -230,7 +229,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 		// Clicking Build mounts the build panel for the first time; test is now
 		// hidden via v-show but still mounted so its state is preserved.
-		await wrapper.find('[data-test-id="radio-button-build"]').trigger('click');
+		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('build');
 		await nextTick();
 
 		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
@@ -240,7 +239,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 		// Switching back to Test should not unmount Build — both panels stay
 		// mounted once opened so neither re-runs loadHistory on toggle.
-		await wrapper.find('[data-test-id="radio-button-test"]').trigger('click');
+		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
 		await nextTick();
 
 		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]').exists()).toBe(
@@ -285,13 +284,13 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		const vm = wrapper.vm as unknown as { chatMode: string };
 
 		// Get into Build mode first (it's clickable on any agent state).
-		await wrapper.find('[data-test-id="radio-button-build"]').trigger('click');
+		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('build');
 		await nextTick();
 		expect(vm.chatMode).toBe('build');
 
 		// Clicking Test on an unbuilt agent must be a no-op — the RadioButton
 		// option is disabled and the click handler returns early.
-		await wrapper.find('[data-test-id="radio-button-test"]').trigger('click');
+		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
 		await nextTick();
 		expect(vm.chatMode).toBe('build');
 	});
@@ -304,7 +303,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 		expect(vm.chatMode).toBe('test');
 
-		await wrapper.find('[data-test-id="radio-button-build"]').trigger('click');
+		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('build');
 		await nextTick();
 
 		expect(vm.chatMode).toBe('build');

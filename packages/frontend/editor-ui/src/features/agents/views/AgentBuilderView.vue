@@ -1,13 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import {
-	N8nActionDropdown,
-	N8nIcon,
-	N8nRadioButtons,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nActionDropdown, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
+import type { TabOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -169,6 +164,10 @@ function onBuildChatStreamingChange(streaming: boolean) {
 
 function setChatMode(next: ChatMode) {
 	if (chatMode.value === next) return;
+	// Test is locked until the agent has instructions — see chatModeOptions
+	// which surfaces a tooltip explaining why. No-op on the click so the
+	// user doesn't get bounced into a half-configured chat.
+	if (next === 'test' && !isBuilt.value) return;
 	chatMode.value = next;
 	if (next === 'test' && !continueSessionId.value && !activeChatSessionId.value) {
 		activeChatSessionId.value = crypto.randomUUID();
@@ -191,14 +190,21 @@ function setChatMode(next: ChatMode) {
  * build is always `!isBuilt`, so the Test tab stays locked while the build
  * is in flight, preventing the tab-switch-unmounts-the-stream regression.
  */
-const disableTestOption = computed(() => !isBuilt.value);
-
-const chatModeOptions = computed(() => [
-	{ label: locale.baseText('agents.builder.chatMode.build'), value: 'build' as const },
+const chatModeOptions = computed<Array<TabOptions<ChatMode>>>(() => [
 	{
+		value: 'build',
+		label: locale.baseText('agents.builder.chatMode.build'),
+		icon: 'wand-sparkles',
+		notification: isBuildChatStreaming.value,
+	},
+	{
+		value: 'test',
 		label: locale.baseText('agents.builder.chatMode.test'),
-		value: 'test' as const,
-		disabled: disableTestOption.value,
+		icon: isBuilt.value ? 'message-square' : 'triangle-alert',
+		variant: isBuilt.value ? 'default' : 'danger',
+		tooltip: isBuilt.value
+			? undefined
+			: locale.baseText('agents.builder.chatMode.test.lockedTooltip'),
 	},
 ]);
 
@@ -479,44 +485,14 @@ function onContinueLoaded(count: number) {
 			data-testid="agent-builder-chat-column"
 		>
 			<div :class="$style.chatHeader">
-				<N8nTooltip
+				<N8nTabs
 					v-if="initialized"
-					:disabled="isBuilt"
-					:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
-					:show-after="100"
-					placement="bottom"
-				>
-					<N8nRadioButtons
-						:model-value="chatMode"
-						:options="chatModeOptions"
-						:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
-						data-testid="agent-chat-mode-toggle"
-						@update:model-value="setChatMode"
-					>
-						<template #option="option">
-							<span :class="$style.chatModeOption">
-								<N8nIcon
-									v-if="option.value === 'build' && isBuildChatStreaming"
-									icon="loader-circle"
-									:size="14"
-									:spin="true"
-								/>
-								<N8nIcon
-									v-else-if="option.value === 'test' && !isBuilt"
-									icon="triangle-alert"
-									:size="14"
-									:class="$style.chatModeLockedIcon"
-								/>
-								<N8nIcon
-									v-else
-									:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
-									:size="14"
-								/>
-								<span>{{ option.label }}</span>
-							</span>
-						</template>
-					</N8nRadioButtons>
-				</N8nTooltip>
+					:model-value="chatMode"
+					:options="chatModeOptions"
+					variant="modern"
+					data-testid="agent-chat-mode-toggle"
+					@update:model-value="setChatMode"
+				/>
 			</div>
 			<div :class="$style.chatBody">
 				<AgentChatPanel
@@ -688,15 +664,5 @@ function onContinueLoaded(count: number) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
-
-.chatModeOption {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.chatModeLockedIcon {
-	color: var(--color--warning);
 }
 </style>
