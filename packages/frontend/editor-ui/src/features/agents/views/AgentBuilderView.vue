@@ -796,7 +796,7 @@ function onSwitchAgent(nextAgentId: string) {
 						data-testid="agent-chat-new-chat-btn"
 						@click="onNewChat"
 					>
-						<N8nIcon icon="plus" :size="14" />
+						<N8nIcon icon="message-square-plus" :size="14" />
 					</button>
 					<N8nNavigationDropdown
 						:menu="sessionMenu"
