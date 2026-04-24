@@ -59,7 +59,7 @@ Canned metric keys (use these when the task's canned= hint matches): \`correctne
 The node forwards the AI agent's data unchanged down whichever slot is active; it's a flow-control switch, not a data transformer.
 
 ### Fallback: schema lookup
-If you need exact parameter names or displayOptions for any node variant, call \`nodes(action="get-schema", type=<node-type>)\`. Don't guess.
+If you need exact parameter names or displayOptions for any node variant, call \`nodes(action="describe", nodeType=<node-type>)\`. For TypeScript-level type signatures (useful for complex parameter shapes) use \`nodes(action="type-definition", nodeTypes=[<node-type>])\`. Don't guess parameter shapes.
 
 ## LangChain AI Agent Output
 
