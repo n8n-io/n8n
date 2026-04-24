@@ -74,17 +74,14 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 
 	/**
 	 * Insertion index must be in [0, currentColumnCount] (append == currentColumnCount).
-	 * Values above that would create sparse indices that never compact.
+	 * Values above that would create empty columns in between.
 	 */
 	private normalizeAddColumnIndex(index: number | undefined, currentColumnCount: number): number {
-		if (index === undefined) {
+		if (index === undefined || index > currentColumnCount) {
 			return currentColumnCount;
 		}
 		if (index < 0) {
 			throw new DataTableValidationError('tried to add column at a negative index');
-		}
-		if (index > currentColumnCount) {
-			return currentColumnCount;
 		}
 		return index;
 	}
