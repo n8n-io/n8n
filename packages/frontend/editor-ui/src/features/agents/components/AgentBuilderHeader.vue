@@ -28,6 +28,7 @@ const props = defineProps<{
 	projectName: string | null;
 	headerActions: Array<ActionDropdownItem<string>>;
 	chatColumnCollapsed: boolean;
+	saveStatus?: 'idle' | 'saving' | 'saved';
 }>();
 
 const emit = defineEmits<{
@@ -132,6 +133,17 @@ function onSwitcherSelect(id: string) {
 			</template>
 		</N8nBreadcrumbs>
 		<div :class="$style.right">
+			<span
+				v-if="saveStatus === 'saving' || saveStatus === 'saved'"
+				:class="$style.saveStatus"
+				data-testid="agent-header-save-status"
+			>
+				{{
+					saveStatus === 'saving'
+						? i18n.baseText('agents.builder.header.saving')
+						: i18n.baseText('agents.builder.header.saved')
+				}}
+			</span>
 			<AgentPublishButton
 				:agent="agent"
 				:project-id="projectId"
@@ -227,6 +239,12 @@ function onSwitcherSelect(id: string) {
 	margin-left: auto;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--2xs);
+}
+
+.saveStatus {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	user-select: none;
 }
 </style>

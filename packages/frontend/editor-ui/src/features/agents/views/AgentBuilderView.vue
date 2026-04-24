@@ -78,6 +78,9 @@ const effectiveSessionId = computed<string | undefined>(
 	() => continueSessionId.value ?? activeChatSessionId.value ?? undefined,
 );
 
+type SaveStatus = 'idle' | 'saving' | 'saved';
+const saveStatus = ref<SaveStatus>('idle');
+
 // Chat-column collapse state
 const CHAT_COLLAPSED_KEY = 'agentBuilder.chatColumnCollapsed';
 const chatColumnCollapsed = ref(
@@ -252,15 +255,24 @@ async function saveConfig(): Promise<void> {
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 let autosaveInFlight: Promise<void> | null = null;
 
+let saveStatusResetTimer: ReturnType<typeof setTimeout> | null = null;
+
 function scheduleAutosave() {
 	if (autosaveTimer !== null) clearTimeout(autosaveTimer);
 	autosaveTimer = setTimeout(() => {
 		autosaveTimer = null;
+		saveStatus.value = 'saving';
 		autosaveInFlight = (async () => {
 			try {
 				await saveConfig();
 				telemetry.track('User saved agent settings', { agent_id: agentId.value });
 				builderTelemetry.flushConfigEdits();
+				saveStatus.value = 'saved';
+				if (saveStatusResetTimer !== null) clearTimeout(saveStatusResetTimer);
+				saveStatusResetTimer = setTimeout(() => {
+					saveStatus.value = 'idle';
+					saveStatusResetTimer = null;
+				}, 2000);
 			} catch (error) {
 				// Intentionally keep pending parts: `localConfig` still holds the
 				// failed edit, so the next successful autosave will persist it.
@@ -270,6 +282,7 @@ function scheduleAutosave() {
 				// triggers or body nodes) so the user isn't left wondering why their
 				// edit didn't stick.
 				showError(error, locale.baseText('agents.builder.saveError'));
+				saveStatus.value = 'idle';
 			} finally {
 				autosaveInFlight = null;
 			}
@@ -527,6 +540,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:project-name="projectName"
 			:header-actions="headerActions"
 			:chat-column-collapsed="chatColumnCollapsed"
+			:save-status="saveStatus"
 			@back="onHeaderBack"
 			@toggle-chat-column="onToggleChatColumn"
 			@header-action="onHeaderAction"

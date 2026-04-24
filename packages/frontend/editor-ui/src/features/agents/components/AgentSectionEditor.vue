@@ -132,6 +132,14 @@ watch(
 	overflow: auto;
 }
 
+/* Kill the CodeMirror theme's own border — the editor column already owns the
+   surrounding borders, so the editor's border only stacks with them. */
+.editor :global(.cm-editor) {
+	border: none;
+	border-radius: 0;
+	height: 100%;
+}
+
 .error {
 	padding: var(--spacing--3xs) var(--spacing--2xs);
 	color: var(--color--text--danger);

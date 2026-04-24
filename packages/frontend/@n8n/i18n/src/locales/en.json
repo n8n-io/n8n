@@ -5656,6 +5656,8 @@
 	"agents.builder.header.projectFallback": "Project",
 	"agents.builder.header.switcher.empty": "No other agents",
 	"agents.builder.header.switcher.ariaLabel": "Switch agent",
+	"agents.builder.header.saving": "Saving…",
+	"agents.builder.header.saved": "Saved",
 	"agents.builder.quickActions.addTool": "Add tool",
 	"agents.builder.quickActions.addTrigger": "Add trigger",
 	"agents.builder.addTrigger.modal.title": "Add trigger",
