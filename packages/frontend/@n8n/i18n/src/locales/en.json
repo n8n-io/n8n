@@ -5649,7 +5649,6 @@
 	"agents.builder.editorColumn.ariaLabel": "Configuration editor",
 	"agents.builder.tree.ariaLabel": "Config sections",
 	"agents.builder.tree.empty": "No sections yet",
-	"agents.builder.tree.title": "Configuration",
 	"agents.builder.header.backToAgents": "Back to agents",
 	"agents.builder.header.toggleChat": "Toggle chat panel",
 	"agents.builder.header.workspaceCrumb": "Workspace",

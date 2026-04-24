@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -699,9 +699,6 @@ function onSwitchAgent(nextAgentId: string) {
 
 			<!-- Column 2: tree -->
 			<aside :class="$style.treeColumn" data-testid="agent-builder-tree-column">
-				<div :class="$style.treeHeader">
-					<N8nText tag="span" bold>{{ locale.baseText('agents.builder.tree.title') }}</N8nText>
-				</div>
 				<AgentConfigTree
 					:config="localConfig"
 					:selected-key="selectedSection"
@@ -786,13 +783,6 @@ function onSwitchAgent(nextAgentId: string) {
 	border-right: var(--border);
 	min-height: 0;
 	overflow: auto;
-}
-
-.treeHeader {
-	display: flex;
-	align-items: center;
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-bottom: var(--border);
 }
 
 .editorColumn {
