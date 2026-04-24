@@ -1,13 +1,13 @@
 import type { Page } from '@playwright/test';
 
 import { AIAssistantPage } from './AIAssistantPage';
-import { AIBuilderPage } from './AIBuilderPage';
 import { CanvasPage } from './CanvasPage';
 import { ChatHubChatPage } from './ChatHubChatPage';
 import { ChatHubPersonalAgentsPage } from './ChatHubPersonalAgentsPage';
 import { ChatHubSettingsPage } from './ChatHubSettingsPage';
 import { ChatHubWorkflowAgentsPage } from './ChatHubWorkflowAgentsPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
+import { AIBuilderPage } from './components/AIBuilderPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
 import { CommandBar } from './components/CommandBar';

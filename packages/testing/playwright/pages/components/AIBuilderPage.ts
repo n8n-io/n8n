@@ -1,6 +1,6 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
-import { BuilderSetupWizard } from './components/BuilderSetupWizard';
+import { BuilderSetupWizard } from './BuilderSetupWizard';
 
 /**
  * Page object for AI Workflow Builder interactions
@@ -14,18 +14,14 @@ export class AIBuilderPage {
 		this.wizard = new BuilderSetupWizard(page);
 	}
 
-	get container(): Locator {
-		return this.page.getByTestId('canvas-choice-prompt');
-	}
-
 	// #region Locators
 
 	getWorkflowSuggestions() {
-		return this.container.getByTestId('workflow-suggestions');
+		return this.page.getByTestId('workflow-suggestions');
 	}
 
 	getCanvasChoicePrompt() {
-		return this.container;
+		return this.page.getByTestId('canvas-choice-prompt');
 	}
 
 	getSuggestionPills() {
@@ -36,7 +32,7 @@ export class AIBuilderPage {
 	}
 
 	getCanvasBuildWithAIButton() {
-		return this.container.getByTestId('canvas-build-with-ai-button');
+		return this.page.getByTestId('canvas-build-with-ai-button');
 	}
 
 	// #endregion
@@ -53,7 +49,7 @@ export class AIBuilderPage {
 
 	async waitForWorkflowBuildComplete(options?: { timeout?: number }) {
 		const timeout = options?.timeout ?? 300000; // Default 5 minutes
-		const workingIndicator = this.container.getByText('Working...');
+		const workingIndicator = this.page.getByText('Working...');
 
 		// First wait for the indicator to appear (building has started)
 		await workingIndicator.waitFor({ state: 'visible', timeout });
