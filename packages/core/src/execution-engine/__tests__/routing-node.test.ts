@@ -2546,16 +2546,23 @@ describe('RoutingNode', () => {
 			expect(requestOptions.allowedDomains).toBeUndefined();
 		});
 
-		test("does not set allowedDomains when 'domains' list is empty", async () => {
-			const result = await runWithCredential({
-				apiKey: 'testApiKey',
-				allowedHttpRequestDomains: 'domains',
-				allowedDomains: '   ',
-			});
+		test("throws when mode is 'domains' but the list is empty", async () => {
+			await expect(
+				runWithCredential({
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: '   ',
+				}),
+			).rejects.toThrow('No allowed domains specified');
+		});
 
-			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-				.requestOptions;
-			expect(requestOptions.allowedDomains).toBeUndefined();
+		test("throws when mode is 'domains' but the list is missing", async () => {
+			await expect(
+				runWithCredential({
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'domains',
+				}),
+			).rejects.toThrow('No allowed domains specified');
 		});
 
 		test('does not set allowedDomains when restriction field is absent', async () => {

@@ -228,6 +228,12 @@ export class RoutingNode {
 			}
 
 			const allowedDomains = getCredentialAllowedDomains(credentials);
+			if (credentials?.allowedHttpRequestDomains === 'domains' && !allowedDomains) {
+				throw new NodeOperationError(
+					node,
+					'No allowed domains specified. Configure allowed domains or change restriction setting.',
+				);
+			}
 			if (allowedDomains) {
 				itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;
 			}
