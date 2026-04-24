@@ -80,17 +80,6 @@ const activeChatSessionId = ref<string | null>(null);
 const effectiveSessionId = computed<string | undefined>(
 	() => continueSessionId.value ?? activeChatSessionId.value ?? undefined,
 );
-const sessionThread = computed(() => {
-	const id = effectiveSessionId.value;
-	if (!id) return undefined;
-	return sessionsStore.threads.find((t) => t.id === id);
-});
-const sessionTitle = computed(() => {
-	const thread = sessionThread.value;
-	if (!thread) return undefined;
-	return thread.title ?? `Session ${thread.sessionNumber}`;
-});
-const sessionEmoji = computed(() => sessionThread.value?.emoji ?? undefined);
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
@@ -163,11 +152,6 @@ function startChat(msg: string) {
 	void nextTick(() => {
 		initialPrompt.value = undefined;
 	});
-}
-
-function onBackFromChat() {
-	activeChatSessionId.value = null;
-	if (continueSessionId.value) clearContinueSessionParam();
 }
 
 function onBuildChatStreamingChange(streaming: boolean) {
@@ -524,15 +508,12 @@ function onContinueLoaded(count: number) {
 					endpoint="chat"
 					:initial-message="initialPrompt"
 					:continue-session-id="effectiveSessionId"
-					:session-title="sessionTitle"
-					:session-emoji="sessionEmoji"
 					:agent-config="localConfig"
 					:agent-status="deriveAgentStatus(agent)"
 					:connected-triggers="connectedTriggers"
 					@config-updated="onConfigUpdated"
 					@continue-loaded="onContinueLoaded"
 					@open-build="onOpenBuildFromChat"
-					@back="onBackFromChat"
 				>
 					<template #above-input>
 						<AgentChatQuickActions
@@ -556,7 +537,6 @@ function onContinueLoaded(count: number) {
 					:connected-triggers="connectedTriggers"
 					@config-updated="onConfigUpdated"
 					@update:streaming="onBuildChatStreamingChange"
-					@back="onBackFromChat"
 				>
 					<template #above-input>
 						<AgentChatQuickActions

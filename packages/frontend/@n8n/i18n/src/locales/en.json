@@ -5586,8 +5586,6 @@
 	"agents.builder.chatMode.test.lockedTooltip": "Finish building your agent to chat to it",
 	"agents.chat.loadHistory.error": "Could not load chat history",
 	"agents.chat.clearHistory.error": "Could not clear chat history",
-	"agents.chat.newChat": "New chat",
-	"agents.chat.back": "Back",
 	"agents.chat.clearHistory": "Clear chat history",
 	"agents.chat.misconfigured.title": "This agent isn't ready to run yet",
 	"agents.chat.misconfigured.missingPrefix": "Missing:",

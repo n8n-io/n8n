@@ -19,8 +19,6 @@ const props = withDefaults(
 		endpoint?: 'build' | 'chat';
 		initialMessage?: string;
 		continueSessionId?: string;
-		sessionTitle?: string;
-		sessionEmoji?: string;
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
@@ -31,8 +29,6 @@ const props = withDefaults(
 		endpoint: 'chat',
 		initialMessage: undefined,
 		continueSessionId: undefined,
-		sessionTitle: undefined,
-		sessionEmoji: undefined,
 	},
 );
 
@@ -42,17 +38,11 @@ const emit = defineEmits<{
 	configUpdated: [];
 	'update:streaming': [streaming: boolean];
 	'continue-loaded': [count: number];
-	back: [];
 	'open-build': [];
 }>();
 
 const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
-
-// Sub-header title for chat sessions — the persisted session title if one
-// exists, otherwise "New chat" for freshly-started ephemeral sessions.
-// (Builder has no sub-header, so no builder branch here.)
-const displayTitle = computed(() => props.sessionTitle ?? locale.baseText('agents.chat.newChat'));
 
 const inputText = ref('');
 
@@ -161,21 +151,6 @@ onBeforeUnmount(() => {
 
 <template>
 	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
-		<!-- Builder intentionally has no sub-header: it's one persistent per-agent
-			 conversation with no "session" to label or exit back from. -->
-		<div v-if="endpoint !== 'build'" :class="$style.subHeader">
-			<button
-				:class="$style.backBtn"
-				:title="locale.baseText('agents.chat.back')"
-				@click="emit('back')"
-			>
-				<N8nIcon icon="arrow-left" :size="14" />
-			</button>
-			<span v-if="sessionEmoji" :class="$style.sessionEmoji">{{ sessionEmoji }}</span>
-			<N8nIcon v-else :class="$style.sessionIcon" icon="message-square" :size="14" />
-			<span :class="$style.sessionTitle">{{ displayTitle }}</span>
-		</div>
-
 		<div v-if="fatalError" :class="$style.errorBanner" role="alert">
 			<N8nIcon icon="triangle-alert" :size="16" :class="$style.errorBannerIcon" />
 			<div :class="$style.errorBannerBody">
@@ -249,55 +224,6 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
-}
-
-.subHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
-	flex-shrink: 0;
-}
-
-.backBtn {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border: none;
-	background: none;
-	cursor: pointer;
-	color: var(--color--primary);
-	padding: var(--spacing--4xs);
-	border-radius: var(--radius);
-	flex-shrink: 0;
-
-	&:hover {
-		background-color: var(--color--foreground--tint-1);
-	}
-}
-
-.sessionEmoji {
-	font-size: var(--font-size--md);
-	line-height: 1;
-	flex-shrink: 0;
-}
-
-.sessionIcon {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-}
-
-.sessionTitle {
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	min-width: 0;
-	flex: 1;
 }
 
 .inputArea {
