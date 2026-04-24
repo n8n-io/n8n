@@ -194,6 +194,35 @@ function hashContent(content: string | null): string {
 }
 
 /**
+ * Deterministic post-build nudge: when the built workflow contains langchain/AI
+ * nodes, append an explicit instruction to the sub-agent's return text telling
+ * the orchestrator to call evals(action="propose"). The system prompt marks this
+ * step as mandatory, but a structured reminder arriving in the orchestrator's
+ * context at the exact moment the build tool returns has higher salience than a
+ * system-prompt rule and fixes LLM non-determinism in the post-build flow.
+ *
+ * Never throws — if we can't fetch the workflow for any reason, returns the
+ * original text unchanged.
+ */
+async function maybeAppendEvalsNudge(
+	context: OrchestrationContext,
+	workflowId: string | undefined,
+	text: string,
+): Promise<string> {
+	if (!workflowId) return text;
+	try {
+		const wf = await context.domainContext?.workflowService.getAsWorkflowJSON(workflowId);
+		const hasAiNodes = (wf?.nodes ?? []).some(
+			(n) => typeof n.type === 'string' && n.type.startsWith('@n8n/n8n-nodes-langchain.'),
+		);
+		if (!hasAiNodes) return text;
+		return `${text}\n\n⚠ NEXT ACTION REQUIRED: this workflow contains AI/LLM nodes. Before asking about testing or publishing, you MUST call \`evals(action="propose", workflowId="${workflowId}")\` to offer eval setup to the user. Do NOT skip this — it's part of the mandatory post-build flow.`;
+	} catch {
+		return text;
+	}
+}
+
+/**
  * When the builder's stream errors mid-run, recover a successful-submit outcome
  * from the submit-attempt history so the orchestrator doesn't redo a build that
  * already produced a workflow. Scans in reverse so a later failed submit for
@@ -554,9 +583,14 @@ export async function startBuildWorkflowAgentTask(
 										context.logger,
 										refreshedAttempt.workflowId,
 									);
+									const nudgedText = await maybeAppendEvalsNudge(
+										context,
+										refreshedAttempt.workflowId ?? workflowId,
+										finalText,
+									);
 									return {
-										text: finalText,
-										outcome: buildOutcome(workItemId, taskId, refreshedAttempt, finalText),
+										text: nudgedText,
+										outcome: buildOutcome(workItemId, taskId, refreshedAttempt, nudgedText),
 									};
 								}
 
@@ -578,9 +612,14 @@ export async function startBuildWorkflowAgentTask(
 							context.logger,
 							mainWorkflowAttempt.workflowId,
 						);
+						const nudgedFinalText = await maybeAppendEvalsNudge(
+							context,
+							mainWorkflowAttempt.workflowId ?? workflowId,
+							finalText,
+						);
 						return {
-							text: finalText,
-							outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, finalText),
+							text: nudgedFinalText,
+							outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, nudgedFinalText),
 						};
 					}
 
@@ -650,7 +689,12 @@ export async function startBuildWorkflowAgentTask(
 
 					const toolFinalText = await hitlResult.text;
 					await promoteMainWorkflow(domainContext, context.logger, fallbackMainWorkflowId);
-					return { text: toolFinalText };
+					const nudgedToolFinalText = await maybeAppendEvalsNudge(
+						context,
+						workflowId,
+						toolFinalText,
+					);
+					return { text: nudgedToolFinalText };
 				} finally {
 					await builderWs?.cleanup();
 				}

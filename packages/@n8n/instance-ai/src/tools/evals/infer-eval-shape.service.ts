@@ -63,7 +63,10 @@ export async function inferEvalShape(workflow: WorkflowJSON): Promise<EvalShape>
 			{ role: 'user', content: [{ type: 'text', text: buildUserPrompt(workflow) }] },
 		]);
 		const text = extractText(result);
-		const parsed: unknown = JSON.parse(text);
+		const trimmed = text.trim();
+		const fencedMatch = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
+		const jsonPayload = fencedMatch ? fencedMatch[1].trim() : trimmed;
+		const parsed: unknown = JSON.parse(jsonPayload);
 		const validated = evalShapeSchema.safeParse(parsed);
 		if (!validated.success) return DEFAULT_EVAL_SHAPE;
 		return validated.data;
