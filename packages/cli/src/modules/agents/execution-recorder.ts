@@ -1,4 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
+import type { ToolRegistry } from './tool-registry';
 
 export interface RecordedUsage {
 	promptTokens: number;
@@ -16,6 +17,7 @@ export type TimelineEvent =
 	| { type: 'text'; content: string; timestamp: number }
 	| {
 			type: 'tool-call';
+			kind: 'tool' | 'workflow';
 			name: string;
 			toolCallId: string;
 			input: unknown;
@@ -23,9 +25,17 @@ export type TimelineEvent =
 			startTime: number;
 			endTime: number;
 			success: boolean;
+			workflowId?: string;
+			workflowName?: string;
+			workflowExecutionId?: string;
+			triggerType?: string;
 	  }
 	| { type: 'working-memory'; content: string; timestamp: number }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+	return typeof v === 'object' && v !== null;
+}
 
 /**
  * Collects execution data from agent stream chunks.
@@ -46,6 +56,12 @@ export interface MessageRecord {
 }
 
 export class ExecutionRecorder {
+	private readonly registry: ToolRegistry;
+
+	constructor(registry?: ToolRegistry) {
+		this.registry = registry ?? new Map();
+	}
+
 	private textParts: string[] = [];
 
 	/** Text buffer for the current segment (flushed to timeline on boundaries). */
@@ -172,8 +188,10 @@ export class ExecutionRecorder {
 
 		this.toolCalls.push({ name, input, output: undefined });
 
+		const entry = this.registry.get(name);
 		this.timeline.push({
 			type: 'tool-call',
+			kind: entry?.kind ?? 'tool',
 			name,
 			toolCallId,
 			input,
@@ -181,6 +199,9 @@ export class ExecutionRecorder {
 			startTime: Date.now(),
 			endTime: 0,
 			success: false,
+			workflowId: entry?.workflowId,
+			workflowName: entry?.workflowName,
+			triggerType: entry?.triggerType,
 		});
 	}
 
@@ -216,6 +237,13 @@ export class ExecutionRecorder {
 			pendingTimeline.output = output;
 			pendingTimeline.endTime = Date.now();
 			pendingTimeline.success = !isError;
+
+			if (pendingTimeline.kind === 'workflow' && isRecord(output)) {
+				const execId = output.executionId;
+				if (typeof execId === 'string') {
+					pendingTimeline.workflowExecutionId = execId;
+				}
+			}
 		}
 	}
 }
