@@ -38,6 +38,7 @@ vi.mock('@/app/composables/useWorkflowInitialization', () => ({
 		isLoading: ref(false),
 		workflowId: computed(() => 'demo'),
 		currentWorkflowDocumentStore: shallowRef(null),
+		currentNDVStore: shallowRef({}),
 		initializeData: vi.fn().mockResolvedValue(undefined),
 		initializeWorkflow: vi.fn().mockResolvedValue(undefined),
 		cleanup: vi.fn(),

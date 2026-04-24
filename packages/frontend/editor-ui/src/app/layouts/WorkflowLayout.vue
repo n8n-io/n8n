@@ -100,7 +100,7 @@ onBeforeUnmount(() => {
 		</template>
 		<LoadingView v-if="isLoading" />
 		<RouterView v-else />
-		<template v-if="layoutProps.logs" #footer>
+		<template v-if="layoutProps.logs && !isLoading" #footer>
 			<LogsPanel />
 		</template>
 		<template v-if="!isCanvasOnly" #overlays>

@@ -25,17 +25,20 @@ import {
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 interface PostMessageHandlerDeps {
 	workflowState: WorkflowState;
 	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>;
+	currentNDVStore?: ShallowRef<ReturnType<typeof useNDVStore> | null>;
 }
 
 export function usePostMessageHandler({
 	workflowState,
 	currentWorkflowDocumentStore,
+	currentNDVStore,
 }: PostMessageHandlerDeps) {
 	const i18n = useI18n();
 	const toast = useToast();
@@ -52,7 +55,7 @@ export function usePostMessageHandler({
 	const route = useRoute();
 	const workflowsStore = useWorkflowsStore();
 	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
-	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore);
+	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore, currentNDVStore);
 
 	function emitPostMessageReady() {
 		if (window.parent) {
@@ -137,9 +140,11 @@ export function usePostMessageHandler({
 
 		const wfId = workflowsStore.workflowId;
 		if (wfId) {
-			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(
-				createWorkflowDocumentId(wfId),
-			);
+			const wfDocumentId = createWorkflowDocumentId(wfId);
+			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(wfDocumentId);
+			if (currentNDVStore) {
+				currentNDVStore.value = useNDVStore(wfDocumentId);
+			}
 		}
 
 		void nextTick(() => {

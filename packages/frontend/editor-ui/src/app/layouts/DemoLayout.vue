@@ -45,6 +45,7 @@ provide(NDVStoreKey, currentNDVStore);
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
 	workflowState,
 	currentWorkflowDocumentStore,
+	currentNDVStore,
 });
 
 // Initialize push event handlers so relayed execution events (via postMessage
@@ -90,7 +91,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<BaseLayout>
-		<RouterView />
+		<RouterView v-if="currentNDVStore" />
 		<template #footer>
 			<DemoFooter />
 		</template>
