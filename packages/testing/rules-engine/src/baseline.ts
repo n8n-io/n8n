@@ -83,6 +83,14 @@ function isInBaseline(violation: Violation, baseline: BaselineFile, rootDir: str
 	return fileBaseline.some((entry) => entry.hash === violationHash);
 }
 
+export function filterViolations(
+	violations: Violation[],
+	baseline: BaselineFile,
+	rootDir: string,
+): Violation[] {
+	return violations.filter((v) => !isInBaseline(v, baseline, rootDir));
+}
+
 export function filterReportByBaseline(
 	report: Report,
 	baseline: BaselineFile,
@@ -90,7 +98,7 @@ export function filterReportByBaseline(
 ): Report {
 	const filteredResults = report.results.map((result) => ({
 		...result,
-		violations: result.violations.filter((v) => !isInBaseline(v, baseline, rootDir)),
+		violations: filterViolations(result.violations, baseline, rootDir),
 	}));
 
 	let totalViolations = 0;

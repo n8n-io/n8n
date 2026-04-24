@@ -35,6 +35,13 @@ export const LOG_SCOPES = [
 	'workflow-history-compaction',
 	'data-table-csv-import',
 	'ssrf-protection',
+	'token-exchange',
+	'instance-ai',
+	'sub-agent-eval',
+	'instance-version-history',
+	'instance-settings-loader',
+	'instance-registry',
+	'encryption-key-manager',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

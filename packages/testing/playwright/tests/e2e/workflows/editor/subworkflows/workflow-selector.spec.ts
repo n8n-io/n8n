@@ -60,13 +60,13 @@ test.describe(
 			await expect(items.filter({ hasText: 'Search DB' })).toHaveCount(0);
 
 			await n8n.ndvComposer.selectFirstFilteredWorkflow();
-			const inputField = n8n.ndv.getResourceLocatorInput('workflowId').locator('input');
+			const inputField = n8n.ndv.getResourceLocatorInputField('workflowId');
 			await expect(inputField).toHaveValue(/Get_Weather/);
 		});
 
 		test('should render sub-workflow links correctly', async ({ n8n }) => {
 			await n8n.ndvComposer.selectWorkflowFromList('workflowId', 'Search_DB');
-			const link = n8n.ndv.getResourceLocatorInput('workflowId').locator('a');
+			const link = n8n.ndv.getResourceLocatorLink('workflowId');
 			await expect(link).toBeVisible();
 
 			await n8n.ndv.getExpressionModeToggle().click();
@@ -75,7 +75,7 @@ test.describe(
 
 		test('should switch to ID mode on expression', async ({ n8n }) => {
 			await n8n.ndvComposer.selectWorkflowFromList('workflowId', 'Search_DB');
-			const modeSelector = n8n.ndv.getResourceLocatorModeSelector('workflowId').locator('input');
+			const modeSelector = n8n.ndv.getResourceLocatorModeSelectorInput('workflowId');
 			await expect(modeSelector).toHaveValue('From list');
 
 			await n8n.ndvComposer.switchToExpressionMode('workflowId');

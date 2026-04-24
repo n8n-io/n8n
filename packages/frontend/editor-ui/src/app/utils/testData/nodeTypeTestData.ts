@@ -67,6 +67,7 @@ export const nodeTypeHttpRequest = mock<INodeTypeDescription>({
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'options',
+			displayOptions: undefined,
 			options: [
 				{ name: 'Basic Auth', value: 'basicAuth' },
 				{ name: 'Digest Auth', value: 'digestAuth' },

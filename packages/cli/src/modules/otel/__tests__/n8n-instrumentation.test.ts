@@ -2,9 +2,12 @@ import type { Logger } from '@n8n/backend-common';
 import type { WorkflowExecuteAfterContext, WorkflowExecuteBeforeContext } from '@n8n/decorators';
 import { mock } from 'jest-mock-extended';
 
+import type { NodeEndHandler } from '../handlers/node-end.handler';
+import type { NodeStartHandler } from '../handlers/node-start.handler';
 import type { WorkflowEndHandler } from '../handlers/workflow-end.handler';
 import type { WorkflowStartHandler } from '../handlers/workflow-start.handler';
 import { N8nInstrumentation } from '../n8n-instrumentation';
+import type { OtelConfig } from '../otel.config';
 
 describe('N8nInstrumentation', () => {
 	const workflowStartContext = { type: 'workflowExecuteBefore' } as WorkflowExecuteBeforeContext;
@@ -21,6 +24,9 @@ describe('N8nInstrumentation', () => {
 				throw new Error('end failure');
 			}),
 		});
+		const nodeStartHandler = mock<NodeStartHandler>();
+		const nodeEndHandler = mock<NodeEndHandler>();
+		const config = mock<OtelConfig>({ includeNodeSpans: true });
 		const logError = jest.fn();
 		const logger = mock<Logger>({
 			error: logError,
@@ -28,6 +34,9 @@ describe('N8nInstrumentation', () => {
 		const instrumentation = new N8nInstrumentation(
 			workflowStartHandler,
 			workflowEndHandler,
+			nodeStartHandler,
+			nodeEndHandler,
+			config,
 			logger,
 		);
 

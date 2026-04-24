@@ -1,5 +1,6 @@
 import { TimeoutError, MemoryLimitError, SecurityViolationError } from '@n8n/expression-runtime';
 import type { IExpressionEvaluator } from '@n8n/expression-runtime';
+import { mock } from 'vitest-mock-extended';
 
 import { ExpressionError } from '../src/errors/expression.error';
 import { ExpressionExtensionError } from '../src/errors/expression-extension.error';
@@ -39,19 +40,21 @@ describe('Expression VM error handling', () => {
 	let originalEngine: 'legacy' | 'vm';
 	let originalEvaluator: IExpressionEvaluator | undefined;
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		originalEngine = Expression.getActiveImplementation();
 		originalEvaluator = (Expression as any).vmEvaluator;
+		await workflow.expression.acquireIsolate();
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		await workflow.expression.releaseIsolate();
 		Expression.setExpressionEngine(originalEngine);
 		(Expression as any).vmEvaluator = originalEvaluator;
 	});
 
-	function setVmEvaluator(evaluator: Partial<IExpressionEvaluator>) {
+	function setVmEvaluator(evaluator: Pick<IExpressionEvaluator, 'evaluate'>) {
 		Expression.setExpressionEngine('vm');
-		(Expression as any).vmEvaluator = evaluator;
+		(Expression as any).vmEvaluator = mock<IExpressionEvaluator>(evaluator);
 	}
 
 	const evaluate = (expr: string) =>
@@ -123,49 +126,71 @@ describe('Expression VM error handling', () => {
 	});
 
 	it('should preserve description when reconstructing ExpressionError across isolate boundary', () => {
-		setVmEvaluator({
-			evaluate: () => {
-				throw new ExpressionError('something went wrong', {
-					description: 'A human-readable description',
-				});
-			},
+		const expressionError = new ExpressionError('something went wrong', {
+			description: 'A human-readable description',
 		});
+		const connectionInputData = [
+			{
+				json: {
+					get boom(): never {
+						throw expressionError;
+					},
+				},
+			},
+		];
 
 		let caught: unknown;
 		try {
-			evaluate('={{ $json.id }}');
+			workflow.expression.getParameterValue(
+				'={{ $json.boom }}',
+				null,
+				0,
+				0,
+				'node',
+				connectionInputData,
+				'manual',
+				{},
+			);
 		} catch (error) {
 			caught = error;
 		}
 
 		expect(caught).toBeInstanceOf(ExpressionError);
-		expect((caught as ExpressionError).description).toBe('A human-readable description');
+		expect(caught).toEqual(expressionError);
 	});
 
 	it('should preserve description when reconstructing ExpressionExtensionError across isolate boundary', () => {
-		// After crossing the isolate boundary, the error is a plain Error with
-		// name='ExpressionExtensionError' and properties restored via Object.assign.
-		// Simulate what reconstructError() produces:
-		const boundaryError = Object.assign(new Error('extension failed'), {
-			name: 'ExpressionExtensionError',
+		const expressionExtensionError = new ExpressionExtensionError('extension failed', {
 			description: 'Extension-specific description',
-			context: {},
 		});
-		setVmEvaluator({
-			evaluate: () => {
-				throw boundaryError;
+		const connectionInputData = [
+			{
+				json: {
+					get boom(): never {
+						throw expressionExtensionError;
+					},
+				},
 			},
-		});
+		];
 
 		let caught: unknown;
 		try {
-			evaluate('={{ $json.id }}');
+			workflow.expression.getParameterValue(
+				'={{ $json.boom }}',
+				null,
+				0,
+				0,
+				'node',
+				connectionInputData,
+				'manual',
+				{},
+			);
 		} catch (error) {
 			caught = error;
 		}
 
 		expect(caught).toBeInstanceOf(ExpressionExtensionError);
-		expect((caught as ExpressionExtensionError).description).toBe('Extension-specific description');
+		expect(caught).toEqual(expressionExtensionError);
 	});
 
 	it('should convert built-in SyntaxError to ExpressionError', () => {

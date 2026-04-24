@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -10,6 +11,14 @@ import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import { Worker } from '../worker';
+
+const dbConnection = mockInstance(DbConnection);
+dbConnection.init.mockResolvedValue(undefined);
+dbConnection.migrate.mockResolvedValue(undefined);
+
+const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
+deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
+deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 
 mockInstance(RedisClientService);
 mockInstance(PubSubRegistry);

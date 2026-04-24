@@ -2,13 +2,12 @@
 	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
 	"compilerOptions": {
 		"baseUrl": ".",
+		"moduleResolution": "bundler",
 		"outDir": "dist",
+		"noEmit": true,
 		"useUnknownInCatchVariables": false,
 		"types": ["vite/client", "vitest/globals"],
-		"isolatedModules": true,
-		"paths": {
-			"@n8n/utils/*": ["../../../@n8n/utils/src/*"]
-		}
+		"isolatedModules": true
 	},
 	"include": ["src/**/*.ts", "vite.config.ts", "tsdown.config.ts"]
 }

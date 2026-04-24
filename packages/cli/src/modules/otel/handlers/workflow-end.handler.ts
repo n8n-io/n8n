@@ -34,7 +34,16 @@ export class WorkflowEndHandler implements SpanHandler<WorkflowExecuteAfterConte
 		}
 
 		span.end();
+		this.endDanglingNodeSpans(ctx.executionId, spans);
 		spans.cleanup(ctx.executionId);
+	}
+
+	private endDanglingNodeSpans(executionId: string, spans: SpanRegistry) {
+		for (const span of spans.findUnendedNodeSpans(executionId)) {
+			span.setAttribute(ATTR.NODE_TERMINATION_REASON, 'workflow_cancelled');
+			span.setStatus({ code: SpanStatusCode.ERROR });
+			span.end();
+		}
 	}
 
 	private getErrorType(error: unknown): string {

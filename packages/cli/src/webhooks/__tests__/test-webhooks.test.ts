@@ -9,6 +9,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	IHttpRequestMethods,
+	WorkflowExpression,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -59,7 +60,8 @@ describe('TestWebhooks', () => {
 	});
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
 	describe('needsWebhook()', () => {
@@ -70,7 +72,7 @@ describe('TestWebhooks', () => {
 		};
 
 		test('if webhook is needed, should register then create webhook and return true', async () => {
-			const workflow = mock<Workflow>();
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
 
 			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
@@ -106,7 +108,7 @@ describe('TestWebhooks', () => {
 		});
 
 		test('returns false if a triggerToStartFrom with triggerData is given', async () => {
-			const workflow = mock<Workflow>();
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
 			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
 			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
@@ -123,7 +125,7 @@ describe('TestWebhooks', () => {
 
 		test('returns true, registers and then creates webhook if triggerToStartFrom is given with no triggerData', async () => {
 			// ARRANGE
-			const workflow = mock<Workflow>();
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
 			const webhook2 = mock<IWebhookData>({
 				node: 'trigger',
 				httpMethod,
@@ -160,6 +162,7 @@ describe('TestWebhooks', () => {
 						name: 'chatTriggerNode',
 					},
 				},
+				expression: mock<WorkflowExpression>(),
 			});
 			const chatSessionId = 'test-session-123';
 			const chatWebhook = mock<IWebhookData>({
@@ -199,6 +202,7 @@ describe('TestWebhooks', () => {
 						name: 'chatTriggerNode',
 					},
 				},
+				expression: mock<WorkflowExpression>(),
 			});
 			const chatWebhook = mock<IWebhookData>({
 				node: 'chatTriggerNode',
@@ -229,6 +233,7 @@ describe('TestWebhooks', () => {
 						name: 'webhookNode',
 					},
 				},
+				expression: mock<WorkflowExpression>(),
 			});
 			const chatSessionId = 'test-session-123';
 			const regularWebhook = mock<IWebhookData>({
@@ -255,7 +260,7 @@ describe('TestWebhooks', () => {
 
 		test('should handle destinationNode parameter correctly', async () => {
 			// ARRANGE
-			const workflow = mock<Workflow>();
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
 			const destinationNodeObj = { nodeName: 'DestinationNode', mode: 'inclusive' as const };
 			webhook.webhookDescription = {
 				restartWebhook: false,
@@ -290,7 +295,7 @@ describe('TestWebhooks', () => {
 		}>)(
 			'handles single webhook trigger when workflowIsActive=%s',
 			async ({ published: workflowIsActive, withSingleWebhookTrigger, shouldThrow }) => {
-				const workflow = mock<Workflow>();
+				const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
 				const regularWebhook = mock<IWebhookData>({
 					node: 'Webhook',
 					httpMethod,

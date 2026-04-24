@@ -14,6 +14,7 @@ import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -55,6 +56,12 @@ export class MeController {
 			firstName: currentFirstName,
 			lastName: currentLastName,
 		} = req.user;
+
+		if (this.isUserManagedByEnv(req.user)) {
+			throw new ForbiddenError(
+				'This account is managed via environment variables and cannot be modified through the API',
+			);
+		}
 
 		const { currentPassword, ...payloadWithoutPassword } = payload;
 		const { email, firstName, lastName } = payload;
@@ -164,6 +171,15 @@ export class MeController {
 		}
 	}
 
+	private isUserManagedByEnv(user: User): boolean {
+		const { instanceSettingsLoader } = this.globalConfig;
+		return (
+			instanceSettingsLoader.ownerManagedByEnv &&
+			!!user.email &&
+			user.email.toLowerCase() === instanceSettingsLoader.ownerEmail.toLowerCase()
+		);
+	}
+
 	/**
 	 * Update the logged-in user's password.
 	 */
@@ -177,6 +193,12 @@ export class MeController {
 	) {
 		const { user } = req;
 		const { currentPassword, newPassword, mfaCode } = payload;
+
+		if (this.isUserManagedByEnv(user)) {
+			throw new ForbiddenError(
+				'This account is managed via environment variables and cannot be modified through the API',
+			);
+		}
 
 		// If SAML is enabled, we don't allow the user to change their password
 		if (isSamlLicensedAndEnabled()) {

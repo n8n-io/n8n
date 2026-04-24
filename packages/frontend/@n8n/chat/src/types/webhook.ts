@@ -20,5 +20,6 @@ export interface SendMessageResponse {
 	message?: string | ChatMessageText;
 	executionId?: string;
 	executionStarted?: boolean;
+	resumeToken?: string;
 	hasReceivedChunks?: boolean;
 }

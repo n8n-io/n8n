@@ -177,13 +177,54 @@ const AI_TYPE_TO_SCHEMA_FIELD: Record<
 // =============================================================================
 
 /**
- * Determine if a property should be optional in the schema.
- * A property is optional if it's not required OR if it has a default value.
- * Properties with defaults can be omitted - the default will be used at runtime.
+ * Whether a property's `default` value actually satisfies a `required: true`
+ * constraint at runtime. The runtime check in `getNodeParametersIssues`
+ * (`n8n-workflow/node-helpers`) rejects the "empty" form of these types even
+ * when a default is present:
+ *
+ * - `string` / `options` / `dateTime`: `''` is treated as missing
+ * - `multiOptions`: `[]` is treated as missing
+ *
+ * The Zod schema must agree — otherwise `required: true, default: ''` (e.g.
+ * `splitOut.fieldToSplitOut`) silently generates `.optional()`, the LLM-facing
+ * TS type loses the required signal, and the workflow submits cleanly only to
+ * fail at execution time with `Parameter "X" is required`.
  */
-function isPropertyOptional(prop: NodeProperty): boolean {
-	const hasDefault = 'default' in prop && prop.default !== undefined;
-	return !prop.required || hasDefault;
+function defaultSatisfiesRequired(prop: NodeProperty): boolean {
+	if (!('default' in prop) || prop.default === undefined) return false;
+
+	switch (prop.type) {
+		case 'string':
+		case 'options':
+		case 'dateTime':
+			return prop.default !== '';
+		case 'multiOptions':
+			return !(Array.isArray(prop.default) && prop.default.length === 0);
+		default:
+			return true;
+	}
+}
+
+/**
+ * Determine if a property should be optional in the schema.
+ * A property is optional if it's not required OR if it has a default value
+ * that actually satisfies the required constraint (see
+ * `defaultSatisfiesRequired`).
+ */
+export function isPropertyOptional(prop: NodeProperty): boolean {
+	// A fixedCollection with minRequiredFields > 0 cannot satisfy the
+	// constraint via its default (typically `{}`), so the property itself
+	// must be present — overrides the default shortcut.
+	const minRequired = prop.typeOptions?.minRequiredFields;
+	if (
+		prop.type === 'fixedCollection' &&
+		prop.typeOptions?.multipleValues === true &&
+		typeof minRequired === 'number' &&
+		minRequired > 0
+	) {
+		return false;
+	}
+	return !prop.required || defaultSatisfiesRequired(prop);
 }
 
 /**
@@ -424,6 +465,12 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 		case 'assignmentCollection':
 			return 'assignmentCollectionValueSchema';
 
+		case 'fixedCollection':
+			return generateFixedCollectionZodSchema(prop);
+
+		case 'collection':
+			return generateCollectionZodSchema(prop);
+
 		case 'hidden':
 			return 'z.unknown()';
 
@@ -466,8 +513,24 @@ function generateFixedCollectionZodSchema(prop: NodeProperty): string {
 
 		if (nestedProps.length > 0) {
 			const innerSchema = `z.object({ ${nestedProps.join(', ')} })`;
-			const groupSchema = isMultipleValues ? `z.array(${innerSchema})` : innerSchema;
-			groups.push(`${groupName}: ${groupSchema}.optional()`);
+			const minRequired = prop.typeOptions?.minRequiredFields;
+			const hasMinRequired = typeof minRequired === 'number' && minRequired > 0;
+			let groupSchema: string;
+			if (isMultipleValues) {
+				const maxAllowed = prop.typeOptions?.maxAllowedFields;
+				let arraySchema = `z.array(${innerSchema})`;
+				if (hasMinRequired) {
+					arraySchema += `.min(${minRequired})`;
+				}
+				if (typeof maxAllowed === 'number' && maxAllowed > 0) {
+					arraySchema += `.max(${maxAllowed})`;
+				}
+				groupSchema = arraySchema;
+			} else {
+				groupSchema = innerSchema;
+			}
+			const groupSuffix = hasMinRequired ? '' : '.optional()';
+			groups.push(`${groupName}: ${groupSchema}${groupSuffix}`);
 		}
 	}
 
@@ -1174,7 +1237,7 @@ export function generateSingleVersionSchemaFile(
 	lines.push('');
 	lines.push(`${INDENT}// Return combined config schema`);
 	lines.push(`${INDENT}return z.object({`);
-	lines.push(`${INDENT.repeat(2)}parameters: parametersSchema.optional(),`);
+	lines.push(`${INDENT.repeat(2)}parameters: parametersSchema.nullable().optional(),`);
 	if (hasAiInputs) {
 		const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
 		if (hasConditionalSubnodeFields(aiInputTypes)) {

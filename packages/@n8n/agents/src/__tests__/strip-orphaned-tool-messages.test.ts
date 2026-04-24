@@ -1,14 +1,9 @@
 import { stripOrphanedToolMessages } from '../runtime/strip-orphaned-tool-messages';
-import { isLlmMessage, toDbMessage } from '../sdk/message';
-import type { AgentDbMessage, AgentMessage, Message } from '../types/sdk/message';
-
-function seed(messages: AgentMessage[]): AgentDbMessage[] {
-	return messages.map(toDbMessage);
-}
+import type { AgentMessage, Message } from '../types/sdk/message';
 
 describe('stripOrphanedToolMessages', () => {
 	it('returns messages unchanged when all tool pairs are complete', () => {
-		const messages = seed([
+		const messages: AgentMessage[] = [
 			{ role: 'user', content: [{ type: 'text', text: 'Hello' }] },
 			{
 				role: 'assistant',
@@ -22,23 +17,23 @@ describe('stripOrphanedToolMessages', () => {
 				content: [{ type: 'tool-result', toolCallId: 'c1', toolName: 'lookup', result: 42 }],
 			},
 			{ role: 'assistant', content: [{ type: 'text', text: 'Done.' }] },
-		]);
+		];
 
 		const result = stripOrphanedToolMessages(messages);
 		expect(result).toBe(messages);
 	});
 
 	it('strips orphaned tool-result when matching tool-call is missing', () => {
-		const messages = seed([
+		const messages: AgentMessage[] = [
 			{
 				role: 'tool',
 				content: [{ type: 'tool-result', toolCallId: 'c1', toolName: 'lookup', result: 42 }],
 			},
 			{ role: 'assistant', content: [{ type: 'text', text: 'There are 42.' }] },
 			{ role: 'user', content: [{ type: 'text', text: 'Thanks' }] },
-		]);
+		];
 
-		const result = stripOrphanedToolMessages(messages).filter(isLlmMessage) as Message[];
+		const result = stripOrphanedToolMessages(messages) as Message[];
 
 		expect(result).toHaveLength(2);
 		expect(result[0].role).toBe('assistant');
@@ -46,7 +41,7 @@ describe('stripOrphanedToolMessages', () => {
 	});
 
 	it('strips orphaned tool-call when matching tool-result is missing', () => {
-		const messages = seed([
+		const messages: AgentMessage[] = [
 			{ role: 'user', content: [{ type: 'text', text: 'Check it' }] },
 			{
 				role: 'assistant',
@@ -55,9 +50,9 @@ describe('stripOrphanedToolMessages', () => {
 					{ type: 'tool-call', toolCallId: 'c1', toolName: 'lookup', input: {} },
 				],
 			},
-		]);
+		];
 
-		const result = stripOrphanedToolMessages(messages).filter(isLlmMessage) as Message[];
+		const result = stripOrphanedToolMessages(messages) as Message[];
 
 		expect(result).toHaveLength(2);
 		const assistantMsg = result[1];
@@ -67,22 +62,22 @@ describe('stripOrphanedToolMessages', () => {
 	});
 
 	it('drops assistant message entirely if it only contained an orphaned tool-call', () => {
-		const messages = seed([
+		const messages: AgentMessage[] = [
 			{ role: 'user', content: [{ type: 'text', text: 'Do it' }] },
 			{
 				role: 'assistant',
 				content: [{ type: 'tool-call', toolCallId: 'c1', toolName: 'action', input: {} }],
 			},
-		]);
+		];
 
-		const result = stripOrphanedToolMessages(messages).filter(isLlmMessage) as Message[];
+		const result = stripOrphanedToolMessages(messages) as Message[];
 
 		expect(result).toHaveLength(1);
 		expect(result[0].role).toBe('user');
 	});
 
 	it('handles mixed scenario: one complete pair and one orphaned result', () => {
-		const messages = seed([
+		const messages: AgentMessage[] = [
 			{
 				role: 'tool',
 				content: [
@@ -103,9 +98,9 @@ describe('stripOrphanedToolMessages', () => {
 				content: [{ type: 'tool-result', toolCallId: 'c2', toolName: 'lookup', result: 99 }],
 			},
 			{ role: 'assistant', content: [{ type: 'text', text: '99 items' }] },
-		]);
+		];
 
-		const result = stripOrphanedToolMessages(messages).filter(isLlmMessage) as Message[];
+		const result = stripOrphanedToolMessages(messages) as Message[];
 
 		expect(result).toHaveLength(5);
 		expect(result[0].role).toBe('assistant');
@@ -122,21 +117,19 @@ describe('stripOrphanedToolMessages', () => {
 	});
 
 	it('preserves custom (non-LLM) messages', () => {
-		const customMsg: AgentDbMessage = {
+		const customMsg: AgentMessage = {
 			id: 'custom-1',
 			type: 'custom',
 			messageType: 'notification',
 			data: { info: 'hello' },
-		} as unknown as AgentDbMessage;
+		} as unknown as AgentMessage;
 
-		const messages: AgentDbMessage[] = [
+		const messages: AgentMessage[] = [
 			customMsg,
-			...seed([
-				{
-					role: 'tool',
-					content: [{ type: 'tool-result', toolCallId: 'orphan', toolName: 'x', result: null }],
-				},
-			]),
+			{
+				role: 'tool',
+				content: [{ type: 'tool-result', toolCallId: 'orphan', toolName: 'x', result: null }],
+			},
 		];
 
 		const result = stripOrphanedToolMessages(messages);
@@ -146,10 +139,10 @@ describe('stripOrphanedToolMessages', () => {
 	});
 
 	it('returns same array reference when no orphans exist (no-op fast path)', () => {
-		const messages = seed([
+		const messages: AgentMessage[] = [
 			{ role: 'user', content: [{ type: 'text', text: 'Hi' }] },
 			{ role: 'assistant', content: [{ type: 'text', text: 'Hello!' }] },
-		]);
+		];
 
 		const result = stripOrphanedToolMessages(messages);
 		expect(result).toBe(messages);

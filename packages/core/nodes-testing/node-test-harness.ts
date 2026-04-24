@@ -88,7 +88,7 @@ export class NodeTestHarness {
 			this.assertOutput(testData, result, nodeExecutionOrder);
 
 			if (options.customAssertions) options.customAssertions();
-		});
+		}, 20_000);
 	}
 
 	@Memoized

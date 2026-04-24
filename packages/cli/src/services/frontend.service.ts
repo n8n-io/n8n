@@ -1,7 +1,7 @@
 import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { LICENSE_FEATURES, LICENSE_QUOTAS } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -59,6 +59,9 @@ export type PublicFrontendSettings = {
 
 		/** Determines forgot password page UX */
 		smtpSetup: FrontendSettings['userManagement']['smtpSetup'];
+
+		/** Configurable minimum password length for password requirement display */
+		passwordMinLength: FrontendSettings['userManagement']['passwordMinLength'];
 	};
 
 	enterprise: {
@@ -249,8 +252,10 @@ export class FrontendService {
 				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
+				passwordMinLength: this.globalConfig.userManagement.password.minLength,
 			},
 			sso: {
+				managedByEnv: this.globalConfig.instanceSettingsLoader.ssoManagedByEnv,
 				saml: {
 					loginEnabled: false,
 					loginLabel: '',
@@ -330,6 +335,7 @@ export class FrontendService {
 				},
 				customRoles: false,
 				personalSpacePolicy: false,
+				dataRedaction: false,
 			},
 			mfa: {
 				enabled: false,
@@ -475,6 +481,7 @@ export class FrontendService {
 			namedVersions: this.license.isLicensed(LICENSE_FEATURES.NAMED_VERSIONS),
 			customRoles: this.licenseState.isCustomRolesLicensed(),
 			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
+			dataRedaction: this.licenseState.isDataRedactionLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -521,6 +528,15 @@ export class FrontendService {
 			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
 
+		const isAiGatewayEnabled =
+			this.licenseState.isAiGatewayLicensed() && !!this.globalConfig.aiAssistant.baseUrl;
+		if (isAiGatewayEnabled) {
+			this.settings.aiGateway = {
+				enabled: true,
+				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
+			};
+		}
+
 		if (isAiBuilderEnabled) {
 			this.settings.aiBuilder.enabled = isAiBuilderEnabled;
 			this.settings.aiBuilder.setup =
@@ -557,7 +573,7 @@ export class FrontendService {
 		// Get full settings to ensure all required properties are initialized
 		const {
 			defaultLocale,
-			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup, passwordMinLength },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
 			previewMode,
@@ -572,6 +588,7 @@ export class FrontendService {
 				authenticationMethod,
 				showSetupOnFirstLoad,
 				smtpSetup,
+				passwordMinLength,
 			},
 			sso: {
 				saml: {

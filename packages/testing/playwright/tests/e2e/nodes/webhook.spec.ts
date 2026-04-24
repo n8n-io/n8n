@@ -67,8 +67,7 @@ test.describe(
 			const webhookPath = await n8n.ndv.setupHelper.getWebhookPath();
 
 			// Add the Response Code optional parameter
-			await n8n.ndv.getAddOptionDropdown().click();
-			await n8n.page.getByRole('option', { name: 'Response Code' }).click();
+			await n8n.ndv.addParameterOptionByName('Response Code');
 			// Select 201 from the dropdown
 			await n8n.ndv.selectOptionInParameterDropdown('responseCode', '201');
 			await n8n.ndv.execute();

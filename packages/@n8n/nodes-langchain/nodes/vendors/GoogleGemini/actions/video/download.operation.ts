@@ -1,7 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { downloadFile } from '../../helpers/utils';
+import { downloadFile, getFilenameFromMimeType } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -50,7 +50,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const { fileContent, mimeType } = await downloadFile.call(this, url, 'video/mp4', {
 		key: credentials.apiKey as string,
 	});
-	const binaryData = await this.helpers.prepareBinaryData(fileContent, 'video.mp4', mimeType);
+	const fileName = getFilenameFromMimeType(mimeType, 'video', 'mp4');
+	const binaryData = await this.helpers.prepareBinaryData(fileContent, fileName, mimeType);
 	return [
 		{
 			binary: { [binaryPropertyOutput]: binaryData },

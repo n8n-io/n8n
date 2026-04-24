@@ -26,7 +26,6 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
 }));
-vi.mock('@/app/composables/useTelemetry');
 vi.mock('@/app/composables/useWorkflowSaving');
 vi.mock('@/app/composables/useRunWorkflow');
 vi.mock('@/features/workflows/canvas/canvas.eventBus');
@@ -44,10 +43,13 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		baseText: (key: string) => key,
 	}),
 }));
-vi.mock('file-saver', () => ({
-	saveAs: vi.fn(),
+const { saveAsMock, mockTelemetryTrack } = vi.hoisted(() => ({
+	saveAsMock: vi.fn(),
+	mockTelemetryTrack: vi.fn(),
 }));
-const mockTelemetryTrack = vi.fn();
+vi.mock('file-saver', () => ({
+	saveAs: saveAsMock,
+}));
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
@@ -79,6 +81,7 @@ describe('useWorkflowCommands', () => {
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
+		vi.clearAllMocks();
 
 		mockWorkflow = ref(
 			createTestWorkflow({
@@ -357,8 +360,6 @@ describe('useWorkflowCommands', () => {
 
 	describe('export commands', () => {
 		it('should handle download workflow', async () => {
-			const { saveAs } = await import('file-saver');
-
 			const { commands } = useWorkflowCommands();
 			const downloadCommand = commands.value.find((cmd) => cmd.id === 'download-workflow');
 
@@ -368,7 +369,7 @@ describe('useWorkflowCommands', () => {
 			expect(mockTelemetryTrack).toHaveBeenCalledWith('User exported workflow', {
 				workflow_id: 'workflow-123',
 			});
-			expect(saveAs).toHaveBeenCalled();
+			expect(saveAsMock).toHaveBeenCalled();
 		});
 	});
 

@@ -142,6 +142,42 @@ describe('router', () => {
 		10000,
 	);
 
+	test.each<[string, RouteRecordName, Scope[]]>([
+		['/settings/resolvers', VIEWS.WORKFLOWS, []],
+		[
+			'/settings/resolvers',
+			VIEWS.WORKFLOWS,
+			['credentialResolver:read', 'credentialResolver:list'],
+		],
+		[
+			'/settings/resolvers',
+			VIEWS.RESOLVERS,
+			[
+				'credentialResolver:read',
+				'credentialResolver:list',
+				'credentialResolver:create',
+				'credentialResolver:update',
+				'credentialResolver:delete',
+			],
+		],
+	])(
+		'should resolve %s to %s with %s user permissions (resolvers)',
+		async (path, name, scopes) => {
+			const rbacStore = useRBACStore();
+
+			settingsStore.settings.activeModules = ['dynamic-credentials'];
+			settingsStore.settings.envFeatureFlags = {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			} as typeof settingsStore.settings.envFeatureFlags;
+			rbacStore.setGlobalScopes(scopes);
+
+			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		10000,
+	);
+
 	test.each([
 		[VIEWS.PERSONAL_SETTINGS, true],
 		[VIEWS.USAGE, false],

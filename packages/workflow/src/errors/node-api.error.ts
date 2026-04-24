@@ -3,6 +3,7 @@
 import type { AxiosError } from 'axios';
 import { parseString } from 'xml2js';
 
+import { removeCircularRefs, sanitizeXmlName } from '../utils';
 import { NodeError } from './abstract/node.error';
 import type { ErrorLevel } from '@n8n/errors';
 import {
@@ -19,7 +20,6 @@ import type {
 	Functionality,
 	RelatedExecution,
 } from '../interfaces';
-import { removeCircularRefs } from '../utils';
 
 export interface NodeOperationErrorOptions {
 	message?: string;
@@ -275,16 +275,24 @@ export class NodeApiError extends NodeError {
 	}
 
 	private setDescriptionFromXml(xml: string) {
-		parseString(xml, { explicitArray: false }, (_, result) => {
-			if (!result) return;
+		parseString(
+			xml,
+			{
+				explicitArray: false,
+				tagNameProcessors: [sanitizeXmlName],
+				attrNameProcessors: [sanitizeXmlName],
+			},
+			(_, result) => {
+				if (!result) return;
 
-			const topLevelKey = Object.keys(result)[0];
-			this.description = this.findProperty(
-				result[topLevelKey],
-				POSSIBLE_ERROR_MESSAGE_KEYS,
-				POSSIBLE_NESTED_ERROR_OBJECT_KEYS,
-			);
-		});
+				const topLevelKey = Object.keys(result)[0];
+				this.description = this.findProperty(
+					result[topLevelKey],
+					POSSIBLE_ERROR_MESSAGE_KEYS,
+					POSSIBLE_NESTED_ERROR_OBJECT_KEYS,
+				);
+			},
+		);
 	}
 
 	/**

@@ -1,6 +1,10 @@
 import type { BaseRule } from './base-rule.js';
 import type { Report, RuleResult, Severity, RuleInfo, RuleSettingsMap } from './types.js';
 
+export interface RunOptions {
+	fix?: boolean;
+}
+
 export class RuleRunner<TContext = unknown> {
 	private rules: Map<string, BaseRule<TContext>> = new Map();
 	private enabledRules: Set<string> = new Set();
@@ -46,10 +50,15 @@ export class RuleRunner<TContext = unknown> {
 			description: rule.description,
 			severity: rule.severity,
 			enabled: this.enabledRules.has(rule.id),
+			fixable: rule.fixable,
 		}));
 	}
 
-	async run(context: TContext, projectRoot: string): Promise<Report> {
+	isRuleFixable(ruleId: string): boolean {
+		return this.rules.get(ruleId)?.fixable ?? false;
+	}
+
+	async run(context: TContext, projectRoot: string, options?: RunOptions): Promise<Report> {
 		const results: RuleResult[] = [];
 
 		for (const ruleId of this.enabledRules) {
@@ -57,6 +66,7 @@ export class RuleRunner<TContext = unknown> {
 			if (!rule) continue;
 
 			const result = await rule.execute(context);
+			this.applyFixes(rule, result, context, options);
 			results.push(result);
 		}
 
@@ -72,11 +82,17 @@ export class RuleRunner<TContext = unknown> {
 		};
 	}
 
-	async runRule(ruleId: string, context: TContext, projectRoot: string): Promise<Report | null> {
+	async runRule(
+		ruleId: string,
+		context: TContext,
+		projectRoot: string,
+		options?: RunOptions,
+	): Promise<Report | null> {
 		const rule = this.rules.get(ruleId);
 		if (!rule) return null;
 
 		const result = await rule.execute(context);
+		this.applyFixes(rule, result, context, options);
 
 		return {
 			timestamp: new Date().toISOString(),
@@ -88,6 +104,20 @@ export class RuleRunner<TContext = unknown> {
 			results: [result],
 			summary: this.buildSummary([result]),
 		};
+	}
+
+	private applyFixes(
+		rule: BaseRule<TContext>,
+		result: RuleResult,
+		context: TContext,
+		options?: RunOptions,
+	): void {
+		if (options?.fix && rule.fixable) {
+			const fixable = result.violations.filter((v) => v.fixable);
+			if (fixable.length > 0) {
+				result.fixes = rule.fix(context, fixable);
+			}
+		}
 	}
 
 	private buildSummary(results: RuleResult[]): Report['summary'] {
