@@ -3,7 +3,6 @@ import type { User } from '@n8n/db';
 import { SettingsRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import isEqual from 'lodash/isEqual';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CacheService } from '@/services/cache/cache.service';
@@ -97,15 +96,15 @@ export class McpSettingsService {
 				});
 
 				for (const row of rows) {
+					if (row.settings?.availableInMCP === availableInMCP) {
+						noOpIds.push(row.id);
+						continue;
+					}
+
 					const nextSettings = removeDefaultValues(
 						{ ...(row.settings ?? {}), availableInMCP },
 						this.globalConfig.executions.timeout,
 					);
-
-					if (isEqual(row.settings, nextSettings)) {
-						noOpIds.push(row.id);
-						continue;
-					}
 
 					await trx.update(
 						WorkflowEntity,
