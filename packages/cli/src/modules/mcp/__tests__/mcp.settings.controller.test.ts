@@ -102,7 +102,7 @@ describe('McpSettingsController', () => {
 		// awaiting and attaches a `.catch(...)`, so the mock must return a
 		// real Promise. Tests that exercise the failure path override this
 		// with `mockRejectedValueOnce`.
-		collaborationService.broadcastWorkflowMcpAvailabilityChanged.mockResolvedValue(undefined);
+		collaborationService.broadcastWorkflowSettingsUpdated.mockResolvedValue(undefined);
 		controller = Container.get(McpSettingsController);
 	});
 
@@ -466,12 +466,15 @@ describe('McpSettingsController', () => {
 			});
 		});
 
-		test('broadcasts the availability change to open collaborators after a successful update', async () => {
+		test('broadcasts a settings update with a post-update checksum to open collaborators', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				createWorkflow({ activeVersionId: null }),
 			);
 			workflowService.update.mockResolvedValue({
 				id: workflowId,
+				name: 'wf',
+				nodes: [],
+				connections: {},
 				settings: { availableInMCP: true },
 				versionId: 'updated-version-id',
 			} as unknown as WorkflowEntity);
@@ -485,11 +488,13 @@ describe('McpSettingsController', () => {
 				},
 			);
 
-			expect(collaborationService.broadcastWorkflowMcpAvailabilityChanged).toHaveBeenCalledTimes(1);
-			expect(collaborationService.broadcastWorkflowMcpAvailabilityChanged).toHaveBeenCalledWith(
-				workflowId,
-				true,
-			);
+			expect(collaborationService.broadcastWorkflowSettingsUpdated).toHaveBeenCalledTimes(1);
+			const [broadcastWorkflowId, broadcastSettings, broadcastChecksum] =
+				collaborationService.broadcastWorkflowSettingsUpdated.mock.calls[0];
+			expect(broadcastWorkflowId).toBe(workflowId);
+			expect(broadcastSettings).toEqual({ availableInMCP: true });
+			expect(typeof broadcastChecksum).toBe('string');
+			expect(broadcastChecksum).toMatch(/^[a-f0-9]{64}$/);
 		});
 
 		test('does not fail the request when the broadcast throws', async () => {
@@ -501,7 +506,7 @@ describe('McpSettingsController', () => {
 				settings: { availableInMCP: false },
 				versionId: 'updated-version-id',
 			} as unknown as WorkflowEntity);
-			collaborationService.broadcastWorkflowMcpAvailabilityChanged.mockRejectedValueOnce(
+			collaborationService.broadcastWorkflowSettingsUpdated.mockRejectedValueOnce(
 				new Error('push down'),
 			);
 
@@ -525,7 +530,7 @@ describe('McpSettingsController', () => {
 				}),
 			).rejects.toThrow(NotFoundError);
 
-			expect(collaborationService.broadcastWorkflowMcpAvailabilityChanged).not.toHaveBeenCalled();
+			expect(collaborationService.broadcastWorkflowSettingsUpdated).not.toHaveBeenCalled();
 		});
 	});
 });

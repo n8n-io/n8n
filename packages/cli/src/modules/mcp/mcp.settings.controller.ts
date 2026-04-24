@@ -11,6 +11,7 @@ import {
 	ProjectScope,
 } from '@n8n/decorators';
 import type { Response } from 'express';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { UpdateWorkflowAvailabilityDto } from './dto/update-workflow-availability.dto';
@@ -125,10 +126,16 @@ export class McpSettingsController {
 
 		const updatedWorkflow = await this.workflowService.update(req.user, workflowUpdate, workflowId);
 
+		const checksum = await calculateWorkflowChecksum(updatedWorkflow);
+
 		void this.collaborationService
-			.broadcastWorkflowMcpAvailabilityChanged(workflowId, dto.availableInMCP)
+			.broadcastWorkflowSettingsUpdated(
+				workflowId,
+				{ availableInMCP: dto.availableInMCP },
+				checksum,
+			)
 			.catch((error) => {
-				this.logger.warn('Failed to broadcast workflow MCP availability change', {
+				this.logger.warn('Failed to broadcast workflow settings update', {
 					workflowId,
 					cause: error instanceof Error ? error.message : String(error),
 				});

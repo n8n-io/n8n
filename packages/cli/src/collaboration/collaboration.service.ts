@@ -4,7 +4,7 @@ import { UserRepository } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { Workflow } from 'n8n-workflow';
+import type { IWorkflowSettings, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type {
@@ -259,12 +259,13 @@ export class CollaborationService {
 	}
 
 	/**
-	 * Notifies open collaborators of a workflow that its `availableInMCP`
-	 * setting was changed out-of-band (e.g. via the MCP settings/list view).
+	 * Notifies open collaborators of a workflow that (a subset of) its
+	 * `settings` were updated out-of-band (e.g. via the MCP toggle endpoint),
 	 */
-	async broadcastWorkflowMcpAvailabilityChanged(
+	async broadcastWorkflowSettingsUpdated(
 		workflowId: Workflow['id'],
-		availableInMCP: boolean,
+		settings: Partial<IWorkflowSettings>,
+		checksum?: string,
 	) {
 		const collaborators = await this.state.getCollaborators(workflowId);
 		const userIds = collaborators.map((user) => user.userId);
@@ -273,12 +274,13 @@ export class CollaborationService {
 			return;
 		}
 
-		const msgData: PushPayload<'workflowMcpAvailabilityChanged'> = {
+		const msgData: PushPayload<'workflowSettingsUpdated'> = {
 			workflowId,
-			availableInMCP,
+			settings,
+			...(checksum !== undefined ? { checksum } : {}),
 		};
 
-		this.push.sendToUsers({ type: 'workflowMcpAvailabilityChanged', data: msgData }, userIds);
+		this.push.sendToUsers({ type: 'workflowSettingsUpdated', data: msgData }, userIds);
 	}
 
 	/**

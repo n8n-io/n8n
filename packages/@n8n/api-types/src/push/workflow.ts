@@ -1,3 +1,5 @@
+import type { IWorkflowSettings } from 'n8n-workflow';
+
 export type WorkflowActivated = {
 	type: 'workflowActivated';
 	data: {
@@ -38,11 +40,12 @@ export type WorkflowUpdated = {
 	};
 };
 
-export type WorkflowMcpAvailabilityChanged = {
-	type: 'workflowMcpAvailabilityChanged';
+export type WorkflowSettingsUpdated = {
+	type: 'workflowSettingsUpdated';
 	data: {
 		workflowId: string;
-		availableInMCP: boolean;
+		settings: Partial<IWorkflowSettings>;
+		checksum?: string;
 	};
 };
 
@@ -52,4 +55,4 @@ export type WorkflowPushMessage =
 	| WorkflowDeactivated
 	| WorkflowAutoDeactivated
 	| WorkflowUpdated
-	| WorkflowMcpAvailabilityChanged;
+	| WorkflowSettingsUpdated;

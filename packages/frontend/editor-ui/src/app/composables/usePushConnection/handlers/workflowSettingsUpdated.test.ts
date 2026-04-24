@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import type { WorkflowMcpAvailabilityChanged } from '@n8n/api-types/push/workflow';
+import type { IWorkflowSettings } from 'n8n-workflow';
+import type { WorkflowSettingsUpdated } from '@n8n/api-types/push/workflow';
 
-import { workflowMcpAvailabilityChanged } from './workflowMcpAvailabilityChanged';
-import * as workflowsApi from '@/app/api/workflows';
+import { workflowSettingsUpdated } from './workflowSettingsUpdated';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { mockedStore } from '@/__tests__/utils';
@@ -21,10 +21,6 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	},
 }));
 
-vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: {} }),
-}));
-
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
 	createWorkflowDocumentId: (id: string) => id,
@@ -32,13 +28,14 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 
 const makeEvent = (
 	workflowId: string,
-	availableInMCP: boolean,
-): WorkflowMcpAvailabilityChanged => ({
-	type: 'workflowMcpAvailabilityChanged',
-	data: { workflowId, availableInMCP },
+	settings: Partial<IWorkflowSettings>,
+	checksum?: string,
+): WorkflowSettingsUpdated => ({
+	type: 'workflowSettingsUpdated',
+	data: { workflowId, settings, ...(checksum !== undefined ? { checksum } : {}) },
 });
 
-describe('workflowMcpAvailabilityChanged', () => {
+describe('workflowSettingsUpdated', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 
@@ -49,7 +46,7 @@ describe('workflowMcpAvailabilityChanged', () => {
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 	});
 
-	it('patches the list entry settings when the workflow is known', async () => {
+	it('merges partial settings into an existing list entry', async () => {
 		workflowsListStore.workflowsById = {
 			'wf-1': {
 				id: 'wf-1',
@@ -58,9 +55,12 @@ describe('workflowMcpAvailabilityChanged', () => {
 			},
 		} as unknown as typeof workflowsListStore.workflowsById;
 
-		await workflowMcpAvailabilityChanged(makeEvent('wf-1', true));
+		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }));
 
-		expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(true);
+		expect(workflowsListStore.workflowsById['wf-1'].settings).toEqual({
+			availableInMCP: true,
+			executionOrder: 'v1',
+		});
 	});
 
 	it('creates a settings object on list entries that have none', async () => {
@@ -68,23 +68,23 @@ describe('workflowMcpAvailabilityChanged', () => {
 			'wf-1': { id: 'wf-1', name: 'wf' },
 		} as unknown as typeof workflowsListStore.workflowsById;
 
-		await workflowMcpAvailabilityChanged(makeEvent('wf-1', true));
+		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }));
 
-		expect(workflowsListStore.workflowsById['wf-1'].settings?.availableInMCP).toBe(true);
+		expect(workflowsListStore.workflowsById['wf-1'].settings).toEqual({
+			availableInMCP: true,
+		});
 	});
 
 	it('does nothing for the document store when the workflow is not the active one', async () => {
 		workflowsStore.workflow.id = 'other-workflow';
-		const getWorkflowSpy = vi.spyOn(workflowsApi, 'getWorkflow');
 
-		await workflowMcpAvailabilityChanged(makeEvent('wf-1', true));
+		await workflowSettingsUpdated(makeEvent('wf-1', { availableInMCP: true }));
 
 		expect(mockWorkflowDocumentStore.mergeSettings).not.toHaveBeenCalled();
 		expect(mockWorkflowDocumentStore.setChecksum).not.toHaveBeenCalled();
-		expect(getWorkflowSpy).not.toHaveBeenCalled();
 	});
 
-	it('merges settings and refreshes the checksum for the active document', async () => {
+	it('merges settings and uses payload checksum for the active document', async () => {
 		workflowsStore.workflow.id = 'wf-current';
 		workflowsListStore.workflowsById = {
 			'wf-current': {
@@ -95,35 +95,55 @@ describe('workflowMcpAvailabilityChanged', () => {
 			},
 		} as unknown as typeof workflowsListStore.workflowsById;
 
-		const getWorkflowSpy = vi.spyOn(workflowsApi, 'getWorkflow').mockResolvedValue({
-			id: 'wf-current',
-			checksum: 'fresh-checksum',
-		} as never);
-
-		await workflowMcpAvailabilityChanged(makeEvent('wf-current', true));
+		await workflowSettingsUpdated(
+			makeEvent('wf-current', { availableInMCP: true }, 'fresh-checksum'),
+		);
 
 		expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledWith({ availableInMCP: true });
-		expect(getWorkflowSpy).toHaveBeenCalledWith({}, 'wf-current');
 		expect(mockWorkflowDocumentStore.setChecksum).toHaveBeenCalledWith('fresh-checksum');
 		expect(workflowsListStore.workflowsById['wf-current'].checksum).toBe('fresh-checksum');
 	});
 
-	it('still applies local settings when the checksum refresh fails', async () => {
+	it('applies settings but skips checksum refresh when none is provided', async () => {
 		workflowsStore.workflow.id = 'wf-current';
 		workflowsListStore.workflowsById = {
 			'wf-current': {
 				id: 'wf-current',
 				name: 'wf',
 				settings: { availableInMCP: false, executionOrder: 'v1' },
+				checksum: 'stale-checksum',
 			},
 		} as unknown as typeof workflowsListStore.workflowsById;
-		vi.spyOn(workflowsApi, 'getWorkflow').mockRejectedValue(new Error('network'));
 
-		await expect(
-			workflowMcpAvailabilityChanged(makeEvent('wf-current', true)),
-		).resolves.toBeUndefined();
+		await workflowSettingsUpdated(makeEvent('wf-current', { availableInMCP: true }));
 
 		expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledWith({ availableInMCP: true });
 		expect(mockWorkflowDocumentStore.setChecksum).not.toHaveBeenCalled();
+		expect(workflowsListStore.workflowsById['wf-current'].checksum).toBe('stale-checksum');
+	});
+
+	it('merges multiple settings keys in one event', async () => {
+		workflowsStore.workflow.id = 'wf-current';
+		workflowsListStore.workflowsById = {
+			'wf-current': {
+				id: 'wf-current',
+				name: 'wf',
+				settings: { executionOrder: 'v0' },
+			},
+		} as unknown as typeof workflowsListStore.workflowsById;
+
+		await workflowSettingsUpdated(
+			makeEvent('wf-current', { availableInMCP: true, timezone: 'UTC' }),
+		);
+
+		expect(mockWorkflowDocumentStore.mergeSettings).toHaveBeenCalledWith({
+			availableInMCP: true,
+			timezone: 'UTC',
+		});
+		expect(workflowsListStore.workflowsById['wf-current'].settings).toEqual({
+			executionOrder: 'v0',
+			availableInMCP: true,
+			timezone: 'UTC',
+		});
 	});
 });
