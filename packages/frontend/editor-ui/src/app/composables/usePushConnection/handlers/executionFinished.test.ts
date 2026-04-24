@@ -548,6 +548,99 @@ describe('executionFinished', () => {
 
 		expect(runWorkflow).not.toHaveBeenCalled();
 	});
+
+	it('should clear executing node queue even when fetchExecutionData returns undefined', async () => {
+		const pinia = createTestingPinia({
+			initialState: {
+				workflows: {
+					activeExecutionId: '123',
+				},
+			},
+		});
+
+		setActivePinia(pinia);
+
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+
+		workflowsStore.activeExecutionId = '123';
+
+		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
+			id: '1',
+			name: 'Test Workflow',
+			nodes: [],
+			connections: {},
+			active: false,
+			settings: {},
+		} as unknown as ReturnType<typeof workflowsListStore.getWorkflowById>);
+
+		// Simulate the iframe scenario: fetch returns no data
+		vi.spyOn(workflowsStore, 'fetchExecutionDataById').mockResolvedValue(null);
+
+		const clearNodeExecutionQueue = vi.fn();
+		const workflowState = mock<WorkflowState>({
+			executingNode: {
+				lastAddedExecutingNode: 'LastNode',
+				clearNodeExecutionQueue,
+			},
+			setActiveExecutionId: vi.fn(),
+		});
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: {
+					executionId: '123',
+					workflowId: '1',
+					status: 'success',
+				},
+			},
+			{
+				router: mock<Router>(),
+				workflowState,
+			},
+		);
+
+		// The executing node queue must be cleared so nodes don't stay stuck
+		// with a spinner after the execution finishes.
+		expect(clearNodeExecutionQueue).toHaveBeenCalled();
+	});
+
+	it('should clear executing node queue when activeExecutionId is undefined (iframe preview)', async () => {
+		const pinia = createTestingPinia();
+		setActivePinia(pinia);
+
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		// In iframe preview after resetWorkspace, activeExecutionId can be undefined
+		workflowsStore.activeExecutionId = undefined;
+
+		const clearNodeExecutionQueue = vi.fn();
+		const workflowState = mock<WorkflowState>({
+			executingNode: {
+				lastAddedExecutingNode: 'LastNode',
+				clearNodeExecutionQueue,
+			},
+		});
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: {
+					executionId: '123',
+					workflowId: '1',
+					status: 'success',
+				},
+			},
+			{
+				router: mock<Router>(),
+				workflowState,
+			},
+		);
+
+		// Even when activeExecutionId is undefined (iframe early return),
+		// the executing node queue must be cleared.
+		expect(clearNodeExecutionQueue).toHaveBeenCalled();
+	});
 });
 
 describe('manual execution stats tracking', () => {

@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -476,8 +477,8 @@ describe('MeController', () => {
 					mock({ email: user.email, firstName: 'John', lastName: 'Doe' }),
 				),
 			).rejects.toThrowError(
-				new BadRequestError(
-					'This account is managed via environment variables and cannot be updated here',
+				new ForbiddenError(
+					'This account is managed via environment variables and cannot be modified through the API',
 				),
 			);
 		});
@@ -497,8 +498,8 @@ describe('MeController', () => {
 					mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
 				),
 			).rejects.toThrowError(
-				new BadRequestError(
-					'This account is managed via environment variables and cannot be updated here',
+				new ForbiddenError(
+					'This account is managed via environment variables and cannot be modified through the API',
 				),
 			);
 		});

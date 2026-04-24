@@ -10,6 +10,7 @@ import type { TrustedKeySourceRepository } from '../../database/repositories/tru
 import type { TrustedKeyRepository } from '../../database/repositories/trusted-key.repository';
 import type { TokenExchangeConfig } from '../../token-exchange.config';
 import type { TrustedKeyData } from '../../token-exchange.schemas';
+import type { JwksResolverService } from '../jwks-resolver';
 import { TrustedKeyService } from '../trusted-key.service';
 
 // ──────────────────────────────────────────────────────────────────────
@@ -57,15 +58,16 @@ function makeTrustedKeyEntity(
 	return entity;
 }
 
-function createMocks() {
+function createMocks({ isLeader = true }: { isLeader?: boolean } = {}) {
 	const config = mock<TokenExchangeConfig>({
 		trustedKeys: '',
 		keyRefreshIntervalSeconds: 300,
 	});
 	const sourceRepo = mock<TrustedKeySourceRepository>();
 	const keyRepo = mock<TrustedKeyRepository>();
-	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
+	const instanceSettings = mock<InstanceSettings>({ isLeader });
 	const dbLockService = mock<DbLockService>();
+	const jwksResolverService = mock<JwksResolverService>();
 
 	dbLockService.withLock.mockImplementation(
 		async (_lockId: unknown, fn: (tx: EntityManager) => Promise<unknown>) => {
@@ -82,9 +84,10 @@ function createMocks() {
 		keyRepo,
 		instanceSettings,
 		dbLockService,
+		jwksResolverService,
 	);
 
-	return { service, keyRepo, sourceRepo, dbLockService };
+	return { service, keyRepo, sourceRepo, dbLockService, instanceSettings };
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -141,7 +144,58 @@ describe('TrustedKeyService', () => {
 		});
 	});
 
+	describe('initialize', () => {
+		it('should sync sources, refresh keys, and start refresh poller on the leader', async () => {
+			const { service, dbLockService } = createMocks({ isLeader: true });
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			await service.initialize();
+
+			// sync + refresh both run under the distributed lock
+			expect(dbLockService.withLock).toHaveBeenCalled();
+			// refresh poller started
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
+			service.stopRefresh();
+			setIntervalSpy.mockRestore();
+		});
+
+		it('should sync sources and refresh keys on followers without starting the refresh poller', async () => {
+			const { service, dbLockService } = createMocks({ isLeader: false });
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			await service.initialize();
+
+			// Followers MUST write sources and keys to DB at startup — this closes
+			// the multi-main race where a follower could serve verification before
+			// the leader had populated the table.
+			expect(dbLockService.withLock).toHaveBeenCalled();
+			// Periodic refresh is still leader-only
+			expect(setIntervalSpy).not.toHaveBeenCalled();
+
+			setIntervalSpy.mockRestore();
+		});
+	});
+
 	describe('leader lifecycle', () => {
+		it('should refresh keys and start the poller when a follower is elected leader', async () => {
+			const { service, dbLockService } = createMocks({ isLeader: false });
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			await service.initialize();
+			expect(setIntervalSpy).not.toHaveBeenCalled();
+
+			await service.onLeaderTakeover();
+
+			// Takeover should re-fetch from sources...
+			expect(dbLockService.withLock).toHaveBeenCalled();
+			// ...and start the periodic poller that was previously follower-suppressed.
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
+			service.stopRefresh();
+			setIntervalSpy.mockRestore();
+		});
+
 		it('should start refresh poll interval on leader takeover', () => {
 			const { service } = createMocks();
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');

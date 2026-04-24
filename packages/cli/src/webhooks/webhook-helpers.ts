@@ -120,9 +120,10 @@ export function handleHostedChatResponse(
 	responseMode: WebhookResponseMode,
 	didSendResponse: boolean,
 	executionId: string,
+	resumeToken?: string,
 ): boolean {
 	if (responseMode === 'hostedChat' && !didSendResponse) {
-		res.send({ executionStarted: true, executionId });
+		res.send({ executionStarted: true, executionId, resumeToken });
 		process.nextTick(() => res.end());
 		return true;
 	}
@@ -788,7 +789,13 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
-		didSendResponse = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+		didSendResponse = handleHostedChatResponse(
+			res,
+			responseMode,
+			didSendResponse,
+			executionId,
+			runExecutionData?.resumeToken,
+		);
 
 		Container.get(Logger).debug(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,

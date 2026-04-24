@@ -1,31 +1,24 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { AI_GATEWAY_EXPERIMENT } from '@/app/constants';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
 export function useAiGateway() {
 	const settingsStore = useSettingsStore();
-	const postHogStore = usePostHog();
 	const router = useRouter();
 	const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 	const aiGatewayStore = useAiGatewayStore();
 
-	const creditsRemaining = computed(() => aiGatewayStore.creditsRemaining);
-	const creditsQuota = computed(() => aiGatewayStore.creditsQuota);
+	const balance = computed(() => aiGatewayStore.balance);
+	const budget = computed(() => aiGatewayStore.budget);
 	const fetchError = computed(() => aiGatewayStore.fetchError);
 
-	const isEnabled = computed(
-		() =>
-			postHogStore.getVariant(AI_GATEWAY_EXPERIMENT.name) === AI_GATEWAY_EXPERIMENT.variant &&
-			settingsStore.isAiGatewayEnabled,
-	);
+	const isEnabled = computed(() => settingsStore.isAiGatewayEnabled);
 
-	async function fetchCredits(): Promise<void> {
+	async function fetchWallet(): Promise<void> {
 		if (!isEnabled.value) return;
-		await aiGatewayStore.fetchCredits();
+		await aiGatewayStore.fetchWallet();
 	}
 
 	const isCredentialTypeSupported = (credentialType: string): boolean =>
@@ -42,11 +35,11 @@ export function useAiGateway() {
 
 	return {
 		isEnabled,
-		creditsRemaining,
-		creditsQuota,
+		balance,
+		budget,
 		fetchError,
 		fetchConfig,
-		fetchCredits,
+		fetchWallet,
 		isCredentialTypeSupported,
 		saveAfterToggle,
 	};

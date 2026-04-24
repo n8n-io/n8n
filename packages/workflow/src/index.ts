@@ -58,6 +58,7 @@ export {
 	isCommunityPackageName,
 	dedupe,
 	sanitizeFilename,
+	sanitizeXmlName,
 	generateSecureToken,
 } from './utils';
 export {

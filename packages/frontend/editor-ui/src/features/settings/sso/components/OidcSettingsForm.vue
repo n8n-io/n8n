@@ -24,6 +24,7 @@ const message = useMessage();
 
 const savingForm = ref<boolean>(false);
 const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
+const isSsoManagedByEnv = computed(() => ssoStore.ssoManagedByEnv);
 
 const discoveryEndpoint = ref('');
 const clientId = ref('');
@@ -32,10 +33,15 @@ const clientSecret = ref('');
 const showUserRoleProvisioningDialog = ref(false);
 
 const {
+	roleAssignment,
+	mappingMethod,
 	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
-	shouldPromptUserToConfirmUserRoleProvisioningChange,
+	roleAssignmentTransition,
+	storedHasProjectRoles,
+	isDroppingProjectRules,
+	revertRoleAssignment,
 } = useUserRoleProvisioningForm(SupportedProtocols.OIDC);
 
 type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
@@ -110,16 +116,10 @@ const cannotSaveOidcSettings = computed(() => {
 	);
 });
 
-async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false) {
-	if (
-		!provisioningChangesConfirmed &&
-		shouldPromptUserToConfirmUserRoleProvisioningChange({
-			currentLoginEnabled: !!ssoStore.oidcConfig?.loginEnabled,
-			loginEnabledFormValue: ssoStore.isOidcLoginEnabled,
-		})
-	) {
+async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false): Promise<boolean> {
+	if (!provisioningChangesConfirmed && roleAssignmentTransition.value !== 'none') {
 		showUserRoleProvisioningDialog.value = true;
-		return;
+		return false;
 	}
 
 	const isLoginEnabledChanged = ssoStore.oidcConfig?.loginEnabled !== ssoStore.isOidcLoginEnabled;
@@ -141,7 +141,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 				),
 			},
 		);
-		if (confirmAction !== MODAL_CONFIRM) return;
+		if (confirmAction !== MODAL_CONFIRM) return false;
 	}
 
 	const acrArray = authenticationContextClassReference.value
@@ -161,6 +161,16 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		});
 		await saveProvisioningConfig(isDisablingOidcLogin);
 
+		// If the user's effective role assignment doesn't include project roles,
+		// discard any project-rule state in the editor (both locally-added and
+		// server-backed entries) so editor.save() doesn't try to POST/PATCH rules
+		// that shouldn't exist. Checking the current dropdown at save-time is
+		// robust against storedHasProjectRules drift.
+		const effectiveRoleAssignment = isDisablingOidcLogin ? 'manual' : roleAssignment.value;
+		if (effectiveRoleAssignment !== 'instance_and_project') {
+			roleMappingRuleEditorRef.value?.discardProjectRules();
+		}
+
 		if (userRoleProvisioning.value === 'expression_based') {
 			await roleMappingRuleEditorRef.value?.save();
 		}
@@ -173,12 +183,17 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		clientSecret.value = newConfig.clientSecret;
 
 		sendTrackingEvent(newConfig);
+		toast.showMessage({
+			title: i18n.baseText('settings.sso.settings.save.success'),
+			type: 'success',
+		});
+		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
-		return;
+		return false;
 	} finally {
-		savingForm.value = false;
 		await getOidcConfig();
+		savingForm.value = false;
 	}
 }
 
@@ -211,7 +226,9 @@ const onTest = async () => {
 	}
 };
 
-const hasUnsavedChanges = computed(() => !cannotSaveOidcSettings.value && !savingForm.value);
+const hasUnsavedChanges = computed(
+	() => !cannotSaveOidcSettings.value && !savingForm.value && !isSsoManagedByEnv.value,
+);
 
 defineExpose({ hasUnsavedChanges, onSave: onOidcSettingsSave });
 
@@ -221,7 +238,7 @@ onMounted(async () => {
 </script>
 <template>
 	<div>
-		<div :class="$style.card">
+		<div :class="[$style.card, $style.firstCard]">
 			<slot name="protocol-select" />
 			<div :class="$style.group">
 				<label>Redirect URL</label>
@@ -236,6 +253,7 @@ onMounted(async () => {
 				<label>Discovery Endpoint</label>
 				<N8nInput
 					:model-value="discoveryEndpoint"
+					:disabled="isSsoManagedByEnv"
 					type="text"
 					data-test-id="oidc-discovery-endpoint"
 					placeholder="https://accounts.google.com/.well-known/openid-configuration"
@@ -247,6 +265,7 @@ onMounted(async () => {
 				<label>Client ID</label>
 				<N8nInput
 					:model-value="clientId"
+					:disabled="isSsoManagedByEnv"
 					type="text"
 					data-test-id="oidc-client-id"
 					@update:model-value="(v: string) => (clientId = v)"
@@ -259,6 +278,7 @@ onMounted(async () => {
 				<label>Client Secret</label>
 				<N8nInput
 					:model-value="clientSecret"
+					:disabled="isSsoManagedByEnv"
 					type="password"
 					data-test-id="oidc-client-secret"
 					@update:model-value="(v: string) => (clientSecret = v)"
@@ -272,6 +292,7 @@ onMounted(async () => {
 				<label>Prompt</label>
 				<N8nSelect
 					:model-value="prompt"
+					:disabled="isSsoManagedByEnv"
 					data-test-id="oidc-prompt"
 					@update:model-value="handlePromptChange"
 				>
@@ -287,24 +308,36 @@ onMounted(async () => {
 			</div>
 		</div>
 		<div :class="$style.card">
-			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="oidc" />
+			<UserRoleProvisioningDropdown
+				v-model:role-assignment="roleAssignment"
+				v-model:mapping-method="mappingMethod"
+				v-model:legacy-value="userRoleProvisioning"
+				auth-protocol="oidc"
+				:disabled="isSsoManagedByEnv"
+			/>
 			<RoleMappingRuleEditor
-				v-if="userRoleProvisioning === 'expression_based'"
+				v-if="mappingMethod === 'rules_in_n8n'"
 				ref="roleMappingRuleEditorRef"
-				@remove-mapping="userRoleProvisioning = 'disabled'"
+				:show-project-rules="roleAssignment === 'instance_and_project'"
 			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
-				:new-provisioning-setting="userRoleProvisioning"
+				:transition-type="roleAssignmentTransition"
+				:show-project-roles-csv="storedHasProjectRoles || roleAssignment === 'instance_and_project'"
+				:will-delete-project-rules="isDroppingProjectRules"
 				auth-protocol="oidc"
 				@confirm-provisioning="onOidcSettingsSave(true)"
-				@cancel="showUserRoleProvisioningDialog = false"
+				@cancel="
+					revertRoleAssignment();
+					showUserRoleProvisioningDialog = false;
+				"
 			/>
 			<div :class="$style.group">
 				<label>Authentication Context Class Reference</label>
 				<N8nInput
 					:model-value="authenticationContextClassReference"
 					type="textarea"
+					:disabled="isSsoManagedByEnv"
 					data-test-id="oidc-authentication-context-class-reference"
 					placeholder="mfa, phrh, pwd"
 					@update:model-value="(v: string) => (authenticationContextClassReference = v)"
@@ -316,7 +349,7 @@ onMounted(async () => {
 			</div>
 		</div>
 		<div :class="$style.card">
-			<div :class="$style.settingsItem" style="border-bottom: none">
+			<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
 				<div :class="$style.settingsItemLabel">
 					<label>Single sign-on (SSO)</label>
 					<small>Allow users to sign in through your identity provider</small>
@@ -324,7 +357,9 @@ onMounted(async () => {
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
 						:model-value="ssoStore.isOidcLoginEnabled ? 'enabled' : 'disabled'"
+						size="medium"
 						data-test-id="sso-oidc-toggle"
+						:disabled="isSsoManagedByEnv"
 						@update:model-value="ssoStore.isOidcLoginEnabled = $event === 'enabled'"
 					>
 						<template #prefix>
@@ -339,6 +374,7 @@ onMounted(async () => {
 
 		<div :class="$style.buttons">
 			<N8nButton
+				v-if="!isSsoManagedByEnv"
 				data-test-id="sso-oidc-save"
 				size="large"
 				:loading="savingForm"

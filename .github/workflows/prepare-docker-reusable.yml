@@ -1,0 +1,49 @@
+name: 'Prepare n8n Docker (reusable)'
+
+# Reusable workflow that ensures the n8n + runners CI test images for the
+# current commit SHA are present in the GHA cache. Cache-aware: if another
+# job in the same run already populated `n8n-docker-image-<sha>`, this
+# becomes a no-op.
+#
+# Downstream jobs restore the same SHA-keyed cache via load-n8n-docker.
+
+on:
+  workflow_call:
+    inputs:
+      build-variant:
+        description: 'standard or coverage'
+        required: false
+        default: 'standard'
+        type: string
+      runner:
+        description: 'Runner for the build.'
+        required: false
+        default: 'blacksmith-4vcpu-ubuntu-2204'
+        type: string
+      branch:
+        description: 'Git ref to check out.'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  prepare:
+    name: 'Build & publish image'
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 1
+
+      - name: Build and publish image
+        uses: ./.github/actions/build-n8n-docker
+        with:
+          build-variant: ${{ inputs.build-variant }}
+        env:
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}

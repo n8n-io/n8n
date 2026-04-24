@@ -18,6 +18,7 @@ The verification artifact contains:
 - **Errors**: Any runtime errors from the execution
 - **Workflow structure**: ALL nodes that were built, whether they executed or not, plus the full connections JSON showing how nodes are wired. Use this to verify node existence and wiring before making claims about missing nodes or wrong connections.
 - **Execution trace**: Per-node detail including HTTP requests sent, mock responses returned, and node output. Only includes nodes that actually ran. **IMPORTANT: The trace is NOT in chronological order.** Do not infer execution sequence from the order nodes appear in the trace. Use the connections JSON in the workflow structure to determine execution flow.
+- **Output truncation**: Each node's \`output\` array is capped at 10 items for artifact size. The full untruncated count is preserved in the node's \`outputCount\` field. **Do not treat a smaller \`output\` array as a bug.** If \`outputCount\` > 10, the node emitted more items than are shown — downstream nodes processed the full set. Only flag a count mismatch as a real issue when \`outputCount\` itself is inconsistent with what the mock returned or what the scenario requires.
 
 ## How to evaluate
 
@@ -42,8 +43,8 @@ The verification artifact contains:
 ## Failure categories
 
 When a checklist item fails, categorize the root cause:
-- **builder_issue**: The AI agent that built the workflow misconfigured a node (missing parameters, wrong settings, incomplete config, wrong routing logic, missing nodes). Evidence: configIssues flags, nodes crashing before making HTTP requests, Switch/IF nodes missing required options, workflow structure doesn't match what the prompt asked for.
-- **mock_issue**: The LLM mock handler returned incorrect or missing data. Evidence: _evalMockError in responses, mock response shape doesn't match what the node expects, identical responses for different requests, mock data missing fields that downstream nodes reference.
+- **builder_issue**: The AI agent that built the workflow misconfigured a node (missing parameters, wrong settings, incomplete config, wrong routing logic, missing nodes). Evidence: configIssues flags, nodes crashing before making HTTP requests, Switch/IF nodes missing required options, workflow structure doesn't match what the prompt asked for. Also applies when a filter/code node receives correct input data but produces wrong output — this means the node logic is wrong, not the mock data.
+- **mock_issue**: The LLM mock handler returned incorrect or missing data. Evidence: _evalMockError in responses, mock response shape doesn't match what the node expects, mock data missing fields that downstream nodes reference. IMPORTANT: Trace the data flow carefully — if the mock returned correct data but a downstream filter or code node transformed it incorrectly, that is a builder_issue, not a mock_issue.
 - **legitimate_failure**: The workflow genuinely doesn't meet the success criteria and neither the builder nor mock is at fault. The test is working as designed — for example, the workflow lacks error handling that the scenario tests for.
 - **framework_issue**: The evaluation framework itself failed — Phase 1 returned an error or empty trigger content, causing cascading failures. Evidence: pre-analysis flags starting with "FRAMEWORK ISSUE", empty trigger node output (empty JSON object), "Phase 1 error" warnings. When this happens, downstream node crashes are a consequence of the empty input, NOT a builder or mock problem.
 - **verification_gap**: You don't have enough information in the artifact to make a determination.

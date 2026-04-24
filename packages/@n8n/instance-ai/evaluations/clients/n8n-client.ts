@@ -84,8 +84,9 @@ export class N8nClient {
 	 * Captures the `n8n-auth` cookie for subsequent requests.
 	 */
 	async login(email?: string, password?: string): Promise<void> {
-		const loginEmail = email ?? process.env.N8N_EVAL_EMAIL ?? 'admin@n8n.io';
-		const loginPassword = password ?? process.env.N8N_EVAL_PASSWORD ?? 'password';
+		// Defaults match the E2E test owner created by the E2E_TESTS=true bootstrap
+		const loginEmail = email ?? process.env.N8N_EVAL_EMAIL ?? 'nathan@n8n.io';
+		const loginPassword = password ?? process.env.N8N_EVAL_PASSWORD ?? 'PlaywrightTest123';
 
 		await this.fetch('/rest/login', {
 			method: 'POST',

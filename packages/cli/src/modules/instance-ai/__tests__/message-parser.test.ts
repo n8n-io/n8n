@@ -155,7 +155,7 @@ describe('parseStoredMessages', () => {
 							{
 								state: 'call',
 								toolCallId: 'tc-2',
-								toolName: 'update-tasks',
+								toolName: 'task-control',
 								args: { tasks: [] },
 							},
 						],

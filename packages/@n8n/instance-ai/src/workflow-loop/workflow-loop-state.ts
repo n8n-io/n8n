@@ -29,6 +29,8 @@ export const workflowLoopStateSchema = z.object({
 	rebuildAttempts: z.number().int().min(0),
 	/** Credential types that were mocked during build (persisted across phases). */
 	mockedCredentialTypes: z.array(z.string()).optional(),
+	/** Whether the submitted workflow contains unresolved placeholder values (persisted across phases). */
+	hasUnresolvedPlaceholders: z.boolean().optional(),
 });
 
 export type WorkflowLoopPhase = z.infer<typeof workflowLoopPhaseSchema>;
@@ -80,6 +82,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
+	/** Whether any node parameters contain unresolved placeholder values. */
+	hasUnresolvedPlaceholders: z.boolean().optional(),
 	summary: z.string(),
 });
 
@@ -124,5 +128,11 @@ export type WorkflowLoopAction =
 			diagnosis: string;
 			patch?: Record<string, unknown>;
 	  }
-	| { type: 'done'; workflowId?: string; summary: string; mockedCredentialTypes?: string[] }
+	| {
+			type: 'done';
+			workflowId?: string;
+			summary: string;
+			mockedCredentialTypes?: string[];
+			hasUnresolvedPlaceholders?: boolean;
+	  }
 	| { type: 'blocked'; reason: string };

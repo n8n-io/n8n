@@ -807,6 +807,53 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('identity extractor');
 		});
 
+		it('should return valid when Chat Trigger with availableInChat is the trigger', async () => {
+			const nodes: INode[] = [
+				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger', {
+					parameters: { availableInChat: true },
+				}),
+				createNode('Google Calendar', 'n8n-nodes-base.googleCalendar', {
+					credentials: { googleCalendarOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Google Calendar account 56', resolverId: 'resolver-1' } as any,
+			]);
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return invalid when Chat Trigger does not have availableInChat set', async () => {
+			const nodes: INode[] = [
+				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger'),
+				createNode('Google Calendar', 'n8n-nodes-base.googleCalendar', {
+					credentials: { googleCalendarOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Google Calendar account 56', resolverId: 'resolver-1' } as any,
+			]);
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('identity extractor');
+		});
+
 		it('should skip disabled nodes when collecting credentials', async () => {
 			const nodes: INode[] = [
 				createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
