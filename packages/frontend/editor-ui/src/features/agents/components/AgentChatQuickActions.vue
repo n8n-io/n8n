@@ -83,6 +83,7 @@ function onAddTrigger() {
 .row {
 	display: flex;
 	gap: var(--spacing--3xs);
+	padding-left: var(--spacing--2xs);
 	flex-wrap: wrap;
 }
 </style>
