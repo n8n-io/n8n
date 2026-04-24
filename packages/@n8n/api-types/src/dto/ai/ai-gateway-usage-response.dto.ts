@@ -10,6 +10,7 @@ export interface AiGatewayUsageEntry {
 	cost: number;
 	inputTokens?: number;
 	outputTokens?: number;
+	metadata?: Record<string, unknown>;
 }
 
 export interface AiGatewayUsageResponse {
