@@ -26,6 +26,7 @@ import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetr
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentSessionsStore } from '../agentSessions.store';
+import { useThreadTitle } from '../utils/thread-title';
 import { agentsEventBus } from '../agents.eventBus';
 import {
 	AGENTS_LIST_VIEW,
@@ -125,12 +126,13 @@ const currentSessionHasMessages = computed(() => {
 	return (sessionsStore.threads ?? []).some((t) => t.id === id);
 });
 
+const threadTitleOf = useThreadTitle();
 const currentSessionTitle = computed(() => {
 	const id = effectiveSessionId.value;
 	if (!id) return '';
 	const thread = (sessionsStore.threads ?? []).find((t) => t.id === id);
-	if (!thread) return 'New chat';
-	return thread.title ?? `Session ${thread.sessionNumber}`;
+	if (!thread) return locale.baseText('agents.builder.chat.newChat.label');
+	return threadTitleOf(thread);
 });
 
 type SaveStatus = 'idle' | 'saving' | 'saved';
@@ -686,7 +688,7 @@ const sessionMenu = computed<SessionMenuItem[]>(() => {
 	}
 	return threads.map((thread) => ({
 		id: thread.id,
-		title: thread.title ?? `Session ${thread.sessionNumber}`,
+		title: threadTitleOf(thread),
 	}));
 });
 

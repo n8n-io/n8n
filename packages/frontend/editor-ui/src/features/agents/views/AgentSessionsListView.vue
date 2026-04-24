@@ -127,7 +127,9 @@ async function loadMore() {
 						data-test-id="agent-session-list-item"
 						@click="onRowClick(thread.id)"
 					>
-						<td>{{ truncate(thread.title ?? `Session ${thread.sessionNumber}`, 32) }}</td>
+						<td>
+							{{ truncate(thread.title ?? i18n.baseText('agents.builder.chat.newChat.label'), 32) }}
+						</td>
 						<td>{{ formatDate(thread.updatedAt) }}</td>
 						<td>{{ formatDuration(thread.totalDuration) }}</td>
 						<td>{{ formatTokens(thread.totalPromptTokens + thread.totalCompletionTokens) }}</td>

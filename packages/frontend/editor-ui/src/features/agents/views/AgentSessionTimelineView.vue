@@ -221,7 +221,7 @@ function toolDuration(tc: ToolCallEvent): string {
 
 const sessionTitle = computed(() => {
 	if (!thread.value) return '';
-	const title = thread.value.title ?? `Session ${thread.value.sessionNumber}`;
+	const title = thread.value.title ?? i18n.baseText('agents.builder.chat.newChat.label');
 	return truncate(title, 64);
 });
 

@@ -16,14 +16,9 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { ResponseError } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import {
-	connectIntegration,
-	disconnectIntegration,
-	getIntegrationStatus,
-} from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 
 interface CredentialOption {
@@ -50,14 +45,23 @@ const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 // Local integration list — populated from catalog on mount
 const integrations = ref<ChatIntegrationDescriptor[]>([]);
 
-// Per-integration state
-const statuses = ref<Record<string, string>>({});
-const connectedCredentials = ref<Record<string, string>>({});
+// Shared integration status — same reactive source as AgentIntegrationsPanel
+// so connecting here is instantly reflected in the Triggers section.
+const {
+	statuses,
+	connectedCredentials,
+	loadingMap,
+	errorMessages,
+	errorIsConflict,
+	fetchStatus: fetchStatusShared,
+	connect,
+	disconnect,
+	isConnected,
+} = useAgentIntegrationStatus(props.data.projectId, props.data.agentId);
+
+// UI-only state — stays local.
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, CredentialOption[]>>({});
-const loadingMap = ref<Record<string, boolean>>({});
-const errorMessages = ref<Record<string, string>>({});
-const errorIsConflict = ref<Record<string, boolean>>({});
 const credentialsLoading = ref(false);
 
 // Linear webhook URL copy state
@@ -66,10 +70,6 @@ const linearCopied = ref(false);
 // Slack manifest copy state
 const manifestCopied = ref(false);
 const showManifest = ref(false);
-
-function isConnected(type: string): boolean {
-	return statuses.value[type] === 'connected';
-}
 
 function isLoading(type: string): boolean {
 	return loadingMap.value[type] ?? false;
@@ -183,26 +183,7 @@ function emitConnectedTriggers() {
 }
 
 async function fetchStatus() {
-	try {
-		const result = await getIntegrationStatus(
-			rootStore.restApiContext,
-			props.data.projectId,
-			props.data.agentId,
-		);
-		for (const integration of integrations.value) {
-			statuses.value[integration.type] = 'disconnected';
-			connectedCredentials.value[integration.type] = '';
-		}
-		for (const item of result.integrations ?? []) {
-			statuses.value[item.type] = 'connected';
-			connectedCredentials.value[item.type] = item.credentialId;
-		}
-	} catch {
-		for (const integration of integrations.value) {
-			statuses.value[integration.type] = 'disconnected';
-			connectedCredentials.value[integration.type] = '';
-		}
-	}
+	await fetchStatusShared(integrations.value.map((i) => i.type));
 	emitConnectedTriggers();
 }
 
@@ -230,55 +211,22 @@ async function fetchCredentials() {
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
-	loadingMap.value[type] = true;
-	errorMessages.value[type] = '';
-	errorIsConflict.value[type] = false;
 	try {
-		await connectIntegration(
-			rootStore.restApiContext,
-			props.data.projectId,
-			props.data.agentId,
-			type,
-			credId,
-		);
-
-		// Optimistically mark as connected before fetchStatus() reconciles
-		statuses.value[type] = 'connected';
+		await connect(type, credId);
 		const triggers = computeConnectedTriggers();
 		props.data.onTriggerAdded({ triggerType: type, triggers });
-
-		await fetchStatus();
-	} catch (e: unknown) {
-		const msg =
-			e instanceof Error
-				? e.message
-				: typeof e === 'object' && e !== null && 'message' in e
-					? String((e as { message: unknown }).message)
-					: 'Failed to connect';
-		errorMessages.value[type] = msg;
-		errorIsConflict.value[type] = e instanceof ResponseError && e.httpStatusCode === 409;
-	} finally {
-		loadingMap.value[type] = false;
+		emitConnectedTriggers();
+	} catch {
+		// Error details already surfaced in the shared state by `connect()`.
 	}
 }
 
 async function onDisconnect(type: string) {
 	const credId = connectedCredentials.value[type] || selectedCredentials.value[type];
 	if (!credId) return;
-	loadingMap.value[type] = true;
-	try {
-		await disconnectIntegration(
-			rootStore.restApiContext,
-			props.data.projectId,
-			props.data.agentId,
-			type,
-			credId,
-		);
-		await fetchStatus();
-		selectedCredentials.value[type] = '';
-	} finally {
-		loadingMap.value[type] = false;
-	}
+	await disconnect(type, credId);
+	selectedCredentials.value[type] = '';
+	emitConnectedTriggers();
 }
 
 function onCreateCredential(integration: ChatIntegrationDescriptor) {

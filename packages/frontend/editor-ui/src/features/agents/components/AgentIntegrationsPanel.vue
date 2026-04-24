@@ -6,12 +6,8 @@ import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
-import {
-	connectIntegration,
-	disconnectIntegration,
-	getIntegrationStatus,
-} from '../composables/useAgentApi';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 const props = withDefaults(
 	defineProps<{
 		projectId: string;
@@ -92,21 +88,26 @@ const integrationConfigs: IntegrationConfig[] = [
 	},
 ];
 
-// Per-integration state
-const statuses = ref<Record<string, string>>({});
-const connectedCredentials = ref<Record<string, string>>({});
+// Connected-integration state lives in a shared composable so the Triggers
+// panel and the Add-Trigger modal render off the same source of truth.
+const {
+	statuses,
+	connectedCredentials,
+	loadingMap,
+	errorMessages,
+	errorIsConflict,
+	fetchStatus: fetchStatusShared,
+	connect,
+	disconnect,
+	isConnected,
+} = useAgentIntegrationStatus(props.projectId, props.agentId);
+
+// UI-only state — stays local.
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, CredentialOption[]>>({});
-const loadingMap = ref<Record<string, boolean>>({});
-const errorMessages = ref<Record<string, string>>({});
-const errorIsConflict = ref<Record<string, boolean>>({});
 const credentialsLoading = ref(false);
 const copied = ref(false);
 const showManifest = ref(false);
-
-function isConnected(type: string): boolean {
-	return statuses.value[type] === 'connected';
-}
 
 function isLoading(type: string): boolean {
 	return loadingMap.value[type] ?? false;
@@ -221,26 +222,7 @@ function emitConnectedTriggers() {
 }
 
 async function fetchStatus() {
-	try {
-		const result = await getIntegrationStatus(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-		);
-		for (const config of integrationConfigs) {
-			statuses.value[config.type] = 'disconnected';
-			connectedCredentials.value[config.type] = '';
-		}
-		for (const integration of result.integrations ?? []) {
-			statuses.value[integration.type] = 'connected';
-			connectedCredentials.value[integration.type] = integration.credentialId;
-		}
-	} catch {
-		for (const config of integrationConfigs) {
-			statuses.value[config.type] = 'disconnected';
-			connectedCredentials.value[config.type] = '';
-		}
-	}
+	await fetchStatusShared(integrationConfigs.map((c) => c.type));
 	emitConnectedTriggers();
 }
 
@@ -268,56 +250,22 @@ async function fetchCredentials() {
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
-	loadingMap.value[type] = true;
-	errorMessages.value[type] = '';
-	errorIsConflict.value[type] = false;
 	try {
-		await connectIntegration(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-			type,
-			credId,
-		);
-
-		// Optimistically mark as connected before fetchStatus() reconciles
-		// so the telemetry payload reflects the just-connected trigger.
-		statuses.value[type] = 'connected';
+		await connect(type, credId);
 		const triggers = computeConnectedTriggers();
 		emit('trigger-added', { triggerType: type, triggers });
-
-		await fetchStatus();
-	} catch (e: unknown) {
-		const msg =
-			e instanceof Error
-				? e.message
-				: typeof e === 'object' && e !== null && 'message' in e
-					? String((e as { message: unknown }).message)
-					: 'Failed to connect';
-		errorMessages.value[type] = msg;
-		errorIsConflict.value[type] = e instanceof ResponseError && e.httpStatusCode === 409;
-	} finally {
-		loadingMap.value[type] = false;
+		emitConnectedTriggers();
+	} catch {
+		// Error details already surfaced in the shared state by `connect()`.
 	}
 }
 
 async function onDisconnect(type: string) {
 	const credId = connectedCredentials.value[type] || selectedCredentials.value[type];
 	if (!credId) return;
-	loadingMap.value[type] = true;
-	try {
-		await disconnectIntegration(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-			type,
-			credId,
-		);
-		await fetchStatus();
-		selectedCredentials.value[type] = '';
-	} finally {
-		loadingMap.value[type] = false;
-	}
+	await disconnect(type, credId);
+	selectedCredentials.value[type] = '';
+	emitConnectedTriggers();
 }
 
 function onCreateCredential(type: string) {
