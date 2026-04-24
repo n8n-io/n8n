@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { javascript } from '@codemirror/lang-javascript';
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
 import { history } from '@codemirror/commands';
 
@@ -29,6 +29,14 @@ const container = ref<HTMLDivElement>();
 let view: EditorView | null = null;
 let isProgrammaticUpdate = false;
 
+// Compartment wraps the readonly-related extensions so we can swap them
+// reactively when `props.readonly` flips without rebuilding the editor.
+const readonlyCompartment = new Compartment();
+
+function readonlyExtensions(readOnly: boolean) {
+	return readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [history()];
+}
+
 function buildExtensions() {
 	const langExtensions = props.language === 'typescript' ? [javascript({ typescript: true })] : [];
 	return [
@@ -41,18 +49,12 @@ function buildExtensions() {
 			minHeight: props.minHeight,
 			rows: -1,
 		}),
-		...(props.readonly
-			? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
-			: [history()]),
-		...(!props.readonly
-			? [
-					EditorView.updateListener.of((update) => {
-						if (update.docChanged && !isProgrammaticUpdate) {
-							emit('update:modelValue', update.state.doc.toString());
-						}
-					}),
-				]
-			: []),
+		readonlyCompartment.of(readonlyExtensions(props.readonly)),
+		EditorView.updateListener.of((update) => {
+			if (update.docChanged && !isProgrammaticUpdate) {
+				emit('update:modelValue', update.state.doc.toString());
+			}
+		}),
 	];
 }
 
@@ -66,6 +68,16 @@ onMounted(() => {
 		parent: container.value,
 	});
 });
+
+watch(
+	() => props.readonly,
+	(readOnly) => {
+		if (!view) return;
+		view.dispatch({
+			effects: readonlyCompartment.reconfigure(readonlyExtensions(readOnly)),
+		});
+	},
+);
 
 watch(
 	() => props.modelValue,
