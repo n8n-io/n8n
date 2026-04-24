@@ -3,6 +3,7 @@ import { describe, it, vi, beforeEach, expect } from 'vitest';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useRouter } from 'vue-router';
+import type * as VueRouter from 'vue-router';
 import SettingsAiGatewayView from './SettingsAiGatewayView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -10,7 +11,7 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY, VIEWS } from '@/app/constants';
 
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('vue-router')>();
+	const actual = await importOriginal<typeof VueRouter>();
 	return { ...actual, useRouter: vi.fn() };
 });
 
