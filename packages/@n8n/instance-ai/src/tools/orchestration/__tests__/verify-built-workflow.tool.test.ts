@@ -49,6 +49,8 @@ function makeContext(
 		workflowNodes?: Array<{ name?: string; type: string; parameters?: Record<string, unknown> }>;
 		tableRows?: Record<string, Array<Record<string, unknown>>>;
 		queriesAfterRun?: Record<string, Array<Record<string, unknown>>>;
+		/** Throw `snapshotError` on the first queryRows call for the given table id. */
+		snapshotErrors?: Record<string, Error>;
 	} = {},
 ) {
 	const updateBuildOutcome = jest.fn(
@@ -68,21 +70,35 @@ function makeContext(
 	);
 
 	type QueryRowsResult = { count: number; data: Array<Record<string, unknown>> };
-	const queryRowsCalls: string[] = [];
+	/**
+	 * Track which dataTableIds we've already "seen a last page for" — any call
+	 * after the snapshot phase for a given table switches to `queriesAfterRun`.
+	 */
+	const snapshotDone = new Set<string>();
 	const queryRows = jest.fn(
 		async (
 			dataTableId: string,
-			_opts?: { limit?: number; offset?: number },
+			opts?: { limit?: number; offset?: number },
 		): Promise<QueryRowsResult> => {
-			// First call returns tableRows (pre-verify), subsequent return queriesAfterRun (post-verify).
-			const callIndex = queryRowsCalls.filter((id) => id === dataTableId).length;
-			queryRowsCalls.push(dataTableId);
-			const rows: Array<Record<string, unknown>> =
-				callIndex === 0
-					? (overrides.tableRows?.[dataTableId] ?? [])
-					: (overrides.queriesAfterRun?.[dataTableId] ?? overrides.tableRows?.[dataTableId] ?? []);
+			const snapshotError = overrides.snapshotErrors?.[dataTableId];
+			if (snapshotError && !snapshotDone.has(dataTableId)) {
+				// Mark done so post-run phase doesn't keep throwing if that matters.
+				snapshotDone.add(dataTableId);
+				throw snapshotError;
+			}
+			const limit = opts?.limit ?? Number.MAX_SAFE_INTEGER;
+			const offset = opts?.offset ?? 0;
+			const baseRows: Array<Record<string, unknown>> = snapshotDone.has(dataTableId)
+				? (overrides.queriesAfterRun?.[dataTableId] ?? overrides.tableRows?.[dataTableId] ?? [])
+				: (overrides.tableRows?.[dataTableId] ?? []);
+			const page = baseRows.slice(offset, offset + limit);
+			// If this page is the last one of the snapshot (fewer than `limit` rows),
+			// any subsequent calls for this table should fall through to post-run data.
+			if (!snapshotDone.has(dataTableId) && page.length < limit) {
+				snapshotDone.add(dataTableId);
+			}
 			await Promise.resolve();
-			return { count: rows.length, data: rows };
+			return { count: baseRows.length, data: page };
 		},
 	);
 	type DeleteRowsFilter = {
@@ -384,6 +400,80 @@ describe('verify-built-workflow tool', () => {
 		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
 
 		expect(result.success).toBe(false);
+	});
+
+	it('paginates the pre-verify snapshot so upsert-matched rows past the first page are not deleted', async () => {
+		// Build a table with 1500 rows — past the snapshot page size.
+		// If pagination is broken, the snapshot would only contain ids 1..1000,
+		// and the upsert node's output at id=1234 would be misclassified as a
+		// new insert and deleted.
+		const bigTable: Array<Record<string, unknown>> = Array.from({ length: 1500 }, (_v, i) => ({
+			id: i + 1,
+		}));
+		const { ctx, deleteRows, queryRows } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-upsert-past-page',
+				status: 'success',
+				data: {
+					// Upsert matched existing id=1234 — beyond the single-page cap.
+					'Upsert Lead': [{ id: 1234, name: 'Existing', stage: 'qualified' }],
+				},
+			},
+			{
+				workflowNodes: [
+					{
+						name: 'Upsert Lead',
+						type: 'n8n-nodes-base.dataTable',
+						parameters: { operation: 'upsert', dataTableId: 'tbl-leads' },
+					},
+				],
+				tableRows: { 'tbl-leads': bigTable },
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		// Must have made more than one snapshot query to cover a 1500-row table.
+		const snapshotCalls = queryRows.mock.calls.filter(
+			(c) => c[0] === 'tbl-leads' && typeof (c[1] as { offset?: number })?.offset === 'number',
+		);
+		expect(snapshotCalls.length).toBeGreaterThan(1);
+		// And the pre-existing row must not have been deleted.
+		expect(deleteRows).not.toHaveBeenCalled();
+	});
+
+	it('skips cleanup for a table when the pre-verify snapshot read fails', async () => {
+		// If queryRows throws, we cannot distinguish insert from upsert-of-existing,
+		// so cleanup must SKIP this table rather than delete everything the insert
+		// node emitted (which could include upsert-matched existing rows).
+		const { ctx, deleteRows } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-snapshot-fail',
+				status: 'success',
+				data: {
+					'Upsert Lead': [{ id: 42, name: 'Existing', stage: 'qualified' }],
+				},
+			},
+			{
+				workflowNodes: [
+					{
+						name: 'Upsert Lead',
+						type: 'n8n-nodes-base.dataTable',
+						parameters: { operation: 'upsert', dataTableId: 'tbl-leads' },
+					},
+				],
+				tableRows: { 'tbl-leads': [{ id: 42 }] },
+				snapshotErrors: { 'tbl-leads': new Error('DB unavailable') },
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(deleteRows).not.toHaveBeenCalled();
 	});
 
 	it('does not delete rows for dataTable nodes that only read', async () => {

@@ -9,6 +9,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
+import type { Logger } from '../../logger';
 import type {
 	InstanceAiDataTableService,
 	InstanceAiWorkflowService,
@@ -90,17 +91,41 @@ function extractRowIdsFromNodeOutput(nodeOutput: unknown): number[] {
 }
 
 /**
+ * Per-table pre-verify snapshot. A `Set` is a complete list of row IDs that
+ * existed before the run. `null` means the snapshot could not be built (empty
+ * table, read error, or pagination cap hit) — cleanup MUST skip any table with
+ * a null snapshot, otherwise upsert-matched existing rows would be misclassified
+ * as new inserts and deleted.
+ */
+type PreIdsMap = Map<string, Set<number> | null>;
+
+/** Rows per page when snapshotting table contents. */
+const SNAPSHOT_PAGE_SIZE = 1000;
+/**
+ * Hard cap on total rows we will snapshot per table. Snapshot is only a safety
+ * check (`is this ID pre-existing?`) so on tables above this size we disable
+ * cleanup rather than keep paging forever.
+ */
+const SNAPSHOT_MAX_ROWS = 100_000;
+
+/**
  * Delete rows this verify execution inserted, identified by the node outputs of
  * the dataTable insert/upsert nodes the workflow contains. Rows that appear in a
  * node's output but were present pre-verify are treated as updates (upsert hits
  * on an existing row) and NOT deleted. Rows inserted by concurrent writers never
  * appear in any node's output and are therefore safe from this cleanup.
+ *
+ * When `preIdsByTable.get(dataTableId)` is `null` the snapshot could not be
+ * built and cleanup is skipped for that table: without a reliable pre-existing
+ * set we cannot distinguish a new insert from an upsert hit, so deleting any
+ * ID could destroy production data.
  */
 async function cleanupInsertedRowsByNodeOutput(
 	dataTableService: InstanceAiDataTableService,
 	writeNodes: DataTableWriteNode[],
 	resultData: Record<string, unknown> | undefined,
-	preIdsByTable: Map<string, Set<number>>,
+	preIdsByTable: PreIdsMap,
+	logger: Logger,
 ): Promise<number> {
 	if (!resultData) return 0;
 	/** per-table set of row IDs the workflow's own insert/upsert nodes produced */
@@ -120,7 +145,14 @@ async function cleanupInsertedRowsByNodeOutput(
 	}
 	let total = 0;
 	for (const [dataTableId, ids] of createdIdsByTable) {
-		const preIds = preIdsByTable.get(dataTableId) ?? new Set<number>();
+		const preIds = preIdsByTable.get(dataTableId);
+		if (preIds === undefined || preIds === null) {
+			logger.warn(
+				'Skipping data-table cleanup: pre-verify snapshot unavailable. Rows left in place to avoid deleting existing data.',
+				{ dataTableId, candidateIds: ids.size },
+			);
+			continue;
+		}
 		// Only delete IDs that did not exist before the run — upsert-matched rows stay.
 		const toDelete = [...ids].filter((id) => !preIds.has(id));
 		if (toDelete.length === 0) continue;
@@ -142,26 +174,58 @@ async function cleanupInsertedRowsByNodeOutput(
 }
 
 /**
- * Cheap pre-verify snapshot of current row IDs per tracked table. Used only to
+ * Pre-verify snapshot of current row IDs per tracked table. Used only to
  * distinguish insert from upsert-of-existing on the cleanup side — NOT to build
  * the delete set. This keeps cleanup safe against concurrent writers.
+ *
+ * The snapshot pages through the full table because the cap on `queryRows`
+ * would otherwise cause cleanup to delete existing rows whose IDs happen to
+ * fall outside the first page. If pagination fails mid-way or the table is
+ * bigger than `SNAPSHOT_MAX_ROWS`, the entry is set to `null` so
+ * `cleanupInsertedRowsByNodeOutput` will skip that table rather than guess.
  */
 async function snapshotRowIdsPerTable(
 	dataTableService: InstanceAiDataTableService,
 	dataTableIds: Iterable<string>,
-): Promise<Map<string, Set<number>>> {
-	const out = new Map<string, Set<number>>();
+	logger: Logger,
+): Promise<PreIdsMap> {
+	const out: PreIdsMap = new Map();
 	for (const id of dataTableIds) {
 		try {
-			const { data } = await dataTableService.queryRows(id, { limit: 1000 });
 			const bucket = new Set<number>();
-			for (const row of data) {
-				const rid = row.id;
-				if (typeof rid === 'number') bucket.add(rid);
+			let offset = 0;
+			let truncated = false;
+			for (;;) {
+				const { data } = await dataTableService.queryRows(id, {
+					limit: SNAPSHOT_PAGE_SIZE,
+					offset,
+				});
+				for (const row of data) {
+					const rid = row.id;
+					if (typeof rid === 'number') bucket.add(rid);
+				}
+				if (data.length < SNAPSHOT_PAGE_SIZE) break;
+				offset += SNAPSHOT_PAGE_SIZE;
+				if (offset >= SNAPSHOT_MAX_ROWS) {
+					truncated = true;
+					break;
+				}
 			}
-			out.set(id, bucket);
-		} catch {
-			out.set(id, new Set());
+			if (truncated) {
+				logger.warn(
+					'Data-table pre-verify snapshot exceeded row cap — cleanup disabled for this table',
+					{ dataTableId: id, cap: SNAPSHOT_MAX_ROWS },
+				);
+				out.set(id, null);
+			} else {
+				out.set(id, bucket);
+			}
+		} catch (error) {
+			logger.warn('Data-table pre-verify snapshot failed — cleanup disabled for this table', {
+				dataTableId: id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			out.set(id, null);
 		}
 	}
 	return out;
@@ -234,6 +298,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const preSnapshots = await snapshotRowIdsPerTable(
 				context.domainContext.dataTableService,
 				new Set(writeNodes.map((n) => n.dataTableId)),
+				context.logger,
 			);
 
 			const result = await context.domainContext.executionService.run(
@@ -264,6 +329,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				writeNodes,
 				result.data,
 				preSnapshots,
+				context.logger,
 			);
 
 			// Persist a structured verification record onto the build outcome so the
