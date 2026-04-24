@@ -68,6 +68,15 @@ function resolveHostDepVersion(name: string): string {
 const SANDBOX_SDK_VERSION = resolveHostDepVersion('@n8n/workflow-sdk');
 const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
 
+/**
+ * Hard-coded to match the monorepo-wide `@types/node` catalog entry in
+ * `pnpm-workspace.yaml`. `@types/node` isn't a direct dep of this package, so
+ * `resolveHostDepVersion` wouldn't find it reliably; a fixed version also
+ * keeps Dockerfile bytes stable and avoids the floating-`*` dist-tag problem
+ * described above. Keep this in sync with the catalog entry on upgrades.
+ */
+const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
+
 function buildPackageJson(sdkSpecifier: string): string {
 	return JSON.stringify(
 		{
@@ -78,7 +87,7 @@ function buildPackageJson(sdkSpecifier: string): string {
 				tsx: SANDBOX_TSX_VERSION,
 			},
 			devDependencies: {
-				'@types/node': '*',
+				'@types/node': SANDBOX_TYPES_NODE_VERSION,
 			},
 		},
 		null,

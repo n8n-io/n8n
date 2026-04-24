@@ -11,6 +11,7 @@ import { Daytona } from '@daytonaio/sdk';
 import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace';
 import { DaytonaSandbox } from '@mastra/daytona';
 import assert from 'node:assert/strict';
+import { join as posixJoin } from 'node:path/posix';
 
 import type { Logger } from '../logger';
 import type { SandboxConfig } from './create-workspace';
@@ -86,7 +87,7 @@ export class BuilderSandboxFactory {
 		const packed = await this.sdkTarballPromise;
 		if (!packed) return;
 
-		const remotePath = `${root}/${packed.filename}`;
+		const remotePath = posixJoin(root, packed.filename);
 		if (workspace.filesystem) {
 			await workspace.filesystem.writeFile(remotePath, packed.tarball);
 		} else {
