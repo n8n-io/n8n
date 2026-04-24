@@ -111,6 +111,18 @@ const effectiveSessionId = computed<string | undefined>(
 	() => continueSessionId.value ?? activeChatSessionId.value ?? undefined,
 );
 
+/**
+ * The current session is "empty" until it's been persisted as a thread —
+ * a freshly minted `activeChatSessionId` doesn't show up in `threads` until
+ * the user sends the first message. We use this to hide the New-chat button
+ * until there's actually something worth starting over from.
+ */
+const currentSessionHasMessages = computed(() => {
+	const id = effectiveSessionId.value;
+	if (!id) return false;
+	return (sessionsStore.threads ?? []).some((t) => t.id === id);
+});
+
 type SaveStatus = 'idle' | 'saving' | 'saved';
 const saveStatus = ref<SaveStatus>('idle');
 
@@ -790,13 +802,14 @@ function onSwitchAgent(nextAgentId: string) {
 			>
 				<div v-if="initialized && chatMode === 'test'" :class="$style.historyBtnAnchor">
 					<button
+						v-if="currentSessionHasMessages"
 						type="button"
 						:class="$style.historyBtn"
 						aria-label="New chat"
 						data-testid="agent-chat-new-chat-btn"
 						@click="onNewChat"
 					>
-						<N8nIcon icon="message-square-plus" :size="14" />
+						<N8nIcon icon="plus" :size="14" />
 					</button>
 					<N8nNavigationDropdown
 						:menu="sessionMenu"
