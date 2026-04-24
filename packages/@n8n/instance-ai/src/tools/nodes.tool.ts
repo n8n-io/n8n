@@ -295,6 +295,7 @@ async function handleExploreResources(
 		return {
 			results: result.results,
 			paginationToken: result.paginationToken,
+			...(result.builderHint ? { builderHint: result.builderHint } : {}),
 		};
 	} catch (error) {
 		return {

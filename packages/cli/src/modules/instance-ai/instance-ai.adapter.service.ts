@@ -70,6 +70,8 @@ import {
 	type IDataObject,
 	type INode,
 	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyMode,
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
@@ -1840,6 +1842,18 @@ export class InstanceAiAdapterService {
 					projectId: personalProject.id,
 					currentNodeParameters,
 				});
+				// Look up the property's builderHint so the agent sees selection guidance
+				// alongside the raw list. This makes the hint reachable even when the
+				// agent jumps straight to explore-resources without reading type-definition.
+				let builderHint: string | undefined;
+				{
+					const nodes = await getNodes();
+					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
+					if (nodeDesc) {
+						builderHint = findBuilderHintForMethod(nodeDesc, params.methodName, params.methodType);
+					}
+				}
+
 				try {
 					if (params.methodType === 'listSearch') {
 						const result = await dynamicNodeParametersService.getResourceLocatorResults(
@@ -1859,6 +1873,7 @@ export class InstanceAiAdapterService {
 								url: r.url,
 							})),
 							paginationToken: result.paginationToken,
+							...(builderHint ? { builderHint } : {}),
 						};
 					}
 
@@ -1876,6 +1891,7 @@ export class InstanceAiAdapterService {
 							value: o.value,
 							description: o.description,
 						})),
+						...(builderHint ? { builderHint } : {}),
 					};
 				} catch (error) {
 					this.logger.error('Failed to load options for explore-resources', {
@@ -2093,6 +2109,47 @@ const MAX_RESULT_CHARS = 20_000;
 
 /** Maximum characters for a single node's output preview when truncating. */
 const MAX_NODE_OUTPUT_CHARS = 1_000;
+
+/**
+ * Find the `builderHint.message` of the property that references a given
+ * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
+ * Returns undefined if no matching property is found.
+ *
+ * Used to surface a node's per-parameter hint alongside explore-resources
+ * results so agents that skip `type-definition` still see selection guidance.
+ */
+function findBuilderHintForMethod(
+	nodeDesc: INodeTypeDescription,
+	methodName: string,
+	methodType: 'listSearch' | 'loadOptions',
+): string | undefined {
+	const referencesMethod = (prop: INodeProperties): boolean => {
+		switch (methodType) {
+			case 'loadOptions':
+				return prop.typeOptions?.loadOptionsMethod === methodName;
+			case 'listSearch': {
+				const modes: INodePropertyMode[] = prop.modes ?? [];
+				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
+			}
+		}
+	};
+
+	const searchProps = (props?: INodeProperties[]): string | undefined => {
+		for (const prop of props ?? []) {
+			if (referencesMethod(prop) && prop.builderHint?.message) {
+				return prop.builderHint.message;
+			}
+			// Collection / fixedCollection types nest their parameters under `options`.
+			// For regular `type: 'options'` dropdowns, `options` holds enum values
+			// (no typeOptions / modes), so the recursion just walks past them.
+			const nested = searchProps(prop.options as INodeProperties[] | undefined);
+			if (nested) return nested;
+		}
+		return undefined;
+	};
+
+	return searchProps(nodeDesc.properties);
+}
 
 /**
  * Truncate execution result data to stay within context budget.
