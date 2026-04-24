@@ -71,7 +71,9 @@ import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
+	type INodePropertyCollection,
 	type INodePropertyMode,
+	type INodePropertyOptions,
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
@@ -2134,15 +2136,30 @@ function findBuilderHintForMethod(
 		}
 	};
 
-	const searchProps = (props?: INodeProperties[]): string | undefined => {
-		for (const prop of props ?? []) {
-			if (referencesMethod(prop) && prop.builderHint?.message) {
-				return prop.builderHint.message;
+	// `options` on INodeProperties is a three-way union: enum values (no nested
+	// params), INodeProperties (nested params), or INodePropertyCollection
+	// (nested params under `.values`). Discriminate instead of blind-casting.
+	const isCollection = (
+		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+	): item is INodePropertyCollection => 'values' in item;
+	const isProperty = (
+		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+	): item is INodeProperties => 'type' in item;
+
+	const searchProps = (
+		items?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+	): string | undefined => {
+		for (const item of items ?? []) {
+			if (isCollection(item)) {
+				const nested = searchProps(item.values);
+				if (nested) return nested;
+				continue;
 			}
-			// Collection / fixedCollection types nest their parameters under `options`.
-			// For regular `type: 'options'` dropdowns, `options` holds enum values
-			// (no typeOptions / modes), so the recursion just walks past them.
-			const nested = searchProps(prop.options as INodeProperties[] | undefined);
+			if (!isProperty(item)) continue; // plain enum value — skip
+			if (referencesMethod(item) && item.builderHint?.message) {
+				return item.builderHint.message;
+			}
+			const nested = searchProps(item.options);
 			if (nested) return nested;
 		}
 		return undefined;
