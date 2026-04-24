@@ -24,6 +24,12 @@ outputs:
   results:
     description: 'JSON object: { "filter-name": true/false }'
     value: ${{ steps.run.outputs.results }}
+  changed-files:
+    description: 'Newline-separated list of changed files (filter mode only)'
+    value: ${{ steps.run.outputs.changed-files }}
+  base-ref:
+    description: 'Resolved base ref used for the diff (filter mode only)'
+    value: ${{ steps.run.outputs.base-ref }}
 
 runs:
   using: 'composite'

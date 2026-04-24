@@ -167,6 +167,8 @@ export interface GenerateResult {
 	 * callers can handle them without try/catch.
 	 */
 	error?: unknown;
+	/** Return a snapshot of the agent state at the end of this run. */
+	getState(): SerializableAgentState;
 }
 
 export interface StreamResult {
@@ -174,6 +176,12 @@ export interface StreamResult {
 	runId: string;
 	/** The readable stream of chunks. */
 	stream: ReadableStream<StreamChunk>;
+	/**
+	 * Return the current agent state for this run.
+	 * May be called at any time — during streaming to observe live status,
+	 * or after the stream closes to confirm the terminal state.
+	 */
+	getState(): SerializableAgentState;
 }
 
 export interface ResumeOptions {
@@ -196,8 +204,6 @@ export interface BuiltAgent {
 	on(event: AgentEvent, handler: AgentEventHandler): void;
 
 	asTool(description: string): BuiltTool;
-
-	getState(): SerializableAgentState;
 
 	/** Cancel the currently running agent. Synchronous — sets an abort flag that the agentic loop checks asynchronously. */
 	abort(): void;

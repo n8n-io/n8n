@@ -121,7 +121,7 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 
 export interface InstanceAiHarness {
 	// Reactive state from composables (for assertions)
-	activeTabId: Ref<string | null>;
+	activeTabId: Ref<string | undefined>;
 	activeWorkflowId: ReturnType<typeof useCanvasPreview>['activeWorkflowId'];
 	activeExecutionId: Ref<string | null>;
 	activeDataTableId: ReturnType<typeof useCanvasPreview>['activeDataTableId'];
