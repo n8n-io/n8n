@@ -21,6 +21,7 @@ const props = defineProps<{
 	startDate?: DateValue;
 	endDate?: DateValue;
 	loading?: boolean;
+	projectId?: string;
 }>();
 
 const i18n = useI18n();
@@ -59,7 +60,11 @@ const summaryHasNoData = computed(() => {
 const summaryWithRouteLocations = computed(() =>
 	props.summary.map((s) => ({
 		...s,
-		to: { name: VIEWS.INSIGHTS, params: { insightType: s.id }, query: route.query },
+		to: {
+			name: VIEWS.INSIGHTS,
+			params: { insightType: s.id },
+			query: { ...route.query, ...(props.projectId ? { projectId: props.projectId } : {}) },
+		},
 	})),
 );
 

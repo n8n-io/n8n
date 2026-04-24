@@ -5,6 +5,18 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 
+// Bypass service-level authorization in all controller tests
+jest.mock('@n8n/permissions', () => ({
+	...jest.requireActual('@n8n/permissions'),
+	hasGlobalScope: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('@/permissions.ee/check-access', () => ({
+	getUserProjectIdsWithScope: jest.fn().mockResolvedValue(['project-1']),
+}));
+
+import { hasGlobalScope } from '@n8n/permissions';
+import { getUserProjectIdsWithScope } from '@/permissions.ee/check-access';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
@@ -42,6 +54,10 @@ describe('InsightsController', () => {
 
 		licenseState.getInsightsMaxHistory.mockReturnValue(-1);
 		licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
+
+		// Re-establish auth bypasses (jest.resetAllMocks clears mockReturnValue)
+		jest.mocked(hasGlobalScope).mockReturnValue(true);
+		jest.mocked(getUserProjectIdsWithScope).mockResolvedValue(['project-1']);
 	});
 
 	describe('getInsightsSummary', () => {
@@ -96,7 +112,7 @@ describe('InsightsController', () => {
 				expect.objectContaining({
 					startDate: expect.any(Date),
 					endDate: expect.any(Date),
-					projectId: undefined,
+					projectIds: undefined,
 				}),
 			);
 
@@ -140,7 +156,7 @@ describe('InsightsController', () => {
 				expect.objectContaining({
 					startDate: expect.any(Date),
 					endDate: expect.any(Date),
-					projectId: undefined,
+					projectIds: undefined,
 				}),
 			);
 
@@ -203,7 +219,7 @@ describe('InsightsController', () => {
 				).toHaveBeenCalledWith({
 					startDate,
 					endDate,
-					projectId: 'test-project',
+					projectIds: ['test-project'],
 				});
 
 				expect(response).toEqual(expectedResponse);
@@ -230,7 +246,7 @@ describe('InsightsController', () => {
 					expect.objectContaining({
 						startDate,
 						endDate: expect.any(Date),
-						projectId: 'test-project',
+						projectIds: ['test-project'],
 					}),
 				);
 
@@ -444,7 +460,7 @@ describe('InsightsController', () => {
 					skip: 5,
 					take: 10,
 					sortBy: 'failureRate:asc',
-					projectId: 'test-project',
+					projectIds: ['test-project'],
 				});
 
 				expect(response).toEqual({ count: 3, data: mockRows });
@@ -684,7 +700,7 @@ describe('InsightsController', () => {
 					startDate: expect.any(Date),
 					endDate: expect.any(Date),
 					periodUnit: 'day',
-					projectId: 'test-project',
+					projectIds: ['test-project'],
 				});
 
 				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];
@@ -834,7 +850,7 @@ describe('InsightsController', () => {
 					startDate: expect.any(Date),
 					endDate: expect.any(Date),
 					periodUnit: 'day',
-					projectId: 'test-project',
+					projectIds: ['test-project'],
 				});
 
 				const callArgs = insightsByPeriodRepository.getInsightsByTime.mock.calls[0][0];

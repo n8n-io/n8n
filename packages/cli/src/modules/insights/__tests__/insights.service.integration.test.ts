@@ -7,10 +7,22 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { InstanceType } from '@n8n/constants';
-import type { IWorkflowDb, Project, WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb, Project, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
+
+// Bypass authorization in all integration tests
+jest.mock('@n8n/permissions', () => ({
+	...jest.requireActual('@n8n/permissions'),
+	hasGlobalScope: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: jest.fn().mockResolvedValue(true),
+}));
+
+const anyUser = mock<User>();
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -213,6 +225,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const summary = await insightsService.getInsightsSummary({
+				user: anyUser,
 				startDate: startDate.toJSDate(),
 				endDate: endDate.toJSDate(),
 			});
@@ -241,7 +254,11 @@ describe('InsightsService (Integration)', () => {
 			const startDate = now.minus({ days: 7 }).toJSDate();
 
 			// ACT
-			const summary = await insightsService.getInsightsSummary({ startDate, endDate: today });
+			const summary = await insightsService.getInsightsSummary({
+				user: anyUser,
+				startDate,
+				endDate: today,
+			});
 
 			// ASSERT
 			expect(Object.values(summary).map((v) => v.deviation)).toEqual([
@@ -306,6 +323,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const summary = await insightsService.getInsightsSummary({
+				user: anyUser,
 				startDate: startDate.toJSDate(),
 				endDate: endDate.toJSDate(),
 				projectId: project.id,
@@ -424,6 +442,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: anyUser,
 				startDate,
 				endDate,
 			});
@@ -490,6 +509,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: anyUser,
 				startDate,
 				endDate: now.toJSDate(),
 				sortBy: 'runTime:desc',
@@ -517,6 +537,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: anyUser,
 				startDate,
 				endDate: today,
 				sortBy: 'succeeded:desc',
@@ -589,6 +610,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: anyUser,
 				startDate,
 				endDate: now.toJSDate(),
 				projectId: project.id,
@@ -634,6 +656,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: anyUser,
 				startDate,
 				endDate: today,
 			});
@@ -668,6 +691,7 @@ describe('InsightsService (Integration)', () => {
 		test('returns empty array when no insights exist', async () => {
 			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
 			const byTime = await insightsService.getInsightsByTime({
+				user: anyUser,
 				startDate,
 				endDate: today,
 			});
@@ -686,6 +710,7 @@ describe('InsightsService (Integration)', () => {
 			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			const byTime = await insightsService.getInsightsByTime({
+				user: anyUser,
 				startDate,
 				endDate: today,
 			});
@@ -750,6 +775,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
+				user: anyUser,
 				startDate,
 				endDate: today,
 			});
@@ -828,6 +854,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
+				user: anyUser,
 				startDate,
 				endDate: today,
 				insightTypes: ['time_saved_min', 'failure'],
@@ -908,6 +935,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
+				user: anyUser,
 				startDate,
 				endDate: today,
 				projectId: project.id,

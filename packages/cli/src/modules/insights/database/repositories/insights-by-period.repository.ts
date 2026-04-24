@@ -259,8 +259,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	async getPreviousAndCurrentPeriodTypeAggregates({
 		startDate,
 		endDate,
-		projectId,
-	}: { projectId?: string; startDate: Date; endDate: Date }): Promise<
+		projectIds,
+	}: { projectIds?: string[]; startDate: Date; endDate: Date }): Promise<
 		Array<{
 			period: 'previous' | 'current';
 			type: 0 | 1 | 2 | 3;
@@ -291,10 +291,10 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.groupBy('period')
 			.addGroupBy('insights.type');
 
-		if (projectId) {
+		if (projectIds?.length) {
 			rawRowsQuery
 				.innerJoin('insights.metadata', 'metadata')
-				.andWhere('metadata.projectId = :projectId', { projectId });
+				.andWhere('metadata.projectId IN (:...projectIds)', { projectIds });
 		}
 
 		const rawRows = await rawRowsQuery.getRawMany();
@@ -313,12 +313,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		skip = 0,
 		take = 20,
 		sortBy = 'total:desc',
-		projectId,
+		projectIds,
 	}: {
 		skip?: number;
 		take?: number;
 		sortBy?: string;
-		projectId?: string;
+		projectIds?: string[];
 		startDate: Date;
 		endDate: Date;
 	}) {
@@ -359,8 +359,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.addGroupBy('metadata.projectName')
 			.orderBy(this.escapeField(sortField), sortOrder);
 
-		if (projectId) {
-			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
+		if (projectIds?.length) {
+			rawRowsQuery.andWhere('metadata.projectId IN (:...projectIds)', { projectIds });
 		}
 
 		const count = (await rawRowsQuery.getRawMany()).length;
@@ -372,13 +372,13 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	async getInsightsByTime({
 		periodUnit,
 		insightTypes,
-		projectId,
+		projectIds,
 		startDate,
 		endDate,
 	}: {
 		periodUnit: PeriodUnit;
 		insightTypes: TypeUnit[];
-		projectId?: string;
+		projectIds?: string[];
 		startDate: Date;
 		endDate: Date;
 	}) {
@@ -397,10 +397,10 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.groupBy(this.getPeriodStartExpr(periodUnit))
 			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 
-		if (projectId) {
+		if (projectIds?.length) {
 			rawRowsQuery
 				.innerJoin('insights.metadata', 'metadata')
-				.andWhere('metadata.projectId = :projectId', { projectId });
+				.andWhere('metadata.projectId IN (:...projectIds)', { projectIds });
 		}
 
 		const rawRows = await rawRowsQuery.getRawMany();

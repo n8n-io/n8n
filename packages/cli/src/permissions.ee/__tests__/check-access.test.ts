@@ -14,7 +14,91 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
 
-import { userHasScopes } from '../check-access';
+import { getUserProjectIdsWithScope, userHasScopes } from '../check-access';
+
+describe('getUserProjectIdsWithScope', () => {
+	let mockQueryBuilder: ReturnType<typeof buildMockQueryBuilder>;
+
+	function buildMockQueryBuilder() {
+		return {
+			innerJoin: jest.fn().mockReturnThis(),
+			where: jest.fn().mockReturnThis(),
+			andWhere: jest.fn().mockReturnThis(),
+			groupBy: jest.fn().mockReturnThis(),
+			having: jest.fn().mockReturnThis(),
+			select: jest.fn().mockReturnThis(),
+			getRawMany: jest.fn().mockResolvedValue([{ id: 'project-1' }]),
+		};
+	}
+
+	beforeAll(() => {
+		mockQueryBuilder = buildMockQueryBuilder();
+		Container.set(
+			ProjectRepository,
+			mock<ProjectRepository>({
+				createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+			}),
+		);
+	});
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockQueryBuilder.getRawMany.mockResolvedValue([{ id: 'project-1' }]);
+	});
+
+	it('returns project IDs for a user with matching scopes', async () => {
+		const user = { id: 'user-1', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+		const scopes = ['insights:list'] as Scope[];
+
+		const result = await getUserProjectIdsWithScope(user, scopes);
+
+		expect(result).toEqual(['project-1']);
+		expect(mockQueryBuilder.where).toHaveBeenCalledWith('relation.userId = :userId', {
+			userId: 'user-1',
+		});
+		expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('scope.slug IN (:...scopes)', {
+			scopes,
+		});
+		expect(mockQueryBuilder.having).toHaveBeenCalledWith(
+			'COUNT(DISTINCT scope.slug) = :scopeCount',
+			{ scopeCount: scopes.length },
+		);
+	});
+
+	it('returns multiple project IDs when user has access to multiple projects', async () => {
+		mockQueryBuilder.getRawMany.mockResolvedValue([
+			{ id: 'project-1' },
+			{ id: 'project-2' },
+			{ id: 'project-3' },
+		]);
+
+		const user = { id: 'user-1', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+		const result = await getUserProjectIdsWithScope(user, ['workflow:read'] as Scope[]);
+
+		expect(result).toEqual(['project-1', 'project-2', 'project-3']);
+	});
+
+	it('returns empty array when user has no projects with the required scope', async () => {
+		mockQueryBuilder.getRawMany.mockResolvedValue([]);
+
+		const user = { id: 'user-1', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+		const result = await getUserProjectIdsWithScope(user, ['insights:list'] as Scope[]);
+
+		expect(result).toEqual([]);
+	});
+
+	it('uses scopeCount equal to the number of required scopes', async () => {
+		const user = { id: 'user-1', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+		const scopes = ['workflow:read', 'workflow:update'] as Scope[];
+
+		await getUserProjectIdsWithScope(user, scopes);
+
+		expect(mockQueryBuilder.having).toHaveBeenCalledWith(
+			'COUNT(DISTINCT scope.slug) = :scopeCount',
+			{ scopeCount: 2 },
+		);
+	});
+});
 
 describe('userHasScopes', () => {
 	let findByWorkflowMock: jest.Mock;
