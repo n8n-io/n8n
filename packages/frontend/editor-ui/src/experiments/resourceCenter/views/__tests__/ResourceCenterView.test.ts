@@ -31,7 +31,7 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = await importOriginal<typeof import('vue-router')>();
 
 	return {
 		...actual,
