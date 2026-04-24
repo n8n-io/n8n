@@ -36,12 +36,6 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	readonly logs: LogsAPI;
 
-	private readonly countersByName = new Map<string, Counter<string>>();
-
-	private readonly gaugesByName = new Map<string, Gauge<string>>();
-
-	private readonly histogramsByName = new Map<string, Histogram<string>>();
-
 	private readonly scopedLogger: Logger;
 
 	private readonly prefix: string;
@@ -88,35 +82,26 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 			const promName = toPromName(def.name, def.kind, this.prefix);
 			switch (def.kind) {
 				case 'counter':
-					this.countersByName.set(
-						promName,
-						new promClient.Counter({
-							name: promName,
-							help: def.help,
-							labelNames: def.labels,
-						}),
-					);
+					new promClient.Counter({
+						name: promName,
+						help: def.help,
+						labelNames: def.labels,
+					});
 					break;
 				case 'gauge':
-					this.gaugesByName.set(
-						promName,
-						new promClient.Gauge({
-							name: promName,
-							help: def.help,
-							labelNames: def.labels,
-						}),
-					);
+					new promClient.Gauge({
+						name: promName,
+						help: def.help,
+						labelNames: def.labels,
+					});
 					break;
 				case 'histogram':
-					this.histogramsByName.set(
-						promName,
-						new promClient.Histogram({
-							name: promName,
-							help: def.help,
-							labelNames: def.labels,
-							buckets: DURATION_BUCKETS_SECONDS,
-						}),
-					);
+					new promClient.Histogram({
+						name: promName,
+						help: def.help,
+						labelNames: def.labels,
+						buckets: DURATION_BUCKETS_SECONDS,
+					});
 					break;
 				default: {
 					const _exhaustive: never = def.kind;
@@ -128,7 +113,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	private counter(name: string, value: number, tags?: Record<string, string>): void {
 		const promName = toPromName(name, 'counter', this.prefix);
-		const counter = this.countersByName.get(promName);
+		const counter = promClient.register.getSingleMetric(promName) as Counter<string> | undefined;
 		if (!counter) {
 			this.scopedLogger.warn('Emitted unknown expression metric', { name });
 			return;
@@ -139,7 +124,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	private gauge(name: string, value: number, tags?: Record<string, string>): void {
 		const promName = toPromName(name, 'gauge', this.prefix);
-		const gauge = this.gaugesByName.get(promName);
+		const gauge = promClient.register.getSingleMetric(promName) as Gauge<string> | undefined;
 		if (!gauge) {
 			this.scopedLogger.warn('Emitted unknown expression metric', { name });
 			return;
@@ -150,7 +135,9 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	private histogram(name: string, value: number, tags?: Record<string, string>): void {
 		const promName = toPromName(name, 'histogram', this.prefix);
-		const histogram = this.histogramsByName.get(promName);
+		const histogram = promClient.register.getSingleMetric(promName) as
+			| Histogram<string>
+			| undefined;
 		if (!histogram) {
 			this.scopedLogger.warn('Emitted unknown expression metric', { name });
 			return;
