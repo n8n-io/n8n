@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import { N8nActionDropdown, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
-import type { TabOptions } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nIcon,
+	N8nRadioButtons,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -190,23 +195,12 @@ function setChatMode(next: ChatMode) {
  * build is always `!isBuilt`, so the Test tab stays locked while the build
  * is in flight, preventing the tab-switch-unmounts-the-stream regression.
  */
-const chatModeOptions = computed<Array<TabOptions<ChatMode>>>(() => [
+const chatModeOptions = computed(() => [
+	{ label: locale.baseText('agents.builder.chatMode.build'), value: 'build' as const },
 	{
-		value: 'build',
-		label: locale.baseText('agents.builder.chatMode.build'),
-		icon: 'wand-sparkles',
-		notification: isBuildChatStreaming.value,
-		align: 'right',
-	},
-	{
-		value: 'test',
 		label: locale.baseText('agents.builder.chatMode.test'),
-		icon: isBuilt.value ? 'message-square' : 'triangle-alert',
-		variant: isBuilt.value ? 'default' : 'danger',
-		tooltip: isBuilt.value
-			? undefined
-			: locale.baseText('agents.builder.chatMode.test.lockedTooltip'),
-		align: 'right',
+		value: 'test' as const,
+		disabled: !isBuilt.value,
 	},
 ]);
 
@@ -504,28 +498,58 @@ function onContinueLoaded(count: number) {
 					@continue-loaded="onContinueLoaded"
 					@open-build="onOpenBuildFromChat"
 				>
-					<template #above-input-area>
-						<div :class="$style.chatTabs">
-							<N8nTabs
-								v-if="initialized"
-								:model-value="chatMode"
-								:options="chatModeOptions"
-								variant="modern"
-								data-testid="agent-chat-mode-toggle"
-								@update:model-value="setChatMode"
-							/>
-						</div>
-					</template>
 					<template #above-input>
-						<AgentChatQuickActions
-							:tools="localConfig?.tools ?? []"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:connected-triggers="connectedTriggers"
-							@update:tools="onQuickActionAddTool"
-							@update:connected-triggers="onConnectedTriggersUpdate"
-							@trigger-added="onTriggerAdded"
-						/>
+						<div :class="$style.quickActionsRow">
+							<AgentChatQuickActions
+								:tools="localConfig?.tools ?? []"
+								:project-id="projectId"
+								:agent-id="agentId"
+								:connected-triggers="connectedTriggers"
+								@update:tools="onQuickActionAddTool"
+								@update:connected-triggers="onConnectedTriggersUpdate"
+								@trigger-added="onTriggerAdded"
+							/>
+							<N8nTooltip
+								v-if="initialized"
+								:class="$style.chatModeToggle"
+								:disabled="isBuilt"
+								:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
+								:show-after="100"
+								placement="top"
+							>
+								<N8nRadioButtons
+									:model-value="chatMode"
+									:options="chatModeOptions"
+									:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
+									size="small"
+									data-testid="agent-chat-mode-toggle"
+									@update:model-value="setChatMode"
+								>
+									<template #option="option">
+										<span :class="$style.chatModeOption">
+											<N8nIcon
+												v-if="option.value === 'build' && isBuildChatStreaming"
+												icon="loader-circle"
+												:size="14"
+												:spin="true"
+											/>
+											<N8nIcon
+												v-else-if="option.value === 'test' && !isBuilt"
+												icon="triangle-alert"
+												:size="14"
+												:class="$style.chatModeLockedIcon"
+											/>
+											<N8nIcon
+												v-else
+												:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
+												:size="14"
+											/>
+											<span>{{ option.label }}</span>
+										</span>
+									</template>
+								</N8nRadioButtons>
+							</N8nTooltip>
+						</div>
 					</template>
 				</AgentChatPanel>
 				<AgentChatPanel
@@ -542,28 +566,58 @@ function onContinueLoaded(count: number) {
 					@config-updated="onConfigUpdated"
 					@update:streaming="onBuildChatStreamingChange"
 				>
-					<template #above-input-area>
-						<div :class="$style.chatTabs">
-							<N8nTabs
-								v-if="initialized"
-								:model-value="chatMode"
-								:options="chatModeOptions"
-								variant="modern"
-								data-testid="agent-chat-mode-toggle"
-								@update:model-value="setChatMode"
-							/>
-						</div>
-					</template>
 					<template #above-input>
-						<AgentChatQuickActions
-							:tools="localConfig?.tools ?? []"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:connected-triggers="connectedTriggers"
-							@update:tools="onQuickActionAddTool"
-							@update:connected-triggers="onConnectedTriggersUpdate"
-							@trigger-added="onTriggerAdded"
-						/>
+						<div :class="$style.quickActionsRow">
+							<AgentChatQuickActions
+								:tools="localConfig?.tools ?? []"
+								:project-id="projectId"
+								:agent-id="agentId"
+								:connected-triggers="connectedTriggers"
+								@update:tools="onQuickActionAddTool"
+								@update:connected-triggers="onConnectedTriggersUpdate"
+								@trigger-added="onTriggerAdded"
+							/>
+							<N8nTooltip
+								v-if="initialized"
+								:class="$style.chatModeToggle"
+								:disabled="isBuilt"
+								:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
+								:show-after="100"
+								placement="top"
+							>
+								<N8nRadioButtons
+									:model-value="chatMode"
+									:options="chatModeOptions"
+									:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
+									size="small"
+									data-testid="agent-chat-mode-toggle"
+									@update:model-value="setChatMode"
+								>
+									<template #option="option">
+										<span :class="$style.chatModeOption">
+											<N8nIcon
+												v-if="option.value === 'build' && isBuildChatStreaming"
+												icon="loader-circle"
+												:size="14"
+												:spin="true"
+											/>
+											<N8nIcon
+												v-else-if="option.value === 'test' && !isBuilt"
+												icon="triangle-alert"
+												:size="14"
+												:class="$style.chatModeLockedIcon"
+											/>
+											<N8nIcon
+												v-else
+												:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
+												:size="14"
+											/>
+											<span>{{ option.label }}</span>
+										</span>
+									</template>
+								</N8nRadioButtons>
+							</N8nTooltip>
+						</div>
 					</template>
 				</AgentChatPanel>
 			</div>
@@ -632,13 +686,29 @@ function onContinueLoaded(count: number) {
 	min-height: 0;
 }
 
-.chatTabs {
-	padding: 0 var(--spacing--2xs);
-	/* Overlap the active-tab underline with the input area's top border so
-	   the two visually merge instead of stacking. */
-	margin-bottom: -1px;
-	position: relative;
-	z-index: 1;
+.quickActionsRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.quickActionsRow > :first-child {
+	flex: 1;
+	min-width: 0;
+}
+
+.chatModeToggle {
+	flex-shrink: 0;
+}
+
+.chatModeOption {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.chatModeLockedIcon {
+	color: var(--color--warning);
 }
 
 .chatBody {
