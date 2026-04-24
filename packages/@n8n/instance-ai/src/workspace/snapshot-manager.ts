@@ -16,8 +16,6 @@ import { type Daytona, Image } from '@daytonaio/sdk';
 import type { Logger } from '../logger';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
 
-const SNAPSHOT_CREATE_TIMEOUT_SECONDS = 600;
-
 /** Base64-encode content for safe embedding in RUN commands (avoids newline/quote issues). */
 function b64(s: string): string {
 	return Buffer.from(s, 'utf-8').toString('base64');
@@ -76,12 +74,13 @@ export class SnapshotManager {
 		});
 
 		try {
+			// No `timeout` — the SDK's `timeout` here only bounds the initial
+			// HTTP POST, not the subsequent build-state poll loop (which runs
+			// until ACTIVE / ERROR / BUILD_FAILED with no wall-clock limit).
+			// We let the poll run; Daytona's build system owns build duration.
 			await daytona.snapshot.create(
 				{ name: this.snapshotName, image },
-				{
-					onLogs: (chunk) => this.logger.debug('snapshot build log', { chunk }),
-					timeout: SNAPSHOT_CREATE_TIMEOUT_SECONDS,
-				},
+				{ onLogs: (chunk) => this.logger.debug('snapshot build log', { chunk }) },
 			);
 		} catch (error) {
 			if (isAlreadyExistsError(error)) {

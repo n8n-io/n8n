@@ -69,12 +69,14 @@ describe('SnapshotManager', () => {
 			expect(daytona.snapshot.create).toHaveBeenCalledTimes(1);
 			const [params, options] = daytona.snapshot.create.mock.calls[0] as [
 				{ name: string; image: Image },
-				{ timeout: number; onLogs: (chunk: string) => void },
+				{ timeout?: number; onLogs: (chunk: string) => void },
 			];
 			expect(params.name).toBe(snapshotName);
 			expect(params.image.dockerfile).toContain('daytonaio/sandbox:0.5.0');
 			expect(params.image.dockerfile).toContain('npm install');
-			expect(options.timeout).toBe(600);
+			// No timeout: SDK's `timeout` only bounds the initial POST, not the
+			// build-state poll; Daytona owns build duration.
+			expect(options.timeout).toBeUndefined();
 		});
 
 		it('uses the provided base image when building the snapshot image', async () => {
