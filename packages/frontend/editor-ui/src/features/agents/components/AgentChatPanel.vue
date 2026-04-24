@@ -191,6 +191,8 @@ onBeforeUnmount(() => {
 		/>
 		<AgentChatMessageList v-else :messages="messages" :messaging-state="messagingState" />
 
+		<slot name="above-input-area" />
+
 		<div :class="$style.inputArea">
 			<slot name="above-input" />
 			<ChatInputBase

@@ -502,15 +502,19 @@ function onContinueLoaded(count: number) {
 					@continue-loaded="onContinueLoaded"
 					@open-build="onOpenBuildFromChat"
 				>
+					<template #above-input-area>
+						<div :class="$style.chatTabs">
+							<N8nTabs
+								v-if="initialized"
+								:model-value="chatMode"
+								:options="chatModeOptions"
+								variant="modern"
+								data-testid="agent-chat-mode-toggle"
+								@update:model-value="setChatMode"
+							/>
+						</div>
+					</template>
 					<template #above-input>
-						<N8nTabs
-							v-if="initialized"
-							:model-value="chatMode"
-							:options="chatModeOptions"
-							variant="modern"
-							data-testid="agent-chat-mode-toggle"
-							@update:model-value="setChatMode"
-						/>
 						<AgentChatQuickActions
 							:tools="localConfig?.tools ?? []"
 							:project-id="projectId"
@@ -536,15 +540,19 @@ function onContinueLoaded(count: number) {
 					@config-updated="onConfigUpdated"
 					@update:streaming="onBuildChatStreamingChange"
 				>
+					<template #above-input-area>
+						<div :class="$style.chatTabs">
+							<N8nTabs
+								v-if="initialized"
+								:model-value="chatMode"
+								:options="chatModeOptions"
+								variant="modern"
+								data-testid="agent-chat-mode-toggle"
+								@update:model-value="setChatMode"
+							/>
+						</div>
+					</template>
 					<template #above-input>
-						<N8nTabs
-							v-if="initialized"
-							:model-value="chatMode"
-							:options="chatModeOptions"
-							variant="modern"
-							data-testid="agent-chat-mode-toggle"
-							@update:model-value="setChatMode"
-						/>
 						<AgentChatQuickActions
 							:tools="localConfig?.tools ?? []"
 							:project-id="projectId"
@@ -620,6 +628,15 @@ function onContinueLoaded(count: number) {
 	flex-direction: column;
 	border-right: var(--border);
 	min-height: 0;
+}
+
+.chatTabs {
+	padding: 0 var(--spacing--2xs);
+	/* Overlap the active-tab underline with the input area's top border so
+	   the two visually merge instead of stacking. */
+	margin-bottom: -1px;
+	position: relative;
+	z-index: 1;
 }
 
 .chatBody {
