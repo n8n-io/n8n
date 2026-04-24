@@ -36,10 +36,7 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 
 const OPENAI_MODEL_BUILDER_HINT = {
 	message:
-		'Prefer the GPT-5.4 family: the flagship variant (e.g. `gpt-5.4`) for general use, a `-mini` / `-nano` variant when the task explicitly calls for cost-efficiency, or `-pro` only when the user asks for maximum capability. ' +
-		"When a credential is attached, look up the live model list via the node's `@searchListMethod` (`searchModels`) to see what the credential can actually access — don't guess from memory. " +
-		"The list may be only a subset of what OpenAI offers depending on the credential — use what's returned and don't substitute a different variant from memory. " +
-		"When no credential is attached, the node's @default applies automatically — do not override it with a specific ID from memory.",
+		'Prefer the GPT-5.4 family: the flagship variant (e.g. `gpt-5.4`) for general use, a `-mini` / `-nano` variant when the task explicitly calls for cost-efficiency, or `-pro` only when the user asks for maximum capability. Never use gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5, or earlier — those are superseded by the GPT-5 family and are not valid choices.',
 };
 
 const completionsResponseFormat: INodeProperties = {
