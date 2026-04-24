@@ -133,6 +133,12 @@ export type DisplayGroup =
 			toolCalls: ToolCall[];
 			/** Interactive cards belonging to messages folded into this group. */
 			interactives: InteractivePayload[];
+			/**
+			 * Trailing assistant message in the turn that carries text content.
+			 * Folding it into the same group keeps a single bubble per turn
+			 * (thinking → tools → interactives → final text).
+			 */
+			finalMessage?: ChatMessage;
 	  };
 
 export function isGroupable(msg: ChatMessage): boolean {
@@ -144,7 +150,7 @@ export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
 	for (const msg of messages) {
 		if (isGroupable(msg)) {
 			const last = groups[groups.length - 1];
-			if (last && last.kind === 'toolRun') {
+			if (last && last.kind === 'toolRun' && !last.finalMessage) {
 				last.toolCalls = [...last.toolCalls, ...(msg.toolCalls ?? [])];
 				if (msg.thinking) {
 					last.thinking = last.thinking ? `${last.thinking}\n\n${msg.thinking}` : msg.thinking;
@@ -160,6 +166,22 @@ export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
 				interactives: msg.interactive ? [msg.interactive] : [],
 			});
 			continue;
+		}
+		// Assistant message with text content: fold into the open toolRun (if any)
+		// so tools and their trailing answer share a single bubble per turn.
+		if (msg.role === 'assistant') {
+			const last = groups[groups.length - 1];
+			if (last && last.kind === 'toolRun' && !last.finalMessage) {
+				last.finalMessage = msg;
+				if (msg.thinking) {
+					last.thinking = last.thinking ? `${last.thinking}\n\n${msg.thinking}` : msg.thinking;
+				}
+				if (msg.toolCalls?.length) {
+					last.toolCalls = [...last.toolCalls, ...msg.toolCalls];
+				}
+				if (msg.interactive) last.interactives.push(msg.interactive);
+				continue;
+			}
 		}
 		groups.push({ kind: 'message', id: msg.id, message: msg });
 	}

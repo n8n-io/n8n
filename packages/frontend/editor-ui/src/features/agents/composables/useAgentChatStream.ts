@@ -464,6 +464,19 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		toolCallId: string;
 		resumeData: unknown;
 	}): Promise<void> {
+		// Optimistic update — the backend emits a matching `tool-result` on the
+		// resume stream, but that arrives only after round-trip. Flipping state
+		// here stops the spinner/clock indicator and disables the card so the
+		// user sees immediate feedback on submit.
+		const found = findToolCallById(payload.toolCallId);
+		if (found) {
+			found.tc.state = 'done';
+			found.tc.output = payload.resumeData;
+			const updated = rebuildInteractiveFromHistory(found.tc);
+			if (updated) found.msg.interactive = updated;
+			if (found.msg.status === 'awaitingUser') found.msg.status = 'success';
+		}
+
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
 		await postAndConsume(url, payload);

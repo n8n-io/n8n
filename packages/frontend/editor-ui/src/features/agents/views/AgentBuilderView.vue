@@ -125,6 +125,14 @@ const currentSessionHasMessages = computed(() => {
 	return (sessionsStore.threads ?? []).some((t) => t.id === id);
 });
 
+const currentSessionTitle = computed(() => {
+	const id = effectiveSessionId.value;
+	if (!id) return '';
+	const thread = (sessionsStore.threads ?? []).find((t) => t.id === id);
+	if (!thread) return 'New chat';
+	return thread.title ?? `Session ${thread.sessionNumber}`;
+});
+
 type SaveStatus = 'idle' | 'saving' | 'saved';
 const saveStatus = ref<SaveStatus>('idle');
 
@@ -825,23 +833,40 @@ function onSwitchAgent(nextAgentId: string) {
 				:aria-label="locale.baseText('agents.builder.chatColumn.ariaLabel')"
 				data-testid="agent-builder-chat-column"
 			>
-				<N8nNavigationDropdown
-					v-if="initialized && chatMode === 'test'"
-					:menu="sessionMenu"
-					:class="$style.historyBtnAnchor"
-					submenu-class="agent-chat-session-menu"
-					data-testid="agent-chat-session-picker"
-					@select="onSessionPick"
+				<div
+					v-if="initialized && chatMode === 'test' && effectiveSessionId"
+					:class="$style.sessionHeader"
+					data-testid="agent-chat-session-header"
 				>
-					<button
-						type="button"
-						:class="$style.historyBtn"
-						aria-label="Session history"
-						data-testid="agent-chat-session-picker-btn"
+					<N8nNavigationDropdown
+						:menu="sessionMenu"
+						submenu-class="agent-chat-session-menu"
+						data-testid="agent-chat-session-picker"
+						@select="onSessionPick"
 					>
-						<N8nIcon icon="history" :size="14" />
+						<button
+							type="button"
+							:class="$style.sessionTitleBtn"
+							:aria-label="locale.baseText('agents.builder.chat.sessionPicker.ariaLabel')"
+							data-testid="agent-chat-session-picker-btn"
+						>
+							<N8nIcon icon="history" :size="14" />
+							<span :class="$style.sessionTitleText">{{ currentSessionTitle }}</span>
+							<N8nIcon icon="chevron-down" :size="12" />
+						</button>
+					</N8nNavigationDropdown>
+					<button
+						v-if="currentSessionHasMessages"
+						type="button"
+						:class="$style.newChatBtn"
+						:aria-label="locale.baseText('agents.builder.chat.newChat.ariaLabel')"
+						data-testid="agent-chat-new-chat-btn"
+						@click="onNewChat"
+					>
+						<N8nIcon icon="plus" :size="14" />
+						<span>{{ locale.baseText('agents.builder.chat.newChat.label') }}</span>
 					</button>
-				</N8nNavigationDropdown>
+				</div>
 				<div :class="$style.chatBody">
 					<AgentChatPanel
 						v-if="initialized && chatModeOpened.test && effectiveSessionId"
@@ -862,18 +887,7 @@ function onSwitchAgent(nextAgentId: string) {
 					>
 						<template #above-input>
 							<div :class="$style.quickActionsRow">
-								<div :class="$style.quickActionsStart">
-									<button
-										v-if="currentSessionHasMessages"
-										type="button"
-										:class="$style.historyBtn"
-										aria-label="New chat"
-										data-testid="agent-chat-new-chat-btn"
-										@click="onNewChat"
-									>
-										<N8nIcon icon="plus" :size="14" />
-									</button>
-								</div>
+								<div :class="$style.quickActionsStart"></div>
 								<N8nTooltip
 									v-if="initialized"
 									:class="$style.chatModeToggle"
@@ -1188,11 +1202,67 @@ function onSwitchAgent(nextAgentId: string) {
 	gap: var(--spacing--2xs);
 }
 
-.historyBtnAnchor {
-	position: absolute;
-	top: var(--spacing--4xs);
-	right: 0;
-	z-index: 2;
+.sessionHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--sm);
+	border-bottom: var(--border);
+	min-height: 36px;
+}
+
+.sessionTitleBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	max-width: 100%;
+	min-width: 0;
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	background: transparent;
+	border: var(--border-width) var(--border-style) transparent;
+	border-radius: var(--radius);
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	cursor: pointer;
+	line-height: var(--line-height--md);
+
+	&:hover {
+		background: var(--color--background--light-2);
+		border-color: var(--color--foreground);
+	}
+
+	&:focus-visible {
+		outline: none;
+		border-color: var(--color--primary);
+	}
+}
+
+.sessionTitleText {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.newChatBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	background: transparent;
+	border: var(--border-width) var(--border-style) transparent;
+	border-radius: var(--radius);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	cursor: pointer;
+	line-height: var(--line-height--md);
+
+	&:hover {
+		background: var(--color--background--light-2);
+		color: var(--color--text);
+		border-color: var(--color--foreground);
+	}
 }
 
 .quickActionsRow > :first-child {
@@ -1222,27 +1292,6 @@ function onSwitchAgent(nextAgentId: string) {
 
 .chatModeToggle {
 	flex-shrink: 0;
-}
-
-.historyBtn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 28px;
-	height: 28px;
-	padding: 0;
-	background: transparent;
-	border: var(--border);
-	border-color: transparent;
-	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-	flex-shrink: 0;
-
-	&:hover {
-		background: var(--color--background--light-2);
-		color: var(--color--text);
-	}
 }
 
 .chatModeOption {

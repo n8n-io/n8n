@@ -132,10 +132,10 @@ watch(
 						</summary>
 						<div :class="$style.thinkingContent">{{ group.thinking }}</div>
 					</details>
-					<AgentChatToolSteps :tool-calls="group.toolCalls" />
-					<div v-if="group.interactives.length" :class="$style.interactives">
+					<AgentChatToolSteps v-if="group.toolCalls.length" :tool-calls="group.toolCalls" />
+					<div v-if="group.interactives.some((p) => !p.resolvedAt)" :class="$style.interactives">
 						<InteractiveCard
-							v-for="payload in group.interactives"
+							v-for="payload in group.interactives.filter((p) => !p.resolvedAt)"
 							:key="payload.toolCallId"
 							:payload="payload"
 							:project-id="projectId"
@@ -143,6 +143,28 @@ watch(
 							@submit="onInteractiveSubmit(payload, $event)"
 						/>
 					</div>
+					<div
+						v-if="group.finalMessage?.content"
+						:class="[
+							$style.chatMessage,
+							{ [$style.chatMessageError]: group.finalMessage.status === 'error' },
+						]"
+					>
+						<div :class="$style.markdownContent">
+							<ChatMarkdownChunk
+								:source="{ type: 'text', content: group.finalMessage.content }"
+								@open-artifact="() => {}"
+							/>
+						</div>
+					</div>
+					<ChatTypingIndicator
+						v-if="
+							group.finalMessage?.status === 'streaming' &&
+							!group.finalMessage.content &&
+							!group.toolCalls.length
+						"
+						:class="$style.typingIndicator"
+					/>
 				</div>
 			</div>
 			<div
@@ -183,7 +205,10 @@ watch(
 						</div>
 					</div>
 
-					<div v-if="group.message.interactive" :class="$style.interactives">
+					<div
+						v-if="group.message.interactive && !group.message.interactive.resolvedAt"
+						:class="$style.interactives"
+					>
 						<InteractiveCard
 							:payload="group.message.interactive"
 							:project-id="projectId"
