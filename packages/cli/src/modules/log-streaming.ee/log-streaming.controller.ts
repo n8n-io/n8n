@@ -26,9 +26,6 @@ import { MessageEventBusDestinationWebhook } from './destinations/message-event-
 import type { MessageEventBusDestination } from './destinations/message-event-bus-destination.ee';
 import { LogStreamingDestinationService } from './log-streaming-destination.service';
 
-const MANAGED_BY_ENV_MESSAGE =
-	'Log streaming destinations are managed via environment variables and cannot be modified through the API';
-
 @RestController('/eventbus')
 export class EventBusController {
 	constructor(
@@ -39,7 +36,9 @@ export class EventBusController {
 
 	private assertNotManagedByEnv() {
 		if (this.instanceSettingsLoaderConfig.logStreamingManagedByEnv) {
-			throw new ForbiddenError(MANAGED_BY_ENV_MESSAGE);
+			throw new ForbiddenError(
+				'Log streaming destinations are managed via environment variables and cannot be modified through the API',
+			);
 		}
 	}
 
