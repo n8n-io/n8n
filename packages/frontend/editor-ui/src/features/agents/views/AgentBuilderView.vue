@@ -438,6 +438,11 @@ async function initialize() {
 	// `isBuilt` would still be stale here.
 	const hasInstructions = !!config.value?.instructions?.trim();
 	chatMode.value = hasInstructions ? 'test' : 'build';
+	// Explicitly open the target mode. The `chatMode` watcher only fires on a
+	// value change, but on agent-switch we just reset `chatModeOpened` above —
+	// if both agents share the same default mode the watcher doesn't fire and
+	// the chat panel's v-if gate stays false, leaving the chat pane blank.
+	chatModeOpened.value[chatMode.value] = true;
 	if (chatMode.value === 'test' && !continueSessionId.value && !activeChatSessionId.value) {
 		activeChatSessionId.value = crypto.randomUUID();
 	}

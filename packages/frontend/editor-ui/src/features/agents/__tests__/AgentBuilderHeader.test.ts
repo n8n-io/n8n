@@ -110,11 +110,13 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('toggle-chat-column')).toBeTruthy();
 	});
 
-	it('passes three breadcrumb items: workspace, project, agent', () => {
+	it('passes two breadcrumb items: workspace and project (agent rendered as switcher button)', () => {
 		const wrapper = mountHeader();
 		const bc = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
 		const items = bc.props('items') as Array<{ id: string }>;
-		expect(items.map((i) => i.id)).toEqual(['workspace', 'p1', 'a1']);
+		expect(items.map((i) => i.id)).toEqual(['workspace', 'p1']);
+		// Agent name should surface in the switcher button, not the breadcrumb.
+		expect(wrapper.text()).toContain('Darwin');
 	});
 
 	it('falls back to the project fallback label when projectName is null', () => {

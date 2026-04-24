@@ -56,11 +56,9 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 		id: props.projectId,
 		label: props.projectName ?? i18n.baseText('agents.builder.header.projectFallback'),
 	},
-	{
-		id: props.agentId,
-		label: props.agent?.name ?? '…',
-	},
 ]);
+
+const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
 type SwitcherMenuItem = {
 	id: string;
@@ -116,6 +114,7 @@ function onSwitcherSelect(id: string) {
 		</button>
 		<N8nBreadcrumbs :items="breadcrumbItems" theme="small">
 			<template #append>
+				<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 				<N8nNavigationDropdown
 					:menu="switcherMenu"
 					data-testid="agent-header-switcher"
@@ -123,9 +122,10 @@ function onSwitcherSelect(id: string) {
 				>
 					<button
 						type="button"
-						:class="$style.switcherTrigger"
+						:class="$style.switcherButton"
 						:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
 					>
+						<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
 						<N8nIcon icon="chevron-down" :size="12" />
 					</button>
 				</N8nNavigationDropdown>
@@ -184,24 +184,43 @@ function onSwitcherSelect(id: string) {
 	border-color: var(--color--foreground);
 }
 
-.switcherTrigger {
+.crumbSeparator {
+	color: var(--color--text--tint-2);
+	margin: 0 var(--spacing--4xs);
+	user-select: none;
+}
+
+.switcherButton {
 	display: inline-flex;
 	align-items: center;
-	justify-content: center;
-	width: 20px;
-	height: 20px;
-	padding: 0;
-	margin-left: var(--spacing--4xs);
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
 	background: transparent;
-	border: none;
+	border: var(--border);
+	border-color: transparent;
 	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
+	color: var(--color--text);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
 	cursor: pointer;
+	line-height: var(--line-height--md);
 
 	&:hover {
 		background: var(--color--background--light-2);
-		color: var(--color--text);
+		border-color: var(--color--foreground);
 	}
+
+	&:focus-visible {
+		outline: none;
+		border-color: var(--color--primary);
+	}
+}
+
+.switcherLabel {
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .right {
