@@ -1,0 +1,470 @@
+// ---------------------------------------------------------------------------
+// Pairwise eval CLI for instance-ai.
+//
+// Pulls the pairwise dataset (default: notion-pairwise-workflows) from
+// LangSmith or a local file, builds one workflow per example via the
+// in-process instance-ai agent, and scores the result with the same
+// pairwise judge panel used by ai-workflow-builder.ee.
+//
+// Results are written to an output directory so a later step can build
+// a head-to-head comparison report against the ai-workflow-builder.ee
+// baseline.
+// ---------------------------------------------------------------------------
+
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { ChatAnthropic } from '@langchain/anthropic';
+import pLimit from 'p-limit';
+import { Client as LangSmithClient } from 'langsmith';
+
+import {
+	createPairwiseEvaluator,
+	type Feedback,
+	type SimpleWorkflow,
+} from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
+import { DEFAULTS } from '../../../ai-workflow-builder.ee/evaluations/support/constants';
+
+import { buildInProcess, type InProcessBuildResult } from '../harness/in-process-builder';
+import { createLogger, type EvalLogger } from '../harness/logger';
+
+// ---------------------------------------------------------------------------
+// CLI args
+// ---------------------------------------------------------------------------
+
+interface PairwiseArgs {
+	backend: 'local' | 'langsmith';
+	dataset: string;
+	judges: number;
+	iterations: number;
+	concurrency: number;
+	maxExamples?: number;
+	timeoutMs: number;
+	outputDir: string;
+	judgeModel: string;
+	experimentName: string;
+	verbose: boolean;
+}
+
+function parseArgs(argv: string[]): PairwiseArgs {
+	const get = (flag: string): string | undefined => {
+		const idx = argv.indexOf(flag);
+		if (idx === -1) return undefined;
+		const value = argv[idx + 1];
+		return value && !value.startsWith('--') ? value : undefined;
+	};
+	const has = (flag: string): boolean => argv.includes(flag);
+
+	const backendRaw = get('--backend') ?? 'local';
+	if (backendRaw !== 'local' && backendRaw !== 'langsmith') {
+		throw new Error(`--backend must be "local" or "langsmith", got "${backendRaw}"`);
+	}
+
+	const iso = new Date().toISOString().replace(/[:.]/g, '-');
+	const defaultOutputDir = path.resolve(process.cwd(), '.output', 'pairwise', iso);
+
+	return {
+		backend: backendRaw,
+		dataset: get('--dataset') ?? DEFAULTS.DATASET_NAME,
+		judges: Number(get('--judges') ?? DEFAULTS.NUM_JUDGES),
+		iterations: Number(get('--iterations') ?? DEFAULTS.REPETITIONS),
+		concurrency: Number(get('--concurrency') ?? DEFAULTS.CONCURRENCY),
+		maxExamples: get('--max-examples') ? Number(get('--max-examples')) : undefined,
+		timeoutMs: Number(get('--timeout-ms') ?? DEFAULTS.TIMEOUT_MS),
+		outputDir: get('--output-dir') ?? defaultOutputDir,
+		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-5-20250929',
+		experimentName: get('--experiment-name') ?? 'pairwise-evals-instance-ai',
+		verbose: has('--verbose'),
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Dataset loading
+// ---------------------------------------------------------------------------
+
+interface DatasetExample {
+	id: string;
+	prompt: string;
+	dos?: string;
+	donts?: string;
+}
+
+async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<DatasetExample[]> {
+	if (args.backend === 'local') {
+		logger.info(`Loading local pairwise fixture (see evaluations/data/pairwise/local.json)`);
+		const localPath = path.resolve(__dirname, '..', 'data', 'pairwise', 'local.json');
+		const content = await fs.readFile(localPath, 'utf8');
+		const parsed = JSON.parse(content) as unknown;
+		if (!Array.isArray(parsed)) {
+			throw new Error(`Expected local.json to be a JSON array of examples`);
+		}
+		return parsed.map((entry, i) => coerceExample(entry, `local-${i}`));
+	}
+
+	logger.info(`Fetching dataset "${args.dataset}" from LangSmith`);
+	const lsClient = new LangSmithClient();
+	const examples: DatasetExample[] = [];
+	for await (const raw of lsClient.listExamples({ datasetName: args.dataset })) {
+		const inputs = isRecord(raw.inputs) ? raw.inputs : {};
+		const context = isRecord(inputs.context) ? inputs.context : {};
+		const example: DatasetExample = {
+			id: raw.id,
+			prompt: typeof inputs.prompt === 'string' ? inputs.prompt : '',
+			dos: typeof context.dos === 'string' ? context.dos : undefined,
+			donts: typeof context.donts === 'string' ? context.donts : undefined,
+		};
+		if (!example.prompt) {
+			logger.warn(`Skipping example ${raw.id}: no prompt field`);
+			continue;
+		}
+		examples.push(example);
+	}
+	return examples;
+}
+
+function coerceExample(entry: unknown, fallbackId: string): DatasetExample {
+	if (!isRecord(entry)) throw new Error(`Invalid example entry: ${JSON.stringify(entry)}`);
+	const inputs = isRecord(entry.inputs) ? entry.inputs : entry;
+	const context = isRecord(inputs.context) ? inputs.context : {};
+	const prompt = typeof inputs.prompt === 'string' ? inputs.prompt : '';
+	if (!prompt) throw new Error(`Example ${fallbackId} is missing "prompt"`);
+	return {
+		id: typeof entry.id === 'string' ? entry.id : fallbackId,
+		prompt,
+		dos: typeof context.dos === 'string' ? context.dos : undefined,
+		donts: typeof context.donts === 'string' ? context.donts : undefined,
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Per-example runner
+// ---------------------------------------------------------------------------
+
+interface ExampleRecord {
+	exampleId: string;
+	iteration: number;
+	prompt: string;
+	dos?: string;
+	donts?: string;
+	workflow: SimpleWorkflow | null;
+	build: {
+		success: boolean;
+		errorClass?: string;
+		errorMessage?: string;
+		durationMs: number;
+		extraWorkflowCount: number;
+		interactivity: InProcessBuildResult['interactivity'];
+	};
+	feedback: Feedback[];
+}
+
+async function runExample(
+	example: DatasetExample,
+	iteration: number,
+	judgeLlm: BaseChatModel,
+	args: PairwiseArgs,
+	logger: EvalLogger,
+): Promise<ExampleRecord> {
+	logger.verbose(`[${example.id} #${iteration}] building workflow...`);
+	const build = await buildInProcess({
+		prompt: example.prompt,
+		timeoutMs: args.timeoutMs,
+	});
+
+	const record: ExampleRecord = {
+		exampleId: example.id,
+		iteration,
+		prompt: example.prompt,
+		dos: example.dos,
+		donts: example.donts,
+		workflow: build.workflow ?? null,
+		build: {
+			success: build.success,
+			errorClass: build.errorClass,
+			errorMessage: build.errorMessage,
+			durationMs: build.durationMs,
+			extraWorkflowCount: build.extraWorkflows.length,
+			interactivity: build.interactivity,
+		},
+		feedback: [],
+	};
+
+	if (!build.workflow) {
+		logger.warn(
+			`[${example.id} #${iteration}] build failed (${build.errorClass ?? 'unknown'}): ${build.errorMessage ?? 'no details'}`,
+		);
+		return record;
+	}
+
+	try {
+		const evaluator = createPairwiseEvaluator(judgeLlm, { numJudges: args.judges });
+		const feedback = await evaluator.evaluate(build.workflow, {
+			dos: example.dos,
+			donts: example.donts,
+		});
+		record.feedback = feedback;
+		const primary = feedback.find((f) => f.metric === 'pairwise_primary');
+		logger.info(
+			`[${example.id} #${iteration}] pairwise_primary=${primary?.score ?? 'n/a'} duration=${build.durationMs}ms`,
+		);
+	} catch (error) {
+		logger.error(
+			`[${example.id} #${iteration}] judge panel failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+
+	return record;
+}
+
+// ---------------------------------------------------------------------------
+// Output writing
+// ---------------------------------------------------------------------------
+
+interface Summary {
+	builder: 'instance-ai';
+	dataset: string;
+	judgeModel: string;
+	numJudges: number;
+	iterations: number;
+	experimentName: string;
+	startedAt: string;
+	finishedAt: string;
+	totals: {
+		examples: number;
+		runs: number;
+		buildSuccess: number;
+		buildFailures: Record<string, number>;
+		primaryPassRate: number;
+		avgDiagnostic: number;
+	};
+	interactivity: {
+		askUserCount: number;
+		planToolCount: number;
+		autoApprovedSuspensions: number;
+		mockedCredentialTypes: string[];
+	};
+}
+
+async function writeOutputs(
+	outputDir: string,
+	records: ExampleRecord[],
+	args: PairwiseArgs,
+	startedAt: Date,
+	finishedAt: Date,
+	logger: EvalLogger,
+): Promise<Summary> {
+	await fs.mkdir(outputDir, { recursive: true });
+	await fs.mkdir(path.join(outputDir, 'workflows'), { recursive: true });
+
+	// results.jsonl + per-workflow files
+	const jsonlPath = path.join(outputDir, 'results.jsonl');
+	const lines: string[] = [];
+	for (const record of records) {
+		lines.push(JSON.stringify(record));
+		if (record.workflow) {
+			const slug = safeFilename(`${record.exampleId}_${record.iteration}`);
+			await fs.writeFile(
+				path.join(outputDir, 'workflows', `${slug}.json`),
+				JSON.stringify(record.workflow, null, 2),
+				'utf8',
+			);
+		}
+	}
+	await fs.writeFile(jsonlPath, lines.join('\n') + '\n', 'utf8');
+
+	// results.csv — flat metric columns for spreadsheet import
+	const csvPath = path.join(outputDir, 'results.csv');
+	const csvHeader = [
+		'exampleId',
+		'iteration',
+		'buildSuccess',
+		'buildError',
+		'durationMs',
+		'askUserCount',
+		'planToolCount',
+		'pairwisePrimary',
+		'pairwiseDiagnostic',
+		'pairwiseJudgesPassed',
+	].join(',');
+	const csvRows = records.map((r) => {
+		const find = (m: string) => r.feedback.find((f) => f.metric === m)?.score ?? '';
+		return [
+			r.exampleId,
+			r.iteration,
+			r.build.success ? 1 : 0,
+			r.build.errorClass ?? '',
+			r.build.durationMs,
+			r.build.interactivity.askUserCount,
+			r.build.interactivity.planToolCount,
+			find('pairwise_primary'),
+			find('pairwise_diagnostic'),
+			find('pairwise_judges_passed'),
+		]
+			.map(csvCell)
+			.join(',');
+	});
+	await fs.writeFile(csvPath, [csvHeader, ...csvRows].join('\n') + '\n', 'utf8');
+
+	// summary.json
+	const buildFailures: Record<string, number> = {};
+	let buildSuccess = 0;
+	let primaryPassSum = 0;
+	let primaryPassCount = 0;
+	let diagnosticSum = 0;
+	let diagnosticCount = 0;
+	const allMockedCreds = new Set<string>();
+	let askUserCount = 0;
+	let planToolCount = 0;
+	let autoApprovedSuspensions = 0;
+
+	for (const record of records) {
+		if (record.build.success) buildSuccess++;
+		if (record.build.errorClass) {
+			buildFailures[record.build.errorClass] = (buildFailures[record.build.errorClass] ?? 0) + 1;
+		}
+		askUserCount += record.build.interactivity.askUserCount;
+		planToolCount += record.build.interactivity.planToolCount;
+		autoApprovedSuspensions += record.build.interactivity.autoApprovedSuspensions;
+		for (const type of record.build.interactivity.mockedCredentialTypes) {
+			allMockedCreds.add(type);
+		}
+
+		const primary = record.feedback.find((f) => f.metric === 'pairwise_primary')?.score;
+		if (typeof primary === 'number') {
+			primaryPassSum += primary;
+			primaryPassCount++;
+		}
+		const diag = record.feedback.find((f) => f.metric === 'pairwise_diagnostic')?.score;
+		if (typeof diag === 'number') {
+			diagnosticSum += diag;
+			diagnosticCount++;
+		}
+	}
+
+	const summary: Summary = {
+		builder: 'instance-ai',
+		dataset: args.dataset,
+		judgeModel: args.judgeModel,
+		numJudges: args.judges,
+		iterations: args.iterations,
+		experimentName: args.experimentName,
+		startedAt: startedAt.toISOString(),
+		finishedAt: finishedAt.toISOString(),
+		totals: {
+			examples: new Set(records.map((r) => r.exampleId)).size,
+			runs: records.length,
+			buildSuccess,
+			buildFailures,
+			primaryPassRate: primaryPassCount ? primaryPassSum / primaryPassCount : 0,
+			avgDiagnostic: diagnosticCount ? diagnosticSum / diagnosticCount : 0,
+		},
+		interactivity: {
+			askUserCount,
+			planToolCount,
+			autoApprovedSuspensions,
+			mockedCredentialTypes: Array.from(allMockedCreds),
+		},
+	};
+	await fs.writeFile(
+		path.join(outputDir, 'summary.json'),
+		JSON.stringify(summary, null, 2),
+		'utf8',
+	);
+	logger.success(`Wrote ${records.length} results to ${outputDir}`);
+	return summary;
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+async function main(): Promise<void> {
+	const args = parseArgs(process.argv.slice(2));
+	const logger = createLogger(args.verbose);
+	logger.info(
+		`pairwise eval: backend=${args.backend} dataset=${args.dataset} judges=${args.judges} iterations=${args.iterations}`,
+	);
+
+	const apiKey = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
+	if (!apiKey) {
+		throw new Error(
+			'Set N8N_AI_ANTHROPIC_KEY or ANTHROPIC_API_KEY — both the builder agent and the judge LLM need it.',
+		);
+	}
+
+	const judgeLlm = new ChatAnthropic({
+		model: args.judgeModel,
+		apiKey,
+		temperature: 0,
+		maxTokens: 8192,
+	});
+
+	const examples = await loadExamples(args, logger);
+	const selected = args.maxExamples !== undefined ? examples.slice(0, args.maxExamples) : examples;
+	logger.info(`Running ${selected.length} examples x ${args.iterations} iterations`);
+
+	const limit = pLimit(args.concurrency);
+	const records: ExampleRecord[] = [];
+	const startedAt = new Date();
+
+	const work: Array<Promise<void>> = [];
+	for (const example of selected) {
+		for (let i = 1; i <= args.iterations; i++) {
+			work.push(
+				limit(async () => {
+					const record = await runExample(example, i, judgeLlm, args, logger);
+					records.push(record);
+				}),
+			);
+		}
+	}
+	await Promise.all(work);
+
+	const finishedAt = new Date();
+	records.sort((a, b) =>
+		a.exampleId === b.exampleId
+			? a.iteration - b.iteration
+			: a.exampleId.localeCompare(b.exampleId),
+	);
+	await writeOutputs(args.outputDir, records, args, startedAt, finishedAt, logger);
+
+	if (args.backend === 'langsmith') {
+		logger.info(
+			`Note: LangSmith feedback upload is not yet wired up — scores are in ${args.outputDir}. ` +
+				'Run scripts/upload-pairwise-to-langsmith.ts against summary.json to push results.',
+		);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function safeFilename(s: string): string {
+	return s.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120);
+}
+
+function csvCell(value: unknown): string {
+	if (value === null || value === undefined) return '';
+	const str = String(value);
+	if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+		return '"' + str.replace(/"/g, '""') + '"';
+	}
+	return str;
+}
+
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
+
+if (require.main === module) {
+	main().catch((error) => {
+		console.error(error instanceof Error ? (error.stack ?? error.message) : String(error));
+		process.exit(1);
+	});
+}

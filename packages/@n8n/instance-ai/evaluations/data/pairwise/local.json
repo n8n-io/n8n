@@ -1,0 +1,22 @@
+[
+	{
+		"id": "local-manual-http",
+		"inputs": {
+			"prompt": "Create a workflow with a manual trigger that makes an HTTP GET request to https://jsonplaceholder.typicode.com/todos/1 and returns the JSON response.",
+			"context": {
+				"dos": "Use the n8n-nodes-base.manualTrigger node as the entry point\nUse the n8n-nodes-base.httpRequest node for the outbound call\nConfigure the HTTP Request node with the URL specified in the prompt",
+				"donts": "Do not add any credentials to the HTTP Request node since the endpoint is public\nDo not add a Code node for anything that can be expressed with built-in nodes"
+			}
+		}
+	},
+	{
+		"id": "local-webhook-to-slack",
+		"inputs": {
+			"prompt": "Create a workflow that receives a webhook and forwards the body to Slack channel #alerts.",
+			"context": {
+				"dos": "Use the n8n-nodes-base.webhook node as the entry point\nUse the Slack node to post the message\nUse the channel #alerts",
+				"donts": "Do not hardcode a Slack token in parameters (credentials should be referenced instead)\nDo not add an HTTP Request node when a dedicated Slack node is available"
+			}
+		}
+	}
+]

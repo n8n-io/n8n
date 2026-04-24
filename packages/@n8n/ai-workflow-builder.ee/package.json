@@ -51,6 +51,16 @@
       "require": "./dist/index.js",
       "import": "./src/index.ts",
       "types": "./dist/index.d.ts"
+    },
+    "./evaluations/pairwise": {
+      "types": "./evaluations/evaluators/pairwise/index.ts",
+      "import": "./evaluations/evaluators/pairwise/index.ts",
+      "default": "./evaluations/evaluators/pairwise/index.ts"
+    },
+    "./evaluations/constants": {
+      "types": "./evaluations/support/constants.ts",
+      "import": "./evaluations/support/constants.ts",
+      "default": "./evaluations/support/constants.ts"
     }
   },
   "dependencies": {
