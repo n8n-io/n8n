@@ -273,7 +273,7 @@ describe('composable integration', () => {
 
 			await h.switchThread('thread-2');
 
-			expect(h.activeTabId.value).toBeNull();
+			expect(h.activeTabId.value).toBeUndefined();
 			expect(h.activeWorkflowId.value).toBeNull();
 			expect(h.activeExecutionId.value).toBeNull();
 			expect(h.isPreviewVisible.value).toBe(false);
@@ -527,7 +527,7 @@ describe('composable integration', () => {
 
 			// Switch thread mid-execution — clears everything
 			await h.switchThread('thread-2');
-			expect(h.activeTabId.value).toBeNull();
+			expect(h.activeTabId.value).toBeUndefined();
 
 			// No more relay after thread switch
 			expect(h.relayedEvents.length).toBe(beforeThreadSwitch);

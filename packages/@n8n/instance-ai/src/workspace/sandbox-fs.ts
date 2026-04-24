@@ -47,7 +47,7 @@ export async function runInSandbox(
 export async function writeFileViaSandbox(
 	workspace: Workspace,
 	filePath: string,
-	content: string,
+	content: string | Buffer,
 ): Promise<void> {
 	// Ensure parent directory exists
 	const dir = filePath.substring(0, filePath.lastIndexOf('/'));
@@ -56,7 +56,10 @@ export async function writeFileViaSandbox(
 	}
 
 	// Encode content as base64 and decode in the sandbox
-	const b64 = Buffer.from(content, 'utf-8').toString('base64');
+	const b64 =
+		typeof content === 'string'
+			? Buffer.from(content, 'utf-8').toString('base64')
+			: content.toString('base64');
 	const cmd = `echo '${b64}' | base64 -d > '${escapeSingleQuotes(filePath)}'`;
 	const result = await runInSandbox(workspace, cmd);
 	if (result.exitCode !== 0) {
