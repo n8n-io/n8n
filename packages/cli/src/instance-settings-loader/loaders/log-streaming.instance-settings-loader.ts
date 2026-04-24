@@ -217,11 +217,7 @@ export class LogStreamingInstanceSettingsLoader {
 					`N8N_LOG_STREAMING_DESTINATIONS[${index}] must have either "id" or "label" for stable reconciliation`,
 				);
 			}
-			if (item.type === 'syslog' && item.protocol === 'tls' && !item.tlsCa) {
-				throw new Error(
-					`N8N_LOG_STREAMING_DESTINATIONS[${index}] must provide "tlsCa" when "protocol" is "tls"`,
-				);
-			}
+
 			if (item.id) {
 				if (seenIds.has(item.id)) {
 					throw new Error(
@@ -248,7 +244,64 @@ export class LogStreamingInstanceSettingsLoader {
 			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 
-		const byId = new Map(existing.map((row) => [row.id, row]));
+		const byLabelType = this.groupByLabelType(existing);
+
+		const toDelete = new Set<string>();
+		const toUpsert: Array<Pick<EventDestinations, 'id' | 'destination'>> = [];
+
+		for (const item of items) {
+			// Match items by id or unique (type, label) to reliably reconcile environment configuration with the database.
+			let targetId: string;
+
+			if (item.id) {
+				targetId = item.id;
+			} else {
+				const internalType = TYPE_TO_INTERNAL[item.type];
+				const key = `${internalType}:${item.label!}`;
+				const matches = byLabelType.get(key) ?? [];
+
+				if (matches.length > 0) {
+					// One env row maps to at most one DB row per (type, label). If duplicates exist
+					// (e.g. legacy data), keep the oldest row and remove the rest so reconciliation is stable.
+					targetId = matches[0].id;
+					for (let i = 1; i < matches.length; i++) {
+						toDelete.add(matches[i].id);
+					}
+				} else {
+					targetId = uuid();
+				}
+			}
+
+			toUpsert.push({
+				id: targetId,
+				destination: toDestinationOptions(item, targetId),
+			});
+		}
+
+		// Remove database entities that were not matched to environment variable items.
+		const keptIds = new Set(toUpsert.map((row) => row.id));
+		for (const row of existing) {
+			if (!keptIds.has(row.id)) {
+				toDelete.add(row.id);
+			}
+		}
+
+		// Drop kept ids from `toDelete`: label-based duplicate cleanup can mark a row for deletion
+		// before another array entry rescues the same id.
+		for (const id of keptIds) {
+			toDelete.delete(id);
+		}
+
+		if (toUpsert.length > 0) {
+			await tx.upsert(EventDestinations, toUpsert, { conflictPaths: ['id'] });
+		}
+
+		if (toDelete.size > 0) {
+			await tx.delete(EventDestinations, { id: In(Array.from(toDelete)) });
+		}
+	}
+
+	private groupByLabelType(existing: EventDestinations[]): Map<string, EventDestinations[]> {
 		const byLabelType = new Map<string, EventDestinations[]>();
 		for (const row of existing) {
 			const dest = row.destination;
@@ -259,46 +312,6 @@ export class LogStreamingInstanceSettingsLoader {
 				byLabelType.set(key, bucket);
 			}
 		}
-
-		const keptIds = new Set<string>();
-		const toDelete = new Set<string>();
-		const toUpsert: Array<Pick<EventDestinations, 'id' | 'destination'>> = [];
-
-		for (const item of items) {
-			let targetId: string;
-
-			if (item.id) {
-				const match = byId.get(item.id);
-				targetId = match ? match.id : item.id;
-			} else {
-				const internalType = TYPE_TO_INTERNAL[item.type];
-				const key = `${internalType}:${item.label!}`;
-				const matches = byLabelType.get(key) ?? [];
-				if (matches.length > 0) {
-					targetId = matches[0].id;
-					for (let i = 1; i < matches.length; i++) toDelete.add(matches[i].id);
-				} else {
-					targetId = uuid();
-				}
-			}
-
-			keptIds.add(targetId);
-			toUpsert.push({
-				id: targetId,
-				destination: toDestinationOptions(item, targetId),
-			});
-		}
-
-		for (const row of existing) {
-			if (!keptIds.has(row.id)) toDelete.add(row.id);
-		}
-		for (const id of keptIds) toDelete.delete(id);
-
-		if (toUpsert.length > 0) {
-			await tx.upsert(EventDestinations, toUpsert, { conflictPaths: ['id'] });
-		}
-		if (toDelete.size > 0) {
-			await tx.delete(EventDestinations, { id: In(Array.from(toDelete)) });
-		}
+		return byLabelType;
 	}
 }

@@ -184,16 +184,6 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 
 			await expectRejectsWithBootstrappingError(loader, /validation failed/);
 		});
-
-		it('requires tlsCa when syslog protocol is "tls"', async () => {
-			const loader = createLoader({
-				logStreamingDestinations: JSON.stringify([
-					{ type: 'syslog', label: 'S', host: 'host.test', protocol: 'tls' },
-				]),
-			});
-
-			await expectRejectsWithBootstrappingError(loader, /must provide "tlsCa"/);
-		});
 	});
 
 	describe('accepts', () => {
@@ -213,6 +203,17 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 						host: 'syslog.test',
 						circuitBreaker: { maxFailures: 5 },
 					},
+				]),
+			});
+
+			await expect(loader.run()).resolves.toBe('created');
+		});
+
+		it('syslog with protocol tls and no tlsCa', async () => {
+			tx.find.mockResolvedValue([]);
+			const loader = createLoader({
+				logStreamingDestinations: JSON.stringify([
+					{ type: 'syslog', label: 'S', host: 'host.test', protocol: 'tls' },
 				]),
 			});
 
