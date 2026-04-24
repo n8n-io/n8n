@@ -45,6 +45,7 @@ describe('permissions', () => {
 			chatHubAgent: {},
 			breakingChanges: {},
 			apiKey: {},
+			encryptionKey: {},
 			credentialResolver: {},
 			instanceAi: {},
 			roleMappingRule: {},
@@ -170,6 +171,7 @@ describe('permissions', () => {
 			apiKey: {
 				manage: true,
 			},
+			encryptionKey: {},
 			credentialResolver: {},
 			instanceAi: {},
 			roleMappingRule: {},

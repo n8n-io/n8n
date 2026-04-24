@@ -67,7 +67,7 @@ catalog:
   jsonwebtoken: 9.0.3
   kafkajs: 2.2.4
   langchain: 1.2.30
-  langsmith: 0.4.12
+  langsmith: 0.5.19
   lodash: 4.18.1
   luxon: 3.7.2
   mime-types: 3.0.2
