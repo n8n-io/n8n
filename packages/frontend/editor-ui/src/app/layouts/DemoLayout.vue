@@ -33,6 +33,7 @@ provide(WorkflowStateKey, workflowState);
 
 const {
 	initializeData,
+	initializeWorkflow,
 	currentWorkflowDocumentStore,
 	currentNDVStore,
 	cleanup: cleanupInitialization,
@@ -70,6 +71,7 @@ onBeforeMount(() => {
 
 onMounted(async () => {
 	await initializeData();
+	await initializeWorkflow();
 	pushConnection.initialize();
 
 	// When canExecute is enabled, establish a real WebSocket/SSE connection
