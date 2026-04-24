@@ -38,7 +38,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	private readonly scopedLogger: Logger;
 
-	private readonly prefix: string;
+	private readonly prefix!: string;
 
 	private tracer?: Tracer;
 
@@ -48,7 +48,6 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 		globalConfig: GlobalConfig,
 	) {
 		this.scopedLogger = this.logger.scoped('expression-engine');
-		this.prefix = globalConfig.endpoints.metrics.prefix;
 
 		if (!this.config.observabilityEnabled || this.config.engine !== 'vm') {
 			this.metrics = NoOpProvider.metrics;
@@ -56,6 +55,8 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 			this.logs = NoOpProvider.logs;
 			return;
 		}
+
+		this.prefix = globalConfig.endpoints.metrics.prefix;
 
 		this.registerMetrics();
 
