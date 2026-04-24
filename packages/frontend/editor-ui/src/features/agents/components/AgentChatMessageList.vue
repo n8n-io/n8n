@@ -3,13 +3,31 @@ import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
-import { buildDisplayGroups, type ChatMessage } from '../composables/agentChatMessages';
+import {
+	buildDisplayGroups,
+	type ChatMessage,
+	type InteractivePayload,
+} from '../composables/agentChatMessages';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
+import InteractiveCard from './interactive/InteractiveCard.vue';
 
 const props = defineProps<{
 	messages: ChatMessage[];
 	messagingState: 'idle' | 'waitingFirstChunk' | 'receiving';
+	projectId?: string;
+	agentId?: string;
 }>();
+
+const emit = defineEmits<{
+	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
+}>();
+
+function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
+	// Cards without a runId are disabled at the card level (see InteractiveCard).
+	// This guard is a defensive belt-and-braces for the type narrowing.
+	if (!payload.runId) return;
+	emit('resume', { runId: payload.runId, toolCallId: payload.toolCallId, resumeData });
+}
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
@@ -105,11 +123,45 @@ watch(
 <template>
 	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
+			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
+				<div :class="$style.content">
+					<details v-if="group.thinking" :class="$style.thinkingBlock">
+						<summary :class="$style.thinkingSummary">
+							<N8nIcon icon="brain" :size="12" />
+							Thinking...
+						</summary>
+						<div :class="$style.thinkingContent">{{ group.thinking }}</div>
+					</details>
+					<AgentChatToolSteps :tool-calls="group.toolCalls" />
+					<div v-if="group.interactives.length" :class="$style.interactives">
+						<InteractiveCard
+							v-for="payload in group.interactives"
+							:key="payload.toolCallId"
+							:payload="payload"
+							:project-id="projectId"
+							:agent-id="agentId"
+							@submit="onInteractiveSubmit(payload, $event)"
+						/>
+					</div>
+				</div>
+			</div>
 			<div
-				v-if="group.kind === 'message'"
+				v-else
 				:class="[$style.message, group.message.role === 'user' ? $style.user : $style.assistant]"
 			>
 				<div :class="$style.content">
+					<details v-if="group.message.thinking" :class="$style.thinkingBlock">
+						<summary :class="$style.thinkingSummary">
+							<N8nIcon icon="brain" :size="12" />
+							Thinking...
+						</summary>
+						<div :class="$style.thinkingContent">{{ group.message.thinking }}</div>
+					</details>
+					<AgentChatToolSteps
+						v-if="group.message.toolCalls?.length"
+						:tool-calls="group.message.toolCalls"
+					/>
+
 					<div
 						v-if="group.message.role === 'user'"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
@@ -130,37 +182,21 @@ watch(
 							/>
 						</div>
 					</div>
-				</div>
-			</div>
-			<div v-else :class="[$style.message, $style.assistant]">
-				<div :class="$style.content">
-					<details v-if="group.thinking" :class="$style.thinkingBlock">
-						<summary :class="$style.thinkingSummary">
-							<N8nIcon icon="brain" :size="12" />
-							Thinking...
-						</summary>
-						<div :class="$style.thinkingContent">{{ group.thinking }}</div>
-					</details>
-					<AgentChatToolSteps v-if="group.toolCalls.length" :tool-calls="group.toolCalls" />
-					<div
-						v-if="group.finalMessage?.content"
-						:class="[
-							$style.chatMessage,
-							{ [$style.chatMessageError]: group.finalMessage.status === 'error' },
-						]"
-					>
-						<div :class="$style.markdownContent">
-							<ChatMarkdownChunk
-								:source="{ type: 'text', content: group.finalMessage.content }"
-								@open-artifact="() => {}"
-							/>
-						</div>
+
+					<div v-if="group.message.interactive" :class="$style.interactives">
+						<InteractiveCard
+							:payload="group.message.interactive"
+							:project-id="projectId"
+							:agent-id="agentId"
+							@submit="onInteractiveSubmit(group.message.interactive, $event)"
+						/>
 					</div>
 					<ChatTypingIndicator
 						v-if="
-							group.finalMessage?.status === 'streaming' &&
-							!group.finalMessage.content &&
-							!group.toolCalls.length
+							group.message.role === 'assistant' &&
+							group.message.status === 'streaming' &&
+							!group.message.content &&
+							!group.message.toolCalls?.length
 						"
 						:class="$style.typingIndicator"
 					/>
@@ -185,7 +221,6 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
-	/* Slimmer scrollbar — still visible on hover/scroll but less intrusive. */
 	scrollbar-width: thin;
 	scrollbar-color: var(--color--foreground--shade-1) transparent;
 
@@ -215,6 +250,18 @@ watch(
 
 .message.user .content {
 	align-items: flex-end;
+}
+
+/**
+ * Vertical stack for one or more interactive cards inside an assistant message.
+ * Adds a small gap between adjacent cards (when a tool run produced several)
+ * and a top margin so the cards don't sit flush against the tool-step list.
+ */
+.interactives {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
 }
 
 .chatMessage {

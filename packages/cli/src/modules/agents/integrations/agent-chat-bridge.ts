@@ -370,7 +370,8 @@ export class AgentChatBridge {
 					await this.postErrorToThread(thread, chunk.error);
 					break;
 				default:
-					// Ignore other chunk types (finish, tool-call-delta, etc.)
+					// Ignore other chunk types (finish, tool-input-*, tool-call,
+					// tool-result, start-step, finish-step, etc.)
 					break;
 			}
 		}
@@ -545,8 +546,8 @@ export class AgentChatBridge {
 					message?: string;
 					components: Array<{ type: string; [key: string]: unknown }>;
 				},
-				runId!,
-				toolCallId!,
+				runId,
+				toolCallId,
 				riResumeSchema,
 				this.getShortenCallback(),
 				this.integrationType,

@@ -15,6 +15,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { MODAL_CONFIRM, MODAL_CANCEL, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
@@ -59,6 +60,7 @@ const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
 const { showError } = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
@@ -529,6 +531,10 @@ async function initialize() {
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
 	builderTelemetry.captureToolsBaseline();
+	// Fire-and-forget: the interactive ask_credential tool card reads these
+	// stores. Failures are non-fatal — the cards stay disabled until data lands.
+	void credentialsStore.fetchAllCredentials({ projectId: projectId.value }).catch(() => undefined);
+	void credentialsStore.fetchCredentialTypes(false).catch(() => undefined);
 	// Stop any in-flight auto-refresh from the previous agent before kicking
 	// off a new fetch — keeps the store tied to the current project/agent.
 	sessionsStore.stopAutoRefresh();

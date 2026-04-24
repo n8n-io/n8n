@@ -36,6 +36,7 @@ function createDeps(
 ): WorkflowDocumentConnectionsDeps {
 	return {
 		getNodeById: vi.fn().mockReturnValue(undefined),
+		syncWorkflowObject: vi.fn(),
 		...overrides,
 	};
 }
@@ -67,9 +68,7 @@ describe('useWorkflowDocumentConnections', () => {
 		workflowsStore = useWorkflowsStore();
 		deps = createDeps();
 
-		// Ensure connections are clean — workflowObject may retain state
-		// from a previous test if the Workflow class caches internally.
-		workflowsStore.setConnections({});
+		workflowsStore.workflow.connections = {};
 	});
 
 	describe('round-trip: setConnections → read', () => {

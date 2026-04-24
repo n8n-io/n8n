@@ -38,6 +38,8 @@ const emit = defineEmits<{
 	configUpdated: [];
 	'update:streaming': [streaming: boolean];
 	'continue-loaded': [count: number];
+	'initial-consumed': [];
+	back: [];
 	'open-build': [];
 }>();
 
@@ -54,6 +56,7 @@ const {
 	loadHistory,
 	sendMessage,
 	stopGenerating,
+	resume,
 	dismissFatalError,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
@@ -134,11 +137,18 @@ if (seedMessage) {
 }
 
 onMounted(() => {
-	// Only load history when there's no seed message — a fresh session has
-	// nothing to fetch yet and the endpoint would 404.
-	if (!seedMessage) {
-		void loadHistory();
+	// A supplied `initialMessage` means the parent just minted a fresh session
+	// and wants us to seed it with the first message — there's no thread to
+	// load yet, and hitting the history endpoint would 404. The seed was
+	// already sent synchronously during setup (see the `seedMessage` block
+	// above) — here we just emit `initial-consumed` so the parent can clear
+	// its source ref. This guards against re-sending on HMR / any re-mount
+	// where the parent's prompt ref is still populated.
+	if (seedMessage) {
+		emit('initial-consumed');
+		return;
 	}
+	void loadHistory();
 });
 
 // Abort any in-flight stream when the panel unmounts (e.g. route change,
@@ -182,14 +192,21 @@ onBeforeUnmount(() => {
 		<!--
 			Suppress the centered empty state when we have an `initialMessage` to
 			seed. Without this, the panel briefly renders the empty view before
-			onMounted fires and pushes the user message — visible as a flicker of
-			the centered layout under the mode transition.
+			the seedMessage push (during setup) lands in `messages` — visible as
+			a flicker of the centered layout under the mode transition.
 		-->
 		<AgentChatEmptyState
 			v-if="messages.length === 0 && !isStreaming && !initialMessage"
 			:endpoint="endpoint"
 		/>
-		<AgentChatMessageList v-else :messages="messages" :messaging-state="messagingState" />
+		<AgentChatMessageList
+			v-else
+			:messages="messages"
+			:messaging-state="messagingState"
+			:project-id="projectId"
+			:agent-id="agentId"
+			@resume="resume"
+		/>
 
 		<div :class="$style.inputArea">
 			<slot name="above-input" />

@@ -1,5 +1,15 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
-import type { AgentPersistedMessageDto, ChatIntegrationDescriptor } from '@n8n/api-types';
+import {
+	type AgentBuilderMessagesResponse,
+	type AgentPersistedMessageDto,
+	type AgentSseEvent,
+	type ChatIntegrationDescriptor,
+	AgentBuildResumeDto,
+	AgentChatMessageDto,
+	AgentIntegrationDto,
+	CreateAgentDto,
+	UpdateAgentConfigDto,
+	UpdateAgentDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
 import { randomUUID } from 'crypto';
@@ -10,59 +20,48 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import {
-	AgentChatMessageDto,
-	AgentIntegrationDto,
-	CreateAgentDto,
-	UpdateAgentConfigDto,
-	UpdateAgentDto,
-} from './agents.dto';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { messagesToDto } from './agent-message-mapper';
+import {
+	type FlushableResponse,
+	initSseStream,
+	pumpChunks,
+	type ToolEventCallbacks,
+} from './agent-sse-stream';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
 
-type FlushableResponse = Response & { flush?: () => void };
-
 /**
- * Extract SSE-sendable events from AgentMessage content parts.
- * Returns an array of event objects suitable for `send()`.
+ * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
+ * we re-emit each delta as a `code-delta` event so the FE editor can render
+ * incrementally; on tool completion we emit `config-updated` / `tool-updated`
+ * so the FE refreshes the corresponding panel. State is local to one request:
+ * `streamingToolName` tracks the tool whose arguments are currently streaming
+ * (replaces the old per-message-id heuristic).
  */
-function extractMessageEvents(message: AgentMessage): Array<Record<string, unknown>> {
-	if (!('content' in message) || !Array.isArray(message.content)) return [];
-
-	const events: Array<Record<string, unknown>> = [];
-	for (const part of message.content) {
-		if (part.type === 'text' && 'text' in part) {
-			events.push({ text: part.text });
-		} else if (part.type === 'tool-call' && 'toolName' in part) {
-			const toolCallId =
-				'toolCallId' in part && typeof part.toolCallId === 'string' ? part.toolCallId : undefined;
-			events.push({ toolCall: { tool: part.toolName, toolCallId, input: part.input } });
-		} else if (part.type === 'tool-result' && 'toolName' in part) {
-			const toolCallId =
-				'toolCallId' in part && typeof part.toolCallId === 'string' ? part.toolCallId : undefined;
-			events.push({ toolResult: { tool: part.toolName, toolCallId, output: part.result } });
-		}
-	}
-	return events;
-}
-
-/**
- * Set up SSE headers and return a send helper for streaming responses.
- */
-function initSseResponse(res: FlushableResponse): (data: Record<string, unknown>) => void {
-	res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-	res.setHeader('Cache-Control', 'no-cache');
-	res.setHeader('Connection', 'keep-alive');
-	res.setHeader('X-Accel-Buffering', 'no');
-	res.flushHeaders();
-	(res.socket as { setNoDelay?: (v: boolean) => void })?.setNoDelay?.(true);
-
-	return (data: Record<string, unknown>) => {
-		res.write(`data: ${JSON.stringify(data)}\n\n`);
-		res.flush?.();
+function makeBuilderToolEvents(send: (e: AgentSseEvent) => void): ToolEventCallbacks {
+	let streamingToolName: string | undefined;
+	return {
+		toolInputStart: (name) => {
+			streamingToolName = name;
+		},
+		toolInputDelta: (_toolCallId, delta) => {
+			if (streamingToolName === 'build_custom_tool') {
+				send({ type: 'code-delta', delta });
+			}
+		},
+		toolResult: (name) => {
+			if (name === 'write_config' || name === 'patch_config') {
+				send({ type: 'config-updated' });
+				streamingToolName = undefined;
+			}
+			if (name === 'build_custom_tool') {
+				send({ type: 'tool-updated' });
+				streamingToolName = undefined;
+			}
+		},
 	};
 }
 
@@ -287,7 +286,7 @@ export class AgentsController {
 
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
-		const send = initSseResponse(res);
+		const { send } = initSseStream(res);
 
 		// If the client supplied a sessionId and a thread already exists under that id,
 		// the thread must belong to this (project, agent). Otherwise a caller could
@@ -296,7 +295,7 @@ export class AgentsController {
 		if (sessionId) {
 			const existing = await this.agentExecutionService.findThreadById(sessionId);
 			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
-				send({ error: 'Session not found' });
+				send({ type: 'error', message: 'Session not found' });
 				res.end();
 				return;
 			}
@@ -311,7 +310,8 @@ export class AgentsController {
 		);
 		if (missing.length > 0) {
 			send({
-				error: 'This agent is not ready to run yet.',
+				type: 'error',
+				message: 'This agent is not ready to run yet.',
 				errorCode: 'agent_misconfigured',
 				missing,
 			});
@@ -320,21 +320,22 @@ export class AgentsController {
 		}
 
 		try {
-			for await (const chunk of this.agentsService.executeForChat(
-				agentId,
-				message,
-				threadId,
-				req.user.id,
-				projectId,
-				credentialProvider,
-				'chat',
-			)) {
-				this.sendStreamChunk(chunk, send);
-			}
-			send({ done: true, sessionId: threadId });
+			await pumpChunks(
+				this.agentsService.executeForChat(
+					agentId,
+					message,
+					threadId,
+					req.user.id,
+					projectId,
+					credentialProvider,
+					'chat',
+				),
+				send,
+			);
+			send({ type: 'done', sessionId: threadId });
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
-			send({ error: errorMessage });
+			send({ type: 'error', message: errorMessage });
 		}
 
 		res.end();
@@ -357,12 +358,33 @@ export class AgentsController {
 	@Get('/:agentId/build/messages')
 	async getBuilderMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
-	): Promise<AgentPersistedMessageDto[]> {
+	): Promise<AgentBuilderMessagesResponse> {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const messages = await this.agentsBuilderService.getBuilderMessages(agentId);
-		return messages as unknown as AgentPersistedMessageDto[];
+
+		// Merge persisted thread memory with any open suspension's checkpoint
+		// so a refresh during a suspended turn still returns the suspended
+		// assistant message (the SDK only saveToMemory's on completion).
+		const memory = await this.agentsBuilderService.getBuilderMessages(agentId);
+		const checkpoint = await this.agentsBuilderService.findOpenCheckpoint(agentId);
+		const openSuspensions = Object.values(checkpoint?.pendingToolCalls ?? {})
+			.filter((tc) => tc.suspended)
+			.map((tc) => ({
+				toolCallId: tc.toolCallId,
+				runId: tc.runId,
+			}));
+
+		let messages: AgentPersistedMessageDto[];
+		if (!checkpoint) {
+			messages = messagesToDto(memory);
+		} else {
+			const memoryIds = new Set(memory.map((m) => m.id));
+			const newFromCheckpoint = checkpoint.messageList.messages.filter((m) => !memoryIds.has(m.id));
+			messages = messagesToDto([...memory, ...newFromCheckpoint]);
+		}
+
+		return { messages, openSuspensions };
 	}
 
 	@Delete('/:agentId/build/messages')
@@ -382,7 +404,7 @@ export class AgentsController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const messages = await this.agentsService.getTestChatMessages(agentId, req.user.id);
-		return messages as unknown as AgentPersistedMessageDto[];
+		return messagesToDto(messages);
 	}
 
 	@Delete('/:agentId/chat/messages')
@@ -404,61 +426,80 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const { message } = payload;
 
+		// Validate the agent exists before opening the SSE stream so a malformed
+		// id surfaces as a typed 404 instead of a generic 500 from the builder
+		// service's internal lookup.
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
-		const send = initSseResponse(res);
+		const { send } = initSseStream(res);
 
 		try {
-			// Track streaming tool call input for set_code eager input streaming
-			let streamingToolName: string | undefined;
+			const suspended = await pumpChunks(
+				this.agentsBuilderService.buildAgent(
+					agentId,
+					projectId,
+					message,
+					credentialProvider,
+					req.user.id,
+				),
+				send,
+				makeBuilderToolEvents(send),
+			);
 
-			for await (const chunk of this.agentsBuilderService.buildAgent(
-				agentId,
-				projectId,
-				message,
-				credentialProvider,
-				req.user.id,
-			)) {
-				if (chunk.type === 'tool-call-delta') {
-					// Track which tool is streaming
-					if (chunk.name) {
-						streamingToolName = chunk.name;
-						// Announce the tool call as soon as the LLM commits to a name —
-						// before args finish streaming. The FE dedupes by toolCallId
-						// and fills in the full input when the tool-call message arrives.
-						if (chunk.id) {
-							send({ toolCall: { tool: chunk.name, toolCallId: chunk.id } });
-						}
-					}
-					// Stream tool code deltas for build_custom_tool
-					if (streamingToolName === 'build_custom_tool' && chunk.argumentsDelta) {
-						send({ toolCodeDelta: chunk.argumentsDelta });
-					}
-				} else if (chunk.type === 'message' && 'message' in chunk) {
-					const events = extractMessageEvents(chunk.message);
-					for (const event of events) {
-						send(event);
-						if ('toolResult' in event) {
-							const toolResult = event.toolResult as { tool?: string };
-							if (toolResult.tool === 'write_config' || toolResult.tool === 'patch_config') {
-								send({ configUpdated: true });
-								streamingToolName = undefined;
-							}
-							if (toolResult.tool === 'build_custom_tool') {
-								send({ toolUpdated: true });
-								streamingToolName = undefined;
-							}
-						}
-					}
-				} else {
-					this.sendStreamChunk(chunk, send);
-				}
+			if (!suspended) {
+				send({ type: 'done' });
 			}
-
-			send({ done: true });
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Build failed';
-			send({ error: errorMessage });
+			send({ type: 'error', message: errorMessage });
+		}
+
+		res.end();
+	}
+
+	@Post('/:agentId/build/resume', { usesTemplates: true })
+	async buildResume(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: FlushableResponse,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentBuildResumeDto,
+	) {
+		const { projectId } = req.params;
+		const { runId, toolCallId, resumeData } = payload;
+
+		// Validate the agent exists before opening the SSE stream so a malformed
+		// id surfaces as a typed 404 instead of a generic 500 from the builder
+		// service's internal lookup.
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+
+		const { send } = initSseStream(res);
+
+		try {
+			const suspended = await pumpChunks(
+				this.agentsBuilderService.resumeBuild(
+					agentId,
+					projectId,
+					runId,
+					toolCallId,
+					resumeData,
+					credentialProvider,
+				),
+				send,
+				makeBuilderToolEvents(send),
+			);
+
+			if (!suspended) {
+				send({ type: 'done' });
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
+			send({ type: 'error', message: errorMessage });
 		}
 
 		res.end();
@@ -618,47 +659,5 @@ export class AgentsController {
 		});
 		const body = await webResponse.text();
 		res.send(body);
-	}
-
-	// ---------------------------------------------------------------------------
-	// Private helpers
-	// ---------------------------------------------------------------------------
-
-	/**
-	 * Map a single StreamChunk to an SSE event and send it.
-	 * Handles text-delta, reasoning-delta, message, and error chunk types.
-	 */
-	private sendStreamChunk(chunk: StreamChunk, send: (data: Record<string, unknown>) => void): void {
-		switch (chunk.type) {
-			case 'text-delta':
-				if (chunk.delta) send({ text: chunk.delta });
-				break;
-			case 'reasoning-delta':
-				if (chunk.delta) send({ thinking: chunk.delta });
-				break;
-			case 'tool-call-delta':
-				// Early announce: emit once when the LLM first commits to a tool
-				// name, before args finish streaming. Subsequent deltas (no name)
-				// are skipped here; the full input arrives with the message chunk.
-				if (chunk.name && chunk.id) {
-					send({ toolCall: { tool: chunk.name, toolCallId: chunk.id } });
-				}
-				break;
-			case 'message':
-				for (const event of extractMessageEvents(chunk.message)) {
-					send(event);
-				}
-				break;
-			case 'tool-execution-start':
-				send({ toolCallExecuting: { toolCallId: chunk.toolCallId, tool: chunk.toolName } });
-				break;
-			case 'error': {
-				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
-				send({ error: errMsg });
-				break;
-			}
-			default:
-				break;
-		}
 	}
 }

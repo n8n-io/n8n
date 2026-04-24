@@ -1,4 +1,4 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import type { StreamChunk } from '@n8n/agents';
 
 export interface RecordedUsage {
 	promptTokens: number;
@@ -78,8 +78,16 @@ export class ExecutionRecorder {
 				this.textParts.push(chunk.delta);
 				this.textBuffer.push(chunk.delta);
 				break;
-			case 'message':
-				this.processMessage(chunk.message);
+			case 'tool-call':
+				this.recordToolCall(chunk.toolCallId, chunk.toolName, chunk.input);
+				break;
+			case 'tool-result':
+				this.recordToolResult(
+					chunk.toolCallId,
+					chunk.toolName,
+					chunk.output,
+					chunk.isError === true,
+				);
 				break;
 			case 'finish':
 				this.flushTextBuffer();
@@ -155,64 +163,59 @@ export class ExecutionRecorder {
 	}
 
 	/**
-	 * Process a message chunk containing tool-call or tool-result content parts.
-	 * Maintains both the flat toolCalls array (backward compat) and the ordered timeline.
+	 * Record a discrete `tool-call` chunk from the stream. Maintains both the
+	 * flat `toolCalls` array (backward compat) and the ordered timeline. The
+	 * matching `tool-result` chunk closes the timeline entry.
 	 */
-	private processMessage(message: AgentMessage): void {
-		if (!('content' in message) || !Array.isArray(message.content)) return;
+	private recordToolCall(toolCallId: string, name: string, input: unknown): void {
+		this.flushTextBuffer();
 
-		for (const part of message.content) {
-			if (part.type === 'tool-call' && 'toolName' in part) {
-				this.flushTextBuffer();
+		this.toolCalls.push({ name, input, output: undefined });
 
-				const name = part.toolName;
-				const input = 'input' in part ? part.input : undefined;
-				const toolCallId = 'toolCallId' in part ? String(part.toolCallId) : '';
+		this.timeline.push({
+			type: 'tool-call',
+			name,
+			toolCallId,
+			input,
+			output: undefined as unknown,
+			startTime: Date.now(),
+			endTime: 0,
+			success: false,
+		});
+	}
 
-				// Flat array (backward compat)
-				this.toolCalls.push({ name, input, output: undefined });
+	/**
+	 * Record a discrete `tool-result` chunk from the stream. Closes the
+	 * matching open timeline entry by `toolCallId` (preferred) or by name as
+	 * a fallback.
+	 */
+	private recordToolResult(
+		toolCallId: string,
+		name: string,
+		output: unknown,
+		isError: boolean,
+	): void {
+		const pendingFlat = [...this.toolCalls]
+			.reverse()
+			.find((tc) => tc.name === name && tc.output === undefined);
+		if (pendingFlat) {
+			pendingFlat.output = output;
+		} else {
+			this.toolCalls.push({ name, input: undefined, output });
+		}
 
-				// Timeline event — success is set to false until a tool-result confirms completion
-				this.timeline.push({
-					type: 'tool-call',
-					name,
-					toolCallId,
-					input,
-					output: undefined as unknown,
-					startTime: Date.now(),
-					endTime: 0,
-					success: false,
-				});
-			} else if (part.type === 'tool-result' && 'toolName' in part) {
-				const name = part.toolName;
-				const output = 'result' in part ? part.result : undefined;
-				const toolCallId = 'toolCallId' in part ? String(part.toolCallId) : '';
-
-				// Flat array (backward compat)
-				const pendingFlat = [...this.toolCalls]
-					.reverse()
-					.find((tc) => tc.name === name && tc.output === undefined);
-				if (pendingFlat) {
-					pendingFlat.output = output;
-				} else {
-					this.toolCalls.push({ name, input: undefined, output });
-				}
-
-				// Timeline — match by toolCallId first, then by name
-				const pendingTimeline = [...this.timeline]
-					.reverse()
-					.find(
-						(e): e is TimelineEvent & { type: 'tool-call' } =>
-							e.type === 'tool-call' &&
-							(toolCallId ? e.toolCallId === toolCallId : e.name === name) &&
-							e.endTime === 0,
-					);
-				if (pendingTimeline) {
-					pendingTimeline.output = output;
-					pendingTimeline.endTime = Date.now();
-					pendingTimeline.success = true;
-				}
-			}
+		const pendingTimeline = [...this.timeline]
+			.reverse()
+			.find(
+				(e): e is TimelineEvent & { type: 'tool-call' } =>
+					e.type === 'tool-call' &&
+					(toolCallId ? e.toolCallId === toolCallId : e.name === name) &&
+					e.endTime === 0,
+			);
+		if (pendingTimeline) {
+			pendingTimeline.output = output;
+			pendingTimeline.endTime = Date.now();
+			pendingTimeline.success = !isError;
 		}
 	}
 }
