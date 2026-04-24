@@ -118,6 +118,70 @@ export class LmChatMoonshot implements INodeType {
 					},
 				},
 				default: 'kimi-k2.5',
+<<<<<<< HEAD
+=======
+				builderHint: {
+					message:
+						'Default to the latest Kimi model (kimi-k2.6). Avoid kimi-k2.5, kimi-k2, kimi-k1, and earlier.',
+				},
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'options',
+				description:
+					'The model which will generate the completion. <a href="https://platform.kimi.ai/docs/api/chat">Learn more</a>.',
+				typeOptions: {
+					loadOptions: {
+						routing: {
+							request: {
+								method: 'GET',
+								url: '/models',
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'data',
+										},
+									},
+									{
+										type: 'setKeyValue',
+										properties: {
+											name: '={{$responseItem.id}}',
+											value: '={{$responseItem.id}}',
+										},
+									},
+									{
+										type: 'sort',
+										properties: {
+											key: 'name',
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
+					},
+				},
+				default: 'kimi-k2.6',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+>>>>>>> 3a8239e52b (fix(core): Make instance AI prefer newer AI models (no-changelog) (#29028))
 			},
 			{
 				displayName: 'Options',
