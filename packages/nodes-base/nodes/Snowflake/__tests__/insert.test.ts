@@ -39,7 +39,7 @@ describe('Test Snowflake, insert - parameter binding', () => {
 			expect(mockExecute).toHaveBeenCalledTimes(1);
 			expect(mockExecute).toHaveBeenCalledWith(
 				expect.objectContaining({
-					sqlText: 'INSERT INTO IDENTIFIER(?)(IDENTIFIER(?),IDENTIFIER(?)) VALUES (?,?)',
+					sqlText: 'INSERT INTO IDENTIFIER(?) (IDENTIFIER(?),IDENTIFIER(?)) VALUES (?,?)',
 					binds: [['orders', 'name', 'status', 'Alice', 'active']],
 				}),
 			);
