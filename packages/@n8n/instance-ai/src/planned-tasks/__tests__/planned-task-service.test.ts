@@ -507,6 +507,35 @@ describe('PlannedTaskCoordinator', () => {
 				actual: { kind: 'build-workflow' },
 			});
 		});
+
+		it('persists the structured outcome on the failed checkpoint so replans keep execution context', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'verify-1', kind: 'checkpoint', status: 'running' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const res = await coordinator.markCheckpointFailed('thread-1', 'verify-1', {
+				error: 'Node crashed',
+				outcome: {
+					executionId: 'exec-42',
+					failureNode: 'Insert Row',
+					errorMessage: 'constraint violation',
+				},
+			});
+
+			expect(res.ok).toBe(true);
+			if (res.ok) {
+				const failed = res.graph.tasks.find((t) => t.id === 'verify-1');
+				expect(failed?.status).toBe('failed');
+				expect(failed?.outcome).toEqual({
+					executionId: 'exec-42',
+					failureNode: 'Insert Row',
+					errorMessage: 'constraint violation',
+				});
+			}
+		});
 	});
 
 	describe('revertCheckpointToPlanned', () => {

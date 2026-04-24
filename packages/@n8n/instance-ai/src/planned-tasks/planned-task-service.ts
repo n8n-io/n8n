@@ -313,7 +313,13 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 	async markCheckpointFailed(
 		threadId: string,
 		taskId: string,
-		update: { error?: string; finishedAt?: number },
+		update: {
+			error?: string;
+			/** Structured outcome (executionId, failureNode, etc.). Preserved on the
+			 *  failed task so replans have execution context, not just an error string. */
+			outcome?: Record<string, unknown>;
+			finishedAt?: number;
+		},
 	): Promise<CheckpointSettleResult> {
 		let result: CheckpointSettleResult = { ok: false, reason: 'not-found' };
 
@@ -338,7 +344,13 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 
 			const tasks = graph.tasks.map<PlannedTaskRecord>((t) => {
 				if (t.id === taskId) {
-					return { ...t, status: 'failed', error: failureError, finishedAt };
+					return {
+						...t,
+						status: 'failed',
+						error: failureError,
+						outcome: update.outcome ?? t.outcome,
+						finishedAt,
+					};
 				}
 				if (dependents.has(t.id) && (t.status === 'planned' || t.status === 'running')) {
 					return {

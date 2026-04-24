@@ -636,7 +636,13 @@ export interface PlannedTaskService {
 	markCheckpointFailed(
 		threadId: string,
 		taskId: string,
-		update: { error?: string; finishedAt?: number },
+		update: {
+			error?: string;
+			/** Structured verification outcome (executionId, failureNode, etc.) so
+			 *  replans have execution context, not just a flat error string. */
+			outcome?: Record<string, unknown>;
+			finishedAt?: number;
+		},
 	): Promise<CheckpointSettleResult>;
 	/** Rewind a running checkpoint back to `planned` after a scheduling race
 	 *  prevented its follow-up from starting. Non-destructive — dependents are

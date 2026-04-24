@@ -62,6 +62,10 @@ export function createCompleteCheckpointTool(context: OrchestrationContext) {
 						)
 					: await context.plannedTaskService.markCheckpointFailed(context.threadId, input.taskId, {
 							error: input.error ?? input.result ?? 'Checkpoint verification failed',
+							// Preserve structured outcome (executionId, failureNode, data excerpt).
+							// Without this, replans only see a flat error string and lose execution
+							// context that would otherwise seed a targeted retry.
+							outcome: input.outcome,
 						});
 
 			if (settleResult.ok) {

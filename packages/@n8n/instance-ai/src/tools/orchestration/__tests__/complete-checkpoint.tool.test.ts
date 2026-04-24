@@ -91,6 +91,36 @@ describe('createCompleteCheckpointTool', () => {
 		expect(res.ok).toBe(true);
 		expect(service.markCheckpointFailed).toHaveBeenCalledWith('thread-1', 'verify-1', {
 			error: 'Workflow errored',
+			outcome: undefined,
+		});
+	});
+
+	it('forwards structured outcome to markCheckpointFailed so replans keep execution context', async () => {
+		const service = makeService({
+			markCheckpointFailed: jest
+				.fn()
+				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
+		});
+		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
+
+		await tool.execute({
+			taskId: 'verify-1',
+			status: 'failed',
+			error: 'Node crashed',
+			outcome: {
+				executionId: 'exec-42',
+				failureNode: 'Insert Row',
+				errorMessage: 'constraint violation',
+			},
+		});
+
+		expect(service.markCheckpointFailed).toHaveBeenCalledWith('thread-1', 'verify-1', {
+			error: 'Node crashed',
+			outcome: {
+				executionId: 'exec-42',
+				failureNode: 'Insert Row',
+				errorMessage: 'constraint violation',
+			},
 		});
 	});
 
@@ -171,6 +201,7 @@ describe('createCompleteCheckpointTool', () => {
 
 		expect(service.markCheckpointFailed).toHaveBeenCalledWith('thread-1', 'verify-1', {
 			error: 'Workflow hit 429 during verify',
+			outcome: undefined,
 		});
 	});
 });
