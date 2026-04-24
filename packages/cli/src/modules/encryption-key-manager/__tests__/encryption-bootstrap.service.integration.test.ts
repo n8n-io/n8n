@@ -21,44 +21,14 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
+// TODO: restore full seeding assertions when bootstrap logic is re-enabled in encryption-bootstrap.service.ts
 describe('EncryptionBootstrapService (integration)', () => {
-	it('seeds the legacy CBC key as active when the table is empty', async () => {
+	it('completes without error and does not write any keys while bootstrap is disabled', async () => {
 		await Container.get(EncryptionBootstrapService).run();
 
 		const rows = await Container.get(DeploymentKeyRepository).find({
 			where: { type: 'data_encryption' },
 		});
-		expect(rows).toHaveLength(1);
-		expect(rows[0]).toMatchObject({
-			type: 'data_encryption',
-			value: 'legacy-encryption-key',
-			algorithm: 'aes-256-cbc',
-			status: 'active',
-		});
-	});
-
-	it('is a no-op on a second run', async () => {
-		const service = Container.get(EncryptionBootstrapService);
-		const repository = Container.get(DeploymentKeyRepository);
-
-		await service.run();
-		const [firstRow] = await repository.find({ where: { type: 'data_encryption' } });
-
-		await service.run();
-		const rows = await repository.find({ where: { type: 'data_encryption' } });
-
-		expect(rows).toHaveLength(1);
-		expect(rows[0].id).toBe(firstRow.id);
-	});
-
-	it('produces exactly one active row under concurrent runs', async () => {
-		const service = Container.get(EncryptionBootstrapService);
-
-		await Promise.all([service.run(), service.run(), service.run()]);
-
-		const rows = await Container.get(DeploymentKeyRepository).find({
-			where: { type: 'data_encryption', status: 'active' },
-		});
-		expect(rows).toHaveLength(1);
+		expect(rows).toHaveLength(0);
 	});
 });
