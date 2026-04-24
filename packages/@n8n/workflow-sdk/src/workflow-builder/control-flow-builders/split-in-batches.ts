@@ -89,6 +89,7 @@ export type NodeBatch =
  * - NodeInstance: single target
  * - NodeChain: a chain of nodes
  * - Plain array: multiple parallel targets (fan-out)
+ * - Nested control-flow builder (IfElse / SwitchCase / SplitInBatches)
  */
 export type BranchTarget =
 	| null
@@ -97,7 +98,10 @@ export type BranchTarget =
 	| Array<
 			| NodeInstance<string, string, unknown>
 			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-	  >;
+	  >
+	| IfElseBuilder<unknown>
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>;
 
 /**
  * Named object syntax for splitInBatches branches.
@@ -405,8 +409,45 @@ function extractNodesFromTarget(
 		}
 		return nodes;
 	}
+	// Handle nested SplitInBatchesBuilder (duck-type so it covers all three impl classes)
+	if (isSplitInBatchesBuilderShape(target)) {
+		const nodes: Array<NodeInstance<string, string, unknown>> = [target.sibNode];
+		for (const doneBatch of target._doneBatches) {
+			nodes.push(...extractNodesFromTarget(doneBatch as BranchTarget));
+		}
+		for (const eachBatch of target._eachBatches) {
+			nodes.push(...extractNodesFromTarget(eachBatch as BranchTarget));
+		}
+		if (target._doneTarget !== undefined) {
+			nodes.push(...extractNodesFromTarget(target._doneTarget as BranchTarget));
+		}
+		if (target._eachTarget !== undefined) {
+			nodes.push(...extractNodesFromTarget(target._eachTarget as BranchTarget));
+		}
+		return nodes;
+	}
 	// It's a single NodeInstance
-	return [target];
+	return [target as NodeInstance<string, string, unknown>];
+}
+
+/**
+ * Duck-type check for any SplitInBatchesBuilder implementation (Impl, WithExistingNode,
+ * NamedSyntax). Covers all three classes because they all expose the same shape.
+ */
+function isSplitInBatchesBuilderShape(value: unknown): value is {
+	sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
+	_doneBatches: NodeBatch[];
+	_eachBatches: NodeBatch[];
+	_doneTarget?: BranchTarget;
+	_eachTarget?: BranchTarget;
+} {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		'sibNode' in value &&
+		'_doneBatches' in value &&
+		'_eachBatches' in value
+	);
 }
 
 /**
@@ -430,8 +471,12 @@ function getFirstNodes(target: BranchTarget): Array<NodeInstance<string, string,
 	if (isSwitchCaseBuilder(target)) {
 		return [target.switchNode];
 	}
+	// Handle nested SplitInBatchesBuilder - head node is the SIB node
+	if (isSplitInBatchesBuilderShape(target)) {
+		return [target.sibNode];
+	}
 	// It's a single NodeInstance
-	return [target];
+	return [target as NodeInstance<string, string, unknown>];
 }
 
 /**

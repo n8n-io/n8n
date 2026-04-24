@@ -125,6 +125,7 @@ export type { SwitchCaseTarget } from './workflow-builder/control-flow-builders/
 
 // Split in batches
 export { splitInBatches } from './workflow-builder/control-flow-builders/split-in-batches';
+export type { SplitInBatchesTarget } from './types/base';
 
 // Note: fanOut() removed - use plain arrays for parallel connections
 // Note: fanIn() removed - use multiple .to(node.input(n)) calls instead
