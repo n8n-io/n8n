@@ -14,7 +14,7 @@ const approvalConfirmSchema = z.object({
 	userInput: z.string().optional(),
 });
 
-/** Q&A wizard submission (inputType='questions'). Approval is implied by the kind. */
+/** Q&A wizard submission (inputType='questions'). */
 const questionsConfirmSchema = z.object({
 	kind: z.literal('questions'),
 	answers: z.array(
@@ -27,13 +27,11 @@ const questionsConfirmSchema = z.object({
 	),
 });
 
-/** Generic credential-setup submission. Approval is implied by the kind. */
 const credentialSelectionConfirmSchema = z.object({
 	kind: z.literal('credentialSelection'),
 	credentials: z.record(z.string()),
 });
 
-/** Domain-access gating decision. */
 const domainAccessConfirmSchema = z.object({
 	kind: z.literal('domainAccess'),
 	approved: z.boolean(),
