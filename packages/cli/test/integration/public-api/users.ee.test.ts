@@ -48,6 +48,33 @@ describe('With license unlimited quota:users', () => {
 			await authOwnerAgent.get('/users').expect(401);
 		});
 
+		test('should forbid global user list for a member API key', async () => {
+			const member = await createMemberWithApiKey();
+			await createUser();
+
+			await testServer.publicApiAgentFor(member).get('/users').expect(403);
+		});
+
+		test('should allow member to list users of a project they belong to', async () => {
+			const [member, otherMember] = await Promise.all([createMemberWithApiKey(), createMember()]);
+			const project = await createTeamProject();
+			await Promise.all([
+				linkUserToProject(member, project, 'project:viewer'),
+				linkUserToProject(otherMember, project, 'project:viewer'),
+			]);
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.get('/users')
+				.query({ projectId: project.id })
+				.expect(200);
+
+			expect(response.body.data.length).toBe(2);
+			expect(response.body.data.map((u: User) => u.id)).toEqual(
+				expect.arrayContaining([member.id, otherMember.id]),
+			);
+		});
+
 		test('should return all users', async () => {
 			const owner = await createOwnerWithApiKey();
 
@@ -84,6 +111,38 @@ describe('With license unlimited quota:users', () => {
 				expect(createdAt).toBeDefined();
 				expect(updatedAt).toBeDefined();
 			}
+		});
+
+		it('should return 404 when caller has no access to the project', async () => {
+			const [member, otherMember] = await Promise.all([createMemberWithApiKey(), createMember()]);
+			const project = await createTeamProject();
+			await linkUserToProject(otherMember, project, 'project:viewer');
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.get('/users')
+				.query({ projectId: project.id });
+
+			expect(response.status).toBe(404);
+		});
+
+		it('should return project members when caller belongs to the project', async () => {
+			const [member, otherMember] = await Promise.all([createMemberWithApiKey(), createMember()]);
+			const project = await createTeamProject();
+			await Promise.all([
+				linkUserToProject(member, project, 'project:viewer'),
+				linkUserToProject(otherMember, project, 'project:viewer'),
+			]);
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.get('/users')
+				.query({ projectId: project.id });
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.map((u: User) => u.id)).toEqual(
+				expect.arrayContaining([member.id, otherMember.id]),
+			);
 		});
 
 		it('should return users filtered by project ID', async () => {

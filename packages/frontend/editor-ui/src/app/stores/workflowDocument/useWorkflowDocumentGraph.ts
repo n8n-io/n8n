@@ -1,15 +1,18 @@
-import type { IConnectedNode, IConnection, INode, NodeConnectionType } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+	type IConnectedNode,
+	type IConnection,
+	type INode,
+	type INodeConnection,
+	type NodeConnectionType,
+	type Workflow,
+} from 'n8n-workflow';
+import type { Ref } from 'vue';
 
 // --- Composable ---
 
-// TODO: This composable currently delegates to workflowsStore.workflowObject for reads.
-// The long-term goal is to remove workflowsStore entirely — workflowObject will become
-// private state owned by workflowDocumentStore. Once that happens, the direct import
-// (and the import-cycle warning it causes) will go away.
-export function useWorkflowDocumentGraph() {
-	const workflowsStore = useWorkflowsStore();
-
+export function useWorkflowDocumentGraph(workflowObject: Readonly<Ref<Workflow>>) {
 	// -----------------------------------------------------------------------
 	// Graph traversal
 	// -----------------------------------------------------------------------
@@ -19,7 +22,7 @@ export function useWorkflowDocumentGraph() {
 		type?: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN',
 		depth?: number,
 	): string[] {
-		return workflowsStore.workflowObject.getParentNodes(nodeName, type, depth);
+		return workflowObject.value.getParentNodes(nodeName, type, depth);
 	}
 
 	function getChildNodes(
@@ -27,42 +30,40 @@ export function useWorkflowDocumentGraph() {
 		type?: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN',
 		depth?: number,
 	): string[] {
-		return workflowsStore.workflowObject.getChildNodes(nodeName, type, depth);
+		return workflowObject.value.getChildNodes(nodeName, type, depth);
 	}
 
 	function getParentNodesByDepth(nodeName: string, maxDepth?: number): IConnectedNode[] {
-		return workflowsStore.workflowObject.getParentNodesByDepth(nodeName, maxDepth);
+		return workflowObject.value.getParentNodesByDepth(nodeName, maxDepth);
 	}
 
 	function getConnectionsBetweenNodes(
 		sources: string[],
 		targets: string[],
 	): Array<[IConnection, IConnection]> {
-		return workflowsStore.workflowObject.getConnectionsBetweenNodes(sources, targets);
+		return workflowObject.value.getConnectionsBetweenNodes(sources, targets);
 	}
 
 	function getConnectedNodes(direction: 'upstream' | 'downstream', nodeName: string): string[] {
 		let checkNodes: string[];
 		if (direction === 'downstream') {
-			checkNodes = workflowsStore.workflowObject.getChildNodes(nodeName);
+			checkNodes = workflowObject.value.getChildNodes(nodeName);
 		} else if (direction === 'upstream') {
-			checkNodes = workflowsStore.workflowObject.getParentNodes(nodeName);
+			checkNodes = workflowObject.value.getParentNodes(nodeName);
 		} else {
 			throw new Error(`The direction "${direction}" is not supported!`);
 		}
 
 		// Find also all nodes which are connected to the child nodes via a non-main input
-		let connectedNodes: string[] = [];
-		checkNodes.forEach((checkNode) => {
-			connectedNodes = [
-				...connectedNodes,
-				checkNode,
-				...workflowsStore.workflowObject.getParentNodes(checkNode, 'ALL_NON_MAIN'),
-			];
-		});
+		const connectedNodeSet = new Set<string>();
+		for (const checkNode of checkNodes) {
+			connectedNodeSet.add(checkNode);
+			for (const parent of workflowObject.value.getParentNodes(checkNode, 'ALL_NON_MAIN')) {
+				connectedNodeSet.add(parent);
+			}
+		}
 
-		// Remove duplicates
-		return [...new Set(connectedNodes)];
+		return [...connectedNodeSet];
 	}
 
 	// -----------------------------------------------------------------------
@@ -70,11 +71,52 @@ export function useWorkflowDocumentGraph() {
 	// -----------------------------------------------------------------------
 
 	function getNodeByNameFromWorkflow(nodeName: string): INode | null {
-		return workflowsStore.workflowObject.getNode(nodeName);
+		return workflowObject.value.getNode(nodeName);
 	}
 
 	function getStartNode(destinationNode?: string): INode | undefined {
-		return workflowsStore.workflowObject.getStartNode(destinationNode);
+		return workflowObject.value.getStartNode(destinationNode);
+	}
+
+	function getParentMainInputNode(node: INode): INode {
+		return workflowObject.value.getParentMainInputNode(node);
+	}
+
+	function getNodeConnectionIndexes(
+		nodeName: string,
+		parentNodeName: string,
+		type: NodeConnectionType = NodeConnectionTypes.Main,
+	): INodeConnection | undefined {
+		return workflowObject.value.getNodeConnectionIndexes(nodeName, parentNodeName, type);
+	}
+
+	function findRootWithMainConnection(nodeName: string): string | null {
+		const children = getChildNodes(nodeName, 'ALL');
+
+		for (let i = children.length - 1; i >= 0; i--) {
+			const childName = children[i];
+			const parentNodes = getParentNodes(childName, NodeConnectionTypes.Main);
+
+			if (parentNodes.length > 0) {
+				return childName;
+			}
+		}
+
+		return null;
+	}
+
+	function checkIfNodeHasChatParent(nodeName: string): boolean {
+		const parents = getParentNodes(nodeName, NodeConnectionTypes.Main);
+
+		return parents.some((parent) => {
+			const parentNodeType = workflowObject.value.getNode?.(parent)?.type;
+			return parentNodeType === CHAT_TRIGGER_NODE_TYPE;
+		});
+	}
+
+	function checkIfToolNodeHasChatParent(nodeName: string): boolean {
+		const agentNodes = getChildNodes(nodeName, NodeConnectionTypes.AiTool);
+		return agentNodes.some((agentNode) => checkIfNodeHasChatParent(agentNode));
 	}
 
 	return {
@@ -83,7 +125,12 @@ export function useWorkflowDocumentGraph() {
 		getChildNodes,
 		getParentNodesByDepth,
 		getConnectionsBetweenNodes,
+		getParentMainInputNode,
+		getNodeConnectionIndexes,
 		getConnectedNodes,
+		findRootWithMainConnection,
+		checkIfNodeHasChatParent,
+		checkIfToolNodeHasChatParent,
 
 		// Node lookup
 		getNodeByNameFromWorkflow,

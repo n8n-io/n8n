@@ -3,10 +3,17 @@ import { createTestingPinia } from '@pinia/testing';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '../stores/workflowDocument.store';
+
+const TEST_WF_ID = 'test-wf-id';
 
 describe('useUniqueNodeName', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
+		useWorkflowsStore().workflow.id = TEST_WF_ID;
 	});
 
 	afterEach(() => {
@@ -14,11 +21,11 @@ describe('useUniqueNodeName', () => {
 	});
 
 	test('should return a unique node name for an alphabetic node name', () => {
-		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
 
 		const mockCanvasNames = new Set(['Hello']);
 
-		vi.spyOn(workflowsStore, 'canvasNames', 'get').mockReturnValue(mockCanvasNames);
+		vi.spyOn(workflowDocumentStore, 'canvasNames', 'get').mockReturnValue(mockCanvasNames);
 
 		const { uniqueNodeName } = useUniqueNodeName();
 
@@ -30,11 +37,11 @@ describe('useUniqueNodeName', () => {
 	});
 
 	test('should return a unique node name for a numeric node name', () => {
-		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
 
 		const mockCanvasNames = new Set(['123']);
 
-		vi.spyOn(workflowsStore, 'canvasNames', 'get').mockReturnValue(mockCanvasNames);
+		vi.spyOn(workflowDocumentStore, 'canvasNames', 'get').mockReturnValue(mockCanvasNames);
 
 		const { uniqueNodeName } = useUniqueNodeName();
 
@@ -46,12 +53,12 @@ describe('useUniqueNodeName', () => {
 	});
 
 	test('should return a unique node name for a number-suffixed node name', () => {
-		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
 		const nodeTypesStore = useNodeTypesStore();
 
 		const mockCanvasNames = new Set(['S3']);
 
-		vi.spyOn(workflowsStore, 'canvasNames', 'get').mockReturnValue(mockCanvasNames);
+		vi.spyOn(workflowDocumentStore, 'canvasNames', 'get').mockReturnValue(mockCanvasNames);
 		vi.spyOn(nodeTypesStore, 'allNodeTypes', 'get').mockReturnValue([
 			{
 				displayName: 'S3',

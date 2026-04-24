@@ -171,6 +171,28 @@ export const processUsers = async (
 	await dbManager.transaction(async (transactionManager) => {
 		return await Promise.all([
 			...toCreateUsers.map(async ([ldapId, user]) => {
+				// If a local user already exists with this email (e.g. an email/password
+				// invite that predates LDAP), link the existing user to the LDAP identity
+				// instead of creating a duplicate row and tripping the unique email
+				// constraint — same behaviour as LdapService.handleLogin.
+				const existingUser = await transactionManager.findOne(User, {
+					where: { email: user.email },
+				});
+
+				if (existingUser) {
+					const hasChanges =
+						existingUser.firstName !== user.firstName || existingUser.lastName !== user.lastName;
+
+					if (hasChanges) {
+						existingUser.firstName = user.firstName;
+						existingUser.lastName = user.lastName;
+						await transactionManager.save(User, existingUser);
+					}
+
+					const authIdentity = AuthIdentity.create(existingUser, ldapId);
+					return await transactionManager.save(authIdentity);
+				}
+
 				const { user: savedUser } = await userRepository.createUserWithProject(
 					user,
 					transactionManager,

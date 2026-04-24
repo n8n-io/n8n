@@ -12,6 +12,7 @@ import { z } from 'zod';
 // ---------------------------------------------------------------------------
 
 export interface CliArgs {
+	/** TimeoutMs is defined per iteration, not as the total timeout for all iterations */
 	timeoutMs: number;
 	baseUrl: string;
 	email?: string;
@@ -23,6 +24,15 @@ export interface CliArgs {
 	keepWorkflows: boolean;
 	/** Directory to write eval-results.json (defaults to cwd) */
 	outputDir?: string;
+	/** LangSmith dataset name (synced from JSON test cases before each run) */
+	dataset: string;
+	/** Max concurrent scenarios in evaluate(). Builds are separately limited to 4 by semaphore. */
+	concurrency: number;
+	/** LangSmith experiment name prefix (auto-generated if not set) */
+	experimentName?: string;
+	/** Number of iterations to run each test case (default: 1). Each iteration
+	 *  gets a fresh build so pass@k / pass^k capture real builder variance. */
+	iterations: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -38,6 +48,10 @@ const cliArgsSchema = z.object({
 	filter: z.string().optional(),
 	keepWorkflows: z.boolean().default(false),
 	outputDir: z.string().optional(),
+	dataset: z.string().default('instance-ai-workflow-evals'),
+	concurrency: z.number().int().positive().default(16),
+	experimentName: z.string().optional(),
+	iterations: z.number().int().positive().default(1),
 });
 
 // ---------------------------------------------------------------------------
@@ -57,6 +71,10 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		filter: validated.filter,
 		keepWorkflows: validated.keepWorkflows,
 		outputDir: validated.outputDir,
+		dataset: validated.dataset,
+		concurrency: validated.concurrency,
+		experimentName: validated.experimentName,
+		iterations: validated.iterations,
 	};
 }
 
@@ -73,6 +91,10 @@ interface RawArgs {
 	filter?: string;
 	keepWorkflows: boolean;
 	outputDir?: string;
+	dataset: string;
+	concurrency: number;
+	experimentName?: string;
+	iterations: number;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -82,6 +104,10 @@ function parseRawArgs(argv: string[]): RawArgs {
 		verbose: false,
 		keepWorkflows: false,
 		outputDir: undefined,
+		dataset: 'instance-ai-workflow-evals',
+		concurrency: 16,
+		experimentName: undefined,
+		iterations: 1,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -126,9 +152,36 @@ function parseRawArgs(argv: string[]): RawArgs {
 				i++;
 				break;
 
-			default:
-				// Ignore unknown flags
+			case '--iterations':
+				result.iterations = parseIntArg(argv, i, '--iterations');
+				i++;
 				break;
+
+			case '--dataset':
+				result.dataset = nextArg(argv, i, '--dataset');
+				i++;
+				break;
+
+			case '--concurrency':
+				result.concurrency = parseIntArg(argv, i, '--concurrency');
+				i++;
+				break;
+
+			case '--experiment-name':
+				result.experimentName = nextArg(argv, i, '--experiment-name');
+				i++;
+				break;
+
+			default:
+				// Fail loudly on unknown flags. Strip any =value payload before
+				// echoing and drop positional values entirely — raw CLI input
+				// may contain secrets (e.g. --password=... or an accidentally
+				// pasted token) that would otherwise leak into terminal/CI logs.
+				if (arg.startsWith('--')) {
+					const flagName = arg.split('=', 1)[0];
+					throw new Error(`Unknown flag: ${flagName}`);
+				}
+				throw new Error('Unexpected positional argument');
 		}
 	}
 
@@ -151,7 +204,8 @@ function parseIntArg(argv: string[], currentIndex: number, flagName: string): nu
 	const raw = nextArg(argv, currentIndex, flagName);
 	const parsed = parseInt(raw, 10);
 	if (Number.isNaN(parsed)) {
-		throw new Error(`Invalid integer for ${flagName}: ${raw}`);
+		// Don't echo raw — a bad shell expansion could leak a secret here.
+		throw new Error(`Invalid integer for ${flagName}`);
 	}
 	return parsed;
 }

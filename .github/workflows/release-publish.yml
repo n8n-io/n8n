@@ -84,7 +84,7 @@ jobs:
       - name: Publish other packages to NPM
         env:
           PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
-          PUBLISH_TAG: ${{ needs.determine-version-info.outputs.track == 'stable' && 'latest' || needs.determine-version-info.outputs.track }}
+          PUBLISH_TAG: ${{ needs.determine-version-info.outputs.track }}
         run: |
           # Prefix version-like track names (e.g. "1", "v1") to avoid npm rejecting them as semver ranges
           if [[ "$PUBLISH_TAG" =~ ^v?[0-9] ]]; then
