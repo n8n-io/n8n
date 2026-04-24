@@ -1474,59 +1474,14 @@ export class Salesforce implements INodeType {
 						if (additionalFields.suffix !== undefined) {
 							body.Suffix = additionalFields.suffix as string;
 						}
-						if (additionalFields.reportsToId !== undefined) {
-							body.ReportsToId = additionalFields.reportsToId as string;
-						}
-						if (additionalFields.doNotCall !== undefined) {
-							body.DoNotCall = additionalFields.doNotCall as boolean;
-						}
 						if (additionalFields.hasOptedOutOfEmail !== undefined) {
 							body.HasOptedOutOfEmail = additionalFields.hasOptedOutOfEmail as boolean;
-						}
-						if (additionalFields.hasOptedOutOfFax !== undefined) {
-							body.HasOptedOutOfFax = additionalFields.hasOptedOutOfFax as boolean;
-						}
-						if (additionalFields.canAllowPortalSelfReg !== undefined) {
-							body.CanAllowPortalSelfReg = additionalFields.canAllowPortalSelfReg as boolean;
-						}
-						if (additionalFields.individualId !== undefined) {
-							body.IndividualId = additionalFields.individualId as string;
 						}
 						if (additionalFields.pronouns !== undefined) {
 							body.Pronouns = additionalFields.pronouns as string;
 						}
 						if (additionalFields.genderIdentity !== undefined) {
 							body.GenderIdentity = additionalFields.genderIdentity as string;
-						}
-						if (additionalFields.mailingLatitude !== undefined) {
-							body.MailingLatitude = additionalFields.mailingLatitude as number;
-						}
-						if (additionalFields.mailingLongitude !== undefined) {
-							body.MailingLongitude = additionalFields.mailingLongitude as number;
-						}
-						if (additionalFields.mailingGeocodeAccuracy !== undefined) {
-							body.MailingGeocodeAccuracy = additionalFields.mailingGeocodeAccuracy as string;
-						}
-						if (additionalFields.mailingCountryCode !== undefined) {
-							body.MailingCountryCode = additionalFields.mailingCountryCode as string;
-						}
-						if (additionalFields.mailingStateCode !== undefined) {
-							body.MailingStateCode = additionalFields.mailingStateCode as string;
-						}
-						if (additionalFields.otherLatitude !== undefined) {
-							body.OtherLatitude = additionalFields.otherLatitude as number;
-						}
-						if (additionalFields.otherLongitude !== undefined) {
-							body.OtherLongitude = additionalFields.otherLongitude as number;
-						}
-						if (additionalFields.otherGeocodeAccuracy !== undefined) {
-							body.OtherGeocodeAccuracy = additionalFields.otherGeocodeAccuracy as string;
-						}
-						if (additionalFields.otherCountryCode !== undefined) {
-							body.OtherCountryCode = additionalFields.otherCountryCode as string;
-						}
-						if (additionalFields.otherStateCode !== undefined) {
-							body.OtherStateCode = additionalFields.otherStateCode as string;
 						}
 						if (additionalFields.customFieldsUi) {
 							const customFields = (additionalFields.customFieldsUi as IDataObject)
@@ -1664,59 +1619,14 @@ export class Salesforce implements INodeType {
 						if (updateFields.suffix !== undefined) {
 							body.Suffix = updateFields.suffix as string;
 						}
-						if (updateFields.reportsToId !== undefined) {
-							body.ReportsToId = updateFields.reportsToId as string;
-						}
-						if (updateFields.doNotCall !== undefined) {
-							body.DoNotCall = updateFields.doNotCall as boolean;
-						}
 						if (updateFields.hasOptedOutOfEmail !== undefined) {
 							body.HasOptedOutOfEmail = updateFields.hasOptedOutOfEmail as boolean;
-						}
-						if (updateFields.hasOptedOutOfFax !== undefined) {
-							body.HasOptedOutOfFax = updateFields.hasOptedOutOfFax as boolean;
-						}
-						if (updateFields.canAllowPortalSelfReg !== undefined) {
-							body.CanAllowPortalSelfReg = updateFields.canAllowPortalSelfReg as boolean;
-						}
-						if (updateFields.individualId !== undefined) {
-							body.IndividualId = updateFields.individualId as string;
 						}
 						if (updateFields.pronouns !== undefined) {
 							body.Pronouns = updateFields.pronouns as string;
 						}
 						if (updateFields.genderIdentity !== undefined) {
 							body.GenderIdentity = updateFields.genderIdentity as string;
-						}
-						if (updateFields.mailingLatitude !== undefined) {
-							body.MailingLatitude = updateFields.mailingLatitude as number;
-						}
-						if (updateFields.mailingLongitude !== undefined) {
-							body.MailingLongitude = updateFields.mailingLongitude as number;
-						}
-						if (updateFields.mailingGeocodeAccuracy !== undefined) {
-							body.MailingGeocodeAccuracy = updateFields.mailingGeocodeAccuracy as string;
-						}
-						if (updateFields.mailingCountryCode !== undefined) {
-							body.MailingCountryCode = updateFields.mailingCountryCode as string;
-						}
-						if (updateFields.mailingStateCode !== undefined) {
-							body.MailingStateCode = updateFields.mailingStateCode as string;
-						}
-						if (updateFields.otherLatitude !== undefined) {
-							body.OtherLatitude = updateFields.otherLatitude as number;
-						}
-						if (updateFields.otherLongitude !== undefined) {
-							body.OtherLongitude = updateFields.otherLongitude as number;
-						}
-						if (updateFields.otherGeocodeAccuracy !== undefined) {
-							body.OtherGeocodeAccuracy = updateFields.otherGeocodeAccuracy as string;
-						}
-						if (updateFields.otherCountryCode !== undefined) {
-							body.OtherCountryCode = updateFields.otherCountryCode as string;
-						}
-						if (updateFields.otherStateCode !== undefined) {
-							body.OtherStateCode = updateFields.otherStateCode as string;
 						}
 						if (updateFields.customFieldsUi) {
 							const customFields = (updateFields.customFieldsUi as IDataObject)
