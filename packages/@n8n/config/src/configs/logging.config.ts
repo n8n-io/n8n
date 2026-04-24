@@ -43,6 +43,7 @@ export const LOG_SCOPES = [
 	'instance-registry',
 	'expression-engine',
 	'encryption-key-manager',
+	'jwe',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
