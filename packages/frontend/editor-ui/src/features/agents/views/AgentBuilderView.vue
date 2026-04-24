@@ -202,10 +202,11 @@ function startChat(msg: string) {
 	// old thread.
 	if (continueSessionId.value) clearContinueSessionParam();
 	if (isBuilt.value) {
-		// Mint a fresh thread id for the ephemeral session. Test and Build
-		// remain visually linked via `chatModeOpened` (v-show) — Build doesn't
-		// share the thread, it uses its own per-agent builder history.
-		activeChatSessionId.value = crypto.randomUUID();
+		// Mint a fresh thread id and push it to the URL so the current chat is
+		// persisted across reloads. Test and Build remain visually linked via
+		// `chatModeOpened` (v-show) — Build doesn't share the thread, it uses
+		// its own per-agent builder history.
+		setSessionInUrl(crypto.randomUUID());
 		initialPrompt.value = msg;
 		chatMode.value = 'test';
 		telemetry.track('User started agent chat', { agent_id: agentId.value });
@@ -246,18 +247,23 @@ function onBuildChatStreamingChange(streaming: boolean) {
  * chosen yet. Prefer the most recent thread — users land back where they left
  * off — and only mint a fresh ephemeral session when there is no history.
  */
+function setSessionInUrl(id: string) {
+	activeChatSessionId.value = id;
+	void router.replace({ query: { ...route.query, continueSessionId: id } });
+}
+
 function bindTestSession() {
 	if (continueSessionId.value || activeChatSessionId.value) return;
 	const latest = sessionsStore.threads?.[0];
 	if (latest) {
-		void router.replace({ query: { ...route.query, continueSessionId: latest.id } });
+		setSessionInUrl(latest.id);
 		return;
 	}
 	// Still loading — defer the decision; the watcher below will rebind once
 	// threads arrive, falling back to a fresh ephemeral session if the list
 	// comes back empty.
 	if (sessionsStore.loading) return;
-	activeChatSessionId.value = crypto.randomUUID();
+	setSessionInUrl(crypto.randomUUID());
 }
 
 function setChatMode(next: ChatMode) {
@@ -524,10 +530,10 @@ async function initialize() {
 		if (connected) connectedTriggers.value = connected;
 	})();
 
-	// Always land on Build on initial load — it's the default entry point into
-	// iterating on the agent. Users can flip to Test manually when they want
-	// to chat with the current config.
-	chatMode.value = 'build';
+	// Default landing is Build. If the URL pins a specific chat session
+	// (e.g. refresh, shared link, deep link from elsewhere) we honor it and
+	// open Test so the user sees the chat they linked to.
+	chatMode.value = continueSessionId.value && isBuilt.value ? 'test' : 'build';
 	// Explicitly open the target mode. The `chatMode` watcher only fires on a
 	// value change, but on agent-switch we just reset `chatModeOpened` above —
 	// if both agents share the same default mode the watcher doesn't fire and
@@ -666,8 +672,8 @@ function onSessionPick(id: string) {
 }
 
 function onNewChat() {
-	if (continueSessionId.value) clearContinueSessionParam();
-	activeChatSessionId.value = crypto.randomUUID();
+	activeChatSessionId.value = null;
+	setSessionInUrl(crypto.randomUUID());
 }
 
 function onOpenAddToolModal() {
