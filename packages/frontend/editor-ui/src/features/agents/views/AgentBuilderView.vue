@@ -1160,12 +1160,12 @@ function onSwitchAgent(nextAgentId: string) {
 
 .historyBtnAnchor {
 	position: absolute;
-	top: var(--spacing--4xs);
+	top: var(--spacing--5xs);
 	right: var(--spacing--4xs);
 	z-index: 2;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--5xs);
 }
 
 .quickActionsRow {
