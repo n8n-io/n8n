@@ -1,4 +1,4 @@
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 
 import { InstanceSettings } from '@/instance-settings';
 import { assertUnreachable } from '@/utils/assertions';
@@ -14,11 +14,8 @@ export class Cipher {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly cipherAES256GCM: CipherAes256GCM,
 		private readonly cipherAES256CBC: CipherAes256CBC,
+		private readonly encryptionKeyProxy: EncryptionKeyProxy,
 	) {}
-
-	private get encryptionKeyProxy(): EncryptionKeyProxy | undefined {
-		return Container.has(EncryptionKeyProxy) ? Container.get(EncryptionKeyProxy) : undefined;
-	}
 
 	encrypt(data: string | object, customEncryptionKey?: string): string {
 		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
@@ -34,18 +31,19 @@ export class Cipher {
 	async encryptV2(data: string | object, customEncryptionKey?: string): Promise<string> {
 		const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
 
-		if (!customEncryptionKey && process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION === 'true') {
-			const proxy = this.encryptionKeyProxy;
-			if (proxy) {
-				const keyInfo = await proxy.getActiveKey();
-				const plaintextKey = this.decryptWithInstanceKey(keyInfo.value);
-				const ciphertext = this.encryptWithKey(
-					plaintext,
-					plaintextKey,
-					keyInfo.algorithm as CipherAlgorithm,
-				);
-				return `${keyInfo.id}:${ciphertext}`;
-			}
+		if (
+			!customEncryptionKey &&
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION === 'true' &&
+			this.encryptionKeyProxy.isConfigured()
+		) {
+			const keyInfo = await this.encryptionKeyProxy.getActiveKey();
+			const plaintextKey = this.decryptWithInstanceKey(keyInfo.value);
+			const ciphertext = this.encryptWithKey(
+				plaintext,
+				plaintextKey,
+				keyInfo.algorithm as CipherAlgorithm,
+			);
+			return `${keyInfo.id}:${ciphertext}`;
 		}
 
 		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
@@ -53,26 +51,19 @@ export class Cipher {
 	}
 
 	async decryptV2(data: string, customEncryptionKey?: string): Promise<string> {
-		if (!customEncryptionKey) {
-			const proxy = this.encryptionKeyProxy;
-			if (proxy) {
-				const colonIdx = data.indexOf(':');
-				if (colonIdx !== -1) {
-					const keyId = data.slice(0, colonIdx);
-					const ciphertext = data.slice(colonIdx + 1);
-					const keyInfo = await proxy.getKeyById(keyId);
-					if (!keyInfo) throw new Error(`Encryption key not found: ${keyId}`);
-					const plaintextKey = this.decryptWithInstanceKey(keyInfo.value);
-					return this.decryptWithKey(
-						ciphertext,
-						plaintextKey,
-						keyInfo.algorithm as CipherAlgorithm,
-					);
-				}
-				const keyInfo = await proxy.getLegacyKey();
+		if (!customEncryptionKey && this.encryptionKeyProxy.isConfigured()) {
+			const colonIdx = data.indexOf(':');
+			if (colonIdx !== -1) {
+				const keyId = data.slice(0, colonIdx);
+				const ciphertext = data.slice(colonIdx + 1);
+				const keyInfo = await this.encryptionKeyProxy.getKeyById(keyId);
+				if (!keyInfo) throw new Error(`Encryption key not found: ${keyId}`);
 				const plaintextKey = this.decryptWithInstanceKey(keyInfo.value);
-				return this.decryptWithKey(data, plaintextKey, 'aes-256-cbc');
+				return this.decryptWithKey(ciphertext, plaintextKey, keyInfo.algorithm as CipherAlgorithm);
 			}
+			const keyInfo = await this.encryptionKeyProxy.getLegacyKey();
+			const plaintextKey = this.decryptWithInstanceKey(keyInfo.value);
+			return this.decryptWithKey(data, plaintextKey, 'aes-256-cbc');
 		}
 
 		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;

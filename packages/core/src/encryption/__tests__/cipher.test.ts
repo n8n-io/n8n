@@ -4,7 +4,7 @@ import { InstanceSettings } from '@/instance-settings';
 import { mockInstance } from '@test/utils';
 
 import { Cipher } from '../cipher';
-import type { EncryptionKeyProxy } from '../encryption-key-proxy';
+import { EncryptionKeyProxy, type IEncryptionKeyProvider } from '../encryption-key-proxy';
 
 describe('Cipher', () => {
 	mockInstance(InstanceSettings, { encryptionKey: 'test_key' });
@@ -170,21 +170,22 @@ describe('Cipher', () => {
 	describe('encryptV2 / decryptV2 (proxy-aware)', () => {
 		const instanceKeyForProxy = 'test_key';
 		const plaintextDataKey = '11'.repeat(32);
+		const encryptionKeyProxy = Container.get(EncryptionKeyProxy);
 
-		const withProxy = (proxy: Partial<EncryptionKeyProxy>) => {
-			jest.spyOn(Container, 'has').mockReturnValue(true);
-			jest.spyOn(Container, 'get').mockReturnValue(proxy as EncryptionKeyProxy);
+		const withProvider = (provider: Partial<IEncryptionKeyProvider>) => {
+			encryptionKeyProxy.setProvider(provider as IEncryptionKeyProvider);
 		};
 
 		afterEach(() => {
 			jest.restoreAllMocks();
+			encryptionKeyProxy.setProvider(undefined);
 		});
 
 		it('should use active key and embed keyId prefix when proxy is registered and feature flag is on', async () => {
 			const keyId = 'test-uuid-1234';
 			const encryptedDataKey = cipher.encryptWithInstanceKey(plaintextDataKey);
 
-			withProxy({
+			withProvider({
 				getActiveKey: async () => ({
 					id: keyId,
 					value: encryptedDataKey,
@@ -218,7 +219,7 @@ describe('Cipher', () => {
 			const ciphertext = cipher.encryptWithKey('world', plaintextDataKey, 'aes-256-gcm');
 			const prefixed = `${keyId}:${ciphertext}`;
 
-			withProxy({
+			withProvider({
 				getActiveKey: async () => ({
 					id: keyId,
 					value: encryptedDataKey,
@@ -245,7 +246,7 @@ describe('Cipher', () => {
 				'aes-256-cbc',
 			);
 
-			withProxy({
+			withProvider({
 				getActiveKey: async () => ({
 					id: 'active',
 					value: encryptedDataKey,
@@ -265,7 +266,7 @@ describe('Cipher', () => {
 
 		it('should bypass proxy when customEncryptionKey is provided', async () => {
 			const encryptedDataKey = cipher.encryptWithInstanceKey(plaintextDataKey);
-			withProxy({
+			withProvider({
 				getActiveKey: async () => ({
 					id: 'should-not-be-called',
 					value: encryptedDataKey,
