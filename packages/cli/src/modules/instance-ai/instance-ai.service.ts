@@ -2017,10 +2017,15 @@ export class InstanceAiService {
 				modelId,
 				metadata: { completion_source: 'orchestrator' },
 			};
-			await this.reapAiTemporaryFromRun(threadId, user, aiCreatedWorkflowIds);
+			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+				threadId,
+				user,
+				aiCreatedWorkflowIds,
+			);
 			await this.finalizeRun(threadId, runId, result.status, snapshotStorage, {
 				userId: user.id,
 				modelId,
+				archivedWorkflowIds,
 			});
 
 			// Count credits on first completed run per thread
@@ -2045,8 +2050,12 @@ export class InstanceAiService {
 					reason: 'user_cancelled',
 					metadata: { completion_source: 'orchestrator' },
 				};
-				await this.reapAiTemporaryFromRun(threadId, user, aiCreatedWorkflowIds);
-				this.publishRunFinish(threadId, runId, 'cancelled', 'user_cancelled');
+				const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+					threadId,
+					user,
+					aiCreatedWorkflowIds,
+				);
+				this.publishRunFinish(threadId, runId, 'cancelled', 'user_cancelled', archivedWorkflowIds);
 				return;
 			}
 
@@ -2067,7 +2076,11 @@ export class InstanceAiService {
 				metadata: { completion_source: 'orchestrator' },
 			};
 
-			await this.reapAiTemporaryFromRun(threadId, user, aiCreatedWorkflowIds);
+			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+				threadId,
+				user,
+				aiCreatedWorkflowIds,
+			);
 			this.eventBus.publish(threadId, {
 				type: 'run-finish',
 				runId,
@@ -2075,6 +2088,7 @@ export class InstanceAiService {
 				payload: {
 					status: 'error',
 					reason: errorMessage,
+					...(archivedWorkflowIds.length > 0 ? { archivedWorkflowIds } : {}),
 				},
 			});
 		} finally {
@@ -2513,12 +2527,14 @@ export class InstanceAiService {
 		threadId: string,
 		user: User,
 		createdWorkflowIds: Set<string> | undefined,
-	): Promise<void> {
-		if (!createdWorkflowIds || createdWorkflowIds.size === 0) return;
+	): Promise<string[]> {
+		if (!createdWorkflowIds || createdWorkflowIds.size === 0) return [];
 		const adapter = this.adapterService.createContext(user, { threadId });
+		const archived: string[] = [];
 		for (const workflowId of createdWorkflowIds) {
 			try {
-				await adapter.workflowService.archiveIfAiTemporary(workflowId);
+				const didArchive = await adapter.workflowService.archiveIfAiTemporary(workflowId);
+				if (didArchive) archived.push(workflowId);
 			} catch (error) {
 				this.logger.warn('Failed to reap aiTemporary workflow', {
 					threadId,
@@ -2527,6 +2543,7 @@ export class InstanceAiService {
 				});
 			}
 		}
+		return archived;
 	}
 
 	private publishRunFinish(
@@ -2534,16 +2551,19 @@ export class InstanceAiService {
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
+		archivedWorkflowIds?: string[],
 	): void {
 		const effectiveStatus = status === 'errored' ? 'error' : status;
+		const hasArchived = archivedWorkflowIds && archivedWorkflowIds.length > 0;
 		this.eventBus.publish(threadId, {
 			type: 'run-finish',
 			runId,
 			agentId: ORCHESTRATOR_AGENT_ID,
-			payload:
-				status === 'cancelled'
-					? { status: effectiveStatus, reason: reason ?? 'user_cancelled' }
-					: { status: effectiveStatus },
+			payload: {
+				status: effectiveStatus,
+				...(status === 'cancelled' ? { reason: reason ?? 'user_cancelled' } : {}),
+				...(hasArchived ? { archivedWorkflowIds } : {}),
+			},
 		});
 	}
 
@@ -2552,9 +2572,9 @@ export class InstanceAiService {
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		snapshotStorage: DbSnapshotStorage,
-		options?: { userId?: string; modelId?: ModelConfig },
+		options?: { userId?: string; modelId?: ModelConfig; archivedWorkflowIds?: string[] },
 	): Promise<void> {
-		this.publishRunFinish(threadId, runId, status);
+		this.publishRunFinish(threadId, runId, status, undefined, options?.archivedWorkflowIds);
 		if (status === 'completed') {
 			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 			if (options?.userId && options?.modelId) {

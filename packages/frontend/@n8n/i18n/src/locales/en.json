@@ -5132,6 +5132,7 @@
 	"instanceAi.artifactsPanel.noArtifacts": "No artifacts yet",
 	"instanceAi.artifactsPanel.tasks": "Tasks",
 	"instanceAi.artifactsPanel.openWorkflow": "Open",
+	"instanceAi.artifactsPanel.archived": "Archived",
 	"instanceAi.delegateCard.implementsStep": "Step {step}",
 	"instanceAi.delegateCard.delegatingTo": "Delegating to",
 	"instanceAi.delegateCard.briefing": "Briefing",
