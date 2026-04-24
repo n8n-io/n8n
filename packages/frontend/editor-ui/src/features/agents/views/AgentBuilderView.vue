@@ -4,7 +4,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import {
 	N8nButton,
 	N8nIcon,
-	N8nActionDropdown,
+	N8nNavigationDropdown,
 	N8nRadioButtons,
 	N8nText,
 	N8nTooltip,
@@ -661,18 +661,18 @@ function onRemoveTool(index: number) {
 
 interface SessionMenuItem {
 	id: string;
-	label: string;
+	title: string;
 	disabled?: boolean;
 }
 
 const sessionMenu = computed<SessionMenuItem[]>(() => {
 	const threads = sessionsStore.threads ?? [];
 	if (threads.length === 0) {
-		return [{ id: '__empty__', label: 'No previous chats', disabled: true }];
+		return [{ id: '__empty__', title: 'No previous chats', disabled: true }];
 	}
 	return threads.map((thread) => ({
 		id: thread.id,
-		label: thread.title ?? `Session ${thread.sessionNumber}`,
+		title: thread.title ?? `Session ${thread.sessionNumber}`,
 	}));
 });
 
@@ -840,25 +840,21 @@ function onSwitchAgent(nextAgentId: string) {
 						<template #above-input>
 							<div :class="$style.quickActionsRow">
 								<div :class="$style.chatSessionControls">
-									<N8nActionDropdown
-										:items="sessionMenu"
-										placement="top-start"
-										extra-popper-class="agent-chat-session-menu"
-										max-height="220px"
-										data-test-id="agent-chat-session-picker"
+									<N8nNavigationDropdown
+										:menu="sessionMenu"
+										submenu-class="agent-chat-session-menu"
+										data-testid="agent-chat-session-picker"
 										@select="onSessionPick"
 									>
-										<template #activator>
-											<button
-												type="button"
-												:class="$style.historyBtn"
-												aria-label="Session history"
-												data-testid="agent-chat-session-picker-btn"
-											>
-												<N8nIcon icon="history" :size="14" />
-											</button>
-										</template>
-									</N8nActionDropdown>
+										<button
+											type="button"
+											:class="$style.historyBtn"
+											aria-label="Session history"
+											data-testid="agent-chat-session-picker-btn"
+										>
+											<N8nIcon icon="history" :size="14" />
+										</button>
+									</N8nNavigationDropdown>
 									<button
 										v-if="currentSessionHasMessages"
 										type="button"
@@ -1198,6 +1194,14 @@ function onSwitchAgent(nextAgentId: string) {
 	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--color--foreground--shade-1) transparent;
+}
+
+/* Flip the popper upward. ElSubMenu doesn't expose a `placement` prop, so we
+   translate by the popper's own height + the trigger height (28px) to seat
+   the menu above the button instead of below. `!important` beats the inline
+   transform element-plus writes. */
+:global(.agent-chat-session-menu) {
+	transform: translateY(calc(-100% - 36px)) !important;
 }
 
 :global(.agent-chat-session-menu) :global(.el-menu)::-webkit-scrollbar {
