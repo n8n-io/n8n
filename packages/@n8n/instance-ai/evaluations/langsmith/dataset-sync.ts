@@ -17,7 +17,7 @@ import type { EvalLogger } from '../harness/logger';
 // Bump this if existing IDs get tombstoned by LangSmith soft-delete and need
 // to be regenerated fresh. UUIDs for the same derivedId stay stable within a
 // version, so experiment comparison still works.
-const UUID_VERSION = 'v2';
+const UUID_VERSION = 'v3';
 
 /**
  * Generate a deterministic UUID from a string.
