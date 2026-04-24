@@ -1,3 +1,4 @@
+import { CronTime } from 'cron';
 import moment from 'moment-timezone';
 import { type CronExpression, type INode, NodeOperationError, randomInt } from 'n8n-workflow';
 
@@ -81,6 +82,31 @@ export function recurrenceCheck(
 		}
 	}
 	return false;
+}
+
+export function createCronDayConstraintEvaluator(
+	cronExpression: CronExpression,
+	timezone: string,
+	enforceDayOfMonthAndDayOfWeekMatch = false,
+) {
+	if (!enforceDayOfMonthAndDayOfWeekMatch) return () => true;
+
+	const [, , , dayOfMonth, , dayOfWeek] = new CronTime(cronExpression, timezone).toJSON();
+
+	// The cron dependency matches constrained day-of-month and day-of-week with OR semantics.
+	// When explicitly enabled in the node UI, this evaluator enforces AND semantics per rule.
+	if (dayOfMonth === '*' || dayOfWeek === '*') return () => true;
+
+	const allowedDaysOfMonth = new Set(dayOfMonth.split(',').map((value) => Number(value)));
+	const allowedDaysOfWeek = new Set(dayOfWeek.split(',').map((value) => Number(value)));
+
+	return () => {
+		const now = moment.tz(timezone);
+		const currentDayOfMonth = now.date();
+		const currentDayOfWeek = now.day();
+
+		return allowedDaysOfMonth.has(currentDayOfMonth) && allowedDaysOfWeek.has(currentDayOfWeek);
+	};
 }
 
 export const toCronExpression = (interval: ScheduleInterval): CronExpression => {

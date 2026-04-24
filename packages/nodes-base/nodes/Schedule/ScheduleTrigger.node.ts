@@ -10,6 +10,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
+	createCronDayConstraintEvaluator,
 	intervalToRecurrence,
 	recurrenceCheck,
 	toCronExpression,
@@ -24,7 +25,7 @@ export class ScheduleTrigger implements INodeType {
 		icon: 'node:schedule-trigger',
 		iconColor: 'black',
 		group: ['trigger', 'schedule'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Triggers the workflow on a given schedule',
 		eventTriggerDescription: '',
 		activationMessage:
@@ -405,6 +406,32 @@ export class ScheduleTrigger implements INodeType {
 								default: '',
 							},
 							{
+								displayName:
+									'When both Day of Month and Day of Week are constrained, cron matches either field (OR).',
+								name: 'dayConstraintNotice',
+								type: 'notice',
+								displayOptions: {
+									show: {
+										field: ['cronExpression'],
+										'@version': [1, 1.1, 1.2, 1.3],
+									},
+								},
+								default: '',
+							},
+							{
+								displayName:
+									'When both Day of Month and Day of Week are constrained, this node requires both to match (AND).',
+								name: 'dayConstraintNoticeAnd',
+								type: 'notice',
+								displayOptions: {
+									show: {
+										field: ['cronExpression'],
+										'@version': [{ _cnd: { gte: 1.4 } }],
+									},
+								},
+								default: '',
+							},
+							{
 								displayName: 'Expression',
 								name: 'expression',
 								type: 'string',
@@ -465,20 +492,37 @@ export class ScheduleTrigger implements INodeType {
 			this.emit([this.helpers.returnJsonArray([resultData])]);
 		};
 
-		const rules = intervals.map((interval, i) => ({
-			interval,
-			cronExpression: toCronExpression(interval),
-			recurrence: intervalToRecurrence(interval, i),
-		}));
+		const rules = intervals.map((interval, i) => {
+			const cronExpression = toCronExpression(interval);
+
+			return {
+				interval,
+				cronExpression,
+				recurrence: intervalToRecurrence(interval, i),
+				shouldEnforceDayConstraint: version >= 1.4 && interval.field === 'cronExpression',
+			};
+		});
 
 		if (this.getMode() !== 'manual') {
-			for (const { interval, cronExpression, recurrence } of rules) {
+			for (const { interval, cronExpression, recurrence, shouldEnforceDayConstraint } of rules) {
 				try {
+					const shouldExecute =
+						interval.field === 'cronExpression'
+							? createCronDayConstraintEvaluator(
+									cronExpression,
+									timezone,
+									shouldEnforceDayConstraint,
+								)
+							: () => true;
+
 					const cron: Cron = {
 						expression: cronExpression,
 						recurrence,
 					};
-					this.helpers.registerCron(cron, () => executeTrigger(recurrence));
+					this.helpers.registerCron(cron, () => {
+						if (!shouldExecute()) return;
+						executeTrigger(recurrence);
+					});
 				} catch (error) {
 					if (interval.field === 'cronExpression') {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
