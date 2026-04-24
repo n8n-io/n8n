@@ -122,6 +122,26 @@ export class WooCommerceTrigger implements INodeType {
 						webhook.delivery_url === webhookUrl &&
 						webhook.topic === currentEvent
 					) {
+						if (!webhookData.secret) {
+							// Orphaned webhook: delete it so `create` can register a fresh one with a new secret.
+							try {
+								await woocommerceApiRequest.call(
+									this,
+									'DELETE',
+									`/webhooks/${webhook.id}`,
+									{},
+									{ force: true },
+								);
+							} catch (error) {
+								this.logger.debug('Failed to delete orphaned webhook during checkExists', {
+									webhookId: webhook.id,
+									error,
+								});
+							}
+							delete webhookData.webhookId;
+							return false;
+						}
+
 						webhookData.webhookId = webhook.id;
 						return true;
 					}
