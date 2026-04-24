@@ -1043,25 +1043,22 @@ describe('useInstanceAiStore - gateway resource-decision confirmation', () => {
 	it('confirmAction passes resourceDecision payload through to postConfirmation', async () => {
 		await store.confirmAction('req-1', {
 			kind: 'resourceDecision',
-			approved: true,
 			resourceDecision: 'allowOnce',
 		});
 
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
 		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-1', {
 			kind: 'resourceDecision',
-			approved: true,
 			resourceDecision: 'allowOnce',
 		});
 	});
 
-	it('confirmResourceDecision calls postConfirmation with approved=true and the decision', async () => {
+	it('confirmResourceDecision calls postConfirmation with the decision token', async () => {
 		await store.confirmResourceDecision('req-2', 'allowForSession');
 
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
 		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-2', {
 			kind: 'resourceDecision',
-			approved: true,
 			resourceDecision: 'allowForSession',
 		});
 	});

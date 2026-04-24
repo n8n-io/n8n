@@ -510,7 +510,6 @@ describe('InstanceAiController', () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(true);
 			const body: InstanceAiConfirmRequest = {
 				kind: 'resourceDecision',
-				approved: true,
 				resourceDecision: 'allowOnce',
 			};
 			const reqWithBody = { ...req, body } as AuthenticatedRequest;

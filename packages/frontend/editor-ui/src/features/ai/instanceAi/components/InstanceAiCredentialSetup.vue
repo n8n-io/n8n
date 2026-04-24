@@ -281,7 +281,6 @@ async function handleContinue() {
 
 	const success = await store.confirmAction(props.requestId, {
 		kind: 'credentialSelection',
-		approved: true,
 		credentials,
 	});
 	if (success) {

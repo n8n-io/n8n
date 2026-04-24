@@ -869,11 +869,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	async function confirmResourceDecision(requestId: string, decision: string): Promise<void> {
 		resolveConfirmation(requestId, 'approved');
-		await confirmAction(requestId, {
-			kind: 'resourceDecision',
-			approved: true,
-			resourceDecision: decision,
-		});
+		await confirmAction(requestId, { kind: 'resourceDecision', resourceDecision: decision });
 	}
 
 	function toggleResearchMode(): void {

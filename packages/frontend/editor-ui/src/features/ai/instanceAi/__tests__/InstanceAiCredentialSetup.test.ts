@@ -254,7 +254,6 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
 			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
 				kind: 'credentialSelection',
-				approved: true,
 				credentials: {
 					type1: 'cred-123',
 					type2: 'cred-123',
@@ -299,7 +298,6 @@ describe('InstanceAiCredentialSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
 				kind: 'credentialSelection',
-				approved: true,
 				credentials: { type1: 'cred-123' },
 			});
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();

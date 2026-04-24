@@ -169,8 +169,6 @@ export function useSetupActions(deps: {
 
 		const postSuccess = await deps.store.confirmAction(deps.requestId.value, {
 			kind: 'setupWorkflowApply',
-			approved: true,
-			action: 'apply',
 			nodeCredentials,
 			nodeParameters,
 		});
@@ -209,8 +207,6 @@ export function useSetupActions(deps: {
 
 		const postSuccess = await deps.store.confirmAction(deps.requestId.value, {
 			kind: 'setupWorkflowTestTrigger',
-			approved: true,
-			action: 'test-trigger',
 			testTriggerNode: nodeName,
 			nodeCredentials,
 			nodeParameters,

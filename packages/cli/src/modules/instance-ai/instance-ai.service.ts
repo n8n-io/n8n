@@ -140,17 +140,21 @@ interface MessageTraceFinalization {
 
 /** Collapse the frontend's typed confirmation union into the flat payload
  *  consumed by Mastra tool resume schemas and sub-agent HITL. Only the fields
- *  relevant to the submitted kind are populated — everything else stays undefined. */
+ *  relevant to the submitted kind are populated — everything else stays undefined.
+ *
+ *  Most kinds carry implicit approval (you wouldn't be submitting answers,
+ *  selected credentials, or a setup action otherwise) — only `approval` and
+ *  `domainAccess` actually carry a denial path. */
 function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
 	switch (request.kind) {
 		case 'approval':
 			return { approved: request.approved, userInput: request.userInput };
+		case 'domainAccess':
+			return { approved: request.approved, domainAccessAction: request.domainAccessAction };
 		case 'questions':
 			return { approved: true, answers: request.answers };
 		case 'credentialSelection':
 			return { approved: true, credentials: request.credentials };
-		case 'domainAccess':
-			return { approved: request.approved, domainAccessAction: request.domainAccessAction };
 		case 'resourceDecision':
 			return { approved: true, resourceDecision: request.resourceDecision };
 		case 'setupWorkflowApply':

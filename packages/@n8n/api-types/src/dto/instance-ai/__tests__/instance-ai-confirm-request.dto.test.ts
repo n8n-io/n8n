@@ -31,7 +31,6 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'questions with mixed answers',
 				{
 					kind: 'questions',
-					approved: true,
 					answers: [
 						{ questionId: 'q1', selectedOptions: ['opt-a'] },
 						{ questionId: 'q2', selectedOptions: ['opt-b', 'opt-c'], customText: 'extra' },
@@ -44,7 +43,6 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'credentialSelection with credential map',
 				{
 					kind: 'credentialSelection',
-					approved: true,
 					credentials: { slackApi: 'cred-1', githubApi: 'cred-2' },
 				},
 			],
@@ -74,15 +72,13 @@ describe('InstanceAiConfirmRequestDto', () => {
 			// confirmResourceDecision (store)
 			[
 				'resourceDecision with arbitrary decision token',
-				{ kind: 'resourceDecision', approved: true, resourceDecision: 'allowForSession' },
+				{ kind: 'resourceDecision', resourceDecision: 'allowForSession' },
 			],
 			// useSetupActions: handleApply
 			[
 				'setupWorkflowApply (full payload)',
 				{
 					kind: 'setupWorkflowApply',
-					approved: true,
-					action: 'apply',
 					nodeCredentials: {
 						'Slack Node': { slackApi: 'cred-1' },
 						'GitHub Node': { githubApi: 'cred-2' },
@@ -92,17 +88,12 @@ describe('InstanceAiConfirmRequestDto', () => {
 					},
 				},
 			],
-			[
-				'setupWorkflowApply (no node credentials)',
-				{ kind: 'setupWorkflowApply', approved: true, action: 'apply' },
-			],
+			['setupWorkflowApply (no node credentials)', { kind: 'setupWorkflowApply' }],
 			// useSetupActions: handleTestTrigger
 			[
 				'setupWorkflowTestTrigger (with node credentials)',
 				{
 					kind: 'setupWorkflowTestTrigger',
-					approved: true,
-					action: 'test-trigger',
 					testTriggerNode: 'Webhook',
 					nodeCredentials: { Webhook: { httpHeaderAuth: 'cred-3' } },
 					nodeParameters: { Webhook: { path: '/trigger' } },
@@ -110,12 +101,7 @@ describe('InstanceAiConfirmRequestDto', () => {
 			],
 			[
 				'setupWorkflowTestTrigger (minimal)',
-				{
-					kind: 'setupWorkflowTestTrigger',
-					approved: true,
-					action: 'test-trigger',
-					testTriggerNode: 'Webhook',
-				},
+				{ kind: 'setupWorkflowTestTrigger', testTriggerNode: 'Webhook' },
 			],
 		];
 
@@ -138,58 +124,23 @@ describe('InstanceAiConfirmRequestDto', () => {
 		});
 
 		test('questions without answers array', () => {
-			const result = InstanceAiConfirmRequestDto.safeParse({
-				kind: 'questions',
-				approved: true,
-			});
+			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'questions' });
 			expect(result.success).toBe(false);
 		});
 
 		test('credentialSelection without credentials map', () => {
-			const result = InstanceAiConfirmRequestDto.safeParse({
-				kind: 'credentialSelection',
-				approved: true,
-			});
+			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'credentialSelection' });
 			expect(result.success).toBe(false);
 		});
 
 		test('resourceDecision without decision', () => {
-			const result = InstanceAiConfirmRequestDto.safeParse({
-				kind: 'resourceDecision',
-				approved: true,
-			});
+			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'resourceDecision' });
 			expect(result.success).toBe(false);
 		});
 
 		test('setupWorkflowTestTrigger without testTriggerNode', () => {
-			const result = InstanceAiConfirmRequestDto.safeParse({
-				kind: 'setupWorkflowTestTrigger',
-				approved: true,
-				action: 'test-trigger',
-			});
+			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'setupWorkflowTestTrigger' });
 			expect(result.success).toBe(false);
-		});
-
-		test('action mismatch between kind and action field', () => {
-			const result = InstanceAiConfirmRequestDto.safeParse({
-				kind: 'setupWorkflowApply',
-				approved: true,
-				action: 'test-trigger',
-			});
-			expect(result.success).toBe(false);
-		});
-
-		test('approval=false is rejected for kinds that require approval=true', () => {
-			for (const kind of [
-				'questions',
-				'credentialSelection',
-				'resourceDecision',
-				'setupWorkflowApply',
-				'setupWorkflowTestTrigger',
-			] as const) {
-				const result = InstanceAiConfirmRequestDto.safeParse({ kind, approved: false });
-				expect(result.success).toBe(false);
-			}
 		});
 
 		test('domainAccessAction must be a known value', () => {

@@ -230,7 +230,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	}
 	trackInputCompleted(conf, provided, skipped, { num_tasks: answers.length });
 	store.resolveConfirmation(conf.requestId, 'approved');
-	void store.confirmAction(conf.requestId, { kind: 'questions', approved: true, answers });
+	void store.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
 
 function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {

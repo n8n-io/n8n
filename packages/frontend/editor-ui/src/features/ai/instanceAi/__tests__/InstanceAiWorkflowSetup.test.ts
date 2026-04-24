@@ -277,11 +277,7 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith(
 				'req-1',
-				expect.objectContaining({
-					kind: 'setupWorkflowApply',
-					approved: true,
-					action: 'apply',
-				}),
+				expect.objectContaining({ kind: 'setupWorkflowApply' }),
 			);
 		});
 	});
@@ -359,11 +355,7 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith(
 				'req-1',
-				expect.objectContaining({
-					kind: 'setupWorkflowApply',
-					approved: true,
-					action: 'apply',
-				}),
+				expect.objectContaining({ kind: 'setupWorkflowApply' }),
 			);
 		});
 	});
@@ -402,11 +394,7 @@ describe('InstanceAiWorkflowSetup', () => {
 
 			expect(confirmSpy).toHaveBeenCalledWith(
 				'req-1',
-				expect.objectContaining({
-					kind: 'setupWorkflowApply',
-					approved: true,
-					action: 'apply',
-				}),
+				expect.objectContaining({ kind: 'setupWorkflowApply' }),
 			);
 		});
 	});
@@ -850,8 +838,6 @@ describe('InstanceAiWorkflowSetup', () => {
 				'req-1',
 				expect.objectContaining({
 					kind: 'setupWorkflowApply',
-					approved: true,
-					action: 'apply',
 					nodeParameters: { [nodeName]: { channel: '#general' } },
 				}),
 			);
@@ -917,11 +903,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			await waitFor(() => {
 				expect(confirmSpy).toHaveBeenCalledWith(
 					'req-1',
-					expect.objectContaining({
-						kind: 'setupWorkflowApply',
-						approved: true,
-						action: 'apply',
-					}),
+					expect.objectContaining({ kind: 'setupWorkflowApply' }),
 				);
 			});
 		});
