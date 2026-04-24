@@ -4,6 +4,10 @@ import { useRecentResources } from './useRecentResources';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { VIEWS } from '@/app/constants';
@@ -71,10 +75,12 @@ describe('useRecentResources', () => {
 		recentNodesRef.value = {};
 
 		mockWorkflowsStore = useWorkflowsStore();
+		mockWorkflowsStore.workflow.id = 'workflow-1';
 		mockWorkflowsListStore = useWorkflowsListStore();
 		mockNodeTypesStore = useNodeTypesStore();
 
-		Object.defineProperty(mockWorkflowsStore, 'findNodeByPartialId', {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
+		Object.defineProperty(workflowDocumentStore, 'findNodeByPartialId', {
 			value: vi.fn((nodeId: string) => {
 				if (nodeId === 'node-1') {
 					return { id: 'node-1', name: 'Test Node 1', type: 'n8n-nodes-base.httpRequest' };
