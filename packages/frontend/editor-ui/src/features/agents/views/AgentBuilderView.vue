@@ -521,7 +521,6 @@ function onContinueLoaded(count: number) {
 									:model-value="chatMode"
 									:options="chatModeOptions"
 									:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
-									size="small"
 									data-testid="agent-chat-mode-toggle"
 									@update:model-value="setChatMode"
 								>
@@ -589,7 +588,6 @@ function onContinueLoaded(count: number) {
 									:model-value="chatMode"
 									:options="chatModeOptions"
 									:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
-									size="small"
 									data-testid="agent-chat-mode-toggle"
 									@update:model-value="setChatMode"
 								>
