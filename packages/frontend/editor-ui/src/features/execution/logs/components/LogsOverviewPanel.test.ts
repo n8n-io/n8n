@@ -47,6 +47,18 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		settings: {},
 		getPinDataSnapshot: vi.fn().mockReturnValue({}),
+		serialize: vi.fn().mockReturnValue({
+			id: 'test-workflow-id',
+			name: 'Test Workflow',
+			nodes: [],
+			connections: {},
+			pinData: {},
+			active: false,
+			settings: {},
+			tags: [],
+			versionId: '',
+			meta: {},
+		}),
 	},
 }));
 
