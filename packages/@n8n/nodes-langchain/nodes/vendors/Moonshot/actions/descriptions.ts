@@ -20,7 +20,7 @@ export const modelRLC: INodeProperties = {
 			displayName: 'ID',
 			name: 'id',
 			type: 'string',
-			placeholder: 'e.g. kimi-k2.5',
+			placeholder: 'e.g. kimi-k2.6',
 		},
 	],
 };

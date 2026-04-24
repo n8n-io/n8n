@@ -18,6 +18,7 @@ import {
 	postCancel,
 	postCancelTask,
 	postConfirmation,
+	postFeedback,
 	getInstanceAiCredits,
 } from './instanceAi.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -172,7 +173,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// Response feedback — rateability selector + submission
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
-		useResponseFeedback({ messages, currentThreadId, telemetry });
+		useResponseFeedback({
+			messages,
+			currentThreadId,
+			telemetry,
+			postFeedback: async (threadId, responseId, payload) =>
+				await postFeedback(rootStore.restApiContext, threadId, responseId, payload),
+		});
 
 	/** The latest task list, preferring explicit tasks-update events over tree snapshots. */
 	const currentTasks = computed(
@@ -541,6 +548,22 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	}
 
 	// --- Actions ---
+
+	/**
+	 * Reset the store to a blank "no active thread" state — used when the user
+	 * lands on the base `/instance-ai` route (fresh page, back button, or the
+	 * AI Assistant nav link). Without this, `currentThreadId` keeps pointing
+	 * at the last thread and the sidebar highlights it alongside the empty
+	 * main view, which is the AI-2408 visual mismatch.
+	 */
+	function clearCurrentThread(): void {
+		closeSSE();
+		resetThreadRuntimeState(null);
+		// Mirror the initial store state: a fresh UUID that doesn't match any
+		// real thread, so the sidebar highlights nothing and the next
+		// `sendMessage` creates a new thread with this id via `syncThread`.
+		currentThreadId.value = uuidv4();
+	}
 
 	function newThread(): string {
 		const newThreadId = uuidv4();
@@ -1043,6 +1066,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		isAwaitingConfirmation,
 		// Actions
 		newThread,
+		clearCurrentThread,
 		deleteThread,
 		renameThread,
 		getThreadMetadata,

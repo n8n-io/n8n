@@ -71,6 +71,20 @@ describe('Xml Node - options validation', () => {
 				);
 			},
 		);
+
+		test.each(FORBIDDEN_KEYS)(
+			'should reject non-string attrkey that resolves to "%s"',
+			async (forbiddenKey) => {
+				setupGetNodeParameter('xmlToJson', { attrkey: [forbiddenKey], mergeAttrs: false });
+
+				await expect(xmlNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					`The "Attribute Key" option value "${forbiddenKey}" is not allowed`,
+				);
+				await expect(xmlNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					NodeOperationError,
+				);
+			},
+		);
 	});
 
 	describe('charkey validation', () => {
@@ -92,6 +106,20 @@ describe('Xml Node - options validation', () => {
 			'should reject invalid charkey "%s" in jsonToxml mode',
 			async (forbiddenKey) => {
 				setupGetNodeParameter('jsonToxml', { charkey: forbiddenKey });
+
+				await expect(xmlNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					`The "Character Key" option value "${forbiddenKey}" is not allowed`,
+				);
+				await expect(xmlNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					NodeOperationError,
+				);
+			},
+		);
+
+		test.each(FORBIDDEN_KEYS)(
+			'should reject non-string charkey that resolves to "%s"',
+			async (forbiddenKey) => {
+				setupGetNodeParameter('xmlToJson', { charkey: [forbiddenKey] });
 
 				await expect(xmlNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
 					`The "Character Key" option value "${forbiddenKey}" is not allowed`,
