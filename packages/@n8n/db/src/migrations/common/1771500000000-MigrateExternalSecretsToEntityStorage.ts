@@ -67,7 +67,7 @@ export class MigrateExternalSecretsToEntityStorage1771500000000 implements Irrev
 		}
 
 		try {
-			const decrypted = this.cipher.decrypt(rows[0].value);
+			const decrypted = await this.cipher.decryptV2(rows[0].value);
 			return jsonParse<ExternalSecretsSettings>(decrypted);
 		} catch {
 			logger.error(
@@ -104,7 +104,7 @@ export class MigrateExternalSecretsToEntityStorage1771500000000 implements Irrev
 			return;
 		}
 
-		const encryptedSettings = this.cipher.encrypt(providerData.settings ?? {});
+		const encryptedSettings = await this.cipher.encryptV2(providerData.settings ?? {});
 
 		await runQuery(
 			`INSERT INTO ${connectionTable} (${providerKeyCol}, ${typeCol}, ${encryptedSettingsCol}) VALUES (:providerKey, :type, :encryptedSettings);`,

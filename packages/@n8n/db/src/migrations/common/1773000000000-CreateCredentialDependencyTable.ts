@@ -54,17 +54,21 @@ export class CreateCredentialDependencyTable1773000000000 implements ReversibleM
 		await runInBatches<CredentialRow>(query, async (rows) => {
 			if (rows.length === 0) return;
 
-			const batchDependencies = rows.flatMap((row) => {
-				const providerKeys = this.extractProviderKeysFromCredentialData(row.data);
-				const providerIds = providerKeys
-					.map((providerKey) => providerIdByKey.get(providerKey))
-					.filter((providerId): providerId is string => providerId !== undefined);
-				return providerIds.map((providerId) => ({
-					credentialId: row.id,
-					dependencyType: externalSecretProviderDependencyType,
-					dependencyId: providerId,
-				}));
-			});
+			const batchDependencies = (
+				await Promise.all(
+					rows.map(async (row) => {
+						const providerKeys = await this.extractProviderKeysFromCredentialData(row.data);
+						const providerIds = providerKeys
+							.map((providerKey) => providerIdByKey.get(providerKey))
+							.filter((providerId): providerId is string => providerId !== undefined);
+						return providerIds.map((providerId) => ({
+							credentialId: row.id,
+							dependencyType: externalSecretProviderDependencyType,
+							dependencyId: providerId,
+						}));
+					}),
+				)
+			).flat();
 
 			processedCount += rows.length;
 
@@ -85,8 +89,10 @@ export class CreateCredentialDependencyTable1773000000000 implements ReversibleM
 		await dropTable(credentialDependencyTable);
 	}
 
-	private extractProviderKeysFromCredentialData(encryptedCredentialData: string): string[] {
-		const decrypted = this.tryDecryptCredentialData(encryptedCredentialData);
+	private async extractProviderKeysFromCredentialData(
+		encryptedCredentialData: string,
+	): Promise<string[]> {
+		const decrypted = await this.tryDecryptCredentialData(encryptedCredentialData);
 		if (decrypted === null) return [];
 		return this.extractProviderKeysFromDecryptedData(decrypted);
 	}
@@ -122,9 +128,9 @@ export class CreateCredentialDependencyTable1773000000000 implements ReversibleM
 		return [...uniqueKeys];
 	}
 
-	private tryDecryptCredentialData(encryptedCredentialData: string): unknown {
+	private async tryDecryptCredentialData(encryptedCredentialData: string): Promise<unknown> {
 		try {
-			const decrypted = this.cipher.decrypt(encryptedCredentialData);
+			const decrypted = await this.cipher.decryptV2(encryptedCredentialData);
 			return JSON.parse(decrypted) as unknown;
 		} catch {
 			return null;
