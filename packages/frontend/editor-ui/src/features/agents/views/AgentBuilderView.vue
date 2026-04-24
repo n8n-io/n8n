@@ -551,7 +551,6 @@ function onSwitchAgent(nextAgentId: string) {
 		<div :class="$style.builder" :style="{ gridTemplateColumns: gridColumns }">
 			<!-- Column 1: chat -->
 			<aside
-				v-show="!chatColumnCollapsed"
 				:class="$style.chatColumn"
 				:aria-label="locale.baseText('agents.builder.chatColumn.ariaLabel')"
 				data-testid="agent-builder-chat-column"
@@ -738,6 +737,8 @@ function onSwitchAgent(nextAgentId: string) {
 	flex-direction: column;
 	border-right: var(--border);
 	min-height: 0;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .quickActionsRow {
