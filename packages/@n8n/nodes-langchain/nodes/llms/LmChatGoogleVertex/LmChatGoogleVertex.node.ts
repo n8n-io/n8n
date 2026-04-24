@@ -93,7 +93,7 @@ export class LmChatGoogleVertex implements INodeType {
 				default: 'gemini-2.5-flash',
 				builderHint: {
 					message:
-						'Always default to the latest flagship Gemini on Vertex (gemini-3.1-pro). Use gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
+						'Default to the latest flagship Gemini on Vertex (gemini-3.1-pro). Use gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
 				},
 			},
 			getAdditionalOptions({ supportsThinkingBudget: true }),

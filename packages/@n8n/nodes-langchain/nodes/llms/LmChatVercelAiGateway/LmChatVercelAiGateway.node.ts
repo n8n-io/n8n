@@ -117,7 +117,7 @@ export class LmChatVercelAiGateway implements INodeType {
 				default: 'openai/gpt-4o',
 				builderHint: {
 					message:
-						'Always default to a current flagship (e.g. openai/gpt-5.4, anthropic/claude-sonnet-4.6, google/gemini-3.1-pro). Avoid the openai/gpt-4o default and other pre-2026 models.',
+						'Default to a current flagship (e.g. openai/gpt-5.4, anthropic/claude-sonnet-4.6, google/gemini-3.1-pro). Avoid the openai/gpt-4o default and other pre-2026 models.',
 				},
 			},
 			{

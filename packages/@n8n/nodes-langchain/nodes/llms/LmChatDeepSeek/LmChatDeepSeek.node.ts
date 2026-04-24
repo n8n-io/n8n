@@ -119,7 +119,7 @@ export class LmChatDeepSeek implements INodeType {
 				default: 'deepseek-chat',
 				builderHint: {
 					message:
-						'Always default to the latest DeepSeek (deepseek-chat = V3.2 non-thinking, deepseek-reasoner = V3.2 thinking / R-series reasoning). Avoid older V3 and R1 snapshots.',
+						'Default to the latest DeepSeek (deepseek-chat = V3.2 non-thinking, deepseek-reasoner = V3.2 thinking / R-series reasoning). Avoid older V3 and R1 snapshots.',
 				},
 			},
 			{

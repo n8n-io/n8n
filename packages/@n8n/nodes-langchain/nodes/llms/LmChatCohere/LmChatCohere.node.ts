@@ -124,7 +124,7 @@ export class LmChatCohere implements INodeType {
 				default: 'command-a-03-2025',
 				builderHint: {
 					message:
-						'Always default to the latest Cohere Command A model (command-a-03-2025). Avoid command-r and command-light legacy variants.',
+						'Default to the latest Cohere Command A model (command-a-03-2025). Avoid command-r and command-light legacy variants.',
 				},
 			},
 			{

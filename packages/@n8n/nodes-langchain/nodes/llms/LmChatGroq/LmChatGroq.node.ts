@@ -103,7 +103,7 @@ export class LmChatGroq implements INodeType {
 				default: 'llama3-8b-8192',
 				builderHint: {
 					message:
-						'Always default to a flagship model on Groq (openai/gpt-oss-120b, llama-3.3-70b-versatile, or moonshotai/kimi-k2-instruct-0905). Avoid the legacy llama3-8b-8192 default and older llama3/llama-2 variants.',
+						'Default to a flagship model on Groq (openai/gpt-oss-120b, llama-3.3-70b-versatile, or moonshotai/kimi-k2-instruct-0905). Avoid the legacy llama3-8b-8192 default and older llama3/llama-2 variants.',
 				},
 			},
 			{
