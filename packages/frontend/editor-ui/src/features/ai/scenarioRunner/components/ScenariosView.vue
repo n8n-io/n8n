@@ -100,11 +100,41 @@ function statusLabel(status: ScenarioDisplayStatus): string {
 	return i18n.baseText(`scenarios.displayStatus.${status}`);
 }
 
-const expectationOptions = computed<Array<{ label: string; value: ScenarioExpectation }>>(() => [
-	{ label: i18n.baseText('scenarios.expectation.pass'), value: 'pass' },
-	{ label: i18n.baseText('scenarios.expectation.fail'), value: 'fail' },
-	{ label: i18n.baseText('scenarios.expectation.any'), value: 'any' },
+type ExpectationChip = 'success' | 'danger' | 'text-light';
+
+interface ExpectationOption {
+	label: string;
+	value: ScenarioExpectation;
+	data: { icon: IconName; chip: ExpectationChip };
+}
+
+const expectationOptions = computed<ExpectationOption[]>(() => [
+	{
+		label: i18n.baseText('scenarios.expectation.pass'),
+		value: 'pass',
+		data: { icon: 'circle-check', chip: 'success' },
+	},
+	{
+		label: i18n.baseText('scenarios.expectation.fail'),
+		value: 'fail',
+		data: { icon: 'circle-x', chip: 'danger' },
+	},
+	{
+		label: i18n.baseText('scenarios.expectation.any'),
+		value: 'any',
+		data: { icon: 'minus', chip: 'text-light' },
+	},
 ]);
+
+function expectationBadge(
+	expectation: ScenarioExpectation,
+): { label: string; tone: 'success' | 'danger' } | null {
+	if (expectation === 'pass')
+		return { label: i18n.baseText('scenarios.expectation.badge.pass'), tone: 'success' };
+	if (expectation === 'fail')
+		return { label: i18n.baseText('scenarios.expectation.badge.fail'), tone: 'danger' };
+	return null;
+}
 
 function commitExpectation(value: ScenarioExpectation) {
 	if (!selectedScenario.value) return;
@@ -328,9 +358,20 @@ watch(dialogOpen, (open) => {
 						/>
 					</N8nTooltip>
 					<div :class="$style.listText">
-						<N8nText bold size="small" color="text-dark" :class="$style.listName">
-							{{ scenario.name }}
-						</N8nText>
+						<div :class="$style.listTitleRow">
+							<N8nText bold size="small" color="text-dark" :class="$style.listName">
+								{{ scenario.name }}
+							</N8nText>
+							<span
+								v-if="expectationBadge(scenario.expectedOutcome)"
+								:class="[
+									$style.listBadge,
+									$style[`listBadge_${expectationBadge(scenario.expectedOutcome)!.tone}`],
+								]"
+							>
+								{{ expectationBadge(scenario.expectedOutcome)!.label }}
+							</span>
+						</div>
 						<N8nText size="xsmall" color="text-light" :class="$style.listPreview">
 							{{ descriptionPreview(scenario) }}
 						</N8nText>
@@ -397,7 +438,18 @@ watch(dialogOpen, (open) => {
 						size="small"
 						data-test-id="scenarios-expectation"
 						@update:model-value="(v: unknown) => commitExpectation(v as ScenarioExpectation)"
-					/>
+					>
+						<template #option="option">
+							<span :class="$style.expectationOption">
+								<N8nIcon
+									:icon="(option.data?.icon as IconName) ?? 'circle'"
+									:color="(option.data?.chip as ExpectationChip) ?? 'text-light'"
+									size="xsmall"
+								/>
+								{{ option.label }}
+							</span>
+						</template>
+					</N8nRadioButtons>
 					<N8nText size="xsmall" color="text-light">
 						{{ i18n.baseText('scenarios.detail.expectationHelper') }}
 					</N8nText>
@@ -566,10 +618,48 @@ watch(dialogOpen, (open) => {
 	flex: 1;
 }
 
+.listTitleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
 .listName {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	flex: 1;
+	min-width: 0;
+}
+
+.listBadge {
+	flex-shrink: 0;
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	line-height: 1;
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius--sm);
+	border: var(--border-width) var(--border-style) transparent;
+	letter-spacing: 0.02em;
+}
+
+.listBadge_success {
+	color: var(--color--success--shade-1);
+	background-color: var(--color--success--tint-4);
+	border-color: var(--color--success--tint-2);
+}
+
+.listBadge_danger {
+	color: var(--color--danger--shade-1);
+	background-color: var(--color--danger--tint-4);
+	border-color: var(--color--danger--tint-3);
+}
+
+.expectationOption {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .listPreview {
