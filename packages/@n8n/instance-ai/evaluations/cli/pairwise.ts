@@ -107,12 +107,19 @@ async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<Dat
 	const examples: DatasetExample[] = [];
 	for await (const raw of lsClient.listExamples({ datasetName: args.dataset })) {
 		const inputs = isRecord(raw.inputs) ? raw.inputs : {};
-		const context = isRecord(inputs.context) ? inputs.context : {};
+		// The notion-pairwise-workflows dataset stores criteria under
+		// `inputs.evals.{dos,donts}`. Older fixtures used `inputs.context.*`
+		// — read both paths so local and remote layouts both work.
+		const criteria = isRecord(inputs.evals)
+			? inputs.evals
+			: isRecord(inputs.context)
+				? inputs.context
+				: {};
 		const example: DatasetExample = {
 			id: raw.id,
 			prompt: typeof inputs.prompt === 'string' ? inputs.prompt : '',
-			dos: typeof context.dos === 'string' ? context.dos : undefined,
-			donts: typeof context.donts === 'string' ? context.donts : undefined,
+			dos: typeof criteria.dos === 'string' ? criteria.dos : undefined,
+			donts: typeof criteria.donts === 'string' ? criteria.donts : undefined,
 		};
 		if (!example.prompt) {
 			logger.warn(`Skipping example ${raw.id}: no prompt field`);
