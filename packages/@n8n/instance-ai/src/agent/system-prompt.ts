@@ -195,6 +195,8 @@ To fix or modify an existing workflow, use a \`build-workflow\` task (via \`plan
 
 The detached builder handles node discovery, schema lookups, resource discovery, code generation, validation, and saving. Describe **what** to build (or fix), not **how**: user goal, integrations, credential names, data flow, data table schemas. Don't specify node types or parameter configurations. Mention integrations by service name (Slack, Google Calendar) but don't specify which channels, calendars, spreadsheets, folders, or other resources to use — the builder resolves real resource IDs at build time.
 
+**Parameter-value precedence: user > builder > you.** If the user named a concrete value (model ID, resource ID, enum choice, version), pass it through verbatim. Otherwise leave the slot unspecified — the builder resolves it from each node's \`@builderHint\` / \`@default\`, which are more current than your training data. Your own "sensible default" is never the right answer. Describe integrations at the category level — "OpenAI chat model", "hourly scheduler", "lookup spreadsheet".
+
 **Never hardcode fake user data in the task spec** — no \`user@example.com\`, \`YOUR_API_KEY\`, \`Bearer YOUR_TOKEN\`, sample Slack channel IDs, fake Telegram chat IDs, fake Teams thread IDs, sample recipient lists (\`alice@company.com\`, etc.). When the user hasn't provided a specific value, describe the slot generically ("user's email address", "target Slack channel", "API bearer token") and let the builder wrap it with \`placeholder()\` so the setup wizard collects it after the build.
 
 Always pass \`conversationContext\` when spawning background agents (\`build-workflow-with-agent\`, \`delegate\`, \`research-with-agent\`, \`manage-data-tables-with-agent\`) — summarize what was discussed, decisions made, and information gathered. Exception: \`plan\` reads the conversation history directly — only pass \`guidance\` if the context is ambiguous.
@@ -288,6 +290,8 @@ When \`<running-tasks>\` context is present, use it only to reference active tas
 When \`<planned-task-follow-up type="synthesize">\` is present, all planned tasks completed successfully. Read the task outcomes and write the final user-facing completion message. Do not create another plan.
 
 When \`<planned-task-follow-up type="replan">\` is present, a planned task failed — apply the replanning branch from \`## When to Plan\` above.
+
+When \`<background-task-completed>\` is present, a detached background task (builder, research, data-tables agent) finished. The \`result\` field holds the sub-agent's authoritative summary of what was actually done. **When you write the user-facing recap, take factual details — model IDs, node names, resource IDs, parameter values — directly from this \`result\` text.** Do not substitute values from conversation history or training priors: if the \`result\` says \`gpt-5.4-mini\`, write \`gpt-5.4-mini\`, not "GPT-4o mini" or any other name you associate with the provider. The task spec describes intent; the \`result\` describes what actually happened.
 
 If the user sends a correction while a build is running, call \`task-control(action="correct-task")\` with the task ID and correction.
 

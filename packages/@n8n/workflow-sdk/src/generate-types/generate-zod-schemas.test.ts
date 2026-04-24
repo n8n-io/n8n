@@ -1533,3 +1533,209 @@ describe('mapPropertyToZodSchema recursion for nested collection/fixedCollection
 		expect(schema).toContain('leaf: stringOrExpression.optional()');
 	});
 });
+
+describe('mapPropertyToZodSchema for display-only callout property', () => {
+	it('returns empty string for top-level callout property', () => {
+		const prop = {
+			name: 'info',
+			displayName: 'Info',
+			type: 'callout',
+			default: '',
+		} as unknown as NodeProperty;
+
+		expect(mapPropertyToZodSchema(prop)).toBe('');
+	});
+
+	it('skips callout properties nested inside a fixedCollection', () => {
+		const prop = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'info',
+							displayName: 'Info',
+							type: 'callout',
+							default: '',
+						},
+						{
+							name: 'keep',
+							displayName: 'Keep',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).not.toContain('info');
+		expect(schema).toContain('keep: stringOrExpression.optional()');
+	});
+
+	it('skips callout properties nested inside a collection', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'info',
+					displayName: 'Info',
+					type: 'callout',
+					default: '',
+				},
+				{
+					name: 'keep',
+					displayName: 'Keep',
+					type: 'string',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).not.toContain('info');
+		expect(schema).toContain('keep: stringOrExpression.optional()');
+	});
+});
+
+describe('mapPropertyToZodSchema for data-carrying button and icon types', () => {
+	it('maps a top-level button property to stringOrExpression (covers AiTransform instructions)', () => {
+		const prop = {
+			name: 'instructions',
+			displayName: 'Instructions',
+			type: 'button',
+			default: '',
+			typeOptions: { buttonConfig: { hasInputField: true } },
+		} as unknown as NodeProperty;
+
+		expect(mapPropertyToZodSchema(prop)).toBe('stringOrExpression');
+	});
+
+	it('maps a button nested inside a collection to stringOrExpression', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'instructions',
+					displayName: 'Instructions',
+					type: 'button',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('instructions: stringOrExpression.optional()');
+	});
+
+	it('maps a top-level icon property to a { type, value } object schema (covers ChatTrigger)', () => {
+		const prop = {
+			name: 'agentIcon',
+			displayName: 'Agent Icon',
+			type: 'icon',
+			default: { type: 'icon', value: 'bot' },
+			noDataExpression: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain("z.literal('icon')");
+		expect(schema).toContain("z.literal('emoji')");
+		expect(schema).toContain('value: z.string()');
+	});
+
+	it('maps an icon nested inside a fixedCollection to a { type, value } object schema', () => {
+		const prop = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'icon',
+							displayName: 'Icon',
+							type: 'icon',
+							default: { type: 'icon', value: 'comment' },
+						},
+					],
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain("z.literal('icon')");
+		expect(schema).toContain("z.literal('emoji')");
+		expect(schema).toContain('value: z.string()');
+	});
+});
+
+describe('mapPropertyToZodSchema for workflowSelector', () => {
+	it('emits a resource-locator-shaped union with list/id modes for a top-level property', () => {
+		const prop = {
+			name: 'workflowId',
+			displayName: 'Workflow',
+			type: 'workflowSelector',
+			default: '',
+			required: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
+		expect(schema).toContain('value: z.union([z.string(), z.number()])');
+		expect(schema).toContain('cachedResultName: z.string().optional()');
+		expect(schema).toContain('expressionSchema');
+	});
+
+	it('emits the same schema for a workflowSelector nested inside a collection', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'workflowId',
+					displayName: 'Workflow',
+					type: 'workflowSelector',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
+	});
+});

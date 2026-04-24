@@ -255,6 +255,9 @@ describe('GlobalConfig', () => {
 				ttl: 3600000,
 			},
 		},
+		chatTrigger: {
+			disablePublicChat: false,
+		},
 		chatHub: {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,

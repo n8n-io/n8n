@@ -460,6 +460,192 @@ describe('useNodeSettingsParameters', () => {
 			});
 		});
 
+		describe('chat trigger public chat policy', () => {
+			const chatTriggerNodeType: INodeTypeDescription = {
+				...mockNodeType,
+				name: CHAT_TRIGGER_NODE_TYPE,
+			};
+
+			const publicParameter: INodeProperties = {
+				name: 'public',
+				type: 'boolean',
+				displayName: 'Make Chat Publicly Available',
+				default: false,
+			};
+
+			const publicOnlyParameter: INodeProperties = {
+				name: 'mode',
+				type: 'options',
+				displayName: 'Mode',
+				default: 'hostedChat',
+				displayOptions: {
+					show: {
+						public: [true],
+					},
+				},
+				options: [],
+			};
+
+			const privateOnlyParameter: INodeProperties = {
+				name: 'options',
+				type: 'collection',
+				displayName: 'Options',
+				default: {},
+				displayOptions: {
+					show: {
+						public: [false],
+						'@version': [1, 1.1],
+					},
+				},
+				options: [],
+			};
+
+			const chatTriggerNode: INodeUi = {
+				id: '1',
+				name: 'Chat Trigger',
+				position: [0, 0],
+				typeVersion: 1,
+				type: CHAT_TRIGGER_NODE_TYPE,
+				parameters: {},
+			};
+
+			it('hides the public toggle when public chat is disabled', async () => {
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+
+				settingsStore.isPublicChatTriggerDisabled = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, chatTriggerNode, publicParameter);
+
+				expect(result).toBe(false);
+				expect(displayParameterSpy).not.toHaveBeenCalled();
+			});
+
+			it('hides public-only settings when public chat is disabled', async () => {
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+
+				settingsStore.isPublicChatTriggerDisabled = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, chatTriggerNode, publicOnlyParameter);
+
+				expect(result).toBe(false);
+				expect(displayParameterSpy).not.toHaveBeenCalled();
+			});
+
+			it('strips public=false display conditions so private settings stay visible', async () => {
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockResolvedValueOnce(true);
+
+				settingsStore.isPublicChatTriggerDisabled = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = await shouldDisplayNodeParameter({}, chatTriggerNode, privateOnlyParameter);
+
+				expect(result).toBe(true);
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					{},
+					expect.objectContaining({
+						name: 'options',
+						displayOptions: {
+							show: {
+								'@version': [1, 1.1],
+							},
+						},
+					}),
+					'',
+					chatTriggerNode,
+					'displayOptions',
+				);
+			});
+
+			it('uses the stripped parameter after expression resolution', async () => {
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockResolvedValueOnce(true);
+
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: async (expr: string) =>
+						expr === '=resolved' ? 'resolved_value' : expr,
+				}));
+
+				settingsStore.isPublicChatTriggerDisabled = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const nodeParameters = {
+					foo: '=resolved',
+				};
+
+				const result = await shouldDisplayNodeParameter(
+					nodeParameters,
+					chatTriggerNode,
+					privateOnlyParameter,
+				);
+
+				expect(result).toBe(true);
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					{ foo: 'resolved_value' },
+					expect.objectContaining({
+						name: 'options',
+						displayOptions: {
+							show: {
+								'@version': [1, 1.1],
+							},
+						},
+					}),
+					'',
+					chatTriggerNode,
+					'displayOptions',
+				);
+			});
+
+			it('does not change public display conditions on non-chat nodes', async () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockResolvedValueOnce(true);
+
+				settingsStore.isPublicChatTriggerDisabled = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const node: INodeUi = {
+					id: '1',
+					name: 'Other Node',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.other',
+					parameters: {},
+				};
+
+				const result = await shouldDisplayNodeParameter({}, node, privateOnlyParameter);
+
+				expect(result).toBe(true);
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					{},
+					privateOnlyParameter,
+					'',
+					node,
+					'displayOptions',
+				);
+			});
+		});
 		describe('displayOptions handling', () => {
 			it('returns true if displayOptions is undefined', async () => {
 				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
