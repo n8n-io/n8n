@@ -62,6 +62,8 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableRow:upsert',
 	'folder:create',
 	'folder:delete',
+	'folder:read',
+	'folder:update',
 	'folder:list',
 	'insights:read',
 ];
@@ -106,6 +108,8 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableRow:upsert',
 	'folder:create',
 	'folder:delete',
+	'folder:read',
+	'folder:update',
 	'folder:list',
 	'insights:read',
 ];
