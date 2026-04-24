@@ -484,16 +484,6 @@ function onContinueLoaded(count: number) {
 			:aria-label="locale.baseText('agents.builder.chatColumn.ariaLabel')"
 			data-testid="agent-builder-chat-column"
 		>
-			<div :class="$style.chatHeader">
-				<N8nTabs
-					v-if="initialized"
-					:model-value="chatMode"
-					:options="chatModeOptions"
-					variant="modern"
-					data-testid="agent-chat-mode-toggle"
-					@update:model-value="setChatMode"
-				/>
-			</div>
 			<div :class="$style.chatBody">
 				<AgentChatPanel
 					v-if="initialized && chatModeOpened.test && effectiveSessionId"
@@ -513,6 +503,14 @@ function onContinueLoaded(count: number) {
 					@open-build="onOpenBuildFromChat"
 				>
 					<template #above-input>
+						<N8nTabs
+							v-if="initialized"
+							:model-value="chatMode"
+							:options="chatModeOptions"
+							variant="modern"
+							data-testid="agent-chat-mode-toggle"
+							@update:model-value="setChatMode"
+						/>
 						<AgentChatQuickActions
 							:tools="localConfig?.tools ?? []"
 							:project-id="projectId"
@@ -539,6 +537,14 @@ function onContinueLoaded(count: number) {
 					@update:streaming="onBuildChatStreamingChange"
 				>
 					<template #above-input>
+						<N8nTabs
+							v-if="initialized"
+							:model-value="chatMode"
+							:options="chatModeOptions"
+							variant="modern"
+							data-testid="agent-chat-mode-toggle"
+							@update:model-value="setChatMode"
+						/>
 						<AgentChatQuickActions
 							:tools="localConfig?.tools ?? []"
 							:project-id="projectId"
@@ -614,19 +620,6 @@ function onContinueLoaded(count: number) {
 	flex-direction: column;
 	border-right: var(--border);
 	min-height: 0;
-}
-
-.chatHeader {
-	display: flex;
-	align-items: center;
-	padding: var(--spacing--xs) var(--spacing--2xs) 0;
-	border-bottom: var(--border);
-}
-
-/* Pull the tabs down 1px so the active-tab underline overlaps the header's
-   bottom border — avoids the stacked "two line" look. */
-.chatHeader > :global(.n8n-tabs) {
-	margin-bottom: -1px;
 }
 
 .chatBody {
