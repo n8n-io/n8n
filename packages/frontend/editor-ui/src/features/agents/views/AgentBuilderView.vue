@@ -616,7 +616,7 @@ function onContinueLoaded(count: number) {
 .chatHeader {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--2xs) var(--spacing--2xs) 0;
+	padding: var(--spacing--xs) var(--spacing--2xs) 0;
 	border-bottom: var(--border);
 }
 
