@@ -61,7 +61,7 @@ describe('ExpressionEvaluator metrics', () => {
 		expect(observability.metrics.histogram).toHaveBeenCalledWith(
 			'expression.evaluation.duration_ms',
 			expect.any(Number),
-			{ status: 'success', type: '' },
+			{ status: 'success', type: 'none' },
 		);
 	});
 

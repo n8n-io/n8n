@@ -27,7 +27,7 @@ function recordOutcome(
 	const errorType = error !== undefined ? classifyExpressionError(error) : undefined;
 	observability.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, durationMs, {
 		status,
-		type: errorType ?? '',
+		type: errorType ?? 'none',
 	});
 }
 

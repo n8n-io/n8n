@@ -168,12 +168,13 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 					: 'healthy';
 
 		const tracer = this.getTracer();
+		const errorType = tags?.type && tags.type !== 'none' ? tags.type : undefined;
 		const span = tracer.startSpan('expression.evaluate', {
 			attributes: {
 				[ATTRIBUTE.EXPRESSION_ENGINE]: 'vm',
 				[ATTRIBUTE.EXPRESSION_DURATION_MS]: durationMs,
 				[ATTRIBUTE.EXPRESSION_OUTCOME]: outcome,
-				...(tags?.type ? { [ATTRIBUTE.EXPRESSION_ERROR_TYPE]: tags.type } : {}),
+				...(errorType ? { [ATTRIBUTE.EXPRESSION_ERROR_TYPE]: errorType } : {}),
 			},
 		});
 

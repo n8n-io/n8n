@@ -69,7 +69,7 @@ describe('ExpressionObservabilityProvider', () => {
 			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 3, {
 				status: 'success',
-				type: '',
+				type: 'none',
 			});
 
 			const output = await promClient.register.metrics();
@@ -100,7 +100,7 @@ describe('ExpressionObservabilityProvider', () => {
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 10, {
 				status: 'success',
-				type: '',
+				type: 'none',
 			});
 			expect(startSpanMock).not.toHaveBeenCalled();
 		});
@@ -112,7 +112,7 @@ describe('ExpressionObservabilityProvider', () => {
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 100, {
 				status: 'success',
-				type: '',
+				type: 'none',
 			});
 			expect(startSpanMock).toHaveBeenCalledWith(
 				'expression.evaluate',
@@ -178,7 +178,7 @@ describe('ExpressionObservabilityProvider', () => {
 			});
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 20, {
 				status: 'success',
-				type: '',
+				type: 'none',
 			});
 
 			const output = await promClient.register.metrics();
