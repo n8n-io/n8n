@@ -79,7 +79,7 @@ describe('LmChatAnthropic', () => {
 				displayName: 'Anthropic Chat Model',
 				name: 'lmChatAnthropic',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3],
+				version: [1, 1.1, 1.2, 1.3, 1.4],
 				description: 'Language Model Anthropic',
 			});
 		});
@@ -554,12 +554,12 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
-		it('should have a default model in v1.3 resource locator', () => {
+		it('should keep Claude Sonnet 4.5 as default for v1.3 resource locator', () => {
 			const v13ModelField = lmChatAnthropic.description.properties.find(
 				(p) =>
 					p.name === 'model' &&
 					p.type === 'resourceLocator' &&
-					p.displayOptions?.show?.['@version']?.[0] !== undefined,
+					p.displayOptions?.show?.['@version']?.[0] === 1.3,
 			);
 
 			expect(v13ModelField).toBeDefined();
@@ -567,6 +567,23 @@ describe('LmChatAnthropic', () => {
 				mode: 'list',
 				value: 'claude-sonnet-4-5-20250929',
 				cachedResultName: 'Claude Sonnet 4.5',
+			});
+		});
+
+		it('should have Claude Sonnet 4.6 as default for v1.4+ resource locator', () => {
+			const v14ModelField = lmChatAnthropic.description.properties.find(
+				(p) =>
+					p.name === 'model' &&
+					p.type === 'resourceLocator' &&
+					(p.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd?.gte ===
+						1.4,
+			);
+
+			expect(v14ModelField).toBeDefined();
+			expect(v14ModelField!.default).toEqual({
+				mode: 'list',
+				value: 'claude-sonnet-4-6',
+				cachedResultName: 'Claude Sonnet 4.6',
 			});
 		});
 	});

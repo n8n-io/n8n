@@ -2487,6 +2487,74 @@ describe('generateNodesGraph', () => {
 			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(80);
 		});
 	});
+
+	describe('ai_gateway_credentials telemetry', () => {
+		test('should set ai_gateway_credentials=true when a credential is AI Gateway managed', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+						credentials: {
+							openAiApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+						},
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_gateway_credentials).toBe(true);
+		});
+
+		test('should not set ai_gateway_credentials when credentials are not AI Gateway managed', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+						credentials: {
+							openAiApi: { id: 'cred-id', name: 'My OpenAI' },
+						},
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_gateway_credentials).toBeUndefined();
+		});
+
+		test('should not set ai_gateway_credentials when node has no credentials', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_gateway_credentials).toBeUndefined();
+		});
+	});
 });
 
 describe('extractLastExecutedNodeCredentialData', () => {

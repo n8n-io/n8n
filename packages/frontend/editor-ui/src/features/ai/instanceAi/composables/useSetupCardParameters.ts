@@ -1,11 +1,15 @@
 import type { ComputedRef, Ref } from 'vue';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import { NodeHelpers, type INodeProperties } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IUpdateInformation } from '@/Interface';
 import { isNestedParam, isParamValueSet, type SetupCard } from '../instanceAiWorkflowSetup.utils';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 /** Check if the original node parameter value was a placeholder sentinel. */
 function isOriginalValuePlaceholder(req: SetupCard['nodes'][0], paramName: string): boolean {
@@ -18,6 +22,9 @@ export function useSetupCardParameters(
 	cardHasParamWork: (card: SetupCard) => boolean,
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 	const nodeTypesStore = useNodeTypesStore();
 
 	const paramValues = ref<Record<string, Record<string, unknown>>>({});
@@ -87,23 +94,10 @@ export function useSetupCardParameters(
 
 		// 2. Update workflow store node (needed for ParameterInputList reactivity,
 		//    dependent param resolution, and loadOptions calls)
-		const canvasNode = workflowsStore.getNodeByName(nodeName);
-		if (canvasNode) {
-			canvasNode.parameters = { ...canvasNode.parameters, [paramName]: parameterData.value };
-		}
-
-		// 3. `workflowsStore.workflowObject` holds a deep copy of the nodes (see
-		// `createWorkflowObject(..., copyData=true)` in `workflows.store.ts`), and
-		// `ParameterInput` reads its node through that copy via
-		// `expressionLocalResolveCtx.workflow.getNode()`. Without syncing, the
-		// per-input issue indicator would keep checking stale parameters.
-		const workflowObjectNode = workflowsStore.workflowObject.getNode(nodeName);
-		if (workflowObjectNode) {
-			workflowObjectNode.parameters = {
-				...workflowObjectNode.parameters,
-				[paramName]: parameterData.value,
-			};
-		}
+		workflowDocumentStore.value.setNodeParameters(
+			{ name: nodeName, value: { [paramName]: parameterData.value } },
+			true,
+		);
 	}
 
 	/** Build nodeParameters from paramValues + store node (for NDV-edited params). */

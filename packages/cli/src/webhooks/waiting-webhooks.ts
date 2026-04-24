@@ -21,6 +21,8 @@ import type {
 	WaitingWebhookRequest,
 } from './webhook.types';
 
+import { EventService } from '@/events/event.service';
+
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
@@ -45,6 +47,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly webhookService: WebhookService,
 		protected readonly instanceSettings: InstanceSettings,
+		private readonly eventService: EventService,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -250,6 +253,15 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
+	private emitExecutionResumedEvent(execution: IExecutionResponse, executionId: string) {
+		this.eventService.emit('execution-resumed', {
+			executionId,
+			workflowId: execution.workflowData.id,
+			resumeSource: 'webhook', // today, we only emit the 'execution-resumed' event for webhook wait nodes
+			responseAt: new Date(),
+		});
+	}
+
 	protected async getWebhookExecutionData({
 		execution,
 		req,
@@ -322,6 +334,12 @@ export class WaitingWebhooks implements IWebhookManager {
 			}
 
 			const runExecutionData = execution.data;
+
+			const isWaitingForWebhook =
+				!this.includeForms && !this.isSendAndWaitRequest(workflow.nodes, suffix);
+			if (isWaitingForWebhook) {
+				this.emitExecutionResumedEvent(execution, executionId);
+			}
 
 			return await new Promise((resolve, reject) => {
 				void WebhookHelpers.executeWebhook(

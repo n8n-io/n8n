@@ -3290,6 +3290,7 @@ export interface INodeGraphItem {
 	ai_model?: string; // AI model for model nodes and standalone AI nodes
 	ai_input_tokens?: number; // AI input (prompt) tokens for model nodes
 	ai_output_tokens?: number; // AI output (completion) tokens for model nodes
+	ai_gateway_credentials?: boolean; // true if node used n8n Connect / AI Gateway managed credentials
 }
 
 export interface INodeNameIndex {
