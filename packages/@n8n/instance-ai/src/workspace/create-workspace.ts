@@ -22,6 +22,12 @@ interface DaytonaSandboxConfig extends SandboxConfigBase {
 	daytonaApiUrl?: string;
 	daytonaApiKey?: string;
 	image?: string;
+	/**
+	 * n8n runtime version — used to name the prebuilt Daytona snapshot so that
+	 * each n8n release gets its own versioned snapshot. Daytona dedupes
+	 * snapshots sharing the same underlying ref, so over-versioning is free.
+	 */
+	n8nVersion?: string;
 	/** When provided, called before each Daytona interaction to get a fresh auth token (e.g. a short-lived JWT for proxy mode). */
 	getAuthToken?: () => Promise<string>;
 }

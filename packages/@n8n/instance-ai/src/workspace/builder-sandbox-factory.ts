@@ -109,16 +109,17 @@ export class BuilderSandboxFactory {
 	): Promise<BuilderWorkspace> {
 		const config = this.assertIsDaytona();
 		assert(this.imageManager, 'Daytona snapshot manager required');
+		const snapshotManager = this.imageManager;
 
-		// Get pre-warmed image (config + deps, no catalog — catalog is too large for API body)
-		const image = this.imageManager.ensureImage();
-
-		// Start sandbox creation AND catalog generation in parallel
+		// Start sandbox creation AND catalog generation in parallel.
+		// ensureSnapshot is lazy + memoized: first call builds the snapshot,
+		// subsequent calls short-circuit to the cached name.
 		const createSandboxFn = async () => {
 			const daytona = await this.getDaytona();
+			const snapshot = await snapshotManager.ensureSnapshot(daytona);
 			return await daytona.create(
 				{
-					image,
+					snapshot,
 					language: 'typescript',
 					ephemeral: true,
 					labels: { 'n8n-builder': builderId },

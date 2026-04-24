@@ -15,6 +15,7 @@ import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { N8N_VERSION } from '@/constants';
 import { UrlService } from '@/services/url.service';
 import {
 	MAX_STEPS,
@@ -278,6 +279,7 @@ export class InstanceAiService {
 				daytonaApiUrl: daytonaApiUrl || undefined,
 				daytonaApiKey: daytonaApiKey || undefined,
 				image: sandboxImage || undefined,
+				n8nVersion: N8N_VERSION,
 				timeout: sandboxTimeout,
 			};
 		}
@@ -346,7 +348,11 @@ export class InstanceAiService {
 		if (!config.enabled) return undefined;
 
 		if (config.provider === 'daytona') {
-			return new BuilderSandboxFactory(config, new SnapshotManager(config.image, this.logger));
+			const snapshotName = `n8n-instance-ai-${config.n8nVersion ?? 'dev'}`;
+			return new BuilderSandboxFactory(
+				config,
+				new SnapshotManager(config.image, snapshotName, this.logger),
+			);
 		}
 
 		return new BuilderSandboxFactory(config);
