@@ -99,12 +99,6 @@ export abstract class BaseCommand<F = never> {
 
 		this.nodeTypes = Container.get(NodeTypes);
 
-		// Ensures that when a CLI command has a check for "instanceSettings.isMultiMainEnabled"
-		// that it reflects the configuration of the n8n instance running on the server.
-		const isMultiMainEnabled =
-			this.globalConfig.executions.mode === 'queue' && this.globalConfig.multiMainSetup.enabled;
-		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
-
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).init();
 
@@ -143,6 +137,15 @@ export abstract class BaseCommand<F = never> {
 				'Scaling mode is not officially supported with sqlite. Please use PostgreSQL instead.',
 			);
 		}
+
+		// Ensures that when a CLI command has a check for "instanceSettings.isMultiMainEnabled"
+		// that it reflects the configuration of the n8n instance running on the server.
+		const isMultiMainEnabled =
+			this.globalConfig.executions.mode === 'queue' && this.globalConfig.multiMainSetup.enabled;
+		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
+		// We just set the licensed value to the configured value without checking the license
+		// because we're just in the realm of a cli command, the main instance already does the license checking.
+		this.instanceSettings.setMultiMainLicensed(isMultiMainEnabled);
 
 		// @TODO: Move to community-packages module
 		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
