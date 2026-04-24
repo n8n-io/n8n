@@ -29,6 +29,7 @@ import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
+import { TEMPERATURE } from '../../constants/model-settings';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -430,6 +431,7 @@ export async function startBuildWorkflowAgentTask(
 								const stream = await subAgent.stream(briefing, {
 									maxSteps: MAX_STEPS.BUILDER,
 									abortSignal: signal,
+									modelSettings: { temperature: TEMPERATURE.BUILDER },
 									providerOptions: {
 										anthropic: { cacheControl: { type: 'ephemeral' } },
 									},
@@ -564,6 +566,7 @@ export async function startBuildWorkflowAgentTask(
 						const stream = await subAgent.stream(briefing, {
 							maxSteps: MAX_STEPS.BUILDER,
 							abortSignal: signal,
+							modelSettings: { temperature: TEMPERATURE.BUILDER },
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
