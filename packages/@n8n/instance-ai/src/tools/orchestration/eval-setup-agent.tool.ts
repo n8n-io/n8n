@@ -36,7 +36,7 @@ import {
 } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
-const EVAL_SETUP_TOOL_NAMES = ['workflows', 'data-tables', 'nodes'] as const;
+const EVAL_SETUP_TOOL_NAMES = ['workflows', 'nodes'] as const;
 
 export interface StartEvalSetupAgentInput {
 	workflowId: string;
@@ -66,9 +66,6 @@ export async function startEvalSetupAgentTask(
 	}
 	if (!('workflows' in evalSetupTools)) {
 		return { result: 'Error: workflows tool not available.', taskId: '', agentId: '' };
-	}
-	if (!('data-tables' in evalSetupTools)) {
-		return { result: 'Error: data-tables tool not available.', taskId: '', agentId: '' };
 	}
 	if (!context.spawnBackgroundTask) {
 		return { result: 'Error: background task support not available.', taskId: '', agentId: '' };

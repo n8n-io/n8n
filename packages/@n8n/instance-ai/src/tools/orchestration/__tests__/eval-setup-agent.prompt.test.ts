@@ -45,13 +45,6 @@ describe('EVAL_SETUP_AGENT_PROMPT', () => {
 		expect(EVAL_SETUP_AGENT_PROMPT.toLowerCase()).toContain('side-effect');
 	});
 
-	it('describes dataset design principles with distribution targets', () => {
-		expect(EVAL_SETUP_AGENT_PROMPT).toMatch(/5-7 rows|5-7 sample rows/i);
-		expect(EVAL_SETUP_AGENT_PROMPT.toLowerCase()).toContain('happy path');
-		expect(EVAL_SETUP_AGENT_PROMPT.toLowerCase()).toContain('edge case');
-		expect(EVAL_SETUP_AGENT_PROMPT.toLowerCase()).toContain('adversarial');
-	});
-
 	it('includes validation instructions after patching', () => {
 		expect(EVAL_SETUP_AGENT_PROMPT.toLowerCase()).toContain('re-read');
 		expect(EVAL_SETUP_AGENT_PROMPT.toLowerCase()).toContain('validate');

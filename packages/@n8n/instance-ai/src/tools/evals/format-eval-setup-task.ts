@@ -19,20 +19,16 @@ function formatMetric(m: InstanceAiEvalMetricProposal): string {
 }
 
 function formatDatasetSection(input: FormatEvalSetupTaskInput): string {
-	const columns = [...input.suggestedInputColumns, ...input.suggestedOutputColumns];
 	if (input.datasetChoice === 'generate') {
-		const projectPart = input.projectId
-			? `in project ${input.projectId}`
-			: 'in the current project';
-		return `Create a new DataTable named "${input.workflowName} — eval samples" ${projectPart}.
-Columns: ${columns.join(', ')} (all string).
-Generate 5-7 realistic sample rows following the dataset design principles in your instructions.`;
+		// Defensive fallback — the orchestrator normally pre-creates the DataTable
+		// and passes 'link-existing'. If something upstream bypassed that, instruct
+		// the sub-agent to leave dataTableId empty rather than trying to create.
+		return `Do not create a DataTable yourself. Leave the EvaluationTrigger's dataTableId empty — the upstream orchestrator will handle dataset population.`;
 	}
 	if (input.datasetChoice === 'link-existing') {
-		return `Use existing DataTable id: ${input.existingDataTableId}. Do not create a new one.
-Wire the EvaluationTrigger to this DataTable id.`;
+		return `Wire the EvaluationTrigger to DataTable id \`${input.existingDataTableId}\`. This table is already created and populated with sample rows — do not modify its rows or schema.`;
 	}
-	return "Do not create a DataTable. Leave the EvaluationTrigger's dataTableId empty — the user will wire it manually later.";
+	return `Do not create a DataTable. Leave the EvaluationTrigger's dataTableId empty — the user will wire it manually later.`;
 }
 
 export function formatEvalSetupTask(input: FormatEvalSetupTaskInput): string {

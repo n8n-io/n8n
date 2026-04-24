@@ -26,6 +26,10 @@ jest.mock('../infer-eval-shape.service', () => ({
 
 const mockInfer = inferEvalShape as jest.MockedFunction<typeof inferEvalShape>;
 
+jest.mock('../ensure-eval-data-table.service', () => ({ ensureEvalDataTable: jest.fn() }));
+import { ensureEvalDataTable } from '../ensure-eval-data-table.service';
+const mockEnsureDataTable = ensureEvalDataTable as jest.MockedFunction<typeof ensureEvalDataTable>;
+
 function aiWf(): WorkflowJSON {
 	return {
 		name: 'AI Flow',
@@ -166,9 +170,10 @@ describe('evalsTool — phase 2 resume (v3: delegate to eval-setup-agent)', () =
 		expect(result).toMatchObject({ success: true, deferred: true });
 	});
 
-	it('approved + generate: returns shouldDelegateToEvalSetupAgent with task containing generate instructions', async () => {
+	it('approved + generate: calls ensureEvalDataTable, returns dataTableId, task uses link-existing wording', async () => {
 		const ctx = makeCtx(aiWf());
 		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
+		mockEnsureDataTable.mockResolvedValue({ id: 'dt-new', name: 'AI Flow — eval samples' });
 		const tool = createEvalsTool(ctx);
 
 		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1', projectId: 'p1' }, {
@@ -181,17 +186,17 @@ describe('evalsTool — phase 2 resume (v3: delegate to eval-setup-agent)', () =
 			},
 		} as never)) as Record<string, unknown>;
 
+		expect(mockEnsureDataTable).toHaveBeenCalledTimes(1);
 		expect(result).toMatchObject({
 			success: true,
 			shouldDelegateToEvalSetupAgent: true,
 			workflowId: 'w1',
 			projectId: 'p1',
+			dataTableId: 'dt-new',
 		});
 		const task = result.task as string;
-		expect(task).toContain('AI Flow');
-		expect(task).toContain('w1');
-		expect(task).toContain('Agent');
-		expect(task).toContain('Create a new DataTable');
+		expect(task).toContain('dt-new');
+		expect(task).toContain('already created and populated');
 	});
 
 	it('approved + link-existing: task references provided DataTable id', async () => {
@@ -216,7 +221,7 @@ describe('evalsTool — phase 2 resume (v3: delegate to eval-setup-agent)', () =
 		});
 		const task = result.task as string;
 		expect(task).toContain('dt-user-123');
-		expect(task).toContain('Do not create a new one');
+		expect(task).toContain('already created and populated');
 	});
 
 	it('approved + later: task tells sub-agent to leave dataTableId empty', async () => {

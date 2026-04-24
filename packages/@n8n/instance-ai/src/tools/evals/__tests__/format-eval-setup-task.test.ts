@@ -23,63 +23,31 @@ describe('formatEvalSetupTask', () => {
 	it('includes workflow id and name, and detected AI nodes', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
-			datasetChoice: 'generate',
-			projectId: 'p1',
+			datasetChoice: 'later',
 		});
 		expect(task).toContain('w1');
 		expect(task).toContain('Telegram AI Q&A Bot');
 		expect(task).toContain('General Agent');
 	});
 
-	it('dataset=generate: instructs sub-agent to create DataTable with expected name', () => {
-		const task = formatEvalSetupTask({
-			...BASE,
-			datasetChoice: 'generate',
-			projectId: 'p1',
-		});
-		expect(task).toContain('Create a new DataTable');
-		expect(task).toContain('Telegram AI Q&A Bot — eval samples');
-		expect(task).toContain('5-7 realistic sample rows');
-	});
-
-	it('dataset=generate: lists input+output columns for DataTable schema', () => {
-		const task = formatEvalSetupTask({
-			...BASE,
-			datasetChoice: 'generate',
-			projectId: 'p1',
-		});
-		expect(task).toContain('user_message');
-		expect(task).toContain('agent_response');
-	});
-
-	it('dataset=generate: includes project id when provided', () => {
-		const task = formatEvalSetupTask({
-			...BASE,
-			datasetChoice: 'generate',
-			projectId: 'p1',
-		});
-		expect(task).toContain('p1');
-	});
-
-	it('dataset=generate: omits project id mention when absent', () => {
+	it('dataset=generate (legacy fallback): instructs sub-agent NOT to create a DataTable', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
 			datasetChoice: 'generate',
 		});
-		expect(task).toContain('Create a new DataTable');
-		// Should fall back to 'current' language
-		expect(task).toContain('current');
+		expect(task).toContain('Do not create a DataTable');
+		expect(task).toContain('upstream orchestrator');
 	});
 
-	it('dataset=link-existing: uses provided id, forbids new creation', () => {
+	it('dataset=link-existing: uses provided id, notes dataset is pre-populated', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
 			datasetChoice: 'link-existing',
 			existingDataTableId: 'dt-user-42',
 		});
 		expect(task).toContain('dt-user-42');
-		expect(task).toContain('Do not create a new one');
-		expect(task).not.toContain('5-7 realistic sample rows');
+		expect(task).toContain('already created and populated');
+		expect(task).not.toContain('Create a new DataTable');
 	});
 
 	it('dataset=later: tells sub-agent to leave dataTableId empty', () => {
