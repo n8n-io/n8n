@@ -44,6 +44,7 @@ describe('Ldap/helpers', () => {
 
 		beforeEach(() => {
 			transactionManager = mock<EntityManager>({
+				findOne: jest.fn(),
 				findOneBy: jest.fn(),
 				save: jest.fn(),
 				update: jest.fn(),
@@ -52,6 +53,8 @@ describe('Ldap/helpers', () => {
 			mockManagerTransaction = jest.fn();
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(userRepository as any).manager = { transaction: mockManagerTransaction };
+
+			userRepository.createUserWithProject.mockReset();
 		});
 
 		test('does not update user when data has not changed', async () => {
@@ -146,6 +149,132 @@ describe('Ldap/helpers', () => {
 			//
 			expect(transactionManager.save).toHaveBeenCalledWith(User, existingUser);
 			expect(existingUser.email).toBe('new@example.com');
+		});
+
+		test('links existing local user by email instead of creating a duplicate', async () => {
+			//
+			// ARRANGE
+			//
+			const ldapId = 'ldap-new';
+			const ldapUser = Object.assign(new User(), {
+				email: 'shared@example.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			} as User);
+
+			const existingLocalUser = Object.assign(new User(), {
+				id: generateNanoId(),
+				email: 'shared@example.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			} as User);
+
+			mockManagerTransaction.mockImplementation(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
+			);
+
+			(transactionManager.findOne as jest.Mock).mockResolvedValueOnce(existingLocalUser);
+
+			//
+			// ACT
+			//
+			await helpers.processUsers([[ldapId, ldapUser]], [], []);
+
+			//
+			// ASSERT
+			//
+			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
+			expect(transactionManager.save).toHaveBeenCalledTimes(1);
+			const savedAuthIdentity = (transactionManager.save as jest.Mock).mock.calls[0][0];
+			expect(savedAuthIdentity).toBeInstanceOf(AuthIdentity);
+			expect(savedAuthIdentity.providerId).toBe(ldapId);
+			expect(savedAuthIdentity.providerType).toBe('ldap');
+			expect(savedAuthIdentity.userId).toBe(existingLocalUser.id);
+		});
+
+		test('updates firstName/lastName when linking an existing local user with stale names', async () => {
+			//
+			// ARRANGE
+			//
+			const ldapId = 'ldap-new';
+			const ldapUser = Object.assign(new User(), {
+				email: 'shared@example.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			} as User);
+
+			const existingLocalUser = Object.assign(new User(), {
+				id: generateNanoId(),
+				email: 'shared@example.com',
+				firstName: 'Stale',
+				lastName: 'Name',
+			} as User);
+
+			mockManagerTransaction.mockImplementation(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
+			);
+
+			(transactionManager.findOne as jest.Mock).mockResolvedValueOnce(existingLocalUser);
+
+			//
+			// ACT
+			//
+			await helpers.processUsers([[ldapId, ldapUser]], [], []);
+
+			//
+			// ASSERT
+			//
+			expect(transactionManager.save).toHaveBeenCalledWith(User, existingLocalUser);
+			expect(existingLocalUser.firstName).toBe('Jane');
+			expect(existingLocalUser.lastName).toBe('Doe');
+		});
+
+		test('creates a new user when no local user matches by email', async () => {
+			//
+			// ARRANGE
+			//
+			const ldapId = 'ldap-new';
+			const ldapUser = Object.assign(new User(), {
+				email: 'brand-new@example.com',
+				firstName: 'New',
+				lastName: 'Person',
+			} as User);
+
+			const createdUser = Object.assign(new User(), {
+				id: generateNanoId(),
+				email: 'brand-new@example.com',
+				firstName: 'New',
+				lastName: 'Person',
+			} as User);
+
+			mockManagerTransaction.mockImplementation(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
+			);
+
+			(transactionManager.findOne as jest.Mock).mockResolvedValueOnce(null);
+			(userRepository.createUserWithProject as jest.Mock).mockResolvedValueOnce({
+				user: createdUser,
+			});
+
+			//
+			// ACT
+			//
+			await helpers.processUsers([[ldapId, ldapUser]], [], []);
+
+			//
+			// ASSERT
+			//
+			expect(userRepository.createUserWithProject).toHaveBeenCalledWith(
+				ldapUser,
+				transactionManager,
+			);
+			const savedAuthIdentity = (transactionManager.save as jest.Mock).mock.calls[0][0];
+			expect(savedAuthIdentity).toBeInstanceOf(AuthIdentity);
+			expect(savedAuthIdentity.providerId).toBe(ldapId);
+			expect(savedAuthIdentity.userId).toBe(createdUser.id);
 		});
 	});
 });

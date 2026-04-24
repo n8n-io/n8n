@@ -41,7 +41,7 @@ defineExpose({ isHovered });
 
 <style lang="scss" module>
 .block {
-	width: 100%;
+	max-width: 90%;
 	justify-content: flex-start;
 	color: var(--color--text--tint-1);
 	position: relative;

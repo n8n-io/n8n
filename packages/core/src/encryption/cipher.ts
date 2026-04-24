@@ -1,44 +1,63 @@
 import { Service } from '@n8n/di';
-import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 import { InstanceSettings } from '@/instance-settings';
+import { assertUnreachable } from '@/utils/assertions';
 
-// Data encrypted by CryptoJS always starts with these bytes
-const RANDOM_BYTES = Buffer.from('53616c7465645f5f', 'hex');
+import { CipherAes256CBC } from './aes-256-cbc';
+import { CipherAes256GCM } from './aes-256-gcm';
+import { CipherAlgorithm } from './interface';
 
 @Service()
 export class Cipher {
-	constructor(private readonly instanceSettings: InstanceSettings) {}
+	constructor(
+		private readonly instanceSettings: InstanceSettings,
+		private readonly cipherAES256GCM: CipherAes256GCM,
+		private readonly cipherAES256CBC: CipherAes256CBC,
+	) {}
 
 	encrypt(data: string | object, customEncryptionKey?: string) {
-		const salt = randomBytes(8);
-		const [key, iv] = this.getKeyAndIv(salt, customEncryptionKey);
-		const cipher = createCipheriv('aes-256-cbc', key, iv);
-		const encrypted = cipher.update(typeof data === 'string' ? data : JSON.stringify(data));
-		return Buffer.concat([RANDOM_BYTES, salt, encrypted, cipher.final()]).toString('base64');
+		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
+		const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
+		return this.encryptWithKey(plaintext, key, 'aes-256-cbc');
 	}
 
 	decrypt(data: string, customEncryptionKey?: string) {
-		const input = Buffer.from(data, 'base64');
-		if (input.length < 16) return '';
-		const salt = input.subarray(8, 16);
-		const [key, iv] = this.getKeyAndIv(salt, customEncryptionKey);
-		const contents = input.subarray(16);
-		const decipher = createDecipheriv('aes-256-cbc', key, iv);
-		return Buffer.concat([decipher.update(contents), decipher.final()]).toString('utf-8');
+		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
+		return this.decryptWithKey(data, key, 'aes-256-cbc');
 	}
 
-	private getKeyAndIv(salt: Buffer, customEncryptionKey?: string): [Buffer, Buffer] {
-		const encryptionKey = customEncryptionKey ?? this.instanceSettings.encryptionKey;
-		const password = Buffer.concat([Buffer.from(encryptionKey, 'binary'), salt]);
-		const hash1 = createHash('md5').update(password).digest();
-		const hash2 = createHash('md5')
-			.update(Buffer.concat([hash1, password]))
-			.digest();
-		const iv = createHash('md5')
-			.update(Buffer.concat([hash2, password]))
-			.digest();
-		const key = Buffer.concat([hash1, hash2]);
-		return [key, iv];
+	/**
+	 * Encrypts with the instance encryption key specifically. Use this for payloads
+	 * that must be protected by the instance key (e.g. data-encryption keys
+	 * themselves), independently of any future change to the default `encrypt` key.
+	 */
+	encryptWithInstanceKey(data: string | object): string {
+		const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
+		return this.encryptWithKey(plaintext, this.instanceSettings.encryptionKey, 'aes-256-cbc');
+	}
+
+	/** Counterpart of {@link encryptWithInstanceKey}. */
+	decryptWithInstanceKey(data: string): string {
+		return this.decryptWithKey(data, this.instanceSettings.encryptionKey, 'aes-256-cbc');
+	}
+
+	encryptWithKey(data: string, key: string, algorithm: CipherAlgorithm): string {
+		switch (algorithm) {
+			case 'aes-256-cbc':
+				return this.cipherAES256CBC.encrypt(data, key);
+			case 'aes-256-gcm':
+				return this.cipherAES256GCM.encrypt(data, key);
+		}
+		assertUnreachable(algorithm);
+	}
+
+	decryptWithKey(data: string, key: string, algorithm: CipherAlgorithm): string {
+		switch (algorithm) {
+			case 'aes-256-cbc':
+				return this.cipherAES256CBC.decrypt(data, key);
+			case 'aes-256-gcm':
+				return this.cipherAES256GCM.decrypt(data, key);
+		}
+		assertUnreachable(algorithm);
 	}
 }
