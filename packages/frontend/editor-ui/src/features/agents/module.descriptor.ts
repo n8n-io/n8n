@@ -7,7 +7,6 @@ import {
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
-	NEW_AGENT_VIEW,
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
 
@@ -21,9 +20,6 @@ const AgentSessionsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
 const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
-const NewAgentView = async (): Promise<unknown> =>
-	await import('@/features/agents/views/NewAgentView.vue');
-
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',
 	name: 'Agents',
@@ -98,14 +94,6 @@ export const AgentsModule: FrontendModuleDescription = {
 					component: AgentSessionTimelineView,
 				},
 			],
-		},
-		{
-			name: NEW_AGENT_VIEW,
-			path: '/new-agent',
-			component: NewAgentView,
-			meta: {
-				middleware: ['authenticated', 'custom'],
-			},
 		},
 	],
 	projectTabs: {
