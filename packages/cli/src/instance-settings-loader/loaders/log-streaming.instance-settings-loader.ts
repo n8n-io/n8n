@@ -13,10 +13,6 @@ import { EventDestinations } from '@/modules/log-streaming.ee/database/entities'
 
 import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 
-// The env schema mirrors the UI fields exactly (see logStreaming.constants.ts):
-// fields hidden from the UI are not accepted here, and closed enums (method,
-// facility, protocol) match the UI's dropdown values.
-
 const circuitBreakerSchema = z
 	.object({
 		maxFailures: z.number().int().positive().optional(),
