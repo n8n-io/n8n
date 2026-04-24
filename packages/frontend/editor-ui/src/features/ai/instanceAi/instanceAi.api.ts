@@ -146,6 +146,16 @@ export async function createGatewayLink(
 }
 
 /**
+ * POST /instance-ai/gateway/disconnect-session -> { ok }
+ * Tear down the current user's gateway session so its tools are no longer
+ * exposed to the agent. Does not change the user's localGatewayDisabled
+ * preference.
+ */
+export async function disconnectGatewaySession(context: IRestApiContext): Promise<void> {
+	await makeRestApiRequest(context, 'POST', '/instance-ai/gateway/disconnect-session');
+}
+
+/**
  * GET /instance-ai/gateway/status -> { connected, connectedAt, directory, hostIdentifier, toolCategories }
  * Check whether the gateway daemon is currently connected.
  */
