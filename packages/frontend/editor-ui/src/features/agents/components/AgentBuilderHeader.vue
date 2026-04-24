@@ -6,7 +6,7 @@
  *
  * Navigation intents are emitted as events — the parent view owns routing.
  */
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import {
 	N8nActionDropdown,
 	N8nBreadcrumbs,
@@ -15,11 +15,9 @@ import {
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
 
 import AgentPublishButton from './AgentPublishButton.vue';
-import AgentHeaderEditPopover from './AgentHeaderEditPopover.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 
@@ -31,7 +29,6 @@ const props = defineProps<{
 	headerActions: Array<ActionDropdownItem<string>>;
 	chatColumnCollapsed: boolean;
 	saveStatus?: 'idle' | 'saving' | 'saved';
-	agentIcon?: IconOrEmoji;
 }>();
 
 const emit = defineEmits<{
@@ -41,8 +38,6 @@ const emit = defineEmits<{
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	'switch-agent': [agentId: string];
-	'update:name': [name: string];
-	'update:icon': [icon: IconOrEmoji];
 }>();
 
 const i18n = useI18n();
@@ -61,7 +56,6 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 ]);
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
-const displayIcon = computed<IconOrEmoji>(() => props.agentIcon ?? { type: 'icon', value: 'bot' });
 
 type SwitcherMenuItem = {
 	id: string;
@@ -92,14 +86,6 @@ function onSwitcherSelect(id: string) {
 	if (id === '__empty__') return;
 	emit('switch-agent', id);
 }
-
-const editOpen = ref(false);
-
-function onEditSave(payload: { name: string; icon: IconOrEmoji }) {
-	if (payload.name !== agentDisplayName.value) emit('update:name', payload.name);
-	emit('update:icon', payload.icon);
-	editOpen.value = false;
-}
 </script>
 
 <template>
@@ -126,42 +112,21 @@ function onEditSave(payload: { name: string; icon: IconOrEmoji }) {
 		<N8nBreadcrumbs :items="breadcrumbItems" theme="small">
 			<template #append>
 				<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
-				<div :class="$style.identityBlock">
-					<N8nNavigationDropdown
-						:menu="switcherMenu"
-						submenu-class="agent-header-switcher-menu"
-						data-testid="agent-header-switcher"
-						@select="onSwitcherSelect"
-					>
-						<button
-							type="button"
-							:class="$style.switcherButton"
-							:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
-						>
-							<span :class="$style.switcherIcon">
-								<template v-if="displayIcon.type === 'emoji'">{{ displayIcon.value }}</template>
-								<N8nIcon v-else :icon="displayIcon.value" :size="16" />
-							</span>
-							<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
-						</button>
-					</N8nNavigationDropdown>
+				<N8nNavigationDropdown
+					:menu="switcherMenu"
+					submenu-class="agent-header-switcher-menu"
+					data-testid="agent-header-switcher"
+					@select="onSwitcherSelect"
+				>
 					<button
 						type="button"
-						:class="$style.iconBtn"
-						aria-label="Edit agent name and icon"
-						data-testid="agent-header-edit"
-						@click="editOpen = !editOpen"
+						:class="$style.switcherButton"
+						:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
 					>
-						<N8nIcon icon="pencil" :size="14" />
+						<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
+						<N8nIcon icon="chevron-down" :size="12" />
 					</button>
-					<AgentHeaderEditPopover
-						v-if="editOpen"
-						:name="agentDisplayName"
-						:icon="displayIcon"
-						@save="onEditSave"
-						@cancel="editOpen = false"
-					/>
-				</div>
+				</N8nNavigationDropdown>
 			</template>
 		</N8nBreadcrumbs>
 		<div :class="$style.right">
@@ -234,13 +199,6 @@ function onEditSave(payload: { name: string; icon: IconOrEmoji }) {
 	user-select: none;
 }
 
-.identityBlock {
-	position: relative;
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
 .switcherButton {
 	display: inline-flex;
 	align-items: center;
@@ -265,14 +223,6 @@ function onEditSave(payload: { name: string; icon: IconOrEmoji }) {
 		outline: none;
 		border-color: var(--color--primary);
 	}
-}
-
-.switcherIcon {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	font-size: var(--font-size--sm);
-	line-height: 1;
 }
 
 .switcherLabel {

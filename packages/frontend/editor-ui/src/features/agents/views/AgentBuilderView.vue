@@ -20,7 +20,6 @@ import { deepCopy } from 'n8n-workflow';
 import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
@@ -352,17 +351,6 @@ async function settleAutosave() {
 	if (autosaveInFlight) await autosaveInFlight;
 }
 
-function onAgentNameUpdate(newName: string) {
-	if (!newName) return;
-	agentName.value = newName;
-	if (agent.value) agent.value = { ...agent.value, name: newName };
-	onConfigFieldUpdate({ name: newName });
-}
-
-function onAgentIconUpdate(icon: { type: 'icon' | 'emoji'; value: string }) {
-	onConfigFieldUpdate({ icon });
-}
-
 function onSectionEditorUpdate(nextConfig: AgentJsonConfig) {
 	if (!localConfig.value) return;
 	builderTelemetry.recordConfigEdit(nextConfig);
@@ -375,6 +363,12 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	// Record BEFORE assigning so the composable can diff against the pre-update state.
 	builderTelemetry.recordConfigEdit(updates);
 	Object.assign(localConfig.value, updates);
+	// Mirror identity edits onto the agent resource so the header reflects them
+	// before the next fetch.
+	if (updates.name !== undefined) {
+		agentName.value = updates.name;
+		if (agent.value) agent.value = { ...agent.value, name: updates.name };
+	}
 	scheduleAutosave();
 }
 
@@ -780,15 +774,12 @@ function onSwitchAgent(nextAgentId: string) {
 			:header-actions="headerActions"
 			:chat-column-collapsed="chatColumnCollapsed"
 			:save-status="saveStatus"
-			:agent-icon="localConfig?.icon as IconOrEmoji | undefined"
 			@back="onHeaderBack"
 			@toggle-chat-column="onToggleChatColumn"
 			@header-action="onHeaderAction"
 			@published="onPublished"
 			@unpublished="onUnpublished"
 			@switch-agent="onSwitchAgent"
-			@update:name="onAgentNameUpdate"
-			@update:icon="onAgentIconUpdate"
 		/>
 		<div :class="$style.builder" :style="{ gridTemplateColumns: gridColumns }">
 			<!-- Column 1: chat -->
