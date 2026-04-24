@@ -76,7 +76,10 @@ async function handleCopyLink(tab: ArtifactTab) {
 			data-test-id="instance-ai-preview-close"
 			@click="emit('close')"
 		/>
-		<TabsList aria-label="artifacts" :class="$style.tabList">
+		<TabsList
+			:aria-label="i18n.baseText('instanceAi.artifactsPanel.title')"
+			:class="$style.tabList"
+		>
 			<TabsIndicator :class="$style.tabsIndicator">
 				<div :class="$style.tabsIndicatorBar" />
 			</TabsIndicator>
