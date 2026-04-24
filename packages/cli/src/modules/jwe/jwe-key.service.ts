@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { DeploymentKey, DeploymentKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { JWK, KeyLike } from 'jose';
+import type { CryptoKey, JWK } from 'jose';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
@@ -24,8 +24,8 @@ type JweKeyPairData = {
 };
 
 type JweKeyPair = {
-	privateKey: KeyLike;
-	publicKey: KeyLike;
+	privateKey: CryptoKey;
+	publicKey: CryptoKey;
 	publicJwk: JWK;
 	kid: string;
 };
@@ -90,8 +90,8 @@ export class JweKeyService {
 		]);
 
 		return {
-			publicKey: publicKey as KeyLike,
-			privateKey: privateKey as KeyLike,
+			publicKey: publicKey as CryptoKey,
+			privateKey: privateKey as CryptoKey,
 			publicJwk: data.publicJwk,
 			kid: data.kid,
 		};

@@ -1,4 +1,4 @@
-import type { KeyLike } from 'jose';
+import type { CryptoKey } from 'jose';
 import { compactDecrypt } from 'jose';
 
 const JWE_SEGMENT_COUNT = 5;
@@ -20,7 +20,7 @@ export function isJweToken(token: unknown): token is string {
  * as a UTF-8 string. The caller is responsible for any further handling
  * (e.g. verifying an inner JWT).
  */
-export async function decryptJweToken(token: string, privateKey: KeyLike): Promise<string> {
+export async function decryptJweToken(token: string, privateKey: CryptoKey): Promise<string> {
 	const { plaintext } = await compactDecrypt(token, privateKey);
 	return new TextDecoder().decode(plaintext);
 }
@@ -32,7 +32,7 @@ export async function decryptJweToken(token: string, privateKey: KeyLike): Promi
  */
 export async function decryptJweTokenData(
 	data: Record<string, unknown>,
-	privateKey: KeyLike,
+	privateKey: CryptoKey,
 ): Promise<Record<string, unknown>> {
 	const result: Record<string, unknown> = { ...data };
 
