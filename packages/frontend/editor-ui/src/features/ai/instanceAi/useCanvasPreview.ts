@@ -53,7 +53,9 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	const debouncedSavePreviewState = useDebounceFn((tabId: string | undefined) => {
 		const threadId = currentThreadId();
 		if (!threadId) return;
-		void store.updateThreadMetadata(threadId, { activePreviewTab: tabId });
+		// Coalesce undefined → null: JSON.stringify drops undefined keys, which
+		// would leave a stale activePreviewTab in backend metadata after close.
+		void store.updateThreadMetadata(threadId, { activePreviewTab: tabId ?? null });
 	}, 500);
 
 	// Save activeTabId to thread metadata when it changes (skip during restore)
