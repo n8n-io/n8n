@@ -9,7 +9,7 @@ import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 vi.mock('n8n-workflow', async (importOriginal) => ({
-	...(await importOriginal<typeof import('n8n-workflow')>()),
+	...(await importOriginal()),
 	NodeHelpers: {
 		displayParameter: vi.fn(),
 		getNodeParameters: vi.fn(),
