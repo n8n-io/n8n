@@ -616,8 +616,14 @@ function onContinueLoaded(count: number) {
 .chatHeader {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--2xs) 0;
 	border-bottom: var(--border);
+}
+
+/* Pull the tabs down 1px so the active-tab underline overlaps the header's
+   bottom border — avoids the stacked "two line" look. */
+.chatHeader > :global(.n8n-tabs) {
+	margin-bottom: -1px;
 }
 
 .chatBody {
