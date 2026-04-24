@@ -1,3 +1,11 @@
+## [1.123.36](https://github.com/n8n-io/n8n/compare/n8n@1.123.35...n8n@1.123.36) (2026-04-24)
+
+
+### Bug Fixes
+
+* **core:** Workflow import cli doesn't deregister crons for deactivated workflows (multi-main only) ([#29079](https://github.com/n8n-io/n8n/issues/29079)) ([1d67911](https://github.com/n8n-io/n8n/commit/1d6791179f2b2436268871d6563ac4c34db89f02))
+
+
 ## [1.123.35](https://github.com/n8n-io/n8n/compare/n8n@1.123.34...n8n@1.123.35) (2026-04-24)
 
 
