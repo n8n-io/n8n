@@ -818,7 +818,7 @@ export class OauthService {
 			credentialStoreMetadata,
 			oauthTokenData,
 			{ version: 1, identity: authHeader, metadata: authMetadata },
-			credentials.getData(),
+			await credentials.getData(),
 			{ credentialResolverId },
 		);
 	}

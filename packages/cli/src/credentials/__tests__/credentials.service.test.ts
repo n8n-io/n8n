@@ -742,12 +742,12 @@ describe('CredentialsService', () => {
 			credentialTypes.getByName.calledWith(credentialEntity.type).mockReturnValueOnce(credType);
 		});
 
-		it('should redact sensitive values by default', () => {
+		it('should redact sensitive values by default', async () => {
 			// ARRANGE
-			jest.spyOn(Credentials.prototype, 'getData').mockReturnValueOnce(data);
+			jest.spyOn(Credentials.prototype, 'getData').mockResolvedValueOnce(data);
 
 			// ACT
-			const redactedData = service.decrypt(credentialEntity);
+			const redactedData = await service.decrypt(credentialEntity);
 
 			// ASSERT
 			expect(redactedData).toEqual({
@@ -759,29 +759,27 @@ describe('CredentialsService', () => {
 			});
 		});
 
-		it('should return sensitive values if `includeRawData` is true', () => {
+		it('should return sensitive values if `includeRawData` is true', async () => {
 			// ARRANGE
-			jest.spyOn(Credentials.prototype, 'getData').mockReturnValueOnce(data);
+			jest.spyOn(Credentials.prototype, 'getData').mockResolvedValueOnce(data);
 
 			// ACT
-			const redactedData = service.decrypt(credentialEntity, true);
+			const redactedData = await service.decrypt(credentialEntity, true);
 
 			// ASSERT
 			expect(redactedData).toEqual(data);
 		});
 
-		it('should return return an empty object if decryption fails', () => {
+		it('should return return an empty object if decryption fails', async () => {
 			// ARRANGE
 			const decryptionError = new CredentialDataError(
 				credentials,
 				CREDENTIAL_ERRORS.DECRYPTION_FAILED,
 			);
-			jest.spyOn(Credentials.prototype, 'getData').mockImplementation(() => {
-				throw decryptionError;
-			});
+			jest.spyOn(Credentials.prototype, 'getData').mockRejectedValueOnce(decryptionError);
 
 			// ACT
-			const redactedData = service.decrypt(credentialEntity, true);
+			const redactedData = await service.decrypt(credentialEntity, true);
 
 			// ASSERT
 			expect(redactedData).toEqual({});
@@ -815,7 +813,7 @@ describe('CredentialsService', () => {
 
 			credentialsFinderService.findCredentialById.mockResolvedValue(storedCredential);
 			credentialsTester.testCredentials.mockResolvedValue(testResult);
-			jest.spyOn(service, 'decrypt').mockReturnValue(decryptedData);
+			jest.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
 
 			const result = await service.testById(ownerUser.id, storedCredential.id);
 
@@ -861,7 +859,7 @@ describe('CredentialsService', () => {
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
-			jest.spyOn(service, 'decrypt').mockReturnValue(decryptedData);
+			jest.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
 			jest.spyOn(service, 'replaceCredentialContentsForSharee').mockResolvedValue(undefined);
 			jest.spyOn(service, 'getCredentialTypeProperties').mockReturnValue([]);
 			jest.spyOn(service, 'unredact').mockReturnValue(unredactedData);
@@ -1032,7 +1030,7 @@ describe('CredentialsService', () => {
 			describe('with includeData', () => {
 				beforeEach(() => {
 					projectService.getProjectRelationsForUser.mockResolvedValue([]);
-					jest.spyOn(Credentials.prototype, 'getData').mockReturnValue({
+					jest.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
 						apiKey: 'secret-key',
 						oauthTokenData: { token: 'secret-token' },
 					});
@@ -1095,7 +1093,7 @@ describe('CredentialsService', () => {
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:update'] }) as any,
 					);
-					jest.spyOn(Credentials.prototype, 'getData').mockReturnValue({
+					jest.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
 						apiKey: 'secret-key',
 						oauthTokenData: { token: 'secret-token' },
 					});
@@ -1292,7 +1290,7 @@ describe('CredentialsService', () => {
 			describe('with includeData', () => {
 				beforeEach(() => {
 					projectService.getProjectRelationsForUser.mockResolvedValue([]);
-					jest.spyOn(Credentials.prototype, 'getData').mockReturnValue({
+					jest.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
 						apiKey: 'secret-key',
 					});
 					credentialTypes.getByName.mockReturnValue(credType);
@@ -2252,7 +2250,7 @@ describe('CredentialsService', () => {
 	describe('prepareUpdateData', () => {
 		describe('external secrets', () => {
 			beforeEach(() => {
-				jest.spyOn(service, 'decrypt').mockReturnValue({});
+				jest.spyOn(service, 'decrypt').mockResolvedValue({});
 				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			});
 

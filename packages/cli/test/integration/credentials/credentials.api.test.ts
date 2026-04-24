@@ -1422,10 +1422,12 @@ describe('PATCH /credentials/:id', () => {
 		// was not overwritten
 		const dbCredential = await getCredentialById(savedCredential.id);
 		const unencryptedData = createCredentialsFromCredentialsEntity(dbCredential!);
-		expect(unencryptedData.getData().oauthTokenData).toEqual(credential.data.oauthTokenData);
+		expect((await unencryptedData.getData()).oauthTokenData).toEqual(
+			credential.data.oauthTokenData,
+		);
 
 		// was overwritten
-		expect(unencryptedData.getData().accessToken).toBe(patchPayload.data.accessToken);
+		expect((await unencryptedData.getData()).accessToken).toBe(patchPayload.data.accessToken);
 	});
 
 	test('should fail with invalid inputs', async () => {

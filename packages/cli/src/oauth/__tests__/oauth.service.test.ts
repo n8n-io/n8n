@@ -939,7 +939,7 @@ describe('OauthService', () => {
 	describe('saveDynamicCredential', () => {
 		beforeEach(() => {
 			// Mock Credentials.getData to return empty object to avoid decryption issues
-			jest.spyOn(Credentials.prototype, 'getData').mockReturnValue({});
+			jest.spyOn(Credentials.prototype, 'getData').mockResolvedValue({});
 		});
 
 		afterEach(() => {
