@@ -104,13 +104,9 @@ const folderHandlers: FolderHandlers = {
 			await assertProjectScope(req.user, projectId, ['folder:read']);
 
 			try {
-				const folder = await Container.get(FolderService).findFolderInProjectOrFail(
-					req.params.folderId,
-					projectId,
-				);
-				const { totalSubFolders, totalWorkflows } = await Container.get(
+				const { folder, totalSubFolders, totalWorkflows } = await Container.get(
 					FolderService,
-				).getFolderAndWorkflowCount(req.params.folderId, projectId);
+				).findFolderWithContentCounts(req.params.folderId, projectId);
 
 				return res.json({ ...folder, totalSubFolders, totalWorkflows });
 			} catch (e) {
@@ -132,16 +128,12 @@ const folderHandlers: FolderHandlers = {
 			}
 
 			try {
-				await Container.get(FolderService).updateFolder(
+				const folder = await Container.get(FolderService).updateFolder(
 					req.params.folderId,
 					projectId,
 					payload.data,
 				);
-				const updated = await Container.get(FolderService).findFolderInProjectOrFail(
-					req.params.folderId,
-					projectId,
-				);
-				return res.json(updated);
+				return res.json(folder);
 			} catch (e) {
 				if (e instanceof FolderNotFoundError) throw new NotFoundError(e.message);
 				if (e instanceof UserError) throw new BadRequestError(e.message);
