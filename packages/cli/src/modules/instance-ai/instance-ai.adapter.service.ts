@@ -319,6 +319,27 @@ export class InstanceAiAdapterService {
 				await workflowService.delete(user, workflowId);
 			},
 
+			async clearAiTemporary(workflowId: string) {
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+				if (!workflow?.meta?.aiTemporary) return;
+				const { aiTemporary: _aiTemporary, ...rest } = workflow.meta;
+				await workflowRepository.update(workflowId, {
+					meta: Object.keys(rest).length > 0 ? rest : undefined,
+				});
+			},
+
+			async archiveIfAiTemporary(workflowId: string) {
+				assertNotReadOnly();
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+				if (!workflow?.meta?.aiTemporary || workflow.isArchived) return false;
+				await workflowService.archive(user, workflowId, { skipArchived: true });
+				return true;
+			},
+
 			async publish(
 				workflowId: string,
 				options?: { versionId?: string; name?: string; description?: string },
@@ -357,7 +378,10 @@ export class InstanceAiAdapterService {
 				return toWorkflowJSON(wf, { redactParameters });
 			},
 
-			async createFromWorkflowJSON(json: WorkflowJSON, options?: { projectId?: string }) {
+			async createFromWorkflowJSON(
+				json: WorkflowJSON,
+				options?: { projectId?: string; markAsAiTemporary?: boolean },
+			) {
 				assertNotReadOnly();
 				const projectId = await resolveProjectId(['workflow:create'], options?.projectId);
 
@@ -387,6 +411,7 @@ export class InstanceAiAdapterService {
 					settings,
 					active: false,
 					versionId: randomUUID(),
+					...(options?.markAsAiTemporary ? { meta: { aiTemporary: true } } : {}),
 				} as Partial<WorkflowEntity>);
 
 				const saved = await workflowRepository.save(newWorkflow);

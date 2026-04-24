@@ -3135,6 +3135,12 @@ export interface WorkflowFEMeta {
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
+	/**
+	 * Set on workflows the AI builder creates so they can be hidden from the
+	 * workflows list while a build is in progress and reaped at run-finish if
+	 * not promoted to the main deliverable. Cleared on the main workflow.
+	 */
+	aiTemporary?: boolean;
 }
 
 export interface WorkflowTestData {

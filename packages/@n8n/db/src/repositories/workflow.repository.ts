@@ -882,6 +882,26 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyParentFolderFilter(qb, filter);
 		this.applyNodeTypesFilter(qb, filter);
 		this.applyAvailableInMCPFilter(qb, filter);
+		this.applyAiTemporaryFilter(qb);
+	}
+
+	/**
+	 * Hide workflows the AI builder created and hasn't yet promoted to the
+	 * main deliverable. The orchestrator clears the stamp on the main at
+	 * build-time and reaps the rest at run-finish — but in the window between
+	 * create and reap, stamped rows must not surface in the workflows list.
+	 */
+	private applyAiTemporaryFilter(qb: SelectQueryBuilder<WorkflowEntity>): void {
+		const dbType = this.globalConfig.database.type;
+		if (dbType === 'postgresdb') {
+			qb.andWhere(
+				"(workflow.meta IS NULL OR workflow.meta ->> 'aiTemporary' IS NULL OR workflow.meta ->> 'aiTemporary' = 'false')",
+			);
+		} else {
+			qb.andWhere(
+				"(workflow.meta IS NULL OR JSON_EXTRACT(workflow.meta, '$.aiTemporary') IS NULL OR JSON_EXTRACT(workflow.meta, '$.aiTemporary') = 0)",
+			);
+		}
 	}
 
 	private applyAvailableInMCPFilter(

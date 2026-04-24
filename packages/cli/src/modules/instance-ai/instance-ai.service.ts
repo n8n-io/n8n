@@ -1651,6 +1651,7 @@ export class InstanceAiService {
 		let mastraRunId = '';
 		let tracing: InstanceAiTraceContext | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
+		let aiCreatedWorkflowIds: Set<string> | undefined;
 
 		try {
 			const messageId = nanoid();
@@ -1688,6 +1689,7 @@ export class InstanceAiService {
 					messageGroupId,
 					executionPushRef,
 				);
+			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
 			// Make the current user message available to sub-agents (e.g. planner)
 			// since memory.recall() only returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
@@ -2015,6 +2017,7 @@ export class InstanceAiService {
 				modelId,
 				metadata: { completion_source: 'orchestrator' },
 			};
+			await this.reapAiTemporaryFromRun(threadId, user, aiCreatedWorkflowIds);
 			await this.finalizeRun(threadId, runId, result.status, snapshotStorage, {
 				userId: user.id,
 				modelId,
@@ -2042,6 +2045,7 @@ export class InstanceAiService {
 					reason: 'user_cancelled',
 					metadata: { completion_source: 'orchestrator' },
 				};
+				await this.reapAiTemporaryFromRun(threadId, user, aiCreatedWorkflowIds);
 				this.publishRunFinish(threadId, runId, 'cancelled', 'user_cancelled');
 				return;
 			}
@@ -2063,6 +2067,7 @@ export class InstanceAiService {
 				metadata: { completion_source: 'orchestrator' },
 			};
 
+			await this.reapAiTemporaryFromRun(threadId, user, aiCreatedWorkflowIds);
 			this.eventBus.publish(threadId, {
 				type: 'run-finish',
 				runId,
@@ -2490,6 +2495,38 @@ export class InstanceAiService {
 			type,
 			num_steps: numSteps,
 		});
+	}
+
+	/**
+	 * Archive any workflow the agent created during this run that still
+	 * carries the `meta.aiTemporary` stamp. The orchestrator clears the stamp
+	 * on the main deliverable before run-finish, so anything still stamped is
+	 * a stepping-stone — chunk, scratch, or sub-workflow the user never sees
+	 * in the workflows list (the default list query filters stamped rows
+	 * out). Soft delete: a mistaken reap is recoverable from the archive
+	 * view.
+	 *
+	 * Best-effort. Individual archive failures are logged but do not block
+	 * the run-finish emit.
+	 */
+	private async reapAiTemporaryFromRun(
+		threadId: string,
+		user: User,
+		createdWorkflowIds: Set<string> | undefined,
+	): Promise<void> {
+		if (!createdWorkflowIds || createdWorkflowIds.size === 0) return;
+		const adapter = this.adapterService.createContext(user, { threadId });
+		for (const workflowId of createdWorkflowIds) {
+			try {
+				await adapter.workflowService.archiveIfAiTemporary(workflowId);
+			} catch (error) {
+				this.logger.warn('Failed to reap aiTemporary workflow', {
+					threadId,
+					workflowId,
+					error: getErrorMessage(error),
+				});
+			}
+		}
 	}
 
 	private publishRunFinish(

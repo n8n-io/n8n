@@ -1188,6 +1188,28 @@ describe('createWorkflowAdapter', () => {
 		).rejects.toThrow('User does not have the required permissions in this project');
 	});
 
+	it('stamps meta.aiTemporary on the create when markAsAiTemporary is true', async () => {
+		const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+			markAsAiTemporary: true,
+		});
+
+		expect(mockWorkflowRepository.create).toHaveBeenCalledWith(
+			expect.objectContaining({ meta: { aiTemporary: true } }),
+		);
+	});
+
+	it('does not stamp meta.aiTemporary when markAsAiTemporary is omitted', async () => {
+		const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowRepository.create).toHaveBeenCalledWith(
+			expect.not.objectContaining({ meta: expect.anything() }),
+		);
+	});
+
 	describe('instance read-only mode', () => {
 		it('blocks createFromWorkflowJSON when branchReadOnly is true', async () => {
 			const { adapter } = createWorkflowAdapterForTests({ branchReadOnly: true });
