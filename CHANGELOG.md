@@ -1,3 +1,11 @@
+## [2.18.4](https://github.com/n8n-io/n8n/compare/n8n@2.18.3...n8n@2.18.4) (2026-04-24)
+
+
+### Bug Fixes
+
+* Disable "Get 100 free OpenAI API credits"  if aiGateway enabled in the license ([#29057](https://github.com/n8n-io/n8n/issues/29057)) ([436274e](https://github.com/n8n-io/n8n/commit/436274eabaceadf2f8b70d0bc739dc8c55aa5a8c))
+
+
 ## [2.18.3](https://github.com/n8n-io/n8n/compare/n8n@2.18.2...n8n@2.18.3) (2026-04-24)
 
 
