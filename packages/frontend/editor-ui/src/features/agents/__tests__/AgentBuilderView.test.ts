@@ -124,6 +124,17 @@ vi.mock('@n8n/i18n', () => ({
 vi.setConfig({ testTimeout: 15_000 });
 
 /** Shared stubs used by both mount helpers. */
+async function renderView() {
+	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
+	const wrapper = mount(AgentBuilderView, {
+		global: {
+			stubs: commonStubs,
+		},
+	});
+	await flushPromises();
+	return wrapper;
+}
+
 const commonStubs = {
 	AgentChatPanel: {
 		name: 'AgentChatPanel',
@@ -176,21 +187,8 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
-	async function renderView() {
-		const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
-		const wrapper = mount(AgentBuilderView, {
-			global: {
-				stubs: commonStubs,
-			},
-		});
-		await flushPromises();
-		return wrapper;
-	}
-
-	it('shows the toggle in chat mode with Test active by default', async () => {
+	it('renders the chat mode toggle with Test selected by default', async () => {
 		const wrapper = await renderView();
-		(wrapper.vm as unknown as { mode: string }).mode = 'chat';
-		await nextTick();
 
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(true);
 		const radios = wrapper.findAll('[role="radio"]');
@@ -207,14 +205,12 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		// may never open.
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
-			mode: string;
 			activeChatSessionId: string | null;
 		};
 		// Test requires an active session (a real user would reach this by
 		// sending a message from the home input, which mints one). Seed it
 		// directly so we can exercise the lazy-mount/v-show behavior.
 		vm.activeChatSessionId = 'test-session-1';
-		vm.mode = 'chat';
 		await nextTick();
 
 		const testPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]');
@@ -278,7 +274,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		intendedConfig = { name: 'Agent One', instructions: '' };
 		mockConfig.value = { ...intendedConfig };
 		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as { chatMode: string; mode: string };
+		const vm = wrapper.vm as unknown as { chatMode: string };
 
 		// Get into Build mode first (it's clickable on any agent state).
 		await wrapper.find('[data-test-id="radio-button-build"]').trigger('click');
@@ -321,17 +317,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		mockConfig.value = { ...intendedConfig };
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
-
-	async function renderView() {
-		const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
-		const wrapper = mount(AgentBuilderView, {
-			global: {
-				stubs: commonStubs,
-			},
-		});
-		await flushPromises();
-		return wrapper;
-	}
 
 	it('renders three columns: chat, tree, editor', async () => {
 		const wrapper = await renderView();
