@@ -79,6 +79,9 @@ jobs:
       primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
       runners_primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.runners_primary_tag }}
       runners_distroless_primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_primary_tag }}
+      n8n_sha_manifest_tag: ${{ steps.determine-tags.outputs.n8n_sha_primary_tag }}
+      runners_sha_manifest_tag: ${{ steps.determine-tags.outputs.runners_sha_primary_tag }}
+      runners_distroless_sha_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_sha_primary_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -101,6 +104,7 @@ jobs:
             --all \
             --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
             --platform "${{ matrix.docker_platform }}" \
+            --sha "${GITHUB_SHA::7}" \
             ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }}
 
           echo "=== Generated Docker Tags ==="
@@ -228,6 +232,11 @@ jobs:
           create_manifest "runners" "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
           create_manifest "runners-distroless" "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
 
+          # Create SHA-tagged manifests (immutable references for deployments)
+          create_manifest "n8n (sha)" "${{ needs.build-and-push-docker.outputs.n8n_sha_manifest_tag }}"
+          create_manifest "runners (sha)" "${{ needs.build-and-push-docker.outputs.runners_sha_manifest_tag }}"
+          create_manifest "runners-distroless (sha)" "${{ needs.build-and-push-docker.outputs.runners_distroless_sha_manifest_tag }}"
+
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
         run: |
@@ -241,6 +250,8 @@ jobs:
             ["runners-distroless"]="${VERSION}-distroless"
           )
 
+          SHORT_SHA="${GITHUB_SHA::7}"
+
           for image in "${!images[@]}"; do
             TAG_SUFFIX="${images[$image]}"
             IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
@@ -250,6 +261,20 @@ jobs:
               --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
+
+            # Create SHA-tagged manifest (immutable reference)
+            # For distroless, insert SHA between version and -distroless suffix
+            # to match docker-tags.mjs format: nightly-abc1234-distroless (not nightly-distroless-abc1234)
+            if [[ "$image" == *"-distroless"* ]]; then
+              SHA_SUFFIX="${VERSION}-${SHORT_SHA}-distroless"
+            else
+              SHA_SUFFIX="${TAG_SUFFIX}-${SHORT_SHA}"
+            fi
+            echo "Creating Docker Hub SHA manifest for $image: ${SHA_SUFFIX}"
+            docker buildx imagetools create \
+              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}" \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}-amd64" \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}-arm64"
           done
 
       - name: Get manifest digests for attestation

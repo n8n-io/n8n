@@ -20,6 +20,13 @@ frontend, and extensible node-based workflow engine.
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
 
+## Claude Code Plugin
+
+n8n-specific skills, commands, and agents live in `.claude/plugins/n8n/` and
+are namespaced under `n8n:`. Use `n8n:` prefix when invoking them
+(e.g. `/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent).
+See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
+
 ## Essential Commands
 
 ### Building
@@ -74,6 +81,7 @@ The monorepo is organized into these key packages:
 - **`packages/@n8n/i18n`**: Internationalization for UI text
 - **`packages/nodes-base`**: Built-in nodes for integrations
 - **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
+- **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
 - **`@n8n/design-system`**: Vue component library for UI consistency
 - **`@n8n/config`**: Centralized configuration management
 

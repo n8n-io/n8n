@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { describeIf, getModel, createSqliteMemory } from './helpers';
 import { Agent, Memory, Tool } from '../../index';
-import type { AgentMessage } from '../../index';
+import type { AgentDbMessage } from '../../index';
 
 const describe = describeIf('anthropic');
 
@@ -41,13 +41,17 @@ describe('orphaned tool messages in memory', () => {
 	 *   6: tool   tool-result(call_2)
 	 *   7: assistant  "There are 5 gadgets"
 	 */
-	function buildSeedMessages(): AgentMessage[] {
+	function buildSeedMessages(): AgentDbMessage[] {
 		return [
 			{
+				id: 'm1',
+				createdAt: new Date(),
 				role: 'user',
 				content: [{ type: 'text', text: 'How many widgets do we have?' }],
 			},
 			{
+				id: 'm2',
+				createdAt: new Date(),
 				role: 'assistant',
 				content: [
 					{ type: 'text', text: 'Let me look that up.' },
@@ -55,20 +59,28 @@ describe('orphaned tool messages in memory', () => {
 				],
 			},
 			{
+				id: 'm3',
+				createdAt: new Date(),
 				role: 'tool',
 				content: [
 					{ type: 'tool-result', toolCallId: 'call_1', toolName: 'lookup', result: { count: 10 } },
 				],
 			},
 			{
+				id: 'm4',
+				createdAt: new Date(),
 				role: 'assistant',
 				content: [{ type: 'text', text: 'There are 10 widgets in stock.' }],
 			},
 			{
+				id: 'm5',
+				createdAt: new Date(),
 				role: 'user',
 				content: [{ type: 'text', text: 'What about gadgets?' }],
 			},
 			{
+				id: 'm6',
+				createdAt: new Date(),
 				role: 'assistant',
 				content: [
 					{ type: 'text', text: 'Let me check.' },
@@ -76,12 +88,16 @@ describe('orphaned tool messages in memory', () => {
 				],
 			},
 			{
+				id: 'm7',
+				createdAt: new Date(),
 				role: 'tool',
 				content: [
 					{ type: 'tool-result', toolCallId: 'call_2', toolName: 'lookup', result: { count: 5 } },
 				],
 			},
 			{
+				id: 'm8',
+				createdAt: new Date(),
 				role: 'assistant',
 				content: [{ type: 'text', text: 'There are 5 gadgets in stock.' }],
 			},
@@ -121,16 +137,21 @@ describe('orphaned tool messages in memory', () => {
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-orphan-call';
+		const now = Date.now();
 
 		// Store a conversation where the last saved message is an assistant
 		// with a tool-call but the tool-result was never persisted (simulating
 		// a partial save / interrupted turn).
-		const messages: AgentMessage[] = [
+		const messages: AgentDbMessage[] = [
 			{
+				id: 'm1',
+				createdAt: new Date(now),
 				role: 'user',
 				content: [{ type: 'text', text: 'How many widgets?' }],
 			},
 			{
+				id: 'm2',
+				createdAt: new Date(now + 1),
 				role: 'assistant',
 				content: [
 					{ type: 'text', text: 'Checking inventory.' },

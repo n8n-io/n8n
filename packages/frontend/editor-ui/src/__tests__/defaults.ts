@@ -88,6 +88,7 @@ export const defaultSettings: FrontendSettings = {
 	saveManualExecutions: false,
 	saveExecutionProgress: false,
 	sso: {
+		managedByEnv: false,
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
 		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
@@ -107,6 +108,7 @@ export const defaultSettings: FrontendSettings = {
 		smtpSetup: true,
 		authenticationMethod: 'email',
 		quota: 10,
+		passwordMinLength: 8,
 	},
 	versionCli: '',
 	nodeJsVersion: '',

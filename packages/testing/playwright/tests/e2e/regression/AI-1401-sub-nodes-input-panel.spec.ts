@@ -15,7 +15,7 @@ test.describe(
 
 			for (const node of ['hackernews_top', 'hackernews_sub']) {
 				await n8n.canvas.openNode(node);
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 				await expect(n8n.ndv.inputPanel.get()).toBeVisible();
 
 				// Switch to JSON mode within the mapping view

@@ -1,7 +1,6 @@
 import { Memory } from '@mastra/memory';
 
 import type { InstanceAiMemoryConfig } from '../types';
-import { WORKING_MEMORY_TEMPLATE } from './working-memory-template';
 
 /**
  * Creates a Mastra Memory instance backed by the TypeORM composite store.
@@ -17,8 +16,7 @@ export function createMemory(config: InstanceAiMemoryConfig): Memory {
 			lastMessages: config.lastMessages ?? 20,
 			generateTitle: false,
 			workingMemory: {
-				enabled: true,
-				template: WORKING_MEMORY_TEMPLATE,
+				enabled: false,
 			},
 			semanticRecall: false,
 		},

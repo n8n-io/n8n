@@ -62,32 +62,48 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 function createMockStore() {
 	const messages = ref<InstanceAiMessage[]>([]) as Ref<InstanceAiMessage[]>;
 	const isStreaming = ref(false);
-	const resourceRegistry = ref(new Map<string, ResourceEntry>());
+	const producedArtifacts = ref(new Map<string, ResourceEntry>());
+	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
+	const threadMetadata = new Map<string, Record<string, unknown>>();
 
 	return reactive({
 		messages,
 		isStreaming,
-		resourceRegistry,
+		producedArtifacts,
+		resourceNameIndex,
+		currentThreadId: 'thread-1',
+		getThreadMetadata: (threadId: string) => threadMetadata.get(threadId),
+		updateThreadMetadata: async (threadId: string, metadata: Record<string, unknown>) => {
+			threadMetadata.set(threadId, { ...threadMetadata.get(threadId), ...metadata });
+		},
 	});
 }
 
 type MockStore = ReturnType<typeof createMockStore>;
 
 // ---------------------------------------------------------------------------
-// Registry helpers — populate the store's resourceRegistry so computed
+// Registry helpers — populate the store's producedArtifacts so computed
 // activeWorkflowId / activeDataTableId can derive values from tabs.
 // ---------------------------------------------------------------------------
 
 function registerWorkflow(store: MockStore, id: string, name = `Workflow ${id}`) {
-	const next = new Map(store.resourceRegistry);
-	next.set(name.toLowerCase(), { type: 'workflow', id, name });
-	store.resourceRegistry = next;
+	const entry: ResourceEntry = { type: 'workflow', id, name };
+	const nextProduced = new Map(store.producedArtifacts);
+	nextProduced.set(id, entry);
+	store.producedArtifacts = nextProduced;
+	const nextByName = new Map(store.resourceNameIndex);
+	nextByName.set(name.toLowerCase(), entry);
+	store.resourceNameIndex = nextByName;
 }
 
 function registerDataTable(store: MockStore, id: string, name = `Table ${id}`, projectId?: string) {
-	const next = new Map(store.resourceRegistry);
-	next.set(name.toLowerCase(), { type: 'data-table', id, name, projectId });
-	store.resourceRegistry = next;
+	const entry: ResourceEntry = { type: 'data-table', id, name, projectId };
+	const nextProduced = new Map(store.producedArtifacts);
+	nextProduced.set(id, entry);
+	store.producedArtifacts = nextProduced;
+	const nextByName = new Map(store.resourceNameIndex);
+	nextByName.set(name.toLowerCase(), entry);
+	store.resourceNameIndex = nextByName;
 }
 
 // ---------------------------------------------------------------------------
@@ -264,9 +280,9 @@ describe('useCanvasPreview', () => {
 		test('excludes credential entries', () => {
 			const ctx = setup();
 			const registry = new Map<string, ResourceEntry>();
-			registry.set('wf', { type: 'workflow', id: 'wf-1', name: 'WF' });
-			registry.set('cred', { type: 'credential', id: 'cred-1', name: 'Cred' });
-			ctx.store.resourceRegistry = registry;
+			registry.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'WF' });
+			registry.set('cred-1', { type: 'credential', id: 'cred-1', name: 'Cred' });
+			ctx.store.producedArtifacts = registry;
 
 			expect(ctx.allArtifactTabs.value).toHaveLength(1);
 			expect(ctx.allArtifactTabs.value[0].type).toBe('workflow');
@@ -292,7 +308,7 @@ describe('useCanvasPreview', () => {
 
 			ctx.closePreview();
 
-			expect(ctx.activeTabId.value).toBeNull();
+			expect(ctx.activeTabId.value).toBeUndefined();
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 	});
@@ -366,7 +382,7 @@ describe('useCanvasPreview', () => {
 			ctx.route.params.threadId = 'thread-2';
 			await nextTick();
 
-			expect(ctx.activeTabId.value).toBeNull();
+			expect(ctx.activeTabId.value).toBeUndefined();
 			expect(ctx.activeWorkflowId.value).toBeNull();
 			expect(ctx.activeExecutionId.value).toBeNull();
 			expect(ctx.activeDataTableId.value).toBeNull();
@@ -476,11 +492,11 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			expect(ctx.activeTabId.value).toBeNull();
+			expect(ctx.activeTabId.value).toBeUndefined();
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
-		test('does not switch tab when viewing a different artifact', async () => {
+		test('switches to latest artifact when a new workflow is built while viewing different artifact', async () => {
 			const ctx = setup();
 			registerDataTable(ctx.store, 'dt-1', 'Table', 'proj-1');
 			registerWorkflow(ctx.store, 'wf-1');
@@ -502,9 +518,9 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			// Should stay on data table — user chose that tab
-			expect(ctx.activeDataTableId.value).toBe('dt-1');
-			expect(ctx.activeWorkflowId.value).toBeNull();
+			// Should switch to the newly built workflow
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
 		});
 
 		test('increments workflowRefreshKey on each build', async () => {
@@ -545,8 +561,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-run',
-								toolName: 'run-workflow',
-								args: { workflowId: 'wf-1' },
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
 								result: { executionId: 'exec-1' },
 							}),
 						],
@@ -567,8 +583,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-run',
-								toolName: 'run-workflow',
-								args: { workflowId: 'wf-1' },
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
 								result: { executionId: 'exec-historical' },
 							}),
 						],
@@ -617,8 +633,8 @@ describe('useCanvasPreview', () => {
 							}),
 							makeToolCall({
 								toolCallId: 'tc-run',
-								toolName: 'run-workflow',
-								args: { workflowId: 'wf-1' },
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
 								result: { executionId: 'exec-1' },
 							}),
 						],
@@ -644,7 +660,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
 						],
@@ -666,7 +683,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
 						],
@@ -678,7 +696,7 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeDataTableId.value).toBeNull();
 		});
 
-		test('looks up projectId from resourceRegistry', async () => {
+		test('looks up projectId from producedArtifacts', async () => {
 			const ctx = setup();
 			ctx.store.isStreaming = true;
 			registerDataTable(ctx.store, 'dt-1', 'Test Table', 'proj-42');
@@ -689,7 +707,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
 						],
@@ -712,7 +731,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1' } },
 							}),
 						],
@@ -737,8 +757,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'delete-data-table',
-								args: { dataTableId: 'dt-1' },
+								toolName: 'data-tables',
+								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
 						],
@@ -760,8 +780,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'delete-data-table',
-								args: { dataTableId: 'dt-other' },
+								toolName: 'data-tables',
+								args: { action: 'delete', dataTableId: 'dt-other' },
 								result: { success: true },
 							}),
 						],
@@ -784,8 +804,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'delete-data-table',
-								args: { dataTableId: 'dt-1' },
+								toolName: 'data-tables',
+								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
 						],
@@ -834,8 +854,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'run-workflow',
-								args: { workflowId },
+								toolName: 'executions',
+								args: { action: 'run', workflowId },
 								result: { executionId, status: 'success', ...(finishedAt ? { finishedAt } : {}) },
 							}),
 						],
@@ -904,8 +924,8 @@ describe('useCanvasPreview', () => {
 
 			// Remove wf-2 from registry, keeping wf-1
 			const next = new Map<string, ResourceEntry>();
-			next.set('workflow wf-1', { type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' });
-			ctx.store.resourceRegistry = next;
+			next.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' });
+			ctx.store.producedArtifacts = next;
 			await nextTick();
 
 			expect(ctx.activeTabId.value).toBe('wf-1');
@@ -918,7 +938,7 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			// Temporarily empty registry (simulates race where registry hasn't been populated yet)
-			ctx.store.resourceRegistry = new Map();
+			ctx.store.producedArtifacts = new Map();
 			await nextTick();
 
 			// Tab should remain set — guard skips when tabs are empty

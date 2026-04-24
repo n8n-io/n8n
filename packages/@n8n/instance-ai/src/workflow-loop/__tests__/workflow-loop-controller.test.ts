@@ -148,6 +148,38 @@ describe('handleBuildOutcome', () => {
 
 		expect(attempt.attempt).toBe(2);
 	});
+
+	it('persists hasUnresolvedPlaceholders in state and done action', () => {
+		const state = makeState();
+		const outcome = makeOutcome({
+			workflowId: 'wf_123',
+			triggerType: 'trigger_only',
+			hasUnresolvedPlaceholders: true,
+		});
+
+		const { state: next, action } = handleBuildOutcome(state, [], outcome);
+
+		expect(next.hasUnresolvedPlaceholders).toBe(true);
+		expect(action.type).toBe('done');
+		if (action.type === 'done') {
+			expect(action.hasUnresolvedPlaceholders).toBe(true);
+		}
+	});
+
+	it('does not set hasUnresolvedPlaceholders when not present in outcome', () => {
+		const state = makeState();
+		const outcome = makeOutcome({
+			workflowId: 'wf_123',
+			triggerType: 'trigger_only',
+		});
+
+		const { state: next, action } = handleBuildOutcome(state, [], outcome);
+
+		expect(next.hasUnresolvedPlaceholders).toBeUndefined();
+		if (action.type === 'done') {
+			expect(action.hasUnresolvedPlaceholders).toBeUndefined();
+		}
+	});
 });
 
 // ── handleVerificationVerdict ───────────────────────────────────────────────
@@ -173,6 +205,22 @@ describe('handleVerificationVerdict', () => {
 
 		expect(next.phase).toBe('done');
 		expect(action.type).toBe('done');
+	});
+
+	it('passes through hasUnresolvedPlaceholders from state on verified', () => {
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			hasUnresolvedPlaceholders: true,
+		});
+		const verdict = makeVerdict({ verdict: 'verified' });
+
+		const { action } = handleVerificationVerdict(state, [], verdict);
+
+		expect(action.type).toBe('done');
+		if (action.type === 'done') {
+			expect(action.hasUnresolvedPlaceholders).toBe(true);
+		}
 	});
 
 	it('transitions to blocked on needs_user_input', () => {

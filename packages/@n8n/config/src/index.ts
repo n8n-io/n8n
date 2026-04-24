@@ -6,6 +6,7 @@ import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
+import { ChatTriggerConfig } from './configs/chat-trigger.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
@@ -20,6 +21,7 @@ import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { InstanceAiConfig } from './configs/instance-ai.config';
+import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
@@ -47,6 +49,7 @@ export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
+export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 export { sampleRateSchema } from './configs/sentry.config';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
@@ -68,6 +71,7 @@ export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
@@ -248,8 +252,14 @@ export class GlobalConfig {
 	chatHub: ChatHubConfig;
 
 	@Nested
+	chatTrigger: ChatTriggerConfig;
+
+	@Nested
 	instanceAi: InstanceAiConfig;
 
 	@Nested
 	expressionEngine: ExpressionEngineConfig;
+
+	@Nested
+	instanceSettingsLoader: InstanceSettingsLoaderConfig;
 }

@@ -192,7 +192,7 @@ const isMCPEnabled = computed(
 const readOnlyEnv = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
-const workflowName = computed(() => workflowsStore.workflowName);
+const workflowName = computed(() => workflowDocumentStore.value?.name ?? '');
 const workflowId = computed(() => workflowsStore.workflowId);
 const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.value));
 const isSharingEnabled = computed(
@@ -566,7 +566,7 @@ const saveSettings = async () => {
 		toast.showError(
 			new Error(i18n.baseText('workflowSettings.showError.saveSettings1.errorMessage')),
 			i18n.baseText('workflowSettings.showError.saveSettings1.title'),
-			i18n.baseText('workflowSettings.showError.saveSettings1.message') + ':',
+			{ message: i18n.baseText('workflowSettings.showError.saveSettings1.message') + ':' },
 		);
 		return;
 	}
@@ -587,14 +587,14 @@ const saveSettings = async () => {
 				}),
 			),
 			i18n.baseText('workflowSettings.showError.saveSettings2.title'),
-			i18n.baseText('workflowSettings.showError.saveSettings2.message') + ':',
+			{ message: i18n.baseText('workflowSettings.showError.saveSettings2.message') + ':' },
 		);
 		return;
 	}
 	delete data.settings.maxExecutionTimeout;
 
 	isLoading.value = true;
-	data.versionId = workflowsStore.workflowVersionId;
+	data.versionId = workflowDocumentStore?.value?.versionId ?? '';
 	data.expectedChecksum = workflowDocumentStore?.value?.checksum;
 
 	try {
@@ -734,11 +734,9 @@ onMounted(async () => {
 
 		await Promise.all(promises);
 	} catch (error) {
-		toast.showError(
-			error,
-			'Problem loading settings',
-			'The following error occurred loading the data:',
-		);
+		toast.showError(error, 'Problem loading settings', {
+			message: 'The following error occurred loading the data:',
+		});
 	}
 
 	const workflowSettingsData = (workflowDocumentStore?.value?.getSettingsSnapshot() ??

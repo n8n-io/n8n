@@ -631,15 +631,17 @@ describe('needsFullExecutionData', () => {
 });
 
 describe('streaming functionality', () => {
-	it('should setup sendChunk handler when streaming is enabled and execution mode is not manual', async () => {
+	it('should setup heartbeat interval and sendChunk handler when streaming is enabled', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		jest.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(new Promise(() => {}));
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		const mockResponse = mock<Response>();
+		const mockResponse = mock<Response>({ writableEnded: false });
+		const mockSetInterval = jest.spyOn(global, 'setInterval');
 
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [] },
@@ -668,46 +670,11 @@ describe('streaming functionality', () => {
 		await runner.run(data);
 
 		// ASSERT
+		// Heartbeat interval is set up in run() before queue/local decision
+		expect(mockSetInterval).toHaveBeenCalledWith(expect.any(Function), 30_000);
+		// sendChunk handler is still registered on lifecycle hooks
 		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
-	});
 
-	it('should setup sendChunk handler when streaming is enabled and execution mode is manual', async () => {
-		// ARRANGE
-		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
-
-		const mockResponse = mock<Response>();
-
-		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [] },
-			executionData: undefined,
-			executionMode: 'manual',
-			streamingEnabled: true,
-			httpResponse: mockResponse,
-		});
-
-		const mockHooks = mock<core.ExecutionLifecycleHooks>();
-		jest
-			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
-			.mockReturnValue(mockHooks);
-
-		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
-
-		const manualExecutionService = Container.get(ManualExecutionService);
-		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
-			new PCancelable(() => {
-				return mock<IRun>();
-			}),
-		);
-
-		// ACT
-		await runner.run(data);
-
-		// ASSERT
-		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
+		mockSetInterval.mockRestore();
 	});
 });

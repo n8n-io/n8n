@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IRunData, Workflow, NodeConnectionType, IConnectedNode } from 'n8n-workflow';
+import type { IRunData, NodeConnectionType, IConnectedNode } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
 import NDVDraggablePanels from '../../panel/components/NDVDraggablePanels.vue';
@@ -53,7 +54,7 @@ const emit = defineEmits<{
 
 const props = withDefaults(
 	defineProps<{
-		workflowObject: Workflow;
+		workflowObject: WorkflowObjectAccessors;
 		readOnly?: boolean;
 		renaming?: boolean;
 		isProductionExecutionPreview?: boolean;

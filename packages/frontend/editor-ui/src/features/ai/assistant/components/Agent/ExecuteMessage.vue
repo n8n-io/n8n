@@ -36,9 +36,7 @@ const emit = defineEmits<Emits>();
 const workflowsStore = useWorkflowsStore();
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
-	workflowId.value
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -120,7 +118,7 @@ function formatIssueMessage(issue: string | string[]): string {
 
 // Helper to get node type
 function getNodeTypeByName(nodeName: string) {
-	const node = workflowDocumentStore.value?.getNodeByName(nodeName);
+	const node = workflowDocumentStore.value.getNodeByName(nodeName);
 
 	if (!node) return null;
 	return nodeTypesStore.getNodeType(node.type);
@@ -140,7 +138,7 @@ const isExecutionBlocked = computed(
 );
 
 const hasPinDataApplied = computed(
-	() => Object.keys(workflowDocumentStore.value?.pinData ?? {}).length > 0,
+	() => Object.keys(workflowDocumentStore.value.pinData).length > 0,
 );
 
 const showPostExecutionFollowUps = computed(
@@ -198,7 +196,7 @@ function scrollIntoView() {
 
 function trackBuilderPlaceholders(issue: WorkflowValidationIssue) {
 	builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
-		node_type: workflowDocumentStore.value?.getNodeByName(issue.node)?.type,
+		node_type: workflowDocumentStore.value.getNodeByName(issue.node)?.type,
 		type: issue.type,
 	});
 }

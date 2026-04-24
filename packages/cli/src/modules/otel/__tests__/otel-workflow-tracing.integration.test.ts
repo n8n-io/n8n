@@ -63,6 +63,7 @@ describe('Workflow tracing', () => {
 			[ATTR.WORKFLOW_ID]: workflow.id,
 			[ATTR.WORKFLOW_NAME]: 'Success Workflow',
 			[ATTR.WORKFLOW_NODE_COUNT]: workflow.nodes.length,
+			[ATTR.WORKFLOW_VERSION_ID]: workflow.versionId,
 			[ATTR.EXECUTION_ID]: executionId,
 			[ATTR.EXECUTION_MODE]: 'webhook',
 			[ATTR.EXECUTION_STATUS]: 'success',

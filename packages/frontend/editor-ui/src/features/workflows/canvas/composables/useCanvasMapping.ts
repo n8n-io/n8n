@@ -40,7 +40,6 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	ITaskData,
-	Workflow,
 } from 'n8n-workflow';
 import {
 	NodeConnectionTypes,
@@ -67,6 +66,7 @@ import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import * as workflowUtils from 'n8n-workflow/common';
 import { throttledWatch } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import type { WorkflowObjectAccessors } from '@/app/types';
 
 export function useCanvasMapping({
 	nodes,
@@ -75,14 +75,12 @@ export function useCanvasMapping({
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
-	workflowObject: Ref<Workflow>;
+	workflowObject: Ref<WorkflowObjectAccessors>;
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
@@ -118,7 +116,11 @@ export function useCanvasMapping({
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
 		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
 		const source = simulatedNodeTypeDescriptionByNodeId.value[node.id] ?? nodeType ?? node.type;
-		const icon = getNodeIconSource(source, node);
+		const icon = getNodeIconSource(
+			source,
+			node,
+			workflowDocumentStore.value.getExpressionHandler(),
+		);
 
 		return {
 			type: CanvasNodeRenderType.Default,
@@ -289,7 +291,7 @@ export function useCanvasMapping({
 
 	const nodePinnedDataById = computed(() =>
 		nodes.value.reduce<Record<string, INodeExecutionData[] | undefined>>((acc, node) => {
-			acc[node.id] = workflowDocumentStore.value?.getNodePinData(node.name);
+			acc[node.id] = workflowDocumentStore.value.getNodePinData(node.name);
 			return acc;
 		}, {}),
 	);

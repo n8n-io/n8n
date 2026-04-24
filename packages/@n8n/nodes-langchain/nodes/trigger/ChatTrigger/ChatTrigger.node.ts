@@ -22,6 +22,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
+import { ChatTriggerConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 
 import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
@@ -29,6 +31,8 @@ import { createPage } from './templates';
 import { assertValidLoadPreviousSessionOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
+
+const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
 const allowFileUploadsOption: INodeProperties = {
 	displayName: 'Allow File Uploads',
 	name: 'allowFileUploads',
@@ -220,7 +224,7 @@ export class ChatTrigger extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
-		icon: 'fa:comments',
+		icon: 'node:chat-trigger',
 		iconColor: 'black',
 		group: ['trigger'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],
@@ -298,11 +302,13 @@ export class ChatTrigger extends Node {
 					'={{$parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 				ndvHideMethod: true,
-				ndvHideUrl: '={{ !$parameter.public }}',
+				ndvHideUrl: isPublicChatTriggerDisabled() ? true : '={{ !$parameter.public }}',
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the chat',
-		activationMessage: 'You can now make calls to your production chat URL.',
+		activationMessage: isPublicChatTriggerDisabled()
+			? 'Public chat is disabled by instance policy.'
+			: 'You can now make calls to your production chat URL.',
 		triggerPanel: false,
 		properties: [
 			/**
@@ -769,7 +775,7 @@ export class ChatTrigger extends Node {
 	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = ctx.getResponseObject();
 
-		const isPublic = ctx.getNodeParameter('public', false);
+		const isPublic = isPublicChatTriggerDisabled() ? false : ctx.getNodeParameter('public', false);
 		assertParamIsBoolean('public', isPublic, ctx.getNode());
 
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
@@ -911,11 +917,20 @@ export class ChatTrigger extends Node {
 
 		// Handle streaming responses
 		if (enableStreaming) {
-			// Set up streaming response headers
+			// Configure socket for long-lived streaming (matches SSE push pattern).
+			// Prevents reverse proxies (e.g. Cloudflare) from timing out idle connections.
+			req.socket.setTimeout(0);
+			req.socket.setNoDelay(true);
+			req.socket.setKeepAlive(true);
+
+			// Set up streaming response headers.
+			// no-transform prevents the compression middleware from wrapping the
+			// response in zlib, ensuring keepalive heartbeats reach the network
+			// immediately without being buffered by the compressor.
 			res.writeHead(200, {
 				'Content-Type': 'application/json; charset=utf-8',
 				'Transfer-Encoding': 'chunked',
-				'Cache-Control': 'no-cache',
+				'Cache-Control': 'no-cache, no-transform',
 				Connection: 'keep-alive',
 			});
 

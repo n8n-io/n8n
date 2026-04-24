@@ -13,11 +13,15 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+import { WorkflowActivationError } from 'n8n-workflow';
+
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { EventService } from '@/events/event.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
+import type { Push } from '@/push';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -44,6 +48,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			instanceSettings,
+			mock(),
 			mock(),
 			mock(),
 			mock(),
@@ -129,6 +134,84 @@ describe('ActiveWorkflowManager', () => {
 			]);
 
 			expect(getAllActiveIds).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('handleAddWebhooksTriggersAndPollers', () => {
+		const push = mock<Push>();
+		const publisher = mock<Publisher>();
+
+		beforeEach(() => {
+			activeWorkflowManager = new ActiveWorkflowManager(
+				mockLogger(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				instanceSettings,
+				publisher,
+				mock(),
+				push,
+				mock(),
+				mock(),
+				mock(),
+			);
+		});
+
+		test('should include nodeId in broadcast when error has node', async () => {
+			const triggerNode = mock<INode>({ id: 'node-123', name: 'Linear Trigger' });
+			const activationError = new WorkflowActivationError('Invalid role: admin required', {
+				node: triggerNode,
+			});
+
+			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(activationError);
+
+			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+				activationMode: 'activate',
+			});
+
+			expect(push.broadcast).toHaveBeenCalledWith({
+				type: 'workflowFailedToActivate',
+				data: {
+					workflowId: 'wf-1',
+					errorMessage: 'Invalid role: admin required',
+					nodeId: 'node-123',
+				},
+			});
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'display-workflow-activation-error',
+				payload: {
+					workflowId: 'wf-1',
+					errorMessage: 'Invalid role: admin required',
+					nodeId: 'node-123',
+				},
+			});
+		});
+
+		test('should not include nodeId in broadcast when error has no node', async () => {
+			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
+
+			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+				activationMode: 'activate',
+			});
+
+			expect(push.broadcast).toHaveBeenCalledWith({
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'Some error' },
+			});
 		});
 	});
 
@@ -239,6 +322,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				mock(),
 				eventService,
+				mock(),
 				mock(),
 			);
 		});

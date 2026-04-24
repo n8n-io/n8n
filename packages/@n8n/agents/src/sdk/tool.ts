@@ -28,11 +28,13 @@ export interface ApprovalConfig {
  * interruptible tool that uses the existing suspend/resume mechanism.
  * No validation is done here — all schema validation happens in the runtime.
  */
+
 export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): BuiltTool {
 	const originalHandler = tool.handler!;
 
 	return {
 		...tool,
+		withDefaultApproval: true,
 		suspendSchema: APPROVAL_SUSPEND_SCHEMA,
 		resumeSchema: APPROVAL_RESUME_SCHEMA,
 		handler: async (input, ctx) => {
@@ -266,7 +268,7 @@ export class Tool<
 			providerOptions: this.providerOptionsValue,
 		};
 
-		if (this.requireApprovalValue ?? this.needsApprovalFnValue) {
+		if (this.requireApprovalValue || this.needsApprovalFnValue) {
 			return wrapToolForApproval(built, {
 				requireApproval: this.requireApprovalValue,
 				needsApprovalFn: this.needsApprovalFnValue,

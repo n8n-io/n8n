@@ -20,6 +20,10 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(InstanceAiSettingsService).loadFromDb();
 		await import('./instance-ai.controller');
 
+		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
+			await import('./instance-ai-test.controller');
+		}
+
 		// Fire-and-forget: clean up expired conversation threads on startup
 		const { InstanceAiMemoryService } = await import('./instance-ai-memory.service');
 		const { InstanceAiService } = await import('./instance-ai.service');
@@ -28,25 +32,27 @@ export class InstanceAiModule implements ModuleInterface {
 			.cleanupExpiredThreads(async (threadId) => await aiService.clearThreadState(threadId))
 			.catch(() => undefined);
 
-		// Register snapshot pruning — lifecycle decorators handle start/stop
-		await import('./snapshot-pruning.service');
+		// Initialize snapshot pruning — lifecycle decorators handle multi-main start/stop
+		const { SnapshotPruningService } = await import('./snapshot-pruning.service');
+		Container.get(SnapshotPruningService).init();
 	}
 
 	async settings() {
+		const { GlobalConfig } = await import('@n8n/config');
 		const { InstanceAiService } = await import('./instance-ai.service');
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
+		const globalConfig = Container.get(GlobalConfig);
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = service.isEnabled();
-		const localGateway = service.isLocalFilesystemAvailable();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
-		const localGatewayFallbackDirectory = service.getLocalFilesystemDirectory();
+		const optinModalDismissed = settingsService.getAdminSettings().optinModalDismissed;
 		return {
 			enabled,
-			localGateway,
 			localGatewayDisabled,
-			localGatewayFallbackDirectory,
 			proxyEnabled: service.isProxyEnabled(),
+			optinModalDismissed,
+			cloudManaged: globalConfig.deployment.type === 'cloud',
 		};
 	}
 

@@ -5,6 +5,7 @@ export { Debounce } from './debounce';
 export * from './execution-lifecycle';
 export { Memoized } from './memoized';
 export * from './auth-handler';
+export * from './cluster-check';
 export * from './context-establishment';
 export * from './credential-resolver';
 export * from './module';

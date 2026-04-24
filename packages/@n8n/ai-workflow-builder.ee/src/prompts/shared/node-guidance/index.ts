@@ -1,2 +1,4 @@
-export { structuredOutputParser } from './structured-output-parser';
-export { webhook } from './webhook';
+/**
+ * Re-export node tips from the shared @n8n/workflow-sdk package.
+ */
+export { structuredOutputParser, webhook } from '@n8n/workflow-sdk/prompts/node-guidance/node-tips';
