@@ -4378,7 +4378,7 @@
 	"settings.encryptionKeys.column.createdBy": "Created by",
 	"settings.encryptionKeys.status.active": "Active",
 	"settings.encryptionKeys.status.inactive": "Inactive",
-	"settings.encryptionKeys.sortBy.label": "Sort by {field}",
+	"settings.encryptionKeys.sortBy.label": "Sort by",
 	"settings.encryptionKeys.sortBy.activated": "Activated",
 	"settings.encryptionKeys.sortBy.archived": "Archived",
 	"settings.encryptionKeys.sortBy.type": "Type",

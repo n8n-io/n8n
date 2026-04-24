@@ -109,14 +109,6 @@ const sortByModel = computed<EncryptionKeySortField>({
 
 const isFilterOpen = ref(false);
 
-const activeFilterCount = computed(() => {
-	let count = 0;
-	if (store.filters.activatedFrom) count++;
-	if (store.filters.activatedTo) count++;
-	if (store.filters.createdByIds.length > 0) count++;
-	return count;
-});
-
 const openRotateConfirm = () => {
 	isConfirmRotateOpen.value = true;
 };
@@ -181,94 +173,88 @@ onMounted(async () => {
 		</header>
 
 		<div :class="$style.controls">
-			<N8nSelect
-				v-model="sortByModel"
-				data-testid="encryption-keys-sort-select"
-				size="medium"
-				:class="$style.sortSelect"
-			>
-				<template #prefix>
-					<N8nText color="text-light" size="small">
-						{{
-							i18n.baseText('settings.encryptionKeys.sortBy.label', {
-								interpolate: { field: '' },
-							})
-						}}
-					</N8nText>
-				</template>
-				<N8nOption
-					v-for="option in sortOptions"
-					:key="option.value"
-					:value="option.value"
-					:label="option.label"
-				/>
-			</N8nSelect>
+			<div :class="$style.sortControl">
+				<N8nText tag="label" color="text-light" size="small" :class="$style.sortLabel">
+					{{ i18n.baseText('settings.encryptionKeys.sortBy.label') }}
+				</N8nText>
+				<N8nSelect
+					v-model="sortByModel"
+					data-testid="encryption-keys-sort-select"
+					size="medium"
+					:class="$style.sortSelect"
+				>
+					<N8nOption
+						v-for="option in sortOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+					/>
+				</N8nSelect>
+			</div>
 
-			<N8nPopover v-model:visible="isFilterOpen" placement="bottom-end" trigger="click">
-				<template #reference>
+			<N8nPopover v-model:open="isFilterOpen" side="bottom" align="end">
+				<template #trigger>
 					<N8nIconButton
 						icon="funnel"
 						type="tertiary"
 						size="medium"
 						data-testid="encryption-keys-filter-button"
 						:title="i18n.baseText('settings.encryptionKeys.filter.title')"
-					>
-						<template v-if="activeFilterCount > 0" #default>
-							<N8nBadge theme="primary" size="small">{{ activeFilterCount }}</N8nBadge>
-						</template>
-					</N8nIconButton>
+					/>
 				</template>
-				<div :class="$style.filterPanel">
-					<N8nText bold>
-						{{ i18n.baseText('settings.encryptionKeys.filter.dateRange') }}
-					</N8nText>
-					<div :class="$style.filterDateRange">
-						<input
-							type="date"
-							:value="store.filters.activatedFrom ?? ''"
-							:class="$style.dateInput"
-							@change="
-								store.setFilters({
-									activatedFrom: ($event.target as HTMLInputElement).value || null,
-								})
-							"
-						/>
-						<input
-							type="date"
-							:value="store.filters.activatedTo ?? ''"
-							:class="$style.dateInput"
-							@change="
-								store.setFilters({
-									activatedTo: ($event.target as HTMLInputElement).value || null,
-								})
-							"
-						/>
+				<template #content>
+					<div :class="$style.filterPanel">
+						<N8nText bold>
+							{{ i18n.baseText('settings.encryptionKeys.filter.dateRange') }}
+						</N8nText>
+						<div :class="$style.filterDateRange">
+							<input
+								type="date"
+								:value="store.filters.activatedFrom ?? ''"
+								:class="$style.dateInput"
+								@change="
+									store.setFilters({
+										activatedFrom: ($event.target as HTMLInputElement).value || null,
+									})
+								"
+							/>
+							<input
+								type="date"
+								:value="store.filters.activatedTo ?? ''"
+								:class="$style.dateInput"
+								@change="
+									store.setFilters({
+										activatedTo: ($event.target as HTMLInputElement).value || null,
+									})
+								"
+							/>
+						</div>
+						<N8nText bold>
+							{{ i18n.baseText('settings.encryptionKeys.filter.createdBy') }}
+						</N8nText>
+						<ul :class="$style.filterUserList">
+							<li v-for="user in store.createdByOptions" :key="user.id">
+								<label :class="$style.filterUserRow">
+									<input
+										type="checkbox"
+										:checked="store.filters.createdByIds.includes(user.id)"
+										@change="onCreatedByToggle(user.id, $event)"
+									/>
+									<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="small" />
+									<span>{{ fullName(user) }}</span>
+								</label>
+							</li>
+						</ul>
+						<div :class="$style.filterActions">
+							<N8nButton
+								type="tertiary"
+								size="small"
+								:label="i18n.baseText('settings.encryptionKeys.filter.clear')"
+								@click="store.resetFilters()"
+							/>
+						</div>
 					</div>
-					<N8nText bold>
-						{{ i18n.baseText('settings.encryptionKeys.filter.createdBy') }}
-					</N8nText>
-					<ul :class="$style.filterUserList">
-						<li v-for="user in store.createdByOptions" :key="user.id">
-							<label :class="$style.filterUserRow">
-								<input
-									type="checkbox"
-									:checked="store.filters.createdByIds.includes(user.id)"
-									@change="onCreatedByToggle(user.id, $event)"
-								/>
-								<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="small" />
-								<span>{{ fullName(user) }}</span>
-							</label>
-						</li>
-					</ul>
-					<div :class="$style.filterActions">
-						<N8nButton
-							type="tertiary"
-							size="small"
-							:label="i18n.baseText('settings.encryptionKeys.filter.clear')"
-							@click="store.resetFilters()"
-						/>
-					</div>
-				</div>
+				</template>
 			</N8nPopover>
 
 			<N8nButton
@@ -395,8 +381,18 @@ onMounted(async () => {
 	gap: var(--spacing--2xs);
 }
 
+.sortControl {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.sortLabel {
+	white-space: nowrap;
+}
+
 .sortSelect {
-	width: 220px;
+	width: 180px;
 }
 
 .tableWrapper {
