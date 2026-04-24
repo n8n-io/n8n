@@ -245,23 +245,22 @@ function onSwitcherSelect(id: string) {
 	user-select: none;
 }
 
-:global(.agent-header-switcher-menu) {
+/* Scope the scroll behavior to the inner el-menu — element-plus renders the
+   popper as `.agent-header-switcher-menu > .el-menu`. Putting overflow on the
+   outer popper produced a second scrollbar nested inside el-menu's own. */
+:global(.agent-header-switcher-menu) :global(.el-menu) {
 	max-height: calc(5 * 36px);
 	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--color--foreground--shade-1) transparent;
+}
 
-	&::-webkit-scrollbar {
-		width: 6px;
-	}
+:global(.agent-header-switcher-menu) :global(.el-menu)::-webkit-scrollbar {
+	width: 6px;
+}
 
-	&::-webkit-scrollbar-track {
-		background: transparent;
-	}
-
-	&::-webkit-scrollbar-thumb {
-		background: var(--color--foreground--shade-1);
-		border-radius: 999px;
-	}
+:global(.agent-header-switcher-menu) :global(.el-menu)::-webkit-scrollbar-thumb {
+	background: var(--color--foreground--shade-1);
+	border-radius: 999px;
 }
 </style>

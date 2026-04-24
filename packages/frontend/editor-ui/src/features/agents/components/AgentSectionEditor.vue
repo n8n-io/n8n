@@ -271,7 +271,7 @@ watch(
 .copyBtn {
 	position: absolute;
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-	top: var(--spacing--2xs);
+	top: var(--spacing--sm);
 	right: var(--spacing--md);
 	z-index: 1;
 	display: inline-flex;
