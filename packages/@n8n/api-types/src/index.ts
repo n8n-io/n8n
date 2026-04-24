@@ -390,3 +390,14 @@ export {
 export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
+
+export {
+	workflowEvalDatasetRowSchema,
+	evalNodePlacementSchema,
+	evalPlanSchema,
+	startTestRunPayloadSchema,
+	type WorkflowEvalDatasetRow,
+	type EvalNodePlacement,
+	type EvalPlan,
+	type StartTestRunPayload,
+} from './schemas/evaluations.schema';
