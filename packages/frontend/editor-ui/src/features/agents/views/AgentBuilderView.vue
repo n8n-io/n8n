@@ -8,7 +8,6 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -16,18 +15,18 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM, MODAL_CANCEL, getDebounceTime } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
-import { getAgent, updateAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
-import type { AgentResource, AgentJsonConfig } from '../types';
+import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
+import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
-import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { agentsEventBus } from '../agents.eventBus';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
-import AgentHomeContent from '../components/AgentHomeContent.vue';
-import AgentSettingsSidebar from '../components/AgentSettingsSidebar.vue';
+import AgentConfigTree from '../components/AgentConfigTree.vue';
+import AgentSectionEditor from '../components/AgentSectionEditor.vue';
+import AgentChatQuickActions from '../components/AgentChatQuickActions.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -45,9 +44,7 @@ const projectId = computed(
 const agentId = computed(() => route.params.agentId as string);
 
 // UI state
-type Mode = 'home' | 'chat';
 type ChatMode = 'build' | 'test';
-const mode = ref<Mode>('home');
 const chatMode = ref<ChatMode>('test');
 const isBuildChatStreaming = ref(false);
 /**
@@ -64,10 +61,8 @@ const initialized = ref(false);
 // Both panels used to mount together on first chat entry and each fire a
 // loadHistory() call — only mount one until the user actually opens the other.
 const chatModeOpened = ref<Record<ChatMode, boolean>>({ test: false, build: false });
-const settingsVisible = ref(true);
+const selectedSection = ref<string | null>(null);
 const agentName = ref('');
-const agentDescription = ref<string | null>(null);
-const agentIcon = ref<IconOrEmoji>({ type: 'icon', value: 'robot' });
 const agent = ref<AgentResource | null>(null);
 const updatedAt = ref<string>('');
 const initialPrompt = ref<string | undefined>(undefined);
@@ -133,46 +128,11 @@ watch(
 // Keep in sync with AgentIntegrationsPanel.integrationConfigs
 const KNOWN_TRIGGER_TYPES = ['slack', 'telegram'] as const;
 
-function onConnectedTriggersUpdate(list: string[]) {
-	connectedTriggers.value = list;
-	builderTelemetry.trackTriggerListChanged(list);
-}
-
 async function fetchAgent() {
 	const data = await getAgent(rootStore.restApiContext, projectId.value, agentId.value);
 	agent.value = data;
 	updatedAt.value = data.updatedAt;
 	agentName.value = data.name;
-	agentDescription.value = data.description ?? null;
-}
-
-async function updateName(name: string) {
-	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId.value, {
-		name,
-	});
-	if (updated) {
-		agent.value = updated;
-		agentName.value = updated.name;
-		updatedAt.value = updated.updatedAt;
-		// Keep config name in sync so it persists on next config save
-		if (localConfig.value) {
-			localConfig.value.name = updated.name;
-		}
-		agentsEventBus.emit('agentUpdated');
-		builderTelemetry.trackNameEdited();
-	}
-}
-
-async function updateDescription(description: string) {
-	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId.value, {
-		description,
-	} as Record<string, unknown>);
-	if (updated) {
-		agent.value = updated;
-		agentDescription.value = updated.description ?? null;
-		updatedAt.value = updated.updatedAt;
-		builderTelemetry.trackDescriptionEdited();
-	}
 }
 
 function startChat(msg: string) {
@@ -187,15 +147,12 @@ function startChat(msg: string) {
 		activeChatSessionId.value = crypto.randomUUID();
 		initialPrompt.value = msg;
 		chatMode.value = 'test';
-		mode.value = 'chat';
 		telemetry.track('User started agent chat', { agent_id: agentId.value });
 	} else {
 		// Fresh agent — route through the same build chat panel the Build tab
 		// uses so the first-build experience matches the ongoing Build UX.
 		initialPrompt.value = msg;
 		chatMode.value = 'build';
-		mode.value = 'chat';
-		settingsVisible.value = true;
 		telemetry.track('User started agent build', { agent_id: agentId.value });
 	}
 
@@ -211,20 +168,9 @@ function startChat(msg: string) {
 	});
 }
 
-/**
- * Back button handler for the chat sub-header. Discards the in-tab ephemeral
- * session (and the URL continueSessionId, if present) and returns the user to
- * the home screen so subsequent Test/Build toggles don't re-open the old chat.
- */
 function onBackFromChat() {
-	if (continueSessionId.value) clearContinueSessionParam();
 	activeChatSessionId.value = null;
-	chatModeOpened.value = { test: false, build: false };
-	chatMode.value = 'test';
-	mode.value = 'home';
-	// Refresh so the recent-sessions list on the home screen picks up any
-	// threads the just-ended chat created on the backend.
-	void sessionsStore.fetchThreads(projectId.value, agentId.value);
+	if (continueSessionId.value) clearContinueSessionParam();
 }
 
 function onBuildChatStreamingChange(streaming: boolean) {
@@ -234,18 +180,6 @@ function onBuildChatStreamingChange(streaming: boolean) {
 function setChatMode(next: ChatMode) {
 	if (chatMode.value === next) return;
 	chatMode.value = next;
-
-	// Build uses per-agent history, no session id required — clicking Build
-	// drops straight into the builder panel. Test, by contrast, needs an
-	// active session: home is its landing page, so clicking Test without a
-	// session either stays on home or kicks back to home from a session-less
-	// chat mode (e.g. they were in Build with no session).
-	if (next === 'build' && mode.value !== 'chat') {
-		mode.value = 'chat';
-	} else if (next === 'test' && mode.value === 'chat' && !effectiveSessionId.value) {
-		mode.value = 'home';
-		chatModeOpened.value = { test: false, build: false };
-	}
 
 	telemetry.track('User switched agent chat mode', {
 		agent_id: agentId.value,
@@ -349,10 +283,6 @@ async function onConfigUpdated() {
 	builderTelemetry.trackToolsAdded();
 }
 
-function onTriggerAdded(payload: { triggerType: string; triggers: string[] }) {
-	builderTelemetry.trackTriggerAdded(payload);
-}
-
 const headerActions = [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }];
 
 async function onHeaderAction(action: string) {
@@ -413,21 +343,6 @@ async function onHeaderAction(action: string) {
 	}
 }
 
-function openSession(threadId: string) {
-	void router.push({
-		name: AGENT_SESSION_DETAIL_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value, threadId },
-	});
-}
-
-function onPublished(updated: AgentResource) {
-	agent.value = updated;
-}
-
-function onUnpublished(updated: AgentResource) {
-	agent.value = updated;
-}
-
 const hasUnpublishedChanges = computed(
 	() =>
 		!!agent.value?.publishedVersion &&
@@ -478,11 +393,9 @@ async function initialize() {
 	builderTelemetry.resetForAgentSwitch();
 
 	agent.value = null;
-	mode.value = 'home';
 	chatModeOpened.value = { test: false, build: false };
 	activeChatSessionId.value = null;
 	isBuildChatStreaming.value = false;
-	agentIcon.value = { type: 'icon', value: 'robot' };
 	initialPrompt.value = undefined;
 	localConfig.value = null;
 	connectedTriggers.value = [];
@@ -507,21 +420,8 @@ async function initialize() {
 	const hasInstructions = !!config.value?.instructions?.trim();
 	chatMode.value = hasInstructions ? 'test' : 'build';
 
-	// Unbuilt agents skip the home screen entirely and land in the build
-	// chat. The home screen is designed for agents you can chat with (Test
-	// mode) or a "new chat" surface for the built case — neither of which
-	// applies to an unbuilt agent. Dropping the user into the build panel
-	// means `loadHistory()` fires, so any prior builder conversation is
-	// immediately visible instead of appearing lost until the agent is
-	// eventually built.
-	if (!hasInstructions) {
-		mode.value = 'chat';
-	}
-
-	// If the user arrived via NewAgentView with a seed prompt, skip home and
-	// jump straight into the build chat. Doing this before flipping the
-	// `initialized` gate means the mainBody renders straight into chat mode —
-	// no home-screen flash between mount and the prompt-triggered startChat.
+	// If the user arrived via NewAgentView with a seed prompt, jump straight
+	// into the build chat.
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
 		void router.replace({ query: { ...route.query, prompt: undefined } });
@@ -533,25 +433,10 @@ async function initialize() {
 
 watch(agentId, initialize, { immediate: true });
 
-// Only react to the arrival of a session id — clearing the param is always
-// accompanied by an explicit `mode` assignment from the caller (exitContinueMode,
-// startChat), so auto-resetting to 'home' here would race and override those.
 watch(
-	continueSessionId,
-	(id) => {
-		if (id) {
-			mode.value = 'chat';
-		}
-	},
-	{ immediate: true },
-);
-
-watch(
-	[mode, chatMode],
-	([m, cm]) => {
-		if (m === 'chat') {
-			chatModeOpened.value[cm] = true;
-		}
+	chatMode,
+	(cm) => {
+		chatModeOpened.value[cm] = true;
 	},
 	{ immediate: true },
 );
@@ -563,7 +448,14 @@ function clearContinueSessionParam() {
 
 function exitContinueMode() {
 	clearContinueSessionParam();
-	mode.value = 'home';
+}
+
+function onTreeSelect(key: string) {
+	selectedSection.value = key;
+}
+
+function onQuickActionAddTool(tools: AgentJsonToolRef[]) {
+	onConfigFieldUpdate({ tools });
 }
 
 function onContinueLoaded(count: number) {
@@ -576,18 +468,11 @@ function onContinueLoaded(count: number) {
 
 <template>
 	<div :class="$style.builder">
-		<!-- Left column: center content with its own header -->
-		<div :class="$style.mainColumn">
-			<div :class="$style.mainHeader">
-				<div :class="$style.mainHeaderLeft">
-					<N8nIcon icon="robot" :size="16" />
-					<N8nText tag="span" bold>{{
-						agentName || locale.baseText('agents.home.untitledAgent')
-					}}</N8nText>
-				</div>
+		<!-- Column 1: chat -->
+		<aside :class="$style.chatColumn" data-testid="agent-builder-chat-column">
+			<div :class="$style.chatHeader">
 				<N8nTooltip
 					v-if="initialized"
-					:class="$style.chatModeToggleCenter"
 					:disabled="isBuilt"
 					:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
 					:show-after="100"
@@ -624,22 +509,71 @@ function onContinueLoaded(count: number) {
 						</template>
 					</N8nRadioButtons>
 				</N8nTooltip>
-				<div :class="$style.mainHeaderRight">
-					<button
-						v-if="mode === 'chat'"
-						:class="$style.toggleBtn"
-						data-testid="new-chat"
-						@click="onBackFromChat"
-					>
-						<N8nIcon icon="message-circle-plus" :size="16" />
-					</button>
-					<button
-						:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
-						data-testid="toggle-settings"
-						@click="settingsVisible = !settingsVisible"
-					>
-						<N8nIcon icon="panel-right" :size="16" />
-					</button>
+			</div>
+			<div :class="$style.chatBody">
+				<AgentChatPanel
+					v-if="initialized && chatModeOpened.test && effectiveSessionId"
+					v-show="chatMode === 'test'"
+					:key="`test-${effectiveSessionId}`"
+					:project-id="projectId"
+					:agent-id="agentId"
+					mode="inline"
+					endpoint="chat"
+					:initial-message="initialPrompt"
+					:continue-session-id="effectiveSessionId"
+					:session-title="sessionTitle"
+					:session-emoji="sessionEmoji"
+					:agent-config="localConfig"
+					:agent-status="deriveAgentStatus(agent)"
+					:connected-triggers="connectedTriggers"
+					@config-updated="onConfigUpdated"
+					@continue-loaded="onContinueLoaded"
+					@open-build="onOpenBuildFromChat"
+					@back="onBackFromChat"
+				/>
+				<AgentChatPanel
+					v-if="initialized && chatModeOpened.build"
+					v-show="chatMode === 'build'"
+					:project-id="projectId"
+					:agent-id="agentId"
+					mode="inline"
+					endpoint="build"
+					:initial-message="chatMode === 'build' ? initialPrompt : undefined"
+					:agent-config="localConfig"
+					:agent-status="deriveAgentStatus(agent)"
+					:connected-triggers="connectedTriggers"
+					@config-updated="onConfigUpdated"
+					@update:streaming="onBuildChatStreamingChange"
+					@back="onBackFromChat"
+				/>
+			</div>
+			<AgentChatQuickActions
+				:tools="(localConfig?.tools ?? []) as AgentJsonToolRef[]"
+				:project-id="projectId"
+				:agent-id="agentId"
+				@update:tools="onQuickActionAddTool"
+			/>
+		</aside>
+
+		<!-- Column 2: tree -->
+		<aside :class="$style.treeColumn" data-testid="agent-builder-tree-column">
+			<AgentConfigTree
+				:config="localConfig"
+				:selected-key="selectedSection"
+				@select="onTreeSelect"
+			/>
+		</aside>
+
+		<!-- Column 3: editor -->
+		<section :class="$style.editorColumn" data-testid="agent-builder-editor-column">
+			<div :class="$style.editorHeader">
+				<div :class="$style.editorHeaderLeft">
+					<N8nIcon icon="robot" :size="16" />
+					<N8nText tag="span" bold>{{
+						agentName || locale.baseText('agents.home.untitledAgent')
+					}}</N8nText>
+				</div>
+				<div :class="$style.editorHeaderRight">
 					<N8nActionDropdown
 						:items="headerActions"
 						activator-icon="ellipsis-vertical"
@@ -648,191 +582,78 @@ function onContinueLoaded(count: number) {
 					/>
 				</div>
 			</div>
-			<!--
-				No cross-mode transition: animating a 260ms opacity fade between
-				home and chat leaves the home screen visibly lingering after the
-				user hits send, which reads as a glitch. Instant swap feels more
-				responsive.
-
-				The mainBody stays empty until `initialize()` resolves, so we
-				never flash the home screen for users arriving with a seed
-				prompt in the URL, and never render the Test tab while we still
-				don't know whether the agent is built.
-			-->
-			<div :class="$style.mainBody">
-				<template v-if="initialized && mode === 'home'">
-					<AgentHomeContent
-						key="home"
-						:agent-name="agentName"
-						:agent-description="agentDescription"
-						:agent-icon="agentIcon"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:sessions="sessionsStore.threads"
-						:show-recent="isBuilt"
-						@send-message="startChat"
-						@update:name="updateName"
-						@update:description="updateDescription"
-						@update:icon="agentIcon = $event"
-						@select-session="openSession"
-					/>
-				</template>
-				<template v-else-if="initialized && mode === 'chat'">
-					<div key="chat" :class="$style.chatHost">
-						<!--
-							v-if on `chatModeOpened` lazy-mounts each panel the first time
-							its tab is activated; v-show then preserves state (messages,
-							input, scroll) without re-firing loadHistory on every toggle.
-							Test additionally requires an active session id — Build is
-							per-agent and needs no session.
-						-->
-						<AgentChatPanel
-							v-if="chatModeOpened.test && effectiveSessionId"
-							v-show="chatMode === 'test'"
-							:key="`test-${effectiveSessionId}`"
-							:project-id="projectId"
-							:agent-id="agentId"
-							mode="inline"
-							endpoint="chat"
-							:initial-message="initialPrompt"
-							:continue-session-id="effectiveSessionId"
-							:session-title="sessionTitle"
-							:session-emoji="sessionEmoji"
-							:agent-config="localConfig"
-							:agent-status="deriveAgentStatus(agent)"
-							:connected-triggers="connectedTriggers"
-							@config-updated="onConfigUpdated"
-							@continue-loaded="onContinueLoaded"
-							@open-build="onOpenBuildFromChat"
-							@back="onBackFromChat"
-						/>
-						<AgentChatPanel
-							v-if="chatModeOpened.build"
-							v-show="chatMode === 'build'"
-							:project-id="projectId"
-							:agent-id="agentId"
-							mode="inline"
-							endpoint="build"
-							:initial-message="chatMode === 'build' ? initialPrompt : undefined"
-							:agent-config="localConfig"
-							:agent-status="deriveAgentStatus(agent)"
-							:connected-triggers="connectedTriggers"
-							@config-updated="onConfigUpdated"
-							@update:streaming="onBuildChatStreamingChange"
-							@back="onBackFromChat"
-						/>
-					</div>
-				</template>
-			</div>
-		</div>
-
-		<!-- Right column: settings sidebar with its own header -->
-		<AgentSettingsSidebar
-			v-if="settingsVisible"
-			:config="localConfig"
-			:agent-tools="agent?.tools ?? {}"
-			:project-id="projectId"
-			:agent-id="agentId"
-			:agent-name="agentName"
-			:updated-at="updatedAt"
-			:agent="agent"
-			:save-status="saveStatus"
-			:building="isBuildChatStreaming"
-			:code-only="mode === 'chat' && chatMode === 'build'"
-			:agent-status="deriveAgentStatus(agent)"
-			@update:config="onConfigFieldUpdate"
-			@published="onPublished"
-			@unpublished="onUnpublished"
-			@update:connected-triggers="onConnectedTriggersUpdate"
-			@trigger-added="onTriggerAdded"
-		/>
+			<AgentSectionEditor :config="localConfig" @update:config="onConfigFieldUpdate" />
+		</section>
 	</div>
 </template>
 
-<style module>
+<style lang="scss" module>
 .builder {
-	display: flex;
+	display: grid;
+	grid-template-columns: minmax(280px, 360px) minmax(200px, 260px) 1fr;
 	height: 100%;
-	width: 100%;
+	min-height: 0;
 	overflow: hidden;
 }
 
-.mainColumn {
-	flex: 1;
+.chatColumn {
 	display: flex;
 	flex-direction: column;
-	min-width: 0;
-	overflow: hidden;
+	border-right: var(--border);
+	min-height: 0;
 }
 
-.mainHeader {
-	position: relative;
+.chatHeader {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--2xs);
+	border-bottom: var(--border);
+}
+
+.chatBody {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+	display: flex;
+}
+
+.chatBody > * {
+	flex: 1;
+	min-height: 0;
+}
+
+.treeColumn {
+	display: flex;
+	flex-direction: column;
+	border-right: var(--border);
+	min-height: 0;
+	overflow: auto;
+}
+
+.editorColumn {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.editorHeader {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	height: 56px;
-	min-height: 56px;
-	padding: 0 var(--spacing--sm);
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-bottom: var(--border);
 }
 
-.mainHeaderLeft {
+.editorHeaderLeft {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	color: var(--color--text);
 }
 
-.mainHeaderRight {
+.editorHeaderRight {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.mainBody {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	min-height: 0;
-	overflow: hidden;
-}
-
-.chatHost {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	min-height: 0;
-	overflow: hidden;
-}
-
-.toggleBtn {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-	height: 32px;
-	border: none;
-	background: none;
-	cursor: pointer;
-	color: var(--color--text--tint-1);
-	border-radius: var(--radius);
-}
-
-.toggleBtn:hover {
-	background-color: var(--color--foreground--tint-2);
-	color: var(--color--text);
-}
-
-.toggleBtnActive {
-	color: var(--color--text);
-	background-color: var(--color--foreground--tint-1);
-}
-
-.chatModeToggleCenter {
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	transform: translate(-50%, -50%);
+	gap: var(--spacing--3xs);
 }
 
 .chatModeOption {
