@@ -555,6 +555,9 @@ function onContinueLoaded(count: number) {
 
 		<!-- Column 2: tree -->
 		<aside :class="$style.treeColumn" data-testid="agent-builder-tree-column">
+			<div :class="$style.treeHeader">
+				<N8nText tag="span" bold>{{ locale.baseText('agents.builder.tree.title') }}</N8nText>
+			</div>
 			<AgentConfigTree
 				:config="localConfig"
 				:selected-key="selectedSection"
@@ -644,6 +647,13 @@ function onContinueLoaded(count: number) {
 	border-right: var(--border);
 	min-height: 0;
 	overflow: auto;
+}
+
+.treeHeader {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-bottom: var(--border);
 }
 
 .editorColumn {

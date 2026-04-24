@@ -5649,6 +5649,7 @@
 	"agents.builder.editorColumn.ariaLabel": "Configuration editor",
 	"agents.builder.tree.ariaLabel": "Config sections",
 	"agents.builder.tree.empty": "No sections yet",
+	"agents.builder.tree.title": "Configuration",
 	"agents.builder.quickActions.addTool": "Add tool",
 	"agents.builder.quickActions.addTrigger": "Add trigger",
 	"agents.builder.addTrigger.modal.title": "Add trigger",
