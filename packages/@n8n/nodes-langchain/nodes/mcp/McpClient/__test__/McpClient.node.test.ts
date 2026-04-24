@@ -129,7 +129,10 @@ describe('McpClient', () => {
 		expect(result).toEqual([
 			[
 				{
-					json: { id: '123', status: 'active', content: [{ type: 'text', text: 'Success' }] },
+					json: {
+						structuredContent: { id: '123', status: 'active' },
+						content: [{ type: 'text', text: 'Success' }],
+					},
 					pairedItem: { item: 0 },
 				},
 			],
