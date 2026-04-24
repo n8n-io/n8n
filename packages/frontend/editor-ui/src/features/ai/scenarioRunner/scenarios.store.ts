@@ -1,9 +1,10 @@
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiEvalExecutionResult, InstanceAiEvalNodeResult } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import * as scenarioRunnerApi from './scenarioRunner.api';
 
 export type ScenarioRunStatus = 'passed' | 'passedWithIssues' | 'failed';
@@ -91,9 +92,17 @@ function deriveStatus(result: InstanceAiEvalExecutionResult): ScenarioRunStatus 
 
 export const useScenariosStore = defineStore(STORES.SCENARIOS, () => {
 	const rootStore = useRootStore();
+	const workflowsStore = useWorkflowsStore();
 
 	const byWorkflowId = ref<StorageShape>(loadFromStorage());
 	const runningScenarioId = ref<string | null>(null);
+
+	// In-session cache of degraded results reconstructed from persisted
+	// executions. Keyed by executionId. Lost on reload — that's fine, the
+	// fetch is cheap and avoids duplicating data we already persisted as
+	// part of the normal execution record.
+	const historicalByExecutionId = ref<Record<string, InstanceAiEvalExecutionResult>>({});
+	const fetchingExecutionId = ref<string | null>(null);
 
 	watch(
 		byWorkflowId,
@@ -216,9 +225,90 @@ export const useScenariosStore = defineStore(STORES.SCENARIOS, () => {
 		}
 	}
 
+	/**
+	 * Build a degraded InstanceAiEvalExecutionResult from a persisted execution
+	 * record. Node outputs and start times come from runData; intercepted
+	 * requests and hints were never persisted so they come back empty (that's
+	 * what the `degraded` flag in ScenarioRunResult acknowledges).
+	 */
+	function mapExecutionToResult(
+		executionId: string,
+		execution: {
+			data?: {
+				resultData?: {
+					runData?: Record<string, unknown>;
+					error?: { message?: string };
+				};
+			};
+		},
+	): InstanceAiEvalExecutionResult {
+		const runData =
+			(execution.data?.resultData?.runData as
+				| Record<string, Array<{ startTime?: number; data?: { main?: unknown[][] } }>>
+				| undefined) ?? {};
+		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
+
+		for (const [nodeName, tasks] of Object.entries(runData)) {
+			const lastTask = tasks?.[tasks.length - 1];
+			const mainOutput = lastTask?.data?.main?.[0] as Array<{ json?: unknown }> | undefined;
+			const items = Array.isArray(mainOutput) ? mainOutput : [];
+			nodeResults[nodeName] = {
+				output: items.slice(0, 10).map((i) => i?.json ?? null),
+				outputCount: items.length,
+				interceptedRequests: [],
+				executionMode: 'mocked',
+				startTime: lastTask?.startTime,
+			};
+		}
+
+		const errorMessage = execution.data?.resultData?.error?.message;
+		return {
+			executionId,
+			success: !errorMessage,
+			nodeResults,
+			errors: errorMessage ? [errorMessage] : [],
+			hints: {
+				globalContext: '',
+				triggerContent: {},
+				nodeHints: {},
+				warnings: [],
+				bypassPinData: {},
+			},
+		};
+	}
+
+	async function fetchHistoricalResult(
+		executionId: string,
+	): Promise<InstanceAiEvalExecutionResult | null> {
+		const cached = historicalByExecutionId.value[executionId];
+		if (cached) return cached;
+
+		fetchingExecutionId.value = executionId;
+		try {
+			const execution = await workflowsStore.getExecution(executionId);
+			if (!execution) return null;
+			const mapped = mapExecutionToResult(executionId, execution);
+			historicalByExecutionId.value = {
+				...historicalByExecutionId.value,
+				[executionId]: mapped,
+			};
+			return mapped;
+		} finally {
+			fetchingExecutionId.value = null;
+		}
+	}
+
+	function cachedHistoricalResult(
+		executionId: string | undefined,
+	): InstanceAiEvalExecutionResult | null {
+		if (!executionId) return null;
+		return historicalByExecutionId.value[executionId] ?? null;
+	}
+
 	return {
 		byWorkflowId,
 		runningScenarioId,
+		fetchingExecutionId,
 		scenariosFor,
 		hasScenariosFor,
 		create,
@@ -226,5 +316,7 @@ export const useScenariosStore = defineStore(STORES.SCENARIOS, () => {
 		remove,
 		run,
 		persistRunResult,
+		fetchHistoricalResult,
+		cachedHistoricalResult,
 	};
 });

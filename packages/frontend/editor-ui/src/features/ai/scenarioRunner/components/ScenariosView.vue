@@ -6,6 +6,7 @@ import {
 	N8nIconButton,
 	N8nInput,
 	N8nRadioButtons,
+	N8nSpinner,
 	N8nText,
 	N8nTooltip,
 	type IconName,
@@ -21,7 +22,7 @@ import type {
 	ScenarioExpectation,
 	ScenarioRecord,
 } from '../scenarios.store';
-import ScenarioRunnerDialog from './ScenarioRunnerDialog.vue';
+import ScenarioRunResult from './ScenarioRunResult.vue';
 
 const props = defineProps<{
 	workflowId: string;
@@ -40,9 +41,9 @@ const editingName = ref(false);
 // Draft for the inline "new scenario" form. Null when closed.
 const draft = ref<{ name: string; description: string } | null>(null);
 
-// Dialog state — opens when user clicks Run on a scenario
-const dialogOpen = ref(false);
-const runningScenarioId = ref<string | null>(null);
+// Which scenario's result is currently held in runnerStore. Lets the detail
+// pane render the rich trace only for the scenario that produced it.
+const lastRunScenarioId = ref<string | null>(null);
 
 const selectedScenario = computed(() =>
 	selectedId.value ? (scenarios.value.find((s) => s.id === selectedId.value) ?? null) : null,
@@ -126,15 +127,27 @@ const expectationOptions = computed<ExpectationOption[]>(() => [
 	},
 ]);
 
-function expectationBadge(
-	expectation: ScenarioExpectation,
-): { label: string; tone: 'success' | 'danger' } | null {
-	if (expectation === 'pass')
-		return { label: i18n.baseText('scenarios.expectation.badge.pass'), tone: 'success' };
-	if (expectation === 'fail')
-		return { label: i18n.baseText('scenarios.expectation.badge.fail'), tone: 'danger' };
-	return null;
+interface ScenarioGroup {
+	key: ScenarioExpectation;
+	labelKey: 'scenarios.group.pass' | 'scenarios.group.fail' | 'scenarios.group.any';
+	items: ScenarioRecord[];
 }
+
+const groupedScenarios = computed<ScenarioGroup[]>(() => {
+	const groups: Record<ScenarioExpectation, ScenarioRecord[]> = {
+		pass: [],
+		fail: [],
+		any: [],
+	};
+	for (const scenario of scenarios.value) {
+		groups[scenario.expectedOutcome].push(scenario);
+	}
+	return [
+		{ key: 'pass', labelKey: 'scenarios.group.pass', items: groups.pass },
+		{ key: 'fail', labelKey: 'scenarios.group.fail', items: groups.fail },
+		{ key: 'any', labelKey: 'scenarios.group.any', items: groups.any },
+	].filter((g) => g.items.length > 0) as ScenarioGroup[];
+});
 
 function commitExpectation(value: ScenarioExpectation) {
 	if (!selectedScenario.value) return;
@@ -233,40 +246,68 @@ async function deleteSelected() {
 	}
 }
 
-function runSelected() {
-	if (!selectedScenario.value) return;
-	runnerStore.reset();
-	runningScenarioId.value = selectedScenario.value.id;
-	// Seed the runner store's textarea with this scenario's description so the
-	// dialog opens with the right text. See ScenarioRunnerDialog's open watcher.
-	runnerStore.setScenarioText(selectedScenario.value.description);
-	dialogOpen.value = true;
+async function runSelected() {
+	if (!selectedScenario.value || runnerStore.isRunning) return;
+	const scenario = selectedScenario.value;
+	lastRunScenarioId.value = scenario.id;
+	await runnerStore.runScenario(props.workflowId, scenario.description);
+	const result = runnerStore.result;
+	if (result) {
+		store.persistRunResult(
+			props.workflowId,
+			scenario.id,
+			result,
+			runnerStore.durationMs ?? undefined,
+		);
+	}
 }
 
-// When a run completes inside the dialog, persist the result on the scenario record.
-watch(
-	() => runnerStore.status,
-	(status, prev) => {
-		if (!runningScenarioId.value) return;
-		if (prev === 'running' && (status === 'succeeded' || status === 'failed')) {
-			const result = runnerStore.result;
-			if (result) {
-				store.persistRunResult(
-					props.workflowId,
-					runningScenarioId.value,
-					result,
-					runnerStore.durationMs ?? undefined,
-				);
-			}
-		}
-	},
+// True when runnerStore holds a live result for the currently-selected scenario.
+// Drives the rich inline trace. For any other scenario, the detail pane shows
+// only the summary (rich trace for historical runs is the lazy-fetch task).
+const hasLiveResult = computed(
+	() =>
+		runnerStore.result !== null &&
+		selectedScenario.value !== null &&
+		lastRunScenarioId.value === selectedScenario.value.id,
 );
 
-watch(dialogOpen, (open) => {
-	if (!open) {
-		runningScenarioId.value = null;
-	}
+const isRunningSelected = computed(
+	() =>
+		runnerStore.isRunning &&
+		selectedScenario.value !== null &&
+		lastRunScenarioId.value === selectedScenario.value.id,
+);
+
+// Lazy-fetch the historical execution when selecting a scenario that hasn't
+// been run this session. Rich trace comes back degraded (no intercepted
+// requests, no hints) but node outputs + timings make it useful.
+watch(
+	selectedScenario,
+	async (scenario) => {
+		if (!scenario?.lastExecutionId) return;
+		if (hasLiveResult.value) return;
+		if (store.cachedHistoricalResult(scenario.lastExecutionId)) return;
+		try {
+			await store.fetchHistoricalResult(scenario.lastExecutionId);
+		} catch {
+			// Silent — the detail pane falls back to summary-only display.
+		}
+	},
+	{ immediate: true },
+);
+
+const historicalResult = computed(() => {
+	if (hasLiveResult.value) return null;
+	if (!selectedScenario.value?.lastExecutionId) return null;
+	return store.cachedHistoricalResult(selectedScenario.value.lastExecutionId);
 });
+
+const isFetchingHistorical = computed(
+	() =>
+		!!selectedScenario.value?.lastExecutionId &&
+		store.fetchingExecutionId === selectedScenario.value.lastExecutionId,
+);
 </script>
 
 <template>
@@ -341,42 +382,49 @@ watch(dialogOpen, (open) => {
 					</div>
 				</div>
 
-				<button
-					v-for="scenario in scenarios"
-					:key="scenario.id"
-					type="button"
-					:class="[$style.listRow, selectedId === scenario.id && $style.listRowActive]"
-					:data-test-id="`scenario-row-${scenario.id}`"
-					@click="selectedId = scenario.id"
-				>
-					<N8nTooltip placement="top" :content="statusLabel(deriveDisplayStatus(scenario))">
-						<N8nIcon
-							:icon="statusIcon(deriveDisplayStatus(scenario))"
-							:color="statusColor(deriveDisplayStatus(scenario))"
-							size="small"
-							:class="$style.listDot"
-						/>
-					</N8nTooltip>
-					<div :class="$style.listText">
-						<div :class="$style.listTitleRow">
-							<N8nText bold size="small" color="text-dark" :class="$style.listName">
-								{{ scenario.name }}
-							</N8nText>
-							<span
-								v-if="expectationBadge(scenario.expectedOutcome)"
-								:class="[
-									$style.listBadge,
-									$style[`listBadge_${expectationBadge(scenario.expectedOutcome)!.tone}`],
-								]"
-							>
-								{{ expectationBadge(scenario.expectedOutcome)!.label }}
-							</span>
-						</div>
-						<N8nText size="xsmall" color="text-light" :class="$style.listPreview">
-							{{ descriptionPreview(scenario) }}
+				<div v-for="group in groupedScenarios" :key="group.key" :class="$style.listGroup">
+					<header :class="$style.listGroupHeader">
+						<N8nText
+							tag="span"
+							size="xsmall"
+							bold
+							color="text-light"
+							:class="$style.listGroupLabel"
+						>
+							{{ i18n.baseText(group.labelKey) }}
 						</N8nText>
-					</div>
-				</button>
+						<N8nText tag="span" size="xsmall" color="text-xlight">
+							{{ group.items.length }}
+						</N8nText>
+					</header>
+					<button
+						v-for="scenario in group.items"
+						:key="scenario.id"
+						type="button"
+						:class="[$style.listRow, selectedId === scenario.id && $style.listRowActive]"
+						:data-test-id="`scenario-row-${scenario.id}`"
+						@click="selectedId = scenario.id"
+					>
+						<N8nTooltip placement="top" :content="statusLabel(deriveDisplayStatus(scenario))">
+							<N8nIcon
+								:icon="statusIcon(deriveDisplayStatus(scenario))"
+								:color="statusColor(deriveDisplayStatus(scenario))"
+								size="small"
+								:class="$style.listDot"
+							/>
+						</N8nTooltip>
+						<div :class="$style.listText">
+							<div :class="$style.listTitleRow">
+								<N8nText bold size="small" color="text-dark" :class="$style.listName">
+									{{ scenario.name }}
+								</N8nText>
+							</div>
+							<N8nText size="xsmall" color="text-light" :class="$style.listPreview">
+								{{ descriptionPreview(scenario) }}
+							</N8nText>
+						</div>
+					</button>
+				</div>
 			</aside>
 
 			<section v-if="selectedScenario" :class="$style.detail">
@@ -468,8 +516,14 @@ watch(dialogOpen, (open) => {
 					<N8nButton
 						type="primary"
 						size="small"
-						icon="play"
-						:label="i18n.baseText('scenarios.detail.run')"
+						:icon="isRunningSelected ? undefined : 'play'"
+						:loading="isRunningSelected"
+						:disabled="runnerStore.isRunning"
+						:label="
+							selectedScenario.lastRunStatus
+								? i18n.baseText('scenarios.detail.rerun')
+								: i18n.baseText('scenarios.detail.run')
+						"
 						data-test-id="scenarios-run"
 						@click="runSelected"
 					/>
@@ -500,10 +554,44 @@ watch(dialogOpen, (open) => {
 						{{ i18n.baseText('scenarios.detail.notRunYet') }}
 					</N8nText>
 				</div>
+
+				<section v-if="isRunningSelected" :class="$style.runningBlock">
+					<N8nSpinner size="small" />
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('scenarioRunner.running') }}
+					</N8nText>
+				</section>
+
+				<section v-if="runnerStore.errorMessage && !isRunningSelected" :class="$style.field">
+					<N8nCallout theme="danger" icon="triangle-alert">
+						{{ i18n.baseText('scenarioRunner.error.requestFailed') }}
+						<template #trailingContent>
+							<N8nText size="xsmall" color="text-base">{{ runnerStore.errorMessage }}</N8nText>
+						</template>
+					</N8nCallout>
+				</section>
+
+				<ScenarioRunResult
+					v-if="hasLiveResult && runnerStore.result && !isRunningSelected"
+					:result="runnerStore.result"
+					:duration-ms="runnerStore.durationMs"
+				/>
+
+				<section v-else-if="isFetchingHistorical" :class="$style.runningBlock">
+					<N8nSpinner size="small" />
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('scenarios.result.loadingHistorical') }}
+					</N8nText>
+				</section>
+
+				<ScenarioRunResult
+					v-else-if="historicalResult"
+					:result="historicalResult"
+					:duration-ms="selectedScenario.lastRunDurationMs ?? null"
+					degraded
+				/>
 			</section>
 		</div>
-
-		<ScenarioRunnerDialog v-model="dialogOpen" :workflow-id="workflowId" />
 	</div>
 </template>
 
@@ -558,9 +646,27 @@ watch(dialogOpen, (open) => {
 .list {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--sm);
 	overflow-y: auto;
 	padding-right: var(--spacing--2xs);
+}
+
+.listGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.listGroupHeader {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+}
+
+.listGroupLabel {
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
 }
 
 .draftCard {
@@ -633,29 +739,6 @@ watch(dialogOpen, (open) => {
 	min-width: 0;
 }
 
-.listBadge {
-	flex-shrink: 0;
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	line-height: 1;
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	border-radius: var(--radius--sm);
-	border: var(--border-width) var(--border-style) transparent;
-	letter-spacing: 0.02em;
-}
-
-.listBadge_success {
-	color: var(--color--success--shade-1);
-	background-color: var(--color--success--tint-4);
-	border-color: var(--color--success--tint-2);
-}
-
-.listBadge_danger {
-	color: var(--color--danger--shade-1);
-	background-color: var(--color--danger--tint-4);
-	border-color: var(--color--danger--tint-3);
-}
-
 .expectationOption {
 	display: inline-flex;
 	align-items: center;
@@ -722,6 +805,16 @@ watch(dialogOpen, (open) => {
 	align-items: center;
 	gap: var(--spacing--sm);
 	flex-wrap: wrap;
+}
+
+.runningBlock {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
+	background-color: var(--color--background--light-2);
+	border-radius: var(--radius);
+	border: var(--border);
 }
 
 .lastRun {
