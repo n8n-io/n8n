@@ -52,6 +52,7 @@ import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/Cr
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import { TabsContent, TabsRoot } from 'reka-ui';
 
 const props = defineProps<{
 	threadId?: string;
@@ -599,14 +600,22 @@ function handleStop() {
 			@resizestart="isResizingPreview = true"
 			@resizeend="isResizingPreview = false"
 		>
-			<div :class="$style.previewPanel">
+			<TabsRoot
+				v-model="preview.activeTabId.value"
+				orientation="horizontal"
+				:class="$style.previewPanel"
+			>
 				<InstanceAiPreviewTabBar
 					:tabs="preview.allArtifactTabs.value"
 					:active-tab-id="preview.activeTabId.value"
-					@update:active-tab-id="preview.selectTab($event)"
 					@close="preview.closePreview()"
 				/>
-				<div :class="$style.previewContent">
+				<TabsContent
+					v-for="tab in preview.allArtifactTabs.value"
+					:key="tab.id"
+					:value="tab.id"
+					:class="$style.previewContent"
+				>
 					<InstanceAiWorkflowPreview
 						v-if="preview.activeWorkflowId.value"
 						ref="workflowPreview"
@@ -621,8 +630,8 @@ function handleStop() {
 						:project-id="preview.activeDataTableProjectId.value"
 						:refresh-key="preview.dataTableRefreshKey.value"
 					/>
-				</div>
-			</div>
+				</TabsContent>
+			</TabsRoot>
 		</N8nResizeWrapper>
 	</div>
 </template>

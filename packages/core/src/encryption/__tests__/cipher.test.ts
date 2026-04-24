@@ -35,6 +35,28 @@ describe('Cipher', () => {
 		});
 	});
 
+	describe('encryptWithInstanceKey / decryptWithInstanceKey', () => {
+		it('should roundtrip strings using the instance key regardless of custom args', () => {
+			const encrypted = cipher.encryptWithInstanceKey('random-string');
+			expect(cipher.decryptWithInstanceKey(encrypted)).toEqual('random-string');
+		});
+
+		it('should JSON-stringify objects before encrypting', () => {
+			const encrypted = cipher.encryptWithInstanceKey({ key: 'value' });
+			expect(cipher.decryptWithInstanceKey(encrypted)).toEqual('{"key":"value"}');
+		});
+
+		it('should produce ciphertext that is interoperable with decryptWithKey(instance-key)', () => {
+			const encrypted = cipher.encryptWithInstanceKey('random-string');
+			expect(cipher.decryptWithKey(encrypted, 'test_key', 'aes-256-cbc')).toEqual('random-string');
+		});
+
+		it('should fail to decrypt with a non-instance key', () => {
+			const encrypted = cipher.encryptWithInstanceKey('random-string');
+			expect(() => cipher.decryptWithKey(encrypted, 'some-other-key', 'aes-256-cbc')).toThrow();
+		});
+	});
+
 	describe('encryptWithKey', () => {
 		it('should roundtrip with decryptWithKey using the same key', () => {
 			const encrypted = cipher.encryptWithKey('random-string', 'explicit-key', 'aes-256-cbc');
