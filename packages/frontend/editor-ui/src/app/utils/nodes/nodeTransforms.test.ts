@@ -8,7 +8,8 @@ import { getParameterDisplayableOptions, serializeNode } from './nodeTransforms'
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
-vi.mock('n8n-workflow', () => ({
+vi.mock('n8n-workflow', async (importOriginal) => ({
+	...(await importOriginal<typeof import('n8n-workflow')>()),
 	NodeHelpers: {
 		displayParameter: vi.fn(),
 		getNodeParameters: vi.fn(),

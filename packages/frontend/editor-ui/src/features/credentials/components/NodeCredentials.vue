@@ -493,8 +493,12 @@ function onCredentialSelected(
 			(cred) => cred.name === selectedCredentialsType,
 		);
 		const authOption = getAuthTypeForNodeCredential(nodeType.value, nodeCredentialDescription);
-		if (authOption) {
-			updateNodeAuthType(workflowsStore.workflowId, props.node, authOption.value);
+		if (authOption && workflowDocumentStore?.value) {
+			updateNodeAuthType(
+				workflowDocumentStore.value.updateNodeProperties,
+				props.node,
+				authOption.value,
+			);
 			const parameterData = {
 				name: `parameters.${mainNodeAuthField.value.name}`,
 				value: authOption.value,
