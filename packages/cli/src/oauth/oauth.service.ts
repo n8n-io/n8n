@@ -185,7 +185,7 @@ export class OauthService {
 		}
 
 		const credentials = new Credentials(credential, credential.type, credential.data);
-		credentials.updateData(toUpdate, toDelete);
+		await credentials.updateData(toUpdate, toDelete);
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),
 			updatedAt: new Date(),
@@ -804,7 +804,7 @@ export class OauthService {
 		authMetadata: Record<string, unknown> = {},
 	) {
 		const credentials = new Credentials(credential, credential.type, credential.data);
-		credentials.updateData(oauthTokenData, ['csrfSecret']);
+		await credentials.updateData(oauthTokenData, ['csrfSecret']);
 
 		const credentialStoreMetadata: CredentialStoreMetadata = {
 			id: credential.id,
