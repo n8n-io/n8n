@@ -23,6 +23,8 @@ export { AcceptInvitationRequestDto } from './invitation/accept-invitation-reque
 export { OwnerSetupRequestDto } from './owner/owner-setup-request.dto';
 export { DismissBannerRequestDto } from './owner/dismiss-banner-request.dto';
 
+export { RefreshActiveWorkflowRequestDto } from './active-workflow-manager/refresh-request.dto';
+
 export { ForgotPasswordRequestDto } from './password-reset/forgot-password-request.dto';
 export { ResolvePasswordTokenQueryDto } from './password-reset/resolve-password-token-query.dto';
 export { ChangePasswordRequestDto } from './password-reset/change-password-request.dto';

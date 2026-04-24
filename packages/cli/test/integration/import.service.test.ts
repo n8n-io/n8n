@@ -24,7 +24,7 @@ import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { ActiveWorkflowRefreshClient } from '@/services/active-workflow-refresh-client.service';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { ImportService } from '@/services/import.service';
 
@@ -35,7 +35,7 @@ describe('ImportService', () => {
 	let tagRepository: TagRepository;
 	let owner: User;
 	let ownerPersonalProject: Project;
-	let mockActiveWorkflowManager: ActiveWorkflowManager;
+	let mockActiveWorkflowRefreshClient: ActiveWorkflowRefreshClient;
 	let mockWorkflowIndexService: WorkflowIndexService;
 
 	let workflowRepository: WorkflowRepository;
@@ -58,7 +58,7 @@ describe('ImportService', () => {
 
 		const credentialsRepository = Container.get(CredentialsRepository);
 
-		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
+		mockActiveWorkflowRefreshClient = mock<ActiveWorkflowRefreshClient>();
 
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 
@@ -68,7 +68,7 @@ describe('ImportService', () => {
 			tagRepository,
 			mock(),
 			mock(),
-			mockActiveWorkflowManager,
+			mockActiveWorkflowRefreshClient,
 			mockWorkflowIndexService,
 			Container.get(DatabaseConfig),
 		);
@@ -241,11 +241,11 @@ describe('ImportService', () => {
 		expect(dbTag.name).toBe(tag.name); // tag created
 	});
 
-	test('should remove workflow from ActiveWorkflowManager when workflow has ID', async () => {
+	test('should notify running server to refresh activation when workflow was active', async () => {
 		const workflowWithId = await createActiveWorkflow();
 		await importService.importWorkflows([workflowWithId], ownerPersonalProject.id);
 
-		expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith(workflowWithId.id);
+		expect(mockActiveWorkflowRefreshClient.notifyRefresh).toHaveBeenCalledWith(workflowWithId.id);
 	});
 
 	test('should always create a record in workflow history', async () => {

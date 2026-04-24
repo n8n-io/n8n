@@ -22,9 +22,10 @@ import { validateDbTypeForImportEntities } from '@/utils/validate-database-type'
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ActiveWorkflowRefreshClient } from '@/services/active-workflow-refresh-client.service';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { DatabaseConfig } from '@n8n/config';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 @Service()
 export class ImportService {
@@ -56,6 +57,7 @@ export class ImportService {
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly activeWorkflowRefreshClient: ActiveWorkflowRefreshClient,
 		private readonly workflowIndexService: WorkflowIndexService,
 		private readonly databaseConfig: DatabaseConfig,
 	) {}
@@ -186,6 +188,15 @@ export class ImportService {
 		if (!this.databaseConfig.isLegacySqlite) {
 			for (const workflow of insertedWorkflows) {
 				await this.workflowIndexService.updateIndexFor(workflow);
+			}
+		}
+
+		// Notify a running n8n server to deregister any in-memory triggers for workflows
+		// that were previously active. The CLI runs in a separate short-lived process, so
+		// the server process's in-memory trigger registry must be updated out-of-band.
+		for (const workflow of insertedWorkflows) {
+			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
+				await this.activeWorkflowRefreshClient.notifyRefresh(workflow.id);
 			}
 		}
 	}

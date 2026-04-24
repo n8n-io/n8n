@@ -6,7 +6,7 @@ import { readdir, readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { ActiveWorkflowRefreshClient } from '@/services/active-workflow-refresh-client.service';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 
 import { ImportService } from '../import.service';
@@ -27,8 +27,8 @@ jest.mock('@n8n/db', () => ({
 	DataSource: mock<DataSource>(),
 }));
 
-jest.mock('@/active-workflow-manager', () => ({
-	ActiveWorkflowManager: mock<ActiveWorkflowManager>(),
+jest.mock('@/services/active-workflow-refresh-client.service', () => ({
+	ActiveWorkflowRefreshClient: mock<ActiveWorkflowRefreshClient>(),
 }));
 
 describe('ImportService', () => {
@@ -39,7 +39,7 @@ describe('ImportService', () => {
 	let mockTagRepository: TagRepository;
 	let mockEntityManager: EntityManager;
 	let mockCipher: Cipher;
-	let mockActiveWorkflowManager: ActiveWorkflowManager;
+	let mockActiveWorkflowRefreshClient: ActiveWorkflowRefreshClient;
 	let mockWorkflowIndexService: WorkflowIndexService;
 	let mockDatabaseConfig: DatabaseConfig;
 
@@ -52,7 +52,7 @@ describe('ImportService', () => {
 		mockTagRepository = mock<TagRepository>();
 		mockEntityManager = mock<EntityManager>();
 		mockCipher = mock<Cipher>();
-		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
+		mockActiveWorkflowRefreshClient = mock<ActiveWorkflowRefreshClient>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 		mockDatabaseConfig = mock<DatabaseConfig>();
 
@@ -100,7 +100,7 @@ describe('ImportService', () => {
 			mockTagRepository,
 			mockDataSource,
 			mockCipher,
-			mockActiveWorkflowManager,
+			mockActiveWorkflowRefreshClient,
 			mockWorkflowIndexService,
 			mockDatabaseConfig,
 		);

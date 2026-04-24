@@ -72,6 +72,9 @@ export class ScheduledTaskManager {
 			return;
 		}
 
+		// Future hardening: re-check the workflow's `activeVersionId` in the DB here before
+		// calling `onTick()`, as defense-in-depth against out-of-band deactivations (e.g.
+		// `n8n import:workflow`, direct SQL, source-control sync on another instance).
 		const job = new CronJob(
 			expression,
 			() => {
