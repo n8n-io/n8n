@@ -135,7 +135,7 @@ export const jsVariablePolyfill = (
 					if (!customPatches[parent.type]) {
 						throw new Error(`Couldn\'t find custom patcher for parent type: ${parent.type}`);
 					}
-					customPatches[parent.type]!(path, parent, dataNode);
+					customPatches[parent.type](path, parent, dataNode);
 					break;
 				case 'BinaryExpression':
 				case 'UnaryExpression':
@@ -309,5 +309,5 @@ export const jsVariablePolyfill = (
 		},
 	});
 
-	return ast.program.body as StatementKind[];
+	return ast.program.body;
 };

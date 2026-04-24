@@ -9,7 +9,7 @@ module.exports = {
 		project: ['./tsconfig.json'],
 	},
 
-	ignorePatterns: ['node_modules/**', 'dist/**', '*.js'],
+	ignorePatterns: ['node_modules/**', 'dist/**', '*.js', 'vite.config.*'],
 
 	plugins: [
 		'@typescript-eslint',
