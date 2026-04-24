@@ -313,6 +313,7 @@ describe('McpSettingsController', () => {
 				updatedCount: 2,
 				updatedIds: ['wf-1', 'wf-2'],
 				skippedCount: 0,
+				failedCount: 0,
 			};
 			mcpSettingsService.bulkSetAvailableInMCP.mockResolvedValue(bulkResult);
 

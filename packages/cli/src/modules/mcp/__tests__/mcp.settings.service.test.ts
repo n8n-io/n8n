@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Settings, SettingsRepository, User, WorkflowRepository } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
@@ -19,6 +20,7 @@ describe('McpSettingsService', () => {
 	const cacheService = mock<CacheService>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowFinderService = mock<WorkflowFinderService>();
+	const logger = mock<Logger>();
 	const globalConfig = {
 		executions: { timeout: -1 },
 	} as unknown as GlobalConfig;
@@ -35,6 +37,7 @@ describe('McpSettingsService', () => {
 			workflowRepository,
 			workflowFinderService,
 			globalConfig,
+			logger,
 		);
 	});
 
@@ -182,6 +185,7 @@ describe('McpSettingsService', () => {
 				updatedIds: ['wf-1', 'wf-2'],
 				// wf-unauthorized was in the request but filtered out — counts as skipped.
 				skippedCount: 1,
+				failedCount: 0,
 			});
 		});
 
@@ -212,6 +216,7 @@ describe('McpSettingsService', () => {
 				updatedCount: 1,
 				updatedIds: ['wf-1'],
 				skippedCount: 1,
+				failedCount: 0,
 			});
 		});
 
@@ -242,6 +247,7 @@ describe('McpSettingsService', () => {
 				updatedCount: 2,
 				updatedIds: ['wf-1', 'wf-2'],
 				skippedCount: 0,
+				failedCount: 0,
 			});
 		});
 
@@ -267,6 +273,7 @@ describe('McpSettingsService', () => {
 				updatedCount: 2,
 				updatedIds: ['wf-1', 'wf-2'],
 				skippedCount: 0,
+				failedCount: 0,
 			});
 		});
 
@@ -306,7 +313,7 @@ describe('McpSettingsService', () => {
 
 			const result = await service.bulkSetAvailableInMCP(user, dto);
 
-			expect(result).toEqual({ updatedCount: 2, skippedCount: 0 });
+			expect(result).toEqual({ updatedCount: 2, skippedCount: 0, failedCount: 0 });
 			expect(result).not.toHaveProperty('updatedIds');
 		});
 
@@ -321,7 +328,7 @@ describe('McpSettingsService', () => {
 
 			const result = await service.bulkSetAvailableInMCP(user, dto);
 
-			expect(result).toEqual({ updatedCount: 1, skippedCount: 0 });
+			expect(result).toEqual({ updatedCount: 1, skippedCount: 0, failedCount: 0 });
 			expect(result).not.toHaveProperty('updatedIds');
 		});
 
@@ -359,6 +366,7 @@ describe('McpSettingsService', () => {
 			expect(result).toEqual({
 				updatedCount: 0,
 				skippedCount: 0,
+				failedCount: 0,
 			});
 			expect(result).not.toHaveProperty('updatedIds');
 		});
@@ -377,11 +385,12 @@ describe('McpSettingsService', () => {
 			expect(result).toEqual({
 				updatedCount: 0,
 				skippedCount: 2,
+				failedCount: 0,
 				updatedIds: [],
 			});
 		});
 
-		test('chunks large candidate sets into multiple fetches within one transaction', async () => {
+		test('chunks large candidate sets into one transaction per chunk', async () => {
 			// 600 workflows -> chunked into 500 + 100 with BULK_CHUNK_SIZE = 500.
 			const seeded = Array.from({ length: 600 }, (_, i) => ({
 				id: `wf-${i}`,
@@ -398,10 +407,108 @@ describe('McpSettingsService', () => {
 
 			const result = await service.bulkSetAvailableInMCP(user, dto);
 
-			expect(stubs.manager.transaction).toHaveBeenCalledTimes(1);
-			// Two find calls (one per chunk).
+			// Two transactions (one per chunk), each with its own find call.
+			expect(stubs.manager.transaction).toHaveBeenCalledTimes(2);
 			expect(stubs.find).toHaveBeenCalledTimes(2);
 			expect(result.updatedCount).toBe(600);
+			expect(result.failedCount).toBe(0);
+		});
+
+		test('continues processing when a chunk transaction fails, and reports failedCount', async () => {
+			// 600 workflows -> 2 chunks
+			const seeded = Array.from({ length: 600 }, (_, i) => ({
+				id: `wf-${i}`,
+				settings: {} as Record<string, unknown>,
+			}));
+			const stubs = setupRepository(seeded);
+
+			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(seeded.map((w) => w.id));
+
+			// Force the first chunk's transaction to fail; the second runs normally.
+			const originalTransaction = stubs.manager.transaction;
+			stubs.manager.transaction
+				.mockImplementationOnce(async () => {
+					throw new Error('chunk transaction failed');
+				})
+				.mockImplementationOnce(originalTransaction.getMockImplementation()!);
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				projectId: 'project-big',
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(stubs.manager.transaction).toHaveBeenCalledTimes(2);
+			// Second chunk (100 workflows) committed successfully.
+			expect(result.updatedCount).toBe(100);
+			// First chunk (500 workflows) is counted as failed — the
+			// transaction rolled back so no rows were written.
+			expect(result.failedCount).toBe(500);
+			expect(result.skippedCount).toBe(0);
+			expect(logger.error).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to bulk-update workflow MCP availability'),
+				expect.objectContaining({
+					error: expect.any(Error),
+					chunkSize: 500,
+					chunkStart: 0,
+					availableInMCP: true,
+				}),
+			);
+		});
+
+		test('surfaces chunk failures in updatedIds when scoped by workflowIds', async () => {
+			const stubs = setupRepository([{ id: 'wf-1', settings: {} }]);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+
+			stubs.manager.transaction.mockImplementationOnce(async () => {
+				throw new Error('chunk transaction failed');
+			});
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				workflowIds: ['wf-1'],
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(result).toEqual({
+				updatedCount: 0,
+				skippedCount: 0,
+				failedCount: 1,
+				updatedIds: [],
+			});
+		});
+
+		test('commits successful chunks independently when a later chunk fails', async () => {
+			const seeded = Array.from({ length: 600 }, (_, i) => ({
+				id: `wf-${i}`,
+				settings: { availableInMCP: false } as Record<string, unknown>,
+			}));
+			const stubs = setupRepository(seeded);
+
+			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(seeded.map((w) => w.id));
+
+			const originalTransaction = stubs.manager.transaction.getMockImplementation()!;
+			stubs.manager.transaction
+				.mockImplementationOnce(originalTransaction)
+				.mockImplementationOnce(async () => {
+					throw new Error('second chunk failed');
+				});
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				projectId: 'project-big',
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(result.updatedCount).toBe(500);
+			expect(result.failedCount).toBe(100);
+			expect(stubs.storage.get('wf-0')?.settings?.availableInMCP).toBe(true);
+			expect(stubs.storage.get('wf-499')?.settings?.availableInMCP).toBe(true);
+			expect(stubs.storage.get('wf-500')?.settings?.availableInMCP).toBe(false);
+			expect(stubs.storage.get('wf-599')?.settings?.availableInMCP).toBe(false);
 		});
 
 		test('deduplicates workflowIds before looking up access', async () => {

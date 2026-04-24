@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { SettingsRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
@@ -13,12 +14,12 @@ import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-avai
 
 const KEY = 'mcp.access.enabled';
 
-/** Max workflows fetched / updated per chunk inside the transaction. */
 const BULK_CHUNK_SIZE = 500;
 
 type BulkSetAvailableInMCPResult = {
 	updatedCount: number;
 	skippedCount: number;
+	failedCount: number;
 	updatedIds?: string[];
 };
 
@@ -30,6 +31,7 @@ export class McpSettingsService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly logger: Logger,
 	) {}
 
 	async getEnabled(): Promise<boolean> {
@@ -81,53 +83,71 @@ export class McpSettingsService {
 			return {
 				updatedCount: 0,
 				skippedCount: baselineSize,
+				failedCount: 0,
 				...(isWorkflowIdsScope ? { updatedIds: [] } : {}),
 			};
 		}
 
 		const writtenIds: string[] = [];
 		const noOpIds: string[] = [];
+		let failedCount = 0;
 
-		await this.workflowRepository.manager.transaction(async (trx) => {
-			const now = new Date();
+		for (let start = 0; start < candidateIds.length; start += BULK_CHUNK_SIZE) {
+			const chunk = candidateIds.slice(start, start + BULK_CHUNK_SIZE);
 
-			// Process workflows in chunks of BULK_CHUNK_SIZE
-			for (let start = 0; start < candidateIds.length; start += BULK_CHUNK_SIZE) {
-				const chunk = candidateIds.slice(start, start + BULK_CHUNK_SIZE);
+			try {
+				const chunkResult = await this.workflowRepository.manager.transaction(async (trx) => {
+					const chunkWritten: string[] = [];
+					const chunkNoOp: string[] = [];
+					const now = new Date();
 
-				const rows = await trx.find(WorkflowEntity, {
-					where: { id: In(chunk), isArchived: false },
-					select: ['id', 'settings'],
-				});
+					const rows = await trx.find(WorkflowEntity, {
+						where: { id: In(chunk), isArchived: false },
+						select: ['id', 'settings'],
+					});
 
-				for (const row of rows) {
-					if (row.settings?.availableInMCP === availableInMCP) {
-						noOpIds.push(row.id);
-						continue;
+					for (const row of rows) {
+						if (row.settings?.availableInMCP === availableInMCP) {
+							chunkNoOp.push(row.id);
+							continue;
+						}
+
+						const nextSettings = removeDefaultValues(
+							{ ...(row.settings ?? {}), availableInMCP },
+							this.globalConfig.executions.timeout,
+						);
+
+						await trx.update(
+							WorkflowEntity,
+							{ id: row.id },
+							{ settings: nextSettings, updatedAt: now },
+						);
+
+						chunkWritten.push(row.id);
 					}
 
-					const nextSettings = removeDefaultValues(
-						{ ...(row.settings ?? {}), availableInMCP },
-						this.globalConfig.executions.timeout,
-					);
+					return { written: chunkWritten, noOp: chunkNoOp };
+				});
 
-					await trx.update(
-						WorkflowEntity,
-						{ id: row.id },
-						{ settings: nextSettings, updatedAt: now },
-					);
-
-					writtenIds.push(row.id);
-				}
+				writtenIds.push(...chunkResult.written);
+				noOpIds.push(...chunkResult.noOp);
+			} catch (error) {
+				failedCount += chunk.length;
+				this.logger.error('Failed to bulk-update workflow MCP availability for chunk', {
+					error,
+					chunkSize: chunk.length,
+					chunkStart: start,
+					availableInMCP,
+				});
 			}
-		});
+		}
 
-		// To make the endpoint idempotent, we still count no-ops (workflows that are already in the requested state) as updated
 		const confirmedIds = [...writtenIds, ...noOpIds];
 
 		return {
 			updatedCount: confirmedIds.length,
-			skippedCount: baselineSize - confirmedIds.length,
+			skippedCount: Math.max(0, baselineSize - confirmedIds.length - failedCount),
+			failedCount,
 			...(isWorkflowIdsScope ? { updatedIds: confirmedIds } : {}),
 		};
 	}

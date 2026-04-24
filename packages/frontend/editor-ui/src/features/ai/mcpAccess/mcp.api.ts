@@ -19,6 +19,7 @@ export type ToggleWorkflowsMcpAccessTarget =
 export type ToggleWorkflowsMcpAccessResponse = {
 	updatedCount: number;
 	skippedCount: number;
+	failedCount: number;
 	updatedIds?: string[];
 };
 
