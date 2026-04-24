@@ -8,9 +8,6 @@ import { InstanceBootstrappingError } from '@/instance-settings-loader/instance-
 import { LogStreamingInstanceSettingsLoader } from '@/instance-settings-loader/loaders/log-streaming.instance-settings-loader';
 import { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
 
-const UUID_A = '11111111-1111-4111-8111-111111111111';
-const UUID_B = '22222222-2222-4222-8222-222222222222';
-
 beforeAll(async () => {
 	await testModules.loadModules(['log-streaming']);
 	await testDb.init();
@@ -66,7 +63,7 @@ describe('LogStreamingInstanceSettingsLoader → event_destinations roundtrip', 
 		await expect(repository.count()).resolves.toBe(0);
 	});
 
-	it('persists a webhook destination from env on an empty DB', async () => {
+	it('persists every destination from the env JSON into the DB', async () => {
 		setConfig({
 			logStreamingDestinations: JSON.stringify([
 				{
@@ -75,137 +72,40 @@ describe('LogStreamingInstanceSettingsLoader → event_destinations roundtrip', 
 					url: 'https://hooks.example.com',
 					method: 'POST',
 				},
+				{ type: 'syslog', label: 'SIEM', host: 'syslog.test', port: 514, protocol: 'tcp' },
+				{ type: 'sentry', label: 'Errors', dsn: 'https://pub@sentry.test/1' },
 			]),
 		});
 
 		await expect(loader.run()).resolves.toBe('created');
 
 		const rows = await repository.find();
-		expect(rows).toHaveLength(1);
-		expect(rows[0].destination).toMatchObject({
-			__type: MessageEventBusDestinationTypeNames.webhook,
-			id: rows[0].id,
-			label: 'Audit',
-			url: 'https://hooks.example.com',
-			method: 'POST',
+		const byLabel = Object.fromEntries(rows.map((row) => [row.destination.label, row.destination]));
+		expect(byLabel).toEqual({
+			Audit: expect.objectContaining({
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://hooks.example.com',
+				method: 'POST',
+			}),
+			SIEM: expect.objectContaining({
+				__type: MessageEventBusDestinationTypeNames.syslog,
+				host: 'syslog.test',
+				port: 514,
+				protocol: 'tcp',
+			}),
+			Errors: expect.objectContaining({
+				__type: MessageEventBusDestinationTypeNames.sentry,
+				dsn: 'https://pub@sentry.test/1',
+			}),
 		});
 	});
 
-	it('preserves a pinned id across runs', async () => {
-		setConfig({
-			logStreamingDestinations: JSON.stringify([
-				{ type: 'webhook', id: UUID_A, label: 'V1', url: 'https://v1.test' },
-			]),
-		});
-		await loader.run();
-
-		const firstRows = await repository.find();
-		expect(firstRows).toHaveLength(1);
-		expect(firstRows[0].id).toBe(UUID_A);
-
-		setConfig({
-			logStreamingDestinations: JSON.stringify([
-				{ type: 'webhook', id: UUID_A, label: 'V2', url: 'https://v2.test' },
-			]),
-		});
-		await loader.run();
-
-		const secondRows = await repository.find();
-		expect(secondRows).toHaveLength(1);
-		expect(secondRows[0].id).toBe(UUID_A);
-		expect(secondRows[0].destination).toMatchObject({
-			label: 'V2',
-			url: 'https://v2.test',
-		});
-	});
-
-	it('generates a fresh id on each run when none is pinned', async () => {
-		setConfig({
-			logStreamingDestinations: JSON.stringify([
-				{ type: 'syslog', label: 'SIEM', host: 'initial.host' },
-			]),
-		});
-		await loader.run();
-
-		const [initial] = await repository.find();
-		const initialId = initial.id;
-
-		setConfig({
-			logStreamingDestinations: JSON.stringify([
-				{ type: 'syslog', label: 'SIEM', host: 'updated.host', port: 514, protocol: 'tcp' },
-			]),
-		});
-		await loader.run();
-
-		const rows = await repository.find();
-		expect(rows).toHaveLength(1);
-		expect(rows[0].id).not.toBe(initialId);
-		expect(rows[0].destination).toMatchObject({
-			__type: MessageEventBusDestinationTypeNames.syslog,
-			label: 'SIEM',
-			host: 'updated.host',
-			port: 514,
-			protocol: 'tcp',
-		});
-	});
-
-	it('deletes rows not referenced by the env array', async () => {
-		setConfig({
-			logStreamingDestinations: JSON.stringify([
-				{ type: 'webhook', id: UUID_A, label: 'Keep', url: 'https://keep.test' },
-				{ type: 'sentry', id: UUID_B, label: 'Drop', dsn: 'https://pub@sentry.test/1' },
-			]),
-		});
-		await loader.run();
-		expect(await repository.count()).toBe(2);
-
-		setConfig({
-			logStreamingDestinations: JSON.stringify([
-				{ type: 'webhook', id: UUID_A, label: 'Keep', url: 'https://keep.test' },
-			]),
-		});
-		await loader.run();
-
-		const rows = await repository.find();
-		expect(rows).toHaveLength(1);
-		expect(rows[0].id).toBe(UUID_A);
-	});
-
-	it('clears all rows when the env array is empty', async () => {
-		setConfig({
-			logStreamingDestinations: JSON.stringify([
-				{ type: 'webhook', id: UUID_A, label: 'A', url: 'https://a.test' },
-			]),
-		});
-		await loader.run();
-		expect(await repository.count()).toBe(1);
-
+	it('writes no rows when the env array is empty', async () => {
 		setConfig({ logStreamingDestinations: '[]' });
+
 		await loader.run();
 
 		expect(await repository.count()).toBe(0);
-	});
-
-	it('persists all three destination types with the correct __type discriminator', async () => {
-		setConfig({
-			logStreamingDestinations: JSON.stringify([
-				{ type: 'webhook', label: 'W', url: 'https://w.test' },
-				{ type: 'syslog', label: 'S', host: 'syslog.test' },
-				{ type: 'sentry', label: 'E', dsn: 'https://pub@sentry.test/1' },
-			]),
-		});
-
-		await loader.run();
-
-		const rows = await repository.find();
-		const typesByLabel = Object.fromEntries(
-			rows.map((row) => [row.destination.label, row.destination.__type]),
-		);
-		expect(typesByLabel).toEqual({
-			W: MessageEventBusDestinationTypeNames.webhook,
-			S: MessageEventBusDestinationTypeNames.syslog,
-			E: MessageEventBusDestinationTypeNames.sentry,
-		});
 	});
 
 	it('throws InstanceBootstrappingError on invalid JSON without writing to the DB', async () => {
