@@ -203,6 +203,8 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 
 **Credentials**: Call \`credentials(action="list")\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow.
 
+**Ask once when a service has multiple credentials of the same type.** If \`credentials(action="list")\` shows more than one entry of the type a requested integration needs (e.g. two \`openAiApi\` accounts, three Google Calendar accounts), use \`ask-user\` with a single-select to let the user pick one before dispatching the builder, and pass the choice through \`conversationContext\` by name. Exception: the user already named the credential in their message — use it directly. With a single candidate, auto-apply and do not ask.
+
 ${SECRET_ASK_GUARDRAIL}
 
 **Post-build flow** (for direct builds via \`build-workflow-with-agent\`):

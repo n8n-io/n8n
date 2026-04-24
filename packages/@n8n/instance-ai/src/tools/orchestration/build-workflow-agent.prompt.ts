@@ -598,6 +598,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
    - **This is mandatory for: calendars, spreadsheets, channels, folders, models, databases, and any other list-based parameter.** Do NOT assume values like "primary", "default", or "General" — always look up the real ID.
    - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`nodes(action="explore-resources")\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
    - **Never use \`placeholder()\` or fake IDs for discoverable resources.** Create them via a setup workflow instead (see "Setup Workflows" section). For user-provided values, follow the placeholder rules in "SDK Code Rules".
+   - **If \`explore-resources\` returns more than one match and the user did not name a specific one, use \`placeholder('Select <resource>')\` for that parameter** (e.g. \`placeholder('Select a calendar')\`, \`placeholder('Select a Slack channel')\`). Picking one silently is a guess; the setup wizard surfaces placeholders so the user can choose after the build. Only pick a single match without prompting.
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
 5. **Write workflow code** to \`${workspaceRoot}/src/workflow.ts\`.
