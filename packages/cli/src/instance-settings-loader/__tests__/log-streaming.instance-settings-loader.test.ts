@@ -4,27 +4,12 @@ import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import type { EventDestinations } from '@/modules/log-streaming.ee/database/entities';
 import type { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
 
 import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 import { LogStreamingInstanceSettingsLoader } from '../loaders/log-streaming.instance-settings-loader';
 
 const UUID_A = '11111111-1111-4111-8111-111111111111';
-const UUID_B = '22222222-2222-4222-8222-222222222222';
-const UUID_C = '33333333-3333-4333-8333-333333333333';
-
-const createRow = (overrides: {
-	id: string;
-	createdAt?: Date;
-	destination: Record<string, unknown>;
-}): EventDestinations =>
-	({
-		id: overrides.id,
-		createdAt: overrides.createdAt ?? new Date('2024-01-01T00:00:00Z'),
-		updatedAt: new Date('2024-01-01T00:00:00Z'),
-		destination: overrides.destination,
-	}) as unknown as EventDestinations;
 
 describe('LogStreamingInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
@@ -50,8 +35,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				await cb(tx);
 			}),
 		};
-		tx.find.mockResolvedValue([]);
-		tx.upsert.mockResolvedValue({ generatedMaps: [], identifiers: [], raw: {} });
+		tx.insert.mockResolvedValue({ generatedMaps: [], identifiers: [], raw: {} });
 		tx.delete.mockResolvedValue({ raw: {}, affected: 0 });
 	});
 
@@ -62,8 +46,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 			const result = await loader.run();
 
 			expect(result).toBe('skipped');
-			expect(tx.find).not.toHaveBeenCalled();
-			expect(tx.upsert).not.toHaveBeenCalled();
+			expect(tx.insert).not.toHaveBeenCalled();
 			expect(tx.delete).not.toHaveBeenCalled();
 		});
 	});
@@ -125,14 +108,6 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 			await expectRejectsWithBootstrappingError(loader, /validation failed/);
 		});
 
-		it('throws when an item has neither id nor label', async () => {
-			const loader = createLoader({
-				logStreamingDestinations: JSON.stringify([{ type: 'webhook', url: 'https://x.test' }]),
-			});
-
-			await expectRejectsWithBootstrappingError(loader, /must have either "id" or "label"/);
-		});
-
 		it('throws on duplicate ids within the array', async () => {
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([
@@ -142,28 +117,6 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 			});
 
 			await expectRejectsWithBootstrappingError(loader, /duplicate id/);
-		});
-
-		it('throws on duplicate (type, label) within the array when no ids are given', async () => {
-			const loader = createLoader({
-				logStreamingDestinations: JSON.stringify([
-					{ type: 'webhook', label: 'Audit', url: 'https://a.test' },
-					{ type: 'webhook', label: 'Audit', url: 'https://b.test' },
-				]),
-			});
-
-			await expectRejectsWithBootstrappingError(loader, /duplicate \(type,label\)/);
-		});
-
-		it('throws on duplicate (type, label) even when items have distinct ids', async () => {
-			const loader = createLoader({
-				logStreamingDestinations: JSON.stringify([
-					{ type: 'webhook', id: UUID_A, label: 'Audit', url: 'https://a.test' },
-					{ type: 'webhook', id: UUID_B, label: 'Audit', url: 'https://b.test' },
-				]),
-			});
-
-			await expectRejectsWithBootstrappingError(loader, /duplicate \(type,label\)/);
 		});
 
 		it('rejects unknown top-level fields', async () => {
@@ -199,7 +152,6 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 
 	describe('accepts', () => {
 		it('circuitBreaker on any destination type', async () => {
-			tx.find.mockResolvedValue([]);
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([
 					{
@@ -221,7 +173,6 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 		});
 
 		it('syslog with protocol tls and no tlsCa', async () => {
-			tx.find.mockResolvedValue([]);
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([
 					{ type: 'syslog', label: 'S', host: 'host.test', protocol: 'tls' },
@@ -232,7 +183,6 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 		});
 
 		it('a fully-populated webhook options block', async () => {
-			tx.find.mockResolvedValue([]);
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([
 					{
@@ -253,11 +203,18 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 
 			await expect(loader.run()).resolves.toBe('created');
 		});
+
+		it('items without id or label', async () => {
+			const loader = createLoader({
+				logStreamingDestinations: JSON.stringify([{ type: 'webhook', url: 'https://w.test' }]),
+			});
+
+			await expect(loader.run()).resolves.toBe('created');
+		});
 	});
 
-	describe('reconciliation', () => {
-		it('inserts when the env array is non-empty and the DB is empty', async () => {
-			tx.find.mockResolvedValue([]);
+	describe('replace', () => {
+		it('deletes all existing rows then inserts the env items', async () => {
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([
 					{
@@ -275,8 +232,10 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 			const result = await loader.run();
 
 			expect(result).toBe('created');
-			expect(tx.upsert).toHaveBeenCalledTimes(1);
-			const [, payload] = tx.upsert.mock.calls[0];
+			expect(tx.delete).toHaveBeenCalledTimes(1);
+			expect(tx.delete).toHaveBeenCalledWith(expect.anything(), {});
+			expect(tx.insert).toHaveBeenCalledTimes(1);
+			const [, payload] = tx.insert.mock.calls[0];
 			const rows = payload as Array<{ id: string; destination: Record<string, unknown> }>;
 			expect(rows).toHaveLength(1);
 			expect(rows[0].destination.__type).toBe(MessageEventBusDestinationTypeNames.webhook);
@@ -286,194 +245,62 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 				parameters: [{ name: 'Authorization', value: 'Bearer abc123' }],
 			});
 			expect(rows[0].id).toMatch(/^[0-9a-f-]{36}$/);
-			expect(tx.delete).not.toHaveBeenCalled();
 		});
 
-		it('updates an existing row when id matches', async () => {
-			tx.find.mockResolvedValue([
-				createRow({
-					id: UUID_A,
-					destination: {
-						__type: MessageEventBusDestinationTypeNames.webhook,
-						id: UUID_A,
-						label: 'Old',
-						url: 'https://old.test',
-					},
-				}),
-			]);
+		it('uses the pinned id from env when provided', async () => {
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([
-					{ type: 'webhook', id: UUID_A, label: 'New', url: 'https://new.test' },
+					{ type: 'webhook', id: UUID_A, label: 'Pinned', url: 'https://pinned.test' },
 				]),
 			});
 
 			await loader.run();
 
-			expect(tx.upsert).toHaveBeenCalledTimes(1);
-			const rows = tx.upsert.mock.calls[0][1] as Array<{
+			const rows = tx.insert.mock.calls[0][1] as Array<{
 				id: string;
 				destination: Record<string, unknown>;
 			}>;
 			expect(rows[0].id).toBe(UUID_A);
-			expect(rows[0].destination.url).toBe('https://new.test');
-			expect(rows[0].destination.label).toBe('New');
-			expect(tx.delete).not.toHaveBeenCalled();
+			expect(rows[0].destination.id).toBe(UUID_A);
+			expect(rows[0].destination.url).toBe('https://pinned.test');
 		});
 
-		it('matches on (label, type) when id is absent, preserving the existing id', async () => {
-			tx.find.mockResolvedValue([
-				createRow({
-					id: UUID_B,
-					destination: {
-						__type: MessageEventBusDestinationTypeNames.syslog,
-						id: UUID_B,
-						label: 'SIEM',
-						host: 'old.host',
-					},
-				}),
-			]);
+		it('generates a new id when one is not provided', async () => {
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([
-					{ type: 'syslog', label: 'SIEM', host: 'new.host', port: 514, protocol: 'tcp' },
+					{ type: 'syslog', label: 'SIEM', host: 'syslog.test' },
 				]),
 			});
 
 			await loader.run();
 
-			const rows = tx.upsert.mock.calls[0][1] as Array<{
+			const rows = tx.insert.mock.calls[0][1] as Array<{
 				id: string;
 				destination: Record<string, unknown>;
 			}>;
-			expect(rows[0].id).toBe(UUID_B);
-			expect(rows[0].destination.host).toBe('new.host');
-			expect(rows[0].destination.port).toBe(514);
-			expect(rows[0].destination.protocol).toBe('tcp');
+			expect(rows[0].id).toMatch(/^[0-9a-f-]{36}$/);
+			expect(rows[0].destination.id).toBe(rows[0].id);
 		});
 
-		it('deletes DB rows not referenced by any env item', async () => {
-			tx.find.mockResolvedValue([
-				createRow({
-					id: UUID_A,
-					destination: {
-						__type: MessageEventBusDestinationTypeNames.webhook,
-						id: UUID_A,
-						label: 'Kept',
-						url: 'https://kept.test',
-					},
-				}),
-				createRow({
-					id: UUID_B,
-					destination: {
-						__type: MessageEventBusDestinationTypeNames.sentry,
-						id: UUID_B,
-						label: 'Stale',
-						dsn: 'https://public@sentry.example.com/1',
-					},
-				}),
-			]);
-			const loader = createLoader({
-				logStreamingDestinations: JSON.stringify([
-					{ type: 'webhook', id: UUID_A, label: 'Kept', url: 'https://kept.test' },
-				]),
-			});
-
-			await loader.run();
-
-			expect(tx.delete).toHaveBeenCalledTimes(1);
-			const [, criteria] = tx.delete.mock.calls[0];
-			const deletedIds = (criteria as { id: { _value: string[] } }).id._value;
-			expect(deletedIds).toEqual([UUID_B]);
-		});
-
-		it('keeps the oldest row when multiple DB rows share (label, type); deletes the rest', async () => {
-			tx.find.mockResolvedValue([
-				createRow({
-					id: UUID_A,
-					createdAt: new Date('2024-01-01T00:00:00Z'),
-					destination: {
-						__type: MessageEventBusDestinationTypeNames.webhook,
-						id: UUID_A,
-						label: 'Dup',
-						url: 'https://a.test',
-					},
-				}),
-				createRow({
-					id: UUID_B,
-					createdAt: new Date('2024-02-01T00:00:00Z'),
-					destination: {
-						__type: MessageEventBusDestinationTypeNames.webhook,
-						id: UUID_B,
-						label: 'Dup',
-						url: 'https://b.test',
-					},
-				}),
-				createRow({
-					id: UUID_C,
-					createdAt: new Date('2024-03-01T00:00:00Z'),
-					destination: {
-						__type: MessageEventBusDestinationTypeNames.webhook,
-						id: UUID_C,
-						label: 'Dup',
-						url: 'https://c.test',
-					},
-				}),
-			]);
-			const loader = createLoader({
-				logStreamingDestinations: JSON.stringify([
-					{ type: 'webhook', label: 'Dup', url: 'https://new.test' },
-				]),
-			});
-
-			await loader.run();
-
-			const rows = tx.upsert.mock.calls[0][1] as Array<{ id: string }>;
-			expect(rows[0].id).toBe(UUID_A);
-			const deletedIds = (tx.delete.mock.calls[0][1] as { id: { _value: string[] } }).id._value;
-			expect(new Set(deletedIds)).toEqual(new Set([UUID_B, UUID_C]));
-		});
-
-		it('empty env array deletes every existing row', async () => {
-			tx.find.mockResolvedValue([
-				createRow({
-					id: UUID_A,
-					destination: {
-						__type: MessageEventBusDestinationTypeNames.webhook,
-						id: UUID_A,
-						label: 'Any',
-						url: 'https://a.test',
-					},
-				}),
-			]);
+		it('empty env array deletes every existing row without inserting', async () => {
 			const loader = createLoader({ logStreamingDestinations: '[]' });
 
 			await loader.run();
 
-			expect(tx.upsert).not.toHaveBeenCalled();
 			expect(tx.delete).toHaveBeenCalledTimes(1);
+			expect(tx.insert).not.toHaveBeenCalled();
 		});
 
 		it('treats an empty string the same as an empty array', async () => {
-			tx.find.mockResolvedValue([
-				createRow({
-					id: UUID_A,
-					destination: {
-						__type: MessageEventBusDestinationTypeNames.webhook,
-						id: UUID_A,
-						label: 'Any',
-						url: 'https://a.test',
-					},
-				}),
-			]);
 			const loader = createLoader({ logStreamingDestinations: '' });
 
 			await loader.run();
 
-			expect(tx.upsert).not.toHaveBeenCalled();
 			expect(tx.delete).toHaveBeenCalledTimes(1);
+			expect(tx.insert).not.toHaveBeenCalled();
 		});
 
 		it('maps each env type to its internal __type discriminator', async () => {
-			tx.find.mockResolvedValue([]);
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([
 					{ type: 'webhook', label: 'W', url: 'https://w.test' },
@@ -484,7 +311,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 
 			await loader.run();
 
-			const rows = tx.upsert.mock.calls[0][1] as Array<{
+			const rows = tx.insert.mock.calls[0][1] as Array<{
 				destination: { __type: string };
 			}>;
 			expect(rows.map((r) => r.destination.__type)).toEqual([
@@ -494,7 +321,7 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 			]);
 		});
 
-		it('runs reconciliation inside a transaction', async () => {
+		it('runs delete + insert inside a single transaction', async () => {
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([
 					{ type: 'webhook', label: 'W', url: 'https://w.test' },

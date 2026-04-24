@@ -91,7 +91,7 @@ describe('LogStreamingInstanceSettingsLoader → event_destinations roundtrip', 
 		});
 	});
 
-	it('updates an existing row in place when id matches (idempotent re-run)', async () => {
+	it('preserves a pinned id across runs', async () => {
 		setConfig({
 			logStreamingDestinations: JSON.stringify([
 				{ type: 'webhook', id: UUID_A, label: 'V1', url: 'https://v1.test' },
@@ -119,7 +119,7 @@ describe('LogStreamingInstanceSettingsLoader → event_destinations roundtrip', 
 		});
 	});
 
-	it('matches on (type, label) when id is absent, preserving the existing id', async () => {
+	it('generates a fresh id on each run when none is pinned', async () => {
 		setConfig({
 			logStreamingDestinations: JSON.stringify([
 				{ type: 'syslog', label: 'SIEM', host: 'initial.host' },
@@ -139,7 +139,7 @@ describe('LogStreamingInstanceSettingsLoader → event_destinations roundtrip', 
 
 		const rows = await repository.find();
 		expect(rows).toHaveLength(1);
-		expect(rows[0].id).toBe(initialId);
+		expect(rows[0].id).not.toBe(initialId);
 		expect(rows[0].destination).toMatchObject({
 			__type: MessageEventBusDestinationTypeNames.syslog,
 			label: 'SIEM',

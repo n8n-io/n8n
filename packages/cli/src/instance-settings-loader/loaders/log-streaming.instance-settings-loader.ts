@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
-import { In } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
@@ -166,7 +165,7 @@ export class LogStreamingInstanceSettingsLoader {
 		}
 
 		this.logger.info(
-			'logStreamingManagedByEnv is enabled — reconciling log streaming destinations from env vars',
+			'logStreamingManagedByEnv is enabled — replacing log streaming destinations from env vars',
 		);
 
 		let items: EnvDestination[] = [];
@@ -179,7 +178,7 @@ export class LogStreamingInstanceSettingsLoader {
 		}
 
 		await this.eventDestinationsRepository.manager.transaction(async (tx) => {
-			await this.reconcile(tx, items);
+			await this.replace(tx, items);
 		});
 
 		return 'created';
@@ -209,15 +208,8 @@ export class LogStreamingInstanceSettingsLoader {
 
 		const items = result.data;
 		const seenIds = new Set<string>();
-		const seenLabelType = new Set<string>();
 
 		items.forEach((item, index) => {
-			if (!item.id && !item.label) {
-				throw new Error(
-					`N8N_LOG_STREAMING_DESTINATIONS[${index}] must have either "id" or "label" for stable reconciliation`,
-				);
-			}
-
 			if (item.id) {
 				if (seenIds.has(item.id)) {
 					throw new Error(
@@ -226,94 +218,24 @@ export class LogStreamingInstanceSettingsLoader {
 				}
 				seenIds.add(item.id);
 			}
-
-			if (item.label) {
-				const key = `${item.type}:${item.label}`;
-				if (seenLabelType.has(key)) {
-					throw new Error(
-						`N8N_LOG_STREAMING_DESTINATIONS has duplicate (type,label) "${item.type}/${item.label}" at index ${index}`,
-					);
-				}
-				seenLabelType.add(key);
-			}
 		});
 
 		return items;
 	}
 
-	private async reconcile(tx: EntityManager, items: EnvDestination[]): Promise<void> {
-		const existing = await tx.find(EventDestinations, {
-			order: { createdAt: 'ASC', id: 'ASC' },
+	private async replace(tx: EntityManager, items: EnvDestination[]): Promise<void> {
+		await tx.delete(EventDestinations, {});
+
+		if (items.length === 0) return;
+
+		const rows = items.map((item) => {
+			const id = item.id ?? uuid();
+			return {
+				id,
+				destination: toDestinationOptions(item, id),
+			};
 		});
 
-		const byLabelType = this.groupByLabelType(existing);
-
-		const toDelete = new Set<string>();
-		const toUpsert: Array<Pick<EventDestinations, 'id' | 'destination'>> = [];
-
-		for (const item of items) {
-			// Match items by id or unique (type, label) to reliably reconcile environment configuration with the database.
-			let targetId: string;
-
-			if (item.id) {
-				targetId = item.id;
-			} else {
-				const internalType = TYPE_TO_INTERNAL[item.type];
-				const key = `${internalType}:${item.label!}`;
-				const matches = byLabelType.get(key) ?? [];
-
-				if (matches.length > 0) {
-					// One env row maps to at most one DB row per (type, label). If duplicates exist
-					// (e.g. legacy data), keep the oldest row and remove the rest so reconciliation is stable.
-					targetId = matches[0].id;
-					for (let i = 1; i < matches.length; i++) {
-						toDelete.add(matches[i].id);
-					}
-				} else {
-					targetId = uuid();
-				}
-			}
-
-			toUpsert.push({
-				id: targetId,
-				destination: toDestinationOptions(item, targetId),
-			});
-		}
-
-		// Remove database entities that were not matched to environment variable items.
-		const keptIds = new Set(toUpsert.map((row) => row.id));
-		for (const row of existing) {
-			if (!keptIds.has(row.id)) {
-				toDelete.add(row.id);
-			}
-		}
-
-		// Drop kept ids from `toDelete`: label-based duplicate cleanup can mark a row for deletion
-		// before another array entry rescues the same id.
-		for (const id of keptIds) {
-			toDelete.delete(id);
-		}
-
-		if (toUpsert.length > 0) {
-			await tx.upsert(EventDestinations, toUpsert, { conflictPaths: ['id'] });
-		}
-
-		if (toDelete.size > 0) {
-			await tx.delete(EventDestinations, { id: In(Array.from(toDelete)) });
-		}
-	}
-
-	private groupByLabelType(existing: EventDestinations[]): Map<string, EventDestinations[]> {
-		const byLabelType = new Map<string, EventDestinations[]>();
-		for (const row of existing) {
-			const dest = row.destination;
-			if (dest?.label && dest.__type) {
-				const key = `${dest.__type}:${dest.label}`;
-				const bucket = byLabelType.get(key) ?? [];
-				bucket.push(row);
-				byLabelType.set(key, bucket);
-			}
-		}
-		return byLabelType;
+		await tx.insert(EventDestinations, rows);
 	}
 }
