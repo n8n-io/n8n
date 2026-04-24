@@ -246,6 +246,13 @@ export const contactFields: INodeProperties[] = [
 					'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred',
 			},
 			{
+				displayName: 'Email Opt Out',
+				name: 'hasOptedOutOfEmail',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the contact does not want to receive email from Salesforce',
+			},
+			{
 				displayName: 'Fax',
 				name: 'fax',
 				type: 'string',
@@ -413,13 +420,6 @@ export const contactFields: INodeProperties[] = [
 					'Honorific abbreviation, word, or phrase to be used in front of name in greetings, such as Dr. or Mrs.',
 			},
 			{
-				displayName: 'Email Opt Out',
-				name: 'hasOptedOutOfEmail',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the contact does not want to receive email from Salesforce',
-			},
-			{
 				displayName: 'Pronouns',
 				name: 'pronouns',
 				type: 'string',
@@ -579,6 +579,13 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 				description:
 					'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred',
+			},
+			{
+				displayName: 'Email Opt Out',
+				name: 'hasOptedOutOfEmail',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the contact does not want to receive email from Salesforce',
 			},
 			{
 				displayName: 'Fax',
@@ -753,13 +760,6 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 				description:
 					'Honorific abbreviation, word, or phrase to be used in front of name in greetings, such as Dr. or Mrs.',
-			},
-			{
-				displayName: 'Email Opt Out',
-				name: 'hasOptedOutOfEmail',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the contact does not want to receive email from Salesforce',
 			},
 			{
 				displayName: 'Pronouns',
