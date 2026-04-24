@@ -3,8 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
 
+const routerPush = vi.fn();
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+	useRouter: () => ({ push: routerPush, replace: vi.fn() }),
 	useRoute: () => ({ params: { projectId: 'p1', agentId: 'a1' }, query: {} }),
 	onBeforeRouteLeave: vi.fn(),
 	RouterLink: { template: '<a><slot/></a>' },
@@ -15,7 +16,11 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
-	useProjectsStore: () => ({ personalProject: { id: 'p1' } }),
+	useProjectsStore: () => ({
+		personalProject: { id: 'p1' },
+		currentProject: { id: 'p1', name: 'My project' },
+		myProjects: [{ id: 'p1', name: 'My project' }],
+	}),
 }));
 
 vi.mock('@/app/composables/useTelemetry', () => ({
@@ -110,6 +115,14 @@ vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	}),
 }));
 
+vi.mock('../composables/useProjectAgentsList', () => ({
+	useProjectAgentsList: () => ({
+		list: { value: [] },
+		ensureLoaded: vi.fn().mockResolvedValue([]),
+		refresh: vi.fn(),
+	}),
+}));
+
 const baseTextFn = (key: string) => {
 	const map: Record<string, string> = {
 		'agents.builder.chatMode.build': 'Build',
@@ -176,6 +189,20 @@ const commonStubs = {
 		props: ['tools', 'projectId', 'agentId', 'connectedTriggers'],
 		emits: ['update:tools', 'update:connected-triggers', 'trigger-added'],
 	},
+	AgentBuilderHeader: {
+		name: 'AgentBuilderHeader',
+		template:
+			'<div data-testid="stub-agent-builder-header" :data-chat-collapsed="chatColumnCollapsed"></div>',
+		props: ['agent', 'projectId', 'agentId', 'projectName', 'headerActions', 'chatColumnCollapsed'],
+		emits: [
+			'back',
+			'toggle-chat-column',
+			'header-action',
+			'published',
+			'unpublished',
+			'switch-agent',
+		],
+	},
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
 	N8nActionDropdown: { template: '<div />' },
@@ -185,6 +212,7 @@ const commonStubs = {
 describe('AgentBuilderView — chat mode toggle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		routerPush.mockReset();
 		// Reset to a built agent; tests that need an unbuilt agent override locally.
 		intendedConfig = {
 			name: 'Agent One',
@@ -315,6 +343,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 describe('AgentBuilderView — three-column shell', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		routerPush.mockReset();
 		intendedConfig = {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
@@ -341,6 +370,45 @@ describe('AgentBuilderView — three-column shell', () => {
 		const html = wrapper.html();
 		expect(html).not.toContain('agent-home-content');
 		expect(html).not.toContain('agent-settings-sidebar');
+	});
+
+	it('renders the new top header above the three columns', async () => {
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="stub-agent-builder-header"]').exists()).toBe(true);
+	});
+
+	it('no longer renders the old editor-column action dropdown', async () => {
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(false);
+	});
+
+	it('toggling the chat column from the header updates the header prop + localStorage', async () => {
+		window.localStorage.removeItem('agentBuilder.chatColumnCollapsed');
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		// Initially not collapsed.
+		expect(header.props('chatColumnCollapsed')).toBe(false);
+		header.vm.$emit('toggle-chat-column');
+		await nextTick();
+		await flushPromises();
+		// After toggle: the prop passed down to the header must flip to true.
+		expect(header.props('chatColumnCollapsed')).toBe(true);
+		// The watcher must have persisted the state to localStorage.
+		expect(window.localStorage.getItem('agentBuilder.chatColumnCollapsed')).toBe('1');
+	});
+
+	it('back event navigates to the project agents list', async () => {
+		routerPush.mockClear();
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		header.vm.$emit('back');
+		await flushPromises();
+		expect(routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'AgentsListView',
+				params: { projectId: 'p1' },
+			}),
+		);
 	});
 });
 
