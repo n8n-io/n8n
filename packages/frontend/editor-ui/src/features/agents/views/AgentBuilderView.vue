@@ -820,33 +820,6 @@ function onSwitchAgent(nextAgentId: string) {
 				:aria-label="locale.baseText('agents.builder.chatColumn.ariaLabel')"
 				data-testid="agent-builder-chat-column"
 			>
-				<div v-if="initialized && chatMode === 'test'" :class="$style.historyBtnAnchor">
-					<button
-						v-if="currentSessionHasMessages"
-						type="button"
-						:class="$style.historyBtn"
-						aria-label="New chat"
-						data-testid="agent-chat-new-chat-btn"
-						@click="onNewChat"
-					>
-						<N8nIcon icon="plus" :size="14" />
-					</button>
-					<N8nNavigationDropdown
-						:menu="sessionMenu"
-						submenu-class="agent-chat-session-menu"
-						data-testid="agent-chat-session-picker"
-						@select="onSessionPick"
-					>
-						<button
-							type="button"
-							:class="$style.historyBtn"
-							aria-label="Session history"
-							data-testid="agent-chat-session-picker-btn"
-						>
-							<N8nIcon icon="history" :size="14" />
-						</button>
-					</N8nNavigationDropdown>
-				</div>
 				<div :class="$style.chatBody">
 					<AgentChatPanel
 						v-if="initialized && chatModeOpened.test && effectiveSessionId"
@@ -876,6 +849,31 @@ function onSwitchAgent(nextAgentId: string) {
 									@update:connected-triggers="onConnectedTriggersUpdate"
 									@trigger-added="onTriggerAdded"
 								/>
+								<button
+									v-if="currentSessionHasMessages"
+									type="button"
+									:class="$style.historyBtn"
+									aria-label="New chat"
+									data-testid="agent-chat-new-chat-btn"
+									@click="onNewChat"
+								>
+									<N8nIcon icon="plus" :size="14" />
+								</button>
+								<N8nNavigationDropdown
+									:menu="sessionMenu"
+									submenu-class="agent-chat-session-menu"
+									data-testid="agent-chat-session-picker"
+									@select="onSessionPick"
+								>
+									<button
+										type="button"
+										:class="$style.historyBtn"
+										aria-label="Session history"
+										data-testid="agent-chat-session-picker-btn"
+									>
+										<N8nIcon icon="history" :size="14" />
+									</button>
+								</N8nNavigationDropdown>
 								<N8nTooltip
 									v-if="initialized"
 									:class="$style.chatModeToggle"
@@ -1176,16 +1174,6 @@ function onSwitchAgent(nextAgentId: string) {
 	min-height: 0;
 	min-width: 0;
 	overflow: hidden;
-}
-
-.historyBtnAnchor {
-	position: absolute;
-	top: var(--spacing--5xs);
-	right: var(--spacing--4xs);
-	z-index: 2;
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--5xs);
 }
 
 .quickActionsRow {
