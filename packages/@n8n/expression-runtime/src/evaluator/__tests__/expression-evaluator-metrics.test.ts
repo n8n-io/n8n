@@ -59,7 +59,7 @@ describe('ExpressionEvaluator metrics', () => {
 		evaluator.evaluate('={{ $json.email }}', {}, caller);
 
 		expect(observability.metrics.histogram).toHaveBeenCalledWith(
-			'expression.evaluation.duration_ms',
+			'expression.evaluation.duration_seconds',
 			expect.any(Number),
 			{ status: 'success', type: 'none' },
 		);
@@ -89,7 +89,7 @@ describe('ExpressionEvaluator metrics', () => {
 		expect(() => evaluator.evaluate('={{ fail() }}', {}, caller)).toThrow();
 
 		expect(observability.metrics.histogram).toHaveBeenCalledWith(
-			'expression.evaluation.duration_ms',
+			'expression.evaluation.duration_seconds',
 			expect.any(Number),
 			{ status: 'error', type: expectedType },
 		);

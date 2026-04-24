@@ -7,10 +7,10 @@ export interface MetricDef {
 
 export const EXPRESSION_METRICS = {
 	evaluationDuration: {
-		name: 'expression.evaluation.duration_ms',
+		name: 'expression.evaluation.duration_seconds',
 		kind: 'histogram',
 		labels: ['status', 'type'],
-		help: 'Duration of VM-based expression evaluation.',
+		help: 'Duration of VM-based expression evaluation in seconds.',
 	},
 	codeCacheHit: {
 		name: 'expression.code_cache.hit',

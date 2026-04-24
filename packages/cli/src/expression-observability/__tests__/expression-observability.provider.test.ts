@@ -73,8 +73,8 @@ describe('ExpressionObservabilityProvider', () => {
 			});
 
 			const output = await promClient.register.metrics();
-			expect(output).toContain('n8n_expression_evaluation_duration_ms_bucket');
-			expect(output).toContain('n8n_expression_evaluation_duration_ms_count');
+			expect(output).toContain('n8n_expression_evaluation_duration_seconds_bucket');
+			expect(output).toContain('n8n_expression_evaluation_duration_seconds_count');
 		});
 	});
 
@@ -98,7 +98,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50, tracesSampleRate: 0 }),
 				buildLogger(),
 			);
-			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 10, {
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.01, {
 				status: 'success',
 				type: 'none',
 			});
@@ -110,7 +110,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
 			);
-			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 100, {
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.1, {
 				status: 'success',
 				type: 'none',
 			});
@@ -130,7 +130,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
 			);
-			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 5, {
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.005, {
 				status: 'error',
 				type: 'timeout',
 			});
@@ -150,7 +150,7 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ tracesEnabled: false, slowEvaluationThresholdMs: 10 }),
 				buildLogger(),
 			);
-			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 500, {
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.5, {
 				status: 'error',
 				type: 'timeout',
 			});
@@ -172,11 +172,11 @@ describe('ExpressionObservabilityProvider', () => {
 		it('uses the schema-registered label set regardless of call order', async () => {
 			const provider = new ExpressionObservabilityProvider(buildConfig(), buildLogger());
 
-			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 10, {
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.01, {
 				status: 'error',
 				type: 'timeout',
 			});
-			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 20, {
+			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.02, {
 				status: 'success',
 				type: 'none',
 			});
@@ -184,7 +184,7 @@ describe('ExpressionObservabilityProvider', () => {
 			const output = await promClient.register.metrics();
 			const countLines = output
 				.split('\n')
-				.filter((line) => line.startsWith('n8n_expression_evaluation_duration_ms_count{'));
+				.filter((line) => line.startsWith('n8n_expression_evaluation_duration_seconds_count{'));
 			expect(countLines.length).toBeGreaterThan(0);
 			for (const line of countLines) {
 				expect(line).toContain('status=');

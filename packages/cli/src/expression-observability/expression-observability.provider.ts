@@ -15,7 +15,11 @@ import type { Tracer } from '@opentelemetry/api';
 import { UnexpectedError } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 
-import { ATTRIBUTE, DURATION_BUCKETS_MS, TRACER_NAME } from './expression-observability.constants';
+import {
+	ATTRIBUTE,
+	DURATION_BUCKETS_SECONDS,
+	TRACER_NAME,
+} from './expression-observability.constants';
 import {
 	normalizeAttributes,
 	normalizeAttributeValue,
@@ -106,7 +110,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 							name: promName,
 							help: def.help,
 							labelNames: def.labels,
-							buckets: DURATION_BUCKETS_MS,
+							buckets: DURATION_BUCKETS_SECONDS,
 						}),
 					);
 					break;
@@ -153,17 +157,18 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 		if (name === EXPRESSION_METRICS.evaluationDuration.name) this.maybeRecordSpan(value, tags);
 	}
 
-	private maybeRecordSpan(durationMs: number, tags?: Record<string, string>): void {
+	private maybeRecordSpan(durationSeconds: number, tags?: Record<string, string>): void {
 		const { tracesEnabled, slowEvaluationThresholdMs } = this.config;
 		if (!tracesEnabled) return;
 
-		const decision = this.tailSample(durationMs, tags);
+		const decision = this.tailSample(durationSeconds, tags);
 		if (decision === 'drop') return;
 
+		const slowThresholdSeconds = slowEvaluationThresholdMs / 1000;
 		const outcome =
 			tags?.status === 'error'
 				? 'error'
-				: durationMs > slowEvaluationThresholdMs
+				: durationSeconds > slowThresholdSeconds
 					? 'slow'
 					: 'healthy';
 
@@ -172,7 +177,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 		const span = tracer.startSpan('expression.evaluate', {
 			attributes: {
 				[ATTRIBUTE.EXPRESSION_ENGINE]: 'vm',
-				[ATTRIBUTE.EXPRESSION_DURATION_MS]: durationMs,
+				[ATTRIBUTE.EXPRESSION_DURATION_SECONDS]: durationSeconds,
 				[ATTRIBUTE.EXPRESSION_OUTCOME]: outcome,
 				...(errorType ? { [ATTRIBUTE.EXPRESSION_ERROR_TYPE]: errorType } : {}),
 			},
@@ -183,10 +188,10 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 		span.end();
 	}
 
-	private tailSample(durationMs: number, tags?: Record<string, string>): TailSampleDecision {
+	private tailSample(durationSeconds: number, tags?: Record<string, string>): TailSampleDecision {
 		if (tags?.status === 'error') return 'keep';
 		const { slowEvaluationThresholdMs, tracesSampleRate } = this.config;
-		if (durationMs > slowEvaluationThresholdMs) return 'keep';
+		if (durationSeconds > slowEvaluationThresholdMs / 1000) return 'keep';
 		if (tracesSampleRate > 0 && Math.random() < tracesSampleRate) return 'keep';
 		return 'drop';
 	}
