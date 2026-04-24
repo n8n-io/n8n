@@ -8,7 +8,9 @@ import type { AgentJsonConfig } from '../types';
 type MemoryConfig = NonNullable<AgentJsonConfig['memory']>;
 type StorageType = MemoryConfig['storage'];
 
-const props = defineProps<{ config: AgentJsonConfig | null }>();
+const props = withDefaults(defineProps<{ config: AgentJsonConfig | null; disabled?: boolean }>(), {
+	disabled: false,
+});
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const memory = computed(() => (props.config?.memory?.enabled ? props.config.memory : null));
@@ -107,7 +109,7 @@ function onRangeAfterChange(event: Event) {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div :class="[$style.container, props.disabled && $style.disabled]">
 		<div :class="$style.header">
 			<N8nText tag="h3" size="large" :bold="true">Memory</N8nText>
 			<N8nText size="small" color="text-light">Conversation memory configuration</N8nText>
@@ -222,6 +224,11 @@ function onRangeAfterChange(event: Event) {
 	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--color--foreground--shade-1) transparent;
+}
+
+.container.disabled > :not(.header) {
+	pointer-events: none;
+	opacity: 0.6;
 }
 
 .container::-webkit-scrollbar {

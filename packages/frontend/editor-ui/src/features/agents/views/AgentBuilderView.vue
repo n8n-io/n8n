@@ -1014,18 +1014,21 @@ function onSwitchAgent(nextAgentId: string) {
 						:section-path="rawSectionPath"
 						:pick-keys="rawPickKeys"
 						:offset-copy-for-toggle="true"
+						:read-only="isBuildChatStreaming"
 						@update:config="onSectionEditorUpdate"
 					/>
 					<AgentCustomToolViewer v-else-if="customToolSelection" :code="customToolSelection.code" />
 					<AgentBehaviorPanel
 						v-else-if="selectedSection === BEHAVIOR_SECTION_KEY"
 						:config="localConfig"
+						:disabled="isBuildChatStreaming"
 						@update:config="onConfigFieldUpdate"
 					/>
 					<AgentEvalsPanel v-else-if="selectedSection === EVALS_SECTION_KEY" />
 					<AgentInfoPanel
 						v-else-if="selectedSection === AGENT_SECTION_KEY"
 						:config="localConfig"
+						:disabled="isBuildChatStreaming"
 						@update:config="onConfigFieldUpdate"
 					/>
 					<AgentSessionsListView
@@ -1036,6 +1039,7 @@ function onSwitchAgent(nextAgentId: string) {
 						v-else-if="selectedSection === 'tools'"
 						:tools="localConfig?.tools ?? []"
 						:config="localConfig"
+						:disabled="isBuildChatStreaming"
 						@open-tool="onOpenToolFromList"
 						@add-tool="onOpenAddToolModal"
 						@remove-tool="onRemoveTool"
@@ -1089,12 +1093,14 @@ function onSwitchAgent(nextAgentId: string) {
 					<AgentMemoryPanel
 						v-else-if="selectedSection === 'memory'"
 						:config="localConfig"
+						:disabled="isBuildChatStreaming"
 						@update:config="onConfigFieldUpdate"
 					/>
 					<AgentSectionEditor
 						v-else
 						:config="localConfig"
 						:section-path="selectedSection === CONFIG_JSON_SECTION_KEY ? null : selectedSection"
+						:read-only="isBuildChatStreaming"
 						@update:config="onSectionEditorUpdate"
 					/>
 				</div>

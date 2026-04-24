@@ -30,10 +30,14 @@ import WorkflowToolRow from './WorkflowToolRow.vue';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 
-const props = defineProps<{
-	tools: AgentJsonToolRef[];
-	config: AgentJsonConfig | null;
-}>();
+const props = withDefaults(
+	defineProps<{
+		tools: AgentJsonToolRef[];
+		config: AgentJsonConfig | null;
+		disabled?: boolean;
+	}>(),
+	{ disabled: false },
+);
 
 const emit = defineEmits<{
 	'open-tool': [index: number];
@@ -126,7 +130,10 @@ const totalCount = computed(() => props.tools.length);
 </script>
 
 <template>
-	<div :class="$style.panel" data-testid="agent-tools-list-panel">
+	<div
+		:class="[$style.panel, props.disabled && $style.disabled]"
+		data-testid="agent-tools-list-panel"
+	>
 		<div :class="$style.header">
 			<div :class="$style.headerText">
 				<N8nText tag="h3" size="large" :bold="true">Tools</N8nText>
@@ -137,6 +144,7 @@ const totalCount = computed(() => props.tools.length);
 			<N8nButton
 				type="primary"
 				size="small"
+				:disabled="props.disabled"
 				data-testid="agent-tools-add"
 				@click="emit('add-tool')"
 			>
@@ -273,6 +281,11 @@ const totalCount = computed(() => props.tools.length);
 </template>
 
 <style module lang="scss">
+.panel.disabled > :not(.header) {
+	pointer-events: none;
+	opacity: 0.6;
+}
+
 .panel {
 	display: flex;
 	flex-direction: column;

@@ -22,7 +22,9 @@ import {
 	type ReasoningEffort,
 } from '../provider-capabilities';
 
-const props = defineProps<{ config: AgentJsonConfig | null }>();
+const props = withDefaults(defineProps<{ config: AgentJsonConfig | null; disabled?: boolean }>(), {
+	disabled: false,
+});
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 function parseProvider(
@@ -146,7 +148,7 @@ const thinkingDisabledReason = computed(() =>
 			>
 				<ElSwitch
 					:model-value="thinkingEnabled"
-					:disabled="!capabilities.thinking"
+					:disabled="!capabilities.thinking || props.disabled"
 					data-testid="agent-thinking-toggle"
 					@update:model-value="(v) => onThinkingToggle(Boolean(v))"
 				/>
@@ -158,6 +160,7 @@ const thinkingDisabledReason = computed(() =>
 			<N8nInput
 				type="number"
 				:model-value="String(budgetTokens)"
+				:disabled="props.disabled"
 				:class="$style.shortInput"
 				data-testid="agent-budget-tokens-input"
 				@update:model-value="onBudgetInput"
@@ -169,6 +172,7 @@ const thinkingDisabledReason = computed(() =>
 			<N8nSelect
 				:model-value="reasoningEffort"
 				size="small"
+				:disabled="props.disabled"
 				:class="$style.shortInput"
 				data-testid="agent-reasoning-effort-select"
 				@update:model-value="onReasoningEffortChange"
@@ -187,6 +191,7 @@ const thinkingDisabledReason = computed(() =>
 			<N8nInput
 				type="number"
 				:model-value="String(toolCallConcurrency)"
+				:disabled="props.disabled"
 				:class="$style.shortInput"
 				data-testid="agent-concurrency-input"
 				@update:model-value="onConcurrencyInput"
@@ -202,6 +207,7 @@ const thinkingDisabledReason = computed(() =>
 			</div>
 			<ElSwitch
 				:model-value="requireToolApproval"
+				:disabled="props.disabled"
 				data-testid="agent-require-approval-toggle"
 				@update:model-value="(v) => onApprovalToggle(Boolean(v))"
 			/>

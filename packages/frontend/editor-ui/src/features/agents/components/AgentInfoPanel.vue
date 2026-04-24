@@ -29,7 +29,9 @@ import {
 } from '../provider-mapping';
 import AgentMiniEditor from './AgentMiniEditor.vue';
 
-const props = defineProps<{ config: AgentJsonConfig | null }>();
+const props = withDefaults(defineProps<{ config: AgentJsonConfig | null; disabled?: boolean }>(), {
+	disabled: false,
+});
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const usersStore = useUsersStore();
@@ -171,6 +173,7 @@ function onInstructionsInput(value: string) {
 			<N8nInput
 				:model-value="name"
 				placeholder="My agent"
+				:disabled="props.disabled"
 				data-testid="agent-name-input"
 				@update:model-value="onNameInput"
 			/>
@@ -181,12 +184,13 @@ function onInstructionsInput(value: string) {
 			<N8nInput
 				:model-value="description"
 				placeholder="What does this agent do?"
+				:disabled="props.disabled"
 				data-testid="agent-description-input"
 				@update:model-value="onDescriptionInput"
 			/>
 		</div>
 
-		<div :class="$style.field">
+		<div :class="[$style.field, props.disabled && $style.fieldDisabled]">
 			<label :class="$style.label"><N8nText size="small" :bold="true">Model</N8nText></label>
 			<ModelSelector
 				:selected-agent="selectedAgent"
@@ -210,7 +214,7 @@ function onInstructionsInput(value: string) {
 				:class="$style.instructionsEditor"
 				:model-value="instructions"
 				language="markdown"
-				:readonly="false"
+				:readonly="props.disabled"
 				max-height="100%"
 				min-height="160px"
 				@update:model-value="onInstructionsInput"
@@ -277,5 +281,10 @@ function onInstructionsInput(value: string) {
 
 .label {
 	display: block;
+}
+
+.fieldDisabled {
+	pointer-events: none;
+	opacity: 0.6;
 }
 </style>
