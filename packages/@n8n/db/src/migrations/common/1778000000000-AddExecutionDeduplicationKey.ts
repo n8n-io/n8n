@@ -14,7 +14,9 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 export class AddExecutionDeduplicationKey1778000000000 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column, createIndex } }: MigrationContext) {
 		await addColumns('execution_entity', [column('deduplicationKey').varchar(255)]);
-		await createIndex('execution_entity', ['deduplicationKey'], true);
+		// NOTE: unique index means if we try to create two executions with the same dedupe key, the second
+		// will fail. However, null is allowed and can be duplicated, so executions without a dedupe key are unaffected.
+		await createIndex('execution_entity', ['deduplicationKey'], /*isUnique=*/ true);
 	}
 
 	async down({ schemaBuilder: { dropIndex, dropColumns } }: MigrationContext) {
