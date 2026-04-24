@@ -4,26 +4,26 @@ import { Service } from '@n8n/di';
 import type { CryptoKey, JWK } from 'jose';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CacheService } from '@/services/cache/cache.service';
 
 import {
-	JWE_KEY_ALGORITHM,
-	JWE_KEY_CACHE_KEY,
-	JWE_KEY_USE,
-	JWE_PRIVATE_KEY_TYPE,
-	JWE_PUBLIC_KEY_TYPE,
-} from './jwe.constants';
+	OAUTH_JWE_KEY_ALGORITHM,
+	OAUTH_JWE_KEY_CACHE_KEY,
+	OAUTH_JWE_KEY_USE,
+	OAUTH_JWE_PRIVATE_KEY_TYPE,
+	OAUTH_JWE_PUBLIC_KEY_TYPE,
+} from './oauth-jwe.constants';
 
-type JweKeyPairData = {
+type OAuthJweKeyPairData = {
 	publicJwk: JWK;
 	encryptedPrivateJwk: string;
 	kid: string;
 };
 
-type JweKeyPair = {
+type OAuthJweKeyPair = {
 	privateKey: CryptoKey;
 	publicKey: CryptoKey;
 	publicJwk: JWK;
@@ -31,20 +31,20 @@ type JweKeyPair = {
 };
 
 @Service()
-export class JweKeyService {
+export class OAuthJweKeyService {
 	constructor(
 		private readonly deploymentKeyRepository: DeploymentKeyRepository,
 		private readonly cipher: Cipher,
 		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
 	) {
-		this.logger = this.logger.scoped('jwe');
+		this.logger = this.logger.scoped('oauth-jwe');
 	}
 
 	/**
-	 * Ensures the instance JWE key pair exists in the database and is present
-	 * in the shared cache. Safe to call concurrently across mains: the
-	 * database's partial unique indexes serialise insertion attempts and
+	 * Ensures the instance OAuth JWE key pair exists in the database and is
+	 * present in the shared cache. Safe to call concurrently across mains:
+	 * the database's partial unique indexes serialise insertion attempts and
 	 * losers re-read the winner's pair.
 	 */
 	async initialize(): Promise<void> {
@@ -52,41 +52,44 @@ export class JweKeyService {
 	}
 
 	/**
-	 * Returns the instance JWE key pair with imported {@link KeyLike} handles.
-	 * Reads from the shared cache (populated from the database on miss) so
-	 * every main and worker sees the same pair under queue mode.
+	 * Returns the instance OAuth JWE key pair with imported {@link CryptoKey}
+	 * handles. Reads from the shared cache (populated from the database on
+	 * miss) so every main and worker sees the same pair under queue mode.
 	 */
-	async getKeyPair(): Promise<JweKeyPair> {
+	async getKeyPair(): Promise<OAuthJweKeyPair> {
 		const data = await this.loadData();
 		return await this.deriveKeyPair(data);
 	}
 
 	/**
-	 * Returns the public JWK of the instance JWE key pair. For credential-setup
-	 * UIs or a future JWKS endpoint that advertises the key to an IdP.
+	 * Returns the public JWK of the instance OAuth JWE key pair. For
+	 * credential-setup UIs or a future JWKS endpoint that advertises the key
+	 * to an IdP.
 	 */
 	async getPublicJwk(): Promise<JWK> {
 		const data = await this.loadData();
 		return data.publicJwk;
 	}
 
-	private async loadData(): Promise<JweKeyPairData> {
-		const data = await this.cacheService.get<JweKeyPairData>(JWE_KEY_CACHE_KEY, {
+	private async loadData(): Promise<OAuthJweKeyPairData> {
+		const data = await this.cacheService.get<OAuthJweKeyPairData>(OAUTH_JWE_KEY_CACHE_KEY, {
 			refreshFn: async () => await this.loadOrGenerate(),
 		});
 		if (!data) {
-			throw new UnexpectedError('JWE key pair unavailable');
+			throw new UnexpectedError('OAuth JWE key pair unavailable');
 		}
 		return data;
 	}
 
-	private async deriveKeyPair(data: JweKeyPairData): Promise<JweKeyPair> {
+	private async deriveKeyPair(data: OAuthJweKeyPairData): Promise<OAuthJweKeyPair> {
 		const decryptedPrivate = this.cipher.decryptWithInstanceKey(data.encryptedPrivateJwk);
-		const privateJwk = JSON.parse(decryptedPrivate) as JWK;
+		const privateJwk = jsonParse<JWK>(decryptedPrivate, {
+			errorMessage: 'Failed to parse OAuth JWE private key',
+		});
 
 		const [publicKey, privateKey] = await Promise.all([
-			importJWK(data.publicJwk, JWE_KEY_ALGORITHM),
-			importJWK(privateJwk, JWE_KEY_ALGORITHM),
+			importJWK(data.publicJwk, OAUTH_JWE_KEY_ALGORITHM),
+			importJWK(privateJwk, OAUTH_JWE_KEY_ALGORITHM),
 		]);
 
 		return {
@@ -97,7 +100,7 @@ export class JweKeyService {
 		};
 	}
 
-	private async loadOrGenerate(): Promise<JweKeyPairData> {
+	private async loadOrGenerate(): Promise<OAuthJweKeyPairData> {
 		const existing = await this.readActivePairData();
 		if (existing) return existing;
 
@@ -105,29 +108,35 @@ export class JweKeyService {
 
 		const winner = await this.readActivePairData();
 		if (!winner) {
-			throw new UnexpectedError('JWE key pair not found after generation');
+			throw new UnexpectedError('OAuth JWE key pair not found after generation');
 		}
 		return winner;
 	}
 
-	private async readActivePairData(): Promise<JweKeyPairData | null> {
+	private async readActivePairData(): Promise<OAuthJweKeyPairData | null> {
 		const [publicRow, privateRow] = await Promise.all([
-			this.deploymentKeyRepository.findActiveByType(JWE_PUBLIC_KEY_TYPE),
-			this.deploymentKeyRepository.findActiveByType(JWE_PRIVATE_KEY_TYPE),
+			this.deploymentKeyRepository.findActiveByType(OAUTH_JWE_PUBLIC_KEY_TYPE),
+			this.deploymentKeyRepository.findActiveByType(OAUTH_JWE_PRIVATE_KEY_TYPE),
 		]);
 
 		if (!publicRow && !privateRow) return null;
 
 		if (!publicRow || !privateRow) {
-			throw new UnexpectedError('JWE key pair is in an inconsistent state: one row is missing');
+			throw new UnexpectedError(
+				'OAuth JWE key pair is in an inconsistent state: one row is missing',
+			);
 		}
 
-		const publicJwk = JSON.parse(publicRow.value) as JWK;
+		const publicJwk = jsonParse<JWK>(publicRow.value, {
+			errorMessage: 'Failed to parse OAuth JWE public key',
+		});
 		const decryptedPrivate = this.cipher.decryptWithInstanceKey(privateRow.value);
-		const privateJwk = JSON.parse(decryptedPrivate) as JWK;
+		const privateJwk = jsonParse<JWK>(decryptedPrivate, {
+			errorMessage: 'Failed to parse OAuth JWE private key',
+		});
 
 		if (!publicJwk.kid || publicJwk.kid !== privateJwk.kid) {
-			throw new UnexpectedError('JWE key pair kid mismatch');
+			throw new UnexpectedError('OAuth JWE key pair kid mismatch');
 		}
 
 		return {
@@ -138,7 +147,7 @@ export class JweKeyService {
 	}
 
 	private async generateAndPersist(): Promise<void> {
-		const { publicKey, privateKey } = await generateKeyPair(JWE_KEY_ALGORITHM, {
+		const { publicKey, privateKey } = await generateKeyPair(OAUTH_JWE_KEY_ALGORITHM, {
 			extractable: true,
 		});
 		const kid = randomUUID();
@@ -146,14 +155,14 @@ export class JweKeyService {
 		const publicJwk: JWK = {
 			...(await exportJWK(publicKey)),
 			kid,
-			alg: JWE_KEY_ALGORITHM,
-			use: JWE_KEY_USE,
+			alg: OAUTH_JWE_KEY_ALGORITHM,
+			use: OAUTH_JWE_KEY_USE,
 		};
 		const privateJwk: JWK = {
 			...(await exportJWK(privateKey)),
 			kid,
-			alg: JWE_KEY_ALGORITHM,
-			use: JWE_KEY_USE,
+			alg: OAUTH_JWE_KEY_ALGORITHM,
+			use: OAUTH_JWE_KEY_USE,
 		};
 
 		const encryptedPrivate = this.cipher.encryptWithInstanceKey(JSON.stringify(privateJwk));
@@ -161,23 +170,23 @@ export class JweKeyService {
 		try {
 			await this.deploymentKeyRepository.manager.transaction(async (tx) => {
 				await tx.insert(DeploymentKey, {
-					type: JWE_PUBLIC_KEY_TYPE,
+					type: OAUTH_JWE_PUBLIC_KEY_TYPE,
 					value: JSON.stringify(publicJwk),
-					algorithm: JWE_KEY_ALGORITHM,
+					algorithm: OAUTH_JWE_KEY_ALGORITHM,
 					status: 'active',
 				});
 				await tx.insert(DeploymentKey, {
-					type: JWE_PRIVATE_KEY_TYPE,
+					type: OAUTH_JWE_PRIVATE_KEY_TYPE,
 					value: encryptedPrivate,
-					algorithm: JWE_KEY_ALGORITHM,
+					algorithm: OAUTH_JWE_KEY_ALGORITHM,
 					status: 'active',
 				});
 			});
 
-			this.logger.info('Generated new instance JWE key pair', { kid });
+			this.logger.info('Generated new instance OAuth JWE key pair', { kid });
 		} catch (error) {
 			this.logger.debug(
-				'JWE key pair insert raced with another main; re-reading winner',
+				'OAuth JWE key pair insert raced with another main; re-reading winner',
 				error instanceof Error ? { message: error.message } : {},
 			);
 		}
