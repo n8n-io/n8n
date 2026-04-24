@@ -18,7 +18,6 @@ describe('EVAL_SETUP_AGENT_PROMPT', () => {
 	it('references the eval node types the agent must use', () => {
 		expect(EVAL_SETUP_AGENT_PROMPT).toContain('n8n-nodes-base.evaluationTrigger');
 		expect(EVAL_SETUP_AGENT_PROMPT).toContain('n8n-nodes-base.evaluation');
-		expect(EVAL_SETUP_AGENT_PROMPT).toContain('n8n-nodes-base.if');
 	});
 
 	it('describes all four Evaluation operations', () => {

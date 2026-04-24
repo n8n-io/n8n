@@ -16,8 +16,8 @@ import { createTool } from '@mastra/core/tools';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { EVAL_SETUP_AGENT_PROMPT } from './eval-setup-agent.prompt';
 import { truncateLabel } from './display-utils';
+import { EVAL_SETUP_AGENT_PROMPT } from './eval-setup-agent.prompt';
 import {
 	createDetachedSubAgentTracing,
 	traceSubAgentTools,

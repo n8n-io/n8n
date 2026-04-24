@@ -50,6 +50,20 @@ const setupAction = z.object({
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
 });
 
+const updateAction = z.object({
+	action: z
+		.literal('update')
+		.describe(
+			'Save a complete modified WorkflowJSON back to the workflow. Use after reading via `get` and modifying the JSON. Replaces the full workflow definition.',
+		),
+	workflowId: z.string().describe('ID of the workflow'),
+	workflow: z
+		.record(z.unknown())
+		.describe(
+			'Full WorkflowJSON object (same shape as returned by `get`). This completely replaces the current workflow definition — ensure name, nodes, and connections are all included.',
+		),
+});
+
 const publishBaseAction = z.object({
 	action: z
 		.literal('publish')
@@ -117,6 +131,7 @@ type Input =
 	| z.infer<typeof getAsCodeAction>
 	| z.infer<typeof deleteAction>
 	| z.infer<typeof setupAction>
+	| z.infer<typeof updateAction>
 	| z.infer<typeof publishExtendedAction>
 	| z.infer<typeof unpublishAction>
 	| z.infer<typeof listVersionsAction>
@@ -135,6 +150,7 @@ function buildInputSchema(context: InstanceAiContext, surface: 'full' | 'orchest
 		getAction,
 		deleteAction,
 		setupAction,
+		updateAction,
 		hasNamedVersions ? publishExtendedAction : publishBaseAction,
 		unpublishAction,
 	];
@@ -599,6 +615,26 @@ async function handleUpdateVersion(
 	return { success: true };
 }
 
+async function handleUpdate(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'update' }>,
+) {
+	try {
+		await context.workflowService.updateFromWorkflowJSON(
+			input.workflowId,
+			input.workflow as unknown as Parameters<
+				typeof context.workflowService.updateFromWorkflowJSON
+			>[1],
+		);
+		return { success: true, workflowId: input.workflowId };
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createWorkflowsTool(
@@ -632,6 +668,8 @@ export function createWorkflowsTool(
 					return await handleDelete(context, input, ctx);
 				case 'setup':
 					return await handleSetup(context, input, ctx, setupState);
+				case 'update':
+					return await handleUpdate(context, input);
 				case 'publish':
 					return await handlePublish(context, input, ctx);
 				case 'unpublish':

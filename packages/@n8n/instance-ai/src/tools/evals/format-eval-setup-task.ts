@@ -32,7 +32,7 @@ Generate 5-7 realistic sample rows following the dataset design principles in yo
 		return `Use existing DataTable id: ${input.existingDataTableId}. Do not create a new one.
 Wire the EvaluationTrigger to this DataTable id.`;
 	}
-	return `Do not create a DataTable. Leave the EvaluationTrigger's dataTableId empty — the user will wire it manually later.`;
+	return "Do not create a DataTable. Leave the EvaluationTrigger's dataTableId empty — the user will wire it manually later.";
 }
 
 export function formatEvalSetupTask(input: FormatEvalSetupTaskInput): string {
@@ -53,7 +53,7 @@ ${outputColumns}
 METRICS TO CONFIGURE (on setMetrics):
 ${metrics}
 
-Apply the checkIfEvaluating + IF topology as described in your instructions. Preserve the workflow's production path (side-effects remain wired to the "not evaluating" branch).
+Apply the checkIfEvaluating topology as described in your instructions (no separate IF node — checkIfEvaluating has native split outputs). Preserve the workflow's production path (side-effects remain wired to the Normal slot).
 
 Report back with a one-line summary when done.`;
 }

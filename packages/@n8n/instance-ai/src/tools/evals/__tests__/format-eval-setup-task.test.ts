@@ -122,13 +122,13 @@ describe('formatEvalSetupTask', () => {
 		expect(task).not.toContain('canned=');
 	});
 
-	it('mentions the checkIfEvaluating + IF topology as expected behavior', () => {
+	it('mentions the checkIfEvaluating topology as expected behavior', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
 			datasetChoice: 'generate',
 		});
 		expect(task).toContain('checkIfEvaluating');
-		expect(task).toContain('not evaluating');
+		expect(task).toContain('Normal slot');
 	});
 
 	it('lists the suggested output columns as bullet items', () => {

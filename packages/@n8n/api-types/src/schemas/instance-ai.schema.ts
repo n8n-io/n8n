@@ -73,6 +73,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'delegate',
 	'browser-setup',
 	'planner',
+	'eval-setup',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 

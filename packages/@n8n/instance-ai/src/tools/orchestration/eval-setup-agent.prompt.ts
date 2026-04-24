@@ -19,7 +19,7 @@ export const EVAL_SETUP_AGENT_PROMPT = `You are an eval setup specialist for n8n
    a. Design 5-7 sample rows following "Dataset Design Principles" below.
    b. Create DataTable via \`data-tables(action="create", name, columns)\` using the columns specified in the task.
    c. Insert rows via \`data-tables(action="insert-rows", dataTableId, rows)\`.
-3. **Patch the workflow**: apply "Required Topology" below precisely. Add EvaluationTrigger, Evaluation(checkIfEvaluating), IF, Evaluation(setOutputs), Evaluation(setMetrics). Preserve the production path.
+3. **Patch the workflow**: apply "Required Topology" below precisely. Add EvaluationTrigger, Evaluation(checkIfEvaluating), Evaluation(setOutputs), Evaluation(setMetrics). The checkIfEvaluating node has two native output slots — no separate IF node is needed. Preserve the production path.
 4. **Save** the modified workflow via \`workflows(action="update", ...)\`.
 5. **Validate**: re-read the workflow via \`workflows(action="get", workflowId)\` and assert the eval nodes exist with expected connections. If any check fails, attempt one fix cycle. If still broken, include the specific failure in your summary and stop.
 6. **Report** with a one-line summary.
@@ -52,12 +52,11 @@ Wiring: connect the EvaluationTrigger to the same node the main trigger feeds in
 
 Canned metric keys (use these when the task's canned= hint matches): \`correctness\`, \`relevance\`, \`tool_use\`, \`helpfulness\`.
 
-**checkIfEvaluating**: outputs a boolean indicating whether the current run is an eval run. Place it immediately after the AI agent. Output JSON: \`{ isEvaluating: boolean, ... }\`.
+**checkIfEvaluating**: gates the workflow flow based on whether the current run is an eval run. Place it immediately after the AI agent. IMPORTANT: this node has TWO native \`main\` output slots — no separate IF node needed:
+- **slot 0 (Evaluation)**: fires when the EvaluationTrigger was executed (i.e., we are in an eval run). Wire this to setOutputs → setMetrics.
+- **slot 1 (Normal)**: fires during normal (non-eval) workflow execution. Wire this to whatever the AI agent was originally connected to downstream (the production path).
 
-### n8n-nodes-base.if
-Branch based on a condition. For eval setup:
-- Condition: \`{{ $json.isEvaluating }}\` equals boolean \`true\`.
-- Slot 0 = true (eval branch), slot 1 = false (production branch).
+The node forwards the AI agent's data unchanged down whichever slot is active; it's a flow-control switch, not a data transformer.
 
 ### Fallback: schema lookup
 If you need exact parameter names or displayOptions for any node variant, call \`nodes(action="get-schema", type=<node-type>)\`. Don't guess.
@@ -75,19 +74,19 @@ For setOutputs the most common pattern is \`{ name: 'agent_response', value: '={
 Diagram:
 
 \`\`\`
-[Main Trigger] ──main──→ [first processing node] ──...──→ [AI Agent] ──main──→ [checkIfEvaluating] ──main──→ [IF]
-                             ↑                                                                                  ├── slot 0 (true):  [setOutputs] ──main──→ [setMetrics]
-[EvaluationTrigger] ──main───┘                                                                                  └── slot 1 (false): [original downstream nodes, unchanged]
+[Main Trigger] ──main──→ [first processing node] ──...──→ [AI Agent] ──main──→ [checkIfEvaluating]
+                             ↑                                                       ├── slot 0 (Evaluation): [setOutputs] ──main──→ [setMetrics]
+[EvaluationTrigger] ──main───┘                                                       └── slot 1 (Normal):     [original downstream nodes, unchanged]
 \`\`\`
 
 Rules:
 - EvaluationTrigger connects to the same node the main trigger connects to (slot 0 of the first processing node).
-- Insert \`checkIfEvaluating + IF + setOutputs + setMetrics\` AFTER the AI agent node.
-- IF slot 0 (true) routes to setOutputs → setMetrics (eval branch; terminates).
-- IF slot 1 (false) routes to whatever the AI agent was originally connected to (production path preserved).
+- Insert \`checkIfEvaluating + setOutputs + setMetrics\` AFTER the AI agent node. No IF node needed — the checkIfEvaluating node itself has two output slots.
+- \`checkIfEvaluating\` slot 0 (Evaluation) routes to setOutputs → setMetrics (eval branch; terminates).
+- \`checkIfEvaluating\` slot 1 (Normal) routes to whatever the AI agent was originally connected to (production path preserved).
 - Side-effect nodes (Send message, HTTP POST, DB writes) MUST be reachable ONLY via slot 1. This is the core invariant — it's what makes eval runs safe.
 
-Multiple AI agents: one \`checkIfEvaluating + IF + setOutputs + setMetrics\` block per agent by default. Your judgment: if multiple agents share output semantics (e.g. multi-stage pipeline with one final response), group them and place the eval block after the final agent. Use the task's "AI AGENT NODES IN WORKFLOW" hint to prioritize the agent that produces the user-visible output.
+Multiple AI agents: one \`checkIfEvaluating + setOutputs + setMetrics\` block per agent by default. Your judgment: if multiple agents share output semantics (e.g. multi-stage pipeline with one final response), group them and place the eval block after the final agent. Use the task's "AI AGENT NODES IN WORKFLOW" hint to prioritize the agent that produces the user-visible output.
 
 ## Dataset Design Principles
 
@@ -108,8 +107,8 @@ Use the conversation context (the user's original workflow request) to anchor th
 
 After patching:
 1. Re-read the workflow: \`workflows(action="get", workflowId)\`.
-2. Assert all eval nodes are present (EvaluationTrigger + one setOutputs + one setMetrics + one checkIfEvaluating + one IF for each AI-agent-block).
-3. Assert connections match the topology: EvaluationTrigger → first node; agent → checkIfEvaluating → IF; IF.slot0 → setOutputs → setMetrics.
+2. Assert all eval nodes are present (EvaluationTrigger + one setOutputs + one setMetrics + one checkIfEvaluating for each AI-agent-block).
+3. Assert connections match the topology: EvaluationTrigger → first node; agent → checkIfEvaluating; checkIfEvaluating slot 0 (Evaluation) → setOutputs → setMetrics; checkIfEvaluating slot 1 (Normal) → original downstream path.
 4. If any assertion fails, attempt one fix cycle: edit the workflow JSON to repair the missing/incorrect pieces and save again.
 5. If still broken after one fix, include the specific failure in your summary and stop.
 
