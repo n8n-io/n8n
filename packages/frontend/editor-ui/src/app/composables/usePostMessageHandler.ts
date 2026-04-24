@@ -133,7 +133,9 @@ export function usePostMessageHandler({
 			return;
 		}
 
-		await credentialsStore.fetchAllCredentialsForWorkflow({ workflowId: data.workflowData.id });
+		try {
+			await credentialsStore.fetchAllCredentialsForWorkflow({ workflowId: data.workflowData.id });
+		} catch {}
 
 		const wfId = workflowsStore.workflowId;
 		if (wfId) {

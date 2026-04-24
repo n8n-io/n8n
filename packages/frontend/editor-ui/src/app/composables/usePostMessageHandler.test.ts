@@ -374,6 +374,41 @@ describe('usePostMessageHandler', () => {
 			cleanup();
 		});
 
+		it('should still open execution when workflow credential prefetch fails', async () => {
+			mockOpenExecution.mockResolvedValue({
+				workflowData: { id: 'test-wf-id', name: 'Test' },
+				mode: 'trigger',
+				finished: true,
+			});
+			mockFetchAllCredentialsForWorkflow.mockRejectedValueOnce(new Error('credential prefetch failed'));
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			const messageEvent = new MessageEvent('message', {
+				data: JSON.stringify({
+					command: 'openExecution',
+					executionId: 'exec-1',
+					executionMode: 'trigger',
+				}),
+			});
+			window.dispatchEvent(messageEvent);
+
+			await vi.waitFor(() => {
+				expect(mockCanvasEventBusEmit).toHaveBeenCalledWith(
+					'open:execution',
+					expect.objectContaining({ workflowData: { id: 'test-wf-id', name: 'Test' } }),
+				);
+			});
+
+			expect(mockFitView).toHaveBeenCalled();
+
+			cleanup();
+		});
+
 		it('should not fetch workflow credentials when execution data is missing', async () => {
 			mockOpenExecution.mockResolvedValue(null);
 
