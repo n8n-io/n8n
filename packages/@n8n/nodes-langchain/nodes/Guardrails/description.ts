@@ -13,7 +13,7 @@ const THRESHOLD_OPTION: INodeProperties = {
 	type: 'number',
 	default: '',
 	description: 'Minimum confidence threshold to trigger the guardrail (0.0 to 1.0)',
-	hint: 'Inputs scoring less than this will be treated as violations',
+	hint: 'Inputs flagged with a confidence score at or above this value will be treated as violations',
 };
 
 const getPromptOption: (
