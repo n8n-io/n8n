@@ -64,7 +64,6 @@ const chatModeOpened = ref<Record<ChatMode, boolean>>({ test: false, build: fals
 const selectedSection = ref<string | null>(null);
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
-const updatedAt = ref<string>('');
 const initialPrompt = ref<string | undefined>(undefined);
 const continueSessionId = computed(() => route.query.continueSessionId as string | undefined);
 /**
@@ -92,7 +91,6 @@ const sessionTitle = computed(() => {
 	return thread.title ?? `Session ${thread.sessionNumber}`;
 });
 const sessionEmoji = computed(() => sessionThread.value?.emoji ?? undefined);
-const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle');
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
@@ -131,7 +129,6 @@ const KNOWN_TRIGGER_TYPES = ['slack', 'telegram'] as const;
 async function fetchAgent() {
 	const data = await getAgent(rootStore.restApiContext, projectId.value, agentId.value);
 	agent.value = data;
-	updatedAt.value = data.updatedAt;
 	agentName.value = data.name;
 }
 
@@ -236,14 +233,11 @@ function scheduleAutosave() {
 	autosaveTimer = setTimeout(() => {
 		autosaveTimer = null;
 		autosaveInFlight = (async () => {
-			saveStatus.value = 'saving';
 			try {
 				await saveConfig();
-				saveStatus.value = 'saved';
 				telemetry.track('User saved agent settings', { agent_id: agentId.value });
 				builderTelemetry.flushConfigEdits();
 			} catch (error) {
-				saveStatus.value = 'idle';
 				// Intentionally keep pending parts: `localConfig` still holds the
 				// failed edit, so the next successful autosave will persist it.
 				// Clearing here would drop telemetry for edits that do end up
@@ -399,7 +393,6 @@ async function initialize() {
 	initialPrompt.value = undefined;
 	localConfig.value = null;
 	connectedTriggers.value = [];
-	saveStatus.value = 'idle';
 
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
@@ -469,7 +462,11 @@ function onContinueLoaded(count: number) {
 <template>
 	<div :class="$style.builder">
 		<!-- Column 1: chat -->
-		<aside :class="$style.chatColumn" data-testid="agent-builder-chat-column">
+		<aside
+			:class="$style.chatColumn"
+			:aria-label="locale.baseText('agents.builder.chatColumn.ariaLabel')"
+			data-testid="agent-builder-chat-column"
+		>
 			<div :class="$style.chatHeader">
 				<N8nTooltip
 					v-if="initialized"
@@ -548,7 +545,7 @@ function onContinueLoaded(count: number) {
 				/>
 			</div>
 			<AgentChatQuickActions
-				:tools="(localConfig?.tools ?? []) as AgentJsonToolRef[]"
+				:tools="localConfig?.tools ?? []"
 				:project-id="projectId"
 				:agent-id="agentId"
 				@update:tools="onQuickActionAddTool"
@@ -565,7 +562,11 @@ function onContinueLoaded(count: number) {
 		</aside>
 
 		<!-- Column 3: editor -->
-		<section :class="$style.editorColumn" data-testid="agent-builder-editor-column">
+		<section
+			:class="$style.editorColumn"
+			:aria-label="locale.baseText('agents.builder.editorColumn.ariaLabel')"
+			data-testid="agent-builder-editor-column"
+		>
 			<div :class="$style.editorHeader">
 				<div :class="$style.editorHeaderLeft">
 					<N8nIcon icon="robot" :size="16" />
