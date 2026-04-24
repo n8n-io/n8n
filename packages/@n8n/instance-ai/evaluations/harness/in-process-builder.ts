@@ -195,7 +195,17 @@ export async function buildInProcess(
 		if (result.text) {
 			finalText = await result.text;
 		}
-		chunkLog?.write({ kind: 'stream-finish', status: result.status });
+		// Pull stream-level totals when the underlying Mastra source exposes
+		// them. `finishReason === 'length'` / 'tool-calls' pinpoints
+		// maxSteps exhaustion, and `totalUsage` is our only cost signal.
+		const usage = await safeSettle(streamSource.totalUsage ?? streamSource.usage);
+		const finishReason = await safeSettle(streamSource.finishReason);
+		chunkLog?.write({
+			kind: 'stream-finish',
+			status: result.status,
+			finishReason,
+			usage,
+		});
 		if (finalText) chunkLog?.write({ kind: 'final-text', text: finalText });
 
 		if (abortController.signal.aborted || result.status === 'cancelled') {
@@ -417,6 +427,27 @@ async function openChunkLog(filePath: string): Promise<ChunkLog> {
 		stream.write(JSON.stringify({ t: new Date().toISOString(), ...obj }) + '\n');
 	};
 
+	// Pair tool-call ↔ tool-result so we can surface per-call latency.
+	const toolCallStarts = new Map<string, { started: number; toolName: string }>();
+
+	// Accumulate text/reasoning deltas so we log one compact "text" record
+	// per run rather than hundreds of noise records. Flush on step boundaries,
+	// tool calls, and stream end.
+	let textBuf = '';
+	let reasoningBuf = '';
+	const flushText = (): void => {
+		if (textBuf.length > 0) {
+			emit({ kind: 'text', length: textBuf.length, text: textBuf });
+			textBuf = '';
+		}
+		if (reasoningBuf.length > 0) {
+			emit({ kind: 'reasoning', length: reasoningBuf.length, text: reasoningBuf });
+			reasoningBuf = '';
+		}
+	};
+
+	let toolCallIdx = 0;
+
 	return {
 		writeHeader(prompt, config) {
 			emit({
@@ -428,40 +459,109 @@ async function openChunkLog(filePath: string): Promise<ChunkLog> {
 			});
 		},
 		writeEvent(event) {
-			// Summarise the common events to one-line records. Full payload
-			// is serialised for tool-call / tool-result so judges can see
-			// exactly what arguments / outputs flowed.
+			// --- Tool lifecycle (with timing) -------------------------------
 			if (event.type === 'tool-call' && isRecord(event.payload)) {
+				flushText();
+				toolCallIdx += 1;
+				const toolCallId =
+					typeof event.payload.toolCallId === 'string' ? event.payload.toolCallId : '';
+				const toolName =
+					typeof event.payload.toolName === 'string' ? event.payload.toolName : '<unknown>';
+				if (toolCallId) toolCallStarts.set(toolCallId, { started: Date.now(), toolName });
 				emit({
 					kind: 'tool-call',
+					step: toolCallIdx,
 					runId: event.runId,
 					agentId: event.agentId,
-					toolName: event.payload.toolName,
-					toolCallId: event.payload.toolCallId,
+					toolName,
+					toolCallId,
 					args: truncate(event.payload.args, 2000),
 				});
 			} else if (event.type === 'tool-result' && isRecord(event.payload)) {
+				const toolCallId =
+					typeof event.payload.toolCallId === 'string' ? event.payload.toolCallId : '';
+				const start = toolCallId ? toolCallStarts.get(toolCallId) : undefined;
+				const elapsedMs = start ? Date.now() - start.started : undefined;
+				if (toolCallId) toolCallStarts.delete(toolCallId);
 				emit({
 					kind: 'tool-result',
 					runId: event.runId,
-					toolCallId: event.payload.toolCallId,
+					toolCallId,
+					toolName: start?.toolName,
+					elapsedMs,
 					result: truncate(event.payload.result, 2000),
 				});
-			} else if (event.type === 'confirmation-request') {
+			} else if (event.type === 'tool-error' && isRecord(event.payload)) {
+				const toolCallId =
+					typeof event.payload.toolCallId === 'string' ? event.payload.toolCallId : '';
+				const start = toolCallId ? toolCallStarts.get(toolCallId) : undefined;
+				const elapsedMs = start ? Date.now() - start.started : undefined;
+				if (toolCallId) toolCallStarts.delete(toolCallId);
+				emit({
+					kind: 'tool-error',
+					runId: event.runId,
+					toolCallId,
+					toolName: start?.toolName,
+					elapsedMs,
+					error: truncate(event.payload.error, 2000),
+				});
+			}
+			// --- Model output (buffered) ------------------------------------
+			else if (event.type === 'text-delta' && isRecord(event.payload)) {
+				if (typeof event.payload.text === 'string') textBuf += event.payload.text;
+			} else if (event.type === 'reasoning-delta' && isRecord(event.payload)) {
+				if (typeof event.payload.text === 'string') reasoningBuf += event.payload.text;
+			}
+			// --- HITL / confirmations ---------------------------------------
+			else if (event.type === 'confirmation-request') {
+				flushText();
 				emit({ kind: 'confirmation-request', payload: event.payload });
-			} else if (event.type === 'agent-spawned' || event.type === 'run-start') {
+			}
+			// --- Agent / run lifecycle --------------------------------------
+			else if (event.type === 'agent-spawned' || event.type === 'run-start') {
 				emit({ kind: event.type, payload: event.payload });
-			} else if (event.type === 'run-finish') {
-				emit({ kind: 'run-finish', payload: event.payload });
+			} else if (event.type === 'agent-completed' || event.type === 'run-finish') {
+				flushText();
+				emit({ kind: event.type, payload: event.payload });
+			}
+			// --- Errors / status --------------------------------------------
+			else if (event.type === 'error' && isRecord(event.payload)) {
+				flushText();
+				emit({
+					kind: 'stream-error',
+					content: event.payload.content,
+					statusCode: event.payload.statusCode,
+					provider: event.payload.provider,
+					technicalDetails: truncate(event.payload.technicalDetails, 2000),
+				});
+			} else if (event.type === 'status' && isRecord(event.payload)) {
+				emit({ kind: 'status', message: event.payload.message });
+			} else if (event.type === 'tasks-update') {
+				emit({ kind: 'tasks-update', payload: event.payload });
 			} else {
 				// Compact catch-all for less-common events — keeps file readable.
 				emit({ kind: event.type });
 			}
 		},
 		write(record) {
+			// Ensure any pending text is flushed before synthetic records so
+			// the order in the file reflects when things actually happened.
+			flushText();
 			emit(record);
 		},
 		async close() {
+			flushText();
+			// Any tool calls still unpaired at close are logged so a silent
+			// mid-stream drop doesn't leave `toolCallStarts` ghosts invisible.
+			for (const [id, info] of toolCallStarts.entries()) {
+				emit({
+					kind: 'tool-call-unresolved',
+					toolCallId: id,
+					toolName: info.toolName,
+					elapsedMs: Date.now() - info.started,
+				});
+			}
+			emit({ kind: 'log-end', totalToolCalls: toolCallIdx });
 			await new Promise<void>((resolve) => stream.end(() => resolve()));
 		},
 	};
@@ -475,5 +575,15 @@ function truncate(value: unknown, max: number): unknown {
 		return str.substring(0, max) + '... [truncated]';
 	} catch {
 		return '<unserializable>';
+	}
+}
+
+/** Await an optional promise without letting a rejection propagate. */
+async function safeSettle<T>(value: Promise<T> | undefined): Promise<T | undefined> {
+	if (!value) return undefined;
+	try {
+		return await value;
+	} catch {
+		return undefined;
 	}
 }
