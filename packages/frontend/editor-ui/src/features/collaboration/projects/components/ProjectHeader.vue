@@ -20,7 +20,7 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import { AGENTS_LIST_VIEW } from '@/features/agents/constants';
+import { NEW_AGENT_VIEW } from '@/features/agents/constants';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -379,7 +379,7 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	},
 	[ACTION_TYPES.AGENT]: (_projectId, source) => {
 		agentTelemetry.trackClickedNewAgent(source);
-		void router.push({ name: AGENTS_LIST_VIEW });
+		void router.push({ name: NEW_AGENT_VIEW });
 	},
 } as const;
 
