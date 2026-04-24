@@ -181,7 +181,7 @@ watch(
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
-	padding: var(--spacing--sm) var(--spacing--md);
+	padding: var(--spacing--xl) var(--spacing--md) var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
