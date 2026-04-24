@@ -8,22 +8,23 @@ import NodeCredentials from '@/features/credentials/components/NodeCredentials.v
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { WorkflowSetupCard } from '../workflowSetup.types';
+import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
 
 const props = defineProps<{
 	card: WorkflowSetupCard;
-	selectedCredentialId: string | null;
-	projectId?: string;
-	isComplete: boolean;
 }>();
 
-const emit = defineEmits<{
-	credentialSelected: [payload: { credentialId: string | null }];
-}>();
-
+const ctx = useWorkflowSetupContext();
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 
 const credentialType = computed(() => props.card.credentialType);
+
+const selectedCredentialId = computed(
+	() => ctx.selections.value[props.card.targetNodeName]?.[credentialType.value] ?? null,
+);
+
+const isComplete = computed(() => ctx.isCardComplete(props.card));
 
 const displayName = computed(() => {
 	const raw =
@@ -36,13 +37,13 @@ const displayName = computed(() => {
 // Mirror the selected credential onto node.credentials so NodeCredentials'
 // dropdown stays in sync — it derives its selection from props.node.credentials.
 const displayNode = computed<INodeUi>(() => {
-	if (!props.selectedCredentialId) {
+	if (!selectedCredentialId.value) {
 		const { credentials: _drop, ...rest } = props.card.node;
 		return rest as INodeUi;
 	}
 	const cred =
-		props.card.existingCredentials.find((c) => c.id === props.selectedCredentialId) ??
-		credentialsStore.getCredentialById(props.selectedCredentialId);
+		props.card.existingCredentials.find((c) => c.id === selectedCredentialId.value) ??
+		credentialsStore.getCredentialById(selectedCredentialId.value);
 	return {
 		...props.card.node,
 		credentials: cred ? { [credentialType.value]: { id: cred.id, name: cred.name } } : {},
@@ -55,7 +56,7 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 		typeof data === 'object' && data !== null && 'id' in data && typeof data.id === 'string'
 			? data.id
 			: null;
-	emit('credentialSelected', { credentialId });
+	ctx.setSelection(props.card.targetNodeName, credentialType.value, credentialId);
 }
 </script>
 
@@ -82,7 +83,7 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 			<NodeCredentials
 				:node="displayNode"
 				:override-cred-type="credentialType"
-				:project-id="projectId"
+				:project-id="ctx.projectId.value"
 				standalone
 				hide-issues
 				@credential-selected="onCredentialSelected"
