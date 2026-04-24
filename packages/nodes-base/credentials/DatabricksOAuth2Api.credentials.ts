@@ -52,6 +52,14 @@ export class DatabricksOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'header',
 		},
+		{
+			displayName: 'Token Expired Status Code',
+			name: 'tokenExpiredStatusCode',
+			type: 'hidden',
+			default: 403,
+			description:
+				'Databricks may return 403 (not just 401) for expired tokens. This ensures automatic token refresh on 403.',
+		},
 	];
 
 	test: ICredentialTestRequest = {
