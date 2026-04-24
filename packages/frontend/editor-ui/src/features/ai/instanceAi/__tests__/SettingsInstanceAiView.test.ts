@@ -176,6 +176,36 @@ describe('SettingsInstanceAiView', () => {
 		});
 	});
 
+	describe('section visibility — cloud managed (proxy disabled)', () => {
+		beforeEach(() => {
+			setModuleSettings(settingsStore, {
+				...defaultModuleSettings,
+				proxyEnabled: false,
+				cloudManaged: true,
+			});
+		});
+
+		it('hides Model section', () => {
+			const { container } = renderComponent();
+			expect(queryStub(container, 'ModelSection')).toBeNull();
+		});
+
+		it('hides Sandbox section', () => {
+			const { container } = renderComponent();
+			expect(queryStub(container, 'SandboxSection')).toBeNull();
+		});
+
+		it('hides Memory section', () => {
+			const { container } = renderComponent();
+			expect(queryStub(container, 'MemorySection')).toBeNull();
+		});
+
+		it('hides Advanced section', () => {
+			const { container } = renderComponent();
+			expect(queryStub(container, 'AdvancedSection')).toBeNull();
+		});
+	});
+
 	describe('section visibility — cloud managed', () => {
 		beforeEach(() => {
 			setModuleSettings(settingsStore, {

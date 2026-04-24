@@ -992,6 +992,8 @@ export interface InstanceAiEvalInterceptedRequest {
 
 export interface InstanceAiEvalNodeResult {
 	output: unknown;
+	/** Full count of output items (`output` is truncated for artifact size) */
+	outputCount?: number;
 	interceptedRequests: InstanceAiEvalInterceptedRequest[];
 	executionMode: InstanceAiEvalNodeExecutionMode;
 	/** Missing required parameters detected before execution (empty = fully configured) */
@@ -1020,3 +1022,41 @@ export interface InstanceAiEvalExecutionResult {
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
 }) {}
+
+// ---------------------------------------------------------------------------
+// Sub-agent evaluation endpoint
+// ---------------------------------------------------------------------------
+
+export class InstanceAiEvalSubAgentRequest extends Z.class({
+	/** Role name from the server's sub-agent registry (currently: "builder"). */
+	role: z.string().min(1).max(64),
+	/** The task the sub-agent should perform. */
+	prompt: z.string().min(1).max(10_000),
+	/** Optional model override. Defaults to the server's configured Instance AI model. */
+	modelId: z.string().min(1).optional(),
+	/** Max agent steps. Defaults to 40. */
+	maxSteps: z.number().int().positive().max(200).optional(),
+	/** Per-run timeout in ms. Defaults to 120_000. Max: 600_000. */
+	timeoutMs: z.number().int().positive().max(600_000).optional(),
+}) {}
+
+export interface InstanceAiEvalToolCall {
+	toolName: string;
+	args: unknown;
+}
+
+export interface InstanceAiEvalToolResult {
+	toolName: string;
+	result: unknown;
+	isError: boolean;
+}
+
+export interface InstanceAiEvalSubAgentResponse {
+	text: string;
+	toolCalls: InstanceAiEvalToolCall[];
+	toolResults: InstanceAiEvalToolResult[];
+	capturedWorkflowIds: string[];
+	durationMs: number;
+	stopReason?: string;
+	error?: string;
+}

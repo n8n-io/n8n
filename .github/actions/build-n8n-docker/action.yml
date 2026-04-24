@@ -1,0 +1,51 @@
+# Builds the n8n and runners CI test images (n8nio/n8n:local +
+# n8nio/runners:local) and caches the tarball under a SHA-derived key so
+# downstream jobs in the same workflow run can restore it via
+# load-n8n-docker.
+#
+# Cache-aware: if the tarball for this SHA is already cached (e.g. a parent
+# workflow ran prepare-docker earlier), the build step is skipped and this
+# action becomes a no-op.
+
+name: 'Build n8n CI Docker image'
+description: 'Builds n8nio/n8n + n8nio/runners test images and publishes them as a SHA-keyed cache tarball for downstream shards.'
+
+inputs:
+  build-variant:
+    description: 'standard or coverage. Coverage uses build:docker:coverage.'
+    required: false
+    default: 'standard'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check cache for existing image
+      id: cache-check
+      uses: actions/cache/restore@640a1c2554105b57832a23eea0b4672fc7a790d5 # v4.2.3
+      with:
+        key: n8n-docker-image-${{ github.sha }}
+        path: /tmp/n8n-image.tar.zst
+        lookup-only: true
+
+    - name: Build Docker image
+      if: steps.cache-check.outputs.cache-hit != 'true'
+      uses: ./.github/actions/setup-nodejs
+      with:
+        build-command: ${{ inputs.build-variant == 'coverage' && 'pnpm build:docker:coverage' || 'pnpm build:docker' }}
+        enable-docker-cache: true
+      env:
+        INCLUDE_TEST_CONTROLLER: 'true'
+
+    - name: Save image tarball
+      if: steps.cache-check.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        docker save n8nio/n8n:local n8nio/runners:local | zstd -T0 -3 -o /tmp/n8n-image.tar.zst
+        ls -lh /tmp/n8n-image.tar.zst
+
+    - name: Publish image tarball to cache
+      if: steps.cache-check.outputs.cache-hit != 'true'
+      uses: actions/cache/save@640a1c2554105b57832a23eea0b4672fc7a790d5 # v4.2.3
+      with:
+        key: n8n-docker-image-${{ github.sha }}
+        path: /tmp/n8n-image.tar.zst
