@@ -39,6 +39,7 @@ import {
 	PlannedTaskStorage,
 	applyPlannedTaskPermissions,
 	releaseTraceClient,
+	submitLangsmithUserFeedback,
 	resumeAgentRun,
 	RunStateRegistry,
 	startBuildWorkflowAgentTask,
@@ -68,6 +69,7 @@ import {
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import type * as Undici from 'undici';
+import { v5 as uuidv5 } from 'uuid';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { AiService } from '@/services/ai.service';
@@ -97,6 +99,11 @@ function createInertAbortSignal(): AbortSignal {
 }
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
+
+// Stable UUID namespace for deterministic feedback IDs. Submitting the same
+// (key, responseId) pair twice produces the same feedback UUID so LangSmith
+// upserts the record (thumbs-down → later text comment = one record, not two).
+const INSTANCE_AI_FEEDBACK_NAMESPACE = 'c5be4c87-5b6e-49ed-afe1-9c5c1f99a5c0';
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
 /**
@@ -339,10 +346,14 @@ export class InstanceAiService {
 		if (!config.enabled) return undefined;
 
 		if (config.provider === 'daytona') {
-			return new BuilderSandboxFactory(config, new SnapshotManager(config.image, this.logger));
+			return new BuilderSandboxFactory(
+				config,
+				new SnapshotManager(config.image, this.logger),
+				this.logger,
+			);
 		}
 
-		return new BuilderSandboxFactory(config);
+		return new BuilderSandboxFactory(config, undefined, this.logger);
 	}
 
 	/** Get or create a sandbox + workspace for a thread. Returns undefined when sandbox is disabled. */
@@ -394,6 +405,31 @@ export class InstanceAiService {
 			client,
 			headers: { Authorization: `${token.tokenType} ${token.accessToken}` },
 		};
+	}
+
+	/**
+	 * Full model-resolver chain shared between chat and eval paths.
+	 *
+	 * Mirrors the resolution used in `processMessage`:
+	 *   1. AI service proxy (when enabled) — wraps with proxy auth.
+	 *   2. HTTP_PROXY (when set, e.g. e2e tests) — wraps with proxy fetch.
+	 *   3. Env vars / user credential — raw settings resolution.
+	 *
+	 * Call this instead of `settingsService.resolveModelConfig` directly so
+	 * the eval endpoint gets the same working model the chat endpoint uses.
+	 */
+	async resolveAgentModelConfig(user: User): Promise<ModelConfig> {
+		if (this.aiService.isProxyEnabled()) {
+			const client = await this.aiService.getClient();
+			const proxyBaseUrl = client.getApiProxyBaseUrl();
+			const tokenManager = new ProxyTokenManager(async () => {
+				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+			});
+			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager);
+		}
+		const httpProxyModel = await this.resolveHttpProxyModel(user);
+		if (httpProxyModel) return httpProxyModel;
+		return await this.settingsService.resolveModelConfig(user);
 	}
 
 	/**
@@ -727,6 +763,73 @@ export class InstanceAiService {
 		});
 	}
 
+	async submitLangsmithFeedback(
+		user: User,
+		threadId: string,
+		responseId: string,
+		payload: { rating: 'up' | 'down'; comment?: string },
+	): Promise<void> {
+		const anchor = await this.dbSnapshotStorage.findLangsmithAnchor(threadId, responseId);
+		if (!anchor) {
+			this.logger.debug('No LangSmith anchor for feedback; skipping annotation', {
+				threadId,
+				responseId,
+			});
+			return;
+		}
+
+		let tracingProxyConfig: ServiceProxyConfig | undefined;
+		if (this.aiService.isProxyEnabled()) {
+			try {
+				const client = await this.aiService.getClient();
+				const baseUrl = client.getApiProxyBaseUrl();
+				const manager = new ProxyTokenManager(
+					async () =>
+						await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() }),
+				);
+				tracingProxyConfig = {
+					apiUrl: baseUrl + '/langsmith',
+					getAuthHeaders: async () => await manager.getAuthHeaders(),
+				};
+			} catch (error) {
+				this.logger.warn('Failed to build LangSmith proxy config for feedback', {
+					threadId,
+					responseId,
+					error: getErrorMessage(error),
+				});
+				return;
+			}
+		}
+
+		const key = 'user_score';
+		const feedbackId = uuidv5(`${key}:${responseId}`, INSTANCE_AI_FEEDBACK_NAMESPACE);
+
+		try {
+			await submitLangsmithUserFeedback({
+				langsmithRunId: anchor.langsmithRunId,
+				langsmithTraceId: anchor.langsmithTraceId,
+				key,
+				score: payload.rating === 'up' ? 1 : 0,
+				value: payload.rating,
+				comment: payload.comment,
+				feedbackId,
+				sourceInfo: {
+					thread_id: threadId,
+					response_id: responseId,
+					user_id: user.id,
+					rating: payload.rating,
+				},
+				proxyConfig: tracingProxyConfig,
+			});
+		} catch (error) {
+			this.logger.warn('Failed to submit LangSmith feedback', {
+				threadId,
+				responseId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
 	startRun(
 		user: User,
 		threadId: string,
@@ -943,6 +1046,10 @@ export class InstanceAiService {
 
 	initGateway(userId: string, data: InstanceAiGatewayCapabilities): void {
 		this.gatewayRegistry.initGateway(userId, data);
+		this.telemetry.track('User connected to Computer Use', {
+			user_id: userId,
+			tool_groups: data.toolCategories.filter((c) => c.enabled).map((c) => c.name),
+		});
 	}
 
 	resolveGatewayRequest(
@@ -1252,8 +1359,7 @@ export class InstanceAiService {
 		const modelId =
 			proxyBaseUrl && tokenManager
 				? await this.resolveProxyModel(user, proxyBaseUrl, tokenManager)
-				: ((await this.resolveHttpProxyModel(user)) ??
-					(await this.settingsService.resolveModelConfig(user)));
+				: await this.resolveAgentModelConfig(user);
 		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
 
@@ -1288,6 +1394,7 @@ export class InstanceAiService {
 			abortSignal,
 			taskStorage,
 			researchMode,
+			timeZone: this.defaultTimeZone,
 			browserMcpConfig: this.instanceAiConfig.browserMcp
 				? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
 				: undefined,
@@ -1461,6 +1568,7 @@ export class InstanceAiService {
 		message: string,
 		researchMode: boolean | undefined,
 		messageGroupId?: string,
+		isReplanFollowUp: boolean = false,
 	): Promise<string> {
 		if (this.runState.hasLiveRun(threadId)) {
 			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
@@ -1483,6 +1591,8 @@ export class InstanceAiService {
 			researchMode,
 			undefined,
 			messageGroupId,
+			undefined,
+			isReplanFollowUp,
 		);
 
 		return runId;
@@ -1519,6 +1629,7 @@ export class InstanceAiService {
 				this.buildPlannedTaskFollowUpMessage('replan', action.graph, action.failedTask),
 				this.runState.getThreadResearchMode(threadId),
 				action.graph.messageGroupId,
+				true,
 			);
 			return;
 		}
@@ -1562,6 +1673,7 @@ export class InstanceAiService {
 		attachments?: InstanceAiAttachment[],
 		messageGroupId?: string,
 		timeZone?: string,
+		isReplanFollowUp: boolean = false,
 	): Promise<void> {
 		const signal = abortController.signal;
 		let mastraRunId = '';
@@ -1607,6 +1719,8 @@ export class InstanceAiService {
 			// Make the current user message available to sub-agents (e.g. planner)
 			// since memory.recall() only returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
+			orchestrationContext.isReplanFollowUp = isReplanFollowUp;
+			orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
 
 			// Thread attachments into the domain context so parse-file can access them
 			if (attachments && attachments.length > 0) {
@@ -2537,10 +2651,18 @@ export class InstanceAiService {
 			}
 			const agentTree = buildAgentTreeFromEvents(events);
 
+			const tracing = this.traceContextsByRunId.get(runId)?.tracing;
+			const saveOptions = {
+				messageGroupId,
+				runIds: groupRunIds,
+				langsmithRunId: tracing?.rootRun.id,
+				langsmithTraceId: tracing?.rootRun.traceId,
+			};
+
 			if (isUpdate) {
-				await snapshotStorage.updateLast(threadId, agentTree, runId, messageGroupId, groupRunIds);
+				await snapshotStorage.updateLast(threadId, agentTree, runId, saveOptions);
 			} else {
-				await snapshotStorage.save(threadId, agentTree, runId, messageGroupId, groupRunIds);
+				await snapshotStorage.save(threadId, agentTree, runId, saveOptions);
 			}
 		} catch (error) {
 			this.logger.warn('Failed to save agent tree snapshot', {

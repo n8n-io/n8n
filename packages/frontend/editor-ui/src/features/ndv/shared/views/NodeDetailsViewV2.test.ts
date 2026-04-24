@@ -8,6 +8,10 @@ import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE, STICKY_NODE_TYPE, VIEWS } from
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import {
@@ -43,9 +47,9 @@ const setupStore = (nodes: Array<ReturnType<typeof createTestNode>>) => {
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
-	workflowsStore.nodeMetadata = nodes.reduce(
-		(acc, node) => ({ ...acc, [node.name]: { pristine: true } }),
-		{},
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.setAllNodeMetadata(
+		nodes.reduce((acc, node) => ({ ...acc, [node.name]: { pristine: true } }), {}),
 	);
 
 	return {

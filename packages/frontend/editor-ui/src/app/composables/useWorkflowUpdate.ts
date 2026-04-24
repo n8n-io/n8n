@@ -168,7 +168,7 @@ export function useWorkflowUpdate() {
 
 			// Mark node as dirty if parameters changed
 			if (!isEqual(existing.parameters, updated.parameters)) {
-				workflowDocumentStore.value.resetParametersLastUpdatedAt(nodeName);
+				workflowDocumentStore.value.touchParametersLastUpdatedAt(nodeName);
 				hasChanges = true;
 			}
 		}
