@@ -396,6 +396,7 @@ export {
 	evalNodePlacementSchema,
 	evalPlanSchema,
 	startTestRunPayloadSchema,
+	StartTestRunRequestDto,
 	type WorkflowEvalDatasetRow,
 	type EvalNodePlacement,
 	type EvalPlan,

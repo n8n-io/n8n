@@ -84,8 +84,15 @@ describe('evaluation.store.ee', () => {
 		test('Starting Test Run', async () => {
 			const result = await store.startTestRun('1');
 
-			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1');
+			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1', {});
 			expect(result).toEqual({ success: true });
+		});
+
+		test('Starting Test Run forwards concurrency option', async () => {
+			await store.startTestRun('1', { concurrency: 5 });
+			expect(startTestRun).toHaveBeenCalledWith(rootStoreMock.restApiContext, '1', {
+				concurrency: 5,
+			});
 		});
 
 		test('Deleting Test Run', async () => {

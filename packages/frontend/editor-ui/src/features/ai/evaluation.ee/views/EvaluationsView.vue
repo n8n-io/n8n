@@ -4,10 +4,15 @@ import { computed, ref, watch } from 'vue';
 
 import RunsSection from '../components/ListRuns/RunsSection.vue';
 import { useEvaluationStore } from '../evaluation.store';
+import { useEvalModeStore } from '../evalMode.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';
 
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nInputNumber, N8nText, N8nTooltip } from '@n8n/design-system';
+
+const DEFAULT_CONCURRENCY = 3;
+const MIN_CONCURRENCY = 1;
+const MAX_CONCURRENCY = 10;
 const props = defineProps<{
 	name: string;
 }>();
@@ -16,15 +21,18 @@ const locale = useI18n();
 const toast = useToast();
 
 const evaluationStore = useEvaluationStore();
+const evalModeStore = useEvalModeStore();
 
 const selectedMetric = ref<string>('');
 const cancellingTestRun = ref<boolean>(false);
+const concurrency = ref<number>(DEFAULT_CONCURRENCY);
 
 const runningTestRun = computed(() => runs.value.find((run) => run.status === 'running'));
 
 async function runTest() {
 	try {
-		await evaluationStore.startTestRun(props.name);
+		const options = evalModeStore.isFeatureEnabled ? { concurrency: concurrency.value } : undefined;
+		await evaluationStore.startTestRun(props.name, options);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 	}
@@ -74,6 +82,26 @@ watch(runningTestRun, (run) => {
 <template>
 	<div :class="$style.evaluationsView">
 		<div :class="$style.header">
+			<div
+				v-if="evalModeStore.isFeatureEnabled && !runningTestRun"
+				:class="$style.concurrencyControl"
+				data-test-id="eval-concurrency-control"
+			>
+				<N8nText size="small" color="text-light">
+					{{ locale.baseText('evaluation.concurrency.label') }}
+				</N8nText>
+				<N8nTooltip placement="top" :content="locale.baseText('evaluation.concurrency.tooltip')">
+					<N8nInputNumber
+						v-model="concurrency"
+						size="small"
+						controls-position="right"
+						:controls="true"
+						:min="MIN_CONCURRENCY"
+						:max="MAX_CONCURRENCY"
+						data-test-id="eval-concurrency-input"
+					/>
+				</N8nTooltip>
+			</div>
 			<N8nButton
 				variant="subtle"
 				v-if="runningTestRun"
@@ -140,6 +168,13 @@ watch(runningTestRun, (run) => {
 
 .runOrStopTestButton {
 	white-space: nowrap;
+}
+
+.concurrencyControl {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-right: var(--spacing--xs);
 }
 
 .runs {

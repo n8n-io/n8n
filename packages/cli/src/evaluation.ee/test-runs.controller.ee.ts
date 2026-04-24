@@ -1,6 +1,7 @@
+import { StartTestRunRequestDto } from '@n8n/api-types';
 import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
-import { Delete, Get, Post, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
 import express from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -9,8 +10,11 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
+import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+const EVAL_MODE_FLAG = 'eval_mode_experiment';
 
 @RestController('/workflows')
 export class TestRunsController {
@@ -20,6 +24,7 @@ export class TestRunsController {
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly telemetry: Telemetry,
+		private readonly postHogClient: PostHogClient,
 	) {}
 
 	private async assertUserHasAccessToWorkflow(workflowId: string, user: User) {
@@ -110,13 +115,24 @@ export class TestRunsController {
 	}
 
 	@Post('/:workflowId/test-runs/new')
-	async create(req: TestRunsRequest.Create, res: express.Response) {
+	async create(
+		req: TestRunsRequest.Create,
+		res: express.Response,
+		@Body payload: StartTestRunRequestDto,
+	) {
 		const { workflowId } = req.params;
 
 		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
 
+		// Gate concurrency on the eval-mode experiment so flag-off requests behave
+		// exactly like the historical sequential runner. Flag-on with no body still
+		// runs sequentially via the same code path (concurrency = 1).
+		const flags = await this.postHogClient.getFeatureFlags(req.user);
+		const flagOn = flags[EVAL_MODE_FLAG] === 'variant';
+		const concurrency = flagOn ? (payload.concurrency ?? 1) : 1;
+
 		// We do not await for the test run to complete
-		void this.testRunnerService.runTest(req.user, workflowId);
+		void this.testRunnerService.runTest(req.user, workflowId, concurrency);
 
 		res.status(202).json({ success: true });
 	}

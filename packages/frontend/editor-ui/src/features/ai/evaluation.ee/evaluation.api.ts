@@ -58,13 +58,20 @@ export const getTestRun = async (context: IRestApiContext, params: GetTestRunPar
 	);
 };
 
-// Start a new test run
-export const startTestRun = async (context: IRestApiContext, workflowId: string) => {
+// Start a new test run. `concurrency` is gated server-side on the
+// eval_mode_experiment flag — when the flag is off the value is ignored and
+// the runner stays sequential.
+export const startTestRun = async (
+	context: IRestApiContext,
+	workflowId: string,
+	options: { concurrency?: number } = {},
+) => {
 	const response = await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
 		endpoint: `/workflows/${workflowId}/test-runs/new`,
 		headers: { 'push-ref': context.pushRef },
+		data: options.concurrency !== undefined ? { concurrency: options.concurrency } : {},
 	});
 	// CLI is returning the response without wrapping it in `data` key
 	return response as { success: boolean };

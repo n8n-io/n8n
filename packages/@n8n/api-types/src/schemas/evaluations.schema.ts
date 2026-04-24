@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { Z } from '../zod-class';
+
 // Named WorkflowEvalDatasetRow to avoid a name collision with `DatasetRow`
 // exported from `@n8n/agents`, which has different semantics (narrower shape
 // for agent-level evals vs. free-form workflow test rows).
@@ -19,9 +21,15 @@ export const evalPlanSchema = z.object({
 });
 export type EvalPlan = z.infer<typeof evalPlanSchema>;
 
-// concurrency is clamped 1–10 server-side in Phase 2; when omitted or when the
+// concurrency is clamped 1–10 by the schema; when omitted or when the
 // feature flag is off, the runner falls back to sequential execution.
-export const startTestRunPayloadSchema = z.object({
+const startTestRunPayloadShape = {
 	concurrency: z.number().int().min(1).max(10).optional(),
-});
+};
+export const startTestRunPayloadSchema = z.object(startTestRunPayloadShape);
 export type StartTestRunPayload = z.infer<typeof startTestRunPayloadSchema>;
+
+// Controller-side DTO used by the @Body decorator's reflection-based validation.
+// Shares the same shape as `startTestRunPayloadSchema` — single source of truth
+// so the two validators cannot silently diverge.
+export class StartTestRunRequestDto extends Z.class(startTestRunPayloadShape) {}

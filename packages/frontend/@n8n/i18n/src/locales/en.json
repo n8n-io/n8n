@@ -4848,6 +4848,8 @@
 	"evaluation.runDetail.notice.useSetInputs": "Tip: Show input columns from your dataset here by adding the evaluation node's 'set inputs' operation to your workflow",
 	"evaluation.runTest": "Run Test",
 	"evaluation.stopTest": "Stop Test",
+	"evaluation.concurrency.label": "Concurrency",
+	"evaluation.concurrency.tooltip": "How many test cases to run in parallel. Your instance's execution limits still apply.",
 	"evaluation.cancelTestRun": "Cancel Test Run",
 	"evaluation.notImplemented": "This feature is not implemented yet!",
 	"evaluation.viewDetails": "View Details",
