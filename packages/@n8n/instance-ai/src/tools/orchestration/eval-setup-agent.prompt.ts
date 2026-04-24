@@ -34,19 +34,57 @@ Wiring: connect the EvaluationTrigger to the same node the main trigger feeds in
 
 ### n8n-nodes-base.evaluation (4 operations)
 
-**setInputs**: rarely used; only if the AI agent needs formatted input transformation. Parameters: \`inputs.values[].name/value\`. In most cases skip.
+**setInputs**: rarely used; only if the AI agent needs formatted input transformation. In most cases skip.
 
-**setOutputs**: captures the AI agent's output into the eval row for scoring.
-- \`outputs.values\`: array of \`{ name, value }\`.
-- \`value\` is an n8n expression. For LangChain agent, \`={{ $json.output }}\` captures the response text. Column names should match the output columns in the task.
+**setOutputs**: captures the AI agent's output into the eval row for scoring. CRITICAL parameter shape (the sub-field names are \`outputName\` and \`outputValue\`, NOT \`name\`/\`value\`):
 
-**setMetrics**: configures scoring metrics.
-- \`metrics\`: array of metric configs.
-- For \`kind='llm-judge'\`: \`{ name, type: 'llm-judge', prompt: <judge prompt>, cannedKey?: <canned key> }\`. If \`cannedKey\` is provided, use the n8n built-in prompt and the \`prompt\` field can match the canned default.
-- For \`kind='exact-match'\`: \`{ name, type: 'exact-match' }\`. Compares setOutputs values to expected values in the dataset by exact string match.
-- For \`kind='contains'\`: \`{ name, type: 'contains' }\`. Substring match.
+\`\`\`
+outputs: {
+  values: [
+    { outputName: "<dataset column name>", outputValue: "<n8n expression>" },
+    ...
+  ]
+}
+\`\`\`
 
-Canned metric keys (use these when the task's canned= hint matches): \`correctness\`, \`relevance\`, \`tool_use\`, \`helpfulness\`.
+For a LangChain agent, the typical shape is:
+
+\`\`\`
+outputs: {
+  values: [
+    { outputName: "expected_output", outputValue: "={{ $json.output }}" }
+  ]
+}
+\`\`\`
+
+Match \`outputName\` to the output columns listed in the task. \`outputValue\` is an n8n expression pulling from the upstream node.
+
+**setMetrics**: configures ONE metric per node. For multiple metrics, add multiple \`Evaluation(setMetrics)\` nodes in series (or use \`customMetrics\` which accepts multiple entries). The \`metric\` parameter is a SINGLE string, NOT an array.
+
+Top-level parameter:
+- \`metric\`: one of
+  - \`correctness\` — AI-judged factual correctness (scale 1-5). Requires \`expectedAnswer\` + \`actualAnswer\`.
+  - \`helpfulness\` — AI-judged helpfulness (scale 1-5). Requires \`userQuery\` + \`actualAnswer\`.
+  - \`stringSimilarity\` — character-level similarity (edit distance, 0-1). Requires \`expectedAnswer\` + \`actualAnswer\`.
+  - \`categorization\` — exact string match (1 or 0). Requires \`expectedAnswer\` + \`actualAnswer\`.
+  - \`toolsUsed\` — whether tools were used (0-1). No ground-truth fields needed.
+  - \`customMetrics\` — user-defined metrics (advanced, rarely chosen).
+
+Depending on \`metric\`, additional fields:
+- For \`correctness\` / \`stringSimilarity\` / \`categorization\`:
+  \`expectedAnswer\`: expression pulling the ground-truth column from the eval row, e.g. \`={{ $json.expected_output }}\`.
+  \`actualAnswer\`: expression pulling the captured-output column, e.g. \`={{ $json.expected_output }}\` (same column name, because setOutputs wrote the agent's answer INTO that column).
+- For \`helpfulness\`:
+  \`userQuery\`: input column expression, e.g. \`={{ $json.input }}\`.
+  \`actualAnswer\`: as above.
+- For \`toolsUsed\`: no extra required fields.
+
+Canned metric key mapping from the task's \`canned=<key>\` hints to the \`metric\` parameter value:
+- \`canned=correctness\` → \`metric: "correctness"\`
+- \`canned=helpfulness\` → \`metric: "helpfulness"\`
+- \`canned=tool_use\` → \`metric: "toolsUsed"\`
+- \`canned=relevance\` → \`metric: "categorization"\` (closest stock match)
+- If no canned key present → use \`customMetrics\` or pick the most appropriate built-in.
 
 **checkIfEvaluating**: gates the workflow flow based on whether the current run is an eval run. Place it immediately after the AI agent. IMPORTANT: this node has TWO native \`main\` output slots — no separate IF node needed:
 - **slot 0 (Evaluation)**: fires when the EvaluationTrigger was executed (i.e., we are in an eval run). Wire this to setOutputs → setMetrics.

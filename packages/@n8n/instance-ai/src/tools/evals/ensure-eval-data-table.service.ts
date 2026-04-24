@@ -41,43 +41,13 @@ export async function ensureEvalDataTable(
 	ctx: InstanceAiContext,
 	input: EnsureEvalDataTableInput,
 ): Promise<{ id: string; name: string }> {
-	// eslint-disable-next-line no-console
-	console.log('[evals] ensureEvalDataTable: creating DataTable', {
-		name: `${input.workflowName} — eval samples`,
-		columns: input.columns,
-		projectId: input.projectId,
-	});
 	const dt = await createDataTableWithUniqueName(
 		ctx,
 		`${input.workflowName} — eval samples`,
 		input.columns.map((n) => ({ name: n, type: 'string' as const })),
 		input.projectId ? { projectId: input.projectId } : undefined,
 	);
-	// eslint-disable-next-line no-console
-	console.log('[evals] ensureEvalDataTable: DataTable created, generating rows next', {
-		dataTableId: dt.id,
-	});
 	const rows = await generateSampleRows(input.workflowForSamples, input.columns);
-	// eslint-disable-next-line no-console
-	console.log('[evals] ensureEvalDataTable: generated rows', {
-		rowCount: rows.length,
-		firstRow: rows[0],
-	});
-	try {
-		const insertResult = await ctx.dataTableService.insertRows(dt.id, rows);
-		// eslint-disable-next-line no-console
-		console.log('[evals] ensureEvalDataTable: insertRows succeeded', {
-			insertResult,
-		});
-	} catch (error) {
-		// eslint-disable-next-line no-console
-		console.error('[evals] ensureEvalDataTable: insertRows FAILED', {
-			dataTableId: dt.id,
-			rowCount: rows.length,
-			firstRow: rows[0],
-			error: error instanceof Error ? error.message : String(error),
-		});
-		throw error;
-	}
+	await ctx.dataTableService.insertRows(dt.id, rows);
 	return { id: dt.id, name: dt.name };
 }

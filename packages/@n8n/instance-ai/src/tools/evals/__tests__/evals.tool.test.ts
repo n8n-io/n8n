@@ -58,6 +58,17 @@ function aiWf(): WorkflowJSON {
 function makeCtx(wf: WorkflowJSON): InstanceAiContext {
 	const ctx = mock<InstanceAiContext>();
 	ctx.workflowService.getAsWorkflowJSON = jest.fn().mockResolvedValue(wf);
+	// `jest-mock-extended` auto-stubs every property proxy-style, but the
+	// Mastra logger is used via optional chaining (`ctx.logger?.info(...)`)
+	// which short-circuits on `undefined` yet throws on "logger exists but
+	// .info is not a function". Provide explicit spies so `?.info`/`?.error`
+	// resolve to callable jest.fn()s during the phase 2 resume tests.
+	ctx.logger = {
+		info: jest.fn(),
+		error: jest.fn(),
+		warn: jest.fn(),
+		debug: jest.fn(),
+	} as never;
 	return ctx;
 }
 

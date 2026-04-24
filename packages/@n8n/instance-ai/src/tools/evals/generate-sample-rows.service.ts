@@ -57,13 +57,6 @@ export async function generateSampleRows(
 	columns: string[],
 ): Promise<Array<Record<string, string>>> {
 	try {
-		// eslint-disable-next-line no-console
-		console.log('[evals] generateSampleRows: calling Haiku', {
-			columns,
-			nodeCount: (workflow.nodes ?? []).length,
-			hasInstanceAiKey: !!process.env.N8N_INSTANCE_AI_MODEL_API_KEY,
-			hasFallbackKey: !!process.env.N8N_AI_ANTHROPIC_KEY,
-		});
 		const agent = createEvalAgent('eval-sample-rows', {
 			model: HAIKU_MODEL,
 			instructions: SYSTEM_INSTRUCTIONS,
@@ -75,19 +68,8 @@ export async function generateSampleRows(
 			},
 		]);
 		const text = extractText(result);
-		// eslint-disable-next-line no-console
-		console.log('[evals] generateSampleRows: got Haiku response', {
-			textLength: text.length,
-			textPreview: text.slice(0, 300),
-		});
 		const parsed: unknown = JSON.parse(extractJsonPayload(text));
 		if (!Array.isArray(parsed) || parsed.length === 0) {
-			// eslint-disable-next-line no-console
-			console.warn('[evals] generateSampleRows: parsed non-array or empty, falling back', {
-				parsedType: typeof parsed,
-				isArray: Array.isArray(parsed),
-				length: Array.isArray(parsed) ? parsed.length : undefined,
-			});
 			return [fallbackRow(columns)];
 		}
 		return parsed.map((rawRow) => {
@@ -103,13 +85,7 @@ export async function generateSampleRows(
 			}
 			return row;
 		});
-	} catch (error) {
-		// eslint-disable-next-line no-console
-		console.error('[evals] generateSampleRows: threw — falling back to empty row', {
-			errorMessage: error instanceof Error ? error.message : String(error),
-			errorName: error instanceof Error ? error.name : undefined,
-			stack: error instanceof Error ? error.stack?.split('\n').slice(0, 5).join('\n') : undefined,
-		});
+	} catch {
 		return [fallbackRow(columns)];
 	}
 }

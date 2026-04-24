@@ -113,20 +113,13 @@ export function createEvalsTool(context: InstanceAiContext) {
 			const datasetChoiceRaw = resumeData.datasetChoice ?? 'generate';
 			let dataTableId: string | undefined = resumeData.existingDataTableId;
 			let datasetChoiceForTask: 'link-existing' | 'later' = 'later';
-			// eslint-disable-next-line no-console
-			console.log('[evals] phase 2 dataset prep', {
+			context.logger?.info('[evals] phase 2 dataset prep', {
 				workflowId: input.workflowId,
 				datasetChoiceRaw,
 				existingDataTableId: resumeData.existingDataTableId,
 				projectId: input.projectId,
 				inputColumns: shape.suggestedInputColumns,
 				outputColumns: shape.suggestedOutputColumns,
-			});
-			context.logger?.info('[evals] phase 2 dataset prep', {
-				workflowId: input.workflowId,
-				datasetChoiceRaw,
-				existingDataTableId: resumeData.existingDataTableId,
-				projectId: input.projectId,
 			});
 			if (datasetChoiceRaw === 'generate') {
 				try {
@@ -138,17 +131,11 @@ export function createEvalsTool(context: InstanceAiContext) {
 					});
 					dataTableId = dt.id;
 					datasetChoiceForTask = 'link-existing';
-					// eslint-disable-next-line no-console
-					console.log('[evals] DataTable created + populated', {
+					context.logger?.info('[evals] DataTable created and populated', {
 						dataTableId: dt.id,
 						dataTableName: dt.name,
 					});
-					context.logger?.info('[evals] DataTable created and populated', {
-						dataTableId: dt.id,
-					});
 				} catch (error) {
-					// eslint-disable-next-line no-console
-					console.error('[evals] ensureEvalDataTable FAILED', error);
 					context.logger?.error('[evals] ensureEvalDataTable failed', {
 						error: error instanceof Error ? error.message : String(error),
 					});

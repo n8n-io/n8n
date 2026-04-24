@@ -332,15 +332,6 @@ export class InstanceAiController {
 		@Body body: InstanceAiConfirmRequestDto,
 	) {
 		this.requireInstanceAiEnabled();
-		// eslint-disable-next-line no-console
-		console.log('[evals] confirm endpoint received', {
-			requestId,
-			approved: body.approved,
-			datasetChoice: body.datasetChoice,
-			existingDataTableId: body.existingDataTableId,
-			enabledMetricIds: body.enabledMetricIds,
-			rawBodyKeys: Object.keys(body),
-		});
 		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
 			approved: body.approved,
 			credentialId: body.credentialId,
