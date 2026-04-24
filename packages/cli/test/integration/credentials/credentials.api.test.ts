@@ -1288,7 +1288,7 @@ describe('PATCH /credentials/:id', () => {
 			credential.type,
 			credential.data,
 		);
-		expect(credentialObject.getData()).toStrictEqual(patchPayload.data);
+		expect(await credentialObject.getData()).toStrictEqual(patchPayload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['credentials'],

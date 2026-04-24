@@ -174,7 +174,7 @@ describe('OAuth2 API', () => {
 			credential,
 			credential.type,
 		);
-		expect(updatedCredential.getData()).toEqual({
+		expect(await updatedCredential.getData()).toEqual({
 			...credentialData,
 			oauthTokenData: { access_token: 'updated_token' },
 		});

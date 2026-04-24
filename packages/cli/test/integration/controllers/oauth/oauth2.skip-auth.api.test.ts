@@ -105,7 +105,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 				credential,
 				credential.type,
 			);
-			expect(updatedCredential.getData()).toEqual({
+			expect(await updatedCredential.getData()).toEqual({
 				...credentialData,
 				oauthTokenData: { access_token: 'new_access_token' },
 			});
@@ -146,7 +146,7 @@ describe('OAuth2 API with skipAuthOnOAuthCallback enabled', () => {
 				credential,
 				credential.type,
 			);
-			expect(updatedCredential.getData()).toEqual({
+			expect(await updatedCredential.getData()).toEqual({
 				...credentialData,
 				oauthTokenData: { access_token: 'different_user_token' },
 			});
