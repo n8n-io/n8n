@@ -91,7 +91,7 @@ const model = languageModel({
   version: 1.3,
   config: {
     name: 'OpenAI Chat Model',
-    parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' } },
+    parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
     credentials: { openAiApi: ${openAiCredExample} }
   }
 });
