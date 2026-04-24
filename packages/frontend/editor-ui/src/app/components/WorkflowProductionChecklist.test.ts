@@ -872,6 +872,50 @@ describe('WorkflowProductionChecklist', () => {
 				]);
 			});
 		});
+
+		it('should mark time saved as completed when timeSavedPerExecution is in workflowDocumentStore but not in props.workflow.settings', async () => {
+			// workflowDocumentStore is updated, but props.workflow is a stale snapshot
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(mockWorkflow.id),
+			);
+			workflowDocumentStore.setSettings({
+				executionOrder: 'v1',
+				timeSavedPerExecution: 5,
+				timeSavedMode: 'fixed',
+			});
+			workflowDocumentStoreRef.value = workflowDocumentStore;
+
+			renderComponent({
+				props: {
+					workflow: {
+						...mockWorkflow,
+						settings: {
+							executionOrder: 'v1',
+						},
+					},
+				},
+				pinia: createTestingPinia(),
+			});
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.actions).toEqual([
+					{
+						id: 'errorWorkflow',
+						title: 'workflowProductionChecklist.errorWorkflow.title',
+						description: 'workflowProductionChecklist.errorWorkflow.description',
+						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
+						completed: false,
+					},
+					{
+						id: 'timeSaved',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
+						moreInfoLink: TIME_SAVED_DOCS_URL,
+						completed: true,
+					},
+				]);
+			});
+		});
 	});
 
 	describe('MCP Actions', () => {

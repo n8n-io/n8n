@@ -72,6 +72,7 @@ describe('credentials tool', () => {
 					{ id: '3', name: 'Notion Key', type: 'notionApi' },
 				],
 				total: 3,
+				hasMore: false,
 			});
 		});
 
@@ -107,6 +108,8 @@ describe('credentials tool', () => {
 					{ id: '4', name: 'Cred 4', type: 'testType' },
 				],
 				total: 10,
+				hasMore: true,
+				hint: expect.stringContaining('Showing 2 of 10'),
 			});
 		});
 
@@ -124,6 +127,97 @@ describe('credentials tool', () => {
 
 			expect((result as { credentials: unknown[] }).credentials).toHaveLength(50);
 			expect((result as { total: number }).total).toBe(60);
+		});
+
+		it('should filter by query (case-insensitive name substring)', async () => {
+			const credentials: CredentialSummary[] = [
+				{ id: '1', name: 'Slack Work', type: 'slackApi' },
+				{ id: '2', name: 'Slack Personal', type: 'slackApi' },
+				{ id: '3', name: 'Notion Key', type: 'notionApi' },
+			];
+			const context = createMockContext();
+			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+
+			const tool = createCredentialsTool(context);
+			const result = await tool.execute!(
+				{ action: 'list' as const, name: 'slack' },
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({
+				credentials: [
+					{ id: '1', name: 'Slack Work', type: 'slackApi' },
+					{ id: '2', name: 'Slack Personal', type: 'slackApi' },
+				],
+				total: 2,
+				hasMore: false,
+			});
+		});
+
+		it('should find a named credential beyond the default limit when query is used', async () => {
+			const credentials: CredentialSummary[] = Array.from({ length: 60 }, (_, i) => ({
+				id: String(i),
+				name: i === 55 ? 'Production Notion' : `Cred ${i}`,
+				type: 'notionApi',
+			}));
+			const context = createMockContext();
+			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+
+			const tool = createCredentialsTool(context);
+			const result = await tool.execute!(
+				{ action: 'list' as const, name: 'production' },
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({
+				credentials: [{ id: '55', name: 'Production Notion', type: 'notionApi' }],
+				total: 1,
+				hasMore: false,
+			});
+		});
+
+		it('should include a hint when the page is truncated and no narrowing filter was used', async () => {
+			const credentials: CredentialSummary[] = Array.from({ length: 60 }, (_, i) => ({
+				id: String(i),
+				name: `Cred ${i}`,
+				type: 'testType',
+			}));
+			const context = createMockContext();
+			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+
+			const tool = createCredentialsTool(context);
+			const result = (await tool.execute!({ action: 'list' as const }, noSuspendCtx())) as {
+				credentials: unknown[];
+				total: number;
+				hasMore: boolean;
+				hint?: string;
+			};
+
+			expect(result.total).toBe(60);
+			expect(result.hasMore).toBe(true);
+			expect(result.hint).toContain('Showing 50 of 60');
+			expect(result.hint).toContain('`name`');
+			expect(result.hint).toContain('`type`');
+			expect(result.hint).toContain('`offset`');
+		});
+
+		it('should not include a hint when a narrowing filter (type) was provided', async () => {
+			const credentials: CredentialSummary[] = Array.from({ length: 60 }, (_, i) => ({
+				id: String(i),
+				name: `Cred ${i}`,
+				type: 'slackApi',
+			}));
+			const context = createMockContext();
+			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+
+			const tool = createCredentialsTool(context);
+			const result = (await tool.execute!(
+				{ action: 'list' as const, type: 'slackApi' },
+				noSuspendCtx(),
+			)) as { hasMore: boolean; hint?: string };
+
+			expect(result.hasMore).toBe(true);
+			expect(result.hint).toBeUndefined();
 		});
 
 		it('should only return id, name, and type fields', async () => {

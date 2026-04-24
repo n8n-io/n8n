@@ -30,6 +30,7 @@ import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-clea
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -184,6 +185,7 @@ export abstract class BaseCommand<F = never> {
 			bridgeTimeout,
 			bridgeMemoryLimit,
 			idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
+			observability: Container.get(ExpressionObservabilityProvider),
 		});
 	}
 

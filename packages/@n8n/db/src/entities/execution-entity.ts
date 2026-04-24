@@ -87,6 +87,17 @@ export class ExecutionEntity {
 
 	@Column({ type: jsonColumnType, nullable: true })
 	tracingContext: { traceparent: string; tracestate?: string } | null;
+	/**
+	 * Optional caller-supplied key that uniquely identifies this logical
+	 * execution. Enforced unique via an index, so concurrent attempts
+	 * with the same key fail on insert and can be skipped instead of
+	 * being run twice. `null` when no key is supplied.
+	 *
+	 * Current use: the Schedule Trigger sets this to the canonical cron
+	 * firing time. Future uses may include webhook idempotency keys.
+	 */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	deduplicationKey: string | null;
 
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];

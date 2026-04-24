@@ -25,6 +25,7 @@ import * as path from 'path';
 // eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
 import {
 	generateSingleVersionSchemaFile,
+	isPropertyOptional,
 	planSplitVersionSchemaFiles,
 } from './generate-zod-schemas';
 import { checkConditions } from '../validation/display-options';
@@ -54,6 +55,29 @@ const DISCRIMINATOR_FIELDS = ['resource', 'operation', 'mode'];
 
 /** Custom API Call operations don't have fixed schemas - skip them */
 const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
+/**
+ * Property types that render UI affordances but carry no data in the saved
+ * workflow JSON. They are skipped entirely from generated types/schemas.
+ *
+ * Note: `button` and `icon` are not in this list — they can carry data.
+ * See the type mappers for their dedicated schemas.
+ */
+const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credentials', 'callout']);
+
+/**
+ * Runtime shape for `type: 'icon'` properties (see N8nIconPicker).
+ * Values are stored as `{ type: 'icon' | 'emoji'; value: string }`.
+ */
+const ICON_TS_TYPE = "{ type: 'icon' | 'emoji'; value: string }";
+
+/**
+ * Runtime shape for `type: 'workflowSelector'` properties.
+ * The UI hardcodes two modes (see useWorkflowResourceLocatorModes.ts): `list` and `id`.
+ * Stored as an INodeParameterResourceLocator, or as an Expression string.
+ */
+const WORKFLOW_SELECTOR_TS_TYPE =
+	"{ __rl: true; mode: 'list' | 'id'; value: string | number; cachedResultName?: string; cachedResultUrl?: string } | Expression<string>";
 
 const ASSIGNMENT_TYPE_JSDOC = `/**
  * Assignment type determines how the value is interpreted.
@@ -782,7 +806,16 @@ function mapNestedPropertyTypeInner(
 		case 'notice':
 		case 'curlImport':
 		case 'credentials':
+		case 'callout':
 			return '';
+		case 'button':
+			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
+			// store the user-typed text; pure-action buttons store the default ''.
+			return 'string | Expression<string>';
+		case 'icon':
+			return ICON_TS_TYPE;
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_TS_TYPE;
 		case 'credentialsSelect':
 			// credentialsSelect is a string value (credential type name)
 			return 'string | Expression<string>';
@@ -806,28 +839,6 @@ function quotePropertyName(name: string): string {
 		return `'${name.replace(/'/g, "\\'")}'`;
 	}
 	return name;
-}
-
-/**
- * Determine if a property should be optional in the generated type.
- * A property is optional if it's not required OR if it has a default value.
- * Properties with defaults can be omitted - the default will be used at runtime.
- */
-function isPropertyOptional(prop: NodeProperty): boolean {
-	const hasDefault = 'default' in prop && prop.default !== undefined;
-	// A fixedCollection with minRequiredFields > 0 cannot satisfy the
-	// constraint via its default (typically `{}`), so the property itself
-	// must be present — overrides the hasDefault shortcut.
-	const minRequired = prop.typeOptions?.minRequiredFields;
-	if (
-		prop.type === 'fixedCollection' &&
-		prop.typeOptions?.multipleValues === true &&
-		typeof minRequired === 'number' &&
-		minRequired > 0
-	) {
-		return false;
-	}
-	return !prop.required || hasDefault;
 }
 
 /**
@@ -973,7 +984,7 @@ function generateFixedCollectionType(
 
 		for (const nestedProp of group.values) {
 			// Skip notice and other display-only types
-			if (['notice', 'curlImport', 'credentials'].includes(nestedProp.type)) {
+			if (DISPLAY_ONLY_PROPERTY_TYPES.has(nestedProp.type)) {
 				continue;
 			}
 
@@ -1080,7 +1091,7 @@ function mergeCollectionProperties(properties: NodeProperty[]): NodeProperty[] {
 
 	for (const prop of properties) {
 		// Skip display-only types
-		if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
 			continue;
 		}
 
@@ -1137,7 +1148,7 @@ function generateCollectionType(
 
 		// Skip notice and other display-only types
 		const nestedType = (nestedProp as NodeProperty).type;
-		if (['notice', 'curlImport', 'credentials'].includes(nestedType)) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(nestedType)) {
 			continue;
 		}
 
@@ -1296,7 +1307,19 @@ function mapPropertyTypeInner(
 		case 'notice':
 		case 'curlImport':
 		case 'credentials':
-			return ''; // Skip these types
+		case 'callout':
+			return ''; // Skip display-only types
+
+		case 'button':
+			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
+			// store the user-typed text; pure-action buttons store the default ''.
+			return 'string | Expression<string>';
+
+		case 'icon':
+			return ICON_TS_TYPE;
+
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_TS_TYPE;
 
 		case 'credentialsSelect':
 			// credentialsSelect is a string value (credential type name)
@@ -1420,7 +1443,7 @@ export function getPropertiesForCombination(
 		}
 
 		// Skip display-only types
-		if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
 			continue;
 		}
 
@@ -2093,9 +2116,7 @@ export function generateSharedFile(
 	lines.push('');
 
 	// Check properties
-	const outputProps = filteredProperties.filter(
-		(p) => !['notice', 'curlImport', 'credentials'].includes(p.type),
-	);
+	const outputProps = filteredProperties.filter((p) => !DISPLAY_ONLY_PROPERTY_TYPES.has(p.type));
 
 	// Helper types
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
@@ -2658,9 +2679,7 @@ export function generateSingleVersionTypeFile(
 		aiInputTypes.length > 0 ? `${nodeName}${versionSuffix}SubnodeConfig` : undefined;
 
 	// Check filtered properties that will actually be output
-	const outputProps = filteredProperties.filter(
-		(p) => !['notice', 'curlImport', 'credentials'].includes(p.type),
-	);
+	const outputProps = filteredProperties.filter((p) => !DISPLAY_ONLY_PROPERTY_TYPES.has(p.type));
 
 	// Helper types (if needed) based on filtered properties
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
@@ -2923,9 +2942,9 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 	lines.push('');
 	lines.push('');
 
-	// Check properties that will actually be output (skip notice, curlImport, etc.) across all node entries
+	// Check properties that will actually be output across all node entries
 	const outputProps = nodeArray.flatMap((n) =>
-		n.properties.filter((p) => !['notice', 'curlImport', 'credentials'].includes(p.type)),
+		n.properties.filter((p) => !DISPLAY_ONLY_PROPERTY_TYPES.has(p.type)),
 	);
 
 	// Helper types (if needed) - only add if they'll actually be used in output

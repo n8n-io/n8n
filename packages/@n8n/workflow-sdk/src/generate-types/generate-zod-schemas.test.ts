@@ -5,6 +5,7 @@ import {
 	stripDiscriminatorKeysFromDisplayOptions,
 	generateDiscriminatorSchemaFile,
 	generateSubnodeConfigSchemaCode,
+	isPropertyOptional,
 	mapPropertyToZodSchema,
 	mergeDisplayOptions,
 	extractDefaultsForDisplayOptions,
@@ -82,6 +83,114 @@ describe('mapPropertyToZodSchema for resourceLocator', () => {
 		const schema = mapPropertyToZodSchema(prop);
 
 		expect(schema).toContain("z.union([z.literal('list'), z.literal('id')]");
+	});
+});
+
+describe('isPropertyOptional', () => {
+	// Regression: required: true + default: '' on a `string` field used to be
+	// treated as optional, because any defined default short-circuited the
+	// check. The runtime required-check (getNodeParametersIssues) rejects an
+	// empty string, so the generated schema must match.
+	it('treats required string with empty default as required', () => {
+		const prop: NodeProperty = {
+			name: 'fieldToSplitOut',
+			displayName: 'Fields To Split Out',
+			type: 'string',
+			required: true,
+			default: '',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(false);
+	});
+
+	it.each(['options', 'dateTime'] as const)(
+		'treats required %s with empty default as required',
+		(type) => {
+			const prop: NodeProperty = {
+				name: 'field',
+				displayName: 'Field',
+				type,
+				required: true,
+				default: '',
+			};
+
+			expect(isPropertyOptional(prop)).toBe(false);
+		},
+	);
+
+	it('treats required multiOptions with empty-array default as required', () => {
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'multiOptions',
+			required: true,
+			default: [],
+		};
+
+		expect(isPropertyOptional(prop)).toBe(false);
+	});
+
+	it('treats required string with meaningful default as optional', () => {
+		// Expression defaults like '={{ $json.chatInput }}' do satisfy required.
+		const prop: NodeProperty = {
+			name: 'text',
+			displayName: 'Text',
+			type: 'string',
+			required: true,
+			default: '={{ $json.chatInput }}',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(true);
+	});
+
+	it('treats required string with non-empty literal default as optional', () => {
+		const prop: NodeProperty = {
+			name: 'method',
+			displayName: 'Method',
+			type: 'string',
+			required: true,
+			default: 'GET',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(true);
+	});
+
+	it('treats non-required string with empty default as optional', () => {
+		const prop: NodeProperty = {
+			name: 'note',
+			displayName: 'Note',
+			type: 'string',
+			default: '',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(true);
+	});
+
+	it('emits a non-optional schema line for required string with empty default end-to-end', () => {
+		// End-to-end check: the generated .schema.js line for splitOut's
+		// fieldToSplitOut (required: true, default: '') must NOT be .optional().
+		const node: NodeTypeDescription = {
+			name: 'n8n-nodes-base.splitOut',
+			displayName: 'Split Out',
+			version: 1,
+			group: ['transform'],
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					name: 'fieldToSplitOut',
+					displayName: 'Fields To Split Out',
+					type: 'string',
+					required: true,
+					default: '',
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toMatch(/fieldToSplitOut:\s*stringOrExpression\s*,/);
+		expect(code).not.toMatch(/fieldToSplitOut:\s*stringOrExpression\.optional\(\)/);
 	});
 });
 
@@ -1422,5 +1531,211 @@ describe('mapPropertyToZodSchema recursion for nested collection/fixedCollection
 		expect(schema).not.toContain('z.unknown()');
 		expect(schema).toContain('inner: z.object({');
 		expect(schema).toContain('leaf: stringOrExpression.optional()');
+	});
+});
+
+describe('mapPropertyToZodSchema for display-only callout property', () => {
+	it('returns empty string for top-level callout property', () => {
+		const prop = {
+			name: 'info',
+			displayName: 'Info',
+			type: 'callout',
+			default: '',
+		} as unknown as NodeProperty;
+
+		expect(mapPropertyToZodSchema(prop)).toBe('');
+	});
+
+	it('skips callout properties nested inside a fixedCollection', () => {
+		const prop = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'info',
+							displayName: 'Info',
+							type: 'callout',
+							default: '',
+						},
+						{
+							name: 'keep',
+							displayName: 'Keep',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).not.toContain('info');
+		expect(schema).toContain('keep: stringOrExpression.optional()');
+	});
+
+	it('skips callout properties nested inside a collection', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'info',
+					displayName: 'Info',
+					type: 'callout',
+					default: '',
+				},
+				{
+					name: 'keep',
+					displayName: 'Keep',
+					type: 'string',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).not.toContain('info');
+		expect(schema).toContain('keep: stringOrExpression.optional()');
+	});
+});
+
+describe('mapPropertyToZodSchema for data-carrying button and icon types', () => {
+	it('maps a top-level button property to stringOrExpression (covers AiTransform instructions)', () => {
+		const prop = {
+			name: 'instructions',
+			displayName: 'Instructions',
+			type: 'button',
+			default: '',
+			typeOptions: { buttonConfig: { hasInputField: true } },
+		} as unknown as NodeProperty;
+
+		expect(mapPropertyToZodSchema(prop)).toBe('stringOrExpression');
+	});
+
+	it('maps a button nested inside a collection to stringOrExpression', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'instructions',
+					displayName: 'Instructions',
+					type: 'button',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('instructions: stringOrExpression.optional()');
+	});
+
+	it('maps a top-level icon property to a { type, value } object schema (covers ChatTrigger)', () => {
+		const prop = {
+			name: 'agentIcon',
+			displayName: 'Agent Icon',
+			type: 'icon',
+			default: { type: 'icon', value: 'bot' },
+			noDataExpression: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain("z.literal('icon')");
+		expect(schema).toContain("z.literal('emoji')");
+		expect(schema).toContain('value: z.string()');
+	});
+
+	it('maps an icon nested inside a fixedCollection to a { type, value } object schema', () => {
+		const prop = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'icon',
+							displayName: 'Icon',
+							type: 'icon',
+							default: { type: 'icon', value: 'comment' },
+						},
+					],
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain("z.literal('icon')");
+		expect(schema).toContain("z.literal('emoji')");
+		expect(schema).toContain('value: z.string()');
+	});
+});
+
+describe('mapPropertyToZodSchema for workflowSelector', () => {
+	it('emits a resource-locator-shaped union with list/id modes for a top-level property', () => {
+		const prop = {
+			name: 'workflowId',
+			displayName: 'Workflow',
+			type: 'workflowSelector',
+			default: '',
+			required: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
+		expect(schema).toContain('value: z.union([z.string(), z.number()])');
+		expect(schema).toContain('cachedResultName: z.string().optional()');
+		expect(schema).toContain('expressionSchema');
+	});
+
+	it('emits the same schema for a workflowSelector nested inside a collection', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'workflowId',
+					displayName: 'Workflow',
+					type: 'workflowSelector',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
 	});
 });
