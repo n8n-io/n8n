@@ -26,7 +26,7 @@ const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	projectName: string | null;
-	headerActions: ActionDropdownItem<string>[];
+	headerActions: Array<ActionDropdownItem<string>>;
 	chatColumnCollapsed: boolean;
 }>();
 

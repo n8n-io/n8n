@@ -61,12 +61,12 @@ export function useProjectAgentsList(projectId: Ref<string>) {
 		return await entry.inFlight;
 	}
 
-	function refresh(): Promise<AgentResource[]> {
+	async function refresh(): Promise<AgentResource[]> {
 		const id = projectId.value;
-		if (!id) return Promise.resolve([]);
+		if (!id) return [];
 		const entry = getEntry(id);
 		entry.list.value = null;
-		return ensureLoaded();
+		return await ensureLoaded();
 	}
 
 	return { list, ensureLoaded, refresh };
