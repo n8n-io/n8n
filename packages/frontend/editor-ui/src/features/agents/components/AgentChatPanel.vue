@@ -217,6 +217,7 @@ onBeforeUnmount(() => {
 		<AgentChatMessageList v-else :messages="messages" :messaging-state="messagingState" />
 
 		<div :class="$style.inputArea">
+			<slot name="above-input" />
 			<ChatInputBase
 				v-model="inputText"
 				placeholder="Type a message..."
@@ -301,6 +302,10 @@ onBeforeUnmount(() => {
 
 .inputArea {
 	padding: var(--spacing--sm);
+	border-top: var(--border);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
 .errorBanner {

@@ -138,7 +138,8 @@ async function renderView() {
 const commonStubs = {
 	AgentChatPanel: {
 		name: 'AgentChatPanel',
-		template: '<div data-testid="chat-panel-stub" :data-endpoint="endpoint" />',
+		template:
+			'<div data-testid="chat-panel-stub" :data-endpoint="endpoint"><slot name="above-input" /></div>',
 		props: [
 			'endpoint',
 			'projectId',

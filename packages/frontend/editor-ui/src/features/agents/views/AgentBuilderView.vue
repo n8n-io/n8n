@@ -513,12 +513,6 @@ function onContinueLoaded(count: number) {
 					</N8nRadioButtons>
 				</N8nTooltip>
 			</div>
-			<AgentChatQuickActions
-				:tools="localConfig?.tools ?? []"
-				:project-id="projectId"
-				:agent-id="agentId"
-				@update:tools="onQuickActionAddTool"
-			/>
 			<div :class="$style.chatBody">
 				<AgentChatPanel
 					v-if="initialized && chatModeOpened.test && effectiveSessionId"
@@ -539,7 +533,16 @@ function onContinueLoaded(count: number) {
 					@continue-loaded="onContinueLoaded"
 					@open-build="onOpenBuildFromChat"
 					@back="onBackFromChat"
-				/>
+				>
+					<template #above-input>
+						<AgentChatQuickActions
+							:tools="localConfig?.tools ?? []"
+							:project-id="projectId"
+							:agent-id="agentId"
+							@update:tools="onQuickActionAddTool"
+						/>
+					</template>
+				</AgentChatPanel>
 				<AgentChatPanel
 					v-if="initialized && chatModeOpened.build"
 					v-show="chatMode === 'build'"
@@ -554,7 +557,16 @@ function onContinueLoaded(count: number) {
 					@config-updated="onConfigUpdated"
 					@update:streaming="onBuildChatStreamingChange"
 					@back="onBackFromChat"
-				/>
+				>
+					<template #above-input>
+						<AgentChatQuickActions
+							:tools="localConfig?.tools ?? []"
+							:project-id="projectId"
+							:agent-id="agentId"
+							@update:tools="onQuickActionAddTool"
+						/>
+					</template>
+				</AgentChatPanel>
 			</div>
 		</aside>
 
