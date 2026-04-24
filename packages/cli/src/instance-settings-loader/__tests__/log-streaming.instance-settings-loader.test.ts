@@ -155,6 +155,17 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 			await expectRejectsWithBootstrappingError(loader, /duplicate \(type,label\)/);
 		});
 
+		it('throws on duplicate (type, label) even when items have distinct ids', async () => {
+			const loader = createLoader({
+				logStreamingDestinations: JSON.stringify([
+					{ type: 'webhook', id: UUID_A, label: 'Audit', url: 'https://a.test' },
+					{ type: 'webhook', id: UUID_B, label: 'Audit', url: 'https://b.test' },
+				]),
+			});
+
+			await expectRejectsWithBootstrappingError(loader, /duplicate \(type,label\)/);
+		});
+
 		it('rejects unknown top-level fields', async () => {
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([

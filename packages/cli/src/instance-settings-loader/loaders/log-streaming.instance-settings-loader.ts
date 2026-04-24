@@ -225,7 +225,9 @@ export class LogStreamingInstanceSettingsLoader {
 					);
 				}
 				seenIds.add(item.id);
-			} else if (item.label) {
+			}
+
+			if (item.label) {
 				const key = `${item.type}:${item.label}`;
 				if (seenLabelType.has(key)) {
 					throw new Error(
