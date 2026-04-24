@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import type * as VueRouter from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
 import ResourceCenterView from '../ResourceCenterView.vue';
 
@@ -31,7 +32,7 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('vue-router')>();
+	const actual = await importOriginal<typeof VueRouter>();
 
 	return {
 		...actual,
