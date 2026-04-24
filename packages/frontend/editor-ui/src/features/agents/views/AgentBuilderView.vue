@@ -4,7 +4,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import {
 	N8nButton,
 	N8nIcon,
-	N8nNavigationDropdown,
+	N8nActionDropdown,
 	N8nRadioButtons,
 	N8nText,
 	N8nTooltip,
@@ -661,19 +661,18 @@ function onRemoveTool(index: number) {
 
 interface SessionMenuItem {
 	id: string;
-	title: string;
+	label: string;
 	disabled?: boolean;
-	divided?: boolean;
 }
 
 const sessionMenu = computed<SessionMenuItem[]>(() => {
 	const threads = sessionsStore.threads ?? [];
 	if (threads.length === 0) {
-		return [{ id: '__empty__', title: 'No previous chats', disabled: true }];
+		return [{ id: '__empty__', label: 'No previous chats', disabled: true }];
 	}
 	return threads.map((thread) => ({
 		id: thread.id,
-		title: thread.title ?? `Session ${thread.sessionNumber}`,
+		label: thread.title ?? `Session ${thread.sessionNumber}`,
 	}));
 });
 
@@ -841,21 +840,25 @@ function onSwitchAgent(nextAgentId: string) {
 						<template #above-input>
 							<div :class="$style.quickActionsRow">
 								<div :class="$style.chatSessionControls">
-									<N8nNavigationDropdown
-										:menu="sessionMenu"
-										submenu-class="agent-chat-session-menu"
-										data-testid="agent-chat-session-picker"
+									<N8nActionDropdown
+										:items="sessionMenu"
+										placement="top-start"
+										extra-popper-class="agent-chat-session-menu"
+										max-height="220px"
+										data-test-id="agent-chat-session-picker"
 										@select="onSessionPick"
 									>
-										<button
-											type="button"
-											:class="$style.historyBtn"
-											aria-label="Session history"
-											data-testid="agent-chat-session-picker-btn"
-										>
-											<N8nIcon icon="history" :size="14" />
-										</button>
-									</N8nNavigationDropdown>
+										<template #activator>
+											<button
+												type="button"
+												:class="$style.historyBtn"
+												aria-label="Session history"
+												data-testid="agent-chat-session-picker-btn"
+											>
+												<N8nIcon icon="history" :size="14" />
+											</button>
+										</template>
+									</N8nActionDropdown>
 									<button
 										v-if="currentSessionHasMessages"
 										type="button"
@@ -1178,8 +1181,7 @@ function onSwitchAgent(nextAgentId: string) {
 .chatSessionControls {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 }
 
 .quickActionsRow > :first-child {
