@@ -88,7 +88,7 @@ export class NodeTestHarness {
 			this.assertOutput(testData, result, nodeExecutionOrder);
 
 			if (options.customAssertions) options.customAssertions();
-		});
+		}, 20_000);
 	}
 
 	@Memoized
@@ -228,6 +228,7 @@ export class NodeTestHarness {
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({
 			executionId: '1',
 			webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+			formWaitingBaseUrl: 'http://localhost/waiting-form',
 			hooks,
 			// Get from node.parameters
 			currentNodeParameters: undefined,

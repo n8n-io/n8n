@@ -13,17 +13,12 @@ import type {
 import type { ListQuery } from '@/requests';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import { createLimitSchema } from './schemas';
 
 const MAX_RESULTS = 200;
 
 const inputSchema = {
-	limit: z
-		.number()
-		.int()
-		.positive()
-		.max(MAX_RESULTS)
-		.optional()
-		.describe(`Limit the number of results (max ${MAX_RESULTS})`),
+	limit: createLimitSchema(MAX_RESULTS),
 	query: z.string().optional().describe('Filter by name or description'),
 	projectId: z.string().optional(),
 } satisfies z.ZodRawShape;

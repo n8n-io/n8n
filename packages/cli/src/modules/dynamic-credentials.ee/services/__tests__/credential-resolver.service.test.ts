@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type User, type WorkflowRepository } from '@n8n/db';
 import {
 	CredentialResolverValidationError,
 	type CredentialResolverConfiguration,
@@ -7,6 +7,8 @@ import {
 } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
+
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
@@ -22,6 +24,8 @@ describe('DynamicCredentialResolverService', () => {
 	let mockRegistry: jest.Mocked<DynamicCredentialResolverRegistry>;
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockExpressionService: jest.Mocked<ResolverConfigExpressionService>;
+	let mockWorkflowRepository: jest.Mocked<WorkflowRepository>;
+	let mockActiveWorkflowManager: jest.Mocked<ActiveWorkflowManager>;
 
 	const mockResolverImplementation = {
 		metadata: {
@@ -72,6 +76,12 @@ describe('DynamicCredentialResolverService', () => {
 			find: jest.fn(),
 			findOneBy: jest.fn(),
 			remove: jest.fn(),
+			manager: {
+				transaction: jest.fn(async (cb: (trx: unknown) => Promise<void>) => {
+					const trx = { remove: mockRepository.remove };
+					await cb(trx);
+				}),
+			},
 		} as unknown as jest.Mocked<DynamicCredentialResolverRepository>;
 
 		mockRegistry = {
@@ -87,12 +97,26 @@ describe('DynamicCredentialResolverService', () => {
 			resolve: jest.fn(async (config) => await Promise.resolve(config)),
 		} as unknown as jest.Mocked<ResolverConfigExpressionService>;
 
+		mockWorkflowRepository = {
+			findByCredentialResolverId: jest.fn().mockResolvedValue([]),
+			findActiveByCredentialResolverId: jest.fn().mockResolvedValue([]),
+			clearCredentialResolverId: jest.fn().mockResolvedValue(undefined),
+			update: jest.fn().mockResolvedValue(undefined),
+		} as unknown as jest.Mocked<WorkflowRepository>;
+
+		mockActiveWorkflowManager = {
+			remove: jest.fn().mockResolvedValue(undefined),
+			add: jest.fn().mockResolvedValue(undefined),
+		} as unknown as jest.Mocked<ActiveWorkflowManager>;
+
 		service = new DynamicCredentialResolverService(
 			mockLogger,
 			mockRepository,
 			mockRegistry,
 			mockCipher,
 			mockExpressionService,
+			mockWorkflowRepository,
+			mockActiveWorkflowManager,
 		);
 	});
 
@@ -456,8 +480,48 @@ describe('DynamicCredentialResolverService', () => {
 		});
 	});
 
+	describe('findAffectedWorkflows', () => {
+		it('should return workflows referencing the resolver', async () => {
+			const entity = createMockEntity();
+			mockRepository.findOneBy.mockResolvedValue(entity);
+
+			const workflows = [
+				{ id: 'wf-1', name: 'Workflow 1' },
+				{ id: 'wf-2', name: 'Workflow 2' },
+			];
+			mockWorkflowRepository.findByCredentialResolverId.mockResolvedValue(workflows);
+
+			const result = await service.findAffectedWorkflows('resolver-id-123');
+
+			expect(mockWorkflowRepository.findByCredentialResolverId).toHaveBeenCalledWith(
+				'resolver-id-123',
+			);
+			expect(result).toEqual(workflows);
+		});
+
+		it('should return empty array when no workflows reference the resolver', async () => {
+			const entity = createMockEntity();
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockWorkflowRepository.findByCredentialResolverId.mockResolvedValue([]);
+
+			const result = await service.findAffectedWorkflows('resolver-id-123');
+
+			expect(result).toEqual([]);
+		});
+
+		it('should throw DynamicCredentialResolverNotFoundError when resolver not found', async () => {
+			mockRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(service.findAffectedWorkflows('non-existent-id')).rejects.toThrow(
+				DynamicCredentialResolverNotFoundError,
+			);
+
+			expect(mockWorkflowRepository.findByCredentialResolverId).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('delete', () => {
-		it('should delete an existing resolver', async () => {
+		it('should clear workflow references and delete the resolver in a transaction', async () => {
 			const entity = createMockEntity();
 
 			mockRepository.findOneBy.mockResolvedValue(entity);
@@ -466,10 +530,107 @@ describe('DynamicCredentialResolverService', () => {
 			await service.delete('resolver-id-123');
 
 			expect(mockRepository.findOneBy).toHaveBeenCalledWith({ id: 'resolver-id-123' });
+			expect(mockRepository.manager.transaction).toHaveBeenCalled();
+			expect(mockWorkflowRepository.clearCredentialResolverId).toHaveBeenCalledWith(
+				'resolver-id-123',
+				expect.anything(), // transaction manager
+			);
 			expect(mockRepository.remove).toHaveBeenCalledWith(entity);
 			expect(mockLogger.debug).toHaveBeenCalledWith(
 				expect.stringContaining('Deleted credential resolver'),
 			);
+		});
+
+		it('should clear workflow references before removing the resolver', async () => {
+			const entity = createMockEntity();
+			const callOrder: string[] = [];
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockWorkflowRepository.clearCredentialResolverId.mockImplementation(async () => {
+				callOrder.push('clearCredentialResolverId');
+			});
+			mockRepository.remove.mockImplementation(async () => {
+				callOrder.push('remove');
+				return entity;
+			});
+
+			await service.delete('resolver-id-123');
+
+			expect(callOrder).toEqual(['clearCredentialResolverId', 'remove']);
+		});
+
+		it('should reactivate active workflows after deleting the resolver', async () => {
+			const entity = createMockEntity();
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRepository.remove.mockResolvedValue(entity);
+			mockWorkflowRepository.findActiveByCredentialResolverId.mockResolvedValue([
+				'wf-active-1',
+				'wf-active-2',
+			]);
+
+			await service.delete('resolver-id-123');
+
+			expect(mockWorkflowRepository.findActiveByCredentialResolverId).toHaveBeenCalledWith(
+				'resolver-id-123',
+			);
+			expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith('wf-active-1');
+			expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith('wf-active-2');
+			expect(mockActiveWorkflowManager.add).toHaveBeenCalledWith('wf-active-1', 'update');
+			expect(mockActiveWorkflowManager.add).toHaveBeenCalledWith('wf-active-2', 'update');
+		});
+
+		it('should not reactivate workflows when none are active', async () => {
+			const entity = createMockEntity();
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRepository.remove.mockResolvedValue(entity);
+			mockWorkflowRepository.findActiveByCredentialResolverId.mockResolvedValue([]);
+
+			await service.delete('resolver-id-123');
+
+			expect(mockActiveWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(mockActiveWorkflowManager.add).not.toHaveBeenCalled();
+		});
+
+		it('should deactivate workflow and log warning when reactivation fails', async () => {
+			const entity = createMockEntity();
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRepository.remove.mockResolvedValue(entity);
+			mockWorkflowRepository.findActiveByCredentialResolverId.mockResolvedValue(['wf-active-1']);
+			mockActiveWorkflowManager.remove.mockRejectedValue(new Error('Reactivation failed'));
+
+			await expect(service.delete('resolver-id-123')).resolves.toBeUndefined();
+
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to reactivate workflow'),
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+			expect(mockWorkflowRepository.update).toHaveBeenCalledWith('wf-active-1', {
+				active: false,
+				activeVersionId: null,
+			});
+		});
+
+		it('should process workflows sequentially during reactivation', async () => {
+			const entity = createMockEntity();
+			const callOrder: string[] = [];
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRepository.remove.mockResolvedValue(entity);
+			mockWorkflowRepository.findActiveByCredentialResolverId.mockResolvedValue(['wf-1', 'wf-2']);
+			mockActiveWorkflowManager.remove.mockImplementation(async (id: string) => {
+				callOrder.push(`remove-${id}`);
+			});
+			mockActiveWorkflowManager.add.mockImplementation(async (id) => {
+				callOrder.push(`add-${id}`);
+				return { webhooks: false, triggersAndPollers: false };
+			});
+
+			await service.delete('resolver-id-123');
+
+			expect(callOrder).toEqual(['remove-wf-1', 'add-wf-1', 'remove-wf-2', 'add-wf-2']);
 		});
 
 		it('should throw DynamicCredentialResolverNotFoundError when resolver not found', async () => {
@@ -479,6 +640,7 @@ describe('DynamicCredentialResolverService', () => {
 				DynamicCredentialResolverNotFoundError,
 			);
 
+			expect(mockWorkflowRepository.clearCredentialResolverId).not.toHaveBeenCalled();
 			expect(mockRepository.remove).not.toHaveBeenCalled();
 		});
 	});

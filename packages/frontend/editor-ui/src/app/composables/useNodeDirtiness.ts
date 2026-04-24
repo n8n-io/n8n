@@ -126,13 +126,19 @@ export function useNodeDirtiness() {
 	const workflowsStore = useWorkflowsStore();
 
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
+	function getIncomingConnections(nodeName: string): INodeConnections {
+		return workflowDocumentStore.value.incomingConnectionsByNodeName(nodeName);
+	}
+
+	function getOutgoingConnections(nodeName: string): INodeConnections {
+		return workflowDocumentStore.value.outgoingConnectionsByNodeName(nodeName);
+	}
+
 	function getParentSubNodes(nodeName: string) {
-		return Object.entries(workflowsStore.incomingConnectionsByNodeName(nodeName))
+		return Object.entries(getIncomingConnections(nodeName))
 			.filter(([type]) => (type as NodeConnectionType) !== NodeConnectionTypes.Main)
 			.flatMap(([, typeConnections]) => typeConnections.flat().filter((conn) => conn !== null));
 	}
@@ -141,7 +147,7 @@ export function useNodeDirtiness() {
 		nodeName: string,
 		after: number,
 	): CanvasNodeDirtinessType | undefined {
-		if ((workflowsStore.getParametersLastUpdate(nodeName) ?? 0) > after) {
+		if ((workflowDocumentStore.value.getParametersLastUpdate(nodeName) ?? 0) > after) {
 			return CanvasNodeDirtiness.PARAMETERS_UPDATED;
 		}
 
@@ -170,8 +176,8 @@ export function useNodeDirtiness() {
 					command,
 					nodeName,
 					[],
-					workflowsStore.incomingConnectionsByNodeName,
-					workflowsStore.outgoingConnectionsByNodeName,
+					getIncomingConnections,
+					getOutgoingConnections,
 				)
 			) {
 				return CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED;
@@ -202,9 +208,7 @@ export function useNodeDirtiness() {
 
 			myVisited.add(nodeName);
 
-			for (const [type, typeConnections] of Object.entries(
-				workflowsStore.outgoingConnectionsByNodeName(nodeName),
-			)) {
+			for (const [type, typeConnections] of Object.entries(getOutgoingConnections(nodeName))) {
 				if ((type as NodeConnectionType) !== NodeConnectionTypes.Main) {
 					continue;
 				}
@@ -221,9 +225,8 @@ export function useNodeDirtiness() {
 			}
 		}
 
-		for (const startNode of workflowDocumentStore.value?.allNodes ?? []) {
-			const hasIncomingNode =
-				Object.keys(workflowsStore.incomingConnectionsByNodeName(startNode.name)).length > 0;
+		for (const startNode of workflowDocumentStore.value.allNodes) {
+			const hasIncomingNode = Object.keys(getIncomingConnections(startNode.name)).length > 0;
 
 			if (hasIncomingNode) {
 				continue;
@@ -243,7 +246,7 @@ export function useNodeDirtiness() {
 		function setDirtiness(nodeName: string, value: CanvasNodeDirtinessType) {
 			dirtiness[nodeName] = dirtiness[nodeName] ?? value;
 
-			const loop = findLoop(nodeName, [], workflowsStore.incomingConnectionsByNodeName);
+			const loop = findLoop(nodeName, [], getIncomingConnections);
 
 			if (!loop) {
 				return;
@@ -283,15 +286,13 @@ export function useNodeDirtiness() {
 				continue;
 			}
 
-			const hasInputPinnedDataChanged = Object.values(
-				workflowsStore.incomingConnectionsByNodeName(nodeName),
-			)
+			const hasInputPinnedDataChanged = Object.values(getIncomingConnections(nodeName))
 				.flat()
 				.flat()
 				.filter((connection) => connection !== null)
 				.some((connection) => {
 					const pinnedDataLastUpdatedAt =
-						workflowsStore.getPinnedDataLastUpdate(connection.node) ?? 0;
+						workflowDocumentStore.value.getPinnedDataLastUpdate(connection.node) ?? 0;
 
 					return pinnedDataLastUpdatedAt > runAt;
 				});
@@ -301,7 +302,8 @@ export function useNodeDirtiness() {
 				continue;
 			}
 
-			const pinnedDataLastRemovedAt = workflowsStore.getPinnedDataLastRemovedAt(nodeName) ?? 0;
+			const pinnedDataLastRemovedAt =
+				workflowDocumentStore.value.getPinnedDataLastRemovedAt(nodeName) ?? 0;
 
 			if (pinnedDataLastRemovedAt > runAt) {
 				setDirtiness(nodeName, CanvasNodeDirtiness.PINNED_DATA_UPDATED);

@@ -1,0 +1,39 @@
+{
+  "name": "@n8n/local-gateway",
+  "version": "0.1.0",
+  "description": "n8n Local Gateway",
+  "private": true,
+  "main": "dist/main/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.renderer.json && tsc -p tsconfig.build.json && pnpm copy:renderer && pnpm copy:assets",
+    "copy:assets": "node scripts/copy-assets.js",
+    "copy:renderer": "node scripts/copy-renderer.js",
+    "dev": "pnpm copy:assets && pnpm copy:renderer && concurrently \"tsc -p tsconfig.renderer.json --watch\" \"tsc -p tsconfig.build.json --watch\"",
+    "start": "electron dist/main/index.js",
+    "dist:mac": "pnpm build && electron-builder --mac --config electron-builder.config.js",
+    "dist:win": "pnpm build && electron-builder --win --config electron-builder.config.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --quiet",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "clean": "rimraf dist out .turbo",
+    "test": "jest",
+    "test:unit": "jest",
+    "test:dev": "jest --watch",
+    "postinstall": "node node_modules/electron/install.js"
+  },
+  "dependencies": {
+    "@n8n/computer-use": "workspace:*",
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "concurrently": "^8.2.0",
+    "electron": "^36.0.0",
+    "electron-builder": "^25.0.0",
+    "rimraf": "catalog:"
+  }
+}

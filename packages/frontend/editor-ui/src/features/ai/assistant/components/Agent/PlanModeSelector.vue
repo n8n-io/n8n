@@ -65,8 +65,8 @@ function onSelect(value: SelectValue | undefined) {
 			size="small"
 			position="popper"
 			side="top"
-			@update:model-value="onSelect"
 			:content-class="$style.content"
+			@update:model-value="onSelect"
 		>
 			<template #default>
 				{{ currentMode.label }}

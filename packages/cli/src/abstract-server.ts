@@ -16,7 +16,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
-import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
@@ -97,7 +97,7 @@ export abstract class AbstractServer {
 		this.endpointMcp = endpoints.mcp;
 		this.endpointMcpTest = endpoints.mcpTest;
 
-		this.endpointHealth = resolveHealthEndpointPath(this.globalConfig);
+		this.endpointHealth = resolveBackendHealthEndpointPath(this.globalConfig);
 
 		this.logger = Container.get(Logger);
 	}
@@ -137,14 +137,16 @@ export abstract class AbstractServer {
 		const healthPath = this.endpointHealth;
 		const readinessPath = `${healthPath}/readiness`;
 
+		const healthMiddlewares = inDevelopment ? [corsMiddleware] : [];
+
 		// main health check should not care about DB connections
-		this.app.get(healthPath, (_req, res) => {
+		this.app.get(healthPath, ...healthMiddlewares, (_req, res) => {
 			res.send({ status: 'ok' });
 		});
 
 		const { connectionState } = this.dbConnection;
 
-		this.app.get(readinessPath, (_req, res) => {
+		this.app.get(readinessPath, ...healthMiddlewares, (_req, res) => {
 			const { connected, migrated } = connectionState;
 			if (connected && migrated && this.fullyReady) {
 				res.status(200).send({ status: 'ok' });

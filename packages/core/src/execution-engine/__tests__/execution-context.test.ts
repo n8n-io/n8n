@@ -15,7 +15,10 @@ import { establishExecutionContext } from '../execution-context';
 
 describe('establishExecutionContext', () => {
 	const mockWorkflow = mock<Workflow>({ id: 'test-workflow-id' });
-	const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+	const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 	const mockMode: WorkflowExecuteMode = 'manual';
 
 	describe('successful context establishment', () => {

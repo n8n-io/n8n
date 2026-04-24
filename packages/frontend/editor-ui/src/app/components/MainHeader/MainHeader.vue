@@ -74,8 +74,10 @@ const hideMenuBar = computed(() =>
 const workflow = computed(() => workflowsStore.workflow);
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+const workflowName = computed(() => workflowDocumentStore?.value?.name ?? '');
 const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
 const workflowIsArchived = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
+const workflowDescription = computed(() => workflowDocumentStore?.value?.description ?? '');
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 
 const isEnterprise = computed(
@@ -247,7 +249,7 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 	} else if (route.name !== routeToNavigateTo.name) {
 		dirtyState.value = uiStore.stateIsDirty;
 		workflowToReturnTo.value = workflowId.value;
-		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
 		await router.push(routeToNavigateTo);
 	}
 }
@@ -264,7 +266,7 @@ async function onWorkflowDeactivated() {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
 			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
-			workflowsStore.setWorkflow(updatedWorkflow);
+			workflowDocumentStore?.value?.hydrate(updatedWorkflow);
 			toast.showToast({
 				title: locale.baseText('mcp.workflowDeactivated.title'),
 				message: locale.baseText('mcp.workflowDeactivated.message'),
@@ -280,17 +282,21 @@ async function onWorkflowDeactivated() {
 <template>
 	<div :class="$style.container">
 		<div
-			:class="{ [$style['main-header']]: true, [$style.expanded]: !uiStore.sidebarMenuCollapsed }"
+			:class="{
+				[$style['main-header']]: true,
+				[$style.expanded]: !uiStore.sidebarMenuCollapsed,
+				[$style['canvas-only']]: settingsStore.isCanvasOnly,
+			}"
 		>
-			<div v-show="!hideMenuBar" :class="$style['top-menu']">
+			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
 				<WorkflowDetails
-					v-if="workflow?.name"
+					v-if="workflowName"
 					:id="workflow.id"
 					:tags="workflowTags"
-					:name="workflow.name"
+					:name="workflowName"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflowIsArchived"
-					:description="workflow.description"
+					:description="workflowDescription"
 					@workflow:deactivated="onWorkflowDeactivated"
 				/>
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
@@ -317,6 +323,7 @@ async function onWorkflowDeactivated() {
 				v-if="onWorkflowPage"
 				:items="tabBarItems"
 				:model-value="activeHeaderTab"
+				:floating="settingsStore.isCanvasOnly"
 				@update:model-value="onTabSelected"
 			/>
 		</div>
@@ -337,6 +344,12 @@ async function onWorkflowDeactivated() {
 	width: 100%;
 	box-sizing: border-box;
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.canvas-only {
+	min-height: 0;
+	border-bottom: none;
+	background-color: transparent;
 }
 
 .top-menu {

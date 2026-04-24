@@ -6,6 +6,7 @@ import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
+import type { AgentOptions } from 'https';
 import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
@@ -79,6 +80,7 @@ export interface IBinaryData {
 // credentials file.
 export interface IOAuth2Options {
 	includeCredentialsOnRefreshOnBody?: boolean;
+	skipTokenRefresh?: boolean;
 	property?: string;
 	tokenType?: string;
 	keepBearer?: boolean;
@@ -508,6 +510,12 @@ export interface IHttpRequestOptions {
 	 * @default true - for backwards compatibility
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * Comma-separated list of allowed domains for credential requests.
+	 * If set, requests to domains not in this list will be blocked.
+	 */
+	allowedDomains?: string;
+	agentOptions?: Omit<AgentOptions, 'socket'>;
 }
 
 /**
@@ -561,6 +569,11 @@ export interface IRequestOptions {
 	 * @default true - for backwards compatibility
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * Comma-separated list of allowed domains for credential requests.
+	 * If set, requests to domains not in this list will be blocked.
+	 */
+	allowedDomains?: string;
 }
 
 export interface PaginationOptions {
@@ -947,6 +960,8 @@ export type NodeTypeAndVersion = {
 
 export interface FunctionsBase {
 	logger: Logger;
+	customData: IWorkflowExecutionCustomData;
+
 	getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
 		itemIndex?: number,
@@ -963,8 +978,6 @@ export interface FunctionsBase {
 	getInstanceId(): string;
 	/** Get the waiting resume url signed with the signature token */
 	getSignedResumeUrl(parameters?: Record<string, string>): string;
-	/** Set requirement in the execution for signature token validation */
-	setSignatureValidationRequired(): void;
 	getChildNodes(
 		nodeName: string,
 		options?: { includeNodeParameters?: boolean },
@@ -1319,6 +1332,11 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 export interface INodeCredentialsDetails {
 	id: string | null;
 	name: string;
+	/**
+	 * Set automatically when the credential slot is managed by the n8n AI Gateway.
+	 * Not intended to be set or modified manually.
+	 */
+	__aiGatewayManaged?: boolean;
 }
 
 export interface INodeCredentials {
@@ -1615,6 +1633,7 @@ export interface INodePropertyTypeOptions {
 		layout?: 'inline'; // Render sub-parameters side-by-side in a row
 	};
 	password?: boolean; // Supported by: string
+	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
@@ -2153,23 +2172,34 @@ export interface IWorkflowIssues {
 }
 
 export type ThemeIconColor =
+	| 'neutral'
 	| 'gray'
 	| 'black'
 	| 'blue'
 	| 'light-blue'
 	| 'dark-blue'
+	| 'sky-blue'
 	| 'orange'
 	| 'orange-red'
+	| 'amber'
+	| 'rust'
 	| 'pink-red'
+	| 'magenta'
 	| 'red'
 	| 'light-green'
 	| 'green'
 	| 'dark-green'
+	| 'emerald'
+	| 'forest-green'
+	| 'lime'
 	| 'azure'
+	| 'teal'
 	| 'purple'
+	| 'violet'
+	| 'lavender'
 	| 'crimson';
 export type Themed<T> = T | { light: T; dark: T };
-export type IconRef = `fa:${string}` | `node:${string}.${string}`;
+export type IconRef = `fa:${string}` | `node:${string}`;
 export type IconFile = `file:${string}.png` | `file:${string}.svg` | ExpressionString;
 export type Icon = IconRef | Themed<IconFile> | IconFile;
 
@@ -2562,18 +2592,20 @@ export interface IWorkflowDataProxyData {
 	constructor: any;
 }
 
+export type IWorkflowExecutionCustomData = {
+	set(key: string, value: string): void;
+	setAll(obj: Record<string, string>): void;
+	get(key: string): string;
+	getAll(): Record<string, string>;
+};
+
 export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$execution?: {
 		id: string;
 		mode: 'test' | 'production';
 		resumeUrl: string;
 		resumeFormUrl: string;
-		customData?: {
-			set(key: string, value: string): void;
-			setAll(obj: Record<string, string>): void;
-			get(key: string): string;
-			getAll(): Record<string, string>;
-		};
+		customData?: IWorkflowExecutionCustomData;
 	};
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
@@ -2754,6 +2786,32 @@ export interface ITaskMetadata {
 		/** Time saved in minutes */
 		minutes: number;
 	};
+
+	/**
+	 * Signed URL for resuming form-based waiting executions.
+	 * Contains token for security validation.
+	 */
+	resumeFormUrl?: string;
+
+	/**
+	 * Signed URL for resuming webhook-based waiting executions.
+	 * Contains token for security validation.
+	 */
+	resumeUrl?: string;
+
+	/**
+	 * AI model token usage captured from vendor node API responses before the simplify step
+	 * strips it. Used by telemetry to populate ai_input_tokens / ai_output_tokens in node_graph_string.
+	 */
+	tokenUsage?: {
+		inputTokens: number;
+		outputTokens: number;
+	};
+
+	/**
+	 * Key-value pairs that can be set for tracing - they will be attached to the OTEL node span
+	 * */
+	tracing?: Record<string, string | number | boolean>;
 }
 
 /** The data that gets returned when a node execution starts */
@@ -2881,6 +2939,11 @@ export interface IWorkflowExecutionDataProcess {
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
+	 * When true, forces the execution data to be present in the run data
+	 * ignores N8N_MINIMIZE_EXECUTION_DATA_FETCHING environment variable if set
+	 */
+	forceFullExecutionData?: boolean;
+	/**
 	 * The data that is sent in the body of the webhook that started this
 	 * execution.
 	 */
@@ -2994,6 +3057,8 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId?: string;
+	workflowId?: string;
+	projectId?: string;
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
@@ -3041,7 +3106,7 @@ export type WorkflowActivateMode =
 export namespace WorkflowSettings {
 	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
-	export type RedactionPolicy = 'none' | 'all' | 'non-manual';
+	export type RedactionPolicy = 'none' | 'all' | 'non-manual' | 'manual-only';
 }
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
@@ -3223,6 +3288,9 @@ export interface INodeGraphItem {
 	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
 	mcp_client_auth_method?: string; // for @n8n/n8n-nodes-langchain.mcpClientTool and @n8n/n8n-nodes-langchain.mcpClient
 	ai_model?: string; // AI model for model nodes and standalone AI nodes
+	ai_input_tokens?: number; // AI input (prompt) tokens for model nodes
+	ai_output_tokens?: number; // AI output (completion) tokens for model nodes
+	ai_gateway_credentials?: boolean; // true if node used n8n Connect / AI Gateway managed credentials
 }
 
 export interface INodeNameIndex {
@@ -3476,6 +3544,11 @@ export interface IUserSettings {
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
 	dismissedCallouts?: Record<string, boolean>;
+	instanceAi?: {
+		credentialId?: string | null;
+		modelName?: string;
+		localGatewayDisabled?: boolean;
+	};
 }
 
 export interface IProcessedDataConfig {

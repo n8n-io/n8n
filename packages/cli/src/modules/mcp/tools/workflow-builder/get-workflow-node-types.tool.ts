@@ -71,10 +71,7 @@ export const createGetWorkflowNodeTypesTool = (
 		};
 
 		try {
-			const { createCodeBuilderGetTool } = await import('@n8n/ai-workflow-builder');
-			const nodeDefinitionDirs = workflowBuilderToolsService.getNodeDefinitionDirs();
-			const getTool = createCodeBuilderGetTool({ nodeDefinitionDirs });
-			const result = await getTool.invoke({ nodeIds });
+			const result = await workflowBuilderToolsService.getNodeTypes(nodeIds);
 
 			telemetryPayload.results = { success: true, data: { nodeIdCount: nodeIds.length } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

@@ -28,6 +28,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
 		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		passwordMinLength: 8,
 	});
 	const templatesEndpointHealthy = ref(false);
 	const api = ref({
@@ -80,6 +81,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isPreviewMode = computed(() => settings.value.previewMode);
 
+	const isCanvasOnly = computed(() => settings.value.canvasOnly);
+
 	const publicApiLatestVersion = computed(() => api.value.latestVersion);
 
 	const publicApiPath = computed(() => api.value.path);
@@ -120,6 +123,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.ai?.allowSendingParameterValues ?? true,
 	);
 
+	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
+
+	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
+
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
 	const isPersonalizationSurveyEnabled = computed(
@@ -144,7 +151,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
-	const isChatFeatureEnabled = computed(() => isModuleActive('chat-hub'));
+	const isChatFeatureEnabled = computed(
+		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
+	);
 
 	const isCustomRolesFeatureEnabled = computed(
 		() => settings.value.enterprise?.customRoles ?? false,
@@ -368,6 +377,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
+		isCanvasOnly,
 		publicApiLatestVersion,
 		publicApiPath,
 		showSetupPage,
@@ -407,6 +417,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		isAiDataSharingEnabled,
+		isAiGatewayEnabled,
+		aiGatewayBudget,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,

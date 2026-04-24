@@ -1,5 +1,5 @@
 import { ref, computed, shallowRef } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { type RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -52,6 +52,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 	const telemetry = useTelemetry();
 
+	const DEMO_ROUTES: RouteRecordNameGeneric[] = [VIEWS.DEMO, VIEWS.DEMO_DIFF];
+
 	const {
 		resetWorkspace,
 		initializeWorkspace,
@@ -85,7 +87,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	const isNewWorkflowRoute = computed(() => route.query.new === 'true');
-	const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+	const isDemoRoute = computed(() => DEMO_ROUTES.includes(route.name));
 	const isTemplateRoute = computed(() => route.name === VIEWS.TEMPLATE_IMPORT);
 	const isOnboardingRoute = computed(() => route.name === VIEWS.WORKFLOW_ONBOARDING);
 	const isDebugRoute = computed(() => route.name === VIEWS.EXECUTION_DEBUG);
@@ -134,11 +136,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		try {
 			await Promise.all([loadCredentials(), credentialsStore.fetchCredentialTypes(true)]);
 		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText('nodeView.showError.mounted1.title'),
-				i18n.baseText('nodeView.showError.mounted1.message') + ':',
-			);
+			toast.showError(error, i18n.baseText('nodeView.showError.mounted1.title'), {
+				message: i18n.baseText('nodeView.showError.mounted1.message') + ':',
+			});
 		}
 
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
@@ -177,7 +177,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	async function handleDebugModeRoute() {
 		if (!isDebugRoute.value) return;
 
-		documentTitle.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
+		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
 		if (!workflowsStore.isInDebugMode) {
 			const executionId = route.params.executionId;
@@ -220,11 +220,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			}
 			await Promise.all(loadPromises);
 		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText('nodeView.showError.mounted1.title'),
-				i18n.baseText('nodeView.showError.mounted1.message') + ':',
-			);
+			toast.showError(error, i18n.baseText('nodeView.showError.mounted1.title'), {
+				message: i18n.baseText('nodeView.showError.mounted1.message') + ':',
+			});
 		}
 	}
 
@@ -255,17 +253,22 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
-		await workflowState.getNewWorkflowData(
+		workflowsStore.setWorkflowId(workflowId.value);
+
+		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
+		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+
+		// Sync document store name → list cache (mirrors initializeWorkflowDocument)
+		currentWorkflowDocumentStore.value.onNameChange(({ payload }) => {
+			workflowsListStore.updateWorkflowInCache(workflowId.value, { name: payload.name });
+		});
+
+		const workflowData = await workflowState.getNewWorkflowData(
 			undefined,
 			projectsStore.currentProjectId,
 			parentFolderId,
 		);
-
-		workflowState.setWorkflowId(workflowId.value);
-
-		// Create document store for new workflow
-		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
-		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+		currentWorkflowDocumentStore.value.setName(workflowData.name);
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 

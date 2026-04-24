@@ -3,7 +3,7 @@
 	"compilerOptions": {
 		"baseUrl": ".",
 		"rootDirs": [".", "../composables/src"],
-		"outDir": "dist",
+		"noEmit": true,
 		"moduleResolution": "bundler",
 		"types": ["vite/client", "unplugin-icons/types/vue", "vitest/globals"],
 		"typeRoots": [

@@ -72,7 +72,7 @@ export abstract class TaskRequester {
 		private readonly eventService: EventService,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly globalConfig: GlobalConfig,
-		private readonly errorReporter: ErrorReporter,
+		protected readonly errorReporter: ErrorReporter,
 	) {}
 
 	setRunnerUnavailable(taskType: string, reason: string) {

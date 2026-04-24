@@ -4,18 +4,21 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
+import { proxyFetch } from '@n8n/ai-utilities';
+
 import type { McpAuthenticationOption, McpServerTransport } from '../types';
 import { connectMcpClient, getAuthHeaders, tryRefreshOAuth2Token } from '../utils';
 
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
 jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
+jest.mock('@n8n/ai-utilities', () => ({
+	proxyFetch: jest.fn(),
+}));
+
+const mockedProxyFetch = proxyFetch as jest.MockedFunction<typeof proxyFetch>;
 
 const MockedClient = Client as jest.MockedClass<typeof Client>;
-const MockedHTTPTransport = StreamableHTTPClientTransport as jest.MockedClass<
-	typeof StreamableHTTPClientTransport
->;
-const MockedSSETransport = SSEClientTransport as jest.MockedClass<typeof SSEClientTransport>;
 
 describe('utils', () => {
 	describe('tryRefreshOAuth2Token', () => {
@@ -170,11 +173,7 @@ describe('utils', () => {
 
 		beforeEach(() => {
 			jest.resetAllMocks();
-			const mockHttpTransport = {} as unknown as StreamableHTTPClientTransport;
-			const mockSSETransport = {} as unknown as SSEClientTransport;
 			MockedClient.mockImplementation(() => mockClient as unknown as Client);
-			MockedHTTPTransport.mockImplementation(() => mockHttpTransport);
-			MockedSSETransport.mockImplementation(() => mockSSETransport);
 		});
 
 		describe.each([
@@ -183,58 +182,49 @@ describe('utils', () => {
 		] as Array<
 			[McpServerTransport, typeof StreamableHTTPClientTransport | typeof SSEClientTransport]
 		>)('%s transport', (transport, Transport) => {
-			it('should retry on 401 and succeed', async () => {
-				const unauthorizedError = new Error('Request failed with status 401');
-				const onUnauthorized = jest.fn().mockResolvedValue({ Authorization: 'Bearer new-token' });
-				mockClient.connect
-					.mockRejectedValueOnce(unauthorizedError)
-					.mockResolvedValueOnce(undefined);
+			it('should connect successfully and pass a custom fetch', async () => {
+				(Transport as jest.Mock).mockImplementation(() => ({}));
+				mockClient.connect.mockResolvedValue(undefined);
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
 					endpointUrl: 'https://example.com',
-					headers: { Authorization: 'Bearer old-token' },
+					headers: { Authorization: 'Bearer token' },
 					name: 'test-client',
 					version: 1,
-					onUnauthorized,
 				});
 
 				expect(result.ok).toBe(true);
-				expect(mockClient.connect).toHaveBeenCalledTimes(2);
-				expect(onUnauthorized).toHaveBeenCalledWith({ Authorization: 'Bearer old-token' });
-				expect(Transport).toHaveBeenCalledTimes(2);
-				expect(Transport).toHaveBeenNthCalledWith(
-					1,
-					expect.any(URL),
-					expect.objectContaining({
-						requestInit: expect.objectContaining({
-							headers: expect.objectContaining({
-								Authorization: 'Bearer old-token',
-							}),
-						}),
-					}),
-				);
-				expect(Transport).toHaveBeenNthCalledWith(
-					2,
-					expect.any(URL),
-					expect.objectContaining({
-						requestInit: expect.objectContaining({
-							headers: expect.objectContaining({
-								Authorization: 'Bearer new-token',
-							}),
-						}),
-					}),
-				);
+				expect(Transport).toHaveBeenCalledTimes(1);
+				const transportOpts = (Transport as jest.Mock).mock.calls[0][1];
+				expect(transportOpts.fetch).toBeDefined();
 			});
 
-			it('should not retry on not 401', async () => {
-				const error = new Error('Internal Server Error');
-				mockClient.connect.mockRejectedValueOnce(error);
+			it('should return auth error on 401 during connect', async () => {
+				(Transport as jest.Mock).mockImplementation(() => ({}));
+				mockClient.connect.mockRejectedValueOnce(new Error('Request failed with status 401'));
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
 					endpointUrl: 'https://example.com',
-					headers: { Authorization: 'Bearer old-token' },
+					headers: { Authorization: 'Bearer token' },
+					name: 'test-client',
+					version: 1,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('auth');
+				}
+			});
+
+			it('should return connection error on non-auth failure', async () => {
+				(Transport as jest.Mock).mockImplementation(() => ({}));
+				mockClient.connect.mockRejectedValueOnce(new Error('Connection refused'));
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
 					name: 'test-client',
 					version: 1,
 				});
@@ -243,36 +233,171 @@ describe('utils', () => {
 				if (!result.ok) {
 					expect(result.error.type).toBe('connection');
 				}
-				expect(mockClient.connect).toHaveBeenCalledTimes(1);
-				expect(Transport).toHaveBeenCalledTimes(1);
 			});
 
-			it('should not retry when onUnauthorized is not provided', async () => {
-				const error = new Error('Request failed with status 401');
-				mockClient.connect.mockRejectedValueOnce(error);
+			it('should inject auth headers into fetch requests', async () => {
+				let capturedFetch: typeof fetch | undefined;
+				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+					capturedFetch = opts?.fetch;
+					return {};
+				});
+				mockClient.connect.mockResolvedValue(undefined);
+				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
 
-				const result = await connectMcpClient({
+				await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					headers: { Authorization: 'Bearer my-token' },
+					name: 'test-client',
+					version: 1,
+				});
+
+				expect(capturedFetch).toBeDefined();
+				await capturedFetch!('https://example.com/mcp', {
+					headers: { 'content-type': 'application/json' },
+				});
+
+				expect(mockedProxyFetch).toHaveBeenCalledWith(
+					'https://example.com/mcp',
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							'content-type': 'application/json',
+							Authorization: 'Bearer my-token',
+						}),
+					}),
+				);
+			});
+
+			it('should preserve SDK headers passed as a Headers instance', async () => {
+				let capturedFetch: typeof fetch | undefined;
+				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+					capturedFetch = opts?.fetch;
+					return {};
+				});
+				mockClient.connect.mockResolvedValue(undefined);
+				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
+
+				await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					headers: { Authorization: 'Bearer my-token' },
+					name: 'test-client',
+					version: 1,
+				});
+
+				expect(capturedFetch).toBeDefined();
+				const sdkHeaders = new Headers({
+					Accept: 'text/event-stream',
+					'mcp-protocol-version': '2025-03-26',
+				});
+				await capturedFetch!('https://example.com/mcp', { headers: sdkHeaders });
+
+				expect(mockedProxyFetch).toHaveBeenCalledWith(
+					'https://example.com/mcp',
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							accept: 'text/event-stream',
+							'mcp-protocol-version': '2025-03-26',
+							Authorization: 'Bearer my-token',
+						}),
+					}),
+				);
+			});
+
+			it('should retry on 401 response with refreshed headers from onUnauthorized', async () => {
+				let capturedFetch: typeof fetch | undefined;
+				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+					capturedFetch = opts?.fetch;
+					return {};
+				});
+				mockClient.connect.mockResolvedValue(undefined);
+
+				const onUnauthorized = jest
+					.fn()
+					.mockResolvedValue({ Authorization: 'Bearer refreshed-token' });
+
+				await connectMcpClient({
 					serverTransport: transport,
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer old-token' },
 					name: 'test-client',
 					version: 1,
+					onUnauthorized,
 				});
 
-				expect(result.ok).toBe(false);
-				if (!result.ok) {
-					expect(result.error.type).toBe('auth');
-				}
-				expect(mockClient.connect).toHaveBeenCalledTimes(1);
-				expect(Transport).toHaveBeenCalledTimes(1);
+				mockedProxyFetch
+					.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }))
+					.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+
+				const response = await capturedFetch!('https://example.com/mcp', {});
+
+				expect(response.status).toBe(200);
+				expect(onUnauthorized).toHaveBeenCalledWith({ Authorization: 'Bearer old-token' });
+				expect(mockedProxyFetch).toHaveBeenCalledTimes(2);
+				expect(mockedProxyFetch).toHaveBeenNthCalledWith(
+					2,
+					'https://example.com/mcp',
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							Authorization: 'Bearer refreshed-token',
+						}),
+					}),
+				);
 			});
 
-			it('should not retry when onUnauthorized returns null', async () => {
-				const error = new Error('Request failed with status 401');
+			it('should use refreshed headers for subsequent requests after 401 retry', async () => {
+				let capturedFetch: typeof fetch | undefined;
+				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+					capturedFetch = opts?.fetch;
+					return {};
+				});
+				mockClient.connect.mockResolvedValue(undefined);
+
+				const onUnauthorized = jest
+					.fn()
+					.mockResolvedValue({ Authorization: 'Bearer refreshed-token' });
+
+				await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					headers: { Authorization: 'Bearer old-token' },
+					name: 'test-client',
+					version: 1,
+					onUnauthorized,
+				});
+
+				// First request: 401 -> refresh -> retry succeeds
+				mockedProxyFetch
+					.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }))
+					.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+				await capturedFetch!('https://example.com/mcp', {});
+
+				// Second request: should use the refreshed token directly
+				mockedProxyFetch.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+				await capturedFetch!('https://example.com/mcp', {});
+
+				expect(mockedProxyFetch).toHaveBeenNthCalledWith(
+					3,
+					'https://example.com/mcp',
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							Authorization: 'Bearer refreshed-token',
+						}),
+					}),
+				);
+			});
+
+			it('should not retry on 401 when onUnauthorized returns null', async () => {
+				let capturedFetch: typeof fetch | undefined;
+				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+					capturedFetch = opts?.fetch;
+					return {};
+				});
+				mockClient.connect.mockResolvedValue(undefined);
+
 				const onUnauthorized = jest.fn().mockResolvedValue(null);
-				mockClient.connect.mockRejectedValueOnce(error);
 
-				const result = await connectMcpClient({
+				await connectMcpClient({
 					serverTransport: transport,
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer old-token' },
@@ -281,37 +406,37 @@ describe('utils', () => {
 					onUnauthorized,
 				});
 
-				expect(result.ok).toBe(false);
-				if (!result.ok) {
-					expect(result.error.type).toBe('auth');
-				}
-				expect(mockClient.connect).toHaveBeenCalledTimes(1);
-				expect(Transport).toHaveBeenCalledTimes(1);
-				expect(onUnauthorized).toHaveBeenCalledWith({ Authorization: 'Bearer old-token' });
+				mockedProxyFetch.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }));
+
+				const response = await capturedFetch!('https://example.com/mcp', {});
+
+				expect(response.status).toBe(401);
+				expect(onUnauthorized).toHaveBeenCalledTimes(1);
+				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 			});
 
-			it('should not retry more than once', async () => {
-				const error = new Error('Request failed with status 401');
-				mockClient.connect.mockRejectedValue(error);
-				const onUnauthorized = jest.fn().mockResolvedValue({ Authorization: 'Bearer new-token' });
+			it('should not retry on 401 when onUnauthorized is not provided', async () => {
+				let capturedFetch: typeof fetch | undefined;
+				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+					capturedFetch = opts?.fetch;
+					return {};
+				});
+				mockClient.connect.mockResolvedValue(undefined);
 
-				const result = await connectMcpClient({
+				await connectMcpClient({
 					serverTransport: transport,
 					endpointUrl: 'https://example.com',
-					headers: { Authorization: 'Bearer old-token' },
+					headers: { Authorization: 'Bearer token' },
 					name: 'test-client',
 					version: 1,
-					onUnauthorized,
 				});
 
-				expect(result.ok).toBe(false);
-				if (!result.ok) {
-					expect(result.error.type).toBe('auth');
-				}
-				expect(mockClient.connect).toHaveBeenCalledTimes(2);
-				expect(Transport).toHaveBeenCalledTimes(2);
-				expect(onUnauthorized).toHaveBeenCalledTimes(1);
-				expect(onUnauthorized).toHaveBeenCalledWith({ Authorization: 'Bearer old-token' });
+				mockedProxyFetch.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }));
+
+				const response = await capturedFetch!('https://example.com/mcp', {});
+
+				expect(response.status).toBe(401);
+				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 			});
 		});
 	});

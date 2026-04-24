@@ -77,8 +77,7 @@ describe('useFocusedNodesStore', () => {
 			createMockNode('node-3', 'Set', 'n8n-nodes-base.set'),
 		];
 		workflowsStore.workflowId = 'wf-1';
-		workflowsStore.connectionsByDestinationNode = {};
-		workflowsStore.connectionsBySourceNode = {};
+		workflowsStore.workflow.connections = {};
 
 		focusedNodesStore = useFocusedNodesStore();
 		track.mockReset();
@@ -758,12 +757,10 @@ describe('useFocusedNodesStore', () => {
 		});
 
 		it('should include connections (deduplicated)', () => {
-			workflowsStore.connectionsByDestinationNode = {
-				'HTTP Request': {
-					main: [[{ node: 'Trigger', type: 'main', index: 0 }]],
+			workflowsStore.workflow.connections = {
+				Trigger: {
+					main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
 				},
-			};
-			workflowsStore.connectionsBySourceNode = {
 				'HTTP Request': {
 					main: [[{ node: 'Code', type: 'main', index: 0 }]],
 				},

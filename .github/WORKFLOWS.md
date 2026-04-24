@@ -72,6 +72,7 @@ Complete reference for n8n's `.github/` folder.
 │  │  (cron)  │    │  ├─ docker-build-push (nightly)  │───▶│   Images   │   │
 │  └──────────┘    │  ├─ test-benchmark-nightly       │───▶│  Metrics   │   │
 │                  │  ├─ test-workflows-nightly       │    └────────────┘   │
+│                  │  ├─ test-e2e-vm-expressions      │                     │
 │                  │  └─ test-e2e-coverage-weekly     │                     │
 │                  └──────────────────────────────────┘                     │
 │                                                                            │
@@ -241,8 +242,7 @@ CALLER                             REUSABLE WORKFLOW
 ci-pull-requests.yml
     ├──────────────────────────▶  test-unit-reusable.yml
     ├──────────────────────────▶  test-linting-reusable.yml
-    ├──────────────────────────▶  test-e2e-ci-reusable.yml
-    │                                 └──────────▶  test-e2e-reusable.yml
+    ├──────────────────────────▶  test-e2e-reusable.yml
     └──────────────────────────▶  sec-ci-reusable.yml
                                       └──────────▶  sec-poutine-reusable.yml
 
@@ -257,6 +257,9 @@ release-publish.yml
 
 test-workflows-nightly.yml
     └──────────────────────────▶  test-workflows-callable.yml
+
+test-e2e-vm-expressions-nightly.yml
+    └──────────────────────────▶  test-e2e-reusable.yml
 
 PR Comment Dispatchers (triggered by /command in PR comments):
 test-workflows-pr-comment.yml
@@ -350,8 +353,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.x, 24.13.1, 25.x)
-│   └─ Coverage only on 24.13.1
+├─ unit-test (matrix: Node 22.x, 24.14.1, 25.x)
+│   └─ Coverage only on 24.14.1
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -370,6 +373,7 @@ Push to master/1.x
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-workflows-nightly.yml`      | Workflow tests           |
+| Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
@@ -390,7 +394,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.13.1'
+  node-version:        # default: '24.14.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```
@@ -415,8 +419,6 @@ Workflows with `workflow_call` trigger:
 | `test-unit-reusable.yml`           | `ref`, `nodeVersion`, `collectCoverage`       | Unit tests            |
 | `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
-| `test-e2e-ci-reusable.yml`         | `branch`                                      | E2E orchestrator      |
-| `test-e2e-docker-pull-reusable.yml`| `branch`, `n8n_version`                       | E2E with pulled image |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled` | Docker build          |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |

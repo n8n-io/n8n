@@ -3,13 +3,8 @@ import { useWebSocketClient } from '../useWebSocketClient';
 import { MockWebSocket } from './mockWebSocketClient';
 
 describe('useWebSocketClient', () => {
-	let mockWebSocket: MockWebSocket;
-
 	beforeEach(() => {
-		mockWebSocket = new MockWebSocket('ws://test.com');
-
-		// @ts-expect-error - mock WebSocket
-		global.WebSocket = vi.fn(() => mockWebSocket);
+		vi.stubGlobal('WebSocket', MockWebSocket);
 
 		vi.useFakeTimers();
 	});
@@ -26,7 +21,7 @@ describe('useWebSocketClient', () => {
 		const { connect } = useWebSocketClient({ url, onMessage });
 		connect();
 
-		expect(WebSocket).toHaveBeenCalledWith(url);
+		expect(MockWebSocket.init).toHaveBeenCalledWith(url);
 	});
 
 	test('should update connection status and start heartbeat on successful connection', () => {
@@ -36,13 +31,15 @@ describe('useWebSocketClient', () => {
 		});
 		connect();
 
-		mockWebSocket.simulateConnectionOpen();
+		MockWebSocket.getInstance().simulateConnectionOpen();
 
 		expect(isConnected.value).toBe(true);
 
 		// Advance timer to trigger heartbeat
 		vi.advanceTimersByTime(30_000);
-		expect(mockWebSocket.send).toHaveBeenCalledWith(JSON.stringify({ type: 'heartbeat' }));
+		expect(MockWebSocket.getInstance().send).toHaveBeenCalledWith(
+			JSON.stringify({ type: 'heartbeat' }),
+		);
 	});
 
 	test('should handle incoming messages', () => {
@@ -50,7 +47,7 @@ describe('useWebSocketClient', () => {
 		const { connect } = useWebSocketClient({ url: 'ws://test.com', onMessage });
 		connect();
 
-		mockWebSocket.simulateMessageEvent('test data');
+		MockWebSocket.getInstance().simulateMessageEvent('test data');
 
 		expect(onMessage).toHaveBeenCalledWith('test data');
 	});
@@ -63,14 +60,14 @@ describe('useWebSocketClient', () => {
 		connect();
 
 		// Simulate successful connection
-		mockWebSocket.simulateConnectionOpen();
+		MockWebSocket.getInstance().simulateConnectionOpen();
 
 		expect(isConnected.value).toBe(true);
 
 		disconnect();
 
 		expect(isConnected.value).toBe(false);
-		expect(mockWebSocket.close).toHaveBeenCalledWith(1000);
+		expect(MockWebSocket.getInstance().close).toHaveBeenCalledWith(1000);
 	});
 
 	test('should handle connection loss', () => {
@@ -79,20 +76,20 @@ describe('useWebSocketClient', () => {
 			onMessage: vi.fn(),
 		});
 		connect();
-		expect(WebSocket).toHaveBeenCalledTimes(1);
+		expect(MockWebSocket.init).toHaveBeenCalledTimes(1);
 
 		// Simulate successful connection
-		mockWebSocket.simulateConnectionOpen();
+		MockWebSocket.getInstance().simulateConnectionOpen();
 
 		expect(isConnected.value).toBe(true);
 
 		// Simulate connection loss
-		mockWebSocket.simulateConnectionClose(1006);
+		MockWebSocket.getInstance().simulateConnectionClose(1006);
 
 		expect(isConnected.value).toBe(false);
 		// Advance timer to reconnect
 		vi.advanceTimersByTime(1_000);
-		expect(WebSocket).toHaveBeenCalledTimes(2);
+		expect(MockWebSocket.init).toHaveBeenCalledTimes(2);
 	});
 
 	test('should throw error when trying to send message while disconnected', () => {
@@ -103,23 +100,23 @@ describe('useWebSocketClient', () => {
 
 	test('should attempt reconnection with increasing delays', () => {
 		const { connect } = useWebSocketClient({
-			url: 'http://test.com',
+			url: 'ws://test.com',
 			onMessage: vi.fn(),
 		});
 		connect();
 
-		mockWebSocket.simulateConnectionOpen();
-		mockWebSocket.simulateConnectionClose(1006);
+		MockWebSocket.getInstance().simulateConnectionOpen();
+		MockWebSocket.getInstance().simulateConnectionClose(1006);
 
 		// First reconnection attempt after 1 second
 		vi.advanceTimersByTime(1_000);
-		expect(WebSocket).toHaveBeenCalledTimes(2);
+		expect(MockWebSocket.init).toHaveBeenCalledTimes(2);
 
-		mockWebSocket.simulateConnectionClose(1006);
+		MockWebSocket.getInstance().simulateConnectionClose(1006);
 
 		// Second reconnection attempt after 2 seconds
 		vi.advanceTimersByTime(2_000);
-		expect(WebSocket).toHaveBeenCalledTimes(3);
+		expect(MockWebSocket.init).toHaveBeenCalledTimes(3);
 	});
 
 	test('should send message when connected', () => {
@@ -130,11 +127,11 @@ describe('useWebSocketClient', () => {
 		connect();
 
 		// Simulate successful connection
-		mockWebSocket.simulateConnectionOpen();
+		MockWebSocket.getInstance().simulateConnectionOpen();
 
 		const message = 'test message';
 		sendMessage(message);
 
-		expect(mockWebSocket.send).toHaveBeenCalledWith(message);
+		expect(MockWebSocket.getInstance().send).toHaveBeenCalledWith(message);
 	});
 });

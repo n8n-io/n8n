@@ -25,6 +25,7 @@ import * as path from 'path';
 // eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
 import {
 	generateSingleVersionSchemaFile,
+	isPropertyOptional,
 	planSplitVersionSchemaFiles,
 } from './generate-zod-schemas';
 import { checkConditions } from '../validation/display-options';
@@ -67,7 +68,11 @@ const ASSIGNMENT_TYPE_JSDOC = `/**
 
 function generateFilterTypeDeclaration(exported: boolean): string {
 	const prefix = exported ? 'export type' : 'type';
-	return `${prefix} FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };`;
+	return [
+		`${prefix} FilterOptionsValue = { caseSensitive?: boolean; leftValue?: string; typeValidation?: 'strict' | 'loose' };`,
+		`${prefix} FilterConditionValue = { id?: string; leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown };`,
+		`${prefix} FilterValue = { options: FilterOptionsValue; conditions: FilterConditionValue[]; combinator: 'and' | 'or' };`,
+	].join('\n');
 }
 
 function generateAssignmentTypeDeclarations(exported: boolean): string {
@@ -247,6 +252,7 @@ export interface NodeProperty {
 		name: string;
 		displayName?: string;
 		type?: string;
+		typeOptions?: Record<string, unknown>;
 	}>;
 }
 
@@ -804,16 +810,6 @@ function quotePropertyName(name: string): string {
 }
 
 /**
- * Determine if a property should be optional in the generated type.
- * A property is optional if it's not required OR if it has a default value.
- * Properties with defaults can be omitted - the default will be used at runtime.
- */
-function isPropertyOptional(prop: NodeProperty): boolean {
-	const hasDefault = 'default' in prop && prop.default !== undefined;
-	return !prop.required || hasDefault;
-}
-
-/**
  * Generate a compact JSDoc comment for a nested property (used in fixedCollections)
  * Returns a multi-line JSDoc that can be placed before property definitions
  */
@@ -849,6 +845,20 @@ function generateNestedPropertyJSDoc(
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 		lines.push(`${indent} * @builderHint ${safeBuilderHint}`);
+	}
+
+	// Search/load method annotations — signals to the builder agent that
+	// explore-node-resources can resolve real IDs for this parameter.
+	if (prop.modes) {
+		for (const mode of prop.modes) {
+			if (typeof mode.typeOptions?.searchListMethod === 'string') {
+				lines.push(`${indent} * @searchListMethod ${mode.typeOptions.searchListMethod}`);
+				break; // one annotation per property is enough
+			}
+		}
+	}
+	if (typeof prop.typeOptions?.loadOptionsMethod === 'string') {
+		lines.push(`${indent} * @loadOptionsMethod ${prop.typeOptions.loadOptionsMethod}`);
 	}
 
 	// Display options - filter out @version since version is implicit from the file
@@ -961,9 +971,32 @@ function generateFixedCollectionType(
 
 		if (nestedProps.length > 0) {
 			const innerType = `{\n${nestedProps.join(';\n')};\n${INDENT.repeat(2)}}`;
-			const groupType = isMultipleValues ? `Array<${innerType}>` : innerType;
 
-			// Generate JSDoc for the group if it has builderHint or description
+			const minRequired = prop.typeOptions?.minRequiredFields;
+			const maxAllowed = prop.typeOptions?.maxAllowedFields;
+			const hasMinRequired = typeof minRequired === 'number' && minRequired > 0;
+
+			let groupType: string;
+			if (isMultipleValues) {
+				if (hasMinRequired) {
+					// Express the min-length constraint at the type level so the
+					// generated reference tells the builder the array must have
+					// at least N items (not just optional).
+					const requiredHead = Array(minRequired).fill(innerType).join(', ');
+					groupType = `[${requiredHead}, ...Array<${innerType}>]`;
+				} else {
+					groupType = `Array<${innerType}>`;
+				}
+			} else {
+				groupType = innerType;
+			}
+
+			// When minRequiredFields > 0, the group key itself is required —
+			// omitting it produces 0 entries and violates the constraint.
+			const groupOptional = hasMinRequired ? '' : '?';
+
+			// Generate JSDoc for the group if it has builderHint, description,
+			// or field-count constraints.
 			const groupJsDocLines: string[] = [];
 			if (group.displayName || group.description) {
 				const desc = (group.description ?? group.displayName ?? '')
@@ -982,14 +1015,26 @@ function generateFixedCollectionType(
 				}
 				groupJsDocLines.push(`${INDENT.repeat(2)} * @builderHint ${safeBuilderHint}`);
 			}
+			if (isMultipleValues && hasMinRequired) {
+				if (groupJsDocLines.length === 0) {
+					groupJsDocLines.push(`${INDENT.repeat(2)}/**`);
+				}
+				groupJsDocLines.push(`${INDENT.repeat(2)} * @minItems ${minRequired}`);
+			}
+			if (isMultipleValues && typeof maxAllowed === 'number' && maxAllowed > 0) {
+				if (groupJsDocLines.length === 0) {
+					groupJsDocLines.push(`${INDENT.repeat(2)}/**`);
+				}
+				groupJsDocLines.push(`${INDENT.repeat(2)} * @maxItems ${maxAllowed}`);
+			}
 
 			if (groupJsDocLines.length > 0) {
 				groupJsDocLines.push(`${INDENT.repeat(2)} */`);
 				groups.push(
-					`${groupJsDocLines.join('\n')}\n${INDENT.repeat(2)}${groupName}?: ${groupType}`,
+					`${groupJsDocLines.join('\n')}\n${INDENT.repeat(2)}${groupName}${groupOptional}: ${groupType}`,
 				);
 			} else {
-				groups.push(`${groupName}?: ${groupType}`);
+				groups.push(`${groupName}${groupOptional}: ${groupType}`);
 			}
 		}
 	}
@@ -1611,6 +1656,20 @@ export function generatePropertyJSDoc(
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 		lines.push(` * @builderHint ${safeBuilderHint}`);
+	}
+
+	// Search/load method annotations — signals to the builder agent that
+	// explore-node-resources can resolve real IDs for this parameter.
+	if (prop.modes) {
+		for (const mode of prop.modes) {
+			if (typeof mode.typeOptions?.searchListMethod === 'string') {
+				lines.push(` * @searchListMethod ${mode.typeOptions.searchListMethod}`);
+				break;
+			}
+		}
+	}
+	if (typeof prop.typeOptions?.loadOptionsMethod === 'string') {
+		lines.push(` * @loadOptionsMethod ${prop.typeOptions.loadOptionsMethod}`);
 	}
 
 	// Display options - conditions for when this property is shown/hidden

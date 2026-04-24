@@ -80,11 +80,9 @@ export const useReadyToRunStore = defineStore(STORES.READY_TO_RUN, () => {
 			telemetry.track('User claimed OpenAI credits');
 			return credential;
 		} catch (e) {
-			toast.showError(
-				e,
-				i18n.baseText('freeAi.credits.showError.claim.title'),
-				i18n.baseText('freeAi.credits.showError.claim.message'),
-			);
+			toast.showError(e, i18n.baseText('freeAi.credits.showError.claim.title'), {
+				message: i18n.baseText('freeAi.credits.showError.claim.message'),
+			});
 			throw e;
 		} finally {
 			claimingCredits.value = false;

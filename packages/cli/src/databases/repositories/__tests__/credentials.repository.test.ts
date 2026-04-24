@@ -144,7 +144,7 @@ describe('CredentialsRepository', () => {
 			entityManager.find.mockResolvedValueOnce([globalCred]);
 
 			// ACT
-			const credentials = await repository.findAllGlobalCredentials(true);
+			const credentials = await repository.findAllGlobalCredentials({ includeData: true });
 
 			// ASSERT
 			expect(entityManager.find).toHaveBeenCalledWith(
@@ -176,7 +176,7 @@ describe('CredentialsRepository', () => {
 			entityManager.find.mockResolvedValueOnce([globalCred]);
 
 			// ACT
-			const credentials = await repository.findAllGlobalCredentials(false);
+			const credentials = await repository.findAllGlobalCredentials({ includeData: false });
 
 			// ASSERT
 			expect(entityManager.find).toHaveBeenCalledWith(

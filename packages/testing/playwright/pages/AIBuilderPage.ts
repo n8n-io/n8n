@@ -1,19 +1,27 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+
+import { BuilderSetupWizard } from './components/BuilderSetupWizard';
 
 /**
  * Page object for AI Workflow Builder interactions
  */
 export class AIBuilderPage {
 	readonly page: Page;
+	readonly wizard: BuilderSetupWizard;
 
 	constructor(page: Page) {
 		this.page = page;
+		this.wizard = new BuilderSetupWizard(page);
 	}
 
 	// #region Locators
 
 	getWorkflowSuggestions() {
 		return this.page.getByTestId('workflow-suggestions');
+	}
+
+	getCanvasChoicePrompt() {
+		return this.page.getByTestId('canvas-choice-prompt');
 	}
 
 	getSuggestionPills() {
@@ -30,6 +38,14 @@ export class AIBuilderPage {
 	// #endregion
 
 	// #region Actions
+
+	async waitForCanvasBuildEntry() {
+		const buildButton = this.getCanvasBuildWithAIButton();
+
+		await expect(this.getCanvasChoicePrompt()).toBeVisible();
+		await expect(buildButton).toBeVisible();
+		await expect(buildButton).toBeEnabled();
+	}
 
 	async waitForWorkflowBuildComplete(options?: { timeout?: number }) {
 		const timeout = options?.timeout ?? 300000; // Default 5 minutes

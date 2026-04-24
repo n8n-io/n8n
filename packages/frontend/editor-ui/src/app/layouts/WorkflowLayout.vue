@@ -16,11 +16,14 @@ import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { WorkflowStateKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useProvideWorkflowId } from '@/app/composables/useProvideWorkflowId';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const { layoutProps } = useLayoutProps();
 const assistantStore = useAssistantStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const pushConnectionStore = usePushConnectionStore();
+const settingsStore = useSettingsStore();
+const isCanvasOnly = settingsStore.isCanvasOnly;
 
 const workflowState = useWorkflowState();
 provide(WorkflowStateKey, workflowState);
@@ -86,7 +89,7 @@ onBeforeUnmount(() => {
 		<template #header>
 			<AppHeader />
 		</template>
-		<template #sidebar>
+		<template v-if="!isCanvasOnly" #sidebar>
 			<AppSidebar />
 		</template>
 		<LoadingView v-if="isLoading" />
@@ -94,7 +97,7 @@ onBeforeUnmount(() => {
 		<template v-if="layoutProps.logs" #footer>
 			<LogsPanel />
 		</template>
-		<template #overlays>
+		<template v-if="!isCanvasOnly" #overlays>
 			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
 			<CanvasChatOverlay v-if="chatHubPanelStore.isFloatingChatEnabled" />
 		</template>
