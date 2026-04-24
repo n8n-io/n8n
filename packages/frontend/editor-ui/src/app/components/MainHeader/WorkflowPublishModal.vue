@@ -36,7 +36,7 @@ const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
 const credentialsStore = useCredentialsStore();
 const { showMessage } = useToast();
@@ -159,7 +159,7 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 async function displayActivationError() {
 	let errorMessage: string | VNode;
 	try {
-		const errorData = await workflowsStore.getActivationError(workflowsStore.workflow.id);
+		const errorData = await workflowsStore.getActivationError(workflowsStore.workflowId);
 
 		if (errorData === undefined) {
 			errorMessage = i18n.baseText(
@@ -193,7 +193,7 @@ async function handlePublish() {
 
 	// Activate the workflow
 	const { success, errorHandled } = await workflowActivate.publishWorkflow(
-		workflowsStore.workflow.id,
+		workflowsStore.workflowId,
 		workflowDocumentStore.value?.versionId ?? '',
 		{
 			name: versionName.value,
@@ -219,7 +219,7 @@ async function handlePublish() {
 		}
 
 		telemetry.track('User published version from canvas', {
-			workflow_id: workflowsStore.workflow.id,
+			workflow_id: workflowsStore.workflowId,
 		});
 
 		// For now, just close the modal after successful activation
@@ -264,7 +264,7 @@ async function handlePublish() {
 						<li v-for="node in workflowsStore.nodesWithIssues" :key="node.id">
 							<N8nLink
 								size="small"
-								:to="`/workflow/${workflowsStore.workflow.id}/${node.id}`"
+								:to="`/workflow/${workflowsStore.workflowId}/${node.id}`"
 								@click="modalBus.emit('close')"
 								>{{ node.name }}</N8nLink
 							>

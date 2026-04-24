@@ -8,6 +8,7 @@ import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -36,12 +37,14 @@ describe('WaitingWebhooks', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const mockWebhookService = mock<WebhookService>();
 	const mockInstanceSettings = mock<InstanceSettings>({ hmacSignatureSecret: TEST_HMAC_SECRET });
+	const mockEventService = mock<EventService>();
 	const waitingWebhooks = new TestWaitingWebhooks(
 		mock(),
 		mock(),
 		executionRepository,
 		mockWebhookService,
 		mockInstanceSettings,
+		mockEventService,
 	);
 
 	beforeEach(() => {
@@ -1111,6 +1114,213 @@ describe('WaitingWebhooks', () => {
 			 */
 			const nodeExecutionStack = mockExecution.data.executionData!.nodeExecutionStack;
 			expect(nodeExecutionStack[0].node.rewireOutputLogTo).toBeUndefined();
+		});
+	});
+
+	describe('execution-resumed event', () => {
+		function createMockExecution(overrides: {
+			nodeType: string;
+			nodeName: string;
+			nodeId: string;
+			typeVersion?: number;
+			nodeParameters?: Record<string, string>;
+		}) {
+			const { nodeType, nodeName, nodeId, typeVersion = 1, nodeParameters = {} } = overrides;
+			return mock<IExecutionResponse>({
+				id: 'test-execution-id',
+				status: 'waiting',
+				finished: false,
+				mode: 'manual',
+				data: {
+					resumeToken: undefined,
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									name: nodeName,
+									type: nodeType,
+									typeVersion,
+									parameters: nodeParameters,
+									id: nodeId,
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						error: undefined,
+						runData: {
+							[nodeName]: [{ startTime: 0, executionTime: 0, executionIndex: 0, source: [] }],
+						},
+						lastNodeExecuted: nodeName,
+					},
+				},
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: nodeName,
+							type: nodeType,
+							typeVersion,
+							parameters: nodeParameters,
+							id: nodeId,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: null,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+		}
+
+		function createMockRes(): express.Response {
+			return mock<express.Response>({
+				status: jest.fn().mockReturnThis(),
+				json: jest.fn(),
+				render: jest.fn(),
+			});
+		}
+
+		beforeEach(() => {
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			executionRepository.findSingleExecution.mockResolvedValue(
+				createMockExecution({
+					nodeType: 'n8n-nodes-base.wait',
+					nodeName: 'WaitNode',
+					nodeId: 'node-id',
+				}),
+			);
+		});
+
+		it('should emit when execution successfully resumes', async () => {
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+			jest
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(
+					async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
+						callback(null, { noWebhookResponse: true });
+						return undefined;
+					},
+				);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: 'test-execution-id', suffix: undefined },
+				method: 'POST',
+			});
+			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+
+			expect(mockEventService.emit).toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.objectContaining({ executionId: 'test-execution-id', workflowId: 'workflow-id' }),
+			);
+		});
+
+		it('should not emit when no matching webhook found', async () => {
+			mockWebhookService.getNodeWebhooks.mockReturnValue([]);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: 'test-execution-id', suffix: undefined },
+				method: 'POST',
+			});
+			await expect(waitingWebhooks.executeWebhook(mockReq, createMockRes())).rejects.toThrowError(
+				NotFoundError,
+			);
+
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.anything(),
+			);
+		});
+
+		it('should not emit for send-and-wait already-responded requests', async () => {
+			const sendAndWaitNodeId = 'send-and-wait-node-id';
+			executionRepository.findSingleExecution.mockResolvedValue(
+				createMockExecution({
+					nodeType: 'n8n-nodes-base.sendAndWait',
+					nodeName: 'SendAndWaitNode',
+					nodeId: sendAndWaitNodeId,
+					nodeParameters: { operation: SEND_AND_WAIT_OPERATION },
+				}),
+			);
+			mockWebhookService.getNodeWebhooks.mockReturnValue([]);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: 'test-execution-id', suffix: sendAndWaitNodeId },
+				method: 'POST',
+			});
+			const result = await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.anything(),
+			);
+		});
+
+		it('should not emit for active send-and-wait webhook call', async () => {
+			const sendAndWaitNodeId = 'send-and-wait-node-id';
+			executionRepository.findSingleExecution.mockResolvedValue(
+				createMockExecution({
+					nodeType: 'n8n-nodes-base.emailSend',
+					nodeName: 'SendAndWaitNode',
+					nodeId: sendAndWaitNodeId,
+					typeVersion: 2,
+					nodeParameters: { operation: SEND_AND_WAIT_OPERATION },
+				}),
+			);
+			// Webhook IS found — simulates an active send-and-wait response
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: sendAndWaitNodeId,
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: sendAndWaitNodeId,
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+			jest
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, done) => {
+					done(null, { noWebhookResponse: true });
+					return undefined;
+				});
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: 'test-execution-id', suffix: sendAndWaitNodeId },
+				method: 'POST',
+			});
+			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.anything(),
+			);
 		});
 	});
 });

@@ -340,6 +340,10 @@ export const setupTestServer = ({
 					case 'third-party-licenses':
 						await import('@/controllers/third-party-licenses.controller');
 						break;
+
+					case 'encryption-keys':
+						await import('@/modules/encryption-key-manager/encryption-key.controller');
+						break;
 				}
 			}
 

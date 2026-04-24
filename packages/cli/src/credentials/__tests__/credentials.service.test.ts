@@ -2140,6 +2140,31 @@ describe('CredentialsService', () => {
 
 				await service.createUnmanagedCredential(payload, ownerUser);
 			});
+
+			it('should create credential when external secret uses mixed bracket notation', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: "={{ $secrets.validProvider['bar'] }}",
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					true,
+				);
+
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+				mockTransactionManager();
+
+				await expect(service.createUnmanagedCredential(payload, ownerUser)).resolves.toBeDefined();
+				expect(
+					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
+				).toHaveBeenCalledWith('validProvider', 'WHwt9vP3keCUvmB5');
+			});
 		});
 	});
 
