@@ -60,7 +60,7 @@ export interface IExecutionBase {
 	status: ExecutionStatus;
 	waitTill?: Date | null;
 	storedAt: ExecutionDataStorageLocation;
-	deduplicationKey?: string | null;
+	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 }
 
 // Required by PublicUser
