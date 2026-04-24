@@ -16,6 +16,7 @@ import {
 	AGENT_SECTION_KEY,
 	BEHAVIOR_SECTION_KEY,
 	CONFIG_JSON_SECTION_KEY,
+	EVALS_SECTION_KEY,
 	EXECUTIONS_SECTION_KEY,
 } from '../constants';
 
@@ -26,6 +27,7 @@ const props = defineProps<{
 	selectedKey: string | null;
 	connectedTriggers?: string[];
 	executionsCount?: number;
+	evaluationsCount?: number;
 }>();
 
 const emit = defineEmits<{ select: [key: string] }>();
@@ -103,6 +105,12 @@ const sections = computed<SectionDescriptor[]>(() => {
 		label: i18n.baseText(KNOWN_SECTIONS.tools.i18nKey),
 		icon: KNOWN_SECTIONS.tools.icon,
 		count: Array.isArray(cfg.tools) ? cfg.tools.length : 0,
+	});
+	out.push({
+		key: EVALS_SECTION_KEY,
+		label: 'Evaluations',
+		icon: 'check',
+		count: props.evaluationsCount,
 	});
 
 	// Divider + Executions row sits below the config primitives.

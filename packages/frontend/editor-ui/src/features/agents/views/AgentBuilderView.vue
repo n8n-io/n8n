@@ -31,6 +31,7 @@ import {
 	AGENT_BUILDER_VIEW,
 	AGENT_SECTION_KEY,
 	BEHAVIOR_SECTION_KEY,
+	EVALS_SECTION_KEY,
 	CONFIG_JSON_SECTION_KEY,
 	EXECUTIONS_SECTION_KEY,
 	AGENT_TOOLS_MODAL_KEY,
@@ -47,6 +48,7 @@ import AgentIntegrationsPanel from '../components/AgentIntegrationsPanel.vue';
 import AgentToolsListPanel from '../components/AgentToolsListPanel.vue';
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
 import AgentBehaviorPanel from '../components/AgentBehaviorPanel.vue';
+import AgentEvalsPanel from '../components/AgentEvalsPanel.vue';
 import AgentChatQuickActions from '../components/AgentChatQuickActions.vue';
 
 const route = useRoute();
@@ -1012,6 +1014,7 @@ function onSwitchAgent(nextAgentId: string) {
 						:config="localConfig"
 						@update:config="onConfigFieldUpdate"
 					/>
+					<AgentEvalsPanel v-else-if="selectedSection === EVALS_SECTION_KEY" />
 					<AgentInfoPanel
 						v-else-if="selectedSection === AGENT_SECTION_KEY"
 						:config="localConfig"
