@@ -6,7 +6,7 @@
  */
 import { ref, watch } from 'vue';
 import { onClickOutside } from '@vueuse/core';
-import { N8nButton, N8nIconPicker, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIconPicker, N8nInput } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 const props = defineProps<{ name: string; icon: IconOrEmoji }>();
@@ -39,7 +39,6 @@ function onSave() {
 
 <template>
 	<div ref="root" :class="$style.popover" data-testid="agent-header-edit-popover">
-		<N8nText size="small" :bold="true">Agent</N8nText>
 		<div :class="$style.row">
 			<N8nIconPicker v-model="localIcon" button-tooltip="Change icon" button-size="small" />
 			<N8nInput
@@ -69,7 +68,7 @@ function onSave() {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm);
-	background: var(--color--background);
+	background: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);

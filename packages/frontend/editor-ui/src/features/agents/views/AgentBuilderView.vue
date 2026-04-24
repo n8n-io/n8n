@@ -169,7 +169,7 @@ watch(
 const gridColumns = computed(() =>
 	chatColumnCollapsed.value
 		? '0 1fr minmax(200px, 260px)'
-		: 'minmax(480px, 600px) 1fr minmax(200px, 260px)',
+		: 'minmax(400px, 500px) 1fr minmax(200px, 260px)',
 );
 
 const projectName = computed<string | null>(() => {
@@ -587,6 +587,7 @@ function onTreeSelect(key: string) {
 const canToggleRaw = computed(() => {
 	const key = selectedSection.value;
 	if (!key) return false;
+	if (!localConfig.value) return false;
 	if (key === AGENT_SECTION_KEY || key === BEHAVIOR_SECTION_KEY || key === 'memory') return true;
 	return customToolSelection.value !== null;
 });
@@ -639,36 +640,28 @@ interface SessionMenuItem {
 	divided?: boolean;
 }
 
-const NEW_SESSION_ID = '__new_session__';
-
 const sessionMenu = computed<SessionMenuItem[]>(() => {
-	const items: SessionMenuItem[] = [{ id: NEW_SESSION_ID, title: 'New chat' }];
 	const threads = sessionsStore.threads ?? [];
 	if (threads.length === 0) {
-		items.push({ id: '__empty__', title: 'No previous chats', disabled: true, divided: true });
-		return items;
+		return [{ id: '__empty__', title: 'No previous chats', disabled: true }];
 	}
-	threads.forEach((thread, i) => {
-		items.push({
-			id: thread.id,
-			title: thread.title ?? `Session ${thread.sessionNumber}`,
-			divided: i === 0,
-		});
-	});
-	return items;
+	return threads.map((thread) => ({
+		id: thread.id,
+		title: thread.title ?? `Session ${thread.sessionNumber}`,
+	}));
 });
 
 function onSessionPick(id: string) {
 	if (id === '__empty__') return;
-	if (id === NEW_SESSION_ID) {
-		if (continueSessionId.value) clearContinueSessionParam();
-		activeChatSessionId.value = crypto.randomUUID();
-		return;
-	}
 	// Switching to an existing thread — clear the ephemeral session so the
 	// continue-session id from the URL drives the chat panel.
 	activeChatSessionId.value = null;
 	void router.replace({ query: { ...route.query, continueSessionId: id } });
+}
+
+function onNewChat() {
+	if (continueSessionId.value) clearContinueSessionParam();
+	activeChatSessionId.value = crypto.randomUUID();
 }
 
 function onOpenAddToolModal() {
@@ -804,23 +797,32 @@ function onSwitchAgent(nextAgentId: string) {
 				:aria-label="locale.baseText('agents.builder.chatColumn.ariaLabel')"
 				data-testid="agent-builder-chat-column"
 			>
-				<N8nNavigationDropdown
-					v-if="initialized && chatMode === 'test'"
-					:menu="sessionMenu"
-					:class="$style.historyBtnAnchor"
-					submenu-class="agent-chat-session-menu"
-					data-testid="agent-chat-session-picker"
-					@select="onSessionPick"
-				>
+				<div v-if="initialized && chatMode === 'test'" :class="$style.historyBtnAnchor">
 					<button
 						type="button"
 						:class="$style.historyBtn"
-						aria-label="Session history"
-						data-testid="agent-chat-session-picker-btn"
+						aria-label="New chat"
+						data-testid="agent-chat-new-chat-btn"
+						@click="onNewChat"
 					>
-						<N8nIcon icon="history" :size="14" />
+						<N8nIcon icon="plus" :size="14" />
 					</button>
-				</N8nNavigationDropdown>
+					<N8nNavigationDropdown
+						:menu="sessionMenu"
+						submenu-class="agent-chat-session-menu"
+						data-testid="agent-chat-session-picker"
+						@select="onSessionPick"
+					>
+						<button
+							type="button"
+							:class="$style.historyBtn"
+							aria-label="Session history"
+							data-testid="agent-chat-session-picker-btn"
+						>
+							<N8nIcon icon="history" :size="14" />
+						</button>
+					</N8nNavigationDropdown>
+				</div>
 				<div :class="$style.chatBody">
 					<AgentChatPanel
 						v-if="initialized && chatModeOpened.test && effectiveSessionId"
@@ -1151,6 +1153,9 @@ function onSwitchAgent(nextAgentId: string) {
 	top: var(--spacing--4xs);
 	right: var(--spacing--4xs);
 	z-index: 2;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .quickActionsRow {

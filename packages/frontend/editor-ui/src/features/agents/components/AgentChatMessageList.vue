@@ -109,10 +109,6 @@ watch(
 				v-if="group.kind === 'message'"
 				:class="[$style.message, group.message.role === 'user' ? $style.user : $style.assistant]"
 			>
-				<div :class="$style.avatar">
-					<N8nIcon v-if="group.message.role === 'user'" icon="user" width="20" height="20" />
-					<N8nIcon v-else icon="robot" width="20" height="20" />
-				</div>
 				<div :class="$style.content">
 					<div
 						v-if="group.message.role === 'user'"
@@ -137,9 +133,6 @@ watch(
 				</div>
 			</div>
 			<div v-else :class="[$style.message, $style.assistant]">
-				<div :class="$style.avatar">
-					<N8nIcon icon="robot" width="20" height="20" />
-				</div>
 				<div :class="$style.content">
 					<details v-if="group.thinking" :class="$style.thinkingBlock">
 						<summary :class="$style.thinkingSummary">
@@ -176,9 +169,6 @@ watch(
 		</template>
 
 		<div v-if="messagingState === 'waitingFirstChunk'" :class="$style.message">
-			<div :class="$style.avatar">
-				<N8nIcon icon="robot" width="20" height="20" />
-			</div>
 			<div :class="$style.content">
 				<ChatTypingIndicator :class="$style.typingIndicator" />
 			</div>
@@ -214,34 +204,7 @@ watch(
 }
 
 .message {
-	position: relative;
 	padding-top: var(--spacing--4xs);
-	padding-left: 40px;
-}
-
-/* Flip user messages so the avatar sits on the right and the bubble aligns to
-   that side. */
-.message.user {
-	padding-left: 0;
-	padding-right: 40px;
-}
-
-.avatar {
-	position: absolute;
-	left: 0;
-	top: 0;
-	display: grid;
-	place-items: center;
-	width: 28px;
-	height: 28px;
-	border-radius: 50%;
-	background: var(--color--background);
-	color: var(--color--text--tint-1);
-}
-
-.message.user .avatar {
-	left: auto;
-	right: 0;
 }
 
 .content {

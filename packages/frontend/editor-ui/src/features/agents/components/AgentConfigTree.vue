@@ -43,6 +43,10 @@ interface SectionDescriptor {
 	dividerBefore?: boolean;
 	/** Optional count shown as a pill next to the label. */
 	count?: number;
+	/** When true, the row is non-interactive and renders a status pill. */
+	disabled?: boolean;
+	/** Optional status pill label (e.g. "Coming soon"). */
+	pill?: string;
 }
 
 interface ChildDescriptor {
@@ -110,7 +114,8 @@ const sections = computed<SectionDescriptor[]>(() => {
 		key: EVALS_SECTION_KEY,
 		label: 'Evaluations',
 		icon: 'check',
-		count: props.evaluationsCount,
+		disabled: true,
+		pill: 'Coming soon',
 	});
 
 	// Divider + Executions row sits below the config primitives.
@@ -161,6 +166,7 @@ watch(
 );
 
 function onSectionClick(section: SectionDescriptor) {
+	if (section.disabled) return;
 	if (section.children) {
 		toggleExpanded(section.key);
 		// Only the Tools folder surfaces a proper list panel; the Configuration
@@ -195,9 +201,11 @@ function onChildClick(childKey: string) {
 					$style.item,
 					selectedKey === section.key && $style.selected,
 					section.children && $style.folder,
+					section.disabled && $style.disabled,
 				]"
 				:aria-pressed="selectedKey === section.key"
 				:aria-expanded="section.children ? isExpanded(section.key) : undefined"
+				:aria-disabled="section.disabled"
 				:data-key="section.key"
 				data-testid="agent-config-tree-item"
 				type="button"
@@ -211,6 +219,7 @@ function onChildClick(childKey: string) {
 					data-testid="agent-config-tree-count"
 					>{{ section.count }}</span
 				>
+				<span v-if="section.pill" :class="$style.statusPill">{{ section.pill }}</span>
 				<N8nIcon v-if="section.children" :class="$style.caret" icon="chevron-down" :size="14" />
 			</button>
 			<div v-if="section.children && isExpanded(section.key)" :class="$style.children">
@@ -415,5 +424,25 @@ function onChildClick(childKey: string) {
 
 .selected {
 	background: var(--color--background--light-3);
+}
+
+.disabled {
+	cursor: not-allowed;
+	color: var(--color--text--tint-2);
+
+	&:hover {
+		background: transparent;
+	}
+}
+
+.statusPill {
+	flex-shrink: 0;
+	padding: 0 var(--spacing--3xs);
+	background: var(--color--background--light-3);
+	border-radius: 999px;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--3xs);
+	line-height: 18px;
+	text-align: center;
 }
 </style>
