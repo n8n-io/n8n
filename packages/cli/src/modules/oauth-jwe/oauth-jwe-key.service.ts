@@ -10,11 +10,11 @@ import { randomUUID } from 'node:crypto';
 import { CacheService } from '@/services/cache/cache.service';
 
 import {
-	OAUTH_JWE_KEY_ALGORITHM,
-	OAUTH_JWE_KEY_CACHE_KEY,
-	OAUTH_JWE_KEY_USE,
-	OAUTH_JWE_PRIVATE_KEY_TYPE,
-	OAUTH_JWE_PUBLIC_KEY_TYPE,
+	JWE_KEY_ALGORITHM,
+	JWE_KEY_CACHE_KEY,
+	JWE_KEY_USE,
+	JWE_PRIVATE_KEY_TYPE,
+	JWE_PUBLIC_KEY_TYPE,
 } from './oauth-jwe.constants';
 
 type OAuthJweKeyPairData = {
@@ -72,7 +72,7 @@ export class OAuthJweKeyService {
 	}
 
 	private async loadData(): Promise<OAuthJweKeyPairData> {
-		const data = await this.cacheService.get<OAuthJweKeyPairData>(OAUTH_JWE_KEY_CACHE_KEY, {
+		const data = await this.cacheService.get<OAuthJweKeyPairData>(JWE_KEY_CACHE_KEY, {
 			refreshFn: async () => await this.loadOrGenerate(),
 		});
 		if (!data) {
@@ -88,8 +88,8 @@ export class OAuthJweKeyService {
 		});
 
 		const [publicKey, privateKey] = await Promise.all([
-			importJWK(data.publicJwk, OAUTH_JWE_KEY_ALGORITHM),
-			importJWK(privateJwk, OAUTH_JWE_KEY_ALGORITHM),
+			importJWK(data.publicJwk, JWE_KEY_ALGORITHM),
+			importJWK(privateJwk, JWE_KEY_ALGORITHM),
 		]);
 
 		return {
@@ -115,8 +115,8 @@ export class OAuthJweKeyService {
 
 	private async readActivePairData(): Promise<OAuthJweKeyPairData | null> {
 		const [publicRow, privateRow] = await Promise.all([
-			this.deploymentKeyRepository.findActiveByType(OAUTH_JWE_PUBLIC_KEY_TYPE),
-			this.deploymentKeyRepository.findActiveByType(OAUTH_JWE_PRIVATE_KEY_TYPE),
+			this.deploymentKeyRepository.findActiveByType(JWE_PUBLIC_KEY_TYPE),
+			this.deploymentKeyRepository.findActiveByType(JWE_PRIVATE_KEY_TYPE),
 		]);
 
 		if (!publicRow && !privateRow) return null;
@@ -147,7 +147,7 @@ export class OAuthJweKeyService {
 	}
 
 	private async generateAndPersist(): Promise<void> {
-		const { publicKey, privateKey } = await generateKeyPair(OAUTH_JWE_KEY_ALGORITHM, {
+		const { publicKey, privateKey } = await generateKeyPair(JWE_KEY_ALGORITHM, {
 			extractable: true,
 		});
 		const kid = randomUUID();
@@ -155,14 +155,14 @@ export class OAuthJweKeyService {
 		const publicJwk: JWK = {
 			...(await exportJWK(publicKey)),
 			kid,
-			alg: OAUTH_JWE_KEY_ALGORITHM,
-			use: OAUTH_JWE_KEY_USE,
+			alg: JWE_KEY_ALGORITHM,
+			use: JWE_KEY_USE,
 		};
 		const privateJwk: JWK = {
 			...(await exportJWK(privateKey)),
 			kid,
-			alg: OAUTH_JWE_KEY_ALGORITHM,
-			use: OAUTH_JWE_KEY_USE,
+			alg: JWE_KEY_ALGORITHM,
+			use: JWE_KEY_USE,
 		};
 
 		const encryptedPrivate = this.cipher.encryptWithInstanceKey(JSON.stringify(privateJwk));
@@ -170,15 +170,15 @@ export class OAuthJweKeyService {
 		try {
 			await this.deploymentKeyRepository.manager.transaction(async (tx) => {
 				await tx.insert(DeploymentKey, {
-					type: OAUTH_JWE_PUBLIC_KEY_TYPE,
+					type: JWE_PUBLIC_KEY_TYPE,
 					value: JSON.stringify(publicJwk),
-					algorithm: OAUTH_JWE_KEY_ALGORITHM,
+					algorithm: JWE_KEY_ALGORITHM,
 					status: 'active',
 				});
 				await tx.insert(DeploymentKey, {
-					type: OAUTH_JWE_PRIVATE_KEY_TYPE,
+					type: JWE_PRIVATE_KEY_TYPE,
 					value: encryptedPrivate,
-					algorithm: OAUTH_JWE_KEY_ALGORITHM,
+					algorithm: JWE_KEY_ALGORITHM,
 					status: 'active',
 				});
 			});
