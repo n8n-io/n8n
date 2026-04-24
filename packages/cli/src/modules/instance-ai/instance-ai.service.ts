@@ -346,10 +346,14 @@ export class InstanceAiService {
 		if (!config.enabled) return undefined;
 
 		if (config.provider === 'daytona') {
-			return new BuilderSandboxFactory(config, new SnapshotManager(config.image, this.logger));
+			return new BuilderSandboxFactory(
+				config,
+				new SnapshotManager(config.image, this.logger),
+				this.logger,
+			);
 		}
 
-		return new BuilderSandboxFactory(config);
+		return new BuilderSandboxFactory(config, undefined, this.logger);
 	}
 
 	/** Get or create a sandbox + workspace for a thread. Returns undefined when sandbox is disabled. */
@@ -401,6 +405,31 @@ export class InstanceAiService {
 			client,
 			headers: { Authorization: `${token.tokenType} ${token.accessToken}` },
 		};
+	}
+
+	/**
+	 * Full model-resolver chain shared between chat and eval paths.
+	 *
+	 * Mirrors the resolution used in `processMessage`:
+	 *   1. AI service proxy (when enabled) — wraps with proxy auth.
+	 *   2. HTTP_PROXY (when set, e.g. e2e tests) — wraps with proxy fetch.
+	 *   3. Env vars / user credential — raw settings resolution.
+	 *
+	 * Call this instead of `settingsService.resolveModelConfig` directly so
+	 * the eval endpoint gets the same working model the chat endpoint uses.
+	 */
+	async resolveAgentModelConfig(user: User): Promise<ModelConfig> {
+		if (this.aiService.isProxyEnabled()) {
+			const client = await this.aiService.getClient();
+			const proxyBaseUrl = client.getApiProxyBaseUrl();
+			const tokenManager = new ProxyTokenManager(async () => {
+				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+			});
+			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager);
+		}
+		const httpProxyModel = await this.resolveHttpProxyModel(user);
+		if (httpProxyModel) return httpProxyModel;
+		return await this.settingsService.resolveModelConfig(user);
 	}
 
 	/**
@@ -1330,8 +1359,7 @@ export class InstanceAiService {
 		const modelId =
 			proxyBaseUrl && tokenManager
 				? await this.resolveProxyModel(user, proxyBaseUrl, tokenManager)
-				: ((await this.resolveHttpProxyModel(user)) ??
-					(await this.settingsService.resolveModelConfig(user)));
+				: await this.resolveAgentModelConfig(user);
 		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
 

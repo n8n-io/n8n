@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { DatabaseConfig } from '../src/index';
-import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
+import { ExecutionsConfig, GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
 
 jest.mock('fs');
 const mockFs = mock<typeof fs>();
@@ -423,6 +423,7 @@ describe('GlobalConfig', () => {
 			saveDataOnSuccess: 'all',
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
+			scheduledExecutionDeduplicationEnabled: false,
 		},
 		diagnostics: {
 			enabled: true,
@@ -725,6 +726,22 @@ describe('GlobalConfig', () => {
 
 			const config = Container.get(GlobalConfig);
 			expect(config.endpoints.health).toEqual('/api/v1/health');
+		});
+	});
+
+	describe('ExecutionsConfig', () => {
+		it('should default scheduledExecutionDeduplicationEnabled to false', () => {
+			process.env = {};
+			const config = Container.get(ExecutionsConfig);
+			expect(config.scheduledExecutionDeduplicationEnabled).toBe(false);
+		});
+
+		it('should enable scheduledExecutionDeduplicationEnabled when env var is set to true', () => {
+			process.env = {
+				N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED: 'true',
+			};
+			const config = Container.get(ExecutionsConfig);
+			expect(config.scheduledExecutionDeduplicationEnabled).toBe(true);
 		});
 	});
 });
