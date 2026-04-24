@@ -102,14 +102,16 @@ describe('KeyManagerService', () => {
 			expect(repository.insertOrIgnore).not.toHaveBeenCalled();
 		});
 
-		it('inserts the legacy CBC key when no active key exists', async () => {
+		it('inserts the legacy CBC key encrypted with the instance key when no active key exists', async () => {
 			repository.findActiveByType.mockResolvedValue(null);
+			cipher.encryptWithInstanceKey.mockReturnValue('encrypted-legacy-value');
 
 			await Container.get(KeyManagerService).bootstrapLegacyKey('legacy-value');
 
+			expect(cipher.encryptWithInstanceKey).toHaveBeenCalledWith('legacy-value');
 			expect(repository.insertOrIgnore).toHaveBeenCalledWith({
 				type: 'data_encryption',
-				value: 'legacy-value',
+				value: 'encrypted-legacy-value',
 				status: 'active',
 				algorithm: 'aes-256-cbc',
 			});

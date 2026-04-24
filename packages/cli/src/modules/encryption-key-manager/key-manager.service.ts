@@ -56,9 +56,10 @@ export class KeyManagerService {
 		const existing = await this.deploymentKeyRepository.findActiveByType('data_encryption');
 		if (existing) return;
 
+		const encryptedValue = this.cipher.encryptWithInstanceKey(value);
 		await this.deploymentKeyRepository.insertOrIgnore({
 			type: 'data_encryption',
-			value,
+			value: encryptedValue,
 			status: 'active',
 			algorithm: 'aes-256-cbc',
 		});
