@@ -196,6 +196,7 @@ const chatModeOptions = computed<Array<TabOptions<ChatMode>>>(() => [
 		label: locale.baseText('agents.builder.chatMode.build'),
 		icon: 'wand-sparkles',
 		notification: isBuildChatStreaming.value,
+		align: 'right',
 	},
 	{
 		value: 'test',
@@ -205,6 +206,7 @@ const chatModeOptions = computed<Array<TabOptions<ChatMode>>>(() => [
 		tooltip: isBuilt.value
 			? undefined
 			: locale.baseText('agents.builder.chatMode.test.lockedTooltip'),
+		align: 'right',
 	},
 ]);
 
