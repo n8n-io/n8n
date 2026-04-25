@@ -89,6 +89,14 @@ describe('parseFilters', () => {
 		assert.deepEqual(filters.get('non-python'), ['**', '!packages/@n8n/task-runner-python/**']);
 	});
 
+	it('parses YAML-list-style multi-line filter', () => {
+		const input = `db:
+  - packages/@n8n/db/**
+  - packages/cli/**`;
+		const filters = parseFilters(input);
+		assert.deepEqual(filters.get('db'), ['packages/@n8n/db/**', 'packages/cli/**']);
+	});
+
 	it('parses mixed single and multi-line', () => {
 		const input = `non-python:
   **
@@ -153,6 +161,13 @@ describe('evaluateFilter', () => {
 		const files = ['.github/workflows/ci.yml', '.github/actions/setup/action.yml'];
 		const patterns = ['.github/**'];
 		assert.equal(evaluateFilter(files, patterns), true);
+	});
+
+	it('list-style parsed db filter matches db package changes', () => {
+		const filters = parseFilters(`db:
+  - packages/@n8n/db/**
+  - packages/cli/**`);
+		assert.equal(evaluateFilter(['packages/@n8n/db/src/index.ts'], filters.get('db') ?? []), true);
 	});
 
 	it('non-.github files with workflows filter returns false', () => {
