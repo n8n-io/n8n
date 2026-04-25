@@ -490,9 +490,10 @@ export class ScheduleTrigger implements INodeType {
 			);
 		};
 
+		const nodeKey = `${workflowId ?? ''}:${nodeId}`;
 		const rules = intervals.map((interval, i) => ({
 			interval,
-			cronExpression: toCronExpression(interval),
+			cronExpression: toCronExpression(interval, nodeKey),
 			recurrence: intervalToRecurrence(interval, i),
 		}));
 

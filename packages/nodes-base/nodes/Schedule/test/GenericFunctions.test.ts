@@ -1,6 +1,5 @@
 import moment from 'moment-timezone';
 import type { INode } from 'n8n-workflow';
-import * as n8nWorkflow from 'n8n-workflow';
 
 import {
 	intervalToRecurrence,
@@ -28,97 +27,139 @@ function mockMomentTz(values: {
 	(mockedMoment.tz as unknown as jest.Mock).mockReturnValue(tzObj);
 }
 
-describe('toCronExpression', () => {
-	Object.defineProperty(n8nWorkflow, 'randomInt', {
-		value: (min: number, max: number) => Math.floor((min + max) / 2),
-	});
+// Stable filler values produced by `stableInt('test-key', label, ...)`:
+//   second     = 56
+//   minute     = 19
+//   hour       = 14
+//   dayOfMonth = 4
+const TEST_SEED = 'test-key';
 
+describe('toCronExpression', () => {
 	it('should return cron expression for cronExpression field', () => {
-		const result = toCronExpression({
-			field: 'cronExpression',
-			expression: '1 2 3 * * *',
-		});
+		const result = toCronExpression(
+			{
+				field: 'cronExpression',
+				expression: '1 2 3 * * *',
+			},
+			TEST_SEED,
+		);
 		expect(result).toEqual('1 2 3 * * *');
 	});
 
 	it('should return cron expression for seconds interval', () => {
-		const result = toCronExpression({
-			field: 'seconds',
-			secondsInterval: 10,
-		});
+		const result = toCronExpression(
+			{
+				field: 'seconds',
+				secondsInterval: 10,
+			},
+			TEST_SEED,
+		);
 		expect(result).toEqual('*/10 * * * * *');
 	});
 
 	it('should return cron expression for minutes interval', () => {
-		const result = toCronExpression({
-			field: 'minutes',
-			minutesInterval: 30,
-		});
-		expect(result).toEqual('30 */30 * * * *');
+		const result = toCronExpression(
+			{
+				field: 'minutes',
+				minutesInterval: 30,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 */30 * * * *');
 	});
 
 	it('should return cron expression for hours interval', () => {
-		const result = toCronExpression({
-			field: 'hours',
-			hoursInterval: 3,
-			triggerAtMinute: 22,
-		});
-		expect(result).toEqual('30 22 */3 * * *');
+		const result = toCronExpression(
+			{
+				field: 'hours',
+				hoursInterval: 3,
+				triggerAtMinute: 22,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 22 */3 * * *');
 
-		const result1 = toCronExpression({
-			field: 'hours',
-			hoursInterval: 3,
-		});
-		expect(result1).toEqual('30 30 */3 * * *');
+		const result1 = toCronExpression(
+			{
+				field: 'hours',
+				hoursInterval: 3,
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 */3 * * *');
 	});
 
 	it('should return cron expression for days interval', () => {
-		const result = toCronExpression({
-			field: 'days',
-			daysInterval: 4,
-			triggerAtMinute: 30,
-			triggerAtHour: 10,
-		});
-		expect(result).toEqual('30 30 10 * * *');
+		const result = toCronExpression(
+			{
+				field: 'days',
+				daysInterval: 4,
+				triggerAtMinute: 30,
+				triggerAtHour: 10,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 30 10 * * *');
 
-		const result1 = toCronExpression({
-			field: 'days',
-			daysInterval: 4,
-		});
-		expect(result1).toEqual('30 30 12 * * *');
+		const result1 = toCronExpression(
+			{
+				field: 'days',
+				daysInterval: 4,
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 14 * * *');
 	});
 
 	it('should return cron expression for weeks interval', () => {
-		const result = toCronExpression({
-			field: 'weeks',
-			weeksInterval: 2,
-			triggerAtMinute: 0,
-			triggerAtHour: 9,
-			triggerAtDay: [1, 3, 5],
-		});
-		expect(result).toEqual('30 0 9 * * 1,3,5');
-		const result1 = toCronExpression({
-			field: 'weeks',
-			weeksInterval: 2,
-			triggerAtDay: [1, 3, 5],
-		});
-		expect(result1).toEqual('30 30 12 * * 1,3,5');
+		const result = toCronExpression(
+			{
+				field: 'weeks',
+				weeksInterval: 2,
+				triggerAtMinute: 0,
+				triggerAtHour: 9,
+				triggerAtDay: [1, 3, 5],
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 0 9 * * 1,3,5');
+		const result1 = toCronExpression(
+			{
+				field: 'weeks',
+				weeksInterval: 2,
+				triggerAtDay: [1, 3, 5],
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 14 * * 1,3,5');
 	});
 
 	it('should return cron expression for months interval', () => {
-		const result = toCronExpression({
-			field: 'months',
-			monthsInterval: 3,
-			triggerAtMinute: 0,
-			triggerAtHour: 0,
-			triggerAtDayOfMonth: 1,
-		});
-		expect(result).toEqual('30 0 0 1 */3 *');
-		const result1 = toCronExpression({
-			field: 'months',
-			monthsInterval: 3,
-		});
-		expect(result1).toEqual('30 30 12 16 */3 *');
+		const result = toCronExpression(
+			{
+				field: 'months',
+				monthsInterval: 3,
+				triggerAtMinute: 0,
+				triggerAtHour: 0,
+				triggerAtDayOfMonth: 1,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 0 0 1 */3 *');
+		const result1 = toCronExpression(
+			{
+				field: 'months',
+				monthsInterval: 3,
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 14 4 */3 *');
+	});
+
+	it('should be deterministic for the same seed and produce different output for different seeds', () => {
+		const interval: ScheduleInterval = { field: 'days', daysInterval: 1 };
+		expect(toCronExpression(interval, 'seed-a')).toEqual(toCronExpression(interval, 'seed-a'));
+		expect(toCronExpression(interval, 'seed-a')).not.toEqual(toCronExpression(interval, 'seed-b'));
 	});
 });
 
