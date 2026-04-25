@@ -34,21 +34,22 @@ describe('ScheduleTrigger', () => {
 			expect(emit).toHaveBeenCalledTimes(1);
 
 			// Filler second/minute are derived deterministically from
-			// `${workflowId ?? ''}:${nodeId}`; for the test default `:1` they
-			// resolve to 13/47.
+			// `${workflowId ?? ''}:${nodeId}`. The default test setup
+			// leaves both ids undefined, so the seed is ':undefined' and
+			// resolves to second=34 / minute=52.
 			const firstTriggerData = emit.mock.calls[0][0][0][0];
 			expect(firstTriggerData.json).toEqual({
 				'Day of month': '28',
 				'Day of week': 'Thursday',
 				Hour: '15',
-				Minute: '47',
+				Minute: '52',
 				Month: 'December',
-				'Readable date': 'December 28th 2023, 3:47:13 pm',
-				'Readable time': '3:47:13 pm',
-				Second: '13',
+				'Readable date': 'December 28th 2023, 3:52:34 pm',
+				'Readable time': '3:52:34 pm',
+				Second: '34',
 				Timezone: 'Europe/Berlin (UTC+01:00)',
 				Year: '2023',
-				timestamp: '2023-12-28T15:47:13.000+01:00',
+				timestamp: '2023-12-28T15:52:34.000+01:00',
 			});
 
 			jest.setSystemTime(new Date(firstTriggerData.json.timestamp as string));
