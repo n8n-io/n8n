@@ -50,8 +50,7 @@ export class ScheduledTaskManager {
 	/**
 	 * @param onTick - Called on each cron firing on the leader instance.
 	 *   Receives `scheduledTime`: the canonical scheduled fire time for this
-	 *   tick, pre-computed from the cron expression rather than read from
-	 *   `now`, so it is drift-free and stable across instances.
+	 *   tick.
 	 */
 	registerCron(ctx: CronContext, onTick: (scheduledTime: Date) => void) {
 		const { workflowId, timezone, nodeId, expression, recurrence } = ctx;
