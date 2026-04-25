@@ -448,12 +448,14 @@ export class ScheduleTrigger implements INodeType {
 
 		const configDedupEnabled =
 			Container.get(ExecutionsConfig).scheduledExecutionDeduplicationEnabled;
+		// The workflowId should always be defined, but if it isn't we skip
+		// the deduplication key.
 		const dedupEnabled = configDedupEnabled && Boolean(workflowId);
 
 		const executeTrigger = (
 			recurrence: IRecurrenceRule,
 			skipRecurrenceCheck = false,
-			scheduledT?: Date,
+			scheduledTime?: Date,
 		) => {
 			if (!skipRecurrenceCheck) {
 				const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
@@ -476,14 +478,14 @@ export class ScheduleTrigger implements INodeType {
 			};
 
 			const deduplicationKey =
-				dedupEnabled && scheduledT
-					? `${workflowId}:${nodeId}:${scheduledT.toISOString()}`
+				dedupEnabled && scheduledTime
+					? `${workflowId}:${nodeId}:${scheduledTime.toISOString()}`
 					: undefined;
 
 			this.emit(
 				[this.helpers.returnJsonArray([resultData])],
-				undefined,
-				undefined,
+				/* responsePromise= */ undefined,
+				/* donePromise= */ undefined,
 				deduplicationKey,
 			);
 		};
@@ -501,8 +503,8 @@ export class ScheduleTrigger implements INodeType {
 						expression: cronExpression,
 						recurrence,
 					};
-					this.helpers.registerCron(cron, (scheduledT) =>
-						executeTrigger(recurrence, false, scheduledT),
+					this.helpers.registerCron(cron, (scheduledTime) =>
+						executeTrigger(recurrence, /* skipRecurrenceCheck= */ false, scheduledTime),
 					);
 				} catch (error) {
 					if (interval.field === 'cronExpression') {

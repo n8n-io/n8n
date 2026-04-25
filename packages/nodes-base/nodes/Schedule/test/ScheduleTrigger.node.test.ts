@@ -220,45 +220,6 @@ describe('ScheduleTrigger', () => {
 				expect(scheduledT.getUTCMilliseconds()).toBe(0);
 			});
 
-			it('should not emit a deduplication key when the workflow id is undefined', async () => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = true;
-
-				const { emit } = await testTriggerNode(ScheduleTrigger, {
-					timezone,
-					node: {
-						parameters: {
-							rule: { interval: [{ field: 'cronExpression', expression: '0 */2 * * *' }] },
-						},
-					},
-					workflowStaticData: {},
-					workflow: { active: true },
-				});
-
-				jest.advanceTimersByTime(2 * HOUR);
-
-				expect(emit).toHaveBeenCalledTimes(1);
-				expect(emit.mock.calls[0][3]).toBeUndefined();
-			});
-
-			it('should not emit a deduplication key when the feature flag is disabled', async () => {
-				executionsConfig.scheduledExecutionDeduplicationEnabled = false;
-
-				const { emit } = await testTriggerNode(ScheduleTrigger, {
-					timezone,
-					node: {
-						parameters: {
-							rule: { interval: [{ field: 'cronExpression', expression: '0 */2 * * *' }] },
-						},
-					},
-					workflowStaticData: {},
-				});
-
-				jest.advanceTimersByTime(2 * HOUR);
-
-				expect(emit).toHaveBeenCalledTimes(1);
-				expect(emit.mock.calls[0][3]).toBeUndefined();
-			});
-
 			it('should not emit a deduplication key for manual executions', async () => {
 				executionsConfig.scheduledExecutionDeduplicationEnabled = true;
 

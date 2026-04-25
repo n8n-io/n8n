@@ -47,7 +47,13 @@ export class ScheduledTaskManager {
 		}, activeInterval * Time.minutes.toMilliseconds);
 	}
 
-	registerCron(ctx: CronContext, onTick: (scheduledT: Date) => void) {
+	/**
+	 * @param onTick - Called on each cron firing on the leader instance.
+	 *   Receives `scheduledTime`: the canonical scheduled fire time for this
+	 *   tick (computed via `nextDate()` before the firing rather than `now`,
+	 *   so it is drift-free and stable across instances).
+	 */
+	registerCron(ctx: CronContext, onTick: (scheduledTime: Date) => void) {
 		const { workflowId, timezone, nodeId, expression, recurrence } = ctx;
 
 		const summary = recurrence?.activated
@@ -72,29 +78,38 @@ export class ScheduledTaskManager {
 			return;
 		}
 
-		let scheduledT: Date | null = null;
-		const job: CronJob = new CronJob(
-			expression,
-			() => {
-				const firedFor = scheduledT;
-				scheduledT = computeNext();
+		// `scheduledTime` always holds the canonical time of the *upcoming*
+		// fire: set at registration and refreshed after each tick. We use
+		// our pre-computed value (rather than `new Date()` at firing time)
+		// to avoid drift-induced key mismatches across instances.
+		let scheduledTime: Date | null = null;
 
-				if (!this.instanceSettings.isLeader) return;
-				if (firedFor === null) return;
+		const handleTick = () => {
+			// Capture the time this firing was scheduled for, then advance
+			// `scheduledTime` to the next upcoming fire.
+			const firedFor = scheduledTime;
+			scheduledTime = computeNext();
 
-				this.logger.debug('Executing cron for workflow', {
-					workflowId,
-					nodeId,
-					cron: summary,
-					instanceRole: this.instanceSettings.instanceRole,
-				});
+			if (!this.instanceSettings.isLeader) return;
 
-				onTick(firedFor);
-			},
-			undefined,
-			true,
-			timezone,
-		);
+			// `firedFor === null` would mean `computeNext()` swallowed an
+			// error at registration. Unreachable in practice — the cron
+			// expression has already been validated by the constructor — but
+			// preserves the invariant: never invoke `onTick` without a
+			// canonical scheduled time.
+			if (firedFor === null) return;
+
+			this.logger.debug('Executing cron for workflow', {
+				workflowId,
+				nodeId,
+				cron: summary,
+				instanceRole: this.instanceSettings.instanceRole,
+			});
+
+			onTick(firedFor);
+		};
+
+		const job: CronJob = new CronJob(expression, handleTick, undefined, true, timezone);
 
 		const computeNext = (): Date | null => {
 			try {
@@ -110,7 +125,7 @@ export class ScheduledTaskManager {
 			}
 		};
 
-		scheduledT = computeNext();
+		scheduledTime = computeNext();
 
 		const cron: Cron = { job, summary, ctx };
 
