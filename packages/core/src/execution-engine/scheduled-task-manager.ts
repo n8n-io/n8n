@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { CronLoggingConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { CronJob } from 'cron';
+import { CronJob, CronTime } from 'cron';
 import type { CronContext, Workflow } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/errors';
@@ -50,8 +50,8 @@ export class ScheduledTaskManager {
 	/**
 	 * @param onTick - Called on each cron firing on the leader instance.
 	 *   Receives `scheduledTime`: the canonical scheduled fire time for this
-	 *   tick (computed via `nextDate()` before the firing rather than `now`,
-	 *   so it is drift-free and stable across instances).
+	 *   tick, pre-computed from the cron expression rather than read from
+	 *   `now`, so it is drift-free and stable across instances.
 	 */
 	registerCron(ctx: CronContext, onTick: (scheduledTime: Date) => void) {
 		const { workflowId, timezone, nodeId, expression, recurrence } = ctx;
@@ -82,7 +82,10 @@ export class ScheduledTaskManager {
 		// fire: set at registration and refreshed after each tick. We use
 		// our pre-computed value (rather than `new Date()` at firing time)
 		// to avoid drift-induced key mismatches across instances.
-		let scheduledTime: Date | null = null;
+		const cronTime = new CronTime(expression, timezone);
+		const computeNext = (): Date => cronTime.sendAt().toJSDate();
+
+		let scheduledTime: Date = computeNext();
 
 		const handleTick = () => {
 			// Capture the time this firing was scheduled for, then advance
@@ -91,13 +94,6 @@ export class ScheduledTaskManager {
 			scheduledTime = computeNext();
 
 			if (!this.instanceSettings.isLeader) return;
-
-			// `firedFor === null` would mean `computeNext()` swallowed an
-			// error at registration. Unreachable in practice — the cron
-			// expression has already been validated by the constructor — but
-			// preserves the invariant: never invoke `onTick` without a
-			// canonical scheduled time.
-			if (firedFor === null) return;
 
 			this.logger.debug('Executing cron for workflow', {
 				workflowId,
@@ -110,22 +106,6 @@ export class ScheduledTaskManager {
 		};
 
 		const job: CronJob = new CronJob(expression, handleTick, undefined, true, timezone);
-
-		const computeNext = (): Date | null => {
-			try {
-				return job.nextDate().toJSDate();
-			} catch (error) {
-				this.logger.warn('Failed to compute next scheduled fire time for cron; skipping tick', {
-					workflowId,
-					nodeId,
-					expression,
-					error,
-				});
-				return null;
-			}
-		};
-
-		scheduledTime = computeNext();
 
 		const cron: Cron = { job, summary, ctx };
 
