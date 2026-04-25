@@ -469,6 +469,25 @@ describe('AiWorkflowBuilderService', () => {
 
 			expect(mockClient.markBuilderSuccess).toHaveBeenCalledWith(mockUser, {
 				Authorization: 'Bearer test-access-token',
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				'x-n8n-feature': 'workflow-builder',
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				'x-n8n-version': '1.0.0',
+			});
+		});
+
+		it('should stamp x-n8n-feature and x-n8n-version on proxy auth headers', async () => {
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			expect(anthropicClaudeSonnet45Mock).toHaveBeenCalledWith({
+				baseUrl: 'https://api.example.com/anthropic',
+				apiKey: '-',
+				headers: expect.objectContaining({
+					Authorization: 'Bearer test-access-token',
+					'x-n8n-feature': 'workflow-builder',
+					'x-n8n-version': '1.0.0',
+				}),
 			});
 		});
 

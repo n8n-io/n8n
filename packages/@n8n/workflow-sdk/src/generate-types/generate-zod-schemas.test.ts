@@ -1,4 +1,8 @@
-import type { NodeProperty, NodeTypeDescription } from './generate-types';
+import {
+	narrowDisplayOptionsByDisabled,
+	type NodeProperty,
+	type NodeTypeDescription,
+} from './generate-types';
 import {
 	generateConditionalSchemaLine,
 	generateSingleVersionSchemaFile,
@@ -8,6 +12,7 @@ import {
 	isPropertyOptional,
 	mapPropertyToZodSchema,
 	mergeDisplayOptions,
+	mergePropertiesByName,
 	extractDefaultsForDisplayOptions,
 } from './generate-zod-schemas';
 
@@ -1345,6 +1350,229 @@ describe('mapPropertyToZodSchema with noDataExpression', () => {
 		};
 		const schema = mapPropertyToZodSchema(prop);
 		expect(schema).toBe('stringOrExpression');
+	});
+});
+
+describe('narrowDisplayOptionsByDisabled', () => {
+	it('returns inputs unchanged when the property has no disabledOptions', () => {
+		const prop: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { sessionIdType: ['customKey'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ show: { sessionIdType: ['customKey'] } });
+	});
+
+	it('flags the property as fully disabled when all visible states are disabled', () => {
+		const prop: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key',
+			type: 'string',
+			default: '={{ $json.sessionId }}',
+			displayOptions: { show: { sessionIdType: ['fromInput'] } },
+			disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(true);
+		expect(result.displayOptions).toBeUndefined();
+	});
+
+	it('removes only the disabled values and keeps the remaining visible states', () => {
+		const prop: NodeProperty = {
+			name: 'text',
+			displayName: 'Text',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { promptType: ['auto', 'define', 'guardrails'] } },
+			disabledOptions: { show: { promptType: ['auto', 'guardrails'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ show: { promptType: ['define'] } });
+	});
+
+	it('converts disabledOptions on keys absent from displayOptions.show into hide constraints', () => {
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { mode: ['a'] } },
+			disabledOptions: { show: { otherField: ['x'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({
+			show: { mode: ['a'] },
+			hide: { otherField: ['x'] },
+		});
+	});
+
+	it('converts disabledOptions into hide when the property has no displayOptions.show', () => {
+		const prop: NodeProperty = {
+			name: 'inputType',
+			displayName: 'Input Type',
+			type: 'options',
+			default: 'binary',
+			disabledOptions: { show: { 'options.batch': [true] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ hide: { 'options.batch': [true] } });
+	});
+
+	it('merges disabledOptions into an existing displayOptions.hide for the same key', () => {
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { hide: { mode: ['x'] } },
+			disabledOptions: { show: { mode: ['y'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ hide: { mode: ['x', 'y'] } });
+	});
+
+	it('does not mutate the original displayOptions.hide when merging', () => {
+		const originalHide = { mode: ['x'] };
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { hide: originalHide },
+			disabledOptions: { show: { mode: ['y'] } },
+		};
+
+		narrowDisplayOptionsByDisabled(prop);
+
+		expect(originalHide).toEqual({ mode: ['x'] });
+	});
+});
+
+describe('mergePropertiesByName with disabledOptions', () => {
+	it('drops the fully-disabled sessionKey variant so only the editable one survives', () => {
+		const expressionSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key From Previous Node',
+			type: 'string',
+			default: '={{ $json.sessionId }}',
+			displayOptions: { show: { sessionIdType: ['fromInput'] } },
+			disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+		};
+		const editableSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Key',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { sessionIdType: ['customKey'] } },
+		};
+
+		const merged = mergePropertiesByName([expressionSessionKey, editableSessionKey]);
+
+		const prop = merged.get('sessionKey');
+		expect(prop).toBeDefined();
+		expect(prop?.displayOptions).toEqual({ show: { sessionIdType: ['customKey'] } });
+	});
+
+	it('produces the same narrowed result regardless of property ordering', () => {
+		const expressionSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key From Previous Node',
+			type: 'string',
+			default: '={{ $json.sessionId }}',
+			displayOptions: { show: { sessionIdType: ['fromInput'] } },
+			disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+		};
+		const editableSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Key',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { sessionIdType: ['customKey'] } },
+		};
+
+		const mergedA = mergePropertiesByName([expressionSessionKey, editableSessionKey]);
+		const mergedB = mergePropertiesByName([editableSessionKey, expressionSessionKey]);
+
+		expect(mergedA.get('sessionKey')?.displayOptions).toEqual({
+			show: { sessionIdType: ['customKey'] },
+		});
+		expect(mergedB.get('sessionKey')?.displayOptions).toEqual({
+			show: { sessionIdType: ['customKey'] },
+		});
+	});
+
+	it('drops a property entirely when every duplicate is fully disabled', () => {
+		const first: NodeProperty = {
+			name: 'lockedField',
+			displayName: 'Locked Field',
+			type: 'string',
+			default: 'A',
+			displayOptions: { show: { mode: ['a'] } },
+			disabledOptions: { show: { mode: ['a'] } },
+		};
+		const second: NodeProperty = {
+			name: 'lockedField',
+			displayName: 'Locked Field',
+			type: 'string',
+			default: 'B',
+			displayOptions: { show: { mode: ['b'] } },
+			disabledOptions: { show: { mode: ['b'] } },
+		};
+
+		const merged = mergePropertiesByName([first, second]);
+
+		expect(merged.has('lockedField')).toBe(false);
+	});
+
+	it('keeps the merged schema emitting only settable states when generating code', () => {
+		const expressionSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key From Previous Node',
+			type: 'string',
+			default: '={{ $json.sessionId }}',
+			displayOptions: { show: { sessionIdType: ['fromInput'] } },
+			disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+		};
+		const editableSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Key',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { sessionIdType: ['customKey'] } },
+		};
+
+		const merged = mergePropertiesByName([expressionSessionKey, editableSessionKey]);
+		const line = generateConditionalSchemaLine(merged.get('sessionKey')!, [
+			{
+				name: 'sessionIdType',
+				displayName: 'Session ID',
+				type: 'options',
+				default: 'fromInput',
+			},
+		]);
+
+		expect(line).toContain('displayOptions: {"show":{"sessionIdType":["customKey"]}}');
+		expect(line).not.toMatch(/"show":\{[^}]*"fromInput"/);
 	});
 });
 
