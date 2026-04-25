@@ -121,15 +121,26 @@ export function createPreSaveBudgetTracker(): SubmitBudgetTracker {
  * Exposed separately from the tool factory so it can be unit-tested without
  * constructing a tool or a sandbox workspace.
  */
-function buildIdentityKey(resolvedPath: string, projectId: string | undefined): string {
-	return JSON.stringify([projectId ?? null, resolvedPath]);
+function buildIdentityKey(resolvedPath: string, projectId: string): string {
+	return JSON.stringify([projectId, resolvedPath]);
 }
+
+type ResolveSubmitProjectId = (projectId: string | undefined) => string | Promise<string>;
+
+type SubmitIdentityOptions = SubmitGuardOptions & { budgetTracker?: SubmitBudgetTracker };
 
 export function wrapSubmitExecuteWithIdentity(
 	underlying: SubmitExecute,
 	resolvePath: (rawFilePath: string | undefined) => string,
-	options: SubmitGuardOptions & { budgetTracker?: SubmitBudgetTracker } = {},
+	optionsOrResolveProjectId: SubmitIdentityOptions | ResolveSubmitProjectId = {},
+	maybeOptions: SubmitIdentityOptions = {},
 ): SubmitExecute {
+	const resolveProjectId: ResolveSubmitProjectId =
+		typeof optionsOrResolveProjectId === 'function'
+			? optionsOrResolveProjectId
+			: (projectId) => projectId ?? 'personal';
+	const options: SubmitIdentityOptions =
+		typeof optionsOrResolveProjectId === 'function' ? maybeOptions : optionsOrResolveProjectId;
 	const pending = new Map<string, Promise<string>>();
 
 	function recordTerminalRemediation(
@@ -181,7 +192,8 @@ export function wrapSubmitExecuteWithIdentity(
 
 	return async (input) => {
 		const resolvedPath = resolvePath(input.filePath);
-		const identityKey = buildIdentityKey(resolvedPath, input.projectId);
+		const projectId = await resolveProjectId(input.projectId);
+		const identityKey = buildIdentityKey(resolvedPath, projectId);
 		const terminalResult = await blockedByTerminalRemediation(input.workflowId);
 		if (terminalResult) return terminalResult;
 
@@ -287,6 +299,8 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 			rawFilePath
 				? resolveSandboxWorkflowFilePath(rawFilePath, args.root)
 				: (args.defaultFilePath ?? resolveSandboxWorkflowFilePath(rawFilePath, args.root)),
+		(projectId) =>
+			args.context.workflowService.resolveCreateProjectId?.(projectId) ?? projectId ?? 'personal',
 		{
 			budgetTracker,
 			currentRunId: args.currentRunId,
