@@ -83,12 +83,12 @@ export class ScheduledTaskManager {
 		let scheduledTime: Date = computeNext();
 
 		const handleTick = () => {
+			if (!this.instanceSettings.isLeader) return;
+
 			// Capture the time this firing was scheduled for, then advance
 			// `scheduledTime` to the next upcoming fire.
 			const firedFor = scheduledTime;
 			scheduledTime = computeNext();
-
-			if (!this.instanceSettings.isLeader) return;
 
 			this.logger.debug('Executing cron for workflow', {
 				workflowId,
@@ -100,7 +100,13 @@ export class ScheduledTaskManager {
 			onTick(firedFor);
 		};
 
-		const job: CronJob = new CronJob(expression, handleTick, undefined, true, timezone);
+		const job: CronJob = new CronJob(
+			expression,
+			handleTick,
+			/* onComplete= */ undefined,
+			/* start= */ true,
+			timezone,
+		);
 
 		const cron: Cron = { job, summary, ctx };
 

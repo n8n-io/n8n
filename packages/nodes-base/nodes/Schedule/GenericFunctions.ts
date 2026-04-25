@@ -92,6 +92,15 @@ export function recurrenceCheck(
  * instances. Two mains computing the same schedule for the same node
  * therefore produce identical cron expressions, identical fire times,
  * and identical deduplication keys.
+ *
+ * @param seed - Stable identity of the entity being filled in (e.g.
+ *   `${workflowId}:${nodeId}`). The same seed always produces the same
+ *   set of values across calls and across instances; different seeds
+ *   produce different values, preserving the load-spreading the original
+ *   randomization was meant to provide.
+ * @param label - Distinguishes multiple values derived from the same
+ *   seed (e.g. `'second'` vs `'minute'`) so they don't collide when one
+ *   cron expression needs several filler values for the same node.
  */
 const stableInt = (seed: string, label: string, min: number, max: number): number => {
 	const hash = createHash('sha256').update(`${seed}:${label}`).digest();

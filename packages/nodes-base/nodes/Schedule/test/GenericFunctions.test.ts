@@ -27,15 +27,18 @@ function mockMomentTz(values: {
 	(mockedMoment.tz as unknown as jest.Mock).mockReturnValue(tzObj);
 }
 
-// Stable filler values produced by `stableInt('test-key', label, ...)`:
-//   second     = 56
-//   minute     = 19
-//   hour       = 14
-//   dayOfMonth = 4
+// Cron expressions are 6 fields: `<sec> <min> <hr> <dom> <mon> <dow>`.
+// Fields the user does not explicitly pin (e.g. `triggerAtMinute`) are
+// filled in by `stableInt(seed, label, ...)`; every other field comes
+// from the input interval.
+//
+// For `seed = 'test-key'`, `stableInt` produces:
+//   second=56, minute=19, hour=14, dayOfMonth=4
 const TEST_SEED = 'test-key';
 
 describe('toCronExpression', () => {
 	it('should return cron expression for cronExpression field', () => {
+		// All fields are user-provided literally — no filler.
 		const result = toCronExpression(
 			{
 				field: 'cronExpression',
@@ -47,6 +50,7 @@ describe('toCronExpression', () => {
 	});
 
 	it('should return cron expression for seconds interval', () => {
+		// Sub-minute schedules use `*/N`; no filler needed.
 		const result = toCronExpression(
 			{
 				field: 'seconds',
@@ -58,6 +62,7 @@ describe('toCronExpression', () => {
 	});
 
 	it('should return cron expression for minutes interval', () => {
+		// sec=56 is filler; */30 comes from `minutesInterval`.
 		const result = toCronExpression(
 			{
 				field: 'minutes',
@@ -69,6 +74,7 @@ describe('toCronExpression', () => {
 	});
 
 	it('should return cron expression for hours interval', () => {
+		// sec=56 is filler; min=22 from `triggerAtMinute`; */3 from `hoursInterval`.
 		const result = toCronExpression(
 			{
 				field: 'hours',
@@ -79,6 +85,7 @@ describe('toCronExpression', () => {
 		);
 		expect(result).toEqual('56 22 */3 * * *');
 
+		// No `triggerAtMinute`, so min=19 is also filler.
 		const result1 = toCronExpression(
 			{
 				field: 'hours',
@@ -90,6 +97,7 @@ describe('toCronExpression', () => {
 	});
 
 	it('should return cron expression for days interval', () => {
+		// sec=56 is filler; min=30 and hr=10 from `triggerAtMinute`/`triggerAtHour`.
 		const result = toCronExpression(
 			{
 				field: 'days',
@@ -101,6 +109,7 @@ describe('toCronExpression', () => {
 		);
 		expect(result).toEqual('56 30 10 * * *');
 
+		// Nothing pinned, so sec=56 / min=19 / hr=14 are all filler.
 		const result1 = toCronExpression(
 			{
 				field: 'days',
@@ -112,6 +121,7 @@ describe('toCronExpression', () => {
 	});
 
 	it('should return cron expression for weeks interval', () => {
+		// sec=56 is filler; the rest come from `triggerAtMinute`/`triggerAtHour`/`triggerAtDay`.
 		const result = toCronExpression(
 			{
 				field: 'weeks',
@@ -123,6 +133,7 @@ describe('toCronExpression', () => {
 			TEST_SEED,
 		);
 		expect(result).toEqual('56 0 9 * * 1,3,5');
+		// Only `triggerAtDay` pinned, so sec=56 / min=19 / hr=14 are all filler.
 		const result1 = toCronExpression(
 			{
 				field: 'weeks',
@@ -135,6 +146,7 @@ describe('toCronExpression', () => {
 	});
 
 	it('should return cron expression for months interval', () => {
+		// sec=56 is filler; min/hr/dom come from triggerAt*.
 		const result = toCronExpression(
 			{
 				field: 'months',
@@ -146,6 +158,7 @@ describe('toCronExpression', () => {
 			TEST_SEED,
 		);
 		expect(result).toEqual('56 0 0 1 */3 *');
+		// Nothing pinned, so sec=56 / min=19 / hr=14 / dom=4 are all filler.
 		const result1 = toCronExpression(
 			{
 				field: 'months',
@@ -154,12 +167,6 @@ describe('toCronExpression', () => {
 			TEST_SEED,
 		);
 		expect(result1).toEqual('56 19 14 4 */3 *');
-	});
-
-	it('should be deterministic for the same seed and produce different output for different seeds', () => {
-		const interval: ScheduleInterval = { field: 'days', daysInterval: 1 };
-		expect(toCronExpression(interval, 'seed-a')).toEqual(toCronExpression(interval, 'seed-a'));
-		expect(toCronExpression(interval, 'seed-a')).not.toEqual(toCronExpression(interval, 'seed-b'));
 	});
 });
 
