@@ -28,6 +28,14 @@ describe('External secrets utils', () => {
 			).toEqual(['awsSecretsManager']);
 		});
 
+		it('extracts hyphenated provider keys from bracket notation', () => {
+			expect(
+				extractProviderKeysFromExpression(
+					"={{ $secrets['aws-secrets-manager']['token'] }}",
+				),
+			).toEqual(['aws-secrets-manager']);
+		});
+
 		it('extracts multiple providers from same expression', () => {
 			const result = extractProviderKeysFromExpression(
 				'={{ $secrets.vault.myKey + ":" + $secrets.aws.otherKey }}',
