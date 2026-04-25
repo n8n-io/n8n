@@ -23,7 +23,6 @@ import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from './instanceAi.store';
@@ -52,6 +51,7 @@ import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/Cr
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import { TabsContent, TabsRoot } from 'reka-ui';
 
 const props = defineProps<{
 	threadId?: string;
@@ -61,7 +61,6 @@ const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
-const pushConnectionStore = usePushConnectionStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
 const route = useRoute();
@@ -120,7 +119,6 @@ const showEmptyStateLayout = computed(() => !props.threadId);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
-	pushConnectionStore.pushConnect();
 	void store.loadThreads().then((loaded) => {
 		if (!loaded || !props.threadId) return;
 		// After threads load, validate deep-link: redirect if thread doesn't exist
@@ -135,31 +133,30 @@ onMounted(() => {
 	store.startCreditsPushListener();
 	void nextTick(() => chatInputRef.value?.focus());
 
-	// Auto-connect local gateway if enabled
+	// Subscribe to push + fetch backend gateway state. The backend keeps the
+	// pairing alive across reloads, so the client never contacts the daemon
+	// on mount — only in response to explicit user action in the setup modal.
 	void settingsStore
 		.refreshModuleSettings()
 		.catch(() => {})
+		.then(async () => await settingsStore.ensurePreferencesLoaded())
+		.catch(() => {})
 		.then(() => {
-			if (!settingsStore.isLocalGatewayDisabled && !settingsStore.isInstanceAiDisabled) {
-				settingsStore.startDaemonProbing();
-				settingsStore.startGatewayPushListener();
-				settingsStore.pollGatewayStatus();
-			}
+			if (settingsStore.isLocalGatewayDisabled) return;
+			settingsStore.startGatewayPushListener();
+			void settingsStore.fetchGatewayStatus();
 		});
 });
 
-// React to local gateway being toggled in settings without requiring a page reload
+// React to admin or user toggling local gateway
 watch(
-	() => settingsStore.isLocalGatewayDisabled || settingsStore.isInstanceAiDisabled,
+	() => settingsStore.isLocalGatewayDisabled,
 	(disabled) => {
 		if (disabled) {
-			settingsStore.stopDaemonProbing();
-			settingsStore.stopGatewayPolling();
 			settingsStore.stopGatewayPushListener();
 		} else {
-			settingsStore.startDaemonProbing();
 			settingsStore.startGatewayPushListener();
-			settingsStore.pollGatewayStatus();
+			void settingsStore.fetchGatewayStatus();
 		}
 	},
 );
@@ -308,11 +305,8 @@ onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
 	executionTracking.cleanup();
-	pushConnectionStore.pushDisconnect();
 	store.closeSSE();
 	store.stopCreditsPushListener();
-	settingsStore.stopDaemonProbing();
-	settingsStore.stopGatewayPolling();
 	settingsStore.stopGatewayPushListener();
 });
 
@@ -599,14 +593,22 @@ function handleStop() {
 			@resizestart="isResizingPreview = true"
 			@resizeend="isResizingPreview = false"
 		>
-			<div :class="$style.previewPanel">
+			<TabsRoot
+				v-model="preview.activeTabId.value"
+				orientation="horizontal"
+				:class="$style.previewPanel"
+			>
 				<InstanceAiPreviewTabBar
 					:tabs="preview.allArtifactTabs.value"
 					:active-tab-id="preview.activeTabId.value"
-					@update:active-tab-id="preview.selectTab($event)"
 					@close="preview.closePreview()"
 				/>
-				<div :class="$style.previewContent">
+				<TabsContent
+					v-for="tab in preview.allArtifactTabs.value"
+					:key="tab.id"
+					:value="tab.id"
+					:class="$style.previewContent"
+				>
 					<InstanceAiWorkflowPreview
 						v-if="preview.activeWorkflowId.value"
 						ref="workflowPreview"
@@ -621,8 +623,8 @@ function handleStop() {
 						:project-id="preview.activeDataTableProjectId.value"
 						:refresh-key="preview.dataTableRefreshKey.value"
 					/>
-				</div>
-			</div>
+				</TabsContent>
+			</TabsRoot>
 		</N8nResizeWrapper>
 	</div>
 </template>
