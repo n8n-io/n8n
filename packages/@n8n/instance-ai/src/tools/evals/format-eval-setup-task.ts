@@ -43,13 +43,23 @@ AI AGENT NODES IN WORKFLOW: ${input.detectedAiNodes.join(', ')}
 DATASET:
 ${datasetSection}
 
-OUTPUT COLUMNS (for setOutputs):
+GROUND-TRUTH OUTPUT COLUMNS (already in the dataset — these hold the EXPECTED values per row):
 ${outputColumns}
+
+For setOutputs, write the agent's actual output to NEW columns derived from these ground-truth column names — convention: prefix with \`actual_\` (e.g. ground-truth \`expected_output\` → setOutputs writes to \`actual_output\`; ground-truth \`expected_response\` → setOutputs writes to \`actual_response\`). Never overwrite the ground-truth column itself. The Evaluation node auto-adds the new column on first eval run.
+
+The setOutputs node MUST have \`source: 'dataTable'\` and \`dataTableId: { mode: 'id', value: '${input.existingDataTableId ?? '<same as EvaluationTrigger>'}' }\` set explicitly (the node default for older typeVersions is googleSheets — that's a silent failure mode). Use \`typeVersion: 4.8\` for the Evaluation node.
 
 METRICS TO CONFIGURE (on setMetrics):
 ${metrics}
 
-Apply the checkIfEvaluating topology as described in your instructions (no separate IF node — checkIfEvaluating has native split outputs). Preserve the workflow's production path (side-effects remain wired to the Normal slot).
+For each metric, set \`expectedAnswer\` to an expression pulling from the EvaluationTrigger row (e.g. \`={{ $('Eval Trigger').item.json.expected_output }}\`) and \`actualAnswer\` to an expression pulling from the agent's output (e.g. \`={{ $json.output }}\`). Use the explicit name you assign to the EvaluationTrigger node (name it \`"Eval Trigger"\` when creating it, then reference exactly that name everywhere — never use the stock default \`"When fetching a dataset row"\` and never create a separate node for that purpose).
+
+For \`correctness\` and \`helpfulness\` metrics: also wire an \`ai_languageModel\` connection from the workflow's existing LLM model node (the one already feeding the AI agent) to each setMetrics node that uses an AI-judged metric. The LLM is reused — same node, additional outgoing \`ai_languageModel\` connection. Without this, AI-judged metrics fail silently. \`stringSimilarity\`/\`categorization\`/\`toolsUsed\` don't need this.
+
+Apply the topology as described in your instructions:
+1. EvaluationTrigger → \`Evaluation(setInputs)\` → first processing node. The setInputs node is REQUIRED — it reshapes the dataset row into the shape the AI agent expects (inspect the agent to determine the target shape; common cases: \`chatInput\`, \`message.text\`, \`body.query\`).
+2. After the AI agent: insert \`Evaluation(checkIfEvaluating)\` (no separate IF node — it has two native output slots). Slot 0 (Evaluation) routes to setOutputs → setMetrics. Slot 1 (Normal) preserves the original production path with side-effects.
 
 Report back with a one-line summary when done.`;
 }

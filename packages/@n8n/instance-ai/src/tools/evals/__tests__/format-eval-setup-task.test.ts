@@ -96,7 +96,8 @@ describe('formatEvalSetupTask', () => {
 			datasetChoice: 'generate',
 		});
 		expect(task).toContain('checkIfEvaluating');
-		expect(task).toContain('Normal slot');
+		expect(task).toContain('setInputs');
+		expect(task).toMatch(/Normal/);
 	});
 
 	it('lists the suggested output columns as bullet items', () => {
