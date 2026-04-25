@@ -380,7 +380,9 @@ describe('usePostMessageHandler', () => {
 				mode: 'trigger',
 				finished: true,
 			});
-			mockFetchAllCredentialsForWorkflow.mockRejectedValueOnce(new Error('credential prefetch failed'));
+			mockFetchAllCredentialsForWorkflow.mockRejectedValueOnce(
+				new Error('credential prefetch failed'),
+			);
 
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
