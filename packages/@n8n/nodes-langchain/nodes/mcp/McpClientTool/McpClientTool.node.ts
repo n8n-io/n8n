@@ -23,6 +23,7 @@ import {
 	connectMcpClient,
 	getAllTools,
 	getAuthHeaders,
+	isStructuredContent,
 	mapToNodeOperationError,
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
