@@ -237,7 +237,7 @@ onMounted(async () => {
 				>
 					<template #[`item.timestamp`]="{ item }">
 						<N8nTooltip
-							v-if="rowExecutionId(item)"
+							v-if="rowExecutionId(item) && rowWorkflowId(item)"
 							:content="i18n.baseText('settings.n8nConnect.usage.openExecution')"
 						>
 							<span>{{ formatDate(item.timestamp) }}</span>
