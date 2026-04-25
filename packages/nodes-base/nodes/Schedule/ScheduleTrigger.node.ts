@@ -503,7 +503,7 @@ export class ScheduleTrigger implements INodeType {
 						expression: cronExpression,
 						recurrence,
 					};
-					this.helpers.registerCron(cron, (scheduledTime) =>
+					this.helpers.registerCron(cron, (scheduledTime: Date) =>
 						executeTrigger(recurrence, /* skipRecurrenceCheck= */ false, scheduledTime),
 					);
 				} catch (error) {

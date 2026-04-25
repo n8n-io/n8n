@@ -48,9 +48,7 @@ export class ScheduledTaskManager {
 	}
 
 	/**
-	 * @param onTick - Called on each cron firing on the leader instance.
-	 *   Receives `scheduledTime`: the canonical scheduled fire time for this
-	 *   tick.
+	 * @param onTick - Callback invoked when the cron fires.
 	 */
 	registerCron(ctx: CronContext, onTick: (scheduledTime: Date) => void) {
 		const { workflowId, timezone, nodeId, expression, recurrence } = ctx;
@@ -77,13 +75,11 @@ export class ScheduledTaskManager {
 			return;
 		}
 
-		// `scheduledTime` always holds the canonical time of the *upcoming*
-		// fire: set at registration and refreshed after each tick. We use
-		// our pre-computed value (rather than `new Date()` at firing time)
-		// to avoid drift-induced key mismatches across instances.
+		// `scheduledTime` always holds the canonical time of the upcoming
+		// fire. We use it as a unique key to identify the cron execution.
+		// It gets updated on each tick.
 		const cronTime = new CronTime(expression, timezone);
 		const computeNext = (): Date => cronTime.sendAt().toJSDate();
-
 		let scheduledTime: Date = computeNext();
 
 		const handleTick = () => {
