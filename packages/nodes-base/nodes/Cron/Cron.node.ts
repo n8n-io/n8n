@@ -65,9 +65,7 @@ export class Cron implements INodeType {
 		};
 
 		// Register the cron-jobs
-		expressions.forEach((expression) =>
-			this.helpers.registerCron({ expression }, (_scheduledTime: Date) => executeTrigger()),
-		);
+		expressions.forEach((expression) => this.helpers.registerCron({ expression }, executeTrigger));
 
 		return {
 			manualTriggerFunction: async () => executeTrigger(),
