@@ -1,6 +1,7 @@
 import {
 	UNLIMITED_CREDITS,
 	applyBranchReadOnlyOverrides,
+	buildProxyHeaders,
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
@@ -71,6 +72,7 @@ import { nanoid } from 'nanoid';
 import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
+import { N8N_VERSION } from '@/constants';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { AiService } from '@/services/ai.service';
 import { Push } from '@/push';
@@ -460,6 +462,11 @@ export class InstanceAiService {
 				const headers = new Headers(init?.headers);
 				const auth = await tokenManager.getAuthHeaders();
 				for (const [k, v] of Object.entries(auth)) {
+					headers.set(k, v);
+				}
+				for (const [k, v] of Object.entries(
+					buildProxyHeaders({ feature: 'instance-ai', n8nVersion: N8N_VERSION }),
+				)) {
 					headers.set(k, v);
 				}
 				return await globalThis.fetch(input, { ...init, headers });
@@ -1312,13 +1319,23 @@ export class InstanceAiService {
 				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
 			});
 			tokenManager = manager;
+			const featureHeaders = buildProxyHeaders({
+				feature: 'instance-ai',
+				n8nVersion: N8N_VERSION,
+			});
 			searchProxyConfig = {
 				apiUrl: proxyBaseUrl + '/brave-search',
-				getAuthHeaders: async () => await manager.getAuthHeaders(),
+				getAuthHeaders: async () => ({
+					...(await manager.getAuthHeaders()),
+					...featureHeaders,
+				}),
 			};
 			tracingProxyConfig = {
 				apiUrl: proxyBaseUrl + '/langsmith',
-				getAuthHeaders: async () => await manager.getAuthHeaders(),
+				getAuthHeaders: async () => ({
+					...(await manager.getAuthHeaders()),
+					...featureHeaders,
+				}),
 			};
 		}
 

@@ -50,6 +50,8 @@ export interface GatewayClientOptions {
 	confirmResourceAccess: ConfirmResourceAccess;
 	/** Called when the client gives up reconnecting after persistent auth failures. */
 	onPersistentFailure?: () => void;
+	/** Called after disconnect() has finished tearing down the client. */
+	onDisconnected?: () => void;
 }
 
 interface FilesystemRequestEvent {
@@ -58,6 +60,10 @@ interface FilesystemRequestEvent {
 		requestId: string;
 		toolCall: { name: string; arguments: Record<string, unknown> };
 	};
+}
+
+interface GatewayDisconnectEvent {
+	type: 'gateway-disconnect';
 }
 
 /**
@@ -70,6 +76,8 @@ export class GatewayClient {
 	private reconnectDelay = 1000;
 
 	private shouldReconnect = true;
+
+	private disconnected = false;
 
 	/** Consecutive auth failures during reconnection attempts. */
 	private authRetryCount = 0;
@@ -118,40 +126,56 @@ export class GatewayClient {
 		if (this.browserModule) await this.browserModule.shutdown();
 	}
 
-	/** Notify the server we're disconnecting, then close the SSE connection. */
-	async disconnect(): Promise<void> {
+	/**
+	 * Tear down the client. Idempotent: safe to call multiple times.
+	 *
+	 * @param options.notifyServer Whether to POST the disconnect notification to
+	 *   the backend. Skip when the backend initiated the disconnect (e.g. via an
+	 *   SSE `gateway-disconnect` event) — no need to tell it what it told us.
+	 */
+	async disconnect(options: { notifyServer?: boolean } = {}): Promise<void> {
+		if (this.disconnected) return;
+		this.disconnected = true;
 		this.shouldReconnect = false;
 		this.options.session.clearSessionRules();
 
-		// POST the disconnect notification BEFORE closing EventSource.
-		// The EventSource keeps the Node.js event loop alive — if we close it
-		// first, Node may exit before the fetch completes.
-		try {
-			const url = `${this.options.url}/rest/instance-ai/gateway/disconnect`;
-			const headers = new Headers();
-			headers.set('Content-Type', 'application/json');
-			headers.set('X-Gateway-Key', this.apiKey);
-			const response = await fetch(url, {
-				method: 'POST',
-				headers,
-				body: '{}',
-				signal: AbortSignal.timeout(3000),
-			});
-			if (response.ok) {
-				printDisconnected();
-			} else {
-				logger.error('Gateway disconnect failed', { status: response.status });
+		const notifyServer = options.notifyServer ?? true;
+		if (notifyServer) {
+			// POST the disconnect notification BEFORE closing EventSource.
+			// The EventSource keeps the Node.js event loop alive — if we close it
+			// first, Node may exit before the fetch completes.
+			try {
+				const url = `${this.options.url}/rest/instance-ai/gateway/disconnect`;
+				const headers = new Headers();
+				headers.set('Content-Type', 'application/json');
+				headers.set('X-Gateway-Key', this.apiKey);
+				const response = await fetch(url, {
+					method: 'POST',
+					headers,
+					body: '{}',
+					signal: AbortSignal.timeout(3000),
+				});
+				if (response.ok) {
+					printDisconnected();
+				} else {
+					logger.error('Gateway disconnect failed', { status: response.status });
+				}
+			} catch (error) {
+				logger.error('Gateway disconnect error', {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
-		} catch (error) {
-			logger.error('Gateway disconnect error', {
-				error: error instanceof Error ? error.message : String(error),
-			});
+		} else {
+			printDisconnected();
 		}
+
 		if (this.eventSource) {
 			this.eventSource.close();
 			this.eventSource = null;
 		}
 		if (this.browserModule) await this.browserModule.shutdown();
+
+		this.options.onDisconnected?.();
 	}
 
 	private async getAllDefinitions(): Promise<ToolDefinition[]> {
@@ -373,6 +397,13 @@ export class GatewayClient {
 	private async handleMessage(event: MessageEvent): Promise<void> {
 		try {
 			const parsed: unknown = JSON.parse(String(event.data));
+
+			if (isGatewayDisconnectEvent(parsed)) {
+				// Server told us to disconnect — skip the POST-back, it would be circular.
+				await this.disconnect({ notifyServer: false });
+				return;
+			}
+
 			if (!isFilesystemRequestEvent(parsed)) return;
 
 			const { requestId, toolCall } = parsed.payload;
@@ -496,6 +527,11 @@ export class GatewayClient {
 }
 
 // ── Type guard ──────────────────────────────────────────────────────────────
+
+function isGatewayDisconnectEvent(data: unknown): data is GatewayDisconnectEvent {
+	if (typeof data !== 'object' || data === null) return false;
+	return (data as Record<string, unknown>).type === 'gateway-disconnect';
+}
 
 function isFilesystemRequestEvent(data: unknown): data is FilesystemRequestEvent {
 	if (typeof data !== 'object' || data === null) return false;
