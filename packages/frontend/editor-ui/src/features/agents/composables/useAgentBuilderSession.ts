@@ -64,7 +64,7 @@ export function useAgentBuilderSession() {
 			return [
 				{
 					id: '__empty__',
-					title: i18n.baseText('agents.builder.header.switcher.empty'),
+					title: i18n.baseText('agents.builder.chat.sessionPicker.empty'),
 					disabled: true,
 				},
 			];

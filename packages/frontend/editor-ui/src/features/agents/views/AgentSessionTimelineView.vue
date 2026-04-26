@@ -4,6 +4,7 @@ import { useToast } from '@/app/composables/useToast';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_BUILDER_VIEW, CONTINUE_SESSION_ID_PARAM } from '@/features/agents/constants';
+import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type {
 	ExecutionThread,
 	ThreadExecution,
@@ -44,6 +45,7 @@ interface TimelineItem {
 }
 
 const i18n = useI18n();
+const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
@@ -221,8 +223,7 @@ function toolDuration(tc: ToolCallEvent): string {
 
 const sessionTitle = computed(() => {
 	if (!thread.value) return '';
-	const title = thread.value.title ?? i18n.baseText('agents.builder.chat.newChat.label');
-	return truncate(title, 64);
+	return truncate(threadTitleOf(thread.value), 64);
 });
 
 const triggerSource = computed(() => {
