@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { ref, toRef, watch } from 'vue';
 import { javascript } from '@codemirror/lang-javascript';
-import { Compartment, EditorState } from '@codemirror/state';
-import { EditorView, lineNumbers } from '@codemirror/view';
+import { lineNumbers, EditorView } from '@codemirror/view';
 import { history } from '@codemirror/commands';
 
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
+import { useCodeMirrorEditor } from '../composables/useCodeMirrorEditor';
 
 const props = withDefaults(
 	defineProps<{
@@ -26,20 +26,14 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 
 const container = ref<HTMLDivElement>();
-let view: EditorView | null = null;
-let isProgrammaticUpdate = false;
+const readOnly = toRef(props, 'readonly');
+const langExtensions = props.language === 'typescript' ? [javascript({ typescript: true })] : [];
 
-// Compartment wraps the readonly-related extensions so we can swap them
-// reactively when `props.readonly` flips without rebuilding the editor.
-const readonlyCompartment = new Compartment();
-
-function readonlyExtensions(readOnly: boolean) {
-	return readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [history()];
-}
-
-function buildExtensions() {
-	const langExtensions = props.language === 'typescript' ? [javascript({ typescript: true })] : [];
-	return [
+const { replaceDoc } = useCodeMirrorEditor({
+	container,
+	initialDoc: props.modelValue,
+	readOnly,
+	extensions: [
 		...langExtensions,
 		lineNumbers(),
 		EditorView.lineWrapping,
@@ -49,53 +43,15 @@ function buildExtensions() {
 			minHeight: props.minHeight,
 			rows: -1,
 		}),
-		readonlyCompartment.of(readonlyExtensions(props.readonly)),
-		EditorView.updateListener.of((update) => {
-			if (update.docChanged && !isProgrammaticUpdate) {
-				emit('update:modelValue', update.state.doc.toString());
-			}
-		}),
-	];
-}
-
-onMounted(() => {
-	if (!container.value) return;
-	view = new EditorView({
-		state: EditorState.create({
-			doc: props.modelValue,
-			extensions: buildExtensions(),
-		}),
-		parent: container.value,
-	});
+		history(),
+	],
+	onChange: (next) => emit('update:modelValue', next),
 });
-
-watch(
-	() => props.readonly,
-	(readOnly) => {
-		if (!view) return;
-		view.dispatch({
-			effects: readonlyCompartment.reconfigure(readonlyExtensions(readOnly)),
-		});
-	},
-);
 
 watch(
 	() => props.modelValue,
-	(newVal) => {
-		if (!view) return;
-		const current = view.state.doc.toString();
-		if (current !== newVal) {
-			isProgrammaticUpdate = true;
-			view.dispatch({ changes: { from: 0, to: current.length, insert: newVal } });
-			isProgrammaticUpdate = false;
-		}
-	},
+	(val) => replaceDoc(val),
 );
-
-onBeforeUnmount(() => {
-	view?.destroy();
-	view = null;
-});
 </script>
 
 <template>

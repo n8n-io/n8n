@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { ref, toRef, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { defaultKeymap, history } from '@codemirror/commands';
 import { json } from '@codemirror/lang-json';
-import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
@@ -11,6 +10,7 @@ import { deepCopy } from 'n8n-workflow';
 
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
+import { useCodeMirrorEditor } from '../composables/useCodeMirrorEditor';
 import type { AgentJsonConfig } from '../types';
 
 const props = withDefaults(
@@ -43,7 +43,7 @@ const copied = ref(false);
 let copiedResetTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function copyContent() {
-	const text = view?.state.doc.toString() ?? '';
+	const text = editor.getView()?.state.doc.toString() ?? '';
 	if (!text) return;
 	try {
 		await navigator.clipboard.writeText(text);
@@ -58,13 +58,6 @@ async function copyContent() {
 		// focused. Silent failure is fine — the user will just not see the
 		// "Copied" feedback.
 	}
-}
-let view: EditorView | null = null;
-let isProgrammatic = false;
-const editableCompartment = new Compartment();
-
-function editableExtensions(editable: boolean) {
-	return [EditorState.readOnly.of(!editable), EditorView.editable.of(editable)];
 }
 
 function splitPath(path: string): string[] {
@@ -171,50 +164,33 @@ const debouncedSave = useDebounceFn((text: string) => {
 	emit('update:config', setSlice(props.config, props.sectionPath, result.value));
 }, getDebounceTime(DEBOUNCE_TIME.API.RESOURCE_SEARCH));
 
-function createEditor(doc: string) {
-	if (!container.value) return;
-	view = new EditorView({
-		state: EditorState.create({
-			doc,
-			extensions: [
-				json(),
-				lineNumbers(),
-				EditorView.lineWrapping,
-				history(),
-				keymap.of(defaultKeymap),
-				codeEditorTheme({ isReadOnly: props.readOnly, maxHeight: '100%' }),
-				editableCompartment.of(editableExtensions(!props.readOnly)),
-				EditorView.updateListener.of((update) => {
-					if (!update.docChanged || isProgrammatic) return;
-					void debouncedSave(update.state.doc.toString());
-				}),
-			],
-		}),
-		parent: container.value,
-	});
-}
+const editor = useCodeMirrorEditor({
+	container,
+	initialDoc: configToDoc(props.config, props.sectionPath, props.pickKeys),
+	readOnly: toRef(props, 'readOnly'),
+	extensions: [
+		json(),
+		lineNumbers(),
+		EditorView.lineWrapping,
+		history(),
+		keymap.of(defaultKeymap),
+		codeEditorTheme({ isReadOnly: props.readOnly, maxHeight: '100%' }),
+	],
+	onChange: (next) => {
+		parseError.value = '';
+		void debouncedSave(next);
+	},
+});
 
 function replaceDoc(nextDoc: string) {
-	if (!view) return;
-	if (view.state.doc.toString() === nextDoc) return;
-	isProgrammatic = true;
-	view.dispatch({
-		changes: { from: 0, to: view.state.doc.length, insert: nextDoc },
-	});
-	isProgrammatic = false;
+	editor.replaceDoc(nextDoc);
 	parseError.value = '';
 }
-
-onMounted(() => createEditor(configToDoc(props.config, props.sectionPath, props.pickKeys)));
-
-onBeforeUnmount(() => {
-	view?.destroy();
-	view = null;
-});
 
 watch(
 	() => props.config,
 	(next) => {
+		const view = editor.getView();
 		if (!view) return;
 		// Don't stomp on the user's in-progress edit while they're typing.
 		if (view.hasFocus) return;
@@ -224,17 +200,10 @@ watch(
 );
 
 watch([() => props.sectionPath, () => props.pickKeys], () => {
-	if (!view) return;
+	if (!editor.getView()) return;
 	// Section switches are always authoritative — replace even if focused.
 	replaceDoc(configToDoc(props.config, props.sectionPath, props.pickKeys));
 });
-
-watch(
-	() => props.readOnly,
-	(ro) => {
-		view?.dispatch({ effects: editableCompartment.reconfigure(editableExtensions(!ro)) });
-	},
-);
 </script>
 
 <template>

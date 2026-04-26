@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { ref, toRef, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { defaultKeymap, history } from '@codemirror/commands';
 import { json } from '@codemirror/lang-json';
-import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
+import { useCodeMirrorEditor } from '../composables/useCodeMirrorEditor';
 import type { AgentJsonConfig } from '../types';
 import shared from '../styles/agent-panel.module.scss';
 
@@ -25,14 +25,7 @@ const emit = defineEmits<{
 }>();
 
 const jsonContainer = ref<HTMLDivElement>();
-let jsonView: EditorView | null = null;
-let isProgrammaticJsonUpdate = false;
 const jsonError = ref('');
-const editableCompartment = new Compartment();
-
-function editableExtensions(editable: boolean) {
-	return [EditorState.readOnly.of(!editable), EditorView.editable.of(editable)];
-}
 
 function configToJson(config: AgentJsonConfig | null): string {
 	return config ? JSON.stringify(config, null, 2) : '';
@@ -48,72 +41,33 @@ const debouncedJsonSave = useDebounceFn((text: string) => {
 	}
 }, 800);
 
-function createJsonEditor(doc: string) {
-	if (!jsonContainer.value) return;
-	jsonView = new EditorView({
-		state: EditorState.create({
-			doc,
-			extensions: [
-				json(),
-				lineNumbers(),
-				EditorView.lineWrapping,
-				history(),
-				keymap.of(defaultKeymap),
-				codeEditorTheme({ isReadOnly: false, maxHeight: '100%', minHeight: '100%', rows: -1 }),
-				editableCompartment.of(editableExtensions(!props.readOnly)),
-				EditorView.updateListener.of((update) => {
-					if (!update.docChanged || isProgrammaticJsonUpdate) return;
-					const text = update.state.doc.toString();
-					void debouncedJsonSave(text);
-				}),
-			],
-		}),
-		parent: jsonContainer.value,
-	});
-}
-
-watch(
-	() => props.readOnly,
-	(readOnly) => {
-		if (!jsonView) return;
-		jsonView.dispatch({
-			effects: editableCompartment.reconfigure(editableExtensions(!readOnly)),
-		});
-	},
-);
+const editor = useCodeMirrorEditor({
+	container: jsonContainer,
+	initialDoc: configToJson(props.config),
+	readOnly: toRef(props, 'readOnly'),
+	extensions: [
+		json(),
+		lineNumbers(),
+		EditorView.lineWrapping,
+		history(),
+		keymap.of(defaultKeymap),
+		codeEditorTheme({ isReadOnly: false, maxHeight: '100%', minHeight: '100%', rows: -1 }),
+	],
+	onChange: (text) => void debouncedJsonSave(text),
+});
 
 watch(
 	() => props.config,
 	(newConfig) => {
-		if (!jsonView) return;
-		const newText = configToJson(newConfig);
-		const current = jsonView.state.doc.toString();
-		if (current === newText) return;
-		// Don't stomp on the user's in-progress edit. An external config update
-		// (e.g. the builder streaming a new config) while the user is typing
-		// would otherwise replace their buffer mid-keystroke.
-		if (jsonView.hasFocus) return;
-		isProgrammaticJsonUpdate = true;
-		// Preserve the user's selection/cursor; CodeMirror clamps positions that
-		// would fall outside the new doc length.
-		jsonView.dispatch({
-			changes: { from: 0, to: current.length, insert: newText },
-			selection: jsonView.state.selection,
-		});
-		isProgrammaticJsonUpdate = false;
+		const view = editor.getView();
+		if (!view) return;
+		// Don't stomp on the user's in-progress edit while they're typing.
+		if (view.hasFocus) return;
+		editor.replaceDoc(configToJson(newConfig));
 		jsonError.value = '';
 	},
 	{ deep: true },
 );
-
-onMounted(() => {
-	createJsonEditor(configToJson(props.config));
-});
-
-onBeforeUnmount(() => {
-	jsonView?.destroy();
-	jsonView = null;
-});
 </script>
 
 <template>
