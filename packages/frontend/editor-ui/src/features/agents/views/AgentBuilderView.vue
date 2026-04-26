@@ -27,6 +27,7 @@ import { useAgentConfirmationModal } from '../composables/useAgentConfirmationMo
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useThreadTitle } from '../utils/thread-title';
+import { useAgentBuilderLayout } from '../composables/useAgentBuilderLayout';
 import shared from '../styles/agent-panel.module.scss';
 import { agentsEventBus } from '../agents.eventBus';
 import {
@@ -142,23 +143,7 @@ const currentSessionTitle = computed(() => {
 type SaveStatus = 'idle' | 'saving' | 'saved';
 const saveStatus = ref<SaveStatus>('idle');
 
-// Chat-column collapse state
-const CHAT_COLLAPSED_KEY = 'agentBuilder.chatColumnCollapsed';
-const chatColumnCollapsed = ref(
-	typeof window !== 'undefined' && window.localStorage?.getItem(CHAT_COLLAPSED_KEY) === '1',
-);
-
-watch(chatColumnCollapsed, (v) => {
-	try {
-		window.localStorage?.setItem(CHAT_COLLAPSED_KEY, v ? '1' : '0');
-	} catch {
-		// localStorage may throw in private-browsing modes; silently ignore.
-	}
-});
-
-function onToggleChatColumn() {
-	chatColumnCollapsed.value = !chatColumnCollapsed.value;
-}
+const { chatColumnCollapsed, gridColumns, onToggleChatColumn } = useAgentBuilderLayout();
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
@@ -191,12 +176,6 @@ watch(
 		}
 	},
 	{ immediate: true },
-);
-
-const gridColumns = computed(() =>
-	chatColumnCollapsed.value
-		? '0 1fr minmax(200px, 260px)'
-		: 'minmax(400px, 500px) 1fr minmax(200px, 260px)',
 );
 
 const projectName = computed<string | null>(() => {
