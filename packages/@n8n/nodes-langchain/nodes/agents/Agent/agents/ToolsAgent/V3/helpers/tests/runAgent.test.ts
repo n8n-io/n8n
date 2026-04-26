@@ -1,4 +1,5 @@
-import type { RequestResponseMetadata } from '@utils/agent-execution';
+import type { RequestResponseMetadata, ToolCallData } from '@utils/agent-execution';
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { mock } from 'jest-mock-extended';
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
@@ -429,5 +430,157 @@ describe('runAgent - tracing configuration', () => {
 		});
 		expect(mockWithConfig).toHaveBeenCalledWith(mockTracingConfig);
 		expect(mockStreamEvents).toHaveBeenCalled();
+	});
+});
+
+describe('runAgent - intermediate step memory persistence', () => {
+	const fixtureSteps: ToolCallData[] = [
+		{
+			action: {
+				tool: 'calculator',
+				toolInput: { expression: '2+2' },
+				log: 'Using calculator',
+				toolCallId: 'call-123',
+				type: 'tool_call',
+			},
+			observation: '4',
+		},
+	];
+
+	function buildItemContext(returnIntermediateSteps: boolean): ItemContext {
+		return {
+			itemIndex: 0,
+			input: 'Calculate 2+2',
+			steps: fixtureSteps,
+			tools: [],
+			prompt: mock(),
+			options: {
+				maxIterations: 10,
+				returnIntermediateSteps,
+			},
+			outputParser: undefined,
+		};
+	}
+
+	it('omits intermediate steps from saveToMemory when returnIntermediateSteps is false (non-streaming)', async () => {
+		const mockInvoke = jest.fn().mockResolvedValue({
+			returnValues: { output: 'The answer is 4' },
+		});
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: jest.fn().mockReturnValue({ invoke: mockInvoke }),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const mockMemory = mock<BaseChatMemory>();
+
+		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		jest.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		await runAgent(mockContext, mockExecutor, buildItemContext(false), mockModel, mockMemory);
+
+		expect(agentExecution.saveToMemory).toHaveBeenCalledWith(
+			'Calculate 2+2',
+			'The answer is 4',
+			mockMemory,
+			undefined,
+			undefined,
+		);
+	});
+
+	it('passes intermediate steps to saveToMemory when returnIntermediateSteps is true (non-streaming)', async () => {
+		const mockInvoke = jest.fn().mockResolvedValue({
+			returnValues: { output: 'The answer is 4' },
+		});
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: jest.fn().mockReturnValue({ invoke: mockInvoke }),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const mockMemory = mock<BaseChatMemory>();
+
+		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		jest.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		await runAgent(mockContext, mockExecutor, buildItemContext(true), mockModel, mockMemory);
+
+		expect(agentExecution.saveToMemory).toHaveBeenCalledWith(
+			'Calculate 2+2',
+			'The answer is 4',
+			mockMemory,
+			fixtureSteps,
+			undefined,
+		);
+	});
+
+	it('omits intermediate steps from saveToMemory when returnIntermediateSteps is false (streaming)', async () => {
+		const mockEventStream = (async function* () {})();
+		const mockStreamEvents = jest.fn().mockReturnValue(mockEventStream);
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: jest.fn().mockReturnValue({ streamEvents: mockStreamEvents }),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const mockMemory = mock<BaseChatMemory>();
+
+		const streamingContext = mock<IExecuteFunctions>({
+			getNode: jest.fn().mockReturnValue({ ...mockNode, typeVersion: 2.1 }),
+			isStreaming: jest.fn().mockReturnValue(true),
+			getExecutionCancelSignal: jest.fn().mockReturnValue(new AbortController().signal),
+		});
+		streamingContext.getExecuteData = jest.fn() as any;
+
+		const itemContext = buildItemContext(false);
+		itemContext.options.enableStreaming = true;
+
+		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		jest.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
+			output: 'The answer is 4',
+		});
+		jest.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+
+		await runAgent(streamingContext, mockExecutor, itemContext, mockModel, mockMemory);
+
+		expect(agentExecution.saveToMemory).toHaveBeenCalledWith(
+			'Calculate 2+2',
+			'The answer is 4',
+			mockMemory,
+			undefined,
+			undefined,
+		);
+	});
+
+	it('passes intermediate steps to saveToMemory when returnIntermediateSteps is true (streaming)', async () => {
+		const mockEventStream = (async function* () {})();
+		const mockStreamEvents = jest.fn().mockReturnValue(mockEventStream);
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: jest.fn().mockReturnValue({ streamEvents: mockStreamEvents }),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const mockMemory = mock<BaseChatMemory>();
+
+		const streamingContext = mock<IExecuteFunctions>({
+			getNode: jest.fn().mockReturnValue({ ...mockNode, typeVersion: 2.1 }),
+			isStreaming: jest.fn().mockReturnValue(true),
+			getExecutionCancelSignal: jest.fn().mockReturnValue(new AbortController().signal),
+		});
+		streamingContext.getExecuteData = jest.fn() as any;
+
+		const itemContext = buildItemContext(true);
+		itemContext.options.enableStreaming = true;
+
+		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		jest.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
+			output: 'The answer is 4',
+		});
+		jest.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+
+		await runAgent(streamingContext, mockExecutor, itemContext, mockModel, mockMemory);
+
+		expect(agentExecution.saveToMemory).toHaveBeenCalledWith(
+			'Calculate 2+2',
+			'The answer is 4',
+			mockMemory,
+			fixtureSteps,
+			undefined,
+		);
 	});
 });

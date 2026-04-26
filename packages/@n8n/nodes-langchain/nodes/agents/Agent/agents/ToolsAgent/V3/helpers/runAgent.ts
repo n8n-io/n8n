@@ -101,10 +101,12 @@ export async function runAgent(
 				metadata: buildResponseMetadata(response, itemIndex),
 			};
 		}
-		// Save conversation to memory including any tool call context
+		// Persist intermediate tool steps to memory only when the user has opted in;
+		// otherwise the tool sequence leaks into the chat transcript on reload.
 		if (memory && input && result?.output) {
 			const previousCount = response?.metadata?.previousRequests?.length;
-			await saveToMemory(input, result.output, memory, steps, previousCount);
+			const stepsForMemory = options.returnIntermediateSteps ? steps : undefined;
+			await saveToMemory(input, result.output, memory, stepsForMemory, previousCount);
 		}
 
 		if (options.returnIntermediateSteps && steps.length > 0) {
@@ -125,10 +127,18 @@ export async function runAgent(
 		);
 
 		if ('returnValues' in modelResponse) {
-			// Save conversation to memory including any tool call context
+			// Persist intermediate tool steps to memory only when the user has opted in;
+			// otherwise the tool sequence leaks into the chat transcript on reload.
 			if (memory && input && modelResponse.returnValues.output) {
 				const previousCount = response?.metadata?.previousRequests?.length;
-				await saveToMemory(input, modelResponse.returnValues.output, memory, steps, previousCount);
+				const stepsForMemory = options.returnIntermediateSteps ? steps : undefined;
+				await saveToMemory(
+					input,
+					modelResponse.returnValues.output,
+					memory,
+					stepsForMemory,
+					previousCount,
+				);
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };
