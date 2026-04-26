@@ -100,7 +100,7 @@ export const createCallTool =
 		}
 
 		if (isStructuredContent(result.structuredContent)) {
-    return result.structuredContent;
+			return result.structuredContent;
 		}
 
 		if (result.content !== undefined) {
