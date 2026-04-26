@@ -8,7 +8,7 @@ import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
 import type { Workflow } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
-import type { CanvasEventBusEvents } from '../canvas.types';
+import type { CanvasEventBusEvents, CanvasNodeRenderType } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
 
@@ -28,6 +28,7 @@ const props = withDefaults(
 		executing?: boolean;
 		suppressInteraction?: boolean;
 		initialViewport?: ViewportTransform | null;
+		nodeTypeRenderOverrides?: Partial<Record<string, CanvasNodeRenderType>>;
 	}>(),
 	{
 		id: 'canvas',
@@ -57,6 +58,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 	nodes,
 	connections,
 	workflowObject,
+	nodeTypeRenderOverrides: props.nodeTypeRenderOverrides,
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636

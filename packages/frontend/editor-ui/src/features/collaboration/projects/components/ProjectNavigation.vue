@@ -11,6 +11,7 @@ import { useProjectsStore } from '../projects.store';
 import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { FORMS_VIEW } from '@/features/forms/constants';
+import { useFormsStore } from '@/features/forms/stores/forms.store';
 
 import { N8nMenuItem, N8nText } from '@n8n/design-system';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -28,6 +29,7 @@ const globalEntityCreation = useGlobalEntityCreation();
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
+const formsStore = useFormsStore();
 
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
@@ -112,7 +114,10 @@ async function onSourceControlPull() {
 }
 
 onBeforeMount(async () => {
-	await usersStore.fetchUsers({ filter: { isPending: false }, take: 2 });
+	await Promise.all([
+		usersStore.fetchUsers({ filter: { isPending: false }, take: 2 }),
+		formsStore.checkForFormWorkflows(),
+	]);
 	sourceControlEventBus.on('pull', onSourceControlPull);
 });
 
@@ -155,6 +160,7 @@ onBeforeUnmount(() => {
 				data-test-id="project-chat-menu-item"
 			/>
 			<N8nMenuItem
+				v-if="formsStore.hasFormWorkflows !== false"
 				:item="forms"
 				:compact="props.collapsed"
 				:active="activeTabId === 'forms'"

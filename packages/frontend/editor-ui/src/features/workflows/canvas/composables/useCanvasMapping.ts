@@ -23,6 +23,7 @@ import type {
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
 	CanvasNodeDefaultRenderLabelSize,
+	CanvasNodeFormStepRender,
 	CanvasNodeStickyNoteRender,
 	ExecutionOutputMap,
 } from '../canvas.types';
@@ -58,6 +59,7 @@ import {
 	STICKY_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
+import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -72,10 +74,12 @@ export function useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
+	nodeTypeRenderOverrides = {},
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<Workflow>;
+	nodeTypeRenderOverrides?: Partial<Record<string, CanvasNodeRenderType>>;
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
@@ -115,6 +119,13 @@ export function useCanvasMapping({
 		};
 	}
 
+	function createFormStepRenderType(): CanvasNodeFormStepRender {
+		return {
+			type: CanvasNodeRenderType.FormStep,
+			options: {},
+		};
+	}
+
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
 		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
 		const source = simulatedNodeTypeDescriptionByNodeId.value[node.id] ?? nodeType ?? node.type;
@@ -148,6 +159,12 @@ export function useCanvasMapping({
 	const renderTypeByNodeId = computed(
 		() =>
 			nodes.value.reduce<Record<string, CanvasNodeData['render']>>((acc, node) => {
+				const override = nodeTypeRenderOverrides[node.type];
+				if (override === CanvasNodeRenderType.FormStep) {
+					acc[node.id] = createFormStepRenderType();
+					return acc;
+				}
+
 				switch (node.type) {
 					case `${CanvasNodeRenderType.StickyNote}`:
 						acc[node.id] = createStickyNoteRenderType(node);
@@ -725,11 +742,25 @@ export function useCanvasMapping({
 					render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
 				};
 
+				const isFormStep =
+					renderTypeByNodeId.value[node.id]?.type === CanvasNodeRenderType.FormStep;
+
+				// FormStep cards are 202px wide (448px × zoom 0.45); centre them on the
+				// original 96px node position by shifting left (card_width − default_width) / 2.
+				// Vertical centering and row-gap expansion are handled post-render by
+				// useFormsLayout, which uses VueFlow's measured node dimensions.
+				const FORM_STEP_WIDTH = Math.round(448 * 0.45); // 202
+				const nodeX = node.position[0];
+				const nodeY = node.position[1];
+				const position = isFormStep
+					? { x: nodeX - (FORM_STEP_WIDTH - DEFAULT_NODE_SIZE[0]) / 2, y: nodeY }
+					: { x: nodeX, y: nodeY };
+
 				return {
 					id: node.id,
 					label: node.name,
 					type: 'canvas-node',
-					position: { x: node.position[0], y: node.position[1] },
+					position,
 					data,
 					...additionalNodePropertiesById.value[node.id],
 					draggable: node.draggable,

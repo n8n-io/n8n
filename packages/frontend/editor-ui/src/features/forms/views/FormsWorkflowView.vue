@@ -4,6 +4,8 @@ import CanvasBackground from '@/features/workflows/canvas/components/elements/ba
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, VIEWS } from '@/app/constants';
+import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import { useFormsLayout } from '../composables/useFormsLayout';
 import type { Workflow } from 'n8n-workflow';
 import { N8nButton, N8nLoading } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
@@ -17,8 +19,14 @@ const workflowsStore = useWorkflowsStore();
 const loading = ref(true);
 
 const containerId = `forms-canvas-${Math.random().toString(36).slice(2)}`;
+const { layoutReady } = useFormsLayout(containerId);
 
 const FORM_NODE_TYPES = new Set([FORM_TRIGGER_NODE_TYPE, FORM_NODE_TYPE]);
+
+const formNodeRenderOverrides: Partial<Record<string, CanvasNodeRenderType>> = {
+	[FORM_TRIGGER_NODE_TYPE]: CanvasNodeRenderType.FormStep,
+	[FORM_NODE_TYPE]: CanvasNodeRenderType.FormStep,
+};
 
 onMounted(async () => {
 	const workflowId = route.params.workflowId as string;
@@ -58,27 +66,30 @@ function onNodeActivated(nodeId: string) {
 
 <template>
 	<div :id="containerId" :class="$style.container">
-		<component is="style">{{ dimCss }}</component>
+		<component :is="'style'">{{ dimCss }}</component>
 		<N8nLoading v-if="loading" :rows="10" />
-		<WorkflowCanvas
-			v-else
-			:workflow="workflowsStore.workflow"
-			:workflow-object="workflowObject"
-			:read-only="true"
-			@update:node:activated="onNodeActivated"
-		>
-			<template #canvas-background="{ viewport }">
-				<CanvasBackground
-					:viewport="viewport"
-					:striped="false"
-					variant="lines"
-					pattern-color="var(--forms--canvas--grid--color)"
-				/>
-			</template>
-			<div :class="$style.canvasButtons">
-				<N8nButton variant="subtle" size="large" @click="openWorkflow"> Open workflow </N8nButton>
-			</div>
-		</WorkflowCanvas>
+		<div v-else :class="[$style.canvasContainer, layoutReady && $style.canvasVisible]">
+			<WorkflowCanvas
+				:id="containerId"
+				:workflow="workflowsStore.workflow"
+				:workflow-object="workflowObject"
+				:read-only="true"
+				:node-type-render-overrides="formNodeRenderOverrides"
+				@update:node:activated="onNodeActivated"
+			>
+				<template #canvas-background="{ viewport }">
+					<CanvasBackground
+						:viewport="viewport"
+						:striped="false"
+						variant="lines"
+						pattern-color="var(--forms--canvas--grid--color)"
+					/>
+				</template>
+				<div :class="$style.canvasButtons">
+					<N8nButton variant="subtle" size="large" @click="openWorkflow"> Open workflow </N8nButton>
+				</div>
+			</WorkflowCanvas>
+		</div>
 	</div>
 </template>
 
@@ -89,6 +100,18 @@ function onNodeActivated(nodeId: string) {
 	height: 100%;
 	width: 100%;
 	--forms--canvas--grid--color: color-mix(in srgb, var(--color--primary) 12%, transparent);
+}
+
+.canvasContainer {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	opacity: 0;
+	transition: opacity 0.15s;
+}
+
+.canvasVisible {
+	opacity: 1;
 }
 
 .canvasButtons {
