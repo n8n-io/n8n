@@ -10,6 +10,7 @@ import {
 } from '../composables/agentChatMessages';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
+import { CHAT_MESSAGE_STATUS } from '../constants';
 
 const props = defineProps<{
 	messages: ChatMessage[];
@@ -159,7 +160,7 @@ watch(
 					</div>
 					<ChatTypingIndicator
 						v-if="
-							group.finalMessage?.status === 'streaming' &&
+							group.finalMessage?.status === CHAT_MESSAGE_STATUS.STREAMING &&
 							!group.finalMessage.content &&
 							!group.toolCalls.length
 						"
@@ -219,7 +220,7 @@ watch(
 					<ChatTypingIndicator
 						v-if="
 							group.message.role === 'assistant' &&
-							group.message.status === 'streaming' &&
+							group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
 							!group.message.content &&
 							!group.message.toolCalls?.length
 						"

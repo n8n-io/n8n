@@ -20,3 +20,31 @@ export const EVALS_SECTION_KEY = '__evals';
 export const CONFIG_JSON_SECTION_KEY = '__config_json';
 /** Synthetic tree key for the agent executions tab. */
 export const EXECUTIONS_SECTION_KEY = '__executions';
+
+/**
+ * Status of an assistant message during/after streaming.
+ * Used by `useAgentChatStream`, `agentChatMessages`, and templates.
+ */
+export const CHAT_MESSAGE_STATUS = {
+	STREAMING: 'streaming',
+	SUCCESS: 'success',
+	ERROR: 'error',
+	AWAITING_USER: 'awaitingUser',
+} as const;
+export type ChatMessageStatus = (typeof CHAT_MESSAGE_STATUS)[keyof typeof CHAT_MESSAGE_STATUS];
+
+/**
+ * Lifecycle of a single tool-call as the agent runs.
+ * `pending` → `running` → `done|error`, or `running` → `suspended` → `done`.
+ */
+export const TOOL_CALL_STATE = {
+	PENDING: 'pending',
+	RUNNING: 'running',
+	SUSPENDED: 'suspended',
+	DONE: 'done',
+	ERROR: 'error',
+} as const;
+export type ToolCallState = (typeof TOOL_CALL_STATE)[keyof typeof TOOL_CALL_STATE];
+
+/** Query-string key the builder uses to deep-link into a chat session. */
+export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';

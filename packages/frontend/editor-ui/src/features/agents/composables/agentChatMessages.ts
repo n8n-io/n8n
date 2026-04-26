@@ -19,22 +19,14 @@ import {
 	type InteractiveToolName,
 } from '@n8n/api-types';
 
-// ---------------------------------------------------------------------------
-// Tool call state
-// ---------------------------------------------------------------------------
+import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
+import type { ChatMessageStatus, ToolCallState } from '../constants';
+export { type ChatMessageStatus, type ToolCallState };
 
-/**
- * Lifecycle state of a single tool call inside a ChatMessage.
- *
- * - `pending` — LLM has committed to the call but the handler hasn't started
- *   executing yet (e.g. arguments still streaming, or runtime hasn't dispatched)
- * - `running` — handler is executing (received `tool-execution-start`); waiting
- *   for it to return
- * - `suspended` — handler called `ctx.suspend(...)`; awaiting user resume
- * - `done` — tool returned (either via the handler or via `agent.resume()`)
- * - `error` — tool threw or the input failed validation
- */
-export type ToolCallState = 'pending' | 'running' | 'suspended' | 'done' | 'error';
+// ---------------------------------------------------------------------------
+// Tool call state — type lives in `../constants` so the literal values and
+// the type stay in one place. See ToolCallState there for state transitions.
+// ---------------------------------------------------------------------------
 
 export interface ToolCall {
 	tool: string;
@@ -104,7 +96,7 @@ export interface ChatMessage {
 	content: string;
 	thinking?: string;
 	toolCalls?: ToolCall[];
-	status?: 'streaming' | 'success' | 'error' | 'awaitingUser';
+	status?: ChatMessageStatus;
 	interactive?: InteractivePayload;
 }
 
@@ -341,8 +333,8 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			if (rebuilt) {
 				interactive = rebuilt;
 				if (rebuilt.resolvedAt === undefined) {
-					tc.state = 'suspended';
-					status = 'awaitingUser';
+					tc.state = TOOL_CALL_STATE.SUSPENDED;
+					status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
 				break;
 			}

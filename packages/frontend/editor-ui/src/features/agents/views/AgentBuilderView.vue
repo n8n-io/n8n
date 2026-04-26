@@ -38,6 +38,7 @@ import {
 	EXECUTIONS_SECTION_KEY,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
+	CONTINUE_SESSION_ID_PARAM,
 } from '../constants';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -98,7 +99,9 @@ const showRawSection = computed(() =>
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
 const initialPrompt = ref<string | undefined>(undefined);
-const continueSessionId = computed(() => route.query.continueSessionId as string | undefined);
+const continueSessionId = computed(
+	() => route.query[CONTINUE_SESSION_ID_PARAM] as string | undefined,
+);
 /**
  * Ephemeral session id for the in-tab "current chat". Set when the user starts
  * a new chat from the home input; cleared when they hit the back button in the
@@ -261,7 +264,7 @@ function onBuildChatStreamingChange(streaming: boolean) {
  */
 function setSessionInUrl(id: string) {
 	activeChatSessionId.value = id;
-	void router.replace({ query: { ...route.query, continueSessionId: id } });
+	void router.replace({ query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id } });
 }
 
 function bindTestSession() {
@@ -290,7 +293,7 @@ function setChatMode(next: ChatMode) {
 		// shared links point at the same chat.
 		if (activeChatSessionId.value && !continueSessionId.value) {
 			void router.replace({
-				query: { ...route.query, continueSessionId: activeChatSessionId.value },
+				query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: activeChatSessionId.value },
 			});
 		} else {
 			bindTestSession();
@@ -610,7 +613,7 @@ watch(
 );
 
 function clearContinueSessionParam() {
-	const { continueSessionId: _dropped, ...rest } = route.query;
+	const { [CONTINUE_SESSION_ID_PARAM]: _dropped, ...rest } = route.query;
 	void router.replace({ query: rest });
 }
 
@@ -697,7 +700,7 @@ function onSessionPick(id: string) {
 	// Switching to an existing thread — clear the ephemeral session so the
 	// continue-session id from the URL drives the chat panel.
 	activeChatSessionId.value = null;
-	void router.replace({ query: { ...route.query, continueSessionId: id } });
+	void router.replace({ query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id } });
 }
 
 function onNewChat() {

@@ -3,7 +3,7 @@ import { truncate } from '@n8n/utils';
 import { useToast } from '@/app/composables/useToast';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
+import { AGENT_BUILDER_VIEW, CONTINUE_SESSION_ID_PARAM } from '@/features/agents/constants';
 import type {
 	ExecutionThread,
 	ThreadExecution,
@@ -306,7 +306,7 @@ function continueChat() {
 	void router.push({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
-		query: { continueSessionId: threadId.value },
+		query: { [CONTINUE_SESSION_ID_PARAM]: threadId.value },
 	});
 }
 

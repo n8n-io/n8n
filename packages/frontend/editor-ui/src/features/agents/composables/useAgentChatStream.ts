@@ -22,6 +22,7 @@ import {
 	type ChatMessage,
 	type ToolCall,
 } from './agentChatMessages';
+import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 export interface FatalAgentError {
 	message: string;
@@ -155,7 +156,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			content: '',
 			thinking: '',
 			toolCalls: [],
-			status: 'streaming',
+			status: CHAT_MESSAGE_STATUS.STREAMING,
 		});
 		messages.value.push(msg);
 		session.current = msg;
@@ -214,7 +215,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg.toolCalls.push({
 						tool: event.toolName,
 						toolCallId: event.toolCallId,
-						state: 'pending',
+						state: TOOL_CALL_STATE.PENDING,
 					});
 				}
 				break;
@@ -234,20 +235,27 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						tool: event.toolName,
 						toolCallId: event.toolCallId,
 						input: event.input,
-						state: 'pending',
+						state: TOOL_CALL_STATE.PENDING,
 					});
 				} else {
 					existing.input = event.input;
-					if (existing.state !== 'running' && existing.state !== 'done') {
-						existing.state = 'pending';
+					if (
+						existing.state !== TOOL_CALL_STATE.RUNNING &&
+						existing.state !== TOOL_CALL_STATE.DONE
+					) {
+						existing.state = TOOL_CALL_STATE.PENDING;
 					}
 				}
 				break;
 			}
 			case 'tool-execution-start': {
 				const found = findToolCallById(event.toolCallId);
-				if (found && found.tc.state !== 'done' && found.tc.state !== 'error') {
-					found.tc.state = 'running';
+				if (
+					found &&
+					found.tc.state !== TOOL_CALL_STATE.DONE &&
+					found.tc.state !== TOOL_CALL_STATE.ERROR
+				) {
+					found.tc.state = TOOL_CALL_STATE.RUNNING;
 				}
 				break;
 			}
@@ -255,7 +263,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
 					found.tc.output = event.output;
-					found.tc.state = event.isError ? 'error' : 'done';
+					found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
 					// If this was an interactive tool call, the result IS the user's
 					// resume payload — refresh the card so it flips to its resolved
 					// (disabled) state immediately. No separate "resumed" event needed.
@@ -263,7 +271,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						const updated = rebuildInteractiveFromHistory(found.tc);
 						if (updated) found.msg.interactive = updated;
 					}
-					if (found.msg.status === 'awaitingUser') found.msg.status = 'success';
+					if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
+						found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 				}
 				break;
 			}
@@ -275,7 +284,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (found) {
 					msg = found.msg;
 					tc = found.tc;
-					tc.state = 'suspended';
+					tc.state = TOOL_CALL_STATE.SUSPENDED;
 					tc.input = payload.input;
 				} else {
 					msg = ensureCurrent(session);
@@ -283,7 +292,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						tool: payload.toolName,
 						toolCallId: payload.toolCallId,
 						input: payload.input,
-						state: 'suspended',
+						state: TOOL_CALL_STATE.SUSPENDED,
 					};
 					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
 				}
@@ -294,7 +303,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (interactive) {
 					interactive.runId = payload.runId;
 					msg.interactive = interactive;
-					msg.status = 'awaitingUser';
+					msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
 				break;
 			}
@@ -385,7 +394,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	function finalizeStream(session: StreamSession): void {
 		for (const msg of session.minted) {
-			if (msg.status === 'streaming') msg.status = 'success';
+			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 		}
 		if (params.endpoint.value === 'build' && session.builderMutated) {
 			params.onConfigUpdated?.();
@@ -470,11 +479,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		// user sees immediate feedback on submit.
 		const found = findToolCallById(payload.toolCallId);
 		if (found) {
-			found.tc.state = 'done';
+			found.tc.state = TOOL_CALL_STATE.DONE;
 			found.tc.output = payload.resumeData;
 			const updated = rebuildInteractiveFromHistory(found.tc);
 			if (updated) found.msg.interactive = updated;
-			if (found.msg.status === 'awaitingUser') found.msg.status = 'success';
+			if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
+				found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 		}
 
 		const { baseUrl } = rootStore.restApiContext;

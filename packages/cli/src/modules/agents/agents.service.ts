@@ -53,6 +53,7 @@ import {
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
+import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 
 interface InjectRuntimeDependenciesParams {
 	agent: agents.Agent;
@@ -66,7 +67,7 @@ interface InjectRuntimeDependenciesParams {
 
 /** Derive a stable thread ID for the test-chat of a given agent. */
 export function chatThreadId(agentId: string): string {
-	return `test-${agentId}`;
+	return `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
 }
 
 export interface ExecuteAgentData {
