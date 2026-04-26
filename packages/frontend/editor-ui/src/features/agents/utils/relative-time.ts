@@ -21,6 +21,11 @@ interface RelativeI18n {
  *   - within 24h  → "Nh ago"
  *   - calendar day = previous local day → "Yesterday"
  *   - older       → short locale date, e.g. "Oct 3" / "3 Oct"
+ *
+ * The shared `app/components/TimeAgo.vue` (timeago.js-based) also exists, but
+ * it walks the full seconds→years ladder with no "Yesterday" step and never
+ * falls back to an absolute date — wrong shape for a chat-history list where
+ * old sessions should drop to a date so the dropdown stays scannable.
  */
 export function formatRelativeTimestamp(
 	date: Date | string | number,
