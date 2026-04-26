@@ -4,15 +4,24 @@ import CanvasBackgroundStripedPattern from './CanvasBackgroundStripedPattern.vue
 import { Background } from '@vue-flow/background';
 import type { ViewportTransform } from '@vue-flow/core';
 
-defineProps<{
-	striped: boolean;
-	viewport: ViewportTransform;
-}>();
+withDefaults(
+	defineProps<{
+		striped: boolean;
+		viewport: ViewportTransform;
+		variant?: 'dots' | 'lines';
+		patternColor?: string;
+	}>(),
+	{
+		variant: 'dots',
+		patternColor: 'var(--canvas--dot--color)',
+	},
+);
 </script>
 <template>
 	<Background
 		data-test-id="canvas-background"
-		pattern-color="var(--canvas--dot--color)"
+		:pattern-color="patternColor"
+		:variant="variant"
 		:gap="GRID_SIZE"
 	>
 		<template v-if="striped" #pattern-container="patternProps">

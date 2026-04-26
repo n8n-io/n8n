@@ -10,6 +10,7 @@ import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
 import { useProjectsStore } from '../projects.store';
 import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
+import { FORMS_VIEW } from '@/features/forms/constants';
 
 import { N8nMenuItem, N8nText } from '@n8n/design-system';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -98,6 +99,13 @@ const chat = computed<IMenuItem>(() => ({
 	beta: true,
 }));
 
+const forms = computed<IMenuItem>(() => ({
+	id: 'forms',
+	icon: 'form',
+	label: locale.baseText('projects.menu.forms'),
+	route: { to: { name: FORMS_VIEW } },
+}));
+
 async function onSourceControlPull() {
 	// Update myProjects for the sidebar display
 	await projectsStore.getMyProjects();
@@ -145,6 +153,12 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'chat'"
 				data-test-id="project-chat-menu-item"
+			/>
+			<N8nMenuItem
+				:item="forms"
+				:compact="props.collapsed"
+				:active="activeTabId === 'forms'"
+				data-test-id="project-forms-menu-item"
 			/>
 		</div>
 		<N8nText

@@ -158,7 +158,11 @@ defineExpose({
 				:suppress-interaction="suppressInteraction"
 				:initial-viewport="initialViewport"
 				v-bind="$attrs"
-			/>
+			>
+				<template v-if="$slots['canvas-background']" #canvas-background="slotProps">
+					<slot name="canvas-background" v-bind="slotProps" />
+				</template>
+			</Canvas>
 		</div>
 		<slot />
 	</div>

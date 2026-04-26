@@ -294,7 +294,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		async (newRoute) => {
 			projectNavActiveId.value = null;
 
-			if (newRoute?.path?.includes('home')) {
+			if (newRoute?.path?.includes('home/forms')) {
+				projectNavActiveId.value = 'forms';
+				setCurrentProject(null);
+			} else if (newRoute?.path?.includes('home')) {
 				projectNavActiveId.value = 'home';
 				setCurrentProject(null);
 			}
