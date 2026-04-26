@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
+import {
+	onBeforeRouteLeave,
+	onBeforeRouteUpdate,
+	useRoute,
+	useRouter,
+	type RouteLocationNormalized,
+} from 'vue-router';
 import {
 	N8nButton,
 	N8nIcon,
@@ -154,7 +160,12 @@ const projectName = computed<string | null>(() => {
 });
 
 async function fetchAgent() {
-	const data = await getAgent(rootStore.restApiContext, projectId.value, agentId.value);
+	// Capture the target id at call-time so a fetch that resolves after the
+	// user has switched to a different agent is dropped instead of clobbering
+	// the new agent's resource state.
+	const targetAgentId = agentId.value;
+	const data = await getAgent(rootStore.restApiContext, projectId.value, targetAgentId);
+	if (agentId.value !== targetAgentId) return;
 	agent.value = data;
 	agentName.value = data.name;
 }
@@ -275,11 +286,20 @@ function onOpenBuildFromChat() {
 	chatMode.value = 'build';
 }
 
-async function saveConfig(): Promise<void> {
-	if (!localConfig.value) return;
-	const result = await updateConfig(projectId.value, agentId.value, localConfig.value);
-	// Keep agent.versionId in sync so hasUnpublishedChanges stays accurate
-	if (agent.value && result.versionId !== undefined) {
+interface AutosaveSnapshot {
+	projectId: string;
+	agentId: string;
+	config: AgentJsonConfig;
+}
+
+async function saveConfig(snapshot: AutosaveSnapshot): Promise<void> {
+	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
+	// Drop the response if the user has switched to a different agent in the
+	// meantime — both `config` (handled inside useAgentConfig) and
+	// `agent.versionId` would otherwise be polluted with values for the
+	// previous agent.
+	if (result.stale) return;
+	if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 		agent.value = { ...agent.value, versionId: result.versionId };
 	}
 }
@@ -287,7 +307,7 @@ async function saveConfig(): Promise<void> {
 // Debounce shorter than the workflow canvas' 1500ms — the publish button's
 // "enabled" state is gated on the save landing, so a longer wait makes the
 // UI feel laggy right after an edit.
-const { saveStatus, scheduleAutosave, settleAutosave } = useAgentConfigAutosave({
+const { saveStatus, scheduleAutosave, settleAutosave } = useAgentConfigAutosave<AutosaveSnapshot>({
 	save: saveConfig,
 	onSaved: () => {
 		telemetry.track('User saved agent settings', { agent_id: agentId.value });
@@ -307,7 +327,11 @@ function onSectionEditorUpdate(nextConfig: AgentJsonConfig) {
 	if (!localConfig.value) return;
 	builderTelemetry.recordConfigEdit(nextConfig);
 	localConfig.value = nextConfig;
-	scheduleAutosave();
+	scheduleAutosave({
+		projectId: projectId.value,
+		agentId: agentId.value,
+		config: deepCopy(localConfig.value),
+	});
 }
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
@@ -321,7 +345,11 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 		agentName.value = updates.name;
 		if (agent.value) agent.value = { ...agent.value, name: updates.name };
 	}
-	scheduleAutosave();
+	scheduleAutosave({
+		projectId: projectId.value,
+		agentId: agentId.value,
+		config: deepCopy(localConfig.value),
+	});
 }
 
 async function onConfigUpdated() {
@@ -395,11 +423,20 @@ const hasUnpublishedChanges = computed(
 		agent.value.versionId !== agent.value.publishedVersion.publishedFromVersionId,
 );
 
-onBeforeRouteLeave(async (_to, _from, next) => {
+async function guardUnpublishedChanges(
+	from: RouteLocationNormalized,
+	next: (proceed?: boolean) => void,
+) {
 	if (!hasUnpublishedChanges.value) {
 		next();
 		return;
 	}
+
+	// The route may already be advancing (especially for in-component param
+	// updates), so resolve project/agent ids from the route we're leaving
+	// rather than the live computed refs.
+	const leavingProjectId = String(from.params.projectId ?? projectId.value);
+	const leavingAgentId = String(from.params.agentId ?? agentId.value);
 
 	const response = await openAgentConfirmationModal({
 		title: locale.baseText('agents.builder.unsavedPublish.modal.title'),
@@ -415,9 +452,17 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 			// would bump versionId and mark the agent dirty immediately after publishing.
 			await settleAutosave();
 			if (!localConfig.value) return;
-			await saveConfig();
+			await saveConfig({
+				projectId: leavingProjectId,
+				agentId: leavingAgentId,
+				config: deepCopy(localConfig.value),
+			});
 			builderTelemetry.flushConfigEdits();
-			const updated = await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
+			const updated = await publishAgent(
+				rootStore.restApiContext,
+				leavingProjectId,
+				leavingAgentId,
+			);
 			builderTelemetry.trackPublished(updated.publishedVersion?.schema);
 		} catch (error) {
 			showError(error, locale.baseText('agents.builder.unsavedPublish.error'));
@@ -428,10 +473,30 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 		next();
 	}
 	// MODAL_CLOSE (X / Escape) → don't call next(), stay on page
+}
+
+onBeforeRouteLeave(async (_to, from, next) => {
+	await guardUnpublishedChanges(from, next);
+});
+
+// In-component agent switches (same route, different :agentId) don't fire
+// `onBeforeRouteLeave`, so wire the same publish-or-discard prompt here too.
+onBeforeRouteUpdate(async (to, from, next) => {
+	if (to.params.agentId === from.params.agentId) {
+		next();
+		return;
+	}
+	await guardUnpublishedChanges(from, next);
 });
 
 async function initialize() {
 	initialized.value = false;
+	// Flush any pending/in-flight save for the previous agent before we tear
+	// down its state — without this, an autosave scheduled by edits in the
+	// previous agent could land after we've already swapped to the new one.
+	// The save itself snapshots agentId at schedule-time, so the persisted
+	// data is correct; settling here keeps localConfig/agent state consistent.
+	await settleAutosave();
 	// Drop any per-agent telemetry state from the previous agent — an in-flight
 	// save for the previous agent would've already flushed pending edits before
 	// we got here, and a scheduled-but-not-fired save wouldn't flush correctly
@@ -650,7 +715,16 @@ function onContinueLoaded(count: number) {
 	// Only kick back to home for a URL-supplied session that turned out to be
 	// empty/stale. Ephemeral in-tab sessions always start empty and fill in as
 	// the user chats, so the zero-count signal is expected there.
-	if (count === 0 && continueSessionId.value) exitContinueMode();
+	if (count === 0 && continueSessionId.value) {
+		exitContinueMode();
+		// `exitContinueMode` only drops the query param; the chat panel would
+		// otherwise sit blank waiting for a session to bind. Once the route
+		// update lands, latch onto an existing thread (or mint a fresh
+		// ephemeral one) so the test pane has something to render.
+		void nextTick(() => {
+			if (chatMode.value === 'test') bindTestSession();
+		});
+	}
 }
 
 function onHeaderBack() {

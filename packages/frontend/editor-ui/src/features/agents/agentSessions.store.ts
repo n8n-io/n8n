@@ -22,9 +22,20 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	let currentProjectId: string | null = null;
 	let currentAgentId: string | null = null;
 
+	// Tracks the most recently requested (project, agent) pair. Concurrent
+	// `fetchThreads` calls — typically when the user switches agents quickly —
+	// would otherwise race, and an older response could overwrite the newer
+	// agent's threads.
+	function keyFor(projectId: string, agentId: string | null) {
+		return `${projectId}:${agentId ?? ''}`;
+	}
+	let latestKey: string | null = null;
+
 	async function fetchThreads(projectId: string, agentId?: string) {
 		currentProjectId = projectId;
 		currentAgentId = agentId ?? null;
+		const key = keyFor(projectId, currentAgentId);
+		latestKey = key;
 		loading.value = true;
 		try {
 			const rootStore = useRootStore();
@@ -35,15 +46,20 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 				undefined,
 				agentId,
 			);
+			if (latestKey !== key) return;
 			threads.value = page.threads;
 			nextCursor.value = page.nextCursor;
 		} finally {
-			loading.value = false;
+			if (latestKey === key) loading.value = false;
 		}
 	}
 
 	async function loadMore(projectId: string, agentId?: string) {
 		if (!nextCursor.value || loading.value) return;
+		const key = keyFor(projectId, agentId ?? null);
+		// Don't paginate against a stale agent — the cursor belongs to the
+		// previous list.
+		if (latestKey !== null && latestKey !== key) return;
 		loading.value = true;
 		try {
 			const rootStore = useRootStore();
@@ -54,10 +70,11 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 				nextCursor.value,
 				agentId,
 			);
+			if (latestKey !== key) return;
 			threads.value.push(...page.threads);
 			nextCursor.value = page.nextCursor;
 		} finally {
-			loading.value = false;
+			if (latestKey === key) loading.value = false;
 		}
 	}
 
@@ -105,6 +122,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		loading.value = false;
 		currentProjectId = null;
 		currentAgentId = null;
+		latestKey = null;
 	}
 
 	return {

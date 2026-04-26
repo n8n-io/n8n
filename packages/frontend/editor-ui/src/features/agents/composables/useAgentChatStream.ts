@@ -133,6 +133,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	interface StreamSession {
 		builderMutated: boolean;
 		/**
+		 * Set when the stream emitted an `error` event. Callers (notably
+		 * `resume`) inspect this so they can roll back optimistic UI state
+		 * that was applied before the round-trip.
+		 */
+		errorEmitted: boolean;
+		/**
 		 * Cursor pointing at the ChatMessage currently being filled by
 		 * text/reasoning/tool-input events. `start-step` / `finish-step`
 		 * boundaries clear it; the next text/tool event lazily mints a fresh
@@ -322,6 +328,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'error': {
+				session.errorEmitted = true;
 				if (event.errorCode === 'agent_misconfigured') {
 					// Misconfiguration is a distinct class of error: the agent
 					// can't run until its config is fixed. Surface it via the
@@ -401,15 +408,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
-	async function postAndConsume(url: string, body: Record<string, unknown>): Promise<void> {
+	async function postAndConsume(
+		url: string,
+		body: Record<string, unknown>,
+	): Promise<{ ok: boolean }> {
 		const session: StreamSession = {
 			builderMutated: false,
+			errorEmitted: false,
 			minted: new Set(),
 		};
 
 		isStreaming.value = true;
 		const controller = new AbortController();
 		abortController.value = controller;
+		let transportFailed = false;
 
 		try {
 			const browserId = localStorage.getItem('n8n-browserId') ?? '';
@@ -422,6 +434,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			});
 
 			if (!response.ok || !response.body) {
+				transportFailed = true;
 				const errorMsg: ChatMessage = {
 					id: crypto.randomUUID(),
 					role: 'assistant',
@@ -429,7 +442,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					status: 'error',
 				};
 				messages.value.push(errorMsg);
-				return;
+				return { ok: false };
 			}
 
 			await consumeStream(response, session);
@@ -437,8 +450,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		} catch (e) {
 			if (e instanceof DOMException && e.name === 'AbortError') {
 				finalizeStream(session);
-				return;
+				// User-initiated abort — surface as a failure so optimistic
+				// callers (resume) restore their pre-flight state instead of
+				// leaving the UI half-committed.
+				return { ok: false };
 			}
+			transportFailed = true;
 			const text = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
 			messages.value.push({
 				id: crypto.randomUUID(),
@@ -450,6 +467,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			abortController.value = null;
 			isStreaming.value = false;
 		}
+
+		return { ok: !transportFailed && !session.errorEmitted };
 	}
 
 	async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string): Promise<void> {
@@ -477,7 +496,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		// resume stream, but that arrives only after round-trip. Flipping state
 		// here stops the spinner/clock indicator and disables the card so the
 		// user sees immediate feedback on submit.
+		//
+		// Snapshot the pre-flight state so we can roll back if the resume POST
+		// or the SSE stream fails. Otherwise a transport/expired-checkpoint
+		// error would leave the card permanently disabled and the user with
+		// no way to retry.
 		const found = findToolCallById(payload.toolCallId);
+		const snapshot = found
+			? {
+					tc: found.tc,
+					prevState: found.tc.state,
+					prevOutput: found.tc.output,
+					msg: found.msg,
+					prevStatus: found.msg.status,
+					prevInteractive: found.msg.interactive,
+				}
+			: null;
+
 		if (found) {
 			found.tc.state = TOOL_CALL_STATE.DONE;
 			found.tc.output = payload.resumeData;
@@ -489,7 +524,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
-		await postAndConsume(url, payload);
+		const { ok } = await postAndConsume(url, payload);
+		if (!ok && snapshot) {
+			snapshot.tc.state = snapshot.prevState;
+			snapshot.tc.output = snapshot.prevOutput;
+			snapshot.msg.status = snapshot.prevStatus;
+			snapshot.msg.interactive = snapshot.prevInteractive;
+		}
 	}
 
 	async function sendMessage(text: string): Promise<void> {
