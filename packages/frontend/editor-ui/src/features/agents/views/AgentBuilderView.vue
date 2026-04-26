@@ -26,8 +26,8 @@ import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetr
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentSessionsStore } from '../agentSessions.store';
-import { useThreadTitle } from '../utils/thread-title';
 import { useAgentBuilderLayout } from '../composables/useAgentBuilderLayout';
+import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import shared from '../styles/agent-panel.module.scss';
 import { agentsEventBus } from '../agents.eventBus';
 import {
@@ -101,44 +101,18 @@ const showRawSection = computed(() =>
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
 const initialPrompt = ref<string | undefined>(undefined);
-const continueSessionId = computed(
-	() => route.query[CONTINUE_SESSION_ID_PARAM] as string | undefined,
-);
-/**
- * Ephemeral session id for the in-tab "current chat". Set when the user starts
- * a new chat from the home input; cleared when they hit the back button in the
- * chat sub-header. Persists across Test/Build toggles so both views stay bound
- * to the same thread, per product requirement.
- */
-const activeChatSessionId = ref<string | null>(null);
-/**
- * The session id whichever panel should be bound to — URL-supplied
- * (continueSessionId) takes precedence over the in-tab ephemeral one.
- */
-const effectiveSessionId = computed<string | undefined>(
-	() => continueSessionId.value ?? activeChatSessionId.value ?? undefined,
-);
-
-/**
- * The current session is "empty" until it's been persisted as a thread —
- * a freshly minted `activeChatSessionId` doesn't show up in `threads` until
- * the user sends the first message. We use this to hide the New-chat button
- * until there's actually something worth starting over from.
- */
-const currentSessionHasMessages = computed(() => {
-	const id = effectiveSessionId.value;
-	if (!id) return false;
-	return (sessionsStore.threads ?? []).some((t) => t.id === id);
-});
-
-const threadTitleOf = useThreadTitle();
-const currentSessionTitle = computed(() => {
-	const id = effectiveSessionId.value;
-	if (!id) return '';
-	const thread = (sessionsStore.threads ?? []).find((t) => t.id === id);
-	if (!thread) return locale.baseText('agents.builder.chat.newChat.label');
-	return threadTitleOf(thread);
-});
+const {
+	activeChatSessionId,
+	continueSessionId,
+	effectiveSessionId,
+	currentSessionHasMessages,
+	currentSessionTitle,
+	sessionMenu,
+	setSessionInUrl,
+	clearContinueSessionParam,
+	onSessionPick,
+	onNewChat,
+} = useAgentBuilderSession();
 
 type SaveStatus = 'idle' | 'saving' | 'saved';
 const saveStatus = ref<SaveStatus>('idle');
@@ -242,11 +216,6 @@ function onBuildChatStreamingChange(streaming: boolean) {
  * chosen yet. Prefer the most recent thread — users land back where they left
  * off — and only mint a fresh ephemeral session when there is no history.
  */
-function setSessionInUrl(id: string) {
-	activeChatSessionId.value = id;
-	void router.replace({ query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id } });
-}
-
 function bindTestSession() {
 	if (continueSessionId.value || activeChatSessionId.value) return;
 	const latest = sessionsStore.threads?.[0];
@@ -592,11 +561,6 @@ watch(
 	},
 );
 
-function clearContinueSessionParam() {
-	const { [CONTINUE_SESSION_ID_PARAM]: _dropped, ...rest } = route.query;
-	void router.replace({ query: rest });
-}
-
 function exitContinueMode() {
 	clearContinueSessionParam();
 }
@@ -656,36 +620,6 @@ function onRemoveTool(index: number) {
 	if (selectedSection.value === `tools.${index}`) {
 		selectedSection.value = 'tools';
 	}
-}
-
-interface SessionMenuItem {
-	id: string;
-	title: string;
-	disabled?: boolean;
-}
-
-const sessionMenu = computed<SessionMenuItem[]>(() => {
-	const threads = sessionsStore.threads ?? [];
-	if (threads.length === 0) {
-		return [{ id: '__empty__', title: 'No previous chats', disabled: true }];
-	}
-	return threads.map((thread) => ({
-		id: thread.id,
-		title: threadTitleOf(thread),
-	}));
-});
-
-function onSessionPick(id: string) {
-	if (id === '__empty__') return;
-	// Switching to an existing thread — clear the ephemeral session so the
-	// continue-session id from the URL drives the chat panel.
-	activeChatSessionId.value = null;
-	void router.replace({ query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id } });
-}
-
-function onNewChat() {
-	activeChatSessionId.value = null;
-	setSessionInUrl(crypto.randomUUID());
 }
 
 function onOpenAddToolModal() {
