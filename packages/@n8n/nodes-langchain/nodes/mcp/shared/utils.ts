@@ -311,5 +311,7 @@ export async function tryRefreshOAuth2Token(
 }
 
 export function isStructuredContent(value: unknown): value is Record<string, unknown> {
-	return value !== undefined && value !== null && typeof value === 'object' && !Array.isArray(value);
+	return (
+		value !== undefined && value !== null && typeof value === 'object' && !Array.isArray(value)
+	);
 }
