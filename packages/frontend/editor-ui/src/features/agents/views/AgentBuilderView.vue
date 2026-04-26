@@ -28,6 +28,7 @@ import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderLayout } from '../composables/useAgentBuilderLayout';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
+import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
 import shared from '../styles/agent-panel.module.scss';
 import { agentsEventBus } from '../agents.eventBus';
 import {
@@ -74,9 +75,14 @@ const projectId = computed(
 const agentId = computed(() => route.params.agentId as string);
 
 // UI state
-type ChatMode = 'build' | 'test';
-const chatMode = ref<ChatMode>('test');
-const isBuildChatStreaming = ref(false);
+const {
+	chatMode,
+	chatModeOpened,
+	isBuildChatStreaming,
+	initialPrompt,
+	onBuildChatStreamingChange,
+	resetForAgentSwitch: resetChatModeForAgentSwitch,
+} = useAgentChatMode();
 /**
  * Gate for the main body render. Stays false while `initialize()` is running so
  * we don't:
@@ -87,10 +93,6 @@ const isBuildChatStreaming = ref(false);
  * Everything below the header is empty until we know the right starting state.
  */
 const initialized = ref(false);
-// Track which chat panels have been activated so we can lazy-mount them.
-// Both panels used to mount together on first chat entry and each fire a
-// loadHistory() call — only mount one until the user actually opens the other.
-const chatModeOpened = ref<Record<ChatMode, boolean>>({ test: false, build: false });
 const selectedSection = ref<string | null>(AGENT_SECTION_KEY);
 // Tracks which tabs the user has flipped into raw-JSON view. Keyed by section
 // key so each tab remembers its own state independently.
@@ -100,7 +102,6 @@ const showRawSection = computed(() =>
 );
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
-const initialPrompt = ref<string | undefined>(undefined);
 const {
 	activeChatSessionId,
 	continueSessionId,
@@ -205,10 +206,6 @@ function onPublished(updated: AgentResource) {
 
 function onUnpublished(updated: AgentResource) {
 	agent.value = updated;
-}
-
-function onBuildChatStreamingChange(streaming: boolean) {
-	isBuildChatStreaming.value = streaming;
 }
 
 /**
@@ -483,10 +480,8 @@ async function initialize() {
 	builderTelemetry.resetForAgentSwitch();
 
 	agent.value = null;
-	chatModeOpened.value = { test: false, build: false };
+	resetChatModeForAgentSwitch();
 	activeChatSessionId.value = null;
-	isBuildChatStreaming.value = false;
-	initialPrompt.value = undefined;
 	localConfig.value = null;
 	connectedTriggers.value = [];
 
