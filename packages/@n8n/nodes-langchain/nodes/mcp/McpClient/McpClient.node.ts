@@ -306,7 +306,6 @@ export class McpClient implements INodeType {
 							item: itemIndex,
 						},
 					});
-					
 				} catch (e) {
 					const errorMessage =
 						e instanceof ZodError ? prettifyError(e) : e instanceof Error ? e.message : String(e);
