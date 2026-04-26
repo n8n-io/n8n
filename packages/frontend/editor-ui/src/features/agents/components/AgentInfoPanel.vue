@@ -105,15 +105,31 @@ const name = ref(props.config?.name ?? '');
 const description = ref(props.config?.description ?? '');
 const instructions = ref(props.config?.instructions ?? '');
 
+// Watch each editable field individually so an external update to (say)
+// `name` doesn't snap `instructions` back to whatever the saved config holds
+// while the user is mid-keystroke. The previous deep watcher reset every
+// local ref on any change to the whole config object — that races the
+// debounced emit pipeline and can drop in-flight characters from another
+// field. Each watcher is also a no-op when the new value already matches the
+// local ref, which keeps the cursor stable for the field actually being
+// edited.
 watch(
-	() => props.config,
-	(config) => {
-		if (!config) return;
-		name.value = config.name ?? '';
-		description.value = config.description ?? '';
-		instructions.value = config.instructions ?? '';
+	() => props.config?.name ?? '',
+	(value) => {
+		if (value !== name.value) name.value = value;
 	},
-	{ deep: true },
+);
+watch(
+	() => props.config?.description ?? '',
+	(value) => {
+		if (value !== description.value) description.value = value;
+	},
+);
+watch(
+	() => props.config?.instructions ?? '',
+	(value) => {
+		if (value !== instructions.value) instructions.value = value;
+	},
 );
 
 const emitName = useDebounceFn((value: string) => {

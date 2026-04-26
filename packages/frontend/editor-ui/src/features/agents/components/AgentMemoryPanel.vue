@@ -110,7 +110,10 @@ function onRangeAfterChange(event: Event) {
 </script>
 
 <template>
-	<div :class="[$style.container, shared.scrollbarThin, props.disabled && $style.disabled]">
+	<div
+		:class="[$style.container, shared.scrollbarThin, props.disabled && $style.disabled]"
+		:inert="props.disabled || undefined"
+	>
 		<div :class="$style.header">
 			<N8nText tag="h3" size="large" :bold="true">Memory</N8nText>
 			<N8nText size="small" color="text-light">Conversation memory configuration</N8nText>

@@ -50,13 +50,24 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 			autosaveTimer = null;
 			const target = pendingSnapshot as TSnapshot;
 			pendingSnapshot = null;
-			saveStatus.value = 'saving';
-			autosaveInFlight = (async () => {
+			// Chain onto any in-flight save so two scheduled saves can't run
+			// concurrently — overlapping POSTs would otherwise race the
+			// version-id update and the second `autosaveInFlight` write would
+			// hide the first one from `settleAutosave`.
+			const previous = autosaveInFlight ?? Promise.resolve();
+			const slot: Promise<void> = previous.then(async () => {
+				saveStatus.value = 'saving';
+				// A `saved → idle` reset timer from the previous save would
+				// otherwise fire mid-way through this one and flip the
+				// indicator back to idle while the request is still in flight.
+				if (saveStatusResetTimer !== null) {
+					clearTimeout(saveStatusResetTimer);
+					saveStatusResetTimer = null;
+				}
 				try {
 					await params.save(target);
 					params.onSaved?.();
 					saveStatus.value = 'saved';
-					if (saveStatusResetTimer !== null) clearTimeout(saveStatusResetTimer);
 					saveStatusResetTimer = setTimeout(() => {
 						saveStatus.value = 'idle';
 						saveStatusResetTimer = null;
@@ -64,10 +75,15 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 				} catch (error) {
 					params.onError?.(error);
 					saveStatus.value = 'idle';
-				} finally {
-					autosaveInFlight = null;
 				}
-			})();
+			});
+			autosaveInFlight = slot;
+			void slot.finally(() => {
+				// Only release the slot if no later save chained behind us;
+				// otherwise leave the newer promise in place so `settleAutosave`
+				// awaits the full tail of pending work.
+				if (autosaveInFlight === slot) autosaveInFlight = null;
+			});
 		}, getDebounceTime(debounceMs));
 	}
 

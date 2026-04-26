@@ -146,7 +146,7 @@ function onSwitcherSelect(id: string) {
 				:agent="agent"
 				:project-id="projectId"
 				:agent-id="agentId"
-				:is-saving="false"
+				:is-saving="saveStatus === 'saving'"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 			/>

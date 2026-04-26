@@ -133,6 +133,7 @@ const totalCount = computed(() => props.tools.length);
 <template>
 	<div
 		:class="[$style.panel, shared.scrollbarThin, props.disabled && $style.disabled]"
+		:inert="props.disabled || undefined"
 		data-testid="agent-tools-list-panel"
 	>
 		<div :class="$style.header">
@@ -197,7 +198,6 @@ const totalCount = computed(() => props.tools.length);
 						:configured-node="row.node"
 						:missing-credentials="row.missingCredentials"
 						mode="configured"
-						@configure="emit('open-tool', row.index)"
 					/>
 					<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
 						<N8nIconButton
@@ -231,7 +231,6 @@ const totalCount = computed(() => props.tools.length);
 						mode="configured"
 						:name="row.name"
 						:description="row.description"
-						@configure="emit('open-tool', row.index)"
 					/>
 					<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
 						<N8nIconButton

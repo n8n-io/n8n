@@ -68,9 +68,13 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 					state.connectedCredentials.value[integration.type] = integration.credentialId;
 				}
 			} catch {
+				// Mark only types we don't already have a confirmed answer for as
+				// `unknown` — a transient network/API failure shouldn't claim that
+				// a previously-connected integration is now disconnected.
 				for (const type of integrationTypes) {
-					state.statuses.value[type] = 'disconnected';
-					state.connectedCredentials.value[type] = '';
+					if (state.statuses.value[type] !== 'connected') {
+						state.statuses.value[type] = 'unknown';
+					}
 				}
 			} finally {
 				state.fetchInFlight = null;

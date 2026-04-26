@@ -230,7 +230,9 @@ async function onDisconnect(type: string) {
 }
 
 function onCreateCredential(integration: ChatIntegrationDescriptor) {
-	uiStore.openNewCredential(integration.credentialTypes[0]);
+	const [primaryCredentialType] = integration.credentialTypes;
+	if (!primaryCredentialType) return;
+	uiStore.openNewCredential(primaryCredentialType);
 }
 
 function onEditCredential(type: string) {

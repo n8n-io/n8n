@@ -43,9 +43,14 @@ export function useAgentBuilderSession() {
 	const relativeTimeOf = useRelativeTimestamp();
 
 	const activeChatSessionId = ref<string | null>(null);
-	const continueSessionId = computed(
-		() => route.query[CONTINUE_SESSION_ID_PARAM] as string | undefined,
-	);
+	const continueSessionId = computed(() => {
+		// Vue Router types this as `LocationQuery[key]: string | string[] | null`.
+		// Picking the first string defends against duplicate query params
+		// (`?session=a&session=b` → array) and unset/null values.
+		const raw = route.query[CONTINUE_SESSION_ID_PARAM];
+		const value = Array.isArray(raw) ? raw[0] : raw;
+		return typeof value === 'string' && value.length > 0 ? value : undefined;
+	});
 	const effectiveSessionId = computed<string | undefined>(
 		() => continueSessionId.value ?? activeChatSessionId.value ?? undefined,
 	);

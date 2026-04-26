@@ -76,14 +76,22 @@ const debouncedSave = useDebounceFn((text: string) => {
 	}
 	parseError.value = '';
 	// Pick-keys mode: merge the edited subset back into the full config.
+	// Only the declared keys propagate — without this, a user adding a stray
+	// top-level field in the JSON editor would silently write it onto the
+	// agent config alongside the slice they're meant to be editing.
 	if (props.pickKeys && props.pickKeys.length > 0) {
 		if (!props.config) return;
 		if (typeof result.value !== 'object' || result.value === null || Array.isArray(result.value)) {
 			return;
 		}
+		const allowed = new Set<string>(props.pickKeys);
+		const filtered: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(result.value as Record<string, unknown>)) {
+			if (allowed.has(key)) filtered[key] = value;
+		}
 		const merged = {
 			...(props.config as unknown as Record<string, unknown>),
-			...(result.value as Record<string, unknown>),
+			...filtered,
 		};
 		emit('update:config', merged as unknown as AgentJsonConfig);
 		return;

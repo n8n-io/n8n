@@ -1034,6 +1034,7 @@ function onSwitchAgent(nextAgentId: string) {
 						data-testid="agent-triggers-tab"
 					>
 						<AgentIntegrationsPanel
+							:key="`integrations-focus-${agentId}`"
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
@@ -1049,9 +1050,11 @@ function onSwitchAgent(nextAgentId: string) {
 					>
 						<div :class="$style.triggersHeader">
 							<div :class="$style.triggersHeaderText">
-								<N8nText tag="h3" size="large" :bold="true">Triggers</N8nText>
+								<N8nText tag="h3" size="large" :bold="true">{{
+									locale.baseText('agents.builder.triggers.title')
+								}}</N8nText>
 								<N8nText size="small" color="text-light">
-									Channels that can invoke this agent
+									{{ locale.baseText('agents.builder.triggers.description') }}
 								</N8nText>
 							</div>
 							<N8nButton
@@ -1061,10 +1064,11 @@ function onSwitchAgent(nextAgentId: string) {
 								@click="onOpenAddTriggerModal"
 							>
 								<template #prefix><N8nIcon icon="plus" :size="14" /></template>
-								Add trigger
+								{{ locale.baseText('agents.builder.triggers.add') }}
 							</N8nButton>
 						</div>
 						<AgentIntegrationsPanel
+							:key="`integrations-connected-${agentId}`"
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
@@ -1364,7 +1368,7 @@ function onSwitchAgent(nextAgentId: string) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-family: var(--font-family--mono, monospace);
+	font-family: var(--font-family--monospace, monospace);
 	font-size: var(--font-size--xs);
 	color: var(--color--text);
 }
