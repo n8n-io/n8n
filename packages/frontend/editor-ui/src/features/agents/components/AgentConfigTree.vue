@@ -15,7 +15,7 @@ import type { AgentJsonConfig } from '../types';
 import shared from '../styles/agent-panel.module.scss';
 import {
 	AGENT_SECTION_KEY,
-	BEHAVIOR_SECTION_KEY,
+	ADVANCED_SECTION_KEY,
 	CONFIG_JSON_SECTION_KEY,
 	EVALS_SECTION_KEY,
 	EXECUTIONS_SECTION_KEY,
@@ -88,8 +88,8 @@ const sections = computed<SectionDescriptor[]>(() => {
 		icon: 'bot',
 	});
 	out.push({
-		key: BEHAVIOR_SECTION_KEY,
-		label: i18n.baseText('agents.builder.sections.behavior'),
+		key: ADVANCED_SECTION_KEY,
+		label: i18n.baseText('agents.builder.sections.advanced'),
 		icon: 'settings',
 	});
 	out.push({

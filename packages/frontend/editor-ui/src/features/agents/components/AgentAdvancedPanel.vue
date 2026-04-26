@@ -125,11 +125,11 @@ function onApprovalToggle(value: boolean) {
 const thinkingDisabledReason = computed(() =>
 	capabilities.value.thinking
 		? ''
-		: i18n.baseText('agents.builder.behavior.thinking.unsupportedTooltip', {
+		: i18n.baseText('agents.builder.advanced.thinking.unsupportedTooltip', {
 				interpolate: {
 					provider:
 						provider.value ||
-						i18n.baseText('agents.builder.behavior.thinking.unsupportedProviderFallback'),
+						i18n.baseText('agents.builder.advanced.thinking.unsupportedProviderFallback'),
 				},
 			}),
 );
@@ -139,20 +139,20 @@ const thinkingDisabledReason = computed(() =>
 	<div :class="[$style.panel, shared.scrollbarThin]" data-testid="agent-behavior-panel">
 		<div :class="$style.header">
 			<N8nText tag="h3" size="large" :bold="true">{{
-				i18n.baseText('agents.builder.behavior.title')
+				i18n.baseText('agents.builder.advanced.title')
 			}}</N8nText>
 			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('agents.builder.behavior.description') }}
+				{{ i18n.baseText('agents.builder.advanced.description') }}
 			</N8nText>
 		</div>
 
 		<div :class="$style.row">
 			<div :class="$style.rowLabel">
 				<N8nText size="small" :bold="true">{{
-					i18n.baseText('agents.builder.behavior.thinking.label')
+					i18n.baseText('agents.builder.advanced.thinking.label')
 				}}</N8nText>
 				<N8nText size="xsmall" color="text-light">
-					{{ i18n.baseText('agents.builder.behavior.thinking.hint') }}
+					{{ i18n.baseText('agents.builder.advanced.thinking.hint') }}
 				</N8nText>
 			</div>
 			<N8nTooltip
@@ -171,7 +171,7 @@ const thinkingDisabledReason = computed(() =>
 
 		<div v-if="thinkingEnabled && capabilities.thinking === 'budgetTokens'" :class="$style.row">
 			<N8nText size="small" :bold="true">{{
-				i18n.baseText('agents.builder.behavior.budgetTokens.label')
+				i18n.baseText('agents.builder.advanced.budgetTokens.label')
 			}}</N8nText>
 			<N8nInput
 				type="number"
@@ -185,7 +185,7 @@ const thinkingDisabledReason = computed(() =>
 
 		<div v-if="thinkingEnabled && capabilities.thinking === 'reasoningEffort'" :class="$style.row">
 			<N8nText size="small" :bold="true">{{
-				i18n.baseText('agents.builder.behavior.reasoningEffort.label')
+				i18n.baseText('agents.builder.advanced.reasoningEffort.label')
 			}}</N8nText>
 			<N8nSelect
 				:model-value="reasoningEffort"
@@ -202,10 +202,10 @@ const thinkingDisabledReason = computed(() =>
 		<div :class="$style.row">
 			<div :class="$style.rowLabel">
 				<N8nText size="small" :bold="true">{{
-					i18n.baseText('agents.builder.behavior.concurrency.label')
+					i18n.baseText('agents.builder.advanced.concurrency.label')
 				}}</N8nText>
 				<N8nText size="xsmall" color="text-light">
-					{{ i18n.baseText('agents.builder.behavior.concurrency.hint') }}
+					{{ i18n.baseText('agents.builder.advanced.concurrency.hint') }}
 				</N8nText>
 			</div>
 			<N8nInput
@@ -221,10 +221,10 @@ const thinkingDisabledReason = computed(() =>
 		<div :class="$style.row">
 			<div :class="$style.rowLabel">
 				<N8nText size="small" :bold="true">{{
-					i18n.baseText('agents.builder.behavior.approval.label')
+					i18n.baseText('agents.builder.advanced.approval.label')
 				}}</N8nText>
 				<N8nText size="xsmall" color="text-light">
-					{{ i18n.baseText('agents.builder.behavior.approval.hint') }}
+					{{ i18n.baseText('agents.builder.advanced.approval.hint') }}
 				</N8nText>
 			</div>
 			<ElSwitch
