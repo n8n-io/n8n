@@ -30,6 +30,7 @@ import { useAgentBuilderLayout } from '../composables/useAgentBuilderLayout';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
+import { useAgentSectionNav } from '../composables/useAgentSectionNav';
 import shared from '../styles/agent-panel.module.scss';
 import { agentsEventBus } from '../agents.eventBus';
 import {
@@ -94,13 +95,7 @@ const {
  * Everything below the header is empty until we know the right starting state.
  */
 const initialized = ref(false);
-const selectedSection = ref<string | null>(AGENT_SECTION_KEY);
-// Tracks which tabs the user has flipped into raw-JSON view. Keyed by section
-// key so each tab remembers its own state independently.
-const rawSectionByKey = ref<Record<string, boolean>>({});
-const showRawSection = computed(() =>
-	selectedSection.value ? !!rawSectionByKey.value[selectedSection.value] : false,
-);
+const { selectedSection, showRawSection, onTreeSelect, toggleRawSection } = useAgentSectionNav();
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
 const {
@@ -524,10 +519,6 @@ function exitContinueMode() {
 	clearContinueSessionParam();
 }
 
-function onTreeSelect(key: string) {
-	selectedSection.value = key;
-}
-
 /**
  * Whether the current tab has a non-raw custom view that the user can flip away
  * from. For plain JSON slices the toggle isn't offered (it's already raw).
@@ -556,15 +547,6 @@ const rawSectionPath = computed<string | null>(() => {
 const rawPickKeys = computed<string[] | null>(() =>
 	selectedSection.value === AGENT_SECTION_KEY ? AGENT_RAW_PICK_KEYS : null,
 );
-
-function toggleRawSection() {
-	const key = selectedSection.value;
-	if (!key) return;
-	rawSectionByKey.value = {
-		...rawSectionByKey.value,
-		[key]: !rawSectionByKey.value[key],
-	};
-}
 
 function onOpenToolFromList(index: number) {
 	selectedSection.value = `tools.${index}`;
