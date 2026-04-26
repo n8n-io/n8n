@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
@@ -161,8 +161,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
-		<div v-if="fatalError" :class="$style.errorBanner" role="alert">
-			<N8nIcon icon="triangle-alert" :size="16" :class="$style.errorBannerIcon" />
+		<N8nCallout v-if="fatalError" theme="danger" :class="$style.errorBanner" slim>
 			<div :class="$style.errorBannerBody">
 				<span :class="$style.errorBannerTitle">
 					{{ locale.baseText('agents.chat.misconfigured.title') }}
@@ -171,23 +170,25 @@ onBeforeUnmount(() => {
 					{{ locale.baseText('agents.chat.misconfigured.missingPrefix') }} {{ missingFields }}
 				</span>
 			</div>
-			<div :class="$style.errorBannerActions">
-				<button
-					:class="$style.errorBannerBtn"
+			<template #trailingContent>
+				<N8nButton
+					variant="outline"
+					size="xsmall"
 					data-testid="agent-misconfigured-open-build"
 					@click="onOpenBuild"
 				>
 					{{ locale.baseText('agents.chat.misconfigured.openBuild') }}
-				</button>
-				<button
-					:class="$style.errorBannerDismiss"
+				</N8nButton>
+				<N8nIconButton
+					icon="x"
+					variant="ghost"
+					size="xsmall"
+					:aria-label="locale.baseText('agents.chat.misconfigured.dismiss')"
 					:title="locale.baseText('agents.chat.misconfigured.dismiss')"
 					@click="dismissFatalError"
-				>
-					<N8nIcon icon="x" :size="14" />
-				</button>
-			</div>
-		</div>
+				/>
+			</template>
+		</N8nCallout>
 
 		<!--
 			Suppress the centered empty state when we have an `initialMessage` to
@@ -252,21 +253,7 @@ onBeforeUnmount(() => {
 }
 
 .errorBanner {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--2xs);
 	margin: var(--spacing--sm);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
-	background-color: var(--color--danger--tint-4);
-	border-radius: var(--radius);
-	color: var(--color--text);
-	flex-shrink: 0;
-}
-
-.errorBannerIcon {
-	color: var(--color--danger);
-	margin-top: 2px;
 	flex-shrink: 0;
 }
 
@@ -279,56 +266,11 @@ onBeforeUnmount(() => {
 }
 
 .errorBannerTitle {
-	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
-	line-height: var(--line-height--xl);
 }
 
 .errorBannerDetail {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
-	line-height: var(--line-height--xl);
-}
-
-.errorBannerActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	flex-shrink: 0;
-}
-
-.errorBannerBtn {
-	display: inline-flex;
-	align-items: center;
-	border: var(--border-width) var(--border-style) var(--color--primary);
-	background-color: transparent;
-	color: var(--color--primary);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--radius);
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--color--primary--tint-3);
-	}
-}
-
-.errorBannerDismiss {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border: none;
-	background: none;
-	color: var(--color--text--tint-2);
-	width: 24px;
-	height: 24px;
-	border-radius: var(--radius);
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--color--foreground--tint-2);
-		color: var(--color--text);
-	}
 }
 </style>

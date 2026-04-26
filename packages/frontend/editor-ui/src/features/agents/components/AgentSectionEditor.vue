@@ -5,7 +5,7 @@ import { defaultKeymap, history } from '@codemirror/commands';
 import { json } from '@codemirror/lang-json';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIconButton } from '@n8n/design-system';
 import { deepCopy } from 'n8n-workflow';
 
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
@@ -208,8 +208,10 @@ watch([() => props.sectionPath, () => props.pickKeys], () => {
 
 <template>
 	<div :class="$style.wrapper" data-testid="agent-section-editor">
-		<button
-			type="button"
+		<N8nIconButton
+			:icon="copied ? 'check' : 'copy'"
+			variant="subtle"
+			size="xmini"
 			:class="[$style.copyBtn, offsetCopyForToggle && $style.copyBtnOffset]"
 			:title="
 				copied
@@ -223,9 +225,7 @@ watch([() => props.sectionPath, () => props.pickKeys], () => {
 			"
 			data-testid="agent-section-copy"
 			@click="copyContent"
-		>
-			<N8nIcon :icon="copied ? 'check' : 'copy'" :size="12" />
-		</button>
+		/>
 		<div ref="container" :class="$style.editor"></div>
 		<div v-if="parseError" :class="$style.error">{{ parseError }}</div>
 	</div>
@@ -245,28 +245,14 @@ watch([() => props.sectionPath, () => props.pickKeys], () => {
 	right: calc(var(--spacing--md) + 64px) !important;
 }
 
+/* N8nIconButton owns the chrome — only override positioning so the button
+   floats at the editor's top-right corner. */
 .copyBtn {
 	position: absolute;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 	top: var(--spacing--sm);
 	right: var(--spacing--md);
 	z-index: 1;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 24px;
-	height: 24px;
-	padding: 0;
-	background: var(--color--background);
-	border: var(--border);
-	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-
-	&:hover {
-		background: var(--color--background--light-2);
-		color: var(--color--text);
-	}
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .editor {

@@ -10,7 +10,9 @@ import { computed, onMounted } from 'vue';
 import {
 	N8nActionDropdown,
 	N8nBreadcrumbs,
+	N8nButton,
 	N8nIcon,
+	N8nIconButton,
 	N8nNavigationDropdown,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -90,25 +92,23 @@ function onSwitcherSelect(id: string) {
 
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
-		<button
-			type="button"
-			:class="$style.iconBtn"
+		<N8nIconButton
+			icon="arrow-left"
+			variant="ghost"
+			size="small"
 			:aria-label="i18n.baseText('agents.builder.header.backToAgents')"
 			data-testid="agent-header-back"
 			@click="emit('back')"
-		>
-			<N8nIcon icon="arrow-left" :size="16" />
-		</button>
-		<button
-			type="button"
-			:class="[$style.iconBtn, chatColumnCollapsed && $style.iconBtnActive]"
+		/>
+		<N8nIconButton
+			icon="panel-left"
+			:variant="chatColumnCollapsed ? 'subtle' : 'ghost'"
+			size="small"
 			:aria-label="i18n.baseText('agents.builder.header.toggleChat')"
 			:aria-pressed="chatColumnCollapsed"
 			data-testid="agent-header-toggle-chat"
 			@click="emit('toggle-chat-column')"
-		>
-			<N8nIcon icon="panel-left" :size="16" />
-		</button>
+		/>
 		<N8nBreadcrumbs :items="breadcrumbItems" theme="small">
 			<template #append>
 				<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
@@ -118,14 +118,15 @@ function onSwitcherSelect(id: string) {
 					data-testid="agent-header-switcher"
 					@select="onSwitcherSelect"
 				>
-					<button
-						type="button"
+					<N8nButton
+						variant="ghost"
+						size="xsmall"
 						:class="$style.switcherButton"
 						:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
 					>
 						<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
 						<N8nIcon icon="chevron-down" :size="12" />
-					</button>
+					</N8nButton>
 				</N8nNavigationDropdown>
 			</template>
 		</N8nBreadcrumbs>
@@ -169,60 +170,17 @@ function onSwitcherSelect(id: string) {
 	min-height: 44px;
 }
 
-.iconBtn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 28px;
-	height: 28px;
-	padding: 0;
-	background: transparent;
-	border: var(--border);
-	border-color: transparent;
-	border-radius: var(--radius);
-	color: var(--color--text);
-	cursor: pointer;
-
-	&:hover {
-		background: var(--color--background--light-2);
-	}
-}
-
-.iconBtnActive {
-	background: var(--color--background--light-3);
-	border-color: var(--color--foreground);
-}
-
 .crumbSeparator {
 	color: var(--color--text--tint-2);
 	margin: 0 var(--spacing--4xs);
 	user-select: none;
 }
 
+/* N8nButton owns chrome/hover/focus; we just override the breadcrumb-bold weight
+   and add gap between the label and chevron. */
 .switcherButton {
-	display: inline-flex;
-	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	background: transparent;
-	border: var(--border);
-	border-color: transparent;
-	border-radius: var(--radius);
-	color: var(--color--text);
-	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
-	cursor: pointer;
-	line-height: var(--line-height--md);
-
-	&:hover {
-		background: var(--color--background--light-2);
-		border-color: var(--color--foreground);
-	}
-
-	&:focus-visible {
-		outline: none;
-		border-color: var(--color--primary);
-	}
 }
 
 .switcherLabel {
