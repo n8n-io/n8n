@@ -136,9 +136,16 @@ const totalCount = computed(() => props.tools.length);
 	>
 		<div :class="$style.header">
 			<div :class="$style.headerText">
-				<N8nText tag="h3" size="large" :bold="true">Tools</N8nText>
+				<N8nText tag="h3" size="large" :bold="true">{{
+					i18n.baseText('agents.builder.tools.title')
+				}}</N8nText>
 				<N8nText size="small" color="text-light">
-					{{ totalCount }} {{ totalCount === 1 ? 'tool' : 'tools' }} configured
+					{{
+						i18n.baseText('agents.builder.tools.count', {
+							adjustToNumber: totalCount,
+							interpolate: { count: String(totalCount) },
+						})
+					}}
 				</N8nText>
 			</div>
 			<N8nButton
@@ -149,15 +156,15 @@ const totalCount = computed(() => props.tools.length);
 				@click="emit('add-tool')"
 			>
 				<template #prefix><N8nIcon icon="plus" :size="14" /></template>
-				Add tool
+				{{ i18n.baseText('agents.builder.tools.add') }}
 			</N8nButton>
 		</div>
 
 		<div v-if="nodeToolsFeatureEnabled" :class="$style.toggleRow">
 			<div :class="$style.toggleText">
-				<N8nText :bold="true">Built-in node tools</N8nText>
+				<N8nText :bold="true">{{ i18n.baseText('agents.builder.tools.builtIn.title') }}</N8nText>
 				<N8nText size="small" color="text-light">
-					Let the agent search the n8n node catalog and execute nodes on demand.
+					{{ i18n.baseText('agents.builder.tools.builtIn.hint') }}
 				</N8nText>
 			</div>
 			<N8nSwitch2
@@ -169,7 +176,9 @@ const totalCount = computed(() => props.tools.length);
 		</div>
 
 		<div v-if="totalCount === 0" :class="$style.empty">
-			<N8nText size="small" color="text-light">No tools added yet.</N8nText>
+			<N8nText size="small" color="text-light">{{
+				i18n.baseText('agents.builder.tools.empty')
+			}}</N8nText>
 		</div>
 
 		<div v-if="nodeRows.length > 0" :class="$style.section">
@@ -189,13 +198,13 @@ const totalCount = computed(() => props.tools.length);
 						mode="configured"
 						@configure="emit('open-tool', row.index)"
 					/>
-					<N8nTooltip content="Remove tool" placement="top">
+					<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
 						<N8nIconButton
 							icon="trash-2"
 							variant="ghost"
 							size="mini"
 							text
-							aria-label="Remove tool"
+							:aria-label="i18n.baseText('agents.builder.tools.remove')"
 							data-testid="agent-tools-list-remove"
 							@click.stop="emit('remove-tool', row.index)"
 						/>
@@ -205,7 +214,9 @@ const totalCount = computed(() => props.tools.length);
 		</div>
 
 		<div v-if="workflowRows.length > 0" :class="$style.section">
-			<N8nHeading size="small" color="text-light" tag="h3">Workflows</N8nHeading>
+			<N8nHeading size="small" color="text-light" tag="h3">{{
+				i18n.baseText('agents.builder.tools.workflows.title')
+			}}</N8nHeading>
 			<div :class="$style.rows">
 				<div
 					v-for="row in workflowRows"
@@ -221,13 +232,13 @@ const totalCount = computed(() => props.tools.length);
 						:description="row.description"
 						@configure="emit('open-tool', row.index)"
 					/>
-					<N8nTooltip content="Remove tool" placement="top">
+					<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
 						<N8nIconButton
 							icon="trash-2"
 							variant="ghost"
 							size="mini"
 							text
-							aria-label="Remove tool"
+							:aria-label="i18n.baseText('agents.builder.tools.remove')"
 							data-testid="agent-tools-list-remove"
 							@click.stop="emit('remove-tool', row.index)"
 						/>
@@ -262,13 +273,13 @@ const totalCount = computed(() => props.tools.length);
 							>{{ row.description }}</N8nText
 						>
 					</div>
-					<N8nTooltip content="Remove tool" placement="top">
+					<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
 						<N8nIconButton
 							icon="trash-2"
 							variant="ghost"
 							size="mini"
 							text
-							aria-label="Remove tool"
+							:aria-label="i18n.baseText('agents.builder.tools.remove')"
 							data-testid="agent-tools-list-remove"
 							@click.stop="emit('remove-tool', row.index)"
 						/>

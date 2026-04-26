@@ -7,6 +7,7 @@
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { N8nInput, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import type {
 	ChatHubConversationModel,
 	ChatHubProvider,
@@ -34,6 +35,7 @@ const props = withDefaults(defineProps<{ config: AgentJsonConfig | null; disable
 });
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
+const i18n = useI18n();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
 
@@ -162,17 +164,23 @@ function onInstructionsInput(value: string) {
 <template>
 	<div :class="$style.panel" data-testid="agent-info-panel">
 		<div :class="$style.header">
-			<N8nText tag="h3" size="large" :bold="true">Agent</N8nText>
-			<N8nText size="small" color="text-light"
-				>Core setup that defines how this agent behaves</N8nText
-			>
+			<N8nText tag="h3" size="large" :bold="true">{{
+				i18n.baseText('agents.builder.agent.title')
+			}}</N8nText>
+			<N8nText size="small" color="text-light">{{
+				i18n.baseText('agents.builder.agent.description')
+			}}</N8nText>
 		</div>
 
 		<div :class="$style.field">
-			<label :class="$style.label"><N8nText size="small" :bold="true">Name</N8nText></label>
+			<label :class="$style.label"
+				><N8nText size="small" :bold="true">{{
+					i18n.baseText('agents.builder.agent.name.label')
+				}}</N8nText></label
+			>
 			<N8nInput
 				:model-value="name"
-				placeholder="My agent"
+				:placeholder="i18n.baseText('agents.builder.agent.name.placeholder')"
 				:disabled="props.disabled"
 				data-testid="agent-name-input"
 				@update:model-value="onNameInput"
@@ -180,10 +188,14 @@ function onInstructionsInput(value: string) {
 		</div>
 
 		<div :class="$style.field">
-			<label :class="$style.label"><N8nText size="small" :bold="true">Description</N8nText></label>
+			<label :class="$style.label"
+				><N8nText size="small" :bold="true">{{
+					i18n.baseText('agents.builder.agent.description.label')
+				}}</N8nText></label
+			>
 			<N8nInput
 				:model-value="description"
-				placeholder="What does this agent do?"
+				:placeholder="i18n.baseText('agents.builder.agent.description.placeholder')"
 				:disabled="props.disabled"
 				data-testid="agent-description-input"
 				@update:model-value="onDescriptionInput"
@@ -191,7 +203,11 @@ function onInstructionsInput(value: string) {
 		</div>
 
 		<div :class="[$style.field, props.disabled && $style.fieldDisabled]">
-			<label :class="$style.label"><N8nText size="small" :bold="true">Model</N8nText></label>
+			<label :class="$style.label"
+				><N8nText size="small" :bold="true">{{
+					i18n.baseText('agents.builder.agent.model.label')
+				}}</N8nText></label
+			>
 			<ModelSelector
 				:selected-agent="selectedAgent"
 				:include-custom-agents="false"
@@ -208,7 +224,9 @@ function onInstructionsInput(value: string) {
 
 		<div :class="[$style.field, $style.instructionsField]">
 			<label :class="$style.label">
-				<N8nText size="small" :bold="true">Instructions</N8nText>
+				<N8nText size="small" :bold="true">{{
+					i18n.baseText('agents.builder.agent.instructions.label')
+				}}</N8nText>
 			</label>
 			<AgentMiniEditor
 				:class="$style.instructionsEditor"
@@ -219,7 +237,11 @@ function onInstructionsInput(value: string) {
 				min-height="160px"
 				@update:model-value="onInstructionsInput"
 			/>
-			<N8nText size="xsmall" color="text-light">{{ instructions.length }} characters</N8nText>
+			<N8nText size="xsmall" color="text-light">{{
+				i18n.baseText('agents.builder.agent.instructions.characterCount', {
+					interpolate: { count: String(instructions.length) },
+				})
+			}}</N8nText>
 		</div>
 	</div>
 </template>

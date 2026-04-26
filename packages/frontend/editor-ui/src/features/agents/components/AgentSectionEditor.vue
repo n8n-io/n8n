@@ -242,8 +242,16 @@ watch(
 		<button
 			type="button"
 			:class="[$style.copyBtn, offsetCopyForToggle && $style.copyBtnOffset]"
-			:title="copied ? 'Copied' : 'Copy to clipboard'"
-			:aria-label="copied ? 'Copied' : 'Copy to clipboard'"
+			:title="
+				copied
+					? i18n.baseText('agents.builder.editor.copied')
+					: i18n.baseText('agents.builder.editor.copy')
+			"
+			:aria-label="
+				copied
+					? i18n.baseText('agents.builder.editor.copied')
+					: i18n.baseText('agents.builder.editor.copy')
+			"
 			data-testid="agent-section-copy"
 			@click="copyContent"
 		>

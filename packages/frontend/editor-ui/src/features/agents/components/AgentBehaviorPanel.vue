@@ -14,6 +14,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { ElSwitch } from 'element-plus';
 import { N8nInput, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
+import { useI18n } from '@n8n/i18n';
 
 import type { AgentJsonConfig } from '../types';
 import {
@@ -21,6 +22,8 @@ import {
 	REASONING_EFFORT_OPTIONS,
 	type ReasoningEffort,
 } from '../provider-capabilities';
+
+const i18n = useI18n();
 
 const props = withDefaults(defineProps<{ config: AgentJsonConfig | null; disabled?: boolean }>(), {
 	disabled: false,
@@ -121,24 +124,34 @@ function onApprovalToggle(value: boolean) {
 const thinkingDisabledReason = computed(() =>
 	capabilities.value.thinking
 		? ''
-		: `${provider.value || 'This provider'} does not support thinking`,
+		: i18n.baseText('agents.builder.behavior.thinking.unsupportedTooltip', {
+				interpolate: {
+					provider:
+						provider.value ||
+						i18n.baseText('agents.builder.behavior.thinking.unsupportedProviderFallback'),
+				},
+			}),
 );
 </script>
 
 <template>
 	<div :class="$style.panel" data-testid="agent-behavior-panel">
 		<div :class="$style.header">
-			<N8nText tag="h3" size="large" :bold="true">Behavior</N8nText>
+			<N8nText tag="h3" size="large" :bold="true">{{
+				i18n.baseText('agents.builder.behavior.title')
+			}}</N8nText>
 			<N8nText size="small" color="text-light">
-				Execution tuning — reasoning depth, tool parallelism, and approval gating.
+				{{ i18n.baseText('agents.builder.behavior.description') }}
 			</N8nText>
 		</div>
 
 		<div :class="$style.row">
 			<div :class="$style.rowLabel">
-				<N8nText size="small" :bold="true">Thinking</N8nText>
+				<N8nText size="small" :bold="true">{{
+					i18n.baseText('agents.builder.behavior.thinking.label')
+				}}</N8nText>
 				<N8nText size="xsmall" color="text-light">
-					Let the model reason before responding.
+					{{ i18n.baseText('agents.builder.behavior.thinking.hint') }}
 				</N8nText>
 			</div>
 			<N8nTooltip
@@ -156,7 +169,9 @@ const thinkingDisabledReason = computed(() =>
 		</div>
 
 		<div v-if="thinkingEnabled && capabilities.thinking === 'budgetTokens'" :class="$style.row">
-			<N8nText size="small" :bold="true">Budget tokens</N8nText>
+			<N8nText size="small" :bold="true">{{
+				i18n.baseText('agents.builder.behavior.budgetTokens.label')
+			}}</N8nText>
 			<N8nInput
 				type="number"
 				:model-value="String(budgetTokens)"
@@ -168,7 +183,9 @@ const thinkingDisabledReason = computed(() =>
 		</div>
 
 		<div v-if="thinkingEnabled && capabilities.thinking === 'reasoningEffort'" :class="$style.row">
-			<N8nText size="small" :bold="true">Reasoning effort</N8nText>
+			<N8nText size="small" :bold="true">{{
+				i18n.baseText('agents.builder.behavior.reasoningEffort.label')
+			}}</N8nText>
 			<N8nSelect
 				:model-value="reasoningEffort"
 				size="small"
@@ -183,9 +200,11 @@ const thinkingDisabledReason = computed(() =>
 
 		<div :class="$style.row">
 			<div :class="$style.rowLabel">
-				<N8nText size="small" :bold="true">Tool call concurrency</N8nText>
+				<N8nText size="small" :bold="true">{{
+					i18n.baseText('agents.builder.behavior.concurrency.label')
+				}}</N8nText>
 				<N8nText size="xsmall" color="text-light">
-					How many tool calls the agent can run in parallel.
+					{{ i18n.baseText('agents.builder.behavior.concurrency.hint') }}
 				</N8nText>
 			</div>
 			<N8nInput
@@ -200,9 +219,11 @@ const thinkingDisabledReason = computed(() =>
 
 		<div :class="$style.row">
 			<div :class="$style.rowLabel">
-				<N8nText size="small" :bold="true">Require tool approval</N8nText>
+				<N8nText size="small" :bold="true">{{
+					i18n.baseText('agents.builder.behavior.approval.label')
+				}}</N8nText>
 				<N8nText size="xsmall" color="text-light">
-					Pause before running tool calls until a human approves.
+					{{ i18n.baseText('agents.builder.behavior.approval.hint') }}
 				</N8nText>
 			</div>
 			<ElSwitch

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 const props = defineProps<{
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 }>();
 
+const i18n = useI18n();
 const rootStore = useRootStore();
 
 const MAX_LINES = 7;
@@ -137,13 +139,17 @@ onMounted(() => {
 				/>
 			</div>
 			<N8nText tag="p" bold size="large" :class="$style.heading">
-				{{ hasError ? 'Something went wrong' : 'Building your agent...' }}
+				{{
+					hasError
+						? i18n.baseText('agents.builder.progress.error.title')
+						: i18n.baseText('agents.builder.progress.building.title')
+				}}
 			</N8nText>
 			<N8nText size="small" color="text-light" :class="$style.subheading">
 				{{
 					hasError
-						? 'Check the log below and try again.'
-						: 'This usually takes 30–60 seconds. Sit tight.'
+						? i18n.baseText('agents.builder.progress.error.hint')
+						: i18n.baseText('agents.builder.progress.building.hint')
 				}}
 			</N8nText>
 

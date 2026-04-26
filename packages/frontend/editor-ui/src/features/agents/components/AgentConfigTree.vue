@@ -88,7 +88,7 @@ const sections = computed<SectionDescriptor[]>(() => {
 	});
 	out.push({
 		key: BEHAVIOR_SECTION_KEY,
-		label: 'Behavior',
+		label: i18n.baseText('agents.builder.sections.behavior'),
 		icon: 'settings',
 	});
 	out.push({
@@ -112,16 +112,16 @@ const sections = computed<SectionDescriptor[]>(() => {
 	});
 	out.push({
 		key: EVALS_SECTION_KEY,
-		label: 'Evaluations',
+		label: i18n.baseText('agents.builder.sections.evaluations'),
 		icon: 'check',
 		disabled: true,
-		pill: 'Coming soon',
+		pill: i18n.baseText('agents.builder.sections.evaluations.comingSoon'),
 	});
 
 	// Divider + Executions row sits below the config primitives.
 	out.push({
 		key: EXECUTIONS_SECTION_KEY,
-		label: 'Executions',
+		label: i18n.baseText('agents.builder.sections.executions'),
 		icon: 'clock',
 		dividerBefore: true,
 		count: props.executionsCount,
@@ -262,7 +262,9 @@ function onChildClick(childKey: string) {
 				@click="emit('select', CONFIG_JSON_SECTION_KEY)"
 			>
 				<N8nIcon icon="json" :size="18" />
-				<N8nText tag="span" size="medium">config.json</N8nText>
+				<N8nText tag="span" size="medium">{{
+					i18n.baseText('agents.builder.sections.configJson')
+				}}</N8nText>
 			</button>
 		</div>
 	</div>
