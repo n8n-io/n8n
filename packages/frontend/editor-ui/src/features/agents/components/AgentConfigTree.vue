@@ -12,6 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import type { AgentJsonConfig } from '../types';
+import shared from '../styles/agent-panel.module.scss';
 import {
 	AGENT_SECTION_KEY,
 	BEHAVIOR_SECTION_KEY,
@@ -222,7 +223,10 @@ function onChildClick(childKey: string) {
 				<span v-if="section.pill" :class="$style.statusPill">{{ section.pill }}</span>
 				<N8nIcon v-if="section.children" :class="$style.caret" icon="chevron-down" :size="14" />
 			</button>
-			<div v-if="section.children && isExpanded(section.key)" :class="$style.children">
+			<div
+				v-if="section.children && isExpanded(section.key)"
+				:class="[$style.children, shared.scrollbarThin]"
+			>
 				<div
 					v-if="section.children.length === 0"
 					:class="$style.childEmpty"
@@ -377,21 +381,6 @@ function onChildClick(childKey: string) {
 	/* Show ~5 child rows before the folder becomes its own scroll area. */
 	max-height: 200px;
 	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
-
-	&::-webkit-scrollbar {
-		width: 6px;
-	}
-
-	&::-webkit-scrollbar-track {
-		background: transparent;
-	}
-
-	&::-webkit-scrollbar-thumb {
-		background: var(--color--foreground--shade-1);
-		border-radius: 999px;
-	}
 }
 
 .childItem {

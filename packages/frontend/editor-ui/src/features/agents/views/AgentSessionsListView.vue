@@ -6,6 +6,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
+import shared from '@/features/agents/styles/agent-panel.module.scss';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -99,7 +100,7 @@ async function loadMore() {
 </script>
 
 <template>
-	<div :class="$style.wrapper">
+	<div :class="[$style.wrapper, shared.scrollbarThin]">
 		<div :class="$style.header">
 			<N8nText tag="h3" size="large" :bold="true">Executions</N8nText>
 			<N8nText size="small" color="text-light">
@@ -187,21 +188,6 @@ async function loadMore() {
 	height: 100%;
 	min-height: 0;
 	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
-
-	&::-webkit-scrollbar {
-		width: 6px;
-	}
-
-	&::-webkit-scrollbar-track {
-		background: transparent;
-	}
-
-	&::-webkit-scrollbar-thumb {
-		background: var(--color--foreground--shade-1);
-		border-radius: 999px;
-	}
 }
 
 .header {

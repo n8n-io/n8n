@@ -4,6 +4,7 @@ import { N8nText, N8nButton, N8nSelect } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { ElSwitch } from 'element-plus';
 import type { AgentJsonConfig } from '../types';
+import shared from '../styles/agent-panel.module.scss';
 
 type MemoryConfig = NonNullable<AgentJsonConfig['memory']>;
 type StorageType = MemoryConfig['storage'];
@@ -109,7 +110,7 @@ function onRangeAfterChange(event: Event) {
 </script>
 
 <template>
-	<div :class="[$style.container, props.disabled && $style.disabled]">
+	<div :class="[$style.container, shared.scrollbarThin, props.disabled && $style.disabled]">
 		<div :class="$style.header">
 			<N8nText tag="h3" size="large" :bold="true">Memory</N8nText>
 			<N8nText size="small" color="text-light">Conversation memory configuration</N8nText>
@@ -222,26 +223,12 @@ function onRangeAfterChange(event: Event) {
 	width: 100%;
 	height: 100%;
 	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
 }
 
+/* Scoped overlay — header stays interactive so the heading and toggle can render. */
 .container.disabled > :not(.header) {
 	pointer-events: none;
 	opacity: 0.6;
-}
-
-.container::-webkit-scrollbar {
-	width: 6px;
-}
-
-.container::-webkit-scrollbar-track {
-	background: transparent;
-}
-
-.container::-webkit-scrollbar-thumb {
-	background: var(--color--foreground--shade-1);
-	border-radius: 999px;
 }
 
 .header {

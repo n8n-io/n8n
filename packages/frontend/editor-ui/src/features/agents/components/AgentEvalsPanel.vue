@@ -11,6 +11,7 @@
 import { computed } from 'vue';
 import { N8nCard, N8nText, N8nIcon } from '@n8n/design-system';
 import type { AgentSchema } from '../types';
+import shared from '../styles/agent-panel.module.scss';
 
 const props = withDefaults(defineProps<{ schema?: AgentSchema | null }>(), {
 	schema: null,
@@ -20,7 +21,7 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 </script>
 
 <template>
-	<div :class="$style.panel" data-testid="agent-evals-panel">
+	<div :class="[$style.panel, shared.scrollbarThin]" data-testid="agent-evals-panel">
 		<div :class="$style.header">
 			<N8nText tag="h3" size="large" :bold="true">Evaluations</N8nText>
 			<N8nText size="small" color="text-light">
@@ -75,21 +76,6 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
-}
-
-.panel::-webkit-scrollbar {
-	width: 6px;
-}
-
-.panel::-webkit-scrollbar-track {
-	background: transparent;
-}
-
-.panel::-webkit-scrollbar-thumb {
-	background: var(--color--foreground--shade-1);
-	border-radius: 999px;
 }
 
 .header {

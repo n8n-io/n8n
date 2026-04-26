@@ -8,6 +8,7 @@ import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
 import type { AgentJsonConfig } from '../types';
+import shared from '../styles/agent-panel.module.scss';
 
 const props = withDefaults(
 	defineProps<{
@@ -118,7 +119,7 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.root">
 		<div v-if="jsonError" :class="$style.errorBanner">{{ jsonError }}</div>
-		<div ref="jsonContainer" :class="[$style.editorArea, readOnly && $style.editorAreaReadOnly]" />
+		<div ref="jsonContainer" :class="[$style.editorArea, readOnly && shared.disabledOverlay]" />
 	</div>
 </template>
 
@@ -150,10 +151,5 @@ onBeforeUnmount(() => {
 
 .editorArea :global(.cm-scroller) {
 	overflow: auto;
-}
-
-.editorAreaReadOnly {
-	opacity: 0.6;
-	pointer-events: none;
 }
 </style>

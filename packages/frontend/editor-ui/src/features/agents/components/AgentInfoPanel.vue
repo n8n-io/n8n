@@ -17,6 +17,7 @@ import type {
 
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import shared from '../styles/agent-panel.module.scss';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
@@ -162,7 +163,7 @@ function onInstructionsInput(value: string) {
 </script>
 
 <template>
-	<div :class="$style.panel" data-testid="agent-info-panel">
+	<div :class="[$style.panel, shared.scrollbarThin]" data-testid="agent-info-panel">
 		<div :class="$style.header">
 			<N8nText tag="h3" size="large" :bold="true">{{
 				i18n.baseText('agents.builder.agent.title')
@@ -202,7 +203,7 @@ function onInstructionsInput(value: string) {
 			/>
 		</div>
 
-		<div :class="[$style.field, props.disabled && $style.fieldDisabled]">
+		<div :class="[$style.field, props.disabled && shared.disabledOverlay]">
 			<label :class="$style.label"
 				><N8nText size="small" :bold="true">{{
 					i18n.baseText('agents.builder.agent.model.label')
@@ -255,8 +256,6 @@ function onInstructionsInput(value: string) {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
 }
 
 .instructionsField {
@@ -275,19 +274,6 @@ function onInstructionsInput(value: string) {
 	min-height: 0;
 }
 
-.panel::-webkit-scrollbar {
-	width: 6px;
-}
-
-.panel::-webkit-scrollbar-track {
-	background: transparent;
-}
-
-.panel::-webkit-scrollbar-thumb {
-	background: var(--color--foreground--shade-1);
-	border-radius: 999px;
-}
-
 .header {
 	display: flex;
 	flex-direction: column;
@@ -303,10 +289,5 @@ function onInstructionsInput(value: string) {
 
 .label {
 	display: block;
-}
-
-.fieldDisabled {
-	pointer-events: none;
-	opacity: 0.6;
 }
 </style>

@@ -27,6 +27,7 @@ import { useAgentConfirmationModal } from '../composables/useAgentConfirmationMo
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useThreadTitle } from '../utils/thread-title';
+import shared from '../styles/agent-panel.module.scss';
 import { agentsEventBus } from '../agents.eventBus';
 import {
 	AGENTS_LIST_VIEW,
@@ -1097,7 +1098,7 @@ function onSwitchAgent(nextAgentId: string) {
 					/>
 					<div
 						v-else-if="selectedTriggerType"
-						:class="$style.triggersTab"
+						:class="[$style.triggersTab, shared.scrollbarThin]"
 						data-testid="agent-triggers-tab"
 					>
 						<AgentIntegrationsPanel
@@ -1111,7 +1112,7 @@ function onSwitchAgent(nextAgentId: string) {
 					</div>
 					<div
 						v-else-if="selectedSection === 'triggers'"
-						:class="$style.triggersTab"
+						:class="[$style.triggersTab, shared.scrollbarThin]"
 						data-testid="agent-triggers-tab"
 					>
 						<div :class="$style.triggersHeader">
@@ -1157,7 +1158,10 @@ function onSwitchAgent(nextAgentId: string) {
 			</section>
 
 			<!-- Column 3: tree -->
-			<aside :class="$style.treeColumn" data-testid="agent-builder-tree-column">
+			<aside
+				:class="[$style.treeColumn, shared.scrollbarThin]"
+				data-testid="agent-builder-tree-column"
+			>
 				<AgentConfigTree
 					:config="localConfig"
 					:selected-key="selectedSection"
@@ -1327,21 +1331,6 @@ function onSwitchAgent(nextAgentId: string) {
 	border-left: var(--border);
 	min-height: 0;
 	overflow: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
-
-	&::-webkit-scrollbar {
-		width: 6px;
-	}
-
-	&::-webkit-scrollbar-track {
-		background: transparent;
-	}
-
-	&::-webkit-scrollbar-thumb {
-		background: var(--color--foreground--shade-1);
-		border-radius: 999px;
-	}
 }
 
 .editorColumn {
@@ -1357,21 +1346,6 @@ function onSwitchAgent(nextAgentId: string) {
 	padding: var(--spacing--lg);
 	height: 100%;
 	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
-
-	&::-webkit-scrollbar {
-		width: 6px;
-	}
-
-	&::-webkit-scrollbar-track {
-		background: transparent;
-	}
-
-	&::-webkit-scrollbar-thumb {
-		background: var(--color--foreground--shade-1);
-		border-radius: 999px;
-	}
 }
 
 .triggersHeader {

@@ -22,6 +22,7 @@ import {
 	REASONING_EFFORT_OPTIONS,
 	type ReasoningEffort,
 } from '../provider-capabilities';
+import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
 
@@ -135,7 +136,7 @@ const thinkingDisabledReason = computed(() =>
 </script>
 
 <template>
-	<div :class="$style.panel" data-testid="agent-behavior-panel">
+	<div :class="[$style.panel, shared.scrollbarThin]" data-testid="agent-behavior-panel">
 		<div :class="$style.header">
 			<N8nText tag="h3" size="large" :bold="true">{{
 				i18n.baseText('agents.builder.behavior.title')
@@ -245,21 +246,6 @@ const thinkingDisabledReason = computed(() =>
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
-}
-
-.panel::-webkit-scrollbar {
-	width: 6px;
-}
-
-.panel::-webkit-scrollbar-track {
-	background: transparent;
-}
-
-.panel::-webkit-scrollbar-thumb {
-	background: var(--color--foreground--shade-1);
-	border-radius: 999px;
 }
 
 .header {
