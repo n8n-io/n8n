@@ -714,6 +714,10 @@ function onSwitchAgent(nextAgentId: string) {
 							<span :class="$style.sessionTitleText">{{ currentSessionTitle }}</span>
 							<N8nIcon icon="chevron-down" :size="12" />
 						</button>
+						<template v-for="item in sessionMenu" :key="item.id" #[`item.append.${item.id}`]>
+							<span v-if="item.label" :class="$style.sessionItemLabel">{{ item.label }}</span>
+							<span v-if="item.when" :class="$style.sessionItemWhen">{{ item.when }}</span>
+						</template>
 					</N8nNavigationDropdown>
 					<button
 						v-if="currentSessionHasMessages"
@@ -1139,9 +1143,38 @@ function onSwitchAgent(nextAgentId: string) {
    it's teleported, so the rule has to escape the CSS-module scope. */
 :global(.agent-chat-session-menu) :global(.el-menu) {
 	max-height: 220px;
+	max-width: 360px;
+	min-width: 280px;
 	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--color--foreground--shade-1) transparent;
+}
+
+/* Each row is title (truncated) + right-aligned timestamp. ElMenuItem renders
+   the title as a bare text node, so we lean on flex on the row and an
+   appended span for the time. */
+:global(.agent-chat-session-menu) :global(.el-menu-item) {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.sessionItemLabel {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.sessionItemWhen {
+	margin-left: auto;
+	flex-shrink: 0;
+	color: var(--color--text--tint-2);
+	font-size: var(--font-size--2xs);
 }
 
 :global(.agent-chat-session-menu) :global(.el-menu)::-webkit-scrollbar {

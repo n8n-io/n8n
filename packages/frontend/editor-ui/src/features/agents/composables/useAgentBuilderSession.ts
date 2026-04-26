@@ -10,8 +10,17 @@ import { useRelativeTimestamp } from '../utils/relative-time';
 
 interface SessionMenuItem {
 	id: string;
+	/**
+	 * Always empty for thread rows — the visible row content is rendered by the
+	 * view's `item.append.<id>` slot so we can truncate the label and right-align
+	 * the timestamp. Populated only for the disabled empty-state row.
+	 */
 	title: string;
 	disabled?: boolean;
+	/** Visible label (LLM title or first-message preview). Used by the slot renderer. */
+	label?: string;
+	/** Right-aligned secondary text (e.g. "5m ago"). Used by the slot renderer. */
+	when?: string;
 }
 
 /**
@@ -73,7 +82,9 @@ export function useAgentBuilderSession() {
 		}
 		return threads.map((thread) => ({
 			id: thread.id,
-			title: `${threadTitleOf(thread)} · ${relativeTimeOf(thread.updatedAt)}`,
+			title: '',
+			label: threadTitleOf(thread),
+			when: relativeTimeOf(thread.updatedAt),
 		}));
 	});
 
