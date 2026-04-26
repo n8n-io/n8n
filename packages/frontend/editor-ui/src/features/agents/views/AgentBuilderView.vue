@@ -16,7 +16,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { MODAL_CONFIRM, MODAL_CANCEL, getDebounceTime } from '@/app/constants';
+import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
@@ -29,6 +29,7 @@ import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderLayout } from '../composables/useAgentBuilderLayout';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
+import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import shared from '../styles/agent-panel.module.scss';
 import { agentsEventBus } from '../agents.eventBus';
 import {
@@ -114,9 +115,6 @@ const {
 	onSessionPick,
 	onNewChat,
 } = useAgentBuilderSession();
-
-type SaveStatus = 'idle' | 'saving' | 'saved';
-const saveStatus = ref<SaveStatus>('idle');
 
 const { chatColumnCollapsed, gridColumns, onToggleChatColumn } = useAgentBuilderLayout();
 
@@ -291,58 +289,24 @@ async function saveConfig(): Promise<void> {
 	}
 }
 
-// Debounced autosave. We roll our own instead of useDebounceFn so we can cancel a
-// pending save and await an in-flight one — both are needed in the route-leave
-// guard, where a scheduled save that fires after publish would bump versionId and
-// immediately re-mark the agent as having unpublished changes.
-let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
-let autosaveInFlight: Promise<void> | null = null;
-
-let saveStatusResetTimer: ReturnType<typeof setTimeout> | null = null;
-
-function scheduleAutosave() {
-	if (autosaveTimer !== null) clearTimeout(autosaveTimer);
-	autosaveTimer = setTimeout(() => {
-		autosaveTimer = null;
-		saveStatus.value = 'saving';
-		autosaveInFlight = (async () => {
-			try {
-				await saveConfig();
-				telemetry.track('User saved agent settings', { agent_id: agentId.value });
-				builderTelemetry.flushConfigEdits();
-				saveStatus.value = 'saved';
-				if (saveStatusResetTimer !== null) clearTimeout(saveStatusResetTimer);
-				saveStatusResetTimer = setTimeout(() => {
-					saveStatus.value = 'idle';
-					saveStatusResetTimer = null;
-				}, 2000);
-			} catch (error) {
-				// Intentionally keep pending parts: `localConfig` still holds the
-				// failed edit, so the next successful autosave will persist it.
-				// Clearing here would drop telemetry for edits that do end up
-				// saved on the retry.
-				// Surface backend validation errors (e.g. incompatible workflow-tool
-				// triggers or body nodes) so the user isn't left wondering why their
-				// edit didn't stick.
-				showError(error, locale.baseText('agents.builder.saveError'));
-				saveStatus.value = 'idle';
-			} finally {
-				autosaveInFlight = null;
-			}
-		})();
-		// Shorter than the workflow canvas' 1500ms autosave: the publish button's
-		// "enabled" state is gated on the save landing, so a longer wait makes the
-		// UI feel laggy right after an edit.
-	}, getDebounceTime(500));
-}
-
-async function settleAutosave() {
-	if (autosaveTimer !== null) {
-		clearTimeout(autosaveTimer);
-		autosaveTimer = null;
-	}
-	if (autosaveInFlight) await autosaveInFlight;
-}
+// Debounce shorter than the workflow canvas' 1500ms — the publish button's
+// "enabled" state is gated on the save landing, so a longer wait makes the
+// UI feel laggy right after an edit.
+const { saveStatus, scheduleAutosave, settleAutosave } = useAgentConfigAutosave({
+	save: saveConfig,
+	onSaved: () => {
+		telemetry.track('User saved agent settings', { agent_id: agentId.value });
+		builderTelemetry.flushConfigEdits();
+	},
+	onError: (error: unknown) => {
+		// Intentionally keep pending parts: `localConfig` still holds the
+		// failed edit, so the next successful autosave will persist it.
+		// Surface backend validation errors (e.g. incompatible workflow-tool
+		// triggers or body nodes) so the user isn't left wondering why their
+		// edit didn't stick.
+		showError(error, locale.baseText('agents.builder.saveError'));
+	},
+});
 
 function onSectionEditorUpdate(nextConfig: AgentJsonConfig) {
 	if (!localConfig.value) return;
