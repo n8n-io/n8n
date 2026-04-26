@@ -6,6 +6,7 @@ import type { LocationQueryRaw } from 'vue-router';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { CONTINUE_SESSION_ID_PARAM } from '../constants';
 import { useThreadTitle } from '../utils/thread-title';
+import { useRelativeTimestamp } from '../utils/relative-time';
 
 interface SessionMenuItem {
 	id: string;
@@ -30,6 +31,7 @@ export function useAgentBuilderSession() {
 	const i18n = useI18n();
 	const sessionsStore = useAgentSessionsStore();
 	const threadTitleOf = useThreadTitle();
+	const relativeTimeOf = useRelativeTimestamp();
 
 	const activeChatSessionId = ref<string | null>(null);
 	const continueSessionId = computed(
@@ -71,7 +73,7 @@ export function useAgentBuilderSession() {
 		}
 		return threads.map((thread) => ({
 			id: thread.id,
-			title: threadTitleOf(thread),
+			title: `${threadTitleOf(thread)} · ${relativeTimeOf(thread.updatedAt)}`,
 		}));
 	});
 
