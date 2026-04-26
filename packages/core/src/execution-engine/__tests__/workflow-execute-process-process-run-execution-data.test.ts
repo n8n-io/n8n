@@ -58,6 +58,32 @@ describe('processRunExecutionData', () => {
 			return await Promise.resolve([items]);
 		},
 	};
+	const expressionMutatingNode: INodeType = {
+		description: {
+			displayName: 'Expression Mutating Node',
+			name: 'expressionMutatingNode',
+			group: ['transform'],
+			version: 1,
+			description: 'A node that mutates expression parameter data for testing',
+			defaults: { name: 'Expression Mutating Node' },
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName: 'Object',
+					name: 'object',
+					type: 'json',
+					default: {},
+				},
+			],
+		},
+		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+			const object = this.getNodeParameter('object', 0) as IDataObject;
+			(object.nested as IDataObject).string_one = 'new_value';
+
+			return [[{ json: { object } }]];
+		},
+	};
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -147,6 +173,69 @@ describe('processRunExecutionData', () => {
 		const customNodeTypes = NodeTypes({
 			...nodeTypeArguments,
 			mutatingNode: { type: mutatingNode, sourcePath: '' },
+		});
+		const workflow = new DirectedGraph()
+			.addNodes(source, mutating)
+			.addConnections({ from: source, to: mutating })
+			.toWorkflow({
+				name: '',
+				active: false,
+				nodeTypes: customNodeTypes,
+				settings: { executionOrder: 'v1' },
+			});
+
+		const taskDataConnection = {
+			main: [
+				[
+					{
+						json: {
+							object: {
+								nested: {
+									string_one: 'value_1',
+								},
+							},
+						},
+					},
+				],
+			],
+		};
+		const executionData = createRunExecutionData({
+			startData: { startNodes: [{ name: source.name, sourceData: null }] },
+			executionData: {
+				nodeExecutionStack: [{ data: taskDataConnection, node: source, source: null }],
+			},
+		});
+		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+		// ACT
+		const result = await workflowExecute.processRunExecutionData(workflow);
+
+		// ASSERT
+		expect(
+			(
+				result.data.resultData.runData.source[0].data!.main[0]![0].json.object as IDataObject
+			).nested,
+		).toEqual({ string_one: 'value_1' });
+		expect(
+			(
+				result.data.resultData.runData.mutating[0].data!.main[0]![0].json.object as IDataObject
+			).nested,
+		).toEqual({ string_one: 'new_value' });
+	});
+
+	test('keeps referenced run data stable when an expression result is mutated', async () => {
+		// ARRANGE
+		const source = createNodeData({ name: 'source', type: types.passThrough });
+		const mutating = createNodeData({
+			name: 'mutating',
+			type: 'expressionMutatingNode',
+			parameters: {
+				object: "={{ $('source').item.json.object }}",
+			},
+		});
+		const customNodeTypes = NodeTypes({
+			...nodeTypeArguments,
+			expressionMutatingNode: { type: expressionMutatingNode, sourcePath: '' },
 		});
 		const workflow = new DirectedGraph()
 			.addNodes(source, mutating)

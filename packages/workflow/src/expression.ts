@@ -25,6 +25,7 @@ import type {
 	IWorkflowDataProxyData,
 	NodeParameterValue,
 } from './interfaces';
+import { deepCopy } from './utils';
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
 	Object.keys(process).length === 1 &&
@@ -582,6 +583,7 @@ export class Expression {
 			if (returnObjectAsString) {
 				return this.convertObjectValueToString(returnValue);
 			}
+			return deepCopy(returnValue);
 		}
 
 		return returnValue;
