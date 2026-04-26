@@ -9,7 +9,7 @@ import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
 import isEmpty from 'lodash/isEmpty';
 import { InstanceSettings, installGlobalProxyAgent } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
@@ -72,8 +72,6 @@ import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 export class Server extends AbstractServer {
 	private endpointPresetCredentials: string;
 
-	private presetCredentialsLoaded: boolean;
-
 	private frontendService?: FrontendService;
 
 	constructor(
@@ -95,8 +93,6 @@ export class Server extends AbstractServer {
 			await import('@/controllers/module-settings.controller');
 			await import('@/controllers/third-party-licenses.controller');
 		}
-
-		this.presetCredentialsLoaded = false;
 
 		this.endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
 
@@ -246,43 +242,36 @@ export class Server extends AbstractServer {
 			const overwriteEndpointMiddleware =
 				Container.get(CredentialsOverwrites).getOverwriteEndpointMiddleware();
 
-			if (overwriteEndpointMiddleware) {
-				this.app.use(`/${this.endpointPresetCredentials}`, overwriteEndpointMiddleware);
+			if (!overwriteEndpointMiddleware) {
+				throw new UnexpectedError(
+					'CREDENTIALS_OVERWRITE_ENDPOINT requires CREDENTIALS_OVERWRITE_ENDPOINT_AUTH_TOKEN to be set',
+				);
 			}
 
-			const authenticationEnforced = overwriteEndpointMiddleware !== null;
+			this.app.use(`/${this.endpointPresetCredentials}`, overwriteEndpointMiddleware);
+
 			this.app.post(
 				`/${this.endpointPresetCredentials}`,
 				async (req: express.Request, res: express.Response) => {
 					try {
-						// If authentication is enforced we can allow multiple overwrites
-						if (!this.presetCredentialsLoaded || authenticationEnforced) {
-							const body = req.body as ICredentialsOverwrite;
+						const body = req.body as ICredentialsOverwrite;
 
-							if (req.contentType !== 'application/json') {
-								ResponseHelper.sendErrorResponse(
-									res,
-									new Error(
-										'Body must be a valid JSON, make sure the content-type is application/json',
-									),
-								);
-								return;
-							}
-
-							await Container.get(CredentialsOverwrites).setData(body, true, true);
-
-							this.presetCredentialsLoaded = true;
-
-							// Send push event to notify frontend to refetch types
-							Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
-
-							ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
-						} else {
+						if (req.contentType !== 'application/json') {
 							ResponseHelper.sendErrorResponse(
 								res,
-								new Error('Preset credentials can be set once'),
+								new Error(
+									'Body must be a valid JSON, make sure the content-type is application/json',
+								),
 							);
+							return;
 						}
+
+						await Container.get(CredentialsOverwrites).setData(body, true, true);
+
+						// Send push event to notify frontend to refetch types
+						Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+
+						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
 					} catch (error) {
 						this.logger.error('Error handling credentials overwrite', { error });
 						ResponseHelper.sendErrorResponse(

@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import http from 'node:http';
 import type { Server } from 'node:http';
@@ -127,9 +128,13 @@ export class WorkerServer {
 			const overwriteEndpointMiddleware =
 				this.credentialsOverwrites.getOverwriteEndpointMiddleware();
 
-			if (overwriteEndpointMiddleware) {
-				this.app.use(`/${endpoint}`, overwriteEndpointMiddleware);
+			if (!overwriteEndpointMiddleware) {
+				throw new UnexpectedError(
+					'CREDENTIALS_OVERWRITE_ENDPOINT requires CREDENTIALS_OVERWRITE_ENDPOINT_AUTH_TOKEN to be set',
+				);
 			}
+
+			this.app.use(`/${endpoint}`, overwriteEndpointMiddleware);
 
 			this.app.post(`/${endpoint}`, rawBodyReader, bodyParser, async (req, res) => {
 				await this.handleOverwrites(req, res);

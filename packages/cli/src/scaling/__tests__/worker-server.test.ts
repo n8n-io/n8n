@@ -121,6 +121,9 @@ describe('WorkerServer', () => {
 			const CREDENTIALS_OVERWRITE_ENDPOINT = 'credentials/overwrites';
 			globalConfig.credentials.overwrite.endpoint = CREDENTIALS_OVERWRITE_ENDPOINT;
 
+			const middleware = (_req: Request, _res: Response, next: NextFunction) => next();
+			credentialsOverwriteService.getOverwriteEndpointMiddleware.mockReturnValue(middleware);
+
 			await workerServer.init({ health: true, overwrites: true, metrics: true });
 
 			expect(app.get).toHaveBeenCalledWith('/internal/health', expect.any(Function));
@@ -131,6 +134,28 @@ describe('WorkerServer', () => {
 				expect.any(Function),
 			);
 			expect(prometheusMetricsService.init).toHaveBeenCalledWith(app);
+		});
+
+		it('should refuse to mount the overwrite endpoint when no auth token is configured', async () => {
+			const server = mock<http.Server>();
+			jest.spyOn(http, 'createServer').mockReturnValue(server);
+
+			server.listen.mockImplementation((...args: unknown[]) => {
+				const callback = args.find((arg) => typeof arg === 'function');
+				if (callback) callback();
+				return server;
+			});
+
+			const workerServer = newWorkerServer();
+
+			globalConfig.credentials.overwrite.endpoint = 'credentials/overwrites';
+			credentialsOverwriteService.getOverwriteEndpointMiddleware.mockReturnValue(null);
+
+			await expect(
+				workerServer.init({ health: true, overwrites: true, metrics: false }),
+			).rejects.toThrow(/CREDENTIALS_OVERWRITE_ENDPOINT_AUTH_TOKEN/);
+
+			expect(app.post).not.toHaveBeenCalled();
 		});
 
 		it('should mount credential overwrite middleware if configured', async () => {
@@ -203,6 +228,9 @@ describe('WorkerServer', () => {
 				if (callback) callback();
 				return server;
 			});
+
+			const middleware = (_req: Request, _res: Response, next: NextFunction) => next();
+			credentialsOverwriteService.getOverwriteEndpointMiddleware.mockReturnValue(middleware);
 
 			await workerServer.init({ health: true, overwrites: true, metrics: true });
 
