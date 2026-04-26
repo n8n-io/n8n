@@ -29,6 +29,7 @@ import {
 	CATALOG_TO_CHATHUB,
 	AGENT_UNSUPPORTED_PROVIDERS,
 } from '../provider-mapping';
+import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
 import AgentMiniEditor from './AgentMiniEditor.vue';
 
 const props = withDefaults(defineProps<{ config: AgentJsonConfig | null; disabled?: boolean }>(), {
@@ -61,20 +62,6 @@ const filteredAgents = computed<ChatModelsResponse>(
 		) as ChatModelsResponse,
 );
 
-function parseModelString(model: string): { provider: string; name: string } | null {
-	const slashIndex = model.indexOf('/');
-	if (slashIndex <= 0) return null;
-	return { provider: model.slice(0, slashIndex), name: model.slice(slashIndex + 1) };
-}
-
-function modelToString(
-	raw: string | { provider: string | null; name: string | null } | undefined,
-): string {
-	if (!raw) return '';
-	if (typeof raw === 'string') return raw;
-	return `${raw.provider ?? ''}/${raw.name ?? ''}`;
-}
-
 const selectedAgent = computed<ChatModelDto | null>(() => {
 	const modelStr = modelToString(props.config?.model);
 	if (!modelStr) return null;
@@ -94,11 +81,6 @@ const selectedAgent = computed<ChatModelDto | null>(() => {
 		groupIcon: null,
 	};
 });
-
-function sanitizeModelId(provider: string, modelId: string): string {
-	if (provider === 'google') return modelId.replace(/^models\//, '');
-	return modelId;
-}
 
 function onModelChange(selection: ChatHubConversationModel) {
 	if (!isLlmProviderModel(selection)) return;

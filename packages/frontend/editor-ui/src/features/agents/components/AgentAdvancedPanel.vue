@@ -23,6 +23,7 @@ import {
 	type ReasoningEffort,
 } from '../provider-capabilities';
 import shared from '../styles/agent-panel.module.scss';
+import { parseProvider } from '../utils/model-string';
 
 const i18n = useI18n();
 
@@ -30,15 +31,6 @@ const props = withDefaults(defineProps<{ config: AgentJsonConfig | null; disable
 	disabled: false,
 });
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
-
-function parseProvider(
-	raw: string | { provider: string | null; name: string | null } | undefined,
-): string {
-	if (!raw) return '';
-	if (typeof raw === 'object') return raw.provider ?? '';
-	const slashIdx = raw.indexOf('/');
-	return slashIdx === -1 ? '' : raw.slice(0, slashIdx);
-}
 
 const provider = computed(() => parseProvider(props.config?.model));
 const capabilities = computed(
