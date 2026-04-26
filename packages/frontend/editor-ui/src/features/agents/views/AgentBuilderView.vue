@@ -1150,16 +1150,25 @@ function onSwitchAgent(nextAgentId: string) {
 	scrollbar-color: var(--color--foreground--shade-1) transparent;
 }
 
-/* Each row is title (truncated) + right-aligned timestamp. ElMenuItem renders
-   the title as a bare text node, so we lean on flex on the row and an
-   appended span for the time. */
+/* Each row is title (truncated) + right-aligned timestamp. We render both
+   inside the design-system's append slot (the bare title text node can't host
+   an ellipsis); override the slot wrapper's right-align so the row flexes
+   across the full menu width instead of clinging to the right edge. */
 :global(.agent-chat-session-menu) :global(.el-menu-item) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+}
+
+:global(.agent-chat-session-menu) :global(.el-menu-item) > span {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex: 1;
+	min-width: 0;
+	margin-left: 0;
+	padding-left: 0;
 }
 
 .sessionItemLabel {
