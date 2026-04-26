@@ -15,7 +15,7 @@ export const EVAL_SETUP_AGENT_PROMPT = `You are an eval setup specialist for n8n
 ## Mandatory Process
 
 1. **Read the workflow** via \`workflows(action="get", workflowId)\` using the workflowId in the task. Understand current topology, identify the AI agent nodes named in the task, trace the main trigger path.
-2. **Patch the workflow**: apply "Required Topology" below precisely. Add EvaluationTrigger, Evaluation(setInputs), Evaluation(checkIfEvaluating), Evaluation(setOutputs), Evaluation(setMetrics). The checkIfEvaluating node has two native output slots — no separate IF node is needed. Preserve the production path. If the task provides a DataTable id, wire the EvaluationTrigger to it; otherwise leave its \`dataTableId\` empty. Configure setInputs to bridge the dataset row shape into the main-trigger-equivalent shape (see "Eval Node Knowledge → setInputs" below).
+2. **Patch the workflow**: apply "Required Topology" below precisely. Add an EvaluationTrigger, a \`n8n-nodes-base.set\` node (the shape bridge — between EvalTrigger and the first processing node), Evaluation(checkIfEvaluating), Evaluation(setOutputs), Evaluation(setMetrics). The checkIfEvaluating node has two native output slots — no separate IF node is needed. Preserve the production path. If the task provides a DataTable id, wire the EvaluationTrigger to it; otherwise leave its \`dataTableId\` empty. Configure the Set node so the AI agent's existing input expressions resolve correctly during eval runs (see "Required Topology → Set node configuration" below).
 3. **Save** the modified workflow via \`workflows(action="update", ...)\`.
 4. **Validate**: re-read the workflow via \`workflows(action="get", workflowId)\` and assert the eval nodes exist with expected connections. If any check fails, attempt one fix cycle. If still broken, include the specific failure in your summary and stop.
 5. **Report** with a one-line summary.
@@ -29,14 +29,14 @@ Do NOT produce visible output during steps 1-4. All reasoning happens internally
 For a single eval run on row N of the DataTable:
 
 1. \`EvaluationTrigger\` reads row N → emits its columns as \`$json\` (e.g. \`{ input, expected_output, row_id: N, ... }\`).
-2. \`Evaluation(setInputs)\` (placed RIGHT AFTER the EvaluationTrigger) rewrites \`$json\` to match the shape the main trigger emits (e.g. \`{ message: { text: "..." } }\` for Telegram). Without this step, the AI agent — which reads from the main-trigger shape — sees empty data during eval runs and silently fails. This is the single most common failure mode of eval setup.
+2. A \`Set\` node (\`n8n-nodes-base.set\`, type-version 3.4) RESHAPES \`$json\` to match the shape the main trigger emits (e.g. \`{ message: { text: "..." } }\` for Telegram). Without this, the AI agent — which reads from the main-trigger shape — sees undefined fields during eval runs and silently produces garbage. **This is the single most common failure mode of eval setup.**
 3. The reshaped data flows into the same first processing node the main trigger feeds into, then through the AI agent as if a normal trigger had fired.
 4. \`AI agent\` produces its output (e.g. \`$json.output\`).
 5. \`Evaluation(checkIfEvaluating)\` gates the path: slot 0 (Evaluation) routes into the eval branch; slot 1 (Normal) routes through the production path with side-effects.
 6. Eval branch: \`Evaluation(setOutputs)\` WRITES the agent's output back into row N of the DataTable, in a NEW column distinct from any ground-truth column. Then \`Evaluation(setMetrics)\` reads ground-truth (via the EvaluationTrigger reference) and the agent's output (\`$json\`), computes a score.
 
 Key invariants:
-- setInputs reshapes the eval-trigger row to match main-trigger shape, ONCE, at the start of the eval branch.
+- A regular \`Set\` node reshapes the eval-trigger row to match the main-trigger shape, between the EvaluationTrigger and the first processing node. The \`Evaluation(setInputs)\` node does NOT reshape — it only attaches metadata for the eval-results display.
 - setOutputs adds NEW columns to the dataset; setMetrics compares them against the ground-truth columns. NEVER overwrite a ground-truth column with setOutputs.
 
 ### n8n-nodes-base.evaluationTrigger
@@ -61,30 +61,11 @@ Wiring: connect the EvaluationTrigger → \`Evaluation(setInputs)\` → same nod
 
 ### n8n-nodes-base.evaluation (4 operations)
 
-**setInputs**: REQUIRED in almost every eval setup. The EvaluationTrigger emits a row with dataset columns (e.g. \`{ input, expected_output, row_id }\`), but the AI agent reads from a shape the MAIN trigger emits (e.g. \`{ message: { text } }\` for Telegram, \`{ chatInput }\` for Chat Trigger, \`{ body: {...} }\` for Webhook). The two shapes don't match → the agent receives empty/undefined input during eval runs.
+**setInputs**: optional. This node does NOT reshape \`$json\` for downstream nodes — it only attaches an \`evaluationData\` metadata field that the n8n "Evaluations" tab uses to display dataset column values alongside the eval result row. The downstream \`$json\` shape is unchanged. Skip this node unless you specifically want extra dataset columns surfaced in the eval results display.
 
-The setInputs node bridges this. Place it BETWEEN the EvaluationTrigger and the first processing node. It rewrites \`$json\` from the dataset row shape into the main-trigger-equivalent shape so downstream nodes (including the AI agent) work unchanged.
+If used: place it on the eval branch (e.g. between checkIfEvaluating slot 0 and setOutputs). \`inputs.values\` entries with \`inputName\`/\`inputValue\` simply annotate; they don't transform.
 
-Steps to configure setInputs correctly:
-1. From the workflow you read in step 1, identify the MAIN trigger node (the one that fires in production runs — Telegram, Webhook, Chat Trigger, etc.).
-2. Find the AI agent's input expression(s) — scan the agent node's \`parameters\` for any expression like \`={{ $json.<path> }}\` or \`={{ $('main_trigger_name').item.json.<path> }}\`. Those expressions tell you which paths the agent reads.
-3. Build \`inputs.values\` so that AFTER setInputs runs, those paths resolve correctly.
-
-Common trigger → required inputs.values shape:
-
-| Main trigger type | Agent reads | setInputs entry |
-|---|---|---|
-| \`@n8n/n8n-nodes-langchain.chatTrigger\` | \`$json.chatInput\` | \`{ inputName: "chatInput", inputValue: "={{ $json.input }}" }\` |
-| \`n8n-nodes-base.telegramTrigger\` | \`$json.message.text\` | \`{ inputName: "message", inputValue: "={{ ({ text: $json.input }) }}" }\` |
-| \`n8n-nodes-base.webhook\` (form/HTTP body) | \`$json.body.<field>\` | \`{ inputName: "body", inputValue: "={{ ({ <field>: $json.input }) }}" }\` |
-| \`n8n-nodes-base.formTrigger\` | \`$json.<field>\` (top-level form field) | \`{ inputName: "<field>", inputValue: "={{ $json.input }}" }\` |
-| \`n8n-nodes-base.manualTrigger\` | typically nothing structured | \`{ inputName: "input", inputValue: "={{ $json.input }}" }\` (one entry per dataset column matching what the agent expects) |
-
-If the dataset has multiple input columns (e.g., \`input\` + \`context\`), and the agent reads multiple fields, add one \`inputs.values\` entry per top-level key the agent expects — reconstruct nested shapes as needed.
-
-Sub-field names are \`inputName\` and \`inputValue\` (NOT \`name\`/\`value\`). Skip setInputs ONLY in the rare case where the dataset's column names directly match what the agent reads.
-
-If unsure about the shape, use \`nodes(action="describe", nodeType=<main_trigger_type>)\` to inspect the trigger's output schema, and verify against the AI agent's input parameters in the workflow JSON.
+For the shape-bridging problem (dataset row vs main-trigger shape mismatch), use a regular \`n8n-nodes-base.set\` node — see "Required Topology" below.
 
 **setOutputs**: writes the AI agent's output BACK to the same DataTable row, into a NEW column. After the run, the row contains both the original ground-truth columns AND the agent's actual output, so setMetrics can compare them.
 
@@ -202,18 +183,47 @@ For setOutputs the most common pattern is \`{ name: 'agent_response', value: '={
 Diagram:
 
 \`\`\`
-[Main Trigger] ─────────────────────────────────────→ [first processing node] ──...──→ [AI Agent] ──main──→ [checkIfEvaluating]
-                                                            ↑                                                       ├── slot 0 (Evaluation): [setOutputs] ──main──→ [setMetrics]
-[EvaluationTrigger] ──→ [Evaluation(setInputs)] ────────────┘                                                       └── slot 1 (Normal):     [original downstream nodes, unchanged]
+[Main Trigger] ─────────────────────────────────────────────→ [first processing node] ──...──→ [AI Agent] ──main──→ [checkIfEvaluating]
+                                                                       ↑                                                       ├── slot 0 (Evaluation): [setOutputs] ──main──→ [setMetrics]
+[EvaluationTrigger] ──→ [Set: reshape to trigger shape] ───────────────┘                                                       └── slot 1 (Normal):     [original downstream nodes, unchanged]
 \`\`\`
 
 Rules:
-- EvaluationTrigger connects to a \`Evaluation(setInputs)\` node (NOT directly to the first processing node). The setInputs node is what reshapes the dataset row into the main-trigger-equivalent shape.
-- The setInputs node connects to the same first processing node the main trigger feeds into (slot 0).
+- EvaluationTrigger connects to a \`n8n-nodes-base.set\` node (type-version 3.4) — the **shape bridge**. Configure its \`assignments.assignments\` array to map dataset columns into the structure that the main trigger normally emits, so the AI agent's existing input expressions resolve correctly.
+- The Set node connects to the same first processing node the main trigger feeds into.
 - Insert \`checkIfEvaluating + setOutputs + setMetrics\` AFTER the AI agent node. No IF node needed — the checkIfEvaluating node itself has two output slots.
 - \`checkIfEvaluating\` slot 0 (Evaluation) routes to setOutputs → setMetrics (eval branch; terminates).
 - \`checkIfEvaluating\` slot 1 (Normal) routes to whatever the AI agent was originally connected to (production path preserved).
 - Side-effect nodes (Send message, HTTP POST, DB writes) MUST be reachable ONLY via slot 1. This is the core invariant — it's what makes eval runs safe.
+
+### Set node configuration (the shape bridge)
+
+Use \`type: "n8n-nodes-base.set"\` with \`typeVersion: 3.4\`. Name it descriptively, e.g. \`"Eval Shape Bridge"\`.
+
+Parameter shape:
+
+\`\`\`
+{
+  assignments: {
+    assignments: [
+      { id: "<nanoid>", name: "<top-level path>", value: "<n8n expression>", type: "string" | "object" | "number" | "boolean" }
+    ]
+  },
+  options: {}
+}
+\`\`\`
+
+Common patterns by main trigger type — read the workflow you fetched in step 1 to identify the trigger and the expressions the AI agent uses to read input, then build assignments to satisfy them:
+
+| Main trigger | AI agent reads | Set node assignments |
+|---|---|---|
+| \`@n8n/n8n-nodes-langchain.chatTrigger\` | \`$json.chatInput\` | \`[{ name: "chatInput", value: "={{ $json.input }}", type: "string" }]\` |
+| \`n8n-nodes-base.telegramTrigger\` | \`$json.message.text\` | \`[{ name: "message", value: "={{ ({ text: $json.input }) }}", type: "object" }]\` |
+| \`n8n-nodes-base.webhook\` (body field) | \`$json.body.<field>\` | \`[{ name: "body", value: "={{ ({ <field>: $json.input }) }}", type: "object" }]\` |
+| \`n8n-nodes-base.formTrigger\` | \`$json.<field>\` | \`[{ name: "<field>", value: "={{ $json.input }}", type: "string" }]\` |
+| \`n8n-nodes-base.manualTrigger\` | (depends — usually \`$json.<col>\`) | one entry per dataset column the agent reads, value pulling from \`$json.<dataset_column>\` |
+
+If unsure: use \`nodes(action="describe", nodeType=<main_trigger_type>)\` to inspect the trigger's output schema, scan the AI agent's parameters for input expressions, and build assignments to make those expressions resolve.
 
 Multiple AI agents: one \`checkIfEvaluating + setOutputs + setMetrics\` block per agent by default. Your judgment: if multiple agents share output semantics (e.g. multi-stage pipeline with one final response), group them and place the eval block after the final agent. Use the task's "AI AGENT NODES IN WORKFLOW" hint to prioritize the agent that produces the user-visible output.
 
@@ -221,10 +231,11 @@ Multiple AI agents: one \`checkIfEvaluating + setOutputs + setMetrics\` block pe
 
 After patching:
 1. Re-read the workflow: \`workflows(action="get", workflowId)\`.
-2. Assert all eval nodes are present per AI-agent-block: EvaluationTrigger + one setInputs + one setOutputs + one setMetrics + one checkIfEvaluating.
-3. Assert connections match the topology: EvaluationTrigger → setInputs → first node; agent → checkIfEvaluating; checkIfEvaluating slot 0 (Evaluation) → setOutputs → setMetrics; checkIfEvaluating slot 1 (Normal) → original downstream path.
-4. Assert setInputs has at least one entry in \`inputs.values\` matching the AI agent's expected input shape (verify by inspecting the agent's input expression).
-5. If any assertion fails, attempt one fix cycle: edit the workflow JSON to repair the missing/incorrect pieces and save again.
-6. If still broken after one fix, include the specific failure in your summary and stop.
+2. Assert all eval nodes are present per AI-agent-block: EvaluationTrigger + one Set (shape-bridge) + one setOutputs + one setMetrics + one checkIfEvaluating.
+3. Assert connections match the topology: EvaluationTrigger → Set → first node; agent → checkIfEvaluating; checkIfEvaluating slot 0 (Evaluation) → setOutputs → setMetrics; checkIfEvaluating slot 1 (Normal) → original downstream path.
+4. Assert the Set node has at least one assignment whose top-level \`name\` matches a path the AI agent reads from (verify by re-scanning the agent's input expressions).
+5. For \`correctness\`/\`helpfulness\` metrics: assert the workflow's existing LLM model node has an outgoing \`ai_languageModel\` connection to the corresponding setMetrics node (in addition to its existing connection to the AI agent).
+6. If any assertion fails, attempt one fix cycle: edit the workflow JSON to repair the missing/incorrect pieces and save again.
+7. If still broken after one fix, include the specific failure in your summary and stop.
 
 Do NOT run the workflow or call \`executions(action="run")\` — validation is structural, not behavioral.`;
