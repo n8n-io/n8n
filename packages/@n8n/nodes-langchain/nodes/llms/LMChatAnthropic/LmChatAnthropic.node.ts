@@ -79,6 +79,64 @@ const modelField: INodeProperties = {
 
 const MIN_THINKING_BUDGET = 1024;
 const DEFAULT_MAX_TOKENS = 4096;
+
+/**
+ * Parses the `<major>-<minor>` version pair from a new-style Anthropic model id
+ * (`claude-{family}-{major}-{minor}[-date]`, e.g. `claude-opus-4-7`,
+ * `claude-sonnet-4-5-20250929`). Returns `null` for old-style ids
+ * (`claude-3-5-sonnet-20241022`, `claude-2.1`) and unknown / gateway-prefixed
+ * ids — both predate adaptive thinking and should fall back to legacy behaviour.
+ */
+function parseClaudeVersion(modelId: string): { major: number; minor: number } | null {
+	const match = /claude-[a-z]+-(\d+)-(\d+)(?:-|$)/.exec(modelId);
+	if (!match) return null;
+
+	const major = Number(match[1]);
+	const minor = Number(match[2]);
+	if (!Number.isFinite(major) || !Number.isFinite(minor)) return null;
+
+	return { major, minor };
+}
+
+/**
+ * Whether the given model id supports the adaptive thinking request shape
+ * (`thinking: { type: 'adaptive' }`).
+ *
+ * Returns `true` for Claude 4.6+ — adaptive thinking was introduced as the
+ * recommended thinking-on mode in Claude Opus 4.6 (Feb 5, 2026, see Anthropic
+ * API changelog) and remains supported on every newer model. Returns `false`
+ * for Claude 4.5 and older, and for unrecognised / gateway-prefixed ids.
+ *
+ * Numeric comparison rather than a hardcoded id list means future 4.x / 5.x
+ * releases route to the new format automatically without a code change here.
+ *
+ * Note: 4.6 *supports* adaptive but still accepts the legacy
+ * `{ type: 'enabled', budget_tokens }` shape. Use `requiresAdaptiveThinking`
+ * to distinguish the stricter case where legacy is rejected outright.
+ */
+function supportsAdaptiveThinking(modelId: string): boolean {
+	const v = parseClaudeVersion(modelId);
+	if (!v) return false;
+	return v.major > 4 || (v.major === 4 && v.minor >= 6);
+}
+
+/**
+ * Whether the given model id *requires* the adaptive thinking shape — i.e.
+ * the legacy `thinking: { type: 'enabled', budget_tokens }` request will be
+ * rejected with a 400 by the Anthropic API.
+ *
+ * Returns `true` for Claude 4.7+ (Opus 4.7 launched Apr 16, 2026 with
+ * extended-thinking budgets removed and `temperature` / `top_p` / `top_k`
+ * also rejected at non-default values — see Anthropic API changelog and
+ * "What's new in Claude Opus 4.7"). Returns `false` for Claude 4.6 (where
+ * legacy still works but adaptive is recommended) and for everything older.
+ */
+function requiresAdaptiveThinking(modelId: string): boolean {
+	const v = parseClaudeVersion(modelId);
+	if (!v) return false;
+	return v.major > 4 || (v.major === 4 && v.minor >= 7);
+}
+
 export class LmChatAnthropic implements INodeType {
 	methods = {
 		listSearch: {
