@@ -1,4 +1,5 @@
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
@@ -586,5 +587,156 @@ describe('runAgent - intermediate steps', () => {
 
 		expect(result).toHaveProperty('intermediateSteps');
 		expect((result as any).intermediateSteps).toEqual([]);
+	});
+});
+
+describe('runAgent - intermediate step memory persistence', () => {
+	const fixtureSteps: ToolCallData[] = [
+		{
+			action: {
+				tool: 'calculator',
+				toolInput: { expression: '2+2' },
+				log: 'Using calculator',
+				messageLog: [],
+				toolCallId: 'call-123',
+				type: 'tool_call',
+			},
+			observation: '4',
+		},
+	];
+
+	const buildItemContext = (returnIntermediateSteps: boolean): ItemContext => ({
+		itemIndex: 0,
+		input: 'Calculate 2+2',
+		steps: fixtureSteps,
+		tools: [],
+		prompt: mock(),
+		options: {
+			maxIterations: 10,
+			returnIntermediateSteps,
+		},
+		outputParser: undefined,
+	});
+
+	it('should omit intermediate steps from saveToMemory when the option is disabled (non-streaming)', async () => {
+		const mockInvoke = vi.fn().mockResolvedValue({
+			returnValues: { output: 'The answer is 4' },
+		});
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ invoke: mockInvoke }),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const mockMemory = mock<BaseChatMemory>();
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		await runAgent(mockContext, mockExecutor, buildItemContext(false), mockModel, mockMemory);
+
+		expect(agentExecution.saveToMemory).toHaveBeenCalledWith(
+			'Calculate 2+2',
+			'The answer is 4',
+			mockMemory,
+			undefined,
+			undefined,
+		);
+	});
+
+	it('should pass intermediate steps to saveToMemory when the option is enabled (non-streaming)', async () => {
+		const mockInvoke = vi.fn().mockResolvedValue({
+			returnValues: { output: 'The answer is 4' },
+		});
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ invoke: mockInvoke }),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const mockMemory = mock<BaseChatMemory>();
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		await runAgent(mockContext, mockExecutor, buildItemContext(true), mockModel, mockMemory);
+
+		expect(agentExecution.saveToMemory).toHaveBeenCalledWith(
+			'Calculate 2+2',
+			'The answer is 4',
+			mockMemory,
+			fixtureSteps,
+			undefined,
+		);
+	});
+
+	it('should omit intermediate steps from saveToMemory when the option is disabled (streaming)', async () => {
+		const mockEventStream = (async function* () {})();
+		const mockStreamEvents = vi.fn().mockReturnValue(mockEventStream);
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ streamEvents: mockStreamEvents }),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const mockMemory = mock<BaseChatMemory>();
+
+		const streamingContext = mock<IExecuteFunctions>({
+			getNode: vi.fn().mockReturnValue({ ...mockNode, typeVersion: 2.1 }),
+			isStreaming: vi.fn().mockReturnValue(true),
+			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
+		});
+		streamingContext.getExecuteData = vi.fn() as any;
+
+		const itemContext = buildItemContext(false);
+		itemContext.options.enableStreaming = true;
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
+			output: 'The answer is 4',
+		});
+
+		await runAgent(streamingContext, mockExecutor, itemContext, mockModel, mockMemory);
+
+		expect(agentExecution.saveToMemory).toHaveBeenCalledWith(
+			'Calculate 2+2',
+			'The answer is 4',
+			mockMemory,
+			undefined,
+			undefined,
+		);
+	});
+
+	it('should pass intermediate steps to saveToMemory when the option is enabled (streaming)', async () => {
+		const mockEventStream = (async function* () {})();
+		const mockStreamEvents = vi.fn().mockReturnValue(mockEventStream);
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ streamEvents: mockStreamEvents }),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const mockMemory = mock<BaseChatMemory>();
+
+		const streamingContext = mock<IExecuteFunctions>({
+			getNode: vi.fn().mockReturnValue({ ...mockNode, typeVersion: 2.1 }),
+			isStreaming: vi.fn().mockReturnValue(true),
+			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
+		});
+		streamingContext.getExecuteData = vi.fn() as any;
+
+		const itemContext = buildItemContext(true);
+		itemContext.options.enableStreaming = true;
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
+			output: 'The answer is 4',
+		});
+
+		await runAgent(streamingContext, mockExecutor, itemContext, mockModel, mockMemory);
+
+		expect(agentExecution.saveToMemory).toHaveBeenCalledWith(
+			'Calculate 2+2',
+			'The answer is 4',
+			mockMemory,
+			fixtureSteps,
+			undefined,
+		);
 	});
 });
