@@ -15,6 +15,15 @@ describe('summariseInteractiveOutput', () => {
 		expect(summariseInteractiveOutput(ASK_QUESTION_TOOL_NAME, undefined)).toBeUndefined();
 	});
 
+	it.each([null, 'oops', 42, true, ['x']])(
+		'returns undefined for non-object output (%p)',
+		(value) => {
+			expect(summariseInteractiveOutput(ASK_CREDENTIAL_TOOL_NAME, value)).toBeUndefined();
+			expect(summariseInteractiveOutput(ASK_LLM_TOOL_NAME, value)).toBeUndefined();
+			expect(summariseInteractiveOutput(ASK_QUESTION_TOOL_NAME, value)).toBeUndefined();
+		},
+	);
+
 	it('joins ask_question option labels when input + output present', () => {
 		const input = {
 			question: 'Where to post?',

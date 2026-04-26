@@ -17,12 +17,19 @@ import {
  * Returns `undefined` for non-interactive tools or when the output isn't
  * shaped as expected — callers fall back to rendering just the tool name.
  */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export function summariseInteractiveOutput(
 	toolName: string,
 	output: unknown,
 	input?: unknown,
 ): string | undefined {
-	if (output === undefined || output === null) return undefined;
+	// Output comes off the wire as `unknown`; treat anything non-object-shaped
+	// as malformed and bail. This prevents `in` / property access from
+	// throwing when a malformed payload sneaks through.
+	if (!isPlainObject(output)) return undefined;
 
 	if (toolName === ASK_QUESTION_TOOL_NAME) {
 		const resume = output as AskQuestionResume;
