@@ -53,6 +53,14 @@ const configureFieldHelper = (dotNotation?: boolean) => {
 	}
 };
 
+const cloneFieldValue = (value: unknown) => {
+	if (typeof value === 'object' && value !== null) {
+		return deepCopy(value);
+	}
+
+	return value;
+};
+
 export function composeReturnItem(
 	this: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
@@ -95,7 +103,7 @@ export function composeReturnItem(
 				if (options.dotNotation !== false && key.includes('.')) {
 					keyToSet = key.split('.').pop() as string;
 				}
-				fieldHelper.set(newItem.json, keyToSet, fieldValue);
+				fieldHelper.set(newItem.json, keyToSet, cloneFieldValue(fieldValue) as IDataObject);
 			}
 			break;
 		case INCLUDE.EXCEPT:
@@ -121,7 +129,7 @@ export function composeReturnItem(
 	}
 
 	for (const key of Object.keys(newFields)) {
-		fieldHelper.set(newItem.json, key, newFields[key] as IDataObject);
+		fieldHelper.set(newItem.json, key, cloneFieldValue(newFields[key]) as IDataObject);
 	}
 
 	return newItem;

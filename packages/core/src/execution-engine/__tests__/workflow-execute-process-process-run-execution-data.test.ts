@@ -39,6 +39,25 @@ describe('processRunExecutionData', () => {
 		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 	});
 	const executionMode: WorkflowExecuteMode = 'trigger';
+	const mutatingNode: INodeType = {
+		description: {
+			displayName: 'Mutating Node',
+			name: 'mutatingNode',
+			group: ['transform'],
+			version: 1,
+			description: 'A node that mutates input data for testing',
+			defaults: { name: 'Mutating Node' },
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [],
+		},
+		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+			const items = this.getInputData();
+			((items[0].json.object as IDataObject).nested as IDataObject).string_one = 'new_value';
+
+			return await Promise.resolve([items]);
+		},
+	};
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -119,6 +138,63 @@ describe('processRunExecutionData', () => {
 		expect(runHook).toHaveBeenNthCalledWith(4, 'nodeExecuteBefore', expect.any(Array));
 		expect(runHook).toHaveBeenNthCalledWith(5, 'nodeExecuteAfter', expect.any(Array));
 		expect(runHook).toHaveBeenNthCalledWith(6, 'workflowExecuteAfter', expect.any(Array));
+	});
+
+	test('keeps upstream run data stable when a downstream node mutates nested input data', async () => {
+		// ARRANGE
+		const source = createNodeData({ name: 'source', type: types.passThrough });
+		const mutating = createNodeData({ name: 'mutating', type: 'mutatingNode' });
+		const customNodeTypes = NodeTypes({
+			...nodeTypeArguments,
+			mutatingNode: { type: mutatingNode, sourcePath: '' },
+		});
+		const workflow = new DirectedGraph()
+			.addNodes(source, mutating)
+			.addConnections({ from: source, to: mutating })
+			.toWorkflow({
+				name: '',
+				active: false,
+				nodeTypes: customNodeTypes,
+				settings: { executionOrder: 'v1' },
+			});
+
+		const taskDataConnection = {
+			main: [
+				[
+					{
+						json: {
+							object: {
+								nested: {
+									string_one: 'value_1',
+								},
+							},
+						},
+					},
+				],
+			],
+		};
+		const executionData = createRunExecutionData({
+			startData: { startNodes: [{ name: source.name, sourceData: null }] },
+			executionData: {
+				nodeExecutionStack: [{ data: taskDataConnection, node: source, source: null }],
+			},
+		});
+		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+		// ACT
+		const result = await workflowExecute.processRunExecutionData(workflow);
+
+		// ASSERT
+		expect(
+			(
+				result.data.resultData.runData.source[0].data!.main[0]![0].json.object as IDataObject
+			).nested,
+		).toEqual({ string_one: 'value_1' });
+		expect(
+			(
+				result.data.resultData.runData.mutating[0].data!.main[0]![0].json.object as IDataObject
+			).nested,
+		).toEqual({ string_one: 'new_value' });
 	});
 
 	test('agent node emits nodeExecuteBefore only once when resuming after tool execution', async () => {
