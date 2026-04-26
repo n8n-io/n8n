@@ -2,6 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
+import type * as VueUse from '@vueuse/core';
 
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import type { AgentJsonConfig } from '../types';
@@ -12,7 +13,7 @@ vi.mock('@n8n/i18n', () => ({
 
 // Sub-control flips depend on debouncing — execute synchronously in the test.
 vi.mock('@vueuse/core', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@vueuse/core')>();
+	const actual = await importOriginal<typeof VueUse>();
 	return {
 		...actual,
 		useDebounceFn: (fn: (...args: unknown[]) => unknown) => fn,

@@ -52,12 +52,16 @@ export class AgentsBuilderToolsService {
 		credentialProvider: CredentialProvider,
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId),
+			json: this.getJsonTools(agentId, projectId, credentialProvider),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider),
 		};
 	}
 
-	private getJsonTools(agentId: string, projectId: string): BuiltTool[] {
+	private getJsonTools(
+		agentId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): BuiltTool[] {
 		const writeConfigTool = new Tool(BUILDER_TOOLS.WRITE_CONFIG)
 			.description(
 				'Create or replace the agent configuration by writing a complete JSON string. ' +
@@ -163,8 +167,8 @@ export class AgentsBuilderToolsService {
 		return [
 			writeConfigTool,
 			patchConfigTool,
-			buildAskCredentialTool(),
-			buildAskLlmTool(),
+			buildAskCredentialTool({ credentialProvider }),
+			buildAskLlmTool({ credentialProvider }),
 			buildAskQuestionTool(),
 		];
 	}

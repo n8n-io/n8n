@@ -24,10 +24,13 @@ export function buildAskQuestionTool(): BuiltTool {
 				input: AskQuestionInput,
 				ctx: InterruptibleToolContext<AskQuestionInput, AskQuestionResume>,
 			) => {
-				if (ctx.resumeData === undefined) {
-					return await ctx.suspend(input);
+				if (ctx.resumeData !== undefined) return ctx.resumeData;
+				// Single-option questions have no actual choice — auto-pick so the
+				// LLM doesn't render a card the user can only confirm.
+				if (input.options.length === 1) {
+					return { values: [input.options[0].value] };
 				}
-				return ctx.resumeData;
+				return await ctx.suspend(input);
 			},
 		)
 		.build();

@@ -53,7 +53,9 @@ const editor = useCodeMirrorEditor({
 		keymap.of(defaultKeymap),
 		codeEditorTheme({ isReadOnly: false, maxHeight: '100%', minHeight: '100%', rows: -1 }),
 	],
-	onChange: (text) => void debouncedJsonSave(text),
+	onChange: (text) => {
+		void debouncedJsonSave(text);
+	},
 });
 
 watch(

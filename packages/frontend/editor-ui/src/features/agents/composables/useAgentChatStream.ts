@@ -23,6 +23,7 @@ import {
 	type ToolCall,
 } from './agentChatMessages';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
+import { summariseInteractiveOutput } from '../utils/interactive-summary';
 
 export interface FatalAgentError {
 	message: string;
@@ -270,6 +271,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (found) {
 					found.tc.output = event.output;
 					found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
+					found.tc.displaySummary = summariseInteractiveOutput(
+						found.tc.tool,
+						event.output,
+						found.tc.input,
+					);
 					// If this was an interactive tool call, the result IS the user's
 					// resume payload — refresh the card so it flips to its resolved
 					// (disabled) state immediately. No separate "resumed" event needed.
@@ -507,6 +513,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					tc: found.tc,
 					prevState: found.tc.state,
 					prevOutput: found.tc.output,
+					prevSummary: found.tc.displaySummary,
 					msg: found.msg,
 					prevStatus: found.msg.status,
 					prevInteractive: found.msg.interactive,
@@ -516,6 +523,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (found) {
 			found.tc.state = TOOL_CALL_STATE.DONE;
 			found.tc.output = payload.resumeData;
+			found.tc.displaySummary = summariseInteractiveOutput(
+				found.tc.tool,
+				payload.resumeData,
+				found.tc.input,
+			);
 			const updated = rebuildInteractiveFromHistory(found.tc);
 			if (updated) found.msg.interactive = updated;
 			if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
@@ -528,6 +540,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (!ok && snapshot) {
 			snapshot.tc.state = snapshot.prevState;
 			snapshot.tc.output = snapshot.prevOutput;
+			snapshot.tc.displaySummary = snapshot.prevSummary;
 			snapshot.msg.status = snapshot.prevStatus;
 			snapshot.msg.interactive = snapshot.prevInteractive;
 		}
