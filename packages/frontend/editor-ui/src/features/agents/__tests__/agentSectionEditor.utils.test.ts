@@ -5,7 +5,7 @@ import {
 	pickFrom,
 	setSlice,
 	splitPath,
-} from '../components/agentSectionEditor.utils';
+} from '../utils/agentSectionEditor.utils';
 import type { AgentJsonConfig } from '../types';
 
 const cfg = {

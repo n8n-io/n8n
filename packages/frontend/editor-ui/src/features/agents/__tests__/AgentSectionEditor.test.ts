@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import AgentSectionEditor from '../components/AgentSectionEditor.vue';
-import { tryParseConfig } from '../components/agentSectionEditor.utils';
+import { tryParseConfig } from '../utils/agentSectionEditor.utils';
 import type { AgentJsonConfig } from '../types';
 
 vi.mock('@n8n/i18n', () => ({

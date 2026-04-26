@@ -10,7 +10,7 @@ import { N8nIconButton } from '@n8n/design-system';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
 import { useCodeMirrorEditor } from '../composables/useCodeMirrorEditor';
-import { configToDoc, setSlice } from './agentSectionEditor.utils';
+import { configToDoc, setSlice } from '../utils/agentSectionEditor.utils';
 import type { AgentJsonConfig } from '../types';
 
 const props = withDefaults(
