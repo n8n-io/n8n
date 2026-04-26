@@ -160,6 +160,7 @@ export class AgentsBuilderService {
 			);
 		}
 
+		// Schema is persisted as JSON — double-cast rehydrates to the typed config.
 		const currentConfig = agent.schema as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
 		const toolList =

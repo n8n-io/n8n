@@ -579,6 +579,7 @@ export class AgentsService {
 		if (!agentEntity) {
 			return { missing: ['agent'] };
 		}
+		// Schema is persisted as JSON — double-cast rehydrates to the typed config.
 		const config = agentEntity.schema as unknown as AgentJsonConfig | null;
 		const missing: string[] = [];
 
