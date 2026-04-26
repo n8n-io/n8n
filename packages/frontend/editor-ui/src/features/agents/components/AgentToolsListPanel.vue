@@ -253,13 +253,16 @@ const totalCount = computed(() => props.tools.length);
 				i18n.baseText('agents.builder.tree.customBadge')
 			}}</N8nHeading>
 			<div :class="$style.rows">
-				<button
+				<div
 					v-for="row in customRows"
 					:key="`custom-${row.index}`"
-					type="button"
 					:class="$style.customRow"
+					role="button"
+					tabindex="0"
 					data-testid="agent-tools-list-row"
 					@click="emit('open-tool', row.index)"
+					@keydown.enter.prevent="emit('open-tool', row.index)"
+					@keydown.space.prevent="emit('open-tool', row.index)"
 				>
 					<N8nIcon icon="code" :size="14" :class="$style.customIcon" />
 					<div :class="$style.customLabels">
@@ -286,7 +289,7 @@ const totalCount = computed(() => props.tools.length);
 						/>
 					</N8nTooltip>
 					<N8nIcon icon="chevron-right" :size="14" :class="$style.chevron" />
-				</button>
+				</div>
 			</div>
 		</div>
 	</div>

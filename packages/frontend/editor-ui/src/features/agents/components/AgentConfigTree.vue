@@ -10,7 +10,7 @@ import { computed, ref, watch } from 'vue';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nText } from '@n8n/design-system';
 import type { AgentJsonConfig } from '../types';
 import shared from '../styles/agent-panel.module.scss';
 import {
@@ -214,13 +214,18 @@ function onChildClick(childKey: string) {
 			>
 				<N8nIcon :icon="section.icon" :size="18" />
 				<N8nText tag="span" size="medium" :class="$style.sectionLabel">{{ section.label }}</N8nText>
-				<span
+				<N8nBadge
 					v-if="typeof section.count === 'number'"
+					theme="default"
+					size="xsmall"
+					:show-border="false"
 					:class="$style.countPill"
 					data-testid="agent-config-tree-count"
-					>{{ section.count }}</span
+					>{{ section.count }}</N8nBadge
 				>
-				<span v-if="section.pill" :class="$style.statusPill">{{ section.pill }}</span>
+				<N8nBadge v-if="section.pill" theme="primary" size="xsmall" :class="$style.statusPill">{{
+					section.pill
+				}}</N8nBadge>
 				<N8nIcon v-if="section.children" :class="$style.caret" icon="chevron-down" :size="14" />
 			</button>
 			<div
@@ -352,15 +357,6 @@ function onChildClick(childKey: string) {
 
 .countPill {
 	flex-shrink: 0;
-	min-width: 20px;
-	padding: 0 var(--spacing--4xs);
-	background: var(--color--background--light-3);
-	border-radius: 999px;
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	line-height: 18px;
-	text-align: center;
 }
 
 .caret {
@@ -428,12 +424,5 @@ function onChildClick(childKey: string) {
 
 .statusPill {
 	flex-shrink: 0;
-	padding: 0 var(--spacing--3xs);
-	background: var(--color--background--light-3);
-	border-radius: 999px;
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--3xs);
-	line-height: 18px;
-	text-align: center;
 }
 </style>

@@ -11,8 +11,7 @@
  */
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { ElSwitch } from 'element-plus';
-import { N8nInput, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nInput, N8nSelect, N8nSwitch2, N8nText, N8nTooltip } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useI18n } from '@n8n/i18n';
 
@@ -152,7 +151,7 @@ const thinkingDisabledReason = computed(() =>
 				:disabled="!!capabilities.thinking"
 				placement="top"
 			>
-				<ElSwitch
+				<N8nSwitch2
 					:model-value="thinkingEnabled"
 					:disabled="!capabilities.thinking || props.disabled"
 					data-testid="agent-thinking-toggle"
@@ -219,7 +218,7 @@ const thinkingDisabledReason = computed(() =>
 					{{ i18n.baseText('agents.builder.advanced.approval.hint') }}
 				</N8nText>
 			</div>
-			<ElSwitch
+			<N8nSwitch2
 				:model-value="requireToolApproval"
 				:disabled="props.disabled"
 				data-testid="agent-require-approval-toggle"
