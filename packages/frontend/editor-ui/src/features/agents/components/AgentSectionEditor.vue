@@ -6,11 +6,11 @@ import { json } from '@codemirror/lang-json';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton } from '@n8n/design-system';
-import { deepCopy } from 'n8n-workflow';
 
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
 import { useCodeMirrorEditor } from '../composables/useCodeMirrorEditor';
+import { configToDoc, setSlice } from './agentSectionEditor.utils';
 import type { AgentJsonConfig } from '../types';
 
 const props = withDefaults(
@@ -58,74 +58,6 @@ async function copyContent() {
 		// focused. Silent failure is fine — the user will just not see the
 		// "Copied" feedback.
 	}
-}
-
-function splitPath(path: string): string[] {
-	return path.split('.').filter((p) => p.length > 0);
-}
-
-function getSlice(cfg: AgentJsonConfig | null, path: string | null | undefined): unknown {
-	if (!cfg) return null;
-	if (!path) return cfg;
-	let cur: unknown = cfg;
-	for (const part of splitPath(path)) {
-		if (cur === null || cur === undefined) return undefined;
-		const idx = Number(part);
-		if (Array.isArray(cur) && Number.isInteger(idx)) {
-			cur = cur[idx];
-		} else if (typeof cur === 'object') {
-			cur = (cur as Record<string, unknown>)[part];
-		} else {
-			return undefined;
-		}
-	}
-	return cur;
-}
-
-function setSlice(cfg: AgentJsonConfig, path: string, slice: unknown): AgentJsonConfig {
-	const next = deepCopy(cfg);
-	const parts = splitPath(path);
-	if (parts.length === 0) return slice as AgentJsonConfig;
-	let cur: unknown = next;
-	for (let i = 0; i < parts.length - 1; i++) {
-		const part = parts[i];
-		const idx = Number(part);
-		if (Array.isArray(cur) && Number.isInteger(idx)) {
-			cur = cur[idx];
-		} else if (cur && typeof cur === 'object') {
-			cur = (cur as Record<string, unknown>)[part];
-		}
-	}
-	const last = parts[parts.length - 1];
-	const idx = Number(last);
-	if (Array.isArray(cur) && Number.isInteger(idx)) {
-		(cur as unknown[])[idx] = slice;
-	} else if (cur && typeof cur === 'object') {
-		(cur as Record<string, unknown>)[last] = slice;
-	}
-	return next;
-}
-
-function pickFrom(cfg: AgentJsonConfig | null, keys: string[]): Record<string, unknown> {
-	if (!cfg) return {};
-	const source = cfg as unknown as Record<string, unknown>;
-	const out: Record<string, unknown> = {};
-	for (const key of keys) {
-		if (key in source) out[key] = source[key];
-	}
-	return out;
-}
-
-function configToDoc(
-	cfg: AgentJsonConfig | null,
-	path: string | null | undefined,
-	keys: string[] | null | undefined,
-): string {
-	if (!cfg) return '';
-	if (keys && keys.length > 0) return JSON.stringify(pickFrom(cfg, keys), null, 2);
-	const slice = getSlice(cfg, path);
-	if (slice === undefined) return '';
-	return JSON.stringify(slice, null, 2);
 }
 
 function tryParse(text: string): { ok: true; value: unknown } | { ok: false } {
