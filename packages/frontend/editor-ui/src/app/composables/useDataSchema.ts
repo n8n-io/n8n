@@ -211,10 +211,10 @@ export function useDataSchema() {
 		if (!node) return [];
 
 		const workflowsStore = useWorkflowsStore();
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-		const pinnedData = workflowDocumentStore?.getNodePinData(node.name)?.map((item) => item.json);
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		const pinnedData = workflowDocumentStore.getNodePinData(node.name)?.map((item) => item.json);
 		let inputData = getNodeInputData(node, runIndex, outputIndex);
 
 		if (pinnedData) {

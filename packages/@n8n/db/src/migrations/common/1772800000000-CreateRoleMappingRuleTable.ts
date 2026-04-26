@@ -23,7 +23,7 @@ export class CreateRoleMappingRuleTable1772800000000 implements ReversibleMigrat
 				column('order').int.notNull,
 			)
 			.withIndexOn('role')
-			.withIndexOn(['type', 'order'])
+			.withUniqueConstraintOn(['type', 'order'])
 			.withForeignKey('role', {
 				tableName: 'role',
 				columnName: 'slug',

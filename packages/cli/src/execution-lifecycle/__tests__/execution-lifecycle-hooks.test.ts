@@ -116,6 +116,12 @@ describe('Execution Lifecycle Hooks', () => {
 		status: 'waiting',
 		waitTill: new Date(),
 		storedAt: 'db',
+		data: {
+			resultData: {
+				lastNodeExecuted: undefined,
+				runData: {},
+			},
+		},
 	});
 	const successfulRunWithMetadata = mock<IRun>({
 		status: 'success',
@@ -206,6 +212,96 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
 				expect(eventService.emit).not.toHaveBeenCalledWith('workflow-post-execute');
+			});
+
+			describe('execution-waiting audit event', () => {
+				it('should emit execution-waiting when the last node is waiting for a webhook', async () => {
+					const webhookWaitingRun = mock<IRun>({
+						finished: true,
+						status: 'waiting',
+						waitTill: new Date(),
+						storedAt: 'db',
+					});
+					// Assigning `data` outside the `mock()` call to avoid jest-mock-extended wrapping it in a DeepMockProxy
+					webhookWaitingRun.data = createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'wait',
+							runData: {
+								wait: [
+									{ metadata: { resumeUrl: 'https://example.test/webhook/abc' } },
+								] as ITaskData[],
+							},
+						},
+					});
+					await lifecycleHooks.runHook('workflowExecuteAfter', [webhookWaitingRun, {}]);
+
+					expect(eventService.emit).toHaveBeenCalledWith('execution-waiting', {
+						executionId,
+						workflowId,
+					});
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'workflow-post-execute',
+						expect.anything(),
+					);
+				});
+
+				it('should not emit execution-waiting when no node was executed', async () => {
+					await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'execution-waiting',
+						expect.anything(),
+					);
+				});
+
+				it('should not emit execution-waiting when the last node is not waiting for a webhook', async () => {
+					const nonWebhookWaitingRun = mock<IRun>({
+						finished: true,
+						status: 'waiting',
+						waitTill: new Date(),
+						storedAt: 'db',
+					});
+					nonWebhookWaitingRun.data = createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'sendAndWait',
+							runData: {
+								sendAndWait: [{ metadata: {} }] as ITaskData[],
+							},
+						},
+					});
+					await lifecycleHooks.runHook('workflowExecuteAfter', [nonWebhookWaitingRun, {}]);
+
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'execution-waiting',
+						expect.anything(),
+					);
+				});
+
+				it('should use the latest task run to determine webhook wait status', async () => {
+					const latestTaskWebhookWaitingRun = mock<IRun>({
+						finished: true,
+						status: 'waiting',
+						waitTill: new Date(),
+						storedAt: 'db',
+					});
+					latestTaskWebhookWaitingRun.data = createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'wait',
+							runData: {
+								wait: [
+									{ metadata: {} },
+									{ metadata: { resumeUrl: 'https://example.test/webhook/xyz' } },
+								] as ITaskData[],
+							},
+						},
+					});
+					await lifecycleHooks.runHook('workflowExecuteAfter', [latestTaskWebhookWaitingRun, {}]);
+
+					expect(eventService.emit).toHaveBeenCalledWith('execution-waiting', {
+						executionId,
+						workflowId,
+					});
+				});
 			});
 
 			it('should reset destination node to original destination', async () => {
@@ -957,12 +1053,12 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 
 		describe('workflowExecuteAfter', () => {
-			it('should delete successful executions when success saving is disabled', async () => {
+			it('should delete unsaved successful executions when success saving is disabled', async () => {
 				workflowData.settings = {
 					saveDataSuccessExecution: 'none',
 					saveDataErrorExecution: 'all',
 				};
-				const lifecycleHooks = getLifecycleHooksForScalingMain(
+				const testHooks = getLifecycleHooksForScalingMain(
 					{
 						executionMode: 'webhook',
 						workflowData,
@@ -972,21 +1068,21 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 				);
 
-				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+				await testHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-				expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
 					storedAt: 'db',
 				});
 			});
 
-			it('should delete failed executions when error saving is disabled', async () => {
+			it('should delete unsaved failed executions when error saving is disabled', async () => {
 				workflowData.settings = {
 					saveDataSuccessExecution: 'all',
 					saveDataErrorExecution: 'none',
 				};
-				const lifecycleHooks = getLifecycleHooksForScalingMain(
+				const testHooks = getLifecycleHooksForScalingMain(
 					{
 						executionMode: 'webhook',
 						workflowData,
@@ -996,9 +1092,9 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 				);
 
-				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+				await testHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
-				expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
 					storedAt: 'db',
@@ -1036,7 +1132,7 @@ describe('Execution Lifecycle Hooks', () => {
 					// Metadata should not be saved before deletion
 					expect(executionMetadataService.save).not.toHaveBeenCalled();
 					// Execution should be deleted
-					expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
+					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
 						workflowId,
 						executionId,
 						storedAt: 'db',

@@ -216,6 +216,42 @@ export class NavigationHelper {
 	}
 
 	/**
+	 * Navigate to Instance AI page
+	 * URL: /instance-ai
+	 */
+	async toInstanceAi() {
+		await this.page.goto('/instance-ai');
+		await this.dismissInstanceAiOptinModalIfPresent();
+	}
+
+	/**
+	 * Dismiss the Instance AI opt-in welcome modal if it appears.
+	 * The modal intercepts pointer events on the chat input and send button,
+	 * so it must be closed before interacting with the chat UI.
+	 *
+	 * Clicks the "enable" choice (so Instance AI stays enabled for the test),
+	 * confirms to advance to the gateway step, then closes via Escape — the
+	 * gateway step has `close-on-press-escape` and does not auto-dismiss.
+	 */
+	private async dismissInstanceAiOptinModalIfPresent(): Promise<void> {
+		const enableToggle = this.page.getByTestId('instance-ai-welcome-modal-toggle-enable');
+		try {
+			await enableToggle.waitFor({ state: 'visible', timeout: 3_000 });
+		} catch {
+			return;
+		}
+		await enableToggle.click();
+		const confirm = this.page.getByTestId('instance-ai-welcome-modal-confirm');
+		await confirm.click();
+		// After confirming enable, the modal advances to the gateway step,
+		// which has no dedicated test-id for the skip button. Escape closes it.
+		await this.page.keyboard.press('Escape');
+		await this.page
+			.getByTestId('instance-ai-welcome-modal-toggle-enable')
+			.waitFor({ state: 'hidden', timeout: 5_000 });
+	}
+
+	/**
 	 * Navigate to ChatHub chat page
 	 * URL: /home/chat
 	 */

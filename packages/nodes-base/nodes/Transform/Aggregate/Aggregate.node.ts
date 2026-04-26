@@ -20,7 +20,8 @@ export class Aggregate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Aggregate',
 		name: 'aggregate',
-		icon: 'file:aggregate.svg',
+		icon: 'node:aggregate',
+		iconColor: 'orange-red',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,

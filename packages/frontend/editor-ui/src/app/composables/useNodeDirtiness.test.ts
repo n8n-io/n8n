@@ -197,7 +197,11 @@ describe(useNodeDirtiness, () => {
 		it('should not update dirtiness when the notes field is updated', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
-			workflowState.setNodeValue({ key: 'notes', name: 'b', value: 'test' });
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).setNodeValue({
+				key: 'notes',
+				name: 'b',
+				value: 'test',
+			});
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
 		});
@@ -302,10 +306,10 @@ describe(useNodeDirtiness, () => {
 			setupTestWorkflow('a🚨✅ -> b✅📌 -> c✅, b -> d, b -> e✅ -> f✅');
 
 			// Simulate updating pinned data for node 'b' (set metadata timestamp as usePinnedData.setData would)
-			workflowsStore.nodeMetadata.b = {
-				...workflowsStore.nodeMetadata.b,
-				pinnedDataLastUpdatedAt: Date.now(),
-			};
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			workflowDocumentStore.touchPinnedDataLastUpdatedAt('b');
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				// 'd' is not marked as pinned-data-updated because it has no run data.
@@ -460,12 +464,12 @@ describe(useNodeDirtiness, () => {
 
 		const workflow = createTestWorkflow({ nodes: Object.values(nodes), connections });
 
-		workflowsStore.setNodes(workflow.nodes);
-		workflowsStore.setConnections(workflow.connections);
-
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflow.id),
 		);
+		workflowDocumentStore.setNodes(workflow.nodes);
+		workflowDocumentStore.setConnections(workflow.connections);
+
 		for (const name of nodeNamesWithPinnedData) {
 			workflowDocumentStore.pinNodeData(name, [{ json: {} }]);
 		}

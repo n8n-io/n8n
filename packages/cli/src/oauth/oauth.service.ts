@@ -175,12 +175,56 @@ export class OauthService {
 		toUpdate: ICredentialDataDecryptedObject,
 		toDelete: string[] = [],
 	) {
+		if (toUpdate.oauthTokenData && typeof toUpdate.oauthTokenData === 'object') {
+			const identifier = OauthService.extractAccountIdentifier(
+				toUpdate.oauthTokenData as Record<string, unknown>,
+			);
+			if (identifier) {
+				toUpdate.accountIdentifier = identifier;
+			}
+		}
+
 		const credentials = new Credentials(credential, credential.type, credential.data);
 		credentials.updateData(toUpdate, toDelete);
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),
 			updatedAt: new Date(),
 		});
+	}
+
+	static extractAccountIdentifier(tokenData: Record<string, unknown>): string | undefined {
+		for (const key of ['email', 'login', 'username', 'user', 'account']) {
+			if (typeof tokenData[key] === 'string' && tokenData[key]) {
+				return tokenData[key];
+			}
+		}
+
+		if (typeof tokenData.id_token === 'string') {
+			const parts = tokenData.id_token.split('.');
+			if (parts.length === 3) {
+				try {
+					const payload: Record<string, unknown> = JSON.parse(
+						Buffer.from(parts[1], 'base64url').toString(),
+					);
+					if (typeof payload.email === 'string' && payload.email) {
+						return payload.email;
+					}
+					if (typeof payload.preferred_username === 'string' && payload.preferred_username) {
+						return payload.preferred_username;
+					}
+				} catch {}
+			}
+		}
+
+		const authedUser = tokenData.authed_user;
+		if (authedUser && typeof authedUser === 'object') {
+			const user = authedUser as Record<string, unknown>;
+			if (typeof user.id === 'string' && user.id) {
+				return user.id;
+			}
+		}
+
+		return undefined;
 	}
 
 	/** Get a credential without user check */
@@ -301,11 +345,13 @@ export class OauthService {
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
-		// Generic Oauth2 API is an exception because it needs to save the scope
+		// Skip the cleanup when the credential exposes scope as user-editable (directly or via
+		// inheritance) so that manually entered scopes survive reconnects.
 		if (
 			decryptedDataOriginal?.scope &&
 			credential.type.includes('OAuth2') &&
-			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type)
+			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) &&
+			!this.hasEditableScopeProperty(credential.type)
 		) {
 			delete decryptedDataOriginal.scope;
 		}
@@ -317,6 +363,21 @@ export class OauthService {
 		);
 
 		return oauthCredentials;
+	}
+
+	/**
+	 * Checks whether the credential type (after merging inherited properties) exposes
+	 * a user-editable `scope` property. A property is considered editable when it is
+	 * defined and its `type` is not `'hidden'`.
+	 */
+	private hasEditableScopeProperty(credentialType: string): boolean {
+		try {
+			const properties = this.credentialsHelper.getCredentialsProperties(credentialType);
+			const scopeProperty = properties.find((property) => property.name === 'scope');
+			return scopeProperty !== undefined && scopeProperty.type !== 'hidden';
+		} catch {
+			return false;
+		}
 	}
 
 	async generateAOauth2AuthUri(

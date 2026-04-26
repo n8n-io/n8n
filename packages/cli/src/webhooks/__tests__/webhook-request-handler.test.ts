@@ -1,6 +1,6 @@
 import { type Response } from 'express';
 import { mock } from 'jest-mock-extended';
-import { isWebhookHtmlSandboxingDisabled, getWebhookSandboxCSP } from 'n8n-core';
+import { isWebhookHtmlSandboxingDisabled, getHtmlSandboxCSP } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
@@ -16,9 +16,7 @@ import type {
 jest.mock('n8n-core', () => ({
 	...jest.requireActual('n8n-core'),
 	isWebhookHtmlSandboxingDisabled: jest.fn().mockReturnValue(false),
-	getWebhookSandboxCSP: jest
-		.fn()
-		.mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
+	getHtmlSandboxCSP: jest.fn().mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
 }));
 
 describe('WebhookRequestHandler', () => {
@@ -170,7 +168,7 @@ describe('WebhookRequestHandler', () => {
 
 			await handler(req, res);
 
-			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res, undefined);
 			expect(res.status).toHaveBeenCalledWith(200);
 			expect(res.setHeaders).toHaveBeenCalledWith(new Map([['x-custom-header', 'test']]));
 			expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
@@ -192,7 +190,7 @@ describe('WebhookRequestHandler', () => {
 
 			await handler(req, res);
 
-			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res, undefined);
 			expect(res.status).toHaveBeenCalledWith(500);
 			expect(res.json).toHaveBeenCalledWith({
 				code: 100,
@@ -246,7 +244,7 @@ describe('WebhookRequestHandler', () => {
 			await handler(req, res);
 
 			expect(res.setHeaders).not.toHaveBeenCalled();
-			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		});
 
 		test.each<IHttpRequestMethods>(['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'])(
@@ -266,7 +264,7 @@ describe('WebhookRequestHandler', () => {
 
 				await handler(req, res);
 
-				expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+				expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res, undefined);
 				expect(res.status).toHaveBeenCalledWith(200);
 				expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
 			},
@@ -291,7 +289,7 @@ describe('WebhookRequestHandler', () => {
 
 			await handler(req, res);
 
-			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		});
 
 		it('should not set CSP sandbox header when sandboxing is disabled', async () => {

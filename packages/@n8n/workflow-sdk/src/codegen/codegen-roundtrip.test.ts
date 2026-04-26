@@ -11,7 +11,7 @@ import {
 	COMMITTED_FIXTURES_DIR,
 } from '../__tests__/fixtures-download';
 import type { WorkflowJSON } from '../types/base';
-import { normalizeConnections } from '../types/base';
+import { foldLegacyErrorConnections, normalizeConnections } from '../types/base';
 import {
 	escapeNewlinesInExpressionStrings,
 	isPlaceholderValue,
@@ -1126,6 +1126,56 @@ export default workflow('test-id', 'AI Agent')
 			expect(openAiNode).toBeDefined();
 			// newCredential serializes to undefined, which is omitted - not yet implemented
 			expect(openAiNode?.credentials).toEqual({});
+		});
+
+		it('should parse newCredential() with id to link existing credential', () => {
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.slack', version: 2.2, config: {
+    name: 'Slack',
+    parameters: { channel: '#general' },
+    credentials: { slackApi: newCredential('My Slack', 'cred-123') }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const slackNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.slack');
+			expect(slackNode).toBeDefined();
+			// newCredential with id serializes to { id, name }
+			expect(slackNode?.credentials).toEqual({
+				slackApi: { id: 'cred-123', name: 'My Slack' },
+			});
+		});
+
+		it('should roundtrip credentials via newCredential(name, id)', () => {
+			const originalJson: WorkflowJSON = {
+				id: 'cred-roundtrip',
+				name: 'Credential Roundtrip',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2.2,
+						position: [0, 0],
+						parameters: { channel: '#general' },
+						credentials: {
+							slackApi: { id: 'cred-abc', name: 'Slack Bot' },
+						},
+					},
+				],
+				connections: {},
+			};
+
+			const code = generateWorkflowCode(originalJson);
+			// Code should contain newCredential('Slack Bot', 'cred-abc')
+			expect(code).toContain("newCredential('Slack Bot', 'cred-abc')");
+
+			const parsedJson = parseWorkflowCode(code);
+			const slackNode = parsedJson.nodes.find((n) => n.name === 'Slack');
+			expect(slackNode?.credentials).toEqual({
+				slackApi: { id: 'cred-abc', name: 'Slack Bot' },
+			});
 		});
 	});
 
@@ -2472,67 +2522,6 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				}
 			};
 
-			// Normalize main[errorIndex] connections into error[0] connections.
-			// Many original workflows store error outputs under main at the error index;
-			// the builder now natively produces error[0]. Convert the original to match.
-			// Uses the same error output index logic as the semantic registry.
-			const getErrorOutputIndex = (type: string, params?: Record<string, unknown>): number => {
-				// Must match the logic in semantic-registry.ts getErrorOutputIndex
-				switch (type) {
-					case 'n8n-nodes-base.if':
-						return 2; // outputs: ['trueBranch', 'falseBranch']
-					case 'n8n-nodes-base.switch': {
-						const rules = params?.rules as Record<string, unknown> | undefined;
-						const rulesArray = (rules?.rules ?? rules?.values) as unknown[] | undefined;
-						const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
-						return numCases + 1; // cases + fallback
-					}
-					case 'n8n-nodes-base.merge':
-						return 1; // outputs: ['output']
-					case 'n8n-nodes-base.splitInBatches':
-						return 2; // outputs: ['done', 'loop']
-					default:
-						return 1; // regular nodes: error at index 1
-				}
-			};
-
-			const normalizeMainErrorToErrorConnections = (
-				connections: Record<string, Record<string, unknown[][]>>,
-				nodes: Array<{
-					name?: string;
-					type: string;
-					parameters?: Record<string, unknown>;
-					onError?: string;
-				}>,
-			): void => {
-				const nodeMap = new Map<
-					string,
-					{ type: string; parameters?: Record<string, unknown>; onError?: string }
-				>();
-				for (const n of nodes) {
-					if (n.name) nodeMap.set(n.name, n);
-				}
-
-				for (const [nodeName, nodeConns] of Object.entries(connections)) {
-					const node = nodeMap.get(nodeName);
-					if (!node || node.onError !== 'continueErrorOutput') continue;
-					if (!nodeConns.main || !Array.isArray(nodeConns.main)) continue;
-					// Already has error connections — skip
-					if (nodeConns.error) continue;
-
-					const errorOutputIndex = getErrorOutputIndex(node.type, node.parameters);
-
-					// Extract main[errorOutputIndex] → error[0]
-					if (errorOutputIndex < nodeConns.main.length) {
-						const errorTargets = nodeConns.main[errorOutputIndex];
-						if (Array.isArray(errorTargets) && errorTargets.length > 0) {
-							nodeConns.error = [errorTargets];
-							nodeConns.main[errorOutputIndex] = [];
-						}
-					}
-				}
-			};
-
 			// Helper to normalize warnings for comparison
 			const normalizeWarning = (w: ExpectedWarning): string => `${w.code}:${w.nodeName ?? ''}`;
 
@@ -2605,13 +2594,15 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 						json.nodes.map((n) => n.name).filter((name): name is string => !!name),
 					);
 					// Normalize original connections (clone first to avoid mutating input)
-					// since the original JSON may have flat tuple connections
+					// since the original JSON may have flat tuple connections. Also fold
+					// any legacy top-level `error` connections into main[last] — the SDK
+					// now always emits the modern shape, so the original must be aligned
+					// before comparison. Old templates are kept untouched; the test does
+					// the old/new translation so symmetry holds against the serializer's
+					// matching fold.
 					const normalizedOriginalConns = deepCopy(json.connections);
 					normalizeConnections(normalizedOriginalConns);
-					normalizeMainErrorToErrorConnections(
-						normalizedOriginalConns as Record<string, Record<string, unknown[][]>>,
-						json.nodes,
-					);
+					foldLegacyErrorConnections(normalizedOriginalConns, json.nodes);
 					const filteredOriginal = filterEmptyConnections(normalizedOriginalConns, validNodeNames);
 					const filteredParsed = filterEmptyConnections(parsedJson.connections);
 

@@ -4,7 +4,7 @@
 		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 		"baseUrl": ".",
 		"rootDirs": [".", "../composables/src"],
-		"outDir": "dist",
+		"noEmit": true,
 		"moduleResolution": "bundler",
 
 		"types": [

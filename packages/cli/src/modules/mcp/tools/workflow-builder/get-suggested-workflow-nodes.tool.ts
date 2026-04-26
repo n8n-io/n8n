@@ -54,10 +54,7 @@ export const createGetSuggestedWorkflowNodesTool = (
 		};
 
 		try {
-			const { createGetSuggestedNodesTool } = await import('@n8n/ai-workflow-builder');
-			const nodeTypeParser = workflowBuilderToolsService.getNodeTypeParser();
-			const suggestTool = createGetSuggestedNodesTool(nodeTypeParser);
-			const result = await suggestTool.invoke({ categories });
+			const result = await workflowBuilderToolsService.getSuggestedNodes(categories);
 
 			telemetryPayload.results = {
 				success: true,

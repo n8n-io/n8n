@@ -1,12 +1,12 @@
 import { BasePage } from './BasePage';
 
 export class WorkflowSharingModal extends BasePage {
-	getModal() {
+	get container() {
 		return this.page.getByTestId('workflowShare-modal');
 	}
 
 	getUsersSelect() {
-		return this.page.getByTestId('project-sharing-select').filter({ visible: true });
+		return this.container.getByTestId('project-sharing-select').filter({ visible: true });
 	}
 
 	async addUser(emailOrName: string) {
@@ -28,6 +28,6 @@ export class WorkflowSharingModal extends BasePage {
 
 	async save() {
 		await this.clickByTestId('workflow-sharing-modal-save-button');
-		await this.getModal().waitFor({ state: 'hidden' });
+		await this.container.waitFor({ state: 'hidden' });
 	}
 }

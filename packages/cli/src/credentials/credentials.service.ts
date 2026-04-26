@@ -1,7 +1,7 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import {
+	Project,
 	CredentialsEntity,
 	SharedCredentials,
 	CredentialsRepository,
@@ -9,6 +9,7 @@ import {
 	SharedCredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
+import type { User, ICredentialsDb, ScopesField } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -34,22 +35,15 @@ import {
 	displayParameter,
 	isExpression,
 	isINodePropertyCollection,
+	jsonParse,
+	jsonStringify,
 	NodeHelpers,
 } from 'n8n-workflow';
-
-import {
-	CredentialDependencyService,
-	type CredentialDependencyFilter,
-} from './credential-dependency.service';
-import { CredentialsFinderService } from './credentials-finder.service';
-import {
-	validateAccessToReferencedSecretProviders,
-	validateExternalSecretsPermissions,
-} from './validation';
 
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -63,6 +57,19 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+
+import {
+	CredentialDependencyService,
+	type CredentialDependencyFilter,
+} from './credential-dependency.service';
+import { CredentialsFinderService } from './credentials-finder.service';
+import {
+	validateAccessToReferencedSecretProviders,
+	validateExternalSecretsPermissions,
+} from './validation';
+
+/** Sentinel placed at every leaf of a redacted httpCustomAuth JSON shape */
+const CUSTOM_AUTH_JSON_REDACTED_VALUE = '***';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -609,7 +616,11 @@ export class CredentialsService {
 
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
-			mergedData.data = this.unredact(mergedData.data, decryptedData);
+			mergedData.data = this.unredact(
+				mergedData.data,
+				decryptedData,
+				this.getCredentialTypeProperties(existingCredential.type),
+			);
 		}
 
 		// This saves us a merge but requires some type casting. These
@@ -704,11 +715,28 @@ export class CredentialsService {
 		});
 	}
 
+	private async resolveOwningProjectIdForNewCredential(
+		user: User,
+		projectId: string | undefined,
+		entityManager?: EntityManager,
+	): Promise<string> {
+		if (projectId !== undefined) {
+			return projectId;
+		}
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+			user.id,
+			entityManager,
+		);
+		// Chat users are not allowed to create credentials even within their personal project,
+		// so even though we found the project ensure it gets found via expected scope too.
+		return personalProject.id;
+	}
+
 	async save(
 		credential: CredentialsEntity,
 		encryptedData: ICredentialsDb,
 		user: User,
-		projectId?: string,
+		projectId: string,
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 	) {
 		// To avoid side effects
@@ -719,16 +747,6 @@ export class CredentialsService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 		const result = await dbManager.transaction(async (transactionManager) => {
-			if (projectId === undefined) {
-				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
-					user.id,
-					transactionManager,
-				);
-				// Chat users are not allowed to create credentials even within their personal project,
-				// so even though we found the project ensure it gets found via expected scope too.
-				projectId = personalProject.id;
-			}
-
 			const project = await this.projectService.getProjectWithScope(
 				user,
 				projectId,
@@ -737,7 +755,10 @@ export class CredentialsService {
 			);
 
 			if (project === null) {
-				throw new BadRequestError(
+				if (!(await transactionManager.existsBy(Project, { id: projectId }))) {
+					throw new NotFoundError('Project not found');
+				}
+				throw new ForbiddenError(
 					"You don't have the permissions to save the credential in this project.",
 				);
 			}
@@ -799,6 +820,37 @@ export class CredentialsService {
 		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
 	}
 
+	async testById(userId: User['id'], credentialId: string) {
+		const storedCredential = await this.credentialsFinderService.findCredentialById(credentialId);
+
+		if (!storedCredential) {
+			throw new CredentialNotFoundError(credentialId);
+		}
+
+		const credentials = await this.prepareCredentialsForTest({ storedCredential });
+		return await this.test(userId, credentials);
+	}
+
+	async testWithCredentials(user: User, credentials: ICredentialsDecrypted) {
+		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+			credentials.id,
+			user,
+			['credential:read'],
+		);
+
+		if (!storedCredential) {
+			throw new CredentialNotFoundError(credentials.id);
+		}
+
+		const mergedCredentials = await this.prepareCredentialsForTest({
+			storedCredential,
+			user,
+			credentialsToTest: credentials,
+		});
+
+		return await this.test(user.id, mergedCredentials);
+	}
+
 	// Take data and replace all sensitive values with a sentinel value.
 	// This will replace password fields and oauth data.
 	redact(data: ICredentialDataDecryptedObject, credential: CredentialsEntity) {
@@ -826,15 +878,13 @@ export class CredentialsService {
 			return props;
 		};
 		const properties = getExtendedProps(credType);
-		const redacted = this.redactValues(copiedData, properties, credential.type);
-		return redacted;
+		return this.redactValues(copiedData, properties);
 	}
 
 	private redactValues(
 		data: ICredentialDataDecryptedObject,
 		props: INodeProperties[],
-		credentialType?: string,
-	) {
+	): ICredentialDataDecryptedObject {
 		for (const dataKey of Object.keys(data)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
@@ -862,22 +912,29 @@ export class CredentialsService {
 
 			if (
 				prop.typeOptions?.password &&
-				(!(data[dataKey] as string).startsWith('={{') || prop.noDataExpression)
+				(!data[dataKey].toString().startsWith('={{') || prop.noDataExpression)
 			) {
 				if (data[dataKey].toString().length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
 				}
+				continue;
 			}
-		}
 
-		// Custom Auth: mask JSON after save (not marked as secret; redacted by type + field)
-		if (credentialType === 'httpCustomAuth' && 'json' in data) {
-			data.json =
-				data.json && String(data.json).length > 0
-					? CREDENTIAL_BLANKING_VALUE
-					: CREDENTIAL_EMPTY_VALUE;
+			if (prop.typeOptions?.redactJsonLeaves) {
+				const jsonStr = String(data[dataKey] ?? '');
+				if (!jsonStr) {
+					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
+				} else {
+					try {
+						const parsed = jsonParse<unknown>(jsonStr);
+						data[dataKey] = JSON.stringify(this.redactJsonLeaves(parsed), null, 2);
+					} catch {
+						// Not parseable (e.g. an expression) — leave as-is
+					}
+				}
+			}
 		}
 
 		return data;
@@ -888,19 +945,52 @@ export class CredentialsService {
 		const values = data?.[collectionValuesKey];
 		if (Array.isArray(values)) {
 			for (let i = 0; i < values.length; i++) {
-				values[i] = this.redactValues(
-					values[i] as ICredentialDataDecryptedObject,
-					option.values,
-					undefined,
-				);
+				values[i] = this.redactValues(values[i] as ICredentialDataDecryptedObject, option.values);
 			}
 		} else if (typeof values === 'object' && values !== null) {
 			data[collectionValuesKey] = this.redactValues(
 				values as ICredentialDataDecryptedObject,
 				option.values,
-				undefined,
 			);
 		}
+	}
+
+	private redactJsonLeaves(obj: unknown): unknown {
+		if (Array.isArray(obj)) return obj.map((item) => this.redactJsonLeaves(item));
+		if (typeof obj === 'object' && obj !== null) {
+			return Object.fromEntries(
+				Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+					k,
+					this.redactJsonLeaves(v),
+				]),
+			);
+		}
+		return CUSTOM_AUTH_JSON_REDACTED_VALUE;
+	}
+
+	private mergeRedactedJsonLeaves(newVal: unknown, savedVal: unknown): unknown {
+		if (newVal === CUSTOM_AUTH_JSON_REDACTED_VALUE) return savedVal;
+		if (Array.isArray(newVal) && Array.isArray(savedVal)) {
+			return newVal.map((item, i) => this.mergeRedactedJsonLeaves(item, savedVal[i]));
+		}
+		// Type mismatch involving arrays: user made a structural change — preserve new value as-is
+		if (Array.isArray(newVal) || Array.isArray(savedVal)) {
+			return newVal;
+		}
+		if (
+			typeof newVal === 'object' &&
+			newVal !== null &&
+			typeof savedVal === 'object' &&
+			savedVal !== null
+		) {
+			return Object.fromEntries(
+				Object.entries(newVal as Record<string, unknown>).map(([k, v]) => [
+					k,
+					this.mergeRedactedJsonLeaves(v, (savedVal as Record<string, unknown>)[k]),
+				]),
+			);
+		}
+		return newVal;
 	}
 
 	private unredactRestoreValues(unmerged: any, replacement: any) {
@@ -924,15 +1014,38 @@ export class CredentialsService {
 		}
 	}
 
-	// Take unredacted data (probably from the DB) and merge it with
-	// redacted data to create an unredacted version.
+	getCredentialTypeProperties(credentialType: string): INodeProperties[] {
+		try {
+			return this.credentialTypes.getByName(credentialType).properties;
+		} catch {
+			return [];
+		}
+	}
+
+	// Take redacted data (e.g. from the frontend) and merge it with saved data to produce a
+	// fully unredacted version ready for saving or testing.
 	unredact(
 		redactedData: ICredentialDataDecryptedObject,
 		savedData: ICredentialDataDecryptedObject,
+		props: INodeProperties[] = [],
 	) {
-		// Replace any blank sentinel values with their saved version
+		// Replace field-level blank sentinels (CREDENTIAL_BLANKING_VALUE / CREDENTIAL_EMPTY_VALUE)
 		const mergedData = deepCopy(redactedData);
 		this.unredactRestoreValues(mergedData, savedData);
+
+		// Merge leaf-level *** sentinels for fields marked with typeOptions.redactJsonLeaves
+		for (const prop of props) {
+			if (!prop.typeOptions?.redactJsonLeaves) continue;
+			if (!(prop.name in mergedData) || !(prop.name in savedData)) continue;
+			try {
+				const newJson: unknown = jsonParse(String(mergedData[prop.name]));
+				const savedJson: unknown = jsonParse(String(savedData[prop.name]));
+				mergedData[prop.name] = jsonStringify(this.mergeRedactedJsonLeaves(newJson, savedJson));
+			} catch {
+				// Not parseable JSON — leave as-is
+			}
+		}
+
 		return mergedData;
 	}
 
@@ -982,9 +1095,14 @@ export class CredentialsService {
 
 	async getCredentialScopes(user: User, credentialId: string): Promise<Scope[]> {
 		const userProjectRelations = await this.projectService.getProjectRelationsForUser(user);
+		const projectIds = [...new Set(userProjectRelations.map((pr) => pr.projectId))];
+		// Postgres rejects `IN ()`; SQLite tolerates it. Skip the query when there is no project scope.
+		if (projectIds.length === 0) {
+			return this.roleService.combineResourceScopes('credential', user, [], userProjectRelations);
+		}
 		const shared = await this.sharedCredentialsRepository.find({
 			where: {
-				projectId: In([...new Set(userProjectRelations.map((pr) => pr.projectId))]),
+				projectId: In(projectIds),
 				credentialsId: credentialId,
 			},
 		});
@@ -1147,15 +1265,17 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
+
 		await this.checkCredentialData(
 			opts.type,
 			opts.data as ICredentialDataDecryptedObject,
 			user,
-			opts.projectId ?? '',
+			targetProjectId,
 		);
-		if (this.externalSecretsConfig.externalSecretsForProjects && opts.projectId) {
+		if (this.externalSecretsConfig.externalSecretsForProjects) {
 			await validateAccessToReferencedSecretProviders(
-				opts.projectId,
+				targetProjectId,
 				opts.data as ICredentialDataDecryptedObject,
 				this.externalSecretsProviderAccessCheckService,
 				'create',
@@ -1190,12 +1310,59 @@ export class CredentialsService {
 			credentialEntity,
 			encryptedCredential,
 			user,
-			opts.projectId,
+			targetProjectId,
 			opts.data as ICredentialDataDecryptedObject,
 		);
 
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
 		return { ...credential, scopes };
+	}
+
+	/**
+	 * Build credentials payload ready to pass to credential testing.
+	 *
+	 * - If `credentialsToTest` is not provided, uses stored decrypted credential data.
+	 * - If `credentialsToTest` is provided, normalizes it for testing:
+	 *   - fills payload data for sharees when needed
+	 *   - restores redacted values from stored decrypted data
+	 */
+	private async prepareCredentialsForTest({
+		storedCredential,
+		user,
+		credentialsToTest,
+	}: {
+		storedCredential: CredentialsEntity;
+		user?: User;
+		credentialsToTest?: ICredentialsDecrypted;
+	}): Promise<ICredentialsDecrypted> {
+		const decryptedData = this.decrypt(storedCredential, true);
+		const mergedCredentials: ICredentialsDecrypted = credentialsToTest
+			? deepCopy(credentialsToTest)
+			: {
+					id: storedCredential.id,
+					name: storedCredential.name,
+					type: storedCredential.type,
+					data: decryptedData,
+				};
+
+		if (user && credentialsToTest) {
+			await this.replaceCredentialContentsForSharee(
+				user,
+				storedCredential,
+				decryptedData,
+				mergedCredentials,
+			);
+
+			if (mergedCredentials.data) {
+				mergedCredentials.data = this.unredact(
+					mergedCredentials.data,
+					decryptedData,
+					this.getCredentialTypeProperties(storedCredential.type),
+				);
+			}
+		}
+
+		return mergedCredentials;
 	}
 }

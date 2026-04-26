@@ -24,6 +24,7 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 	LOCAL_STORAGE_THEME,
+	LOCAL_STORAGE_SIDEBAR_WIDTH,
 	WHATS_NEW_MODAL_KEY,
 	WORKFLOW_DIFF_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
@@ -39,6 +40,8 @@ import {
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
+	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+	AI_GATEWAY_TOP_UP_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -171,6 +174,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 				AI_BUILDER_DIFF_MODAL_KEY,
+				INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+				AI_GATEWAY_TOP_UP_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -282,6 +287,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			write: (v) => String(v),
 		},
 	});
+	const sidebarWidth = useLocalStorage(LOCAL_STORAGE_SIDEBAR_WIDTH, 200);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
 	// This tracks only structural changes without metadata (name or tags)
@@ -292,6 +298,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const nodeViewInitialized = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
+	const areNotificationsSuppressed = ref(false);
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -337,9 +344,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
@@ -411,7 +416,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const lastInteractedWithNode = computed(() => {
 		if (lastInteractedWithNodeId.value) {
-			return workflowDocumentStore.value?.getNodeById(lastInteractedWithNodeId.value) ?? null;
+			return workflowDocumentStore.value.getNodeById(lastInteractedWithNodeId.value) ?? null;
 		}
 
 		return null;
@@ -530,15 +535,29 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const openExistingCredential = (id: string) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
+		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
+			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
+			projectId: undefined,
+		} as NewCredentialsModal;
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
-	const openNewCredential = (type: string, showAuthOptions = false, forceManualMode = false) => {
+	const openNewCredential = (
+		type: string,
+		showAuthOptions = false,
+		forceManualMode = false,
+		projectId?: string,
+		suggestedName?: string,
+		nodeName?: string,
+	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
 		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
 			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
 			forceManualMode,
+			projectId,
+			suggestedName,
+			nodeName,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -608,6 +627,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
 		pendingNotificationsForViews.value[view] = notifications;
+	};
+
+	const setNotificationsSuppressed = (suppressed: boolean) => {
+		areNotificationsSuppressed.value = suppressed;
 	};
 
 	function resetLastInteractedWith() {
@@ -726,11 +749,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewInitialized,
 		addFirstStepOnLoad,
 		sidebarMenuCollapsed,
+		sidebarWidth,
 		theme: computed(() => theme.value),
 		modalsById,
 		currentView,
 		isAnyModalOpen,
 		pendingNotificationsForViews,
+		areNotificationsSuppressed,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
@@ -747,6 +772,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		removeActiveAction,
 		toggleSidebarMenuCollapse,
 		setNotificationsForView,
+		setNotificationsSuppressed,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		markStateDirty,

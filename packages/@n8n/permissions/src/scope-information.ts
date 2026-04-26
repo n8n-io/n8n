@@ -28,6 +28,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage AI Usage',
 		description: 'Allows managing AI Usage settings.',
 	},
+	'encryptionKey:manage': {
+		displayName: 'Manage Encryption Keys',
+		description: 'Allows listing and rotating instance encryption keys.',
+	},
 	'annotationTag:create': {
 		displayName: 'Create Annotation Tag',
 		description: 'Allows creating new annotation tags.',
@@ -47,5 +51,9 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'credential:unshare': {
 		displayName: 'Unshare Credential',
 		description: 'Allows removing credential shares.',
+	},
+	'insights:read': {
+		displayName: 'Read Insights',
+		description: 'Allows reading insights data.',
 	},
 };
