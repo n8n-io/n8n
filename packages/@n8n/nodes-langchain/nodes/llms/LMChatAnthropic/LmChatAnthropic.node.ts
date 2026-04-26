@@ -99,42 +99,38 @@ function parseClaudeVersion(modelId: string): { major: number; minor: number } |
 }
 
 /**
- * Whether the given model id supports the adaptive thinking request shape
- * (`thinking: { type: 'adaptive' }`).
+ * Whether the given model id *requires* the adaptive thinking shape — i.e.
+ * the legacy `thinking: { type: 'enabled', budget_tokens }` request, and any
+ * non-default `temperature` / `top_p` / `top_k`, will be rejected with a 400
+ * by the Anthropic API.
  *
- * Returns `true` for Claude 4.6+ — adaptive thinking was introduced as the
- * recommended thinking-on mode in Claude Opus 4.6 (Feb 5, 2026, see Anthropic
- * API changelog) and remains supported on every newer model. Returns `false`
- * for Claude 4.5 and older, and for unrecognised / gateway-prefixed ids.
+ * Returns `true` for Claude 4.7+ (Opus 4.7 launched Apr 16, 2026 with
+ * extended-thinking budgets removed and sampling parameters also rejected
+ * at non-default values — see Anthropic API changelog and "What's new in
+ * Claude Opus 4.7"). Returns `false` for Claude 4.6 (where legacy still
+ * works but adaptive is recommended) and everything older, plus
+ * unrecognised / gateway-prefixed ids that should fall back to legacy.
  *
  * Numeric comparison rather than a hardcoded id list means future 4.x / 5.x
  * releases route to the new format automatically without a code change here.
- *
- * Note: 4.6 *supports* adaptive but still accepts the legacy
- * `{ type: 'enabled', budget_tokens }` shape. Use `requiresAdaptiveThinking`
- * to distinguish the stricter case where legacy is rejected outright.
- */
-function supportsAdaptiveThinking(modelId: string): boolean {
-	const v = parseClaudeVersion(modelId);
-	if (!v) return false;
-	return v.major > 4 || (v.major === 4 && v.minor >= 6);
-}
-
-/**
- * Whether the given model id *requires* the adaptive thinking shape — i.e.
- * the legacy `thinking: { type: 'enabled', budget_tokens }` request will be
- * rejected with a 400 by the Anthropic API.
- *
- * Returns `true` for Claude 4.7+ (Opus 4.7 launched Apr 16, 2026 with
- * extended-thinking budgets removed and `temperature` / `top_p` / `top_k`
- * also rejected at non-default values — see Anthropic API changelog and
- * "What's new in Claude Opus 4.7"). Returns `false` for Claude 4.6 (where
- * legacy still works but adaptive is recommended) and for everything older.
  */
 function requiresAdaptiveThinking(modelId: string): boolean {
 	const v = parseClaudeVersion(modelId);
 	if (!v) return false;
 	return v.major > 4 || (v.major === 4 && v.minor >= 7);
+}
+
+/**
+ * Maps a legacy `thinkingBudget` token value to the Claude 4.7+ `effort`
+ * parameter. The adaptive-thinking API has no notion of a token budget; the
+ * model decides how hard to think on its own, with `effort` as a coarse hint.
+ * This mapping preserves user intent (small budget → less thinking) without
+ * adding a new UI field on top of the existing budget input.
+ */
+function thinkingBudgetToEffort(budgetTokens: number): 'low' | 'medium' | 'high' {
+	if (budgetTokens <= 5000) return 'low';
+	if (budgetTokens <= 15000) return 'medium';
+	return 'high';
 }
 
 export class LmChatAnthropic implements INodeType {
@@ -414,20 +410,42 @@ export class LmChatAnthropic implements INodeType {
 			};
 		};
 
+		const useAdaptive = requiresAdaptiveThinking(modelName);
+
 		if (options.thinking) {
+			if (useAdaptive) {
+				const budget = options.thinkingBudget ?? MIN_THINKING_BUDGET;
+				invocationKwargs = {
+					thinking: { type: 'adaptive' },
+					output_config: { effort: thinkingBudgetToEffort(budget) },
+					max_tokens: options.maxTokensToSample ?? DEFAULT_MAX_TOKENS,
+					top_k: undefined,
+					top_p: undefined,
+					temperature: undefined,
+				};
+			} else {
+				invocationKwargs = {
+					thinking: {
+						type: 'enabled',
+						// If thinking is enabled, we need to set a budget.
+						// We fallback to 1024 as that is the minimum
+						budget_tokens: options.thinkingBudget ?? MIN_THINKING_BUDGET,
+					},
+					// The default Langchain max_tokens is -1 (no limit) but Anthropic requires a number
+					// higher than budget_tokens
+					max_tokens: options.maxTokensToSample ?? DEFAULT_MAX_TOKENS,
+					// These need to be unset when thinking is enabled.
+					// Because the invocationKwargs will override the model options
+					// we can pass options to the model and then override them here
+					top_k: undefined,
+					top_p: undefined,
+					temperature: undefined,
+				};
+			}
+		} else if (useAdaptive) {
+			// 4.7+ rejects non-default temperature/top_p/top_k even without thinking,
+			// so override whatever the user passed at the constructor level.
 			invocationKwargs = {
-				thinking: {
-					type: 'enabled',
-					// If thinking is enabled, we need to set a budget.
-					// We fallback to 1024 as that is the minimum
-					budget_tokens: options.thinkingBudget ?? MIN_THINKING_BUDGET,
-				},
-				// The default Langchain max_tokens is -1 (no limit) but Anthropic requires a number
-				// higher than budget_tokens
-				max_tokens: options.maxTokensToSample ?? DEFAULT_MAX_TOKENS,
-				// These need to be unset when thinking is enabled.
-				// Because the invocationKwargs will override the model options
-				// we can pass options to the model and then override them here
 				top_k: undefined,
 				top_p: undefined,
 				temperature: undefined,
