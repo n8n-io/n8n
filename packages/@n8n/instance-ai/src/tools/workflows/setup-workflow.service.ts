@@ -304,7 +304,10 @@ export async function buildSetupRequests(
 			existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
 
 			const existingOnNode = node.credentials?.[credentialType];
-			if (!existingOnNode?.id && existingCredentials.length > 0) {
+			// Only auto-apply when there is exactly one candidate. With multiple
+			// candidates, picking the first is a silent guess — surface the list
+			// so the setup wizard can prompt the user to choose.
+			if (!existingOnNode?.id && existingCredentials.length === 1) {
 				isAutoApplied = true;
 				if (nodeCredentials) {
 					nodeCredentials[credentialType] = {
