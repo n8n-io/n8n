@@ -10,7 +10,7 @@ export async function search(
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const teamId = this.getNodeParameter('teamId', index);
-	const returnAll = this.getNodeParameter('returnAll', 0);
+	const returnAll = this.getNodeParameter('returnAll', index);
 	const endpoint = `teams/${teamId}/channels/search`;
 
 	body.term = this.getNodeParameter('term', index) as string;
@@ -18,7 +18,7 @@ export async function search(
 	let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 	if (!returnAll) {
-		const limit = this.getNodeParameter('limit', 0);
+		const limit = this.getNodeParameter('limit', index);
 		responseData = responseData.slice(0, limit);
 	}
 
