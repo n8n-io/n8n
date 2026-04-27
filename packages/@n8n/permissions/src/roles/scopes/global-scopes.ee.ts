@@ -7,6 +7,8 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'agent:delete',
 	'agent:list',
 	'agent:execute',
+	'agent:publish',
+	'agent:unpublish',
 	'aiAssistant:manage',
 	'annotationTag:create',
 	'annotationTag:read',

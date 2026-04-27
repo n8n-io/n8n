@@ -158,6 +158,7 @@ export class AgentsController {
 	}
 
 	@Get('/catalog/integrations')
+	@ProjectScope('agent:read')
 	listIntegrations(): ChatIntegrationDescriptor[] {
 		return this.agentsService.listChatIntegrations();
 	}
@@ -281,7 +282,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/publish')
-	@ProjectScope('agent:update')
+	@ProjectScope('agent:publish')
 	async publish(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -291,7 +292,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/unpublish')
-	@ProjectScope('agent:update')
+	@ProjectScope('agent:unpublish')
 	async unpublish(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,

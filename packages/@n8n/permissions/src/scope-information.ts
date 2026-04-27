@@ -48,6 +48,14 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Execute Agent',
 		description: 'Allows running agents in chat.',
 	},
+	'agent:publish': {
+		displayName: 'Publish Agent',
+		description: 'Allows publishing agents.',
+	},
+	'agent:unpublish': {
+		displayName: 'Unpublish Agent',
+		description: 'Allows unpublishing agents.',
+	},
 	'aiAssistant:manage': {
 		displayName: 'Manage AI Usage',
 		description: 'Allows managing AI Usage settings.',
