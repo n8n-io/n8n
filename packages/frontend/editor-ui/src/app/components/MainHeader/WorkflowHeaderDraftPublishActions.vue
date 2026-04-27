@@ -564,10 +564,7 @@ defineExpose({
 							:class="$style.groupButtonRight"
 							variant="subtle"
 							icon="chevron-down"
-<<<<<<< HEAD
-=======
 							:disabled="shouldDisableActionDropdown"
->>>>>>> 23170e436a (fix(editor): Disable WF version menu only when all actions are unavailable (#29266))
 							:aria-label="i18n.baseText('node.moreActions')"
 							data-test-id="version-menu-button"
 						/>
