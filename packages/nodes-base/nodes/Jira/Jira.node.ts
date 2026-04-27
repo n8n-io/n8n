@@ -973,7 +973,7 @@ export class Jira implements INodeType {
 					try {
 						const issueKey = this.getNodeParameter('issueKey', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const jsonActive = this.getNodeParameter('jsonParameters', 0);
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body: INotify = {};
 						if (additionalFields.textBody) {
 							body.textBody = additionalFields.textBody as string;
@@ -1398,7 +1398,7 @@ export class Jira implements INodeType {
 			if (operation === 'add') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const jsonParameters = this.getNodeParameter('jsonParameters', 0);
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						const issueKey = this.getNodeParameter('issueKey', i) as string;
 						const options = this.getNodeParameter('options', i);
 
@@ -1603,7 +1603,7 @@ export class Jira implements INodeType {
 						const issueKey = this.getNodeParameter('issueKey', i) as string;
 						const commentId = this.getNodeParameter('commentId', i) as string;
 						const options = this.getNodeParameter('options', i);
-						const jsonParameters = this.getNodeParameter('jsonParameters', 0);
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						const body: IDataObject = {};
 						if (options.expand) {
 							qs.expand = options.expand as string;
