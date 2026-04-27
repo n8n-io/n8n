@@ -27,13 +27,13 @@
     "electron-store": "^8.2.0"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.3",
+    "@electron/rebuild": "^4.0.4",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "concurrently": "^8.2.0",
-    "electron": "^36.0.0",
-    "electron-builder": "^25.0.0",
+    "electron": "^41.3.0",
+    "electron-builder": "^26.9.0",
     "rimraf": "catalog:"
   }
 }

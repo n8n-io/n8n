@@ -341,18 +341,21 @@ export function createSubmitWorkflowTool(
 
 			// Save
 			let savedId: string;
-			const opts = projectId ? { projectId } : undefined;
 			try {
 				if (workflowId) {
 					const updated = await context.workflowService.updateFromWorkflowJSON(
 						workflowId,
 						json,
-						opts,
+						projectId ? { projectId } : undefined,
 					);
 					savedId = updated.id;
 				} else {
-					const created = await context.workflowService.createFromWorkflowJSON(json, opts);
+					const created = await context.workflowService.createFromWorkflowJSON(json, {
+						...(projectId ? { projectId } : {}),
+						markAsAiTemporary: true,
+					});
 					savedId = created.id;
+					(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
 				}
 			} catch (error) {
 				const errors = [

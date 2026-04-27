@@ -97,7 +97,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			} else {
 				await router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: workflowDocumentStore.value.workflowId, executionId },
+					params: { workflowId: workflowDocumentStore.value.workflowId, executionId },
 				});
 				return;
 			}
