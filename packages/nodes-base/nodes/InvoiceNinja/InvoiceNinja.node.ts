@@ -440,7 +440,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
@@ -467,7 +467,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0);
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/clients', {}, qs);
 							responseData = responseData.data;
 						}
@@ -636,7 +636,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
@@ -674,7 +674,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0);
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/invoices', {}, qs);
 							responseData = responseData.data;
 						}
@@ -752,7 +752,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
@@ -767,7 +767,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0);
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/tasks', {}, qs);
 							responseData = responseData.data;
 						}
@@ -837,7 +837,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
@@ -864,7 +864,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0);
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/payments', {}, qs);
 							responseData = responseData.data;
 						}
@@ -954,7 +954,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								this,
@@ -965,7 +965,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0);
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/expenses', {}, qs);
 							responseData = responseData.data;
 						}
@@ -1027,7 +1027,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
@@ -1045,7 +1045,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0);
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await invoiceNinjaApiRequest.call(
 								this,
 								'GET',
@@ -1230,7 +1230,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 						if (options.include) {
 							qs.include = options.include as string;
@@ -1260,7 +1260,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0);
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await invoiceNinjaApiRequest.call(
 								this,
 								'GET',
