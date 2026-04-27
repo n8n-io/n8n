@@ -406,6 +406,161 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
+		describe('adaptive thinking (Claude 4.7+)', () => {
+			it('should send adaptive thinking format for Claude Opus 4.7 when thinking is enabled', async () => {
+				const mockContext = setupMockContext();
+				const options = {
+					thinking: true,
+					thinkingBudget: 2048,
+					maxTokensToSample: 8192,
+				};
+
+				mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return 'claude-opus-4-7';
+					if (paramName === 'options') return options;
+					return undefined;
+				});
+
+				await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+				expect(MockedChatAnthropic).toHaveBeenCalledWith(
+					expect.objectContaining({
+						model: 'claude-opus-4-7',
+						invocationKwargs: {
+							thinking: { type: 'adaptive' },
+							output_config: { effort: 'low' },
+							max_tokens: 8192,
+							top_k: undefined,
+							top_p: undefined,
+							temperature: undefined,
+						},
+					}),
+				);
+			});
+
+			it('should send legacy thinking format for Claude Sonnet 4.6 when thinking is enabled', async () => {
+				const mockContext = setupMockContext();
+				const options = {
+					thinking: true,
+					thinkingBudget: 2048,
+					maxTokensToSample: 4096,
+				};
+
+				mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return 'claude-sonnet-4-6';
+					if (paramName === 'options') return options;
+					return undefined;
+				});
+
+				await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+				expect(MockedChatAnthropic).toHaveBeenCalledWith(
+					expect.objectContaining({
+						model: 'claude-sonnet-4-6',
+						invocationKwargs: {
+							thinking: {
+								type: 'enabled',
+								budget_tokens: 2048,
+							},
+							max_tokens: 4096,
+							top_k: undefined,
+							top_p: undefined,
+							temperature: undefined,
+						},
+					}),
+				);
+			});
+
+			it.each([
+				[1024, 'low'],
+				[5000, 'low'],
+				[5001, 'medium'],
+				[15000, 'medium'],
+				[15001, 'high'],
+				[64000, 'high'],
+			])('should map thinkingBudget %i tokens to effort "%s"', async (budget, expectedEffort) => {
+				const mockContext = setupMockContext();
+				const options = {
+					thinking: true,
+					thinkingBudget: budget,
+				};
+
+				mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return 'claude-opus-4-7';
+					if (paramName === 'options') return options;
+					return undefined;
+				});
+
+				await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+				expect(MockedChatAnthropic).toHaveBeenCalledWith(
+					expect.objectContaining({
+						invocationKwargs: expect.objectContaining({
+							thinking: { type: 'adaptive' },
+							output_config: { effort: expectedEffort },
+						}),
+					}),
+				);
+			});
+
+			it('should not send any thinking field for Claude Opus 4.7 when thinking is disabled', async () => {
+				const mockContext = setupMockContext();
+				const options = {
+					thinking: false,
+					temperature: 0.8,
+					topK: 40,
+					topP: 0.9,
+				};
+
+				mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return 'claude-opus-4-7';
+					if (paramName === 'options') return options;
+					return undefined;
+				});
+
+				await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+				expect(MockedChatAnthropic).toHaveBeenCalledWith(
+					expect.objectContaining({
+						model: 'claude-opus-4-7',
+						// 4.7 rejects non-default sampling params, so they're stripped via invocationKwargs
+						invocationKwargs: {
+							top_k: undefined,
+							top_p: undefined,
+							temperature: undefined,
+						},
+					}),
+				);
+
+				const callArgs = MockedChatAnthropic.mock.calls[0][0] as { invocationKwargs: object };
+				expect(callArgs.invocationKwargs).not.toHaveProperty('thinking');
+				expect(callArgs.invocationKwargs).not.toHaveProperty('output_config');
+			});
+
+			it('should not send any thinking field for Claude Sonnet 4.6 when thinking is disabled', async () => {
+				const mockContext = setupMockContext();
+				const options = {
+					thinking: false,
+					temperature: 0.8,
+				};
+
+				mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return 'claude-sonnet-4-6';
+					if (paramName === 'options') return options;
+					return undefined;
+				});
+
+				await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+				expect(MockedChatAnthropic).toHaveBeenCalledWith(
+					expect.objectContaining({
+						model: 'claude-sonnet-4-6',
+						invocationKwargs: {},
+					}),
+				);
+			});
+		});
+
 		it('should create N8nLlmTracing callback with tokens usage parser', async () => {
 			const mockContext = setupMockContext();
 

@@ -84,11 +84,16 @@ const DEFAULT_MAX_TOKENS = 4096;
  * Parses the `<major>-<minor>` version pair from a new-style Anthropic model id
  * (`claude-{family}-{major}-{minor}[-date]`, e.g. `claude-opus-4-7`,
  * `claude-sonnet-4-5-20250929`). Returns `null` for old-style ids
- * (`claude-3-5-sonnet-20241022`, `claude-2.1`) and unknown / gateway-prefixed
- * ids — both predate adaptive thinking and should fall back to legacy behaviour.
+ * (`claude-3-5-sonnet-20241022`, `claude-sonnet-4-20250514`, `claude-2.1`)
+ * and unknown / gateway-prefixed ids — both predate adaptive thinking and
+ * should fall back to legacy behaviour.
+ *
+ * The minor-version segment is restricted to 1–2 digits so that date
+ * suffixes (e.g. `-20250514` on the original Claude Sonnet 4) aren't
+ * mis-parsed as a giant minor version.
  */
 function parseClaudeVersion(modelId: string): { major: number; minor: number } | null {
-	const match = /claude-[a-z]+-(\d+)-(\d+)(?:-|$)/.exec(modelId);
+	const match = /claude-[a-z]+-(\d+)-(\d{1,2})(?:-|$)/.exec(modelId);
 	if (!match) return null;
 
 	const major = Number(match[1]);
