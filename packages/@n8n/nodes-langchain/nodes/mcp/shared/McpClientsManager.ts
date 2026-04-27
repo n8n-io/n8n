@@ -54,10 +54,12 @@ export class McpClientsManager {
 
 	private cleanupTimer: NodeJS.Timeout;
 
+	private readonly exitHandler = () => this.shutdown();
+
 	constructor() {
 		this.cleanupTimer = setInterval(() => this.evictStale(), EVICTION_INTERVAL_MS);
 		this.cleanupTimer.unref();
-		process.on('exit', () => this.shutdown());
+		process.on('exit', this.exitHandler);
 	}
 
 	/** Test-only: total entries currently held. */
@@ -81,8 +83,6 @@ export class McpClientsManager {
 		factory: () => Promise<{ client: Client; mcpTools: McpTool[] }>,
 		opts: GetOrConnectOpts = {},
 	): Promise<{ client: Client; mcpTools: McpTool[] }> {
-		this.evictStale(opts.logger);
-
 		const cached = this.activeClients.get(key);
 		if (cached) {
 			opts.logger?.debug('McpClientsManager: cache hit', { cacheKey: key });
@@ -135,6 +135,7 @@ export class McpClientsManager {
 
 	/** Evict idle entries (TTL on lastUsedAt) and enforce max cache size. */
 	evictStale(logger?: McpCacheLogger): void {
+		if (this.activeClients.size === 0) return;
 		const now = Date.now();
 
 		let idleEvicted = 0;
@@ -201,7 +202,8 @@ export class McpClientsManager {
 
 	shutdown(): void {
 		clearInterval(this.cleanupTimer);
-		for (const key of this.activeClients.keys()) {
+		process.off('exit', this.exitHandler);
+		for (const key of [...this.activeClients.keys()]) {
 			this.remove(key);
 		}
 	}
