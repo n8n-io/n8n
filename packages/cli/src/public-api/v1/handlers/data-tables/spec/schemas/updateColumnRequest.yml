@@ -1,8 +1,7 @@
 type: object
 properties:
   name:
-    type: string
-    description: New column name
+    $ref: './dataTableColumnName.yml'
   index:
     type: integer
     minimum: 0
