@@ -61,6 +61,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
+		allowArbitraryValues: true, // Allows users to specify objects using expressions for custom objects without showing an error
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjects',
 		},
