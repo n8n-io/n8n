@@ -146,7 +146,7 @@ export function buildSetupCardTitle(
 	getCredentialAppLabel: (credentialType: string) => string,
 	t: (key: string, opts?: { interpolate?: Record<string, string | number> }) => string,
 ): string {
-	// Param-only / trigger-only cards are always single-node by construction (see `useSetupCards`).
+	// Single-node by construction (see useSetupCards).
 	if (!card.credentialType) {
 		return card.nodes[0].node.name;
 	}
