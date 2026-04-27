@@ -54,6 +54,7 @@ export async function pushbulletApiRequestAllItems(
 	do {
 		responseData = await pushbulletApiRequest.call(this, method, endpoint, body, query);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		query.cursor = responseData.cursor;
 	} while (responseData.cursor !== undefined);
 
 	return returnData;
