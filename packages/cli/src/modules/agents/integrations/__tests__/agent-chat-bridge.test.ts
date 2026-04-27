@@ -72,8 +72,6 @@ class BufferingTestIntegration extends AgentChatIntegration {
 	readonly description = '';
 	readonly displayLabel = 'Test Buffered';
 	readonly displayIcon = 'circle';
-	readonly displayHelpText = '';
-	readonly displayConnectedText = '';
 	readonly disableStreaming = true;
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
@@ -87,8 +85,6 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	readonly description = '';
 	readonly displayLabel = 'Test Streaming';
 	readonly displayIcon = 'circle';
-	readonly displayHelpText = '';
-	readonly displayConnectedText = '';
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}

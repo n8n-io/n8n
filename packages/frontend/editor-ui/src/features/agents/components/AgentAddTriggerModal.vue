@@ -83,6 +83,30 @@ function hasError(type: string): boolean {
 	return (errorMessages.value[type] ?? '').length > 0;
 }
 
+// Help / connected copy lives in FE i18n (keyed by integration type) so it can
+// be localized — backend ships only stable brand metadata (label, icon).
+const HELP_TEXT_KEYS = {
+	slack: 'agents.builder.addTrigger.helpText.slack',
+	telegram: 'agents.builder.addTrigger.helpText.telegram',
+	linear: 'agents.builder.addTrigger.helpText.linear',
+} as const;
+
+const CONNECTED_TEXT_KEYS = {
+	slack: 'agents.builder.addTrigger.connectedText.slack',
+	telegram: 'agents.builder.addTrigger.connectedText.telegram',
+	linear: 'agents.builder.addTrigger.connectedText.linear',
+} as const;
+
+function integrationHelpText(type: string): string {
+	const key = HELP_TEXT_KEYS[type as keyof typeof HELP_TEXT_KEYS];
+	return key ? i18n.baseText(key) : '';
+}
+
+function integrationConnectedText(type: string): string {
+	const key = CONNECTED_TEXT_KEYS[type as keyof typeof CONNECTED_TEXT_KEYS];
+	return key ? i18n.baseText(key) : '';
+}
+
 function webhookUrlFor(platform: string): string {
 	const base = rootStore.urlBaseEditor;
 	return `${base}rest/projects/${props.data.projectId}/agents/v2/${props.data.agentId}/webhooks/${platform}`;
@@ -297,7 +321,7 @@ onMounted(async () => {
 
 					<div :class="$style.cardBody">
 						<N8nText :class="$style.description" size="small">
-							{{ integration.helpText }}
+							{{ integrationHelpText(integration.type) }}
 						</N8nText>
 
 						<!-- Linear webhook URL row — shown regardless of connection state -->
@@ -424,7 +448,7 @@ onMounted(async () => {
 						<!-- Connected state -->
 						<div v-else :class="$style.connectedSection">
 							<N8nText size="small">
-								{{ integration.connectedText }}
+								{{ integrationConnectedText(integration.type) }}
 							</N8nText>
 
 							<!-- Slack App Manifest (Slack only) -->

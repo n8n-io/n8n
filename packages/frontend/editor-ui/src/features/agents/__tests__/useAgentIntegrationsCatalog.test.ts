@@ -18,8 +18,6 @@ describe('useAgentIntegrationsCatalog', () => {
 			label: 'Slack',
 			icon: 'hashtag',
 			credentialTypes: ['slackApi'],
-			helpText: 'Connect Slack.',
-			connectedText: 'Connected to Slack.',
 		},
 	];
 
