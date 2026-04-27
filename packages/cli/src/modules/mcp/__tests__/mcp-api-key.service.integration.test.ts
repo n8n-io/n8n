@@ -57,7 +57,7 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 		await testDb.terminate();
 	});
 
-	it('accepts a valid MCP API key and returns the owning user (AC1)', async () => {
+	it('accepts a valid MCP API key and returns the owning user', async () => {
 		const owner = await createOwner();
 		const apiKey = await createMcpApiKey(owner);
 
@@ -68,7 +68,7 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 		expect(result.context).toBeUndefined();
 	});
 
-	it('accepts a scoped JWT and returns the subject when no actor is present (AC2)', async () => {
+	it('accepts a scoped JWT and returns the subject when no actor is present', async () => {
 		const subject = await createOwner();
 
 		const result = await service.verifyApiKey(makeScopedJwt(jwtService, subject.id));
@@ -78,7 +78,7 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 		expect(result.context).toBeUndefined();
 	});
 
-	it('accepts a scoped JWT with delegation and returns the actor as user (AC2)', async () => {
+	it('accepts a scoped JWT with delegation and returns the actor as user', async () => {
 		const subject = await createOwner();
 		const actor = await createMember();
 
