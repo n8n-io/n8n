@@ -40,6 +40,7 @@ interface PairwiseArgs {
 	iterations: number;
 	concurrency: number;
 	maxExamples?: number;
+	exampleIds?: Set<string>;
 	timeoutMs: number;
 	outputDir: string;
 	judgeModel: string;
@@ -64,6 +65,17 @@ function parseArgs(argv: string[]): PairwiseArgs {
 	const iso = new Date().toISOString().replace(/[:.]/g, '-');
 	const defaultOutputDir = path.resolve(process.cwd(), '.output', 'pairwise', iso);
 
+	const exampleIdsFile = get('--example-ids-file');
+	let exampleIds: Set<string> | undefined;
+	if (exampleIdsFile) {
+		const content = require('node:fs').readFileSync(exampleIdsFile, 'utf8') as string;
+		const ids = content
+			.split('\n')
+			.map((s) => s.trim())
+			.filter((s) => s.length > 0 && !s.startsWith('#'));
+		exampleIds = new Set(ids);
+	}
+
 	return {
 		backend: backendRaw,
 		dataset: get('--dataset') ?? DEFAULTS.DATASET_NAME,
@@ -71,6 +83,7 @@ function parseArgs(argv: string[]): PairwiseArgs {
 		iterations: Number(get('--iterations') ?? DEFAULTS.REPETITIONS),
 		concurrency: Number(get('--concurrency') ?? DEFAULTS.CONCURRENCY),
 		maxExamples: get('--max-examples') ? Number(get('--max-examples')) : undefined,
+		exampleIds,
 		timeoutMs: Number(get('--timeout-ms') ?? DEFAULTS.TIMEOUT_MS),
 		outputDir: get('--output-dir') ?? defaultOutputDir,
 		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-5-20250929',
@@ -414,7 +427,21 @@ async function main(): Promise<void> {
 	});
 
 	const examples = await loadExamples(args, logger);
-	const selected = args.maxExamples !== undefined ? examples.slice(0, args.maxExamples) : examples;
+	let filtered = examples;
+	if (args.exampleIds) {
+		const ids = args.exampleIds;
+		filtered = examples.filter((e) => ids.has(e.id));
+		const missing = Array.from(ids).filter((id) => !examples.some((e) => e.id === id));
+		logger.info(
+			`Filtered to ${filtered.length} examples by --example-ids-file (${ids.size} requested${missing.length ? `, ${missing.length} not found` : ''})`,
+		);
+		if (missing.length) {
+			logger.warn(
+				`Missing IDs: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ', ...' : ''}`,
+			);
+		}
+	}
+	const selected = args.maxExamples !== undefined ? filtered.slice(0, args.maxExamples) : filtered;
 	logger.info(`Running ${selected.length} examples x ${args.iterations} iterations`);
 
 	const limit = pLimit(args.concurrency);
