@@ -1,0 +1,135 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "STRING",
+      "string": "[{\"type\":\"text\",\"text\":\"You generate a short descriptive title for a conversatio",
+      "subString": true
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "x-envoy-upstream-service-time": [
+        "1417"
+      ],
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=6HjntrhZsNUk8TyYbRqxStsqbb2LpO7w3oI14G_ROH8-1777302292.2853272-1.0.1.1-PVYXuy5JWMz2enfnj0hd34WCebVgtgq.FOPfN6QSG_g; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "server-timing": [
+        "x-originResponse;dur=1419"
+      ],
+      "request-id": [
+        "req_011CaUUtVB6EZL8AUeqs9L8b"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-04-27T15:04:53Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-04-27T15:04:52Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19998"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-04-27T15:04:53Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-04-27T15:04:53Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "15000000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Mon, 27 Apr 2026 15:04:53 GMT"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "CF-RAY": [
+        "9f2eb8decb11c0a1-PRG"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "6HjntrhZsNUk8TyYbRqxStsqbb2LpO7w3oI14G_ROH8-1777302292.2853272-1.0.1.1-PVYXuy5JWMz2enfnj0hd34WCebVgtgq.FOPfN6QSG_g"
+    },
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-sonnet-4-6",
+        "id": "msg_01Ku561abKAqVWtQGr7WU4Cf",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "Manual trigger with approval test set node"
+          }
+        ],
+        "stop_reason": "end_turn",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 401,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 10,
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC02IiwiaWQiOiJtc2dfMDFLdTU2MWFiS0FxVld0UUdyN1dVNENmIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiTWFudWFsIHRyaWdnZXIgd2l0aCBhcHByb3ZhbCB0ZXN0IHNldCBub2RlIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjQwMSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjEwLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0="
+    }
+  },
+  "id": "1777302307895-unknown-host-POST-_v1_messages-8b8c963c.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}
