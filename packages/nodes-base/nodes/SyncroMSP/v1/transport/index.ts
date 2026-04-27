@@ -76,7 +76,7 @@ export async function validateCredentials(
 		qs: {
 			api_key: apiKey,
 		},
-		url: `https://${subdomain}.syncromsp.com/api/v1//me`,
+		url: `https://${subdomain}.syncromsp.com/api/v1/me`,
 	};
 
 	return await this.helpers.request(options);
