@@ -146,11 +146,11 @@ export function buildSetupCardTitle(
 	getCredentialAppLabel: (credentialType: string) => string,
 	t: (key: string, opts?: { interpolate?: Record<string, string | number> }) => string,
 ): string {
-	// Single-node cards preserve the existing raw node-name behavior — no trimming, no truncation.
-	if (card.nodes.length === 1) {
-		return card.nodes[0].node.name;
+	// Cards without a credentialType (param-only / trigger-only) keep the raw node-name title.
+	if (!card.credentialType) {
+		if (card.nodes.length === 1) return card.nodes[0].node.name;
+		return 'Setup';
 	}
-	if (!card.credentialType) return 'Setup';
 
 	const credLabel = stripLeadingSetUp(getCredentialAppLabel(card.credentialType));
 	const sep = t('instanceAi.workflowSetup.cardTitleNodesSeparator');
@@ -160,6 +160,11 @@ export function buildSetupCardTitle(
 		.filter((name): name is string => Boolean(name));
 
 	if (cleanNames.length === 0) {
+		// Single-node with a blank/whitespace name: omit the node reference rather than
+		// produce the awkward "Set up X for 1 nodes". Multi-node falls through to the count form.
+		if (card.nodes.length === 1) {
+			return t('instanceAi.credential.setupTitle', { interpolate: { name: credLabel } });
+		}
 		return t('instanceAi.workflowSetup.cardTitleForNodesCount', {
 			interpolate: { name: credLabel, count: card.nodes.length },
 		});

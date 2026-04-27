@@ -431,6 +431,7 @@ const credLabel = () => 'Slack';
 
 const t = (key: string, opts?: { interpolate?: Record<string, string | number> }) => {
 	const templates: Record<string, string> = {
+		'instanceAi.credential.setupTitle': 'Set up {name}',
 		'instanceAi.workflowSetup.cardTitleForNodes': 'Set up {name} for {nodes}',
 		'instanceAi.workflowSetup.cardTitleForNodesPlusMore':
 			'Set up {name} for {nodes} and {extra} more',
@@ -446,11 +447,13 @@ const t = (key: string, opts?: { interpolate?: Record<string, string | number> }
 };
 
 describe('buildSetupCardTitle', () => {
-	it('returns the raw node name for a single-node card with a credential (preserves current behavior, no trimming)', () => {
-		expect(buildSetupCardTitle(makeTitleCard(['Send Welcome']), credLabel, t)).toBe('Send Welcome');
+	it('uses the credential label and node name for a single-node card with a credential', () => {
+		expect(buildSetupCardTitle(makeTitleCard(['Send Welcome']), credLabel, t)).toBe(
+			'Set up Slack for Send Welcome',
+		);
 	});
 
-	it('returns the raw node name for a single-node card even when credentialType is missing', () => {
+	it('returns the raw node name for a single-node card with no credentialType (param-only / trigger-only)', () => {
 		const card = { ...makeTitleCard(['Some Node']), credentialType: undefined };
 		expect(buildSetupCardTitle(card, credLabel, t)).toBe('Some Node');
 	});
@@ -458,6 +461,17 @@ describe('buildSetupCardTitle', () => {
 	it('returns the literal "Setup" for a multi-node card with no credentialType', () => {
 		const card = { ...makeTitleCard(['A', 'B']), credentialType: undefined };
 		expect(buildSetupCardTitle(card, credLabel, t)).toBe('Setup');
+	});
+
+	it('trims and truncates the single-node name when a credentialType is set', () => {
+		const longName = 'A'.repeat(80);
+		const card = makeTitleCard([longName]);
+		const result = buildSetupCardTitle(card, credLabel, t);
+		expect(result).toMatch(/^Set up Slack for A{39}…$/);
+	});
+
+	it('falls back to the credential-only title when a single-node name is blank/whitespace and credentialType is set', () => {
+		expect(buildSetupCardTitle(makeTitleCard(['   ']), credLabel, t)).toBe('Set up Slack');
 	});
 
 	it('joins all node names for 2-3 nodes', () => {
