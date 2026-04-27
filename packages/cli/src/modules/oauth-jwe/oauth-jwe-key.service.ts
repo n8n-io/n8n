@@ -9,21 +9,24 @@ import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { CacheService } from '@/services/cache/cache.service';
+
 import {
-	JWE_KEY_ALGORITHM,
+	JWE_KEY_ALGORITHMS,
 	JWE_KEY_CACHE_KEY,
 	JWE_KEY_USE,
 	JWE_PRIVATE_KEY_TYPE,
+	type JweKeyAlgorithm,
 } from './oauth-jwe.constants';
 
-import { CacheService } from '@/services/cache/cache.service';
-
-type OAuthJweKeyPairData = {
+type OAuthJweKeyEntry = {
+	algorithm: JweKeyAlgorithm;
 	encryptedPrivateJwk: string;
 	kid: string;
 };
 
 type OAuthJweKeyPair = {
+	algorithm: JweKeyAlgorithm;
 	privateKey: CryptoKey;
 	publicKey: CryptoKey;
 	publicJwk: JWK;
@@ -31,11 +34,11 @@ type OAuthJweKeyPair = {
 };
 
 /**
- * Manages a single instance-level JWE key pair pinned to {@link JWE_KEY_ALGORITHM}
- * (`RSA-OAEP-256`). The `deployment_key` storage layer and partial unique index
- * are scoped per algorithm, so future work can add a second active key under a
- * different algorithm without changing the schema; this service would then need
- * to expose lookups by algorithm.
+ * Manages the instance-level OAuth JWE key pairs. One active private JWK is
+ * stored in `deployment_key` per algorithm in {@link JWE_KEY_ALGORITHMS},
+ * enforced by a partial unique index on `(type, algorithm)`. Today the list
+ * holds only `RSA-OAEP-256`; adding another algorithm is a constant-only
+ * change and the next boot generates the missing key pair.
  */
 @Service()
 export class OAuthJweKeyService {
@@ -49,83 +52,111 @@ export class OAuthJweKeyService {
 	}
 
 	/**
-	 * Ensures the instance OAuth JWE key pair exists in the database and is
-	 * present in the shared cache. Safe to call concurrently across mains:
-	 * the database's partial unique index serialises insertion attempts and
-	 * losers re-read the winner's row.
+	 * Ensures every supported algorithm has an active private JWK in the
+	 * database and is present in the shared cache. Safe to call concurrently
+	 * across mains: the partial unique index serialises insertion attempts
+	 * per algorithm and losers re-read the winner's row.
 	 */
 	async initialize(): Promise<void> {
 		await this.loadData();
 	}
 
 	/**
-	 * Returns the instance OAuth JWE key pair with imported {@link CryptoKey}
-	 * handles. Reads from the shared cache (populated from the database on
-	 * miss) so every main and worker sees the same pair under queue mode.
+	 * Returns the OAuth JWE key pair for the given algorithm, with imported
+	 * {@link CryptoKey} handles. Reads from the shared cache (populated from
+	 * the database on miss) so every main and worker sees the same pair under
+	 * queue mode.
 	 */
-	async getKeyPair(): Promise<OAuthJweKeyPair> {
-		const data = await this.loadData();
-		return await this.deriveKeyPair(data);
+	async getKeyPair(algorithm: JweKeyAlgorithm = JWE_KEY_ALGORITHMS[0]): Promise<OAuthJweKeyPair> {
+		const entry = await this.findEntry(algorithm);
+		return await this.deriveKeyPair(entry);
 	}
 
 	/**
-	 * Returns the public JWK of the instance OAuth JWE key pair. For
-	 * credential-setup UIs or a future JWKS endpoint that advertises the key
-	 * to an IdP.
+	 * Returns the public JWK for the given algorithm. For credential-setup
+	 * UIs or a future JWKS endpoint that advertises the key to an IdP.
 	 */
-	async getPublicJwk(): Promise<JWK> {
-		const { publicJwk } = await this.getKeyPair();
+	async getPublicJwk(algorithm: JweKeyAlgorithm = JWE_KEY_ALGORITHMS[0]): Promise<JWK> {
+		const { publicJwk } = await this.getKeyPair(algorithm);
 		return publicJwk;
 	}
 
-	private async loadData(): Promise<OAuthJweKeyPairData> {
-		const data = await this.cacheService.get<OAuthJweKeyPairData>(JWE_KEY_CACHE_KEY, {
+	/** Returns the public JWK for every supported algorithm, e.g. for a JWKS endpoint. */
+	async getPublicJwks(): Promise<JWK[]> {
+		const data = await this.loadData();
+		return await Promise.all(
+			data.map(async (entry) => (await this.deriveKeyPair(entry)).publicJwk),
+		);
+	}
+
+	private async findEntry(algorithm: JweKeyAlgorithm): Promise<OAuthJweKeyEntry> {
+		const data = await this.loadData();
+		const entry = data.find((e) => e.algorithm === algorithm);
+		if (!entry) {
+			throw new UnexpectedError(`No active OAuth JWE key found for algorithm "${algorithm}"`);
+		}
+		return entry;
+	}
+
+	private async loadData(): Promise<OAuthJweKeyEntry[]> {
+		const data = await this.cacheService.get<OAuthJweKeyEntry[]>(JWE_KEY_CACHE_KEY, {
 			refreshFn: async () => await this.loadOrGenerate(),
 		});
-		if (!data) {
+		if (!data || data.length === 0) {
 			throw new UnexpectedError('OAuth JWE key pair unavailable');
 		}
 		return data;
 	}
 
-	private async deriveKeyPair(data: OAuthJweKeyPairData): Promise<OAuthJweKeyPair> {
-		const decryptedPrivate = this.cipher.decryptWithInstanceKey(data.encryptedPrivateJwk);
+	private async deriveKeyPair(entry: OAuthJweKeyEntry): Promise<OAuthJweKeyPair> {
+		const decryptedPrivate = this.cipher.decryptWithInstanceKey(entry.encryptedPrivateJwk);
 		const privateJwk = jsonParse<JWK>(decryptedPrivate, {
 			errorMessage: 'Failed to parse OAuth JWE private key',
 		});
 		const publicJwk = toPublicJwk(privateJwk);
 
 		const [publicKey, privateKey] = await Promise.all([
-			importJWK(publicJwk, JWE_KEY_ALGORITHM),
-			importJWK(privateJwk, JWE_KEY_ALGORITHM),
+			importJWK(publicJwk, entry.algorithm),
+			importJWK(privateJwk, entry.algorithm),
 		]);
 
 		return {
+			algorithm: entry.algorithm,
 			publicKey: publicKey as CryptoKey,
 			privateKey: privateKey as CryptoKey,
 			publicJwk,
-			kid: data.kid,
+			kid: entry.kid,
 		};
 	}
 
-	private async loadOrGenerate(): Promise<OAuthJweKeyPairData> {
-		const existing = await this.readActivePairData();
-		if (existing) return existing;
+	private async loadOrGenerate(): Promise<OAuthJweKeyEntry[]> {
+		const entries: OAuthJweKeyEntry[] = [];
 
-		await this.generateAndPersist();
+		for (const algorithm of JWE_KEY_ALGORITHMS) {
+			let entry = await this.readActiveEntry(algorithm);
 
-		const winner = await this.readActivePairData();
-		if (!winner) {
-			throw new UnexpectedError('OAuth JWE key pair not found after generation');
+			if (!entry) {
+				await this.generateAndPersist(algorithm);
+				entry = await this.readActiveEntry(algorithm);
+			}
+
+			if (!entry) {
+				throw new UnexpectedError(
+					`OAuth JWE key for algorithm "${algorithm}" not found after generation`,
+				);
+			}
+
+			entries.push(entry);
 		}
-		return winner;
+
+		return entries;
 	}
 
-	private async readActivePairData(): Promise<OAuthJweKeyPairData | null> {
+	private async readActiveEntry(algorithm: JweKeyAlgorithm): Promise<OAuthJweKeyEntry | null> {
 		const privateRow = await this.deploymentKeyRepository.findOne({
 			where: {
 				type: JWE_PRIVATE_KEY_TYPE,
-				algorithm: JWE_KEY_ALGORITHM,
+				algorithm,
 				status: 'active',
 			},
 		});
@@ -137,25 +168,24 @@ export class OAuthJweKeyService {
 		});
 
 		if (!privateJwk.kid) {
-			throw new UnexpectedError('OAuth JWE private key is missing a kid');
+			throw new UnexpectedError(`OAuth JWE private key for "${algorithm}" is missing a kid`);
 		}
 
 		return {
+			algorithm,
 			encryptedPrivateJwk: privateRow.value,
 			kid: privateJwk.kid,
 		};
 	}
 
-	private async generateAndPersist(): Promise<void> {
-		const { privateKey } = await generateKeyPair(JWE_KEY_ALGORITHM, {
-			extractable: true,
-		});
+	private async generateAndPersist(algorithm: JweKeyAlgorithm): Promise<void> {
+		const { privateKey } = await generateKeyPair(algorithm, { extractable: true });
 		const kid = randomUUID();
 
 		const privateJwk: JWK = {
 			...(await exportJWK(privateKey)),
 			kid,
-			alg: JWE_KEY_ALGORITHM,
+			alg: algorithm,
 			use: JWE_KEY_USE,
 		};
 
@@ -166,17 +196,17 @@ export class OAuthJweKeyService {
 				id: generateNanoId(),
 				type: JWE_PRIVATE_KEY_TYPE,
 				value: encryptedPrivate,
-				algorithm: JWE_KEY_ALGORITHM,
+				algorithm,
 				status: 'active',
 			});
 
-			this.logger.info('Generated new instance OAuth JWE key pair', { kid });
+			this.logger.info('Generated new instance OAuth JWE key pair', { algorithm, kid });
 		} catch (error) {
 			if (!isUniqueConstraintViolation(error)) throw error;
 
 			this.logger.debug(
 				'OAuth JWE key insert raced with another main; re-reading winner',
-				error instanceof Error ? { message: error.message } : {},
+				error instanceof Error ? { algorithm, message: error.message } : { algorithm },
 			);
 		}
 	}
