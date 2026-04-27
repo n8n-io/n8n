@@ -27,7 +27,7 @@ export async function nasaApiRequest(
 		json: true,
 	};
 
-	if (Object.keys(option)) {
+	if (Object.keys(option).length) {
 		Object.assign(options, option);
 	}
 
