@@ -976,6 +976,8 @@ export class HubspotV1 implements INodeType {
 			}
 		} else {
 			for (let i = 0; i < length; i++) {
+				const resource = this.getNodeParameter('resource', i);
+				const operation = this.getNodeParameter('operation', i);
 				try {
 					//https://developers.hubspot.com/docs/methods/contacts/create_or_update
 					if (resource === 'contact') {
@@ -1328,7 +1330,7 @@ export class HubspotV1 implements INodeType {
 						//https://developers.hubspot.com/docs/methods/contacts/get_contacts
 						if (operation === 'getAll') {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 							if (additionalFields.formSubmissionMode) {
 								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
 							}
@@ -1352,14 +1354,14 @@ export class HubspotV1 implements INodeType {
 									qs,
 								);
 							} else {
-								qs.count = this.getNodeParameter('limit', 0);
+								qs.count = this.getNodeParameter('limit', i);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.contacts;
 							}
 						}
 						//https://developers.hubspot.com/docs/methods/contacts/get_recently_created_contacts
 						if (operation === 'getRecentlyCreatedUpdated') {
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 							const filters = this.getNodeParameter('filters', i);
 							if (filters.formSubmissionMode) {
 								qs.formSubmissionMode = filters.formSubmissionMode as string;
@@ -1386,7 +1388,7 @@ export class HubspotV1 implements INodeType {
 									qs,
 								);
 							} else {
-								qs.count = this.getNodeParameter('limit', 0);
+								qs.count = this.getNodeParameter('limit', i);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.contacts;
 							}
@@ -1400,7 +1402,7 @@ export class HubspotV1 implements INodeType {
 						//https://developers.hubspot.com/docs/api/crm/search
 						if (operation === 'search') {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 							const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
 							const sortBy = additionalFields.sortBy || 'createdate';
 							const direction = additionalFields.direction || 'DESCENDING';
@@ -1445,7 +1447,7 @@ export class HubspotV1 implements INodeType {
 									qs,
 								);
 							} else {
-								body.limit = this.getNodeParameter('limit', 0);
+								body.limit = this.getNodeParameter('limit', i);
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
 								responseData = responseData.results;
 							}
@@ -1918,7 +1920,7 @@ export class HubspotV1 implements INodeType {
 						//https://developers.hubspot.com/docs/methods/companies/get-all-companies
 						if (operation === 'getAll') {
 							const options = this.getNodeParameter('options', i);
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 							if (options.includeMergeAudits) {
 								qs.includeMergeAudits = options.includeMergeAudits as boolean;
 							}
@@ -1939,7 +1941,7 @@ export class HubspotV1 implements INodeType {
 									qs,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', 0);
+								qs.limit = this.getNodeParameter('limit', i);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.companies;
 							}
@@ -1947,7 +1949,7 @@ export class HubspotV1 implements INodeType {
 						//https://developers.hubspot.com/docs/methods/companies/get_companies_modified
 						if (operation === 'getRecentlyCreated' || operation === 'getRecentlyModified') {
 							let endpoint;
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 							if (operation === 'getRecentlyCreated') {
 								endpoint = '/companies/v2/companies/recent/created';
 							} else {
@@ -1967,7 +1969,7 @@ export class HubspotV1 implements INodeType {
 									qs,
 								);
 							} else {
-								qs.count = this.getNodeParameter('limit', 0);
+								qs.count = this.getNodeParameter('limit', i);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
 							}
@@ -1976,7 +1978,7 @@ export class HubspotV1 implements INodeType {
 						if (operation === 'searchByDomain') {
 							const domain = this.getNodeParameter('domain', i) as string;
 							const options = this.getNodeParameter('options', i);
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 							const body: IDataObject = {
 								requestOptions: {},
 							};
@@ -1993,7 +1995,7 @@ export class HubspotV1 implements INodeType {
 									body,
 								);
 							} else {
-								body.limit = this.getNodeParameter('limit', 0);
+								body.limit = this.getNodeParameter('limit', i);
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
 								responseData = responseData.results;
 							}
@@ -2150,7 +2152,7 @@ export class HubspotV1 implements INodeType {
 						}
 						if (operation === 'getAll') {
 							const filters = this.getNodeParameter('filters', i);
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 							if (filters.includeAssociations) {
 								qs.includeAssociations = filters.includeAssociations as boolean;
 							}
@@ -2177,7 +2179,7 @@ export class HubspotV1 implements INodeType {
 									qs,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', 0);
+								qs.limit = this.getNodeParameter('limit', i);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.deals;
 							}
@@ -2185,7 +2187,7 @@ export class HubspotV1 implements INodeType {
 						if (operation === 'getRecentlyCreated' || operation === 'getRecentlyModified') {
 							let endpoint;
 							const filters = this.getNodeParameter('filters', i);
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 							if (filters.since) {
 								qs.since = new Date(filters.since as string).getTime();
 							}
@@ -2207,7 +2209,7 @@ export class HubspotV1 implements INodeType {
 									qs,
 								);
 							} else {
-								qs.count = this.getNodeParameter('limit', 0);
+								qs.count = this.getNodeParameter('limit', i);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
 							}
@@ -2220,7 +2222,7 @@ export class HubspotV1 implements INodeType {
 						//https://developers.hubspot.com/docs/api/crm/search
 						if (operation === 'search') {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 							const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
 							const sortBy = additionalFields.sortBy || 'createdate';
 							const direction = additionalFields.direction || 'DESCENDING';
@@ -2265,7 +2267,7 @@ export class HubspotV1 implements INodeType {
 									qs,
 								);
 							} else {
-								body.limit = this.getNodeParameter('limit', 0);
+								body.limit = this.getNodeParameter('limit', i);
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
 								responseData = responseData.results;
 							}
@@ -2339,7 +2341,7 @@ export class HubspotV1 implements INodeType {
 						}
 						//https://legacydocs.hubspot.com/docs/methods/engagements/get-all-engagements
 						if (operation === 'getAll') {
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 							const endpoint = '/engagements/v1/engagements/paged';
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
@@ -2351,7 +2353,7 @@ export class HubspotV1 implements INodeType {
 									qs,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', 0);
+								qs.limit = this.getNodeParameter('limit', i);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
 							}
@@ -2559,7 +2561,7 @@ export class HubspotV1 implements INodeType {
 						//https://developers.hubspot.com/docs/methods/tickets/get-all-tickets
 						if (operation === 'getAll') {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 							if (additionalFields.properties) {
 								qs.properties = additionalFields.properties as string[];
 							}
@@ -2579,7 +2581,7 @@ export class HubspotV1 implements INodeType {
 									qs,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', 0);
+								qs.limit = this.getNodeParameter('limit', i);
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
 									'objects',
