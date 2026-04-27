@@ -1,0 +1,90 @@
+{
+	"name": "GHC-7914 Wait Node Hang Reproduction",
+	"nodes": [
+		{
+			"parameters": {
+				"path": "ghc-7914-test",
+				"options": {}
+			},
+			"id": "webhook-trigger",
+			"name": "Webhook Trigger",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [240, 300],
+			"webhookId": "ghc-7914-webhook"
+		},
+		{
+			"parameters": {
+				"amount": 2,
+				"unit": "minutes"
+			},
+			"id": "wait-node",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [460, 300],
+			"webhookId": "wait-node-webhook"
+		},
+		{
+			"parameters": {
+				"mode": "manual",
+				"duplicateItem": false,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "completed",
+							"name": "completed",
+							"value": true,
+							"type": "boolean"
+						},
+						{
+							"id": "timestamp",
+							"name": "timestamp",
+							"value": "={{ $now }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "set-node",
+			"name": "Set Completion Flag",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [680, 300]
+		}
+	],
+	"connections": {
+		"Webhook Trigger": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Set Completion Flag",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "ghc-7914-test-instance"
+	},
+	"tags": []
+}
