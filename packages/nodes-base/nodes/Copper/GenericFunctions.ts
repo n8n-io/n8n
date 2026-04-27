@@ -171,8 +171,9 @@ export async function handleListing(
 	qs: IDataObject = {},
 	body: IDataObject = {},
 	uri = '',
+	itemIndex = 0,
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0);
+	const returnAll = this.getNodeParameter('returnAll', itemIndex);
 
 	const option = { resolveWithFullResponse: true };
 
@@ -180,7 +181,7 @@ export async function handleListing(
 		return await copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
 	}
 
-	const limit = this.getNodeParameter('limit', 0);
+	const limit = this.getNodeParameter('limit', itemIndex);
 	const responseData = await copperApiRequestAllItems.call(
 		this,
 		method,
