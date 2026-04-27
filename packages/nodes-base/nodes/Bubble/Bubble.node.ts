@@ -53,14 +53,13 @@ export class Bubble implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
-
 		let responseData;
 		const qs: IDataObject = {};
 		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
+			const resource = this.getNodeParameter('resource', i);
+			const operation = this.getNodeParameter('operation', i);
 			if (resource === 'object') {
 				// *********************************************************************
 				//                             object
