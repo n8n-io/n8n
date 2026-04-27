@@ -22,7 +22,7 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 		nodes: [
 			{
 				name: '@n8n/n8n-nodes-langchain.chatTrigger',
-				note: "options.loadPreviousSession is ONLY about rehydrating the chat widget UI when a user reopens it — it does NOT give the Agent memory. The Agent always gets memory via its own ai_memory subnode, independent of this setting. Only set loadPreviousSession to 'memory' if you want the widget to restore visible history on reload; if you do, the Chat Trigger itself requires a memory subnode on its ai_memory input (point it at the same memory node as the Agent, using the same session key, so widget history matches what the Agent remembers). Otherwise leave loadPreviousSession unset/'notSupported' — the Agent will still have full memory",
+				note: "Do not attach a memory subnode to the Chat Trigger to give the Agent memory — that's the Agent's job. See the loadPreviousSession builderHint for when the trigger itself needs memory.",
 			},
 			{
 				name: '@n8n/n8n-nodes-langchain.agent',
