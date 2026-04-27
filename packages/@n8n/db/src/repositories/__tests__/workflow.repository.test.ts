@@ -75,14 +75,6 @@ describe('WorkflowRepository', () => {
 				expect.stringContaining('NOT EXISTS (SELECT 1 FROM "ai_builder_temporary_workflow"'),
 			);
 		});
-
-		it('keeps the legacy aiTemporary JSON predicate during the compatibility window', async () => {
-			await workflowRepository.getMany(['workflow1']);
-
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				"(workflow.meta IS NULL OR workflow.meta ->> 'aiTemporary' IS NULL OR workflow.meta ->> 'aiTemporary' = 'false')",
-			);
-		});
 	});
 
 	describe('applyNameFilter', () => {

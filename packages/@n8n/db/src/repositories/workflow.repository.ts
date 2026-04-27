@@ -900,19 +900,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.where('aitw."workflowId" = workflow.id')
 			.getQuery();
 		qb.andWhere(`NOT EXISTS ${markerSubquery}`);
-
-		// Compatibility path for rolling deploys: old code can still write the
-		// legacy JSON flag until every process has crossed this migration.
-		const dbType = this.globalConfig.database.type;
-		if (dbType === 'postgresdb') {
-			qb.andWhere(
-				"(workflow.meta IS NULL OR workflow.meta ->> 'aiTemporary' IS NULL OR workflow.meta ->> 'aiTemporary' = 'false')",
-			);
-		} else {
-			qb.andWhere(
-				"(workflow.meta IS NULL OR JSON_EXTRACT(workflow.meta, '$.aiTemporary') IS NULL OR JSON_EXTRACT(workflow.meta, '$.aiTemporary') = 0)",
-			);
-		}
 	}
 
 	private applyAvailableInMCPFilter(

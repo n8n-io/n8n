@@ -1273,28 +1273,6 @@ describe('createWorkflowAdapter', () => {
 		expect(mockWorkflowRepository.update).not.toHaveBeenCalled();
 	});
 
-	it('clears the legacy aiTemporary meta flag while promoting old temporary workflows', async () => {
-		const {
-			adapter,
-			mockAiBuilderTemporaryWorkflowRepository,
-			mockWorkflowFinderService,
-			mockWorkflowRepository,
-		} = createWorkflowAdapterForTests();
-		mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(false);
-		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
-			id: 'wf-legacy',
-			meta: { aiTemporary: true, templateCredsSetupCompleted: true },
-			isArchived: false,
-		});
-
-		await adapter.clearAiTemporary('wf-legacy');
-
-		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-legacy');
-		expect(mockWorkflowRepository.update).toHaveBeenCalledWith('wf-legacy', {
-			meta: { templateCredsSetupCompleted: true },
-		});
-	});
-
 	it('archives and unmarks an unpromoted AI-builder temporary workflow', async () => {
 		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowService } =
 			createWorkflowAdapterForTests();

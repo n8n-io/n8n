@@ -3144,11 +3144,6 @@ export interface WorkflowFEMeta {
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
-	/**
-	 * Legacy marker used to hide AI-builder temporary workflows while a build is
-	 * in progress. New writes use a dedicated marker table.
-	 */
-	aiTemporary?: boolean;
 }
 
 export interface WorkflowTestData {

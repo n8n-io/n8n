@@ -281,14 +281,6 @@ export class InstanceAiAdapterService {
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 		const redactParameters = !allowSendingParameterValues;
-		const clearLegacyAiTemporaryMeta = async (workflow: WorkflowEntity) => {
-			if (!workflow.meta || workflow.meta.aiTemporary === undefined) return;
-
-			const { aiTemporary: _aiTemporary, ...rest } = workflow.meta;
-			await workflowRepository.update(workflow.id, {
-				meta: Object.keys(rest).length > 0 ? rest : {},
-			});
-		};
 
 		return {
 			async list(options) {
@@ -342,14 +334,9 @@ export class InstanceAiAdapterService {
 					'workflow:update',
 				]);
 				if (!workflow) return;
-
-				const isMarked =
-					(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId)) ||
-					workflow.meta?.aiTemporary === true;
-				if (!isMarked) return;
+				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) return;
 
 				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
-				await clearLegacyAiTemporaryMeta(workflow);
 			},
 
 			async archiveIfAiTemporary(workflowId: string) {
@@ -358,20 +345,16 @@ export class InstanceAiAdapterService {
 					'workflow:update',
 				]);
 				if (!workflow) return false;
-
-				const isMarked =
-					(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId)) ||
-					workflow.meta?.aiTemporary === true;
-				if (!isMarked) return false;
+				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) {
+					return false;
+				}
 				if (workflow.isArchived) {
 					await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
-					await clearLegacyAiTemporaryMeta(workflow);
 					return false;
 				}
 
 				await workflowService.archive(user, workflowId, { skipArchived: true });
 				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
-				await clearLegacyAiTemporaryMeta(workflow);
 				return true;
 			},
 
