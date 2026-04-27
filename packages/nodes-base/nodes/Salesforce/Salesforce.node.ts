@@ -1043,14 +1043,14 @@ export class Salesforce implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
-
-		this.logger.debug(
-			`Running "Salesforce" node named "${this.getNode.name}" resource "${resource}" operation "${operation}"`,
-		);
 
 		for (let i = 0; i < items.length; i++) {
+			const resource = this.getNodeParameter('resource', i);
+			const operation = this.getNodeParameter('operation', i);
+
+			this.logger.debug(
+				`Running "Salesforce" node named "${this.getNode.name}" resource "${resource}" operation "${operation}"`,
+			);
 			try {
 				if (resource === 'lead') {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/post-lead
