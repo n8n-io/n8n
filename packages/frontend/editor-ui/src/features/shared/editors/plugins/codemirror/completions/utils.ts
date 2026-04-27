@@ -194,7 +194,7 @@ export async function hasNoParams(toResolve: string, contextNodeName?: string) {
 }
 
 export async function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
-	const ndvStore = useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId));
+	const ndvStore = useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId || '__default__'));
 	const inputData =
 		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
 			? {
@@ -223,7 +223,7 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 		nodeType = targetNodeParameterContext.nodeName;
 		path = targetNodeParameterContext.parameterPath;
 	} else {
-		const ndvStore = useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId));
+		const ndvStore = useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId || '__default__'));
 		nodeType = ndvStore.activeNode?.type;
 		path = ndvStore.focusedInputPath;
 	}
@@ -234,7 +234,7 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) =>
 	(targetNodeParameterContext !== undefined &&
 		useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName) !== null) ||
-	useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)).activeNode?.name !==
+	useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId || '__default__')).activeNode?.name !==
 		undefined;
 
 export const isSplitInBatchesAbsent = () =>
@@ -244,7 +244,7 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 	const workflowsStore = useWorkflowsStore();
 	const activeNode =
 		targetNodeParameterContext === undefined
-			? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)).activeNode
+			? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId || '__default__')).activeNode
 			: workflowsStore.getNodeByName(targetNodeParameterContext.nodeName);
 
 	if (!activeNode) return [];
@@ -252,7 +252,7 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 	const activeNodeName = activeNode.name;
 
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowsStore.workflowId || '__default__'),
 	);
 	const nonMainChildren = workflowDocumentStore.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
 
@@ -267,7 +267,7 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 export function getPreviousNodes(nodeName: string) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowsStore.workflowId || '__default__'),
 	);
 	return workflowDocumentStore
 		.getParentNodesByDepth(nodeName)

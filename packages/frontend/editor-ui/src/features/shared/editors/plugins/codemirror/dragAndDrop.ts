@@ -43,7 +43,9 @@ const drawDropCursor = ViewPlugin.fromClass(
 
 		constructor(readonly view: EditorView) {
 			this.measureReq = { read: this.readPos.bind(this), write: this.drawCursor.bind(this) };
-			this.ndvStore = useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId));
+			this.ndvStore = useNDVStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId || '__default__'),
+			);
 		}
 
 		update(update: ViewUpdate) {

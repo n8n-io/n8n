@@ -28,7 +28,9 @@ describe('CodeMirror drag and drop', () => {
 		};
 
 		it('should render a drop cursor when dragging', async () => {
-			useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)).draggableStartDragging({
+			useNDVStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId || '__default__'),
+			).draggableStartDragging({
 				type: 'mapping',
 				data: '{{ $json.bar }}',
 				dimensions: null,

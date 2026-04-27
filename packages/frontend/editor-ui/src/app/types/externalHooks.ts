@@ -24,10 +24,17 @@ import type { IPersonalizationLatestVersion } from '@n8n/rest-api-client/api/use
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { ComponentPublicInstance } from 'vue';
 import type { useWebhooksStore } from '@/app/stores/webhooks.store';
+import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
+
+// NDV state is spread into the hook store only when a workflow is loaded
+// (see `runExternalHook` in `useExternalHooks.ts`). External hook authors
+// must treat NDV fields as optional.
+export type ExternalHookStore = ReturnType<typeof useWebhooksStore> &
+	Partial<ReturnType<typeof useNDVStore>>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ExternalHooksMethod<T = any, R = void> {
-	(store: ReturnType<typeof useWebhooksStore>, metadata: T): R | Promise<R>;
+	(store: ExternalHookStore, metadata: T): R | Promise<R>;
 }
 
 export interface ExternalHooksGenericContext {

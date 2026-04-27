@@ -1105,6 +1105,7 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		} else {
 			console.error(failure);
 		}
+		return next(false);
 	}
 });
 
