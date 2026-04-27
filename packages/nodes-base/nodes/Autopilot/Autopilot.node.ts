@@ -119,9 +119,9 @@ export class Autopilot implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
+			const resource = this.getNodeParameter('resource', i);
+			const operation = this.getNodeParameter('operation', i);
 			try {
 				if (resource === 'contact') {
 					if (operation === 'upsert') {
