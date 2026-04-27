@@ -28,6 +28,11 @@ import { DEFAULTS } from '../../../ai-workflow-builder.ee/evaluations/support/co
 
 import { buildInProcess, type InProcessBuildResult } from '../harness/in-process-builder';
 import { createLogger, type EvalLogger } from '../harness/logger';
+import { resolveSandboxConfig } from '../harness/sandbox-config';
+import type { Logger } from '../../src/logger';
+import { BuilderSandboxFactory } from '../../src/workspace/builder-sandbox-factory';
+import type { SandboxConfig } from '../../src/workspace/create-workspace';
+import { SnapshotManager } from '../../src/workspace/snapshot-manager';
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -46,6 +51,7 @@ interface PairwiseArgs {
 	judgeModel: string;
 	experimentName: string;
 	verbose: boolean;
+	sandbox: boolean;
 }
 
 function parseArgs(argv: string[]): PairwiseArgs {
@@ -89,7 +95,39 @@ function parseArgs(argv: string[]): PairwiseArgs {
 		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-5-20250929',
 		experimentName: get('--experiment-name') ?? 'pairwise-evals-instance-ai',
 		verbose: has('--verbose'),
+		sandbox: !has('--no-sandbox'),
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Sandbox factory wiring
+// ---------------------------------------------------------------------------
+
+function createSandboxFactory(
+	config: SandboxConfig,
+	evalLogger: EvalLogger,
+): BuilderSandboxFactory | undefined {
+	if (!config.enabled) return undefined;
+
+	const factoryLogger: Logger = {
+		debug: (message, meta) => evalLogger.verbose(`[sandbox] ${message}${formatMeta(meta)}`),
+		info: (message, meta) => evalLogger.verbose(`[sandbox] ${message}${formatMeta(meta)}`),
+		warn: (message, meta) => evalLogger.warn(`[sandbox] ${message}${formatMeta(meta)}`),
+		error: (message, meta) => evalLogger.error(`[sandbox] ${message}${formatMeta(meta)}`),
+	};
+
+	const imageManager =
+		config.provider === 'daytona' ? new SnapshotManager(config.image, factoryLogger) : undefined;
+	return new BuilderSandboxFactory(config, imageManager, factoryLogger);
+}
+
+function formatMeta(meta: unknown): string {
+	if (!meta || typeof meta !== 'object') return '';
+	try {
+		return ` ${JSON.stringify(meta)}`;
+	} catch {
+		return '';
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -185,6 +223,7 @@ async function runExample(
 	judgeLlm: BaseChatModel,
 	args: PairwiseArgs,
 	logger: EvalLogger,
+	sandboxFactory: BuilderSandboxFactory | undefined,
 ): Promise<ExampleRecord> {
 	logger.verbose(`[${example.id} #${iteration}] building workflow...`);
 	const logPath = path.join(
@@ -196,6 +235,7 @@ async function runExample(
 		prompt: example.prompt,
 		timeoutMs: args.timeoutMs,
 		logPath,
+		sandboxFactory,
 	});
 
 	const record: ExampleRecord = {
@@ -270,6 +310,7 @@ interface Summary {
 		autoApprovedSuspensions: number;
 		mockedCredentialTypes: string[];
 	};
+	sandbox: { enabled: boolean; provider?: string };
 }
 
 async function writeOutputs(
@@ -279,6 +320,7 @@ async function writeOutputs(
 	startedAt: Date,
 	finishedAt: Date,
 	logger: EvalLogger,
+	sandboxConfig: SandboxConfig,
 ): Promise<Summary> {
 	await fs.mkdir(outputDir, { recursive: true });
 	await fs.mkdir(path.join(outputDir, 'workflows'), { recursive: true });
@@ -391,6 +433,9 @@ async function writeOutputs(
 			autoApprovedSuspensions,
 			mockedCredentialTypes: Array.from(allMockedCreds),
 		},
+		sandbox: sandboxConfig.enabled
+			? { enabled: true, provider: sandboxConfig.provider }
+			: { enabled: false },
 	};
 	await fs.writeFile(
 		path.join(outputDir, 'summary.json'),
@@ -416,6 +461,18 @@ async function main(): Promise<void> {
 	if (!apiKey) {
 		throw new Error(
 			'Set N8N_AI_ANTHROPIC_KEY or ANTHROPIC_API_KEY — both the builder agent and the judge LLM need it.',
+		);
+	}
+
+	const sandboxConfig = resolveSandboxConfig(process.env, { sandbox: args.sandbox });
+	const sandboxFactory = createSandboxFactory(sandboxConfig, logger);
+	if (sandboxConfig.enabled) {
+		logger.info(
+			`Sandbox: provider=${sandboxConfig.provider} (workflow built via TypeScript file + tsc)`,
+		);
+	} else {
+		logger.warn(
+			'Sandbox: disabled (--no-sandbox) — using string-based build-workflow tool. Use only for local development.',
 		);
 	}
 
@@ -453,7 +510,7 @@ async function main(): Promise<void> {
 		for (let i = 1; i <= args.iterations; i++) {
 			work.push(
 				limit(async () => {
-					const record = await runExample(example, i, judgeLlm, args, logger);
+					const record = await runExample(example, i, judgeLlm, args, logger, sandboxFactory);
 					records.push(record);
 				}),
 			);
@@ -467,7 +524,7 @@ async function main(): Promise<void> {
 			? a.iteration - b.iteration
 			: a.exampleId.localeCompare(b.exampleId),
 	);
-	await writeOutputs(args.outputDir, records, args, startedAt, finishedAt, logger);
+	await writeOutputs(args.outputDir, records, args, startedAt, finishedAt, logger, sandboxConfig);
 
 	if (args.backend === 'langsmith') {
 		logger.info(
