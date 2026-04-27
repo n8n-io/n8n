@@ -122,8 +122,8 @@ export class UptimeRobot implements INodeType {
 		const timezone = this.getTimezone();
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', 0);
-				const operation = this.getNodeParameter('operation', 0);
+				const resource = this.getNodeParameter('resource', i);
+				const operation = this.getNodeParameter('operation', i);
 				let body: IDataObject = {};
 				//https://uptimerobot.com/#methods
 				if (resource === 'account') {
