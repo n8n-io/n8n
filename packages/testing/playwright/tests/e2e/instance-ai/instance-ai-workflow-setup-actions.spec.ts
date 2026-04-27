@@ -200,10 +200,10 @@ test.describe(
 				timeout: 5_000,
 			});
 
-			// Slack is pre-complete via backend-reported credentialTestResult, so
-			// the auto-advance watcher has no incomplete card to jump to. Navigate
-			// to Slack manually, then click Later to trigger the partial apply.
-			await n8n.instanceAi.getWorkflowSetupNextButton().click();
+			// With two seeded Slack credentials and none attached to the node, the
+			// setup-workflow tool surfaces the credential picker rather than
+			// auto-applying. Slack is therefore the incomplete card; auto-advance
+			// moves the wizard there once HTTP becomes complete.
 			await expect(n8n.instanceAi.getWorkflowSetupStepCounter()).toContainText('2 of 2');
 
 			// Prev navigation must return to the HTTP card and keep the user's
