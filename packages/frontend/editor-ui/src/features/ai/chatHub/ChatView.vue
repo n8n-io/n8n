@@ -636,7 +636,7 @@ function openNewAgentCreator() {
 }
 
 function handleOpenWorkflow(workflowId: string) {
-	const routeData = router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
+	const routeData = router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } });
 
 	window.open(routeData.href, '_blank');
 }

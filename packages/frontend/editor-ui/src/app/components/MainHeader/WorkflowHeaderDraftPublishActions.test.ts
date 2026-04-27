@@ -23,7 +23,7 @@ import {
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: vi.fn().mockReturnValue({
-		params: { name: 'test' },
+		params: { workflowId: 'test' },
 		query: {},
 	}),
 	useRouter: vi.fn().mockReturnValue({
@@ -31,7 +31,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 		push: vi.fn().mockResolvedValue(undefined),
 		currentRoute: {
 			value: {
-				params: { name: 'test' },
+				params: { workflowId: 'test' },
 				query: {},
 			},
 		},

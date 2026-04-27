@@ -262,7 +262,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/:name/debug/:executionId',
+		path: '/workflow/:workflowId/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
 		component: NodeView,
 		meta: {
@@ -279,7 +279,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/:name/executions',
+		path: '/workflow/:workflowId/executions',
 		name: VIEWS.WORKFLOW_EXECUTIONS,
 		component: WorkflowExecutionsView,
 		meta: {
@@ -313,7 +313,7 @@ export const routes: RouteRecordRaw[] = [
 		],
 	},
 	{
-		path: '/workflow/:name/evaluation',
+		path: '/workflow/:workflowId/evaluation',
 		name: VIEWS.EVALUATION,
 		component: EvaluationRootView,
 		props: true,
@@ -386,7 +386,7 @@ export const routes: RouteRecordRaw[] = [
 			const newWorkflowId = generateNanoId();
 			return {
 				name: VIEWS.WORKFLOW,
-				params: { name: newWorkflowId },
+				params: { workflowId: newWorkflowId },
 				query: { ...to.query, new: 'true' },
 			};
 		},
@@ -426,7 +426,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/:name/:nodeId?',
+		path: '/workflow/:workflowId/:nodeId?',
 		name: VIEWS.WORKFLOW,
 		component: NodeView,
 		meta: {
