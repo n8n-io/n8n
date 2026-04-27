@@ -1,3 +1,17 @@
+## [2.18.4](https://github.com/n8n-io/n8n/compare/n8n@2.18.3...n8n@2.18.4) (2026-04-27)
+
+
+### Bug Fixes
+
+* Disable "Get 100 free OpenAI API credits"  if aiGateway enabled in the license ([#29057](https://github.com/n8n-io/n8n/issues/29057)) ([436274e](https://github.com/n8n-io/n8n/commit/436274eabaceadf2f8b70d0bc739dc8c55aa5a8c))
+* **editor:** Refresh wallet balance when usage refresh is clicked ([#29080](https://github.com/n8n-io/n8n/issues/29080)) ([88c531a](https://github.com/n8n-io/n8n/commit/88c531af1a0d638c35c5731aab0d616570434bda))
+
+
+### Features
+
+* **editor:** Move computer use toggle to chat sidebar ([#29108](https://github.com/n8n-io/n8n/issues/29108)) ([7f1fcad](https://github.com/n8n-io/n8n/commit/7f1fcade9484688c326cf5c93b753eb898f2eb70))
+
+
 ## [2.18.3](https://github.com/n8n-io/n8n/compare/n8n@2.18.2...n8n@2.18.3) (2026-04-24)
 
 
