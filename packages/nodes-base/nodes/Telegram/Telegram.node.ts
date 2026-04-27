@@ -1823,14 +1823,13 @@ export class Telegram implements INodeType {
 		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 
-		const operation = this.getNodeParameter('operation', 0);
-		const resource = this.getNodeParameter('resource', 0);
-		const binaryData = this.getNodeParameter('binaryData', 0, false);
-
 		const nodeVersion = this.getNode().typeVersion;
 		const instanceId = this.getInstanceId();
 
-		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
+		if (
+			this.getNodeParameter('resource', 0) === 'message' &&
+			this.getNodeParameter('operation', 0) === SEND_AND_WAIT_OPERATION
+		) {
 			body = createSendAndWaitMessageBody(this);
 
 			await apiRequest.call(this, 'POST', 'sendMessage', body);
@@ -1848,6 +1847,10 @@ export class Telegram implements INodeType {
 				endpoint = '';
 				body = {};
 				qs = {};
+
+				const operation = this.getNodeParameter('operation', i);
+				const resource = this.getNodeParameter('resource', i);
+				const binaryData = this.getNodeParameter('binaryData', i, false);
 
 				if (resource === 'callback') {
 					if (operation === 'answerQuery') {
