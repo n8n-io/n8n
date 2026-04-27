@@ -3,10 +3,19 @@ import {
 	PublicApiCreateDataTableDto,
 	UpdateDataTableDto,
 } from '@n8n/api-types';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Container } from '@n8n/di';
 import type express from 'express';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
+import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
+import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import { ProjectService } from '@/services/project.service.ee';
+
+import { getDataTableListFilter, resolveProjectIdForCreate } from './data-tables.service';
 import type { DataTableRequest } from '../../../types';
 import {
 	publicApiScope,
@@ -14,18 +23,6 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import {
-	getProjectIdForDataTable,
-	getDataTableListFilter,
-	resolveProjectIdForCreate,
-} from './data-tables.service';
-import { ProjectService } from '@/services/project.service.ee';
 
 const handleError = (error: unknown, res: express.Response): express.Response => {
 	if (error instanceof DataTableNotFoundError) {
@@ -150,7 +147,8 @@ export = {
 			try {
 				const { dataTableId } = req.params;
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 
 				const result = await Container.get(DataTableRepository).findOne({
 					where: { id: dataTableId, project: { id: projectId } },
@@ -184,7 +182,8 @@ export = {
 					});
 				}
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 
 				await Container.get(DataTableService).updateDataTable(dataTableId, projectId, payload.data);
 
@@ -213,7 +212,8 @@ export = {
 			try {
 				const { dataTableId } = req.params;
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
 
 				await Container.get(DataTableService).deleteDataTable(dataTableId, projectId);
 

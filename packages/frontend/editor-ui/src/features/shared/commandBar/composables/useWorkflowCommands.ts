@@ -328,7 +328,7 @@ export function useWorkflowCommands(): CommandGroup {
 						handler: () => {
 							const { href } = router.resolve({
 								name: VIEWS.WORKFLOW,
-								params: { name: workflow.id },
+								params: { workflowId: workflow.id },
 							});
 							window.open(href, '_blank', 'noreferrer');
 						},

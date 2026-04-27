@@ -463,6 +463,73 @@ describe('Image Edit Operation', () => {
 		});
 	});
 
+	describe('successful execution with v2.3 (RLC model)', () => {
+		it('should extract model from modelId RLC parameter', async () => {
+			mockNode = mock<INode>({
+				id: 'test-node',
+				name: 'OpenAI Image Edit',
+				type: 'n8n-nodes-base.openAi',
+				typeVersion: 2.3,
+				position: [0, 0],
+				parameters: {},
+			});
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = {
+					modelId: 'gpt-image-1',
+					prompt: 'Edit with RLC model',
+					images: {
+						values: [{ binaryPropertyName: 'data' }],
+					},
+					n: 1,
+					size: '1024x1024',
+					quality: 'auto',
+					options: {},
+				};
+				return params[paramName as keyof typeof params];
+			});
+
+			const mockBinaryFile = {
+				fileContent: Buffer.from('mock-image-data'),
+				contentType: 'image/png',
+				filename: 'data.png',
+			};
+
+			const mockApiResponse = {
+				data: [{ b64_json: 'base64encodedimagedata' }],
+			};
+
+			const mockBinaryData = {
+				data: 'base64encodedimagedata',
+				mimeType: 'image/png',
+				fileName: 'data',
+			};
+
+			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
+			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+				mockBinaryFile.fileContent,
+			);
+			apiRequestSpy.mockResolvedValue(mockApiResponse);
+			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
+				mockBinaryData,
+			);
+
+			const result = await execute.call(mockExecuteFunctions, 0);
+
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith('model', 'gpt-image-1');
+			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
+				'image[]',
+				mockBinaryFile.fileContent,
+				{
+					filename: 'data.png',
+					contentType: 'image/png',
+				},
+			);
+			expect(result).toHaveLength(1);
+		});
+	});
+
 	describe('parameter validation and edge cases', () => {
 		it('should handle missing response data', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {

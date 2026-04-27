@@ -33,7 +33,7 @@ vi.mock('@/features/workflows/canvas/canvas.eventBus');
 vi.mock('@/app/event-bus');
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
-		resolve: vi.fn((route) => ({ href: `/workflow/${route.params.name}` })),
+		resolve: vi.fn((route) => ({ href: `/workflow/${route.params.workflowId}` })),
 	}),
 	useRoute: () => ({}),
 	RouterLink: vi.fn(),

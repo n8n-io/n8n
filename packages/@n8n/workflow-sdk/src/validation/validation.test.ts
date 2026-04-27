@@ -2220,6 +2220,273 @@ describe('Validation', () => {
 		});
 	});
 
+	describe('MISSING_REQUIRED_INPUT validation', () => {
+		const mockNodeTypesProvider = {
+			getByNameAndVersion: (type: string, _version?: number) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') {
+					return {
+						description: {
+							inputs: ['main'],
+							builderHint: {
+								inputs: {
+									ai_memory: {
+										required: true,
+										displayOptions: {
+											show: {
+												mode: ['hostedChat', 'webhook'],
+												'options.loadPreviousSession': ['memory'],
+											},
+										},
+									},
+								},
+							},
+						},
+					};
+				}
+				if (type === '@n8n/n8n-nodes-langchain.agent') {
+					return {
+						description: {
+							inputs: ['main'],
+							builderHint: {
+								inputs: {
+									ai_languageModel: { required: true },
+									ai_memory: { required: false },
+								},
+							},
+						},
+					};
+				}
+				return { description: { inputs: ['main'] } };
+			},
+			getByName: (type: string) => mockNodeTypesProvider.getByNameAndVersion(type),
+			getKnownTypes: () => ({}),
+		};
+
+		it('errors when chat trigger has loadPreviousSession=memory but no memory subnode', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'ct-1',
+						name: 'Chat Trigger',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.4,
+						position: [0, 0] as [number, number],
+						parameters: {
+							mode: 'hostedChat',
+							options: { loadPreviousSession: 'memory' },
+						},
+					},
+				],
+				connections: {},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(1);
+			expect(errors[0].nodeName).toBe('Chat Trigger');
+			expect(errors[0].message).toContain('ai_memory');
+			expect(errors[0].message).toContain('loadPreviousSession');
+			expect(result.valid).toBe(false);
+		});
+
+		it('passes when chat trigger has loadPreviousSession=memory and a memory subnode is connected', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'ct-1',
+						name: 'Chat Trigger',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.4,
+						position: [0, 0] as [number, number],
+						parameters: {
+							mode: 'hostedChat',
+							options: { loadPreviousSession: 'memory' },
+						},
+					},
+					{
+						id: 'mem-1',
+						name: 'Memory',
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						typeVersion: 1,
+						position: [0, 200] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					Memory: {
+						ai_memory: [[{ node: 'Chat Trigger', type: 'ai_memory', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(0);
+		});
+
+		it('passes when chat trigger has loadPreviousSession=notSupported and no memory', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'ct-1',
+						name: 'Chat Trigger',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.4,
+						position: [0, 0] as [number, number],
+						parameters: {
+							mode: 'hostedChat',
+							options: { loadPreviousSession: 'notSupported' },
+						},
+					},
+				],
+				connections: {},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(0);
+		});
+
+		it('errors on unconditional required input (agent without language model)', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'agent-1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(1);
+			expect(errors[0].nodeName).toBe('AI Agent');
+			expect(errors[0].message).toContain('ai_languageModel');
+			// No condition details when requirement is unconditional
+			expect(errors[0].message).not.toContain('Required:');
+		});
+
+		it('does not error for optional inputs', () => {
+			// Agent declares ai_memory as required:false — should never emit MISSING_REQUIRED_INPUT
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'agent-1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'lm-1',
+						name: 'Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [0, 200] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					Model: {
+						ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(0);
+		});
+
+		it('is a no-op for nodes without builderHint.inputs', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'n-1',
+						name: 'Some Node',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [0, 0] as [number, number],
+						parameters: { url: 'https://example.com' },
+					},
+				],
+				connections: {},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(0);
+		});
+
+		it('is skipped when nodeTypesProvider is not supplied', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'ct-1',
+						name: 'Chat Trigger',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.4,
+						position: [0, 0] as [number, number],
+						parameters: {
+							mode: 'hostedChat',
+							options: { loadPreviousSession: 'memory' },
+						},
+					},
+				],
+				connections: {},
+			};
+
+			const result = validateWorkflow(workflowJson, { allowDisconnectedNodes: true });
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(0);
+		});
+	});
+
 	describe('Invalid subnode error message enhancement', () => {
 		beforeAll(setupTestSchemas, 120_000);
 		afterAll(teardownTestSchemas);

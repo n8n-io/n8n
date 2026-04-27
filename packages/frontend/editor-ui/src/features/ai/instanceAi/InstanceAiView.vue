@@ -636,6 +636,8 @@ function handleStop() {
 	width: 100%;
 	min-width: 900px;
 	overflow: hidden;
+	position: relative;
+	z-index: 0;
 }
 
 .sidebar {

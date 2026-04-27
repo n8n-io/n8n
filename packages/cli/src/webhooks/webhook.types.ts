@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
 
 import type { ExpectedWebhookNodeType } from './node-type-matcher';
+import type { WebhookResponse } from './webhook-response';
 
 export type WebhookOptionsRequest = Request & { method: 'OPTIONS' };
 
@@ -32,7 +33,7 @@ export interface IWebhookManager {
 		req: WebhookRequest,
 		res: Response,
 		expectedNodeType?: ExpectedWebhookNodeType,
-	): Promise<IWebhookResponseCallbackData>;
+	): Promise<IWebhookResponseCallbackData | WebhookResponse>;
 }
 
 export interface IWebhookResponseCallbackData {
