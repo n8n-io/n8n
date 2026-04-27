@@ -2,19 +2,40 @@ export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-
 
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
-export { AiBuilderChatRequestDto, type SelectedNodeContext } from './ai/ai-build-request.dto';
+export {
+	AiBuilderChatRequestDto,
+	QUICK_REPLY_TYPES,
+	type QuickReplyType,
+	type SelectedNodeContext,
+} from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
+export type {
+	AiGatewayConfigDto,
+	AiGatewayProviderConfigEntry,
+} from './ai/ai-gateway-config-response.dto';
+export { AiGatewayUsageQueryDto } from './ai/ai-gateway-usage-response.dto';
+export type {
+	AiGatewayUsageEntry,
+	AiGatewayUsageMetadata,
+	AiGatewayUsageResponse,
+} from './ai/ai-gateway-usage-response.dto';
+
+export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
+export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
+export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
+export { EmbedLoginQueryDto } from './auth/embed-login-query.dto';
+export { EmbedLoginBodyDto } from './auth/embed-login-body.dto';
 
 export { CreateCredentialResolverDto } from './credential-resolver/create-credential-resolver.dto';
 export { UpdateCredentialResolverDto } from './credential-resolver/update-credential-resolver.dto';
@@ -72,6 +93,11 @@ export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
 
+export {
+	MAX_PINNED_DATA_SIZE,
+	MAX_WORKFLOW_SIZE,
+	MAX_EXPECTED_REQUEST_SIZE,
+} from './workflows/base-workflow.dto';
 export { CreateWorkflowDto } from './workflows/create-workflow.dto';
 export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
@@ -116,6 +142,16 @@ export {
 
 export { UpdateRoleDto } from './roles/update-role.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
+export { CreateRoleMappingRuleDto } from './roles/create-role-mapping-rule.dto';
+export {
+	PatchRoleMappingRuleDto,
+	type PatchRoleMappingRuleInput,
+} from './roles/patch-role-mapping-rule.dto';
+export { MoveRoleMappingRuleDto } from './roles/move-role-mapping-rule.dto';
+export {
+	ListRoleMappingRuleQueryDto,
+	type ListRoleMappingRuleQueryInput,
+} from './roles/list-role-mapping-rule-query.dto';
 export { RoleListQueryDto } from './roles/role-list-query.dto';
 export { RoleGetQueryDto } from './roles/role-get-query.dto';
 export {
@@ -129,10 +165,12 @@ export {
 	type RoleProjectMembersResponse,
 } from './roles/role-project-members-response.dto';
 
-export { OidcConfigDto } from './oidc/config.dto';
+export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
+export { PublicApiCreateDataTableDto } from './data-table/public-api-create-data-table.dto';
 export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
 export { DeleteDataTableRowsDto } from './data-table/delete-data-table-rows.dto';
 export { UpsertDataTableRowDto } from './data-table/upsert-data-table-row.dto';
@@ -149,6 +187,10 @@ export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
+export {
+	updateDataTableColumnSchema,
+	type UpdateDataTableColumnDto,
+} from './data-table/update-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
@@ -179,3 +221,10 @@ export {
 	ExecutionRedactionQueryDtoSchema,
 	type ExecutionRedactionQueryDto,
 } from './executions/execution-redaction-query.dto';
+
+export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
+export { VersionQueryDto } from './instance-version-history/version-query.dto';
+
+export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
+export { ListEncryptionKeysQueryDto } from './encryption/list-encryption-keys-query.dto';
+export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';

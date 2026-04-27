@@ -11,6 +11,7 @@ export { disconnectedNodeValidator } from './disconnected-node-validator';
 export { expressionPathValidator } from './expression-path-validator';
 export { subnodeConnectionValidator } from './subnode-connection-validator';
 export { expressionPrefixValidator } from './expression-prefix-validator';
+export { filterNodeValidator } from './filter-node-validator';
 export { fromAiValidator } from './from-ai-validator';
 export { httpRequestValidator } from './http-request-validator';
 export { maxNodesValidator } from './max-nodes-validator';

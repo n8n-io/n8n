@@ -25,6 +25,8 @@ interface RawDepMaps {
 	dtMap: Map<string, Set<string>>;
 	subMap: Map<string, Set<string>>;
 	parentMap: Map<string, Set<string>>;
+	errorWfMap: Map<string, Set<string>>;
+	errorWfParentMap: Map<string, Set<string>>;
 	allCredIds: Set<string>;
 	allWfIds: Set<string>;
 	allDtIds: Set<string>;
@@ -58,6 +60,8 @@ export class WorkflowDependencyQueryService {
 			result[id] = {
 				credentialId: maps.credMap.get(id)?.size ?? 0,
 				dataTableId: maps.dtMap.get(id)?.size ?? 0,
+				errorWorkflow: maps.errorWfMap.get(id)?.size ?? 0,
+				errorWorkflowParent: maps.errorWfParentMap.get(id)?.size ?? 0,
 				workflowCall: maps.subMap.get(id)?.size ?? 0,
 				workflowParent: maps.parentMap.get(id)?.size ?? 0,
 			};
@@ -133,7 +137,7 @@ export class WorkflowDependencyQueryService {
 			where: [
 				{
 					workflowId: In(accessibleInputIds),
-					dependencyType: In(['credentialId', 'dataTableId', 'workflowCall']),
+					dependencyType: In(['credentialId', 'dataTableId', 'errorWorkflow', 'workflowCall']),
 				},
 				{ dependencyKey: In(accessibleInputIds) },
 			],
@@ -152,30 +156,49 @@ export class WorkflowDependencyQueryService {
 		const dtMap = new Map<string, Set<string>>();
 		const subMap = new Map<string, Set<string>>();
 		const parentMap = new Map<string, Set<string>>();
+		const errorWfMap = new Map<string, Set<string>>();
+		const errorWfParentMap = new Map<string, Set<string>>();
 		const allCredIds = new Set<string>();
 		const allWfIds = new Set<string>();
 		const allDtIds = new Set<string>();
 
 		for (const dep of rawDeps) {
 			allWfIds.add(dep.workflowId);
-			addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 			switch (dep.dependencyType) {
 				case 'credentialId':
 					addToSet(credMap, dep.workflowId, dep.dependencyKey);
+					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allCredIds.add(dep.dependencyKey);
 					break;
 				case 'dataTableId':
 					addToSet(dtMap, dep.workflowId, dep.dependencyKey);
+					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allDtIds.add(dep.dependencyKey);
 					break;
 				case 'workflowCall':
 					addToSet(subMap, dep.workflowId, dep.dependencyKey);
+					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
+					allWfIds.add(dep.dependencyKey);
+					break;
+				case 'errorWorkflow':
+					addToSet(errorWfMap, dep.workflowId, dep.dependencyKey);
+					addToSet(errorWfParentMap, dep.dependencyKey, dep.workflowId);
 					allWfIds.add(dep.dependencyKey);
 					break;
 			}
 		}
 
-		return { credMap, dtMap, subMap, parentMap, allCredIds, allWfIds, allDtIds };
+		return {
+			credMap,
+			dtMap,
+			subMap,
+			parentMap,
+			errorWfMap,
+			errorWfParentMap,
+			allCredIds,
+			allWfIds,
+			allDtIds,
+		};
 	}
 
 	/** Build enriched result — only includes accessible deps, counts inaccessible ones. */
@@ -211,6 +234,8 @@ export class WorkflowDependencyQueryService {
 
 			resolve(maps.subMap.get(resourceId), accessMaps.wfNames, 'workflowCall');
 			resolve(maps.parentMap.get(resourceId), accessMaps.wfNames, 'workflowParent');
+			resolve(maps.errorWfMap.get(resourceId), accessMaps.wfNames, 'errorWorkflow');
+			resolve(maps.errorWfParentMap.get(resourceId), accessMaps.wfNames, 'errorWorkflowParent');
 			resolve(maps.credMap.get(resourceId), accessMaps.credNames, 'credentialId');
 
 			for (const id of maps.dtMap.get(resourceId) ?? []) {

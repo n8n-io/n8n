@@ -26,6 +26,9 @@
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"]
 		},
+		"n8n-nodes-base#test": {
+			"inputs": ["$TURBO_DEFAULT$", "../cli/src/public-api/v1/**/*.yml"]
+		},
 		"test:unit": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"]

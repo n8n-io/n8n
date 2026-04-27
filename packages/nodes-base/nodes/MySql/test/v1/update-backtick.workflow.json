@@ -1,0 +1,75 @@
+{
+	"name": "mysql v1 update with backtick in table name",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "b9c0d1e2-f3a4-5678-9012-cdef00012345",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "id",
+							"numberValue": 1
+						},
+						{
+							"name": "status",
+							"stringValue": "shipped"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "c0d1e2f3-a4b5-6789-0123-def000123456",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [680, 460]
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"table": {
+					"mode": "name",
+					"value": "order`; groups"
+				},
+				"updateKey": "id",
+				"columns": "status"
+			},
+			"id": "d1e2f3a4-b5c6-7890-1234-ef0001234567",
+			"name": "MySQL Update With Backtick",
+			"type": "n8n-nodes-base.mySql",
+			"typeVersion": 1,
+			"position": [900, 460],
+			"credentials": {
+				"mySql": {
+					"id": "93",
+					"name": "MySQL account"
+				}
+			}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+		},
+		"Edit Fields": {
+			"main": [[{ "node": "MySQL Update With Backtick", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "e2f3a4b5-c6d7-8901-2345-f00012345678",
+	"id": "UpdateBacktickEscaping",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

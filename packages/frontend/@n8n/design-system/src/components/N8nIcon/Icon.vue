@@ -1,16 +1,17 @@
 <script lang="ts" setup>
-import { computed, ref, watch, useCssModule } from 'vue';
+import { computed, ref, shallowRef, useCssModule, watch } from 'vue';
 
-import type { IconName } from './icons';
 import { deprecatedIconSet, updatedIconSet } from './icons';
+import type { IconName, NodeIconName } from './icons';
 import { loadLucideIconBody } from './lucideIconLoader';
+import type { nodeIconSet as NodeIconSetType } from './node-icons';
 import { vSvgContent } from './svgContentDirective';
 import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
-	// component supports both deprecated and updated icon set to support project icons
-	// as well as any Lucide icon name (rendered via fallback SVG)
-	icon: IconName | (string & {});
+	// component supports both deprecated and updated icon set to support project icons,
+	// node icons (lazy-loaded via `node:` prefix), and any Lucide icon name (rendered via fallback SVG)
+	icon: IconName | NodeIconName | (string & {});
 	size?: IconSize | number;
 	spin?: boolean;
 	color?: IconColor;
@@ -89,11 +90,25 @@ const styles = computed(() => {
 	return stylesToApply;
 });
 
+const nodeIconSetRef = shallowRef<typeof NodeIconSetType | null>(null);
+
 const resolvedComponent = computed(
 	() =>
+		nodeIconSetRef.value?.[props.icon as keyof typeof NodeIconSetType] ??
 		updatedIconSet[props.icon as keyof typeof updatedIconSet] ??
 		deprecatedIconSet[props.icon as keyof typeof deprecatedIconSet] ??
 		null,
+);
+
+watch(
+	() => props.icon,
+	async (icon) => {
+		if (typeof icon === 'string' && icon.startsWith('node:') && !nodeIconSetRef.value) {
+			const { nodeIconSet } = await import('./node-icons');
+			nodeIconSetRef.value = nodeIconSet;
+		}
+	},
+	{ immediate: true },
 );
 
 const fallbackBody = ref<string | null>(null);

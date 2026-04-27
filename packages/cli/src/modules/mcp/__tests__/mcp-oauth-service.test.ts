@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
@@ -31,6 +32,7 @@ describe('McpOAuthService', () => {
 
 		service = new McpOAuthService(
 			logger,
+			mockInstance(GlobalConfig),
 			oauthSessionService,
 			oauthClientRepository,
 			tokenService,
@@ -179,13 +181,9 @@ describe('McpOAuthService', () => {
 				const error = new Error('Database error');
 				oauthClientRepository.insert.mockRejectedValue(error);
 
-				const result = await service.clientsStore.registerClient!(clientInfo);
-
-				expect(logger.error).toHaveBeenCalledWith('Error registering OAuth client', {
-					error,
-					clientId: 'new-client-123',
-				});
-				expect(result).toEqual(clientInfo);
+				await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+					'Database error',
+				);
 			});
 		});
 	});

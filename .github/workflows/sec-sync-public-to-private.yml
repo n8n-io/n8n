@@ -39,7 +39,7 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Sync from public
+      - name: Sync master from public
         run: |
           git fetch https://github.com/n8n-io/n8n.git master:public-master
 
@@ -60,3 +60,48 @@ jobs:
 
           git reset --hard public-master
           git push origin master --force-with-lease
+
+      - name: Sync 1.x from public
+        run: |
+          git fetch https://github.com/n8n-io/n8n.git 1.x:public-1.x
+          git checkout 1.x
+
+          # Check if private is ahead of public, ignore Bundle commits
+          AHEAD_COUNT=$(git rev-list public-1.x..HEAD --pretty=oneline --grep="chore: Bundle" --invert-grep --count)
+
+          if [ "$AHEAD_COUNT" -gt 0 ]; then
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, skipping scheduled sync"
+              exit 0
+            elif [ "${{ inputs.force }}" != "true" ]; then
+              echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, skipping (force not enabled)"
+              exit 0
+            else
+              echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, force syncing anyway"
+            fi
+          fi
+
+          git reset --hard public-1.x
+          git push origin 1.x --force-with-lease
+
+      - name: Ensure bundle/2.x exists
+        run: |
+          if git ls-remote --exit-code origin refs/heads/bundle/2.x; then
+            echo "bundle/2.x already exists, skipping"
+          else
+            echo "bundle/2.x not found, creating from master"
+            git checkout master
+            git checkout -b bundle/2.x
+            git push origin bundle/2.x
+          fi
+
+      - name: Ensure bundle/1.x exists
+        run: |
+          if git ls-remote --exit-code origin refs/heads/bundle/1.x; then
+            echo "bundle/1.x already exists, skipping"
+          else
+            echo "bundle/1.x not found, creating from 1.x"
+            git checkout 1.x
+            git checkout -b bundle/1.x
+            git push origin bundle/1.x
+          fi

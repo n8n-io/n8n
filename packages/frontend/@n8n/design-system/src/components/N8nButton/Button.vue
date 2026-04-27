@@ -382,6 +382,13 @@ const handleClick = (event: MouseEvent) => {
 	&.disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+
+		&:hover {
+			background-color: var(--button--color--background);
+			box-shadow:
+				inset var(--button--border--shadow),
+				var(--button--shadow);
+		}
 	}
 
 	&.loading {

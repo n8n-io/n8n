@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
 import { deviceFields, deviceOperations } from './DeviceDescription';
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
@@ -518,8 +518,17 @@ export class GSuiteAdmin implements INodeType {
 									});
 								}
 
-								customSchemas[schemaName] ??= {};
-								(customSchemas[schemaName] as IDataObject)[fieldName] = value;
+								if (!Object.hasOwn(customSchemas, schemaName)) {
+									setSafeObjectProperty(customSchemas, schemaName, {});
+								}
+
+								if (Object.hasOwn(customSchemas, schemaName)) {
+									setSafeObjectProperty(
+										customSchemas[schemaName] as Record<string, unknown>,
+										fieldName,
+										value,
+									);
+								}
 							});
 
 							if (Object.keys(customSchemas).length > 0) {
@@ -800,8 +809,17 @@ export class GSuiteAdmin implements INodeType {
 									});
 								}
 
-								customSchemas[schemaName] ??= {};
-								(customSchemas[schemaName] as IDataObject)[fieldName] = value;
+								if (!Object.hasOwn(customSchemas, schemaName)) {
+									setSafeObjectProperty(customSchemas, schemaName, {});
+								}
+
+								if (Object.hasOwn(customSchemas, schemaName)) {
+									setSafeObjectProperty(
+										customSchemas[schemaName] as Record<string, unknown>,
+										fieldName,
+										value,
+									);
+								}
 							});
 
 							if (Object.keys(customSchemas).length > 0) {

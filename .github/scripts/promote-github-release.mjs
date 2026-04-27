@@ -1,4 +1,5 @@
 import {
+	deleteRelease,
 	ensureEnvVar,
 	getExistingRelease,
 	initGithub,
@@ -35,8 +36,29 @@ async function promoteGitHubRelease() {
 
 	console.log(`Successfully updated release ${releaseResponse.data.html_url}`);
 
+	const existingStableRelease = await getExistingRelease('stable');
+	if (existingStableRelease) {
+		await deleteRelease(existingStableRelease.id);
+		console.log("Deleted previous 'stable' release.");
+	}
+
+	const stableReleaseResponse = await octokit.rest.repos.createRelease({
+		tag_name: 'stable',
+		name: 'stable',
+		body: releaseResponse.data.body,
+		draft: false,
+		prerelease: false,
+		make_latest: 'false',
+		target_commitish: releaseResponse.data.target_commitish,
+		owner,
+		repo,
+	});
+
+	console.log(`Successfully created new stable release ${stableReleaseResponse.data.html_url}`);
+
 	writeGithubOutput({
 		release_url: releaseResponse.data.html_url,
+		stable_release_url: stableReleaseResponse.data.html_url,
 	});
 }
 

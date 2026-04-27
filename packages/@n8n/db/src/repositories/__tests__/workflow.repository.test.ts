@@ -2,10 +2,11 @@ import { GlobalConfig } from '@n8n/config';
 import { In, type SelectQueryBuilder } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-import { WorkflowEntity } from '../../entities';
+import { AiBuilderTemporaryWorkflow, WorkflowEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { FolderRepository } from '../folder.repository';
+import { SharedWorkflowRepository } from '../shared-workflow.repository';
 import { WorkflowHistoryRepository } from '../workflow-history.repository';
 import { WorkflowRepository } from '../workflow.repository';
 
@@ -15,11 +16,13 @@ describe('WorkflowRepository', () => {
 		database: { type: 'postgresdb' },
 	});
 	const folderRepository = mockInstance(FolderRepository);
+	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 	const workflowRepository = new WorkflowRepository(
 		entityManager.connection,
 		globalConfig,
 		folderRepository,
+		sharedWorkflowRepository,
 		workflowHistoryRepository,
 	);
 
@@ -29,8 +32,17 @@ describe('WorkflowRepository', () => {
 		jest.resetAllMocks();
 
 		queryBuilder = mock<SelectQueryBuilder<WorkflowEntity>>();
+		const subQueryBuilder = mock<SelectQueryBuilder<AiBuilderTemporaryWorkflow>>();
+		subQueryBuilder.select.mockReturnThis();
+		subQueryBuilder.from.mockReturnThis();
+		subQueryBuilder.where.mockReturnThis();
+		subQueryBuilder.getQuery.mockReturnValue(
+			'(SELECT 1 FROM "ai_builder_temporary_workflow" "aitw" WHERE aitw."workflowId" = workflow.id)',
+		);
+
 		queryBuilder.where.mockReturnThis();
 		queryBuilder.andWhere.mockReturnThis();
+		queryBuilder.subQuery.mockReturnValue(subQueryBuilder);
 		queryBuilder.orWhere.mockReturnThis();
 		queryBuilder.select.mockReturnThis();
 		queryBuilder.addSelect.mockReturnThis();
@@ -51,6 +63,18 @@ describe('WorkflowRepository', () => {
 		});
 
 		jest.spyOn(workflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+	});
+
+	describe('applyAiBuilderTemporaryFilter', () => {
+		it('hides marker-table rows through a prefix-safe entity subquery', async () => {
+			await workflowRepository.getMany(['workflow1']);
+
+			expect(queryBuilder.subQuery).toHaveBeenCalled();
+			expect(queryBuilder.subQuery().from).toHaveBeenCalledWith(AiBuilderTemporaryWorkflow, 'aitw');
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				expect.stringContaining('NOT EXISTS (SELECT 1 FROM "ai_builder_temporary_workflow"'),
+			);
+		});
 	});
 
 	describe('applyNameFilter', () => {
@@ -144,6 +168,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -364,6 +389,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -392,6 +418,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -591,6 +618,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -651,6 +679,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);

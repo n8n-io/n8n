@@ -1,0 +1,40 @@
+{
+	"prompt": "Create a workflow that handles contact form submissions via a webhook. It should send an auto-reply email to the person who submitted the form, notify my team on Telegram, and log each submission to Google Sheets. For the Google Sheets node use documentId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms' and sheet name: 'Contact Submissions'. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "webhook", "gmail", "telegram", "google-sheets", "multi-action"],
+	"triggerType": "webhook",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "A valid contact form submission triggers all 3 actions",
+			"dataSetup": "The webhook receives a contact form submission from Jane Smith (jane@example.com) with the message 'I am interested in your enterprise plan, can you send me more details?'. The Gmail, Telegram, and Google Sheets nodes return success responses.",
+			"successCriteria": "The workflow executes without errors. The webhook returns a response acknowledging the submission. An auto-reply email is sent to jane@example.com. A Telegram notification is sent containing the submission details (name, email, message). The submission is logged to Google Sheets with the form fields. All 3 actions receive the data from the webhook trigger."
+		},
+		{
+			"name": "missing-fields",
+			"description": "The form submission is missing the name field",
+			"dataSetup": "The webhook receives a submission from anonymous@example.com with the message 'Quick question about pricing' but no name is provided. The Gmail, Telegram, and Google Sheets nodes return success responses.",
+			"successCriteria": "The workflow handles the missing name field without crashing. The email is still sent to the provided address. The Telegram alert and Google Sheets log contain whatever data was available. The workflow does not fail silently."
+		},
+		{
+			"name": "partial-action-failure",
+			"description": "One of the 3 actions fails, the others should still complete if possible",
+			"dataSetup": "The webhook receives a submission from Tom Lee (tom@example.com) with the message 'Hello!'. The Gmail node returns a success response. The Telegram node returns an error indicating the chat was not found. The Google Sheets node returns a success response.",
+			"successCriteria": "The workflow handles the Telegram failure gracefully without crashing. At minimum, the actions before the failure complete successfully. Ideally, independent actions still execute despite the failure — but the key requirement is that the workflow does not lose all data or fail silently due to one action erroring.",
+			"requires": "mock-server"
+		},
+		{
+			"name": "empty-message",
+			"description": "The form submission has an empty message body",
+			"dataSetup": "The webhook receives a submission from Alex Kim (alex@example.com) with an empty message. All service nodes return success responses.",
+			"successCriteria": "The workflow handles the empty message without errors. The auto-reply is still sent. The Telegram notification and Google Sheets log reflect the empty message field without failing."
+		},
+		{
+			"name": "invalid-email",
+			"description": "The submitted email address is malformed",
+			"dataSetup": "The webhook receives a submission from 'John Doe' with the email 'not-an-email' and the message 'Please contact me'. The Gmail node returns an error indicating an invalid recipient. The Telegram and Google Sheets nodes return success responses.",
+			"successCriteria": "The workflow handles the invalid email gracefully. The Telegram notification and Google Sheets logging should still work with the available data. The email failure is handled without crashing the entire workflow.",
+			"requires": "mock-server"
+		}
+	]
+}

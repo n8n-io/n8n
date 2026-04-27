@@ -1,0 +1,12 @@
+{
+  "name": "n8n",
+  "owner": {
+    "name": "n8n"
+  },
+  "plugins": [
+    {
+      "name": "n8n",
+      "source": "./"
+    }
+  ]
+}

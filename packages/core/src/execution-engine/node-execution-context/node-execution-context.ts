@@ -16,6 +16,7 @@ import type {
 	INodeOutputConfiguration,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionCustomData,
 	NodeConnectionType,
 	NodeFeatures,
 	NodeInputConnections,
@@ -44,6 +45,7 @@ import { InstanceSettings } from '@/instance-settings';
 import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
+import { createExecutionCustomData } from './utils/custom-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
@@ -66,6 +68,19 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get logger() {
 		return Container.get(Logger);
+	}
+
+	@Memoized
+	get customData(): IWorkflowExecutionCustomData {
+		if (!this.runExecutionData) {
+			throw new ApplicationError(
+				'Cannot access customData: runExecutionData is not available in this context',
+			);
+		}
+		return createExecutionCustomData({
+			runExecutionData: this.runExecutionData,
+			mode: this.mode,
+		});
 	}
 
 	getExecutionContext() {
@@ -289,6 +304,18 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		itemIndex?: number,
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
+
+		// Eval-mode bypass: when executing with LLM mock handler and node has no credentials
+		// configured, return mock credentials built from the credential type's property definitions.
+		// This allows the node to execute (build requests, parse responses) without real credentials.
+		// Triple-gated: evaluation mode + mock handler present + credentials actually missing.
+		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
+			const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
+			return buildEvalMockCredentials(
+				additionalData.credentialsHelper.getCredentialsProperties(type),
+			) as T;
+		}
+
 		// Get the NodeType as it has the information if the credentials are required
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 

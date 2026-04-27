@@ -54,6 +54,7 @@ describe('OauthService', () => {
 	beforeEach(() => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
+		credentialsHelper.getCredentialsProperties.mockReturnValue([]);
 
 		globalConfig.endpoints = { rest: 'rest' } as any;
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
@@ -68,10 +69,11 @@ describe('OauthService', () => {
 		axios.post = jest.fn();
 
 		// Setup cipher mock - encrypt returns the input as-is for testing, decrypt does the reverse
-		cipher.encrypt.mockImplementation((data: string) => {
+		cipher.encrypt.mockImplementation((data: string | object) => {
 			// For testing, we'll use base64 encoding as a simple mock
 			// In production, this would be actual encryption
-			return Buffer.from(data).toString('base64');
+			const str = typeof data === 'string' ? data : JSON.stringify(data);
+			return Buffer.from(str).toString('base64');
 		});
 		cipher.decrypt.mockImplementation((data: string) => {
 			// For testing, decode the base64
@@ -1130,6 +1132,31 @@ describe('OauthService', () => {
 			);
 		});
 
+		it('should not delete scope for wordpressOAuth2Api credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'wordpressOAuth2Api',
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
 		it('should not delete scope for non-OAuth2 credentials', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
@@ -1148,6 +1175,90 @@ describe('OauthService', () => {
 			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
 				mockAdditionalData,
 				{ clientId: 'client-id', scope: 'old-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should not delete scope when the credential inherits an editable scope property', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'customOAuth2Api',
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{ displayName: 'Scope', name: 'scope', type: 'string', default: '' },
+			]);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should delete scope when the credential overrides the inherited scope as hidden', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'gmailOAuth2',
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'stale-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{ displayName: 'Scope', name: 'scope', type: 'hidden', default: 'default-scope' },
+			]);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should delete scope when getCredentialsProperties throws', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'unknownOAuth2Api',
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'stale-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			credentialsHelper.getCredentialsProperties.mockImplementation(() => {
+				throw new Error('Unknown credential type');
+			});
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id' },
 				credential.type,
 				'internal',
 				undefined,
@@ -2493,6 +2604,52 @@ describe('OauthService', () => {
 					userId: 'user-id',
 				}),
 			).rejects.toThrow('Request token failed');
+		});
+	});
+
+	describe('extractAccountIdentifier', () => {
+		it('returns email from direct token field', () => {
+			expect(
+				OauthService.extractAccountIdentifier({ email: 'user@example.com', access_token: 'tok' }),
+			).toBe('user@example.com');
+		});
+
+		it('returns login from direct token field (GitHub-style)', () => {
+			expect(OauthService.extractAccountIdentifier({ login: 'octocat', access_token: 'tok' })).toBe(
+				'octocat',
+			);
+		});
+
+		it('extracts email from JWT id_token', () => {
+			const payload = { email: 'user@gmail.com', sub: '123' };
+			const idToken = `header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.sig`;
+			expect(OauthService.extractAccountIdentifier({ id_token: idToken })).toBe('user@gmail.com');
+		});
+
+		it('extracts preferred_username from JWT id_token when no email', () => {
+			const payload = { preferred_username: 'admin@contoso.com', sub: '123' };
+			const idToken = `header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.sig`;
+			expect(OauthService.extractAccountIdentifier({ id_token: idToken })).toBe(
+				'admin@contoso.com',
+			);
+		});
+
+		it('returns undefined for token data without identifiers', () => {
+			expect(
+				OauthService.extractAccountIdentifier({ access_token: 'tok', refresh_token: 'ref' }),
+			).toBeUndefined();
+		});
+
+		it('handles malformed JWT gracefully', () => {
+			expect(OauthService.extractAccountIdentifier({ id_token: 'not.a.jwt' })).toBeUndefined();
+		});
+
+		it('prefers direct fields over id_token', () => {
+			const payload = { email: 'jwt@example.com' };
+			const idToken = `h.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.s`;
+			expect(
+				OauthService.extractAccountIdentifier({ email: 'direct@example.com', id_token: idToken }),
+			).toBe('direct@example.com');
 		});
 	});
 });
