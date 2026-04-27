@@ -278,7 +278,9 @@ export function createSubmitWorkflowTool(
 			}));
 
 			// Server-side schema validation (Zod checks against node type definitions)
-			const schemaValidation = validateWorkflow(buildOutput.workflow);
+			const schemaValidation = validateWorkflow(buildOutput.workflow, {
+				nodeTypesProvider: context.nodeTypesProvider,
+			});
 			for (const issue of [...schemaValidation.errors, ...schemaValidation.warnings]) {
 				allWarnings.push({
 					code: issue.code,
