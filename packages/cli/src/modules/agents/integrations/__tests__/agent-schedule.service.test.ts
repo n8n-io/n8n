@@ -12,51 +12,6 @@ import type { AgentsService } from '../../agents.service';
 import type { Agent } from '../../entities/agent.entity';
 import { AgentScheduleService } from '../agent-schedule.service';
 
-jest.mock('cron', () => {
-	const jobs: Array<{
-		cronTime: string;
-		onTick: () => void;
-		timeZone?: string;
-		start: jest.Mock;
-		stop: jest.Mock;
-	}> = [];
-	const validateCronExpression = jest.fn();
-
-	class CronJob {
-		cronTime: string;
-		onTick: () => void;
-		timeZone?: string;
-		start = jest.fn();
-		stop = jest.fn();
-
-		constructor(
-			cronTime: string,
-			onTick: () => void,
-			_onComplete?: unknown,
-			_start?: boolean,
-			timeZone?: string,
-		) {
-			this.cronTime = cronTime;
-			this.onTick = onTick;
-			this.timeZone = timeZone;
-			jobs.push(this);
-		}
-	}
-
-	return { CronJob, validateCronExpression, __jobs: jobs };
-});
-
-const cronModule: {
-	validateCronExpression: jest.Mock;
-	__jobs: Array<{
-		cronTime: string;
-		onTick: () => void;
-		timeZone?: string;
-		start: jest.Mock;
-		stop: jest.Mock;
-	}>;
-} = jest.requireMock('cron');
-
 function makePublishedAgent(
 	integrations: AgentIntegration[] = [],
 	overrides: Partial<Agent> = {},
@@ -88,9 +43,6 @@ describe('AgentScheduleService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		cronModule.__jobs.length = 0;
-		cronModule.validateCronExpression.mockReset();
-		cronModule.validateCronExpression.mockReturnValue({ valid: true });
 		jest.useFakeTimers().setSystemTime(new Date('2026-04-24T13:00:00Z'));
 
 		agentRepository = {
@@ -117,6 +69,7 @@ describe('AgentScheduleService', () => {
 	});
 
 	afterEach(() => {
+		service.stopAll();
 		jest.useRealTimers();
 	});
 
@@ -146,11 +99,6 @@ describe('AgentScheduleService', () => {
 	});
 
 	it('rejects invalid cron expressions on save and activation', async () => {
-		cronModule.validateCronExpression.mockReturnValue({
-			valid: false,
-			error: new Error('bad cron'),
-		});
-
 		await expect(service.saveConfig(makePublishedAgent(), 'not-a-cron')).rejects.toBeInstanceOf(
 			BadRequestError,
 		);
@@ -193,17 +141,35 @@ describe('AgentScheduleService', () => {
 				wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
 			},
 		]);
+		agentRepository.findOne.mockResolvedValue({
+			...agent,
+			integrations: [
+				{
+					type: 'schedule',
+					active: true,
+					cronExpression: '* * * * *',
+					wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+				},
+			],
+		});
+		projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['user-1']);
 
 		const activeConfig = await service.activate(agent);
 
 		expect(activeConfig.active).toBe(true);
-		expect(cronModule.__jobs).toHaveLength(1);
-		expect(cronModule.__jobs[0].start).toHaveBeenCalled();
+		expect(agentsService.executeForSchedulePublished).not.toHaveBeenCalled();
+
+		await jest.advanceTimersByTimeAsync(60 * 1000);
+
+		expect(agentsService.executeForSchedulePublished).toHaveBeenCalledTimes(1);
 
 		const inactiveConfig = await service.deactivate(agent);
 
 		expect(inactiveConfig.active).toBe(false);
-		expect(cronModule.__jobs[0].stop).toHaveBeenCalled();
+
+		await jest.advanceTimersByTimeAsync(60 * 1000);
+
+		expect(agentsService.executeForSchedulePublished).toHaveBeenCalledTimes(1);
 	});
 
 	it('saveConfig refreshes an already active schedule job', async () => {
@@ -219,9 +185,17 @@ describe('AgentScheduleService', () => {
 		await service.registerOrRefresh(agent);
 		await service.saveConfig(agent, '*/5 * * * *');
 
-		expect(cronModule.__jobs).toHaveLength(2);
-		expect(cronModule.__jobs[0].stop).toHaveBeenCalled();
-		expect(cronModule.__jobs[1].cronTime).toBe('*/5 * * * *');
+		expect(agentRepository.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				integrations: [
+					expect.objectContaining({
+						type: 'schedule',
+						active: true,
+						cronExpression: '*/5 * * * *',
+					}),
+				],
+			}),
+		);
 	});
 
 	it('runScheduled appends the timestamp and uses a fresh thread/resource id', async () => {
@@ -257,31 +231,37 @@ describe('AgentScheduleService', () => {
 	});
 
 	it('reconnectAll restores only active published schedules', async () => {
-		agentRepository.findPublished.mockResolvedValue([
-			makePublishedAgent([
+		const activeAgent = makePublishedAgent([
+			{
+				type: 'schedule',
+				active: true,
+				cronExpression: '* * * * *',
+				wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+			},
+		]);
+		const inactiveAgent = makePublishedAgent(
+			[
 				{
 					type: 'schedule',
-					active: true,
-					cronExpression: '* * * * *',
+					active: false,
+					cronExpression: '*/5 * * * *',
 					wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
 				},
-			]),
-			makePublishedAgent(
-				[
-					{
-						type: 'schedule',
-						active: false,
-						cronExpression: '*/5 * * * *',
-						wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
-					},
-				],
-				{ id: 'agent-2' },
-			),
-		]);
+			],
+			{ id: 'agent-2' },
+		);
+		agentRepository.findPublished.mockResolvedValue([activeAgent, inactiveAgent]);
+		agentRepository.findOne.mockImplementation(async ({ where }: { where: { id: string } }) => {
+			if (where.id === activeAgent.id) return activeAgent;
+			if (where.id === inactiveAgent.id) return inactiveAgent;
+			return null;
+		});
+		projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['user-1']);
 
 		await service.reconnectAll();
 
-		expect(cronModule.__jobs).toHaveLength(1);
-		expect(cronModule.__jobs[0].cronTime).toBe('* * * * *');
+		await jest.advanceTimersByTimeAsync(60 * 1000);
+
+		expect(agentsService.executeForSchedulePublished).toHaveBeenCalledTimes(1);
 	});
 });
