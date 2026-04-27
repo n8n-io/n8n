@@ -19,7 +19,11 @@ import { DaytonaFilesystem } from './daytona-filesystem';
 import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
 import { N8nSandboxImageManager } from './n8n-sandbox-image-manager';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
-import { packWorkspaceSdk, type WorkspaceSdkTarball } from './pack-workspace-sdk';
+import {
+	isLinkWorkspaceSdkEnabled,
+	packWorkspaceSdk,
+	type WorkspaceSdkTarball,
+} from './pack-workspace-sdk';
 import { runInSandbox, writeFileViaSandbox } from './sandbox-fs';
 import type { SnapshotManager } from './snapshot-manager';
 import type { InstanceAiContext } from '../types';
@@ -79,13 +83,21 @@ export class BuilderSandboxFactory {
 
 	/**
 	 * Pack and install the host's workspace `@n8n/workflow-sdk` into the remote
-	 * sandbox, overriding the registry version baked in at image build time.
+	 * sandbox. In linked-SDK mode the baked image omits the registry SDK so
+	 * unpublished workspace versions can still create a sandbox.
 	 * No-op unless `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1` is set.
 	 */
 	private async linkWorkspaceSdkIfEnabled(workspace: Workspace, root: string): Promise<void> {
 		this.sdkTarballPromise ??= packWorkspaceSdk(this.logger);
 		const packed = await this.sdkTarballPromise;
-		if (!packed) return;
+		if (!packed) {
+			if (isLinkWorkspaceSdkEnabled()) {
+				throw new Error(
+					'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but the workspace SDK could not be packed. Run `pnpm build` in packages/@n8n/workflow-sdk or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+				);
+			}
+			return;
+		}
 
 		const remotePath = posixJoin(root, packed.filename);
 		if (workspace.filesystem) {

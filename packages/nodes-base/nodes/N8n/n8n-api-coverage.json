@@ -199,6 +199,18 @@
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
 			"status": "gap"
 		},
+		"GET /data-tables/{dataTableId}/columns": {
+			"status": "gap"
+		},
+		"POST /data-tables/{dataTableId}/columns": {
+			"status": "gap"
+		},
+		"PATCH /data-tables/{dataTableId}/columns/{columnId}": {
+			"status": "gap"
+		},
+		"DELETE /data-tables/{dataTableId}/columns/{columnId}": {
+			"status": "gap"
+		},
 		"POST /projects": {
 			"status": "gap"
 		},

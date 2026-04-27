@@ -12,6 +12,7 @@ import {
 	ExecutionLifecycleHooks,
 } from 'n8n-core';
 import type {
+	ExecutionStatus,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -770,8 +771,11 @@ export function getLifecycleHooksForScalingMain(
 	hookFunctionsFinalizeExecutionStatus(hooks);
 
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
-		// Don't delete executions before they are finished
-		if (!fullRunData.finished) return;
+		// Only process executions that have reached a terminal status.
+		// We check `status` (not the deprecated `finished` field) because
+		// errored executions have `finished = false` but a terminal `status`.
+		const terminalStatuses: ExecutionStatus[] = ['success', 'error', 'crashed', 'canceled'];
+		if (!terminalStatuses.includes(fullRunData.status) && !fullRunData.waitTill) return;
 
 		const isManualMode = this.mode === 'manual';
 
