@@ -3775,6 +3775,7 @@
 	"workflowSettings.availableInMCP.tooltip": "Make this workflow visible to AI Agents through n8n MCP",
 	"workflowSettings.toggleMCP.error.title": "Error updating MCP settings",
 	"workflowSettings.toggleMCP.notFoundError": "Workflow not found",
+	"workflowSettings.toggleMCP.updateSkippedError": "Workflow {workflowId} could not be updated. It may be archived or you may no longer have permission to edit it.",
 	"workflowHistory.title": "Version History",
 	"workflowHistory.content.actions": "Actions",
 	"workflowHistory.item.id": "ID: {id}",

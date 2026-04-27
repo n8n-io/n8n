@@ -23,6 +23,7 @@ import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { isWorkflowListItem } from '@/app/utils/typeGuards';
 import type { ApiKey, OAuthClientResponseDto, DeleteOAuthClientResponseDto } from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -117,7 +118,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 		if (!(response.updatedIds ?? []).includes(workflowId)) {
 			throw new Error(
-				`Workflow ${workflowId} could not be updated. It may be archived or you may no longer have permission to edit it.`,
+				i18n.baseText('workflowSettings.toggleMCP.updateSkippedError', {
+					interpolate: { workflowId },
+				}),
 			);
 		}
 
