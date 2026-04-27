@@ -156,10 +156,9 @@ export class ConvertKit implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
-
 		for (let i = 0; i < items.length; i++) {
+			const resource = this.getNodeParameter('resource', i);
+			const operation = this.getNodeParameter('operation', i);
 			try {
 				if (resource === 'customField') {
 					if (operation === 'create') {
