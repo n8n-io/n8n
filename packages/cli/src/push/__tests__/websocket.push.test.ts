@@ -172,4 +172,118 @@ describe('WebSocketPush', () => {
 
 		expect(mockOnMessageReceived).not.toHaveBeenCalled();
 	});
+
+	// GHC-7862: Regression tests for server disconnection issue
+	describe('GHC-7862: Connection stability', () => {
+		let isolatedWebSocketPush: WebSocketPush;
+
+		beforeEach(() => {
+			jest.useFakeTimers();
+			// Create a fresh instance for each test to ensure clean timer state
+			const logger = mockInstance(Logger);
+			const errorReporter = { error: jest.fn() } as any;
+			isolatedWebSocketPush = new WebSocketPush(logger, errorReporter);
+		});
+
+		afterEach(() => {
+			jest.useRealTimers();
+		});
+
+		it('should not terminate connection that responds to pong within timeout', () => {
+			const mockSocket = createMockWebSocket();
+			isolatedWebSocketPush.add(pushRef1, userId, mockSocket);
+
+			// First ping cycle - connection should remain alive
+			jest.advanceTimersByTime(60_000);
+			expect(mockSocket.ping).toHaveBeenCalledTimes(1);
+			expect(mockSocket.isAlive).toBe(false);
+
+			// Simulate pong response
+			mockSocket.emit('pong');
+			expect(mockSocket.isAlive).toBe(true);
+
+			// Second ping cycle - connection should still be alive
+			jest.advanceTimersByTime(60_000);
+			expect(mockSocket.ping).toHaveBeenCalledTimes(2);
+			expect(mockSocket.terminate).not.toHaveBeenCalled();
+		});
+
+		it('should terminate connection that fails to respond to pong', () => {
+			const mockSocket = createMockWebSocket();
+			isolatedWebSocketPush.add(pushRef1, userId, mockSocket);
+
+			// First ping cycle
+			jest.advanceTimersByTime(60_000);
+			expect(mockSocket.ping).toHaveBeenCalledTimes(1);
+			expect(mockSocket.isAlive).toBe(false);
+
+			// No pong response - isAlive stays false
+
+			// Second ping cycle - should terminate
+			jest.advanceTimersByTime(60_000);
+			expect(mockSocket.terminate).toHaveBeenCalledTimes(1);
+			expect(mockSocket.ping).toHaveBeenCalledTimes(1); // Shouldn't ping after termination
+		});
+
+		it('should keep connection alive if pong handler is properly registered', () => {
+			const mockSocket = createMockWebSocket();
+			isolatedWebSocketPush.add(pushRef1, userId, mockSocket);
+
+			// Verify pong handler is registered
+			expect(mockSocket.listenerCount('pong')).toBe(1);
+
+			// Run multiple ping/pong cycles
+			for (let i = 0; i < 5; i++) {
+				jest.advanceTimersByTime(60_000);
+				mockSocket.emit('pong');
+				expect(mockSocket.terminate).not.toHaveBeenCalled();
+			}
+
+			// Connection should still be alive
+			expect(isolatedWebSocketPush.hasPushRef(pushRef1)).toBe(true);
+		});
+
+		it('should handle rapid reconnections without premature termination', () => {
+			// Simulate the reported issue: connection drops every 2-3 seconds
+			const mockSocket = createMockWebSocket();
+			isolatedWebSocketPush.add(pushRef1, userId, mockSocket);
+
+			// Before the first ping interval (60s), connection should remain stable
+			jest.advanceTimersByTime(3_000);
+			expect(mockSocket.terminate).not.toHaveBeenCalled();
+
+			// Even without explicit pong, connection should not terminate
+			// until the first ping happens at 60s
+			jest.advanceTimersByTime(57_000); // Total: 60s
+			expect(mockSocket.ping).toHaveBeenCalledTimes(1);
+
+			// Simulate proper pong response
+			mockSocket.emit('pong');
+
+			// Connection should remain stable for another cycle
+			jest.advanceTimersByTime(60_000);
+			expect(mockSocket.terminate).not.toHaveBeenCalled();
+		});
+
+		it('should terminate connection after missed pong and not accept late pongs', () => {
+			const mockSocket = createMockWebSocket();
+			isolatedWebSocketPush.add(pushRef1, userId, mockSocket);
+
+			// First ping - no pong response
+			jest.advanceTimersByTime(60_000);
+			expect(mockSocket.isAlive).toBe(false);
+			// Don't emit pong
+
+			// Connection should be terminated on second ping
+			jest.advanceTimersByTime(60_000);
+			expect(mockSocket.terminate).toHaveBeenCalledTimes(1);
+
+			// Simulate the close event that follows termination
+			mockSocket.emit('close');
+
+			// Even if pong arrives late, connection is already terminated
+			mockSocket.emit('pong');
+			expect(isolatedWebSocketPush.hasPushRef(pushRef1)).toBe(false);
+		});
+	});
 });
