@@ -11,6 +11,7 @@ import z from 'zod';
 import type { ICredentialsDecryptedDb } from '@/interfaces';
 
 import { BaseCommand } from '../base-command';
+import '../../zod-alias-support';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Export all credentials').optional(),
@@ -118,7 +119,7 @@ export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 
 		const credentials: ICredentialsDb[] = await Container.get(CredentialsRepository).find({
 			where: this.getWhereFilter(flags),
-			relations: { shared: true },
+			relations: ['shared.project'],
 		});
 
 		if (flags.decrypted) {
