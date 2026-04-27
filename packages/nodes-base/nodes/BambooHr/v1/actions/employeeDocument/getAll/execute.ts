@@ -14,8 +14,8 @@ export async function getAll(
 
 	//limit parameters
 	const simplifyOutput: boolean = this.getNodeParameter('simplifyOutput', index) as boolean;
-	const returnAll: boolean = this.getNodeParameter('returnAll', 0, false);
-	const limit: number = this.getNodeParameter('limit', 0, 0);
+	const returnAll: boolean = this.getNodeParameter('returnAll', index, false);
+	const limit: number = this.getNodeParameter('limit', index, 0);
 
 	//endpoint
 	const endpoint = `employees/${id}/files/view/`;
