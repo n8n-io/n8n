@@ -35,7 +35,7 @@ export async function woocommerceApiRequest(
 	};
 
 	if (!Object.keys(body as IDataObject).length) {
-		delete options.form;
+		delete options.body;
 	}
 	options = Object.assign({}, options, option);
 	return await this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
