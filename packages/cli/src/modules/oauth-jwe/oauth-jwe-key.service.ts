@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { DeploymentKey, DeploymentKeyRepository } from '@n8n/db';
+import { DeploymentKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils';
@@ -9,18 +9,16 @@ import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { CacheService } from '@/services/cache/cache.service';
-
 import {
 	JWE_KEY_ALGORITHM,
 	JWE_KEY_CACHE_KEY,
 	JWE_KEY_USE,
 	JWE_PRIVATE_KEY_TYPE,
-	JWE_PUBLIC_KEY_TYPE,
 } from './oauth-jwe.constants';
 
+import { CacheService } from '@/services/cache/cache.service';
+
 type OAuthJweKeyPairData = {
-	publicJwk: JWK;
 	encryptedPrivateJwk: string;
 	kid: string;
 };
@@ -32,6 +30,13 @@ type OAuthJweKeyPair = {
 	kid: string;
 };
 
+/**
+ * Manages a single instance-level JWE key pair pinned to {@link JWE_KEY_ALGORITHM}
+ * (`RSA-OAEP-256`). The `deployment_key` storage layer and partial unique index
+ * are scoped per algorithm, so future work can add a second active key under a
+ * different algorithm without changing the schema; this service would then need
+ * to expose lookups by algorithm.
+ */
 @Service()
 export class OAuthJweKeyService {
 	constructor(
@@ -46,8 +51,8 @@ export class OAuthJweKeyService {
 	/**
 	 * Ensures the instance OAuth JWE key pair exists in the database and is
 	 * present in the shared cache. Safe to call concurrently across mains:
-	 * the database's partial unique indexes serialise insertion attempts and
-	 * losers re-read the winner's pair.
+	 * the database's partial unique index serialises insertion attempts and
+	 * losers re-read the winner's row.
 	 */
 	async initialize(): Promise<void> {
 		await this.loadData();
@@ -69,8 +74,8 @@ export class OAuthJweKeyService {
 	 * to an IdP.
 	 */
 	async getPublicJwk(): Promise<JWK> {
-		const data = await this.loadData();
-		return data.publicJwk;
+		const { publicJwk } = await this.getKeyPair();
+		return publicJwk;
 	}
 
 	private async loadData(): Promise<OAuthJweKeyPairData> {
@@ -88,16 +93,17 @@ export class OAuthJweKeyService {
 		const privateJwk = jsonParse<JWK>(decryptedPrivate, {
 			errorMessage: 'Failed to parse OAuth JWE private key',
 		});
+		const publicJwk = toPublicJwk(privateJwk);
 
 		const [publicKey, privateKey] = await Promise.all([
-			importJWK(data.publicJwk, JWE_KEY_ALGORITHM),
+			importJWK(publicJwk, JWE_KEY_ALGORITHM),
 			importJWK(privateJwk, JWE_KEY_ALGORITHM),
 		]);
 
 		return {
 			publicKey: publicKey as CryptoKey,
 			privateKey: privateKey as CryptoKey,
-			publicJwk: data.publicJwk,
+			publicJwk,
 			kid: data.kid,
 		};
 	}
@@ -116,50 +122,36 @@ export class OAuthJweKeyService {
 	}
 
 	private async readActivePairData(): Promise<OAuthJweKeyPairData | null> {
-		const [publicRow, privateRow] = await Promise.all([
-			this.deploymentKeyRepository.findActiveByType(JWE_PUBLIC_KEY_TYPE),
-			this.deploymentKeyRepository.findActiveByType(JWE_PRIVATE_KEY_TYPE),
-		]);
-
-		if (!publicRow && !privateRow) return null;
-
-		if (!publicRow || !privateRow) {
-			throw new UnexpectedError(
-				'OAuth JWE key pair is in an inconsistent state: one row is missing',
-			);
-		}
-
-		const publicJwk = jsonParse<JWK>(publicRow.value, {
-			errorMessage: 'Failed to parse OAuth JWE public key',
+		const privateRow = await this.deploymentKeyRepository.findOne({
+			where: {
+				type: JWE_PRIVATE_KEY_TYPE,
+				algorithm: JWE_KEY_ALGORITHM,
+				status: 'active',
+			},
 		});
+		if (!privateRow) return null;
+
 		const decryptedPrivate = this.cipher.decryptWithInstanceKey(privateRow.value);
 		const privateJwk = jsonParse<JWK>(decryptedPrivate, {
 			errorMessage: 'Failed to parse OAuth JWE private key',
 		});
 
-		if (!publicJwk.kid || publicJwk.kid !== privateJwk.kid) {
-			throw new UnexpectedError('OAuth JWE key pair kid mismatch');
+		if (!privateJwk.kid) {
+			throw new UnexpectedError('OAuth JWE private key is missing a kid');
 		}
 
 		return {
-			publicJwk,
 			encryptedPrivateJwk: privateRow.value,
-			kid: publicJwk.kid,
+			kid: privateJwk.kid,
 		};
 	}
 
 	private async generateAndPersist(): Promise<void> {
-		const { publicKey, privateKey } = await generateKeyPair(JWE_KEY_ALGORITHM, {
+		const { privateKey } = await generateKeyPair(JWE_KEY_ALGORITHM, {
 			extractable: true,
 		});
 		const kid = randomUUID();
 
-		const publicJwk: JWK = {
-			...(await exportJWK(publicKey)),
-			kid,
-			alg: JWE_KEY_ALGORITHM,
-			use: JWE_KEY_USE,
-		};
 		const privateJwk: JWK = {
 			...(await exportJWK(privateKey)),
 			kid,
@@ -170,21 +162,12 @@ export class OAuthJweKeyService {
 		const encryptedPrivate = this.cipher.encryptWithInstanceKey(JSON.stringify(privateJwk));
 
 		try {
-			await this.deploymentKeyRepository.manager.transaction(async (tx) => {
-				await tx.insert(DeploymentKey, {
-					id: generateNanoId(),
-					type: JWE_PUBLIC_KEY_TYPE,
-					value: JSON.stringify(publicJwk),
-					algorithm: JWE_KEY_ALGORITHM,
-					status: 'active',
-				});
-				await tx.insert(DeploymentKey, {
-					id: generateNanoId(),
-					type: JWE_PRIVATE_KEY_TYPE,
-					value: encryptedPrivate,
-					algorithm: JWE_KEY_ALGORITHM,
-					status: 'active',
-				});
+			await this.deploymentKeyRepository.insert({
+				id: generateNanoId(),
+				type: JWE_PRIVATE_KEY_TYPE,
+				value: encryptedPrivate,
+				algorithm: JWE_KEY_ALGORITHM,
+				status: 'active',
 			});
 
 			this.logger.info('Generated new instance OAuth JWE key pair', { kid });
@@ -192,20 +175,25 @@ export class OAuthJweKeyService {
 			if (!isUniqueConstraintViolation(error)) throw error;
 
 			this.logger.debug(
-				'OAuth JWE key pair insert raced with another main; re-reading winner',
+				'OAuth JWE key insert raced with another main; re-reading winner',
 				error instanceof Error ? { message: error.message } : {},
 			);
 		}
 	}
 }
 
+/**
+ * Strips the private-only fields from an RSA private JWK to produce its
+ * public counterpart.
+ */
+function toPublicJwk(privateJwk: JWK): JWK {
+	const { d, p, q, dp, dq, qi, ...publicJwk } = privateJwk;
+	return publicJwk;
+}
+
 function isUniqueConstraintViolation(error: unknown): boolean {
 	if (!(error instanceof QueryFailedError)) return false;
 	const driverError = error.driverError as { code?: string };
 	const code = driverError?.code;
-	return (
-		code === '23505' || // postgres
-		code === 'SQLITE_CONSTRAINT_UNIQUE' ||
-		code === 'ER_DUP_ENTRY' // mysql / mariadb
-	);
+	return code === '23505' /* postgres */ || code === 'SQLITE_CONSTRAINT_UNIQUE';
 }
