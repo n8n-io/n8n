@@ -458,11 +458,6 @@ describe('buildSetupCardTitle', () => {
 		expect(buildSetupCardTitle(card, credLabel, t)).toBe('Some Node');
 	});
 
-	it('returns the literal "Setup" for a multi-node card with no credentialType', () => {
-		const card = { ...makeTitleCard(['A', 'B']), credentialType: undefined };
-		expect(buildSetupCardTitle(card, credLabel, t)).toBe('Setup');
-	});
-
 	it('trims and truncates the single-node name when a credentialType is set', () => {
 		const longName = 'A'.repeat(80);
 		const card = makeTitleCard([longName]);

@@ -146,10 +146,9 @@ export function buildSetupCardTitle(
 	getCredentialAppLabel: (credentialType: string) => string,
 	t: (key: string, opts?: { interpolate?: Record<string, string | number> }) => string,
 ): string {
-	// Cards without a credentialType (param-only / trigger-only) keep the raw node-name title.
+	// Param-only / trigger-only cards are always single-node by construction (see `useSetupCards`).
 	if (!card.credentialType) {
-		if (card.nodes.length === 1) return card.nodes[0].node.name;
-		return 'Setup';
+		return card.nodes[0].node.name;
 	}
 
 	const credLabel = stripLeadingSetUp(getCredentialAppLabel(card.credentialType));
