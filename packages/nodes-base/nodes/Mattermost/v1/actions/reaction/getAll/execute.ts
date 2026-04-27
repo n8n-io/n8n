@@ -7,7 +7,7 @@ export async function getAll(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const postId = this.getNodeParameter('postId', index) as string;
-	const limit = this.getNodeParameter('limit', 0, 0);
+	const limit = this.getNodeParameter('limit', index, 0);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
