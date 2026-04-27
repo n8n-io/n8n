@@ -83,4 +83,49 @@ describe('useUniqueNodeName', () => {
 
 		expect(uniqueNodeName('S3')).toBe('S32');
 	});
+
+	test('should handle names ending with decimal-like strings (e.g., "Claude Sonnet 4.6")', () => {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
+		const nodeTypesStore = useNodeTypesStore();
+
+		const mockCanvasNames = new Set(['Claude Sonnet 4.6']);
+
+		vi.spyOn(workflowDocumentStore, 'canvasNames', 'get').mockReturnValue(mockCanvasNames);
+		vi.spyOn(nodeTypesStore, 'allNodeTypes', 'get').mockReturnValue([]);
+
+		const { uniqueNodeName } = useUniqueNodeName();
+
+		// When duplicating "Claude Sonnet 4.6", the next name should be "Claude Sonnet 4.61"
+		expect(uniqueNodeName('Claude Sonnet 4.6')).toBe('Claude Sonnet 4.61');
+
+		mockCanvasNames.add('Claude Sonnet 4.61');
+
+		// Subsequent duplicates should continue incrementing
+		expect(uniqueNodeName('Claude Sonnet 4.6')).toBe('Claude Sonnet 4.62');
+	});
+
+	test('should handle names ending with version-like strings in various formats', () => {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
+		const nodeTypesStore = useNodeTypesStore();
+
+		const mockCanvasNames = new Set([
+			'Model v2.5',
+			'API v1.0.3',
+			'Service 3.14',
+		]);
+
+		vi.spyOn(workflowDocumentStore, 'canvasNames', 'get').mockReturnValue(mockCanvasNames);
+		vi.spyOn(nodeTypesStore, 'allNodeTypes', 'get').mockReturnValue([]);
+
+		const { uniqueNodeName } = useUniqueNodeName();
+
+		// Test "Model v2.5" -> "Model v2.51"
+		expect(uniqueNodeName('Model v2.5')).toBe('Model v2.51');
+
+		// Test "API v1.0.3" -> "API v1.0.31"
+		expect(uniqueNodeName('API v1.0.3')).toBe('API v1.0.31');
+
+		// Test "Service 3.14" -> "Service 3.141"
+		expect(uniqueNodeName('Service 3.14')).toBe('Service 3.141');
+	});
 });
