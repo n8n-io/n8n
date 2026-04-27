@@ -666,6 +666,9 @@ importers:
       '@types/pg':
         specifier: ^8.15.6
         version: 8.15.6
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
       testcontainers:
         specifier: 'catalog:'
         version: 11.13.0
@@ -3689,6 +3692,9 @@ importers:
       '@lezer/common':
         specifier: ^1.2.0
         version: 1.2.1
+      '@n8n/agents':
+        specifier: workspace:*
+        version: link:../../@n8n/agents
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../@n8n/api-types

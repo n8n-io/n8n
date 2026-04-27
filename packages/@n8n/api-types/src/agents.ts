@@ -73,6 +73,18 @@ export interface AgentJsonToolRef {
 	allOutputs?: boolean;
 }
 
+/**
+ * Persisted reference to an app (toolset) attached to an agent. `kind`
+ * resolves at runtime against the registry in `@n8n/agents`. Unknown kinds
+ * are skipped at runtime, not rejected at save time, so a config saved on a
+ * newer instance loads cleanly with the unknown app silently disabled.
+ */
+export interface AgentJsonAppRef {
+	kind: string;
+	credentialId: string;
+	credentialName: string;
+}
+
 export interface AgentJsonConfig {
 	name: string;
 	description?: string;
@@ -94,6 +106,7 @@ export interface AgentJsonConfig {
 		};
 	};
 	tools?: AgentJsonToolRef[];
+	apps?: AgentJsonAppRef[];
 	providerTools?: Record<string, Record<string, unknown>>;
 	config?: {
 		thinking?: {

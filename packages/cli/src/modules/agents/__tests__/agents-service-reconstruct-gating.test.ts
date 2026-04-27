@@ -11,6 +11,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -54,6 +55,7 @@ function makeService(agentsToolsService: AgentsToolsService): AgentsService {
 		mock<N8NCheckpointStorage>(),
 		mock<AgentSecureRuntime>(),
 		mock<EphemeralNodeExecutor>(),
+		mock<NodeTypes>(),
 		agentsToolsService,
 		mock<N8nMemory>(),
 		mock<AgentExecutionService>(),

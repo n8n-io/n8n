@@ -5,8 +5,8 @@ import type {
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import * as agents from '@n8n/agents';
+import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import {
@@ -26,6 +26,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { EphemeralNodeExecutor } from '@/node-execution';
+import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -34,6 +35,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentsToolsService } from './agents-tools.service';
+import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -53,7 +55,7 @@ import {
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
-import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
+import { buildAppToolset } from './toolsets/app-toolset-factory';
 
 interface InjectRuntimeDependenciesParams {
 	agent: agents.Agent;
@@ -61,6 +63,8 @@ interface InjectRuntimeDependenciesParams {
 	projectId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
+	/** Apps (toolsets) attached to the agent. POC: only Gmail. */
+	apps?: AgentJsonConfig['apps'];
 	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
 	integrationType?: string;
 }
@@ -142,6 +146,7 @@ export class AgentsService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
+		private readonly nodeTypes: NodeTypes,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentExecutionService: AgentExecutionService,
@@ -447,7 +452,7 @@ export class AgentsService {
 		const integration = integrationType
 			? Container.get(ChatIntegrationRegistry).get(integrationType)
 			: undefined;
-		if (integration && integration.supportedComponents !== undefined) {
+		if (integration?.supportedComponents !== undefined) {
 			try {
 				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
 				agent.tool(createRichInteractionTool(integrationType));
@@ -462,6 +467,8 @@ export class AgentsService {
 		if (nodeToolsEnabled) {
 			this.attachNodeToolChain(agent, credentialProvider, projectId);
 		}
+
+		this.attachAppToolsets(agent, params.apps, projectId);
 
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {
@@ -481,6 +488,48 @@ export class AgentsService {
 		projectId: string,
 	): void {
 		agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
+	}
+
+	/**
+	 * Attach toolsets for each app the agent has configured. Each app surfaces
+	 * as a single dispatcher tool (e.g. `gmail`) supporting list_operations /
+	 * describe_operation / invoke_operation.
+	 *
+	 * Registry-driven: looks up the app definition via `findAppDefinition` and
+	 * delegates to the generic `buildAppToolset` factory.
+	 */
+	private attachAppToolsets(
+		agent: agents.Agent,
+		apps: AgentJsonConfig['apps'],
+		projectId: string,
+	): void {
+		if (!apps || apps.length === 0) return;
+		for (const app of apps) {
+			const appDef = agents.findAppDefinition(app.kind);
+			if (!appDef) {
+				this.logger.warn('Skipping unknown app on agent', { kind: app.kind });
+				continue;
+			}
+			if (appDef.disabled) {
+				this.logger.warn('Skipping disabled app on agent', { kind: app.kind });
+				continue;
+			}
+			try {
+				const tool = buildAppToolset({
+					appDef,
+					credentialId: app.credentialId,
+					credentialName: app.credentialName,
+					projectId,
+					nodeTypes: this.nodeTypes,
+					executor: this.ephemeralNodeExecutor,
+				});
+				agent.tool(tool);
+			} catch (error) {
+				this.logger.warn(`Failed to attach ${app.kind} toolset`, {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
 	}
 
 	/**
@@ -587,7 +636,7 @@ export class AgentsService {
 			return { missing: ['instructions', 'model'] };
 		}
 
-		if (!config.instructions || !config.instructions.trim()) {
+		if (!config.instructions?.trim()) {
 			missing.push('instructions');
 		}
 
@@ -1178,6 +1227,7 @@ export class AgentsService {
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			nodeToolsEnabled: isNodeToolsEnabled(config.config),
+			apps: config.apps,
 			integrationType,
 		});
 

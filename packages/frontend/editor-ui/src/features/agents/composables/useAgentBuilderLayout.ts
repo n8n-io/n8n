@@ -23,7 +23,7 @@ export function useAgentBuilderLayout() {
 	const gridColumns = computed(() =>
 		chatColumnCollapsed.value
 			? '0 1fr minmax(200px, 260px)'
-			: 'minmax(400px, 500px) 1fr minmax(200px, 260px)',
+			: 'minmax(520px, 640px) 1fr minmax(200px, 260px)',
 	);
 
 	function onToggleChatColumn() {

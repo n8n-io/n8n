@@ -10,6 +10,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -68,6 +69,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock<N8NCheckpointStorage>(),
 			mock<AgentSecureRuntime>(),
 			mock<EphemeralNodeExecutor>(),
+			mock<NodeTypes>(),
 			mock(), // AgentsToolsService
 			mock<N8nMemory>(),
 			mock<AgentExecutionService>(),

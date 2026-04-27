@@ -77,6 +77,15 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	}),
 ]);
 
+// `kind` is widened to a plain string here. Unknown kinds are not rejected
+// at save time — the runtime resolver in `agents.service.attachAppToolsets`
+// looks them up in `APP_REGISTRY` and logs+skips anything it doesn't know.
+const AgentJsonAppConfigSchema = z.object({
+	kind: z.string().min(1),
+	credentialId: z.string().min(1),
+	credentialName: z.string().min(1),
+});
+
 export const AgentJsonConfigSchema = z.object({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
@@ -96,6 +105,7 @@ export const AgentJsonConfigSchema = z.object({
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
+	apps: z.array(AgentJsonAppConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	config: z
 		.object({

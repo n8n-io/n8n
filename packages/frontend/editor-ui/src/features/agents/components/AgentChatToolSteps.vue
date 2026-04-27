@@ -1,10 +1,36 @@
 <script setup lang="ts">
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { APP_REGISTRY } from '@n8n/agents';
 import type { ToolCall } from '../composables/agentChatMessages';
 
 defineProps<{
 	toolCalls: ToolCall[];
 }>();
+
+// Tools registered as "apps" (toolsets) use a single dispatcher tool with an
+// `action` discriminator. Surface that in the chat label so a user sees
+// "gmail · message:send" instead of six identical "gmail" rows.
+const APP_TOOL_NAMES = new Set(APP_REGISTRY.map((a) => a.kind));
+
+function isAppDispatcherInput(input: unknown): input is { action: string; name?: string } {
+	return (
+		typeof input === 'object' &&
+		input !== null &&
+		'action' in input &&
+		typeof (input as { action: unknown }).action === 'string'
+	);
+}
+
+function toolStepLabel(tc: ToolCall): string {
+	if (!APP_TOOL_NAMES.has(tc.tool) || !isAppDispatcherInput(tc.input)) {
+		return tc.tool;
+	}
+	const { action, name } = tc.input;
+	if (action === 'invoke_operation' && name) return `${tc.tool} · ${name}`;
+	if (action === 'describe_operation' && name) return `${tc.tool} · describe ${name}`;
+	if (action === 'list_operations') return `${tc.tool} · list operations`;
+	return `${tc.tool} · ${action}`;
+}
 </script>
 
 <template>
@@ -38,7 +64,7 @@ defineProps<{
 					:class="$style.toolStepLoading"
 				/>
 			</div>
-			<span :class="$style.toolStepLabel">{{ tc.tool }}</span>
+			<span :class="$style.toolStepLabel">{{ toolStepLabel(tc) }}</span>
 			<span
 				v-if="tc.displaySummary"
 				:class="$style.toolStepSummary"

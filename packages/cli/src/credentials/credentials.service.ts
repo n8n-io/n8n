@@ -1093,6 +1093,39 @@ export class CredentialsService {
 		return { ...rest };
 	}
 
+	/**
+	 * Returns the OAuth scopes actually granted for a credential, derived from
+	 * the credential's stored data. Reads `oauthTokenData.scope` (set after a
+	 * successful OAuth round-trip) and falls back to the credential definition's
+	 * declared `scope` field for credentials that haven't been authorized yet.
+	 *
+	 * Returns [] if neither field is present.
+	 *
+	 * Distinct from `getCredentialScopes` (n8n RBAC permission scopes).
+	 */
+	async getOAuthGrantedScopes(user: User, credentialId: string): Promise<string[]> {
+		const sharing = await this.getSharing(user, credentialId, ['credential:read']);
+		if (!sharing) {
+			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
+		}
+
+		const decrypted = this.decrypt(sharing.credentials, true);
+		const tokenScope = (decrypted.oauthTokenData as { scope?: unknown } | undefined)?.scope;
+		const declaredScope = (decrypted as { scope?: unknown }).scope;
+
+		const raw =
+			typeof tokenScope === 'string' && tokenScope.trim() !== ''
+				? tokenScope
+				: typeof declaredScope === 'string'
+					? declaredScope
+					: '';
+
+		return raw
+			.split(/\s+/)
+			.map((s) => s.trim())
+			.filter((s) => s.length > 0);
+	}
+
 	async getCredentialScopes(user: User, credentialId: string): Promise<Scope[]> {
 		const userProjectRelations = await this.projectService.getProjectRelationsForUser(user);
 		const projectIds = [...new Set(userProjectRelations.map((pr) => pr.projectId))];

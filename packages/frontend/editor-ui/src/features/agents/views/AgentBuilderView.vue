@@ -26,7 +26,7 @@ import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
-import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
+import type { AgentResource, AgentJsonConfig, AgentJsonToolRef, AgentJsonAppRef } from '../types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
@@ -49,6 +49,8 @@ import {
 	EXECUTIONS_SECTION_KEY,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
+	AGENT_APPS_MODAL_KEY,
+	AGENT_APP_CONFIG_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 } from '../constants';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
@@ -60,6 +62,7 @@ import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
 import AgentSessionsListView from './AgentSessionsListView.vue';
 import AgentIntegrationsPanel from '../components/AgentIntegrationsPanel.vue';
 import AgentToolsListPanel from '../components/AgentToolsListPanel.vue';
+import AgentAppsListPanel from '../components/AgentAppsListPanel.vue';
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import AgentEvalsPanel from '../components/AgentEvalsPanel.vue';
@@ -628,6 +631,36 @@ function onRemoveTool(index: number) {
 	}
 }
 
+function onRemoveApp(index: number) {
+	const currentApps = localConfig.value?.apps ?? [];
+	if (index < 0 || index >= currentApps.length) return;
+	const nextApps = currentApps.filter((_, i) => i !== index);
+	onConfigFieldUpdate({ apps: nextApps });
+}
+
+function onOpenAppFromList(index: number) {
+	const app = localConfig.value?.apps?.[index];
+	if (!app) return;
+	uiStore.openModalWithData({
+		name: AGENT_APP_CONFIG_MODAL_KEY,
+		data: {
+			app,
+			onRemove: () => onRemoveApp(index),
+		},
+	});
+}
+
+function onOpenAddAppModal() {
+	uiStore.openModalWithData({
+		name: AGENT_APPS_MODAL_KEY,
+		data: {
+			apps: localConfig.value?.apps ?? [],
+			projectId: projectId.value,
+			onConfirm: (apps: AgentJsonAppRef[]) => onConfigFieldUpdate({ apps }),
+		},
+	});
+}
+
 function onOpenAddToolModal() {
 	uiStore.openModalWithData({
 		name: AGENT_TOOLS_MODAL_KEY,
@@ -1017,6 +1050,14 @@ function onSwitchAgent(nextAgentId: string) {
 					<AgentSessionsListView
 						v-else-if="selectedSection === EXECUTIONS_SECTION_KEY"
 						data-testid="agent-executions-panel"
+					/>
+					<AgentAppsListPanel
+						v-else-if="selectedSection === 'apps'"
+						:apps="localConfig?.apps ?? []"
+						:disabled="isBuildChatStreaming"
+						@add-app="onOpenAddAppModal"
+						@open-app="onOpenAppFromList"
+						@remove-app="onRemoveApp"
 					/>
 					<AgentToolsListPanel
 						v-else-if="selectedSection === 'tools'"

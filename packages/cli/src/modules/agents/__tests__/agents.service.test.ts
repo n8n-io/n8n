@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
+import * as agents from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -82,6 +83,7 @@ describe('AgentsService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(), // NodeTypes
 			n8nMemory,
 			mock(),
 			agentPublishedVersionRepository,
@@ -342,6 +344,27 @@ describe('AgentsService', () => {
 
 		afterEach(() => {
 			Container.reset();
+		});
+	});
+
+	describe('attachAppToolsets', () => {
+		it('skips unknown app kinds with a warn log', () => {
+			const agent = mock<agents.Agent>();
+			(
+				service as unknown as {
+					attachAppToolsets: (
+						a: agents.Agent,
+						apps: Array<{ kind: string; credentialId: string; credentialName: string }>,
+						projectId: string,
+					) => void;
+				}
+			).attachAppToolsets(
+				agent,
+				[{ kind: 'unknown-app-kind', credentialId: 'c1', credentialName: 'X' }],
+				'project-1',
+			);
+
+			expect(agent.tool).not.toHaveBeenCalled();
 		});
 	});
 

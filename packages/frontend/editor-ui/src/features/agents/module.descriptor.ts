@@ -5,6 +5,8 @@ import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
+	AGENT_APPS_MODAL_KEY,
+	AGENT_APP_CONFIG_MODAL_KEY,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -65,6 +67,29 @@ export const AgentsModule: FrontendModuleDescription = {
 					connectedTriggers: [],
 					onConnectedTriggersChange: () => {},
 					onTriggerAdded: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_APPS_MODAL_KEY,
+			component: async () => await import('./components/AgentAppsModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					apps: [],
+					projectId: '',
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_APP_CONFIG_MODAL_KEY,
+			component: async () => await import('./components/AgentAppConfigModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					app: null,
+					onRemove: () => {},
 				},
 			},
 		},

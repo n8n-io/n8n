@@ -68,6 +68,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@types/json-schema": "^7.0.15",
     "@types/pg": "^8.15.6",
+    "n8n-workflow": "workspace:*",
     "testcontainers": "catalog:"
   }
 }

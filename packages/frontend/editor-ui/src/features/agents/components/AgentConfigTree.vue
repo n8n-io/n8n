@@ -106,6 +106,12 @@ const sections = computed<SectionDescriptor[]>(() => {
 		count: props.connectedTriggers?.length ?? 0,
 	});
 	out.push({
+		key: 'apps',
+		label: 'Apps',
+		icon: 'plug-zap',
+		count: Array.isArray(cfg.apps) ? cfg.apps.length : 0,
+	});
+	out.push({
 		key: 'tools',
 		label: i18n.baseText(KNOWN_SECTIONS.tools.i18nKey),
 		icon: KNOWN_SECTIONS.tools.icon,
@@ -130,7 +136,14 @@ const sections = computed<SectionDescriptor[]>(() => {
 
 	// Any remaining top-level keys render as flat rows.
 	for (const key of Object.keys(cfg)) {
-		if (AGENT_KEYS.has(key) || key === 'tools' || key === 'memory' || key === 'triggers') continue;
+		if (
+			AGENT_KEYS.has(key) ||
+			key === 'tools' ||
+			key === 'apps' ||
+			key === 'memory' ||
+			key === 'triggers'
+		)
+			continue;
 		const known = KNOWN_SECTIONS[key];
 		out.push({
 			key,

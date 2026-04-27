@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type {
 	CredentialsEntity,
 	CredentialsRepository,
+	SharedCredentials,
 	SharedCredentialsRepository,
 	ProjectRepository,
 	UserRepository,
@@ -2817,6 +2818,66 @@ describe('CredentialsService', () => {
 			await expect(
 				service.checkCredentialData('myOAuth1Cred', data, ownerUser, testProjectId),
 			).resolves.toBeUndefined();
+		});
+	});
+
+	describe('getOAuthGrantedScopes', () => {
+		const credentialEntity = mock<CredentialsEntity>({ id: 'cred-1', type: 'googleOAuth2Api' });
+
+		it('returns scopes parsed from oauthTokenData.scope', async () => {
+			// ARRANGE
+			sharedCredentialsRepository.findOne.mockResolvedValue(
+				mock<SharedCredentials>({ credentials: credentialEntity }),
+			);
+			jest
+				.spyOn(Credentials.prototype, 'getData')
+				.mockReturnValueOnce({ oauthTokenData: { scope: 'scope.a scope.b' } });
+
+			// ACT
+			const result = await service.getOAuthGrantedScopes(ownerUser, 'cred-1');
+
+			// ASSERT
+			expect(result).toEqual(['scope.a', 'scope.b']);
+		});
+
+		it('falls back to declared scope when oauthTokenData is absent', async () => {
+			// ARRANGE
+			sharedCredentialsRepository.findOne.mockResolvedValue(
+				mock<SharedCredentials>({ credentials: credentialEntity }),
+			);
+			jest
+				.spyOn(Credentials.prototype, 'getData')
+				.mockReturnValueOnce({ scope: 'scope.x scope.y' });
+
+			// ACT
+			const result = await service.getOAuthGrantedScopes(ownerUser, 'cred-1');
+
+			// ASSERT
+			expect(result).toEqual(['scope.x', 'scope.y']);
+		});
+
+		it('returns [] when neither oauth nor declared scope is present', async () => {
+			// ARRANGE
+			sharedCredentialsRepository.findOne.mockResolvedValue(
+				mock<SharedCredentials>({ credentials: credentialEntity }),
+			);
+			jest.spyOn(Credentials.prototype, 'getData').mockReturnValueOnce({});
+
+			// ACT
+			const result = await service.getOAuthGrantedScopes(ownerUser, 'cred-1');
+
+			// ASSERT
+			expect(result).toEqual([]);
+		});
+
+		it('throws NotFoundError when sharing is null', async () => {
+			// ARRANGE
+			sharedCredentialsRepository.findOne.mockResolvedValue(null);
+
+			// ACT & ASSERT
+			await expect(service.getOAuthGrantedScopes(ownerUser, 'cred-1')).rejects.toThrow(
+				'Credential with ID "cred-1" could not be found.',
+			);
 		});
 	});
 });
