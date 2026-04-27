@@ -87,7 +87,7 @@ The HTML report will show you:
 If you see "No coverage files found":
 
 1. Build with coverage: `BUILD_WITH_COVERAGE=true pnpm build` or `pnpm build:docker:coverage`
-2. Run tests with coverage enabled: `BUILD_WITH_COVERAGE=true pnpm test:container:coverage`
+2. Run tests against the coverage project: `pnpm test:container:coverage`
 3. Check that coverage files exist in `.nyc_output/{projectName}/` directories
    - For CI coverage runs: `.nyc_output/coverage/`
    - For local mode: `.nyc_output/e2e/`
@@ -131,8 +131,6 @@ For automated coverage reporting:
 
 - name: Run Container Coverage Tests
   run: pnpm --filter n8n-playwright test:container:coverage
-  env:
-    BUILD_WITH_COVERAGE: 'true'
 
 - name: Generate Coverage Report
   run: pnpm --filter n8n-playwright coverage:report

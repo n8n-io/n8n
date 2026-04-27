@@ -14,75 +14,18 @@ jobs:
       runner: blacksmith-8vcpu-ubuntu-2204
     secrets: inherit
 
-  # Inlined (not using test-e2e-reusable.yml) because coverage runs need
-  # `BUILD_WITH_COVERAGE=true` at test time plus per-shard `.nyc_output`
-  # capture, and pushing those into the shared reusable workflow polluted it
-  # with coverage-only conditionals that no other caller exercises.
   e2e:
     name: E2E (coverage)
     needs: prepare-docker
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: 45
-    permissions:
-      contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    env:
-      PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
-      TEST_IMAGE_N8N: 'n8nio/n8n:local'
-      N8N_SKIP_LICENSES: 'true'
-      CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
-      CURRENTS_PROJECT_ID: 'LRxcNt'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 1
-
-      - name: Setup Environment
-        uses: ./.github/actions/setup-nodejs
-
-      - name: Install Browsers
-        run: pnpm turbo run install-browsers --filter=n8n-playwright
-
-      - name: Load n8n image from cache
-        uses: ./.github/actions/load-n8n-docker
-
-      - name: Pre-pull Test Container Images
-        run: npx tsx packages/testing/containers/pull-test-images.ts || true
-
-      - name: Run Tests
-        run: pnpm --filter=n8n-playwright test:container:coverage --workers=1 --shard=${{ matrix.shard }}/4
-        env:
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
-          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
-          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
-          N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
-          BUILD_WITH_COVERAGE: 'true'
-
-      - name: Upload .nyc_output (per shard)
-        if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: nyc-output-shard-${{ matrix.shard }}
-          path: packages/testing/playwright/.nyc_output/coverage/
-          retention-days: 1
-          if-no-files-found: ignore
-
-      - name: Cancel Currents run if workflow is cancelled
-        if: cancelled()
-        env:
-          CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
-        run: |
-          if [ -n "$CURRENTS_API_KEY" ]; then
-            curl --location --request PUT \
-              "https://api.currents.dev/v1/runs/cancel-ci/github" \
-              --header "Authorization: Bearer $CURRENTS_API_KEY" \
-              --header "Content-Type: application/json" \
-              --data "{\"githubRunId\": \"${{ github.run_id }}\", \"githubRunAttempt\": \"${{ github.run_attempt }}\"}"
-          fi
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-artifact
+      test-command: pnpm --filter=n8n-playwright test:container:coverage
+      workers: '1'
+      runner: blacksmith-4vcpu-ubuntu-2204
+      timeout-minutes: 45
+      pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""},{"shard":3,"images":""},{"shard":4,"images":""}]'
+    secrets: inherit
 
   aggregate:
     name: Aggregate Coverage
@@ -96,23 +39,21 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
 
-      - name: Download .nyc_output from all shards
+      - name: Download shard artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          pattern: nyc-output-shard-*
-          path: /tmp/nyc-shards/
+          pattern: e2e-shard-*
+          path: /tmp/shards/
 
-      - name: Merge shard outputs into .nyc_output/coverage
+      - name: Collect coverage JSON
         shell: bash
         run: |
           mkdir -p packages/testing/playwright/.nyc_output/coverage
-          shopt -s nullglob
-          for shard in /tmp/nyc-shards/nyc-output-shard-*/; do
-            echo "Merging from $shard"
-            cp "$shard"*.json packages/testing/playwright/.nyc_output/coverage/ 2>/dev/null || true
-          done
-          echo "--- Combined .nyc_output/coverage file count:"
-          find packages/testing/playwright/.nyc_output/coverage/ -maxdepth 1 -type f -name '*.json' | wc -l
+          found=$(find /tmp/shards -path '*/.nyc_output/coverage/*.json' 2>/dev/null | wc -l)
+          echo "Found $found coverage JSON files across shards"
+          find /tmp/shards -path '*/.nyc_output/coverage/*.json' \
+            -exec cp {} packages/testing/playwright/.nyc_output/coverage/ \;
+          ls -la packages/testing/playwright/.nyc_output/coverage/ || true
 
       - name: Generate Coverage Report
         run: pnpm --filter n8n-playwright coverage:report

@@ -58,9 +58,7 @@ function main() {
 		console.log(
 			'1. Build editor-ui with coverage: BUILD_WITH_COVERAGE=true pnpm --filter n8n-editor-ui build',
 		);
-		console.log(
-			'2. Run Playwright tests with coverage: BUILD_WITH_COVERAGE=true pnpm test:container:coverage',
-		);
+		console.log('2. Run Playwright tests with coverage: pnpm test:container:coverage');
 		process.exit(1);
 	}
 
