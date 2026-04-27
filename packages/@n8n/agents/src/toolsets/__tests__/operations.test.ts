@@ -98,4 +98,68 @@ describe('buildOperationsFromDescription', () => {
 		expect(buildOperationsFromDescription(null, APP_DEF)).toEqual([]);
 		expect(buildOperationsFromDescription(undefined, APP_DEF)).toEqual([]);
 	});
+
+	it('emits one entry per resource when an operation group declares multiple', () => {
+		const multi = {
+			properties: [
+				{
+					name: 'resource',
+					type: 'options',
+					default: 'message',
+					options: [
+						{ name: 'Message', value: 'message' },
+						{ name: 'Thread', value: 'thread' },
+					],
+					displayName: 'Resource',
+				},
+				{
+					name: 'operation',
+					type: 'options',
+					default: 'reply',
+					displayName: 'Operation',
+					displayOptions: { show: { resource: ['message', 'thread'] } },
+					options: [{ name: 'Reply', value: 'reply', description: 'Reply' }],
+				},
+			],
+		} as unknown as INodeTypeDescription;
+
+		const ops = buildOperationsFromDescription(multi, APP_DEF);
+
+		expect(ops.map((o) => o.name)).toEqual(['message:reply', 'thread:reply']);
+		expect(ops[0].resource).toBe('message');
+		expect(ops[1].resource).toBe('thread');
+	});
+
+	it('dedupes when the same resource:operation pair appears in multiple operation groups', () => {
+		const dup = {
+			properties: [
+				{
+					name: 'resource',
+					type: 'options',
+					default: 'message',
+					options: [{ name: 'Message', value: 'message' }],
+					displayName: 'Resource',
+				},
+				{
+					name: 'operation',
+					type: 'options',
+					default: 'send',
+					displayName: 'Operation',
+					displayOptions: { show: { resource: ['message'] } },
+					options: [{ name: 'Send', value: 'send' }],
+				},
+				{
+					name: 'operation',
+					type: 'options',
+					default: 'send',
+					displayName: 'Operation',
+					displayOptions: { show: { resource: ['message'] } },
+					options: [{ name: 'Send', value: 'send' }],
+				},
+			],
+		} as unknown as INodeTypeDescription;
+
+		const ops = buildOperationsFromDescription(dup, APP_DEF);
+		expect(ops.map((o) => o.name)).toEqual(['message:send']);
+	});
 });

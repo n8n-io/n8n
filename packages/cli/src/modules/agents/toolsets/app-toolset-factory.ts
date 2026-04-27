@@ -1,4 +1,4 @@
-import { Tool, type BuiltTool } from '@n8n/agents';
+import { Tool, type BuiltTool, zodToJsonSchema } from '@n8n/agents';
 import {
 	buildManifest,
 	buildOperationsFromDescription,
@@ -76,7 +76,7 @@ export function buildAppToolset(params: BuildAppToolsetParams): BuiltTool {
 				return {
 					name: entry.name,
 					description: entry.description,
-					schema: zodObjectToJson(zodSchema),
+					schema: zodToJsonSchema(zodSchema),
 				};
 			}
 
@@ -155,36 +155,6 @@ function nodePropertyTypeToFromAIType(type: string | undefined): FromAIArgumentT
 		case 'fixedCollection':
 		case 'json':
 			return 'json';
-		default:
-			return 'string';
-	}
-}
-
-function zodObjectToJson(schema: z.ZodObject<z.ZodRawShape>): Record<string, unknown> {
-	const shape = schema.shape;
-	const properties: Record<string, unknown> = {};
-	const required: string[] = [];
-	for (const [key, value] of Object.entries(shape)) {
-		const def = value._def as { typeName?: string; description?: string };
-		const isOptional = def.typeName === 'ZodOptional' || value.isOptional?.();
-		properties[key] = {
-			type: zodTypeNameToJson(def.typeName),
-			description: value.description ?? def.description ?? undefined,
-		};
-		if (!isOptional) required.push(key);
-	}
-	return { type: 'object', properties, required };
-}
-
-function zodTypeNameToJson(typeName: string | undefined): string {
-	switch (typeName) {
-		case 'ZodNumber':
-			return 'number';
-		case 'ZodBoolean':
-			return 'boolean';
-		case 'ZodObject':
-		case 'ZodRecord':
-			return 'object';
 		default:
 			return 'string';
 	}

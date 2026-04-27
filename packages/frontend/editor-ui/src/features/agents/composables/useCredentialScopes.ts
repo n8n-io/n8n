@@ -3,13 +3,58 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { getOAuthGrantedScopes } from '@/features/credentials/credentials.api';
 
 /**
- * Fetches the OAuth scopes granted to a credential. Module-level cache keyed
- * by credential id so concurrent callers share one fetch and re-renders don't
- * re-trigger network calls. Failures are not cached (next call retries).
+ * Fetches the OAuth scopes granted to a credential.
+ *
+ * Module-level cache keyed by credential id with two roles:
+ *   - In-flight dedupe: concurrent callers share one fetch.
+ *   - Short TTL: a resolved entry is reused for {@link CACHE_TTL_MS} so that
+ *     re-opening the modal in quick succession doesn't re-fetch, but a
+ *     credential re-authorized via OAuth surfaces its new scopes within the
+ *     TTL window — no full reload required.
+ *
+ * Failures are not cached.
  *
  * Distinct from any n8n RBAC scope concept — this is purely OAuth grants.
  */
-const cache = new Map<string, Promise<string[]>>();
+const CACHE_TTL_MS = 30_000;
+
+interface CacheEntry {
+	promise: Promise<string[]>;
+	/** Set when the promise resolves; absent while in-flight. */
+	resolvedAt?: number;
+}
+
+const cache = new Map<string, CacheEntry>();
+
+function getOrCreateEntry(
+	id: string,
+	fetchFn: () => Promise<string[]>,
+	force: boolean,
+): Promise<string[]> {
+	const existing = cache.get(id);
+	const isFresh =
+		existing?.resolvedAt !== undefined && Date.now() - existing.resolvedAt < CACHE_TTL_MS;
+
+	if (!force && existing && (isFresh || existing.resolvedAt === undefined)) {
+		return existing.promise;
+	}
+
+	const promise = fetchFn();
+	const entry: CacheEntry = { promise };
+	cache.set(id, entry);
+
+	void promise.then(
+		() => {
+			entry.resolvedAt = Date.now();
+		},
+		() => {
+			// Failures don't get cached — drop the entry so the next call retries.
+			if (cache.get(id) === entry) cache.delete(id);
+		},
+	);
+
+	return promise;
+}
 
 export function useCredentialScopes(credentialId: MaybeRef<string | undefined>): {
 	scopes: Ref<string[] | undefined>;
@@ -26,17 +71,14 @@ export function useCredentialScopes(credentialId: MaybeRef<string | undefined>):
 		loading.value = true;
 		error.value = null;
 
-		let promise = cache.get(id);
-		if (force || !promise) {
-			promise = getOAuthGrantedScopes(rootStore.restApiContext, id);
-			cache.set(id, promise);
-		}
-
 		try {
-			scopes.value = await promise;
+			scopes.value = await getOrCreateEntry(
+				id,
+				async () => await getOAuthGrantedScopes(rootStore.restApiContext, id),
+				force,
+			);
 		} catch (e) {
 			error.value = e instanceof Error ? e : new Error(String(e));
-			cache.delete(id); // don't cache failures
 		} finally {
 			loading.value = false;
 		}
@@ -64,4 +106,13 @@ export function useCredentialScopes(credentialId: MaybeRef<string | undefined>):
 			if (id) await load(id, true);
 		},
 	};
+}
+
+/**
+ * Drop a credential's cached entry (e.g. after a successful re-authorization
+ * flow that explicitly knows the granted scopes have changed). Optional —
+ * the TTL bounds staleness even without explicit invalidation.
+ */
+export function invalidateCredentialScopes(credentialId: string): void {
+	cache.delete(credentialId);
 }

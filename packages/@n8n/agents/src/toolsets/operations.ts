@@ -13,49 +13,56 @@ export function buildOperationsFromDescription(
 	const properties = description.properties ?? [];
 	const operationProps = properties.filter((p) => p.name === 'operation');
 	const entries: OperationEntry[] = [];
+	const seen = new Set<string>();
 
 	// Walk follows the n8n convention: a top-level `resource` selector + a
 	// per-resource `operation` selector. Operation groups without a
-	// `displayOptions.show.resource` are skipped; operations declaring
-	// multiple resources are emitted under the first one only. This covers
-	// every node that ships through this registry today.
-	// TODO: generalize — handle resource-less and multi-resource nodes when
-	// they appear in the catalog.
+	// `displayOptions.show.resource` are skipped (resource-less nodes are not
+	// yet supported by the registry).
+	//
+	// When an operation group declares multiple resources (an option that
+	// applies to several resources at once), emit one entry per resource so
+	// the agent can target each. `seen` dedupes in the rare case the same
+	// `resource:operation` pair appears in two operation groups.
 	for (const opProp of operationProps) {
 		const resources = (opProp.displayOptions?.show?.resource ?? []) as string[];
 		if (resources.length === 0) continue;
-		const resource = resources[0];
 
-		for (const opt of opProp.options ?? []) {
-			if (!('value' in opt) || typeof opt.value !== 'string') continue;
-			const operation = opt.value;
-			const fields = filterFieldsForOperation(properties, resource, operation);
-			const name = `${resource}:${operation}`;
-			const curation = appDef.operations?.[name] ?? EMPTY_CURATION;
-			const requiredScopes = curation.requiredScopes ?? [];
-			const destructive = curation.destructive ?? false;
+		for (const resource of resources) {
+			for (const opt of opProp.options ?? []) {
+				if (!('value' in opt) || typeof opt.value !== 'string') continue;
+				const operation = opt.value;
+				const name = `${resource}:${operation}`;
+				if (seen.has(name)) continue;
+				seen.add(name);
 
-			const entry: OperationEntry = {
-				name,
-				resource,
-				operation,
-				displayName: 'name' in opt ? String(opt.name) : operation,
-				description:
-					('description' in opt && typeof opt.description === 'string' ? opt.description : '') ||
-					`${resource} ${operation}`,
-				properties: fields,
-				required: fields.filter((f) => f.required).map((f) => f.name),
-				requiredScopes,
-				destructive,
-			};
+				const fields = filterFieldsForOperation(properties, resource, operation);
+				const curation = appDef.operations?.[name] ?? EMPTY_CURATION;
+				const requiredScopes = curation.requiredScopes ?? [];
+				const destructive = curation.destructive ?? false;
 
-			if (grantedScopes !== undefined) {
-				const classification = classify(requiredScopes, destructive, grantedScopes, appDef);
-				entry.status = classification.status;
-				if (classification.reason) entry.statusReason = classification.reason;
+				const entry: OperationEntry = {
+					name,
+					resource,
+					operation,
+					displayName: 'name' in opt ? String(opt.name) : operation,
+					description:
+						('description' in opt && typeof opt.description === 'string' ? opt.description : '') ||
+						`${resource} ${operation}`,
+					properties: fields,
+					required: fields.filter((f) => f.required).map((f) => f.name),
+					requiredScopes,
+					destructive,
+				};
+
+				if (grantedScopes !== undefined) {
+					const classification = classify(requiredScopes, destructive, grantedScopes, appDef);
+					entry.status = classification.status;
+					if (classification.reason) entry.statusReason = classification.reason;
+				}
+
+				entries.push(entry);
 			}
-
-			entries.push(entry);
 		}
 	}
 
