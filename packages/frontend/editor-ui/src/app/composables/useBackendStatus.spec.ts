@@ -135,4 +135,49 @@ describe('useBackendStatus', () => {
 
 		wrapper.unmount();
 	});
+
+	it('should set offline status when health endpoint returns non-JSON response', async () => {
+		// GHC-7815: When a reverse proxy returns plaintext "ok" instead of JSON,
+		// the frontend should handle it gracefully (currently fails)
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => {
+				throw new SyntaxError("Unexpected token 'o', \"ok\" is not valid JSON");
+			},
+		});
+
+		const wrapper = createWrapper();
+
+		await vi.waitFor(() => {
+			expect(mockFetch).toHaveBeenCalledWith('/internal/health', {
+				cache: 'no-store',
+				signal: expect.any(AbortSignal),
+			});
+		});
+
+		// The composable should set offline status when it can't parse the response
+		// This is the current behavior (bug) - it treats parse errors as offline
+		expect(backendConnectionStore.isOnline).toBe(false);
+
+		wrapper.unmount();
+	});
+
+	it('should set offline status when health endpoint returns wrong JSON structure', async () => {
+		// Test case where JSON is valid but doesn't have the expected structure
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => ({ message: 'healthy' }), // Wrong structure, missing 'status' field
+		});
+
+		const wrapper = createWrapper();
+
+		await vi.waitFor(() => {
+			expect(mockFetch).toHaveBeenCalled();
+		});
+
+		// Should set offline when the response doesn't have status: 'ok'
+		expect(backendConnectionStore.isOnline).toBe(false);
+
+		wrapper.unmount();
+	});
 });
