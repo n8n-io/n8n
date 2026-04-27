@@ -6,6 +6,7 @@ import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
+import { ChatTriggerConfig } from './configs/chat-trigger.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
@@ -19,6 +20,7 @@ import { ExpressionEngineConfig } from './configs/expression-engine.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
+import { HttpRequestConfig } from './configs/http-request.config';
 import { InstanceAiConfig } from './configs/instance-ai.config';
 import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 import { LicenseConfig } from './configs/license.config';
@@ -65,11 +67,13 @@ export * from './custom-types';
 export { DeploymentConfig } from './configs/deployment.config';
 export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
+export { HttpRequestConfig } from './configs/http-request.config';
 export { PersonalizationConfig } from './configs/personalization.config';
 export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
@@ -202,6 +206,9 @@ export class GlobalConfig {
 	@Nested
 	ssrfProtection: SsrfProtectionConfig;
 
+	@Nested
+	httpRequest: HttpRequestConfig;
+
 	/** Default locale for the UI. */
 	@Env('N8N_DEFAULT_LOCALE')
 	defaultLocale: string = 'en';
@@ -248,6 +255,9 @@ export class GlobalConfig {
 
 	@Nested
 	chatHub: ChatHubConfig;
+
+	@Nested
+	chatTrigger: ChatTriggerConfig;
 
 	@Nested
 	instanceAi: InstanceAiConfig;
