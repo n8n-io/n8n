@@ -151,7 +151,7 @@ export class AgentsController {
 	}
 
 	@Get('/catalog/models')
-	@ProjectScope('agent:list')
+	@ProjectScope('agent:read')
 	async getModelCatalog() {
 		const { fetchProviderCatalog } = await import('@n8n/agents');
 		return await fetchProviderCatalog();
@@ -384,7 +384,7 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/build/messages')
-	@ProjectScope('agent:update')
+	@ProjectScope('agent:read')
 	async getBuilderMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 	): Promise<AgentBuilderMessagesResponse> {
@@ -610,12 +610,8 @@ export class AgentsController {
 		return this.chatIntegrationService.getStatus(agentId);
 	}
 
-	// Intentionally no @ProjectScope: skipAuth means there is no req.user, so the
-	// scope middleware would always 401 incoming third-party callbacks. Auth is
-	// performed inside webhookHandler via per-platform signature verification, and
-	// the handler resolves by (agentId, platform) only — the :projectId segment
-	// in the URL is decorative and kept for stability of already-registered
-	// webhook URLs at Slack/Telegram/Linear.
+	// Third-party webhook callback: do not add @ProjectScope. Auth happens
+	// via per-platform signature verification inside webhookHandler.
 	@Post('/:agentId/webhooks/:platform', { skipAuth: true, allowBots: true })
 	async handleWebhook(
 		req: Request<{ projectId: string; agentId: string; platform: string }>,
