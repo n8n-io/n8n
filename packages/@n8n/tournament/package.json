@@ -20,8 +20,8 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
-    "lint": "eslint .",
-    "lintfix": "eslint . --fix"
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix"
   },
   "engines": {
     "node": ">=20.15",
@@ -39,17 +39,7 @@
   "author": "",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@n8n_io/eslint-config": "^0.0.2",
-    "@types/jest": "^29.5.0",
     "@types/node": "^18.13.0",
-    "@typescript-eslint/eslint-plugin": "^6.1.0",
-    "eslint": "^8.38.0",
-    "eslint-config-airbnb-typescript": "^17.1.0",
-    "eslint-config-prettier": "^8.8.0",
-    "eslint-plugin-n8n-local-rules": "^1.0.0",
-    "eslint-plugin-prettier": "^5.0.0",
-    "eslint-plugin-unicorn": "^48.0.0",
-    "eslint-plugin-unused-imports": "^3.0.0",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:",

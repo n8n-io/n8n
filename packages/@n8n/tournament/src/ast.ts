@@ -2,8 +2,8 @@ export type { types as astTypes } from 'recast';
 export { visit as astVisit } from 'recast';
 export { builders as astBuilders, type namedTypes as astNamedTypes } from 'ast-types';
 
-import type { types } from 'recast';
 import type { namedTypes } from 'ast-types';
+import type { types } from 'recast';
 
 export interface TournamentHooks {
 	before: ASTBeforeHook[];

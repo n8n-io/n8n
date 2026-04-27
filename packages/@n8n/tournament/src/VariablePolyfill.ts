@@ -1,9 +1,11 @@
-import type { types } from 'recast';
-import { visit } from 'recast';
-import type { StatementKind, VariableDeclaratorKind } from 'ast-types/lib/gen/kinds';
-import type { NodePath } from 'ast-types/lib/node-path';
 import type { namedTypes } from 'ast-types';
 import { builders as b } from 'ast-types';
+import type { StatementKind, VariableDeclaratorKind } from 'ast-types/lib/gen/kinds';
+import type { NodePath } from 'ast-types/lib/node-path';
+import type { Scope } from 'ast-types/lib/scope';
+import type { types } from 'recast';
+import { visit } from 'recast';
+
 import type { ParentKind } from './Constants';
 import { EXEMPT_IDENTIFIER_LIST } from './Constants';
 
@@ -29,12 +31,12 @@ const buildGlobalSwitch = (node: types.namedTypes.Identifier, dataNode: DataNode
 };
 
 const isInScope = (path: NodePath<types.namedTypes.Identifier>) => {
-	let scope = path.scope;
+	let scope = path.scope as Scope;
 	while (scope !== null) {
 		if (scope.declares(path.node.name)) {
 			return true;
 		}
-		scope = scope.parent;
+		scope = scope.parent as Scope;
 	}
 	return false;
 };
@@ -82,7 +84,7 @@ const customPatches: Partial<Record<ParentKind['type'], CustomPatcher>> = {
 		if (path.node !== parent.value) {
 			return;
 		}
-		const objPattern: namedTypes.ObjectPattern = path.parent?.parent?.node;
+		const objPattern = path.parent?.parent?.node as namedTypes.ObjectPattern;
 		if (!objPattern) {
 			return;
 		}
@@ -133,9 +135,9 @@ export const jsVariablePolyfill = (
 				case 'OptionalMemberExpression':
 				case 'VariableDeclarator':
 					if (!customPatches[parent.type]) {
-						throw new Error(`Couldn\'t find custom patcher for parent type: ${parent.type}`);
+						throw new Error(`Couldn't find custom patcher for parent type: ${parent.type}`);
 					}
-					customPatches[parent.type](path, parent, dataNode);
+					customPatches[parent.type]?.(path, parent, dataNode);
 					break;
 				case 'BinaryExpression':
 				case 'UnaryExpression':

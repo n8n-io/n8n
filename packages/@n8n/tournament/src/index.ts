@@ -1,8 +1,8 @@
+import type { TournamentHooks } from './ast';
+import type { ExpressionEvaluator, ExpressionEvaluatorClass } from './Evaluator';
 import { getExpressionCode } from './ExpressionBuilder';
 import type { ExpressionAnalysis } from './ExpressionBuilder';
-import type { ExpressionEvaluator, ExpressionEvaluatorClass } from './Evaluator';
 import { FunctionEvaluator } from './FunctionEvaluator';
-import type { TournamentHooks } from './ast';
 
 export type { ExpressionEvaluator, ExpressionEvaluatorClass } from './Evaluator';
 export * from './ast';

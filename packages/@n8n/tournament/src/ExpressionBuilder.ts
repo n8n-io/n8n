@@ -1,16 +1,15 @@
 import type { namedTypes } from 'ast-types';
+import { builders as b } from 'ast-types';
+import type { ExpressionKind, StatementKind } from 'ast-types/lib/gen/kinds';
 import type { types } from 'recast';
 import { parse, visit, print } from 'recast';
 
-import { builders as b } from 'ast-types';
-
-import type { ExpressionKind, StatementKind } from 'ast-types/lib/gen/kinds';
-import { globalIdentifier, jsVariablePolyfill } from './VariablePolyfill';
-import type { DataNode } from './VariablePolyfill';
+import type { TournamentHooks } from './ast';
 import { splitExpression } from './ExpressionSplitter';
 import type { ExpressionCode, ExpressionText } from './ExpressionSplitter';
 import { parseWithEsprimaNext } from './Parser';
-import type { TournamentHooks } from './ast';
+import { globalIdentifier, jsVariablePolyfill } from './VariablePolyfill';
+import type { DataNode } from './VariablePolyfill';
 
 export interface ExpressionAnalysis {
 	has: {
@@ -186,9 +185,7 @@ export const getExpressionCode = (
 	// of `this` (default: `___n8n_data`) since functions aren't compatibility
 	// anyway.
 	let dataNode: DataNode = b.thisExpression();
-	const hasFn = (chunks.filter((c) => c.type === 'code') as ParsedCode[]).some((c) =>
-		hasFunction(c.parsed),
-	);
+	const hasFn = chunks.filter((c) => c.type === 'code').some((c) => hasFunction(c.parsed));
 	if (hasFn) {
 		dataNode = b.identifier(dataNodeName);
 		newProg.body.push(
@@ -196,9 +193,9 @@ export const getExpressionCode = (
 		);
 	}
 
-	const hasTempString = (chunks.filter((c) => c.type === 'code') as ParsedCode[]).some((c) =>
-		hasTemplateString(c.parsed),
-	);
+	const hasTempString = chunks
+		.filter((c) => c.type === 'code')
+		.some((c) => hasTemplateString(c.parsed));
 
 	// So for compatibility we parse expressions the same way that `tmpl` does.
 	// This means we always have an initial text chunk but if there's only a blank
