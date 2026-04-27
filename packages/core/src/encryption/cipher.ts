@@ -31,11 +31,7 @@ export class Cipher {
 	async encryptV2(data: string | object, customEncryptionKey?: string): Promise<string> {
 		const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
 
-		if (
-			!customEncryptionKey &&
-			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION === 'true' &&
-			this.encryptionKeyProxy.isConfigured()
-		) {
+		if (!customEncryptionKey && this.encryptionKeyProxy.isConfigured()) {
 			const keyInfo = await this.encryptionKeyProxy.getActiveKey();
 			const plaintextKey = this.decryptWithInstanceKey(keyInfo.value);
 			const ciphertext = this.encryptWithKey(

@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 
 export type KeyInfo = { id: string; value: string; algorithm: string };
 
@@ -30,14 +31,17 @@ export class EncryptionKeyProxy {
 	}
 
 	async getActiveKey(): Promise<KeyInfo> {
-		return await this.provider!.getActiveKey();
+		if (!this.provider) throw new UnexpectedError('Encryption key provider is not configured');
+		return await this.provider.getActiveKey();
 	}
 
 	async getKeyById(id: string): Promise<KeyInfo | null> {
-		return await this.provider!.getKeyById(id);
+		if (!this.provider) throw new UnexpectedError('Encryption key provider is not configured');
+		return await this.provider.getKeyById(id);
 	}
 
 	async getLegacyKey(): Promise<KeyInfo> {
-		return await this.provider!.getLegacyKey();
+		if (!this.provider) throw new UnexpectedError('Encryption key provider is not configured');
+		return await this.provider.getLegacyKey();
 	}
 }
