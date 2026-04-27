@@ -157,10 +157,10 @@ function formatJson(value: unknown): string {
 			/>
 
 			<!-- Background task indicator (run finished but sub-agents still working) -->
-			<ButtonLike v-if="hasActiveBackgroundTasks">
+			<!-- <ButtonLike v-if="hasActiveBackgroundTasks">
 				<N8nIcon icon="spinner" color="primary" spin size="small" />
 				{{ i18n.baseText('instanceAi.backgroundTask.running') }}
-			</ButtonLike>
+			</ButtonLike> -->
 
 			<!-- Response feedback -->
 			<N8nMessageRating

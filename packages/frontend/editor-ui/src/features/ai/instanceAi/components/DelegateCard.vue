@@ -34,15 +34,9 @@ const briefing = computed(() => {
 <template>
 	<CollapsibleRoot v-slot="{ open: isOpen }">
 		<CollapsibleTrigger as-child>
-			<TimelineStepButton size="medium">
-				<template #icon="{ isHovered }">
-					<template v-if="isHovered">
-						<N8nIcon :icon="isOpen ? 'minus' : 'plus'" size="small" />
-					</template>
-					<template v-else>
-						<N8nIcon v-if="props.isLoading" icon="spinner" color="primary" spin size="small" />
-						<N8nIcon v-else icon="check" color="success" size="small" />
-					</template>
+			<TimelineStepButton :loading="props.isLoading" size="medium">
+				<template #icon>
+					<N8nIcon :icon="isOpen ? 'chevron-down' : 'chevron-right'" size="small" />
 				</template>
 				{{ i18n.baseText('instanceAi.delegateCard.delegatingTo') }}:
 				<N8nText bold>{{ role }}</N8nText>

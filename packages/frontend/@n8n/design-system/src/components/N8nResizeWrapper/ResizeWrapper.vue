@@ -142,6 +142,7 @@ const mouseUp = (event: MouseEvent) => {
 	(props.window ?? window).removeEventListener('mousemove', mouseMove);
 	(props.window ?? window).removeEventListener('mouseup', mouseUp);
 	document.body.style.cursor = 'unset';
+	document.body.classList.remove('n8n-resizing');
 	state.dir.value = '';
 };
 
@@ -155,6 +156,7 @@ const resizerMove = (event: MouseEvent) => {
 	}
 
 	document.body.style.cursor = directionsCursorMaps[state.dir.value as Direction];
+	document.body.classList.add('n8n-resizing');
 
 	state.x.value = event.pageX;
 	state.y.value = event.pageY;
@@ -267,5 +269,11 @@ const resizerMove = (event: MouseEvent) => {
 .outset {
 	--resizer--spacing--side: calc(-1 * var(--resizer--size) + 2px);
 	--resizer--spacing--corner: calc(-1 * var(--resizer--size) + 3px);
+}
+</style>
+
+<style lang="scss">
+body.n8n-resizing iframe {
+	pointer-events: none;
 }
 </style>

@@ -94,15 +94,9 @@ const isCollapsible = computed(
 		<CollapsibleTrigger as-child>
 			<TimelineStepButton size="medium">
 				<template #icon>
-					<N8nIcon v-if="!isOpen" icon="chevron-right" size="small" />
-					<N8nIcon v-else icon="chevron-down" size="small" />
+					<N8nIcon :icon="isOpen ? 'chevron-down' : 'chevron-right'" size="small" />
 				</template>
-				<span :class="$style.summaryLabel">
-					{{ summaryText }}
-					<span v-if="toolIcons.length > 0" :class="$style.summaryIcons">
-						<N8nIcon v-for="icon in toolIcons" :key="icon" :icon="icon" size="small" />
-					</span>
-				</span>
+				{{ summaryText }}
 			</TimelineStepButton>
 		</CollapsibleTrigger>
 		<AnimatedCollapsibleContent>
@@ -113,17 +107,3 @@ const isCollapsible = computed(
 	<!-- Flat: groups with only text + special UI (questions, plan-review) -->
 	<AgentTimeline v-else :agent-node="props.agentNode" :visible-entries="props.group.entries" />
 </template>
-
-<style lang="scss" module>
-.summaryLabel {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.summaryIcons {
-	display: inline-flex;
-	gap: var(--spacing--4xs);
-	opacity: 0.6;
-}
-</style>
