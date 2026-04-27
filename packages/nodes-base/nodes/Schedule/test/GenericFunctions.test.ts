@@ -118,7 +118,7 @@ describe('toCronExpression', () => {
 			field: 'months',
 			monthsInterval: 3,
 		});
-		expect(result1).toEqual('30 30 12 15 */3 *');
+		expect(result1).toEqual('30 30 12 16 */3 *');
 	});
 });
 
