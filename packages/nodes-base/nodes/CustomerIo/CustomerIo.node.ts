@@ -78,13 +78,13 @@ export class CustomerIo implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: IDataObject[] = [];
 		const items = this.getInputData();
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
 		const body: IDataObject = {};
 
 		let responseData;
 		for (let i = 0; i < items.length; i++) {
 			try {
+				const resource = this.getNodeParameter('resource', i);
+				const operation = this.getNodeParameter('operation', i);
 				if (resource === 'campaign') {
 					if (operation === 'get') {
 						const campaignId = this.getNodeParameter('campaignId', i) as number;
