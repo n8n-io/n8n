@@ -73,6 +73,16 @@ export async function destroy(conn: snowflake.Connection) {
 	});
 }
 
+export function escapeSnowflakeIdentifier(identifier: string): string {
+	// Strip surrounding double quotes if user already added them
+	const bare =
+		identifier.startsWith('"') && identifier.endsWith('"') && identifier.length > 2
+			? identifier.slice(1, -1).replace(/""/g, '"')
+			: identifier;
+	// Snowflake stores unquoted identifiers as UPPERCASE by default; uppercase for compatibility
+	return `"${bare.toUpperCase().replace(/"/g, '""')}"`;
+}
+
 export async function execute(
 	conn: snowflake.Connection,
 	sqlText: string,
