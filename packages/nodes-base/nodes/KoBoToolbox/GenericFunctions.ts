@@ -47,7 +47,7 @@ export async function koBoToolboxApiRequest(
 		},
 		json: true,
 	};
-	if (Object.keys(option)) {
+	if (Object.keys(option).length) {
 		Object.assign(options, option);
 	}
 	if (options.url && !/^http(s)?:/.test(options.url)) {
