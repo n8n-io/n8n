@@ -1924,9 +1924,9 @@ export class TodoistV2 implements INodeType {
 		const length = items.length;
 		const service = new TodoistService();
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
+			const resource = this.getNodeParameter('resource', i);
+			const operation = this.getNodeParameter('operation', i);
 			try {
 				if (resource === 'task') {
 					if (!isTaskOperationType(operation)) {
