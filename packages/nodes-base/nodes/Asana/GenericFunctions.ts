@@ -65,7 +65,7 @@ export async function asanaApiRequestAllItems(
 		uri = get(responseData, 'next_page.uri');
 		query = {}; // query is not needed once we have next_page.uri
 		returnData.push.apply(returnData, responseData.data as IDataObject[]);
-	} while (responseData.next_page !== null);
+	} while (responseData.next_page != null);
 
 	return returnData;
 }
