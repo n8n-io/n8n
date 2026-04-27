@@ -1120,11 +1120,11 @@ describe('McpClientTool', () => {
 			let onCloseHandler: (() => void) | undefined;
 			const mockClient = {
 				close: jest.fn().mockResolvedValue(undefined),
-				set onclose(handler: () => void) {
+				set onclose(handler: (() => void) | undefined) {
 					onCloseHandler = handler;
 				},
 				get onclose() {
-					return onCloseHandler;
+					return onCloseHandler as () => void;
 				},
 				onerror: undefined,
 			} as unknown as Client;

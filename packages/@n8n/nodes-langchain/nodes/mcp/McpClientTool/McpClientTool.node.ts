@@ -77,6 +77,8 @@ function closeAndRemove(key: string, logger?: CloseLogger): void {
 }
 
 let lastEvictionAt = 0;
+// Lazy time-gated sweep instead of setInterval — avoids pinning the event
+// loop and leaking timers in tests where there's no shutdown hook.
 const EVICTION_INTERVAL_MS = 30_000;
 
 /** Reset the eviction timer — exported for testing only. */
@@ -90,23 +92,29 @@ export function evictStaleClients(logger?: CloseLogger): void {
 	if (now - lastEvictionAt < EVICTION_INTERVAL_MS) return;
 	lastEvictionAt = now;
 
+	let idleEvicted = 0;
 	for (const [key, entry] of activeClients) {
 		if (now - entry.lastUsedAt > N8N_MCP_CLIENT_CACHE_TTL_MS) {
-			logger?.debug('McpClientTool: evicting idle client', { cacheKey: key });
 			closeAndRemove(key, logger);
+			idleEvicted++;
 		}
+	}
+	if (idleEvicted > 0) {
+		logger?.debug('McpClientTool: evicted idle clients', { count: idleEvicted });
 	}
 
 	// Map preserves insertion order, which matches createdAt order since
 	// entries are only inserted (never re-set) with Date.now() timestamps.
 	if (activeClients.size > N8N_MCP_CLIENT_CACHE_MAX_SIZE) {
 		let excess = activeClients.size - N8N_MCP_CLIENT_CACHE_MAX_SIZE;
+		let oldestEvicted = 0;
 		for (const [key] of activeClients) {
 			if (excess <= 0) break;
-			logger?.debug('McpClientTool: evicting oldest client (max size)', { cacheKey: key });
 			closeAndRemove(key, logger);
 			excess--;
+			oldestEvicted++;
 		}
+		logger?.debug('McpClientTool: evicted oldest clients (max size)', { count: oldestEvicted });
 	}
 }
 
@@ -133,21 +141,33 @@ async function connectOrThrow(
 /**
  * Wire transport-level lifecycle so cache evicts when server drops the
  * connection or transport errors out — prevents handing dead clients
- * back to subsequent tool calls.
+ * back to subsequent tool calls. The MCP SDK's Protocol class exposes
+ * `onclose`/`onerror` as plain assignable fields (no setter side effects),
+ * so chaining via captured `prev*` is safe.
  */
 function attachTransportLifecycle(client: Client, cacheKey: string, logger: CloseLogger): void {
 	const prevOnClose = client.onclose;
 	client.onclose = () => {
 		logger?.debug('McpClientTool: transport closed, evicting cache entry', { cacheKey });
+		// Transport already closed — no need to call client.close().
 		activeClients.delete(cacheKey);
-		prevOnClose?.();
+		try {
+			prevOnClose?.();
+		} catch (error) {
+			logger?.warn('McpClientTool: chained onclose threw', { error });
+		}
 	};
 
 	const prevOnError = client.onerror;
 	client.onerror = (error: Error) => {
 		logger?.warn('McpClientTool: transport error, evicting cache entry', { cacheKey, error });
+		// Transport errored — close path will follow; just drop from cache.
 		activeClients.delete(cacheKey);
-		prevOnError?.(error);
+		try {
+			prevOnError?.(error);
+		} catch (chained) {
+			logger?.warn('McpClientTool: chained onerror threw', { error: chained });
+		}
 	};
 }
 
@@ -161,29 +181,37 @@ async function executeWithCache(
 ): Promise<INodeExecutionData[][]> {
 	const node = ctx.getNode();
 	const returnData: INodeExecutionData[] = [];
-	const logger: CloseLogger = ctx.logger;
+	// Narrow to a real Logger only when both methods are callable —
+	// jest-mock-extended's `mock<any>` returns proxy values that are truthy
+	// but not callable, which would crash a naive `logger?.debug(...)`.
+	const logger: CloseLogger =
+		typeof ctx.logger?.debug === 'function' && typeof ctx.logger?.warn === 'function'
+			? ctx.logger
+			: undefined;
 
 	evictStaleClients(logger);
 
 	const cacheKey = getCacheKey(ctx.getExecutionId(), node.name);
-	let cached = activeClients.get(cacheKey);
+	let client: Client;
+	let mcpTools: McpTool[];
 
+	const cached = activeClients.get(cacheKey);
 	if (cached) {
-		logger?.debug?.('McpClientTool: cache hit', { cacheKey });
-		cached.lastUsedAt = Date.now();
+		logger?.debug('McpClientTool: cache hit', { cacheKey });
+		({ client, mcpTools } = cached);
 	} else {
 		// Dedupe concurrent cache misses for same key — prevents racing
 		// connects from leaking transports.
 		let pending = pendingConnections.get(cacheKey);
 		if (pending) {
-			logger?.debug?.('McpClientTool: awaiting in-flight connection', { cacheKey });
-			await pending;
+			logger?.debug('McpClientTool: awaiting in-flight connection', { cacheKey });
+			({ client, mcpTools } = await pending);
 		} else {
-			logger?.debug?.('McpClientTool: cache miss, connecting', { cacheKey });
+			logger?.debug('McpClientTool: cache miss, connecting', { cacheKey });
 			pending = connectOrThrow(ctx, 0);
 			pendingConnections.set(cacheKey, pending);
 			try {
-				const { client, mcpTools } = await pending;
+				({ client, mcpTools } = await pending);
 				const now = Date.now();
 				activeClients.set(cacheKey, { client, mcpTools, createdAt: now, lastUsedAt: now });
 				attachTransportLifecycle(client, cacheKey, logger);
@@ -192,70 +220,69 @@ async function executeWithCache(
 				pendingConnections.delete(cacheKey);
 			}
 		}
-		cached = activeClients.get(cacheKey);
-		if (!cached) {
-			throw new NodeOperationError(node, 'Failed to populate MCP client cache', {
-				itemIndex: 0,
-			});
-		}
 	}
-
-	const { client, mcpTools } = cached;
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		const item = items[itemIndex];
 		const timeout = ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number;
-		await appendToolResults(node, item, mcpTools, client, timeout, itemIndex, returnData);
+		await appendToolResults({
+			node,
+			item: items[itemIndex],
+			mcpTools,
+			client,
+			timeout,
+			itemIndex,
+			returnData,
+		});
 	}
 
-	// Refresh idle timer at end of each execute() — keeps long-running agents alive.
+	// Refresh idle timer at end of each execute() — keeps long-running agents
+	// alive even when callTool() runs longer than EVICTION_INTERVAL_MS.
 	const stillCached = activeClients.get(cacheKey);
 	if (stillCached) stillCached.lastUsedAt = Date.now();
 
 	return [returnData];
 }
 
+interface AppendToolResultsOpts {
+	node: INode;
+	item: INodeExecutionData;
+	mcpTools: McpTool[];
+	client: Client;
+	timeout: number;
+	itemIndex: number;
+	returnData: INodeExecutionData[];
+}
+
 /** Run matching tool from item.json.tool against the MCP client and push result. */
-async function appendToolResults(
-	node: INode,
-	item: INodeExecutionData,
-	mcpTools: McpTool[],
-	client: Client,
-	timeout: number,
-	itemIndex: number,
-	returnData: INodeExecutionData[],
-): Promise<void> {
-	for (const tool of mcpTools) {
-		if (!item.json.tool || typeof item.json.tool !== 'string') {
-			throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
-				itemIndex,
-			});
-		}
+async function appendToolResults(opts: AppendToolResultsOpts): Promise<void> {
+	const { node, item, mcpTools, client, timeout, itemIndex, returnData } = opts;
 
-		const toolName = item.json.tool;
-		if (toolName === tool.name) {
-			const { tool: _, ...toolArguments } = item.json;
-			const schema: JSONSchema7 = tool.inputSchema;
-			const sanitizedToolArguments: IDataObject =
-				schema.additionalProperties !== true
-					? pick(toolArguments, Object.keys(schema.properties ?? {}))
-					: toolArguments;
-
-			const result = await client.callTool(
-				{ name: tool.name, arguments: sanitizedToolArguments },
-				CallToolResultSchema,
-				{ timeout },
-			);
-			returnData.push({
-				json: {
-					response: result.content as IDataObject,
-				},
-				pairedItem: {
-					item: itemIndex,
-				},
-			});
-		}
+	const toolName = item.json.tool;
+	if (typeof toolName !== 'string' || toolName.length === 0) {
+		throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
+			itemIndex,
+		});
 	}
+
+	const tool = mcpTools.find((t) => t.name === toolName);
+	if (!tool) return;
+
+	const { tool: _, ...toolArguments } = item.json;
+	const schema: JSONSchema7 = tool.inputSchema;
+	const sanitizedToolArguments: IDataObject =
+		schema.additionalProperties !== true
+			? pick(toolArguments, Object.keys(schema.properties ?? {}))
+			: toolArguments;
+
+	const result = await client.callTool(
+		{ name: tool.name, arguments: sanitizedToolArguments },
+		CallToolResultSchema,
+		{ timeout },
+	);
+	returnData.push({
+		json: { response: result.content as IDataObject },
+		pairedItem: { item: itemIndex },
+	});
 }
 
 /**
@@ -637,10 +664,17 @@ export class McpClientTool implements INodeType {
 		// Pre-existing behavior: client is left open after the loop (matches pre-1.3).
 		const returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const item = items[itemIndex];
 			const { client, mcpTools } = await connectOrThrow(this, itemIndex);
 			const timeout = this.getNodeParameter('options.timeout', itemIndex, 60000) as number;
-			await appendToolResults(node, item, mcpTools, client, timeout, itemIndex, returnData);
+			await appendToolResults({
+				node,
+				item: items[itemIndex],
+				mcpTools,
+				client,
+				timeout,
+				itemIndex,
+				returnData,
+			});
 		}
 
 		return [returnData];
