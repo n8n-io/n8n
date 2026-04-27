@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 
+import router from '@/app/router';
 import PromptPopover from './PromptPopover.vue';
 import { loadAnnotations, resolveElementForContext, saveAnnotations } from './annotationStorage';
 import { collectElementContext } from './collectElementContext';
@@ -141,9 +142,17 @@ function handleShiftKeyUp(event: KeyboardEvent) {
 	commitPendingMulti();
 }
 
+function isEditableTarget(target: EventTarget | null): boolean {
+	if (!(target instanceof HTMLElement)) return false;
+	const tag = target.tagName;
+	if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+	return target.isContentEditable;
+}
+
 function handleToggleShortcut(event: KeyboardEvent) {
 	if (!event.ctrlKey || !event.shiftKey) return;
 	if (event.key.toLowerCase() !== 'd') return;
+	if (isEditableTarget(event.target)) return;
 	event.preventDefault();
 	visible.value = !visible.value;
 	if (!visible.value) {
@@ -153,31 +162,6 @@ function handleToggleShortcut(event: KeyboardEvent) {
 		pendingMulti.value = [];
 		editingId.value = null;
 	}
-}
-
-function updatePath() {
-	currentPath.value = window.location.pathname;
-}
-
-let restoreHistory: (() => void) | null = null;
-
-function patchHistory() {
-	const originalPush = history.pushState.bind(history);
-	const originalReplace = history.replaceState.bind(history);
-	history.pushState = function (...args) {
-		const result = originalPush(...args);
-		updatePath();
-		return result;
-	};
-	history.replaceState = function (...args) {
-		const result = originalReplace(...args);
-		updatePath();
-		return result;
-	};
-	restoreHistory = () => {
-		history.pushState = originalPush;
-		history.replaceState = originalReplace;
-	};
 }
 
 function loadForPath(path: string) {
@@ -222,34 +206,60 @@ function scheduleReresolve() {
 	});
 }
 
-let domObserver: MutationObserver | null = null;
+let activeCleanup: (() => void) | null = null;
 
-onMounted(() => {
+function activateObservers() {
+	if (activeCleanup) return;
+
 	window.addEventListener('scroll', scheduleBump, true);
 	window.addEventListener('resize', scheduleBump);
 	window.addEventListener('keyup', handleShiftKeyUp, true);
+
+	const unsubscribeRouter = router.afterEach((to) => {
+		currentPath.value = to.path;
+	});
+
+	const observer = new MutationObserver(scheduleReresolve);
+	observer.observe(document.body, { childList: true, subtree: true });
+
+	const livePath = router.currentRoute.value.path;
+	if (livePath === currentPath.value) {
+		loadForPath(livePath);
+	} else {
+		currentPath.value = livePath;
+	}
+
+	activeCleanup = () => {
+		window.removeEventListener('scroll', scheduleBump, true);
+		window.removeEventListener('resize', scheduleBump);
+		window.removeEventListener('keyup', handleShiftKeyUp, true);
+		unsubscribeRouter();
+		observer.disconnect();
+	};
+}
+
+function deactivateObservers() {
+	activeCleanup?.();
+	activeCleanup = null;
+}
+
+onMounted(() => {
 	window.addEventListener('keydown', handleToggleShortcut, true);
-	window.addEventListener('popstate', updatePath);
-	patchHistory();
-	loadForPath(currentPath.value);
-	domObserver = new MutationObserver(scheduleReresolve);
-	domObserver.observe(document.body, { childList: true, subtree: true });
+	if (visible.value) activateObservers();
 });
 
 onUnmounted(() => {
-	window.removeEventListener('scroll', scheduleBump, true);
-	window.removeEventListener('resize', scheduleBump);
-	window.removeEventListener('keyup', handleShiftKeyUp, true);
 	window.removeEventListener('keydown', handleToggleShortcut, true);
-	window.removeEventListener('popstate', updatePath);
-	restoreHistory?.();
-	domObserver?.disconnect();
-	domObserver = null;
+	deactivateObservers();
 	if (frameId !== null) cancelAnimationFrame(frameId);
 	if (resolveFrameId !== null) cancelAnimationFrame(resolveFrameId);
 });
 
-watch(visible, saveVisibility);
+watch(visible, (v) => {
+	if (v) activateObservers();
+	else deactivateObservers();
+	saveVisibility(v);
+});
 
 watch(currentPath, (newPath, oldPath) => {
 	if (newPath === oldPath) return;
