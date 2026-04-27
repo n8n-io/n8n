@@ -35,7 +35,7 @@ export function validateJSON(json: string | undefined): any {
 	try {
 		result = JSON.parse(json!);
 	} catch (exception) {
-		result = [];
+		result = undefined;
 	}
 	return result;
 }
