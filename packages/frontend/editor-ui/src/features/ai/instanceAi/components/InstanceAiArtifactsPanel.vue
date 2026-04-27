@@ -10,6 +10,9 @@ import type { IconName } from '@n8n/design-system';
 import type { ResourceEntry } from '../useResourceRegistry';
 import ConnectionsCard from './ConnectionsCard.vue';
 
+type ArtifactRole = 'created' | 'used' | 'bound';
+type ArtifactPanelEntry = ResourceEntry & { role: ArtifactRole };
+
 const i18n = useI18n();
 const router = useRouter();
 const store = useInstanceAiStore();
@@ -24,7 +27,22 @@ function dataTableUrl(projectId: string | undefined, id: string): string {
 	return projectId ? `/projects/${projectId}/datatables/${id}` : '/home/datatables';
 }
 
-function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
+function roleForReferencedArtifact(entry: ResourceEntry): ArtifactRole {
+	return entry.type === 'credential' ? 'bound' : 'used';
+}
+
+function artifactBadgeLabel({ role }: ArtifactPanelEntry): string {
+	switch (role) {
+		case 'created':
+			return i18n.baseText('instanceAi.artifactsPanel.created');
+		case 'used':
+			return i18n.baseText('instanceAi.artifactsPanel.used');
+		case 'bound':
+			return i18n.baseText('instanceAi.artifactsPanel.bound');
+	}
+}
+
+function handleArtifactClick(artifact: ArtifactPanelEntry, e: MouseEvent) {
 	if (artifact.type === 'workflow' && artifact.id) {
 		if (e.metaKey || e.ctrlKey) {
 			window.open(`/workflow/${artifact.id}`, '_blank');
@@ -35,8 +53,7 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 	}
 
 	if (artifact.type === 'data-table' && artifact.id) {
-		const isReferenced = !store.producedArtifacts.has(artifact.id);
-		if (isReferenced) {
+		if (artifact.role === 'used') {
 			const url = dataTableUrl(artifact.projectId, artifact.id);
 			if (e.metaKey || e.ctrlKey) {
 				window.open(url, '_blank');
@@ -79,19 +96,19 @@ const statusIconMap: Record<
 	cancelled: { icon: 'ban', spin: false, className: 'cancelledIcon' },
 };
 
-const artifacts = computed((): ResourceEntry[] => {
-	const result: ResourceEntry[] = [];
+const artifacts = computed((): ArtifactPanelEntry[] => {
+	const result: ArtifactPanelEntry[] = [];
 	const seen = new Set<string>();
 	for (const entry of store.producedArtifacts.values()) {
 		if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'credential') {
-			result.push(entry);
+			result.push({ ...entry, role: 'created' });
 			seen.add(entry.id);
 		}
 	}
 	for (const entry of store.referencedArtifacts.values()) {
 		if (seen.has(entry.id)) continue;
 		if (entry.type === 'data-table' || entry.type === 'credential') {
-			result.push(entry);
+			result.push({ ...entry, role: roleForReferencedArtifact(entry) });
 		}
 	}
 	return result;
@@ -127,6 +144,9 @@ const artifactIconMap: Record<string, IconName> = {
 						/>
 					</span>
 					<span :class="$style.artifactName">{{ artifact.name }}</span>
+					<span :class="$style.artifactBadge">
+						{{ artifactBadgeLabel(artifact) }}
+					</span>
 					<span v-if="artifact.archived" :class="$style.archivedBadge">
 						{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
 					</span>
@@ -275,6 +295,7 @@ const artifactIconMap: Record<string, IconName> = {
 	}
 }
 
+.artifactBadge,
 .archivedBadge {
 	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-1);

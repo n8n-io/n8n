@@ -279,13 +279,13 @@ export class InstanceAiAdapterService {
 
 		if (dataTableNameRefs.length > 0) {
 			try {
-				const { data: tables } = await this.dataTableService.getManyAndCount({
-					filter: { projectId: project.id },
-				});
-				const byName = new Map(tables.map((t) => [t.name, t]));
 				await Promise.all(
 					dataTableNameRefs.map(async (name) => {
-						const match = byName.get(name);
+						const { data: matches } = await this.dataTableService.getManyAndCount({
+							filter: { projectId: project.id, name: name.toLowerCase() },
+							take: 1,
+						});
+						const match = matches[0];
 						if (!match || dataTablesById.has(match.id)) return;
 						const allowed = await userHasScopes(user, ['dataTable:read'], false, {
 							dataTableId: match.id,
