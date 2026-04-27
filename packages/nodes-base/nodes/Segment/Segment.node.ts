@@ -75,10 +75,10 @@ export class Segment implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
+			const resource = this.getNodeParameter('resource', i);
+			const operation = this.getNodeParameter('operation', i);
 			try {
 				if (resource === 'group') {
 					//https://segment.com/docs/connections/sources/catalog/libraries/server/http-api/#group
