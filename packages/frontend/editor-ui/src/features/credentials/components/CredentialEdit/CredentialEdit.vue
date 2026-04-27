@@ -888,8 +888,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	}
 
 	const appliedAuthType = pendingAuthType.value;
-	if (appliedAuthType && contextNode.value) {
-		updateNodeAuthType(workflowsStore.workflowId, contextNode.value, appliedAuthType);
+	if (appliedAuthType && contextNode.value && workflowDocumentStore.value) {
+		updateNodeAuthType(
+			workflowDocumentStore.value.updateNodeProperties,
+			contextNode.value,
+			appliedAuthType,
+		);
 		pendingAuthType.value = null;
 	}
 
@@ -1433,7 +1437,7 @@ const { width } = useElementSize(credNameRef);
 						:class="$style.saveButton"
 						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
 						:is-saving="isSaving || isTesting"
-						:saved="false"
+						:saved="!hasUnsavedChanges && !isTesting && !!credentialId"
 						:saving-label="
 							isTesting
 								? i18n.baseText('credentialEdit.credentialEdit.testing')

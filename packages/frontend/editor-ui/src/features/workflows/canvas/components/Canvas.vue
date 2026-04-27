@@ -10,7 +10,7 @@ import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { CanvasKey } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
@@ -167,6 +167,7 @@ const props = withDefaults(
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
@@ -1022,7 +1023,7 @@ onNodesInitialized(() => {
 	if (pendingConnections) {
 		const connections = pendingConnections;
 		pendingConnections = null;
-		useWorkflowsStore().setConnections(connections);
+		workflowDocumentStore?.value?.setConnections(connections);
 	}
 
 	if (pendingFitViewOnInit) {

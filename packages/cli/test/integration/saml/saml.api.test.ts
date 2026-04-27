@@ -1,3 +1,8 @@
+// Global mocks in test/setup-mocks.ts replace `node:fs` with jest auto-mocks,
+// which breaks express view lookup in the SAML connection-test round-trip.
+// Restore the real fs so the ACS handler can render its handlebars template.
+jest.unmock('node:fs');
+
 import type { SamlPreferences } from '@n8n/api-types';
 import {
 	createTeamProject,
@@ -20,6 +25,7 @@ import {
 	RSA_TEST_PRIVATE_KEY,
 } from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
 
+import { TEMPLATES_DIR } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
@@ -28,6 +34,7 @@ import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
+import { createHandlebarsEngine } from '@/utils/handlebars.util';
 
 import { sampleConfig } from './sample-metadata';
 import { createOwner, createUser } from '../shared/db/users';
@@ -303,6 +310,78 @@ describe('Check endpoint permissions', () => {
 		test('should NOT be able to access POST /sso/saml/config/test', async () => {
 			await testServer.authlessAgent.post('/sso/saml/config/test').expect(401);
 		});
+	});
+});
+
+describe('POST /sso/saml/config/test round-trip', () => {
+	beforeAll(() => {
+		// ACS renders handlebars templates; configure the engine on the test app.
+		testServer.app.engine('handlebars', createHandlebarsEngine());
+		testServer.app.set('view engine', 'handlebars');
+		testServer.app.set('views', TEMPLATES_DIR);
+	});
+
+	beforeEach(async () => {
+		await enableSaml(false);
+		await Container.get(SamlService).reset();
+	});
+
+	test('embeds a test token in the RelayState when metadata is provided without saving', async () => {
+		const response = await authOwnerAgent
+			.post('/sso/saml/config/test')
+			.send({ metadata: sampleConfig.metadata, loginBinding: 'redirect' })
+			.expect(200);
+
+		// Body is the IdP redirect URL; its RelayState query param must point at the
+		// test return URL and include our opaque test token.
+		const redirectUrl = new URL(response.body.data as string);
+		const relayState = redirectUrl.searchParams.get('RelayState');
+		expect(relayState).toBeTruthy();
+
+		const relayStateUrl = new URL(relayState!);
+		expect(relayStateUrl.pathname).toBe('/config/test/return');
+		expect(relayStateUrl.searchParams.get('t')).toMatch(/^[0-9a-f]+$/);
+	});
+
+	test('ACS callback with the test token does not fail with "No IdP metadata configured"', async () => {
+		// Prime the test config without persisting SAML preferences.
+		const initResponse = await authOwnerAgent
+			.post('/sso/saml/config/test')
+			.send({ metadata: sampleConfig.metadata, loginBinding: 'redirect' })
+			.expect(200);
+		const relayState = new URL(initResponse.body.data as string).searchParams.get('RelayState')!;
+
+		const acsResponse = await testServer.authlessAgent
+			.post('/sso/saml/acs')
+			.type('form')
+			.send({ RelayState: relayState, SAMLResponse: 'invalid' })
+			.expect(200);
+
+		// The rendered failure template proves we handled this as a test-connection
+		// flow (not a login auth error). The distinctive pre-fix error message
+		// must not appear — cached metadata should have been consumed.
+		expect(acsResponse.text).toContain('SAML Connection Test failed');
+		expect(acsResponse.text).not.toContain('No IdP metadata configured');
+	});
+
+	test('ACS callback consumes the test token so a later lookup returns undefined', async () => {
+		const initResponse = await authOwnerAgent
+			.post('/sso/saml/config/test')
+			.send({ metadata: sampleConfig.metadata, loginBinding: 'redirect' })
+			.expect(200);
+		const relayState = new URL(initResponse.body.data as string).searchParams.get('RelayState')!;
+		const testId = new URL(relayState).searchParams.get('t')!;
+
+		await testServer.authlessAgent
+			.post('/sso/saml/acs')
+			.type('form')
+			.send({ RelayState: relayState, SAMLResponse: 'invalid' })
+			.expect(200);
+
+		// After the ACS callback, the cached metadata must be gone — confirming
+		// the token is single-use.
+		const consumed = await Container.get(SamlService).consumePendingTestConfig(testId);
+		expect(consumed).toBeUndefined();
 	});
 });
 
@@ -716,8 +795,8 @@ describe('SAML SSO provisioning', () => {
 	});
 
 	beforeEach(() => {
-		originalEnvFlag = process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
-		process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = 'true';
+		originalEnvFlag = process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING;
+		process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING = 'true';
 
 		const provisioningService = Container.get(ProvisioningService);
 		// @ts-expect-error - provisioningConfig is private
@@ -728,9 +807,9 @@ describe('SAML SSO provisioning', () => {
 
 	afterEach(async () => {
 		if (originalEnvFlag === undefined) {
-			delete process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+			delete process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING;
 		} else {
-			process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = originalEnvFlag;
+			process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING = originalEnvFlag;
 		}
 
 		const provisioningService = Container.get(ProvisioningService);

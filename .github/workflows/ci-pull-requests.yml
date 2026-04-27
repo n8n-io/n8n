@@ -29,6 +29,8 @@ jobs:
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
+      matrix: ${{ steps.generate-matrix.outputs.matrix }}
+      skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -56,7 +58,9 @@ jobs:
               !.github/**
             e2e:
               .github/workflows/test-e2e-*.yml
-              .github/scripts/cleanup-ghcr-images.mjs
+              .github/workflows/prepare-docker-reusable.yml
+              .github/actions/build-n8n-docker/**
+              .github/actions/load-n8n-docker/**
               packages/testing/playwright/**
               packages/testing/containers/**
             workflows: .github/**
@@ -91,12 +95,25 @@ jobs:
               .github/workflows/test-db-reusable.yml
 
       - name: Setup and Build
-        if: fromJSON(steps.ci-filter.outputs.results).ci
+        if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
         uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ${{ fromJSON(steps.ci-filter.outputs.results).ci && 'pnpm build' || 'pnpm turbo run build --filter=@n8n/playwright-janitor' }}
 
       - name: Run format check
         if: fromJSON(steps.ci-filter.outputs.results).ci
         run: pnpm format:check
+
+      - name: Generate shard matrix
+        id: generate-matrix
+        if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
+        env:
+          CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
+        run: |
+          FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate --impact "--files=$FILES_CSV" --base=FETCH_HEAD)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
   unit-test:
     name: Unit tests
@@ -149,14 +166,59 @@ jobs:
         run: |
           pnpm -r pack --dry-run
 
-  e2e-tests:
-    name: E2E Tests
+  # Seeds the SHA-keyed Docker image cache once so that downstream e2e jobs
+  # (each of which invokes prepare-docker internally) short-circuit to a
+  # cache hit instead of racing to rebuild.
+  prepare-docker:
+    name: Prepare Docker
     needs: install-and-build
-    if: (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') && github.repository == 'n8n-io/n8n' && github.event_name != 'merge_group'
-    uses: ./.github/workflows/test-e2e-ci-reusable.yml
+    if: >-
+      github.repository == 'n8n-io/n8n' &&
+      github.event_name != 'merge_group' &&
+      (needs.install-and-build.outputs.ci == 'true'
+        || needs.install-and-build.outputs.e2e == 'true'
+        || needs.install-and-build.outputs.e2e_performance == 'true')
+    uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
-      playwright-only: ${{ needs.install-and-build.outputs.e2e == 'true' && needs.install-and-build.outputs.unit == 'false' }}
+    secrets: inherit
+
+  # Internal-only 1-spec fail-fast sanity check on sqlite.
+  sqlite-sanity:
+    name: 'SQLite: Sanity Check'
+    needs: [install-and-build, prepare-docker]
+    if: >-
+      needs.prepare-docker.result == 'success' &&
+      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') &&
+      github.repository == 'n8n-io/n8n' &&
+      github.event_name != 'merge_group' &&
+      github.event.pull_request.head.repo.fork != true
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+      test-mode: docker-artifact
+      test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e tests/e2e/building-blocks/workflow-entry-points.spec.ts
+      workers: '1'
+    secrets: inherit
+
+  # Full e2e run. Internal PRs run multi-main (postgres + redis + caddy + 2 mains + 1 worker).
+  # Fork PRs run sqlite-only and skip @licensed tests (no enterprise license secrets on forks).
+  e2e:
+    name: E2E
+    needs: [install-and-build, prepare-docker]
+    if: >-
+      needs.prepare-docker.result == 'success' &&
+      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') &&
+      needs.install-and-build.outputs.skip_tests != 'true' &&
+      github.event_name != 'merge_group'
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+      test-mode: docker-artifact
+      test-command: ${{ github.event.pull_request.head.repo.fork == true && 'pnpm --filter=n8n-playwright test:container:sqlite:e2e --grep-invert="@licensed"' || 'pnpm --filter=n8n-playwright test:container:multi-main:e2e' }}
+      workers: '1'
+      pre-generated-matrix: ${{ needs.install-and-build.outputs.matrix }}
+      upload-failure-artifacts: ${{ github.event.pull_request.head.repo.fork == true }}
     secrets: inherit
 
   db-tests:
@@ -177,11 +239,12 @@ jobs:
 
   e2e-performance:
     name: E2E Performance
-    needs: install-and-build
+    needs: [install-and-build, prepare-docker]
+    # Performance is internal-only (license secrets required, not available on forks).
     if: >-
-      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e_performance == 'true') &&
-      github.event_name == 'pull_request' &&
-      github.repository == 'n8n-io/n8n'
+      needs.prepare-docker.result == 'success' &&
+      needs.install-and-build.outputs.e2e_performance == 'true' &&
+      github.event.pull_request.head.repo.fork != true
     uses: ./.github/workflows/test-e2e-performance-reusable.yml
     secrets: inherit
 
@@ -226,7 +289,8 @@ jobs:
         typecheck,
         lint,
         check-packaging,
-        e2e-tests,
+        sqlite-sanity,
+        e2e,
         db-tests,
         performance,
         security-checks,

@@ -71,6 +71,7 @@ import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
+import { applyDefaultOutboundUserAgent } from './outbound-user-agent';
 import { parseIncomingMessage } from './parse-incoming-message';
 // Imported for side effects: sets axios defaults and registers the request interceptor
 import './request-helpers/axios-config';
@@ -400,6 +401,8 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		axiosConfig.validateStatus = () => true;
 	}
 
+	applyDefaultOutboundUserAgent(axiosConfig);
+
 	/**
 	 * Missing properties:
 	 * encoding (need testing)
@@ -541,7 +544,7 @@ export function convertN8nRequestToAxios(
 	}
 
 	const host = getHostFromRequestObject(n8nRequest);
-	const agentOptions: AgentOptions = {};
+	const agentOptions: AgentOptions = { ...n8nRequest.agentOptions };
 	if (host) {
 		agentOptions.servername = host;
 	}
@@ -607,15 +610,7 @@ export function convertN8nRequestToAxios(
 		}
 	}
 
-	const userAgentHeader = searchForHeader(axiosRequest, 'user-agent');
-	// If key exists, then the user has set both accept
-	// header and the json flag. Header should take precedence.
-	if (!userAgentHeader) {
-		axiosRequest.headers = {
-			...axiosRequest.headers,
-			'User-Agent': 'n8n',
-		};
-	}
+	applyDefaultOutboundUserAgent(axiosRequest);
 
 	if (n8nRequest.ignoreHttpStatusErrors) {
 		const ignoreHttpStatusErrors = n8nRequest.ignoreHttpStatusErrors;
@@ -1572,6 +1567,14 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			if (additionalData.otel?.injectTraceHeaders) {
+				requestOptions.headers ??= {};
+				additionalData.otel.injectTraceHeaders(
+					additionalData.executionId!,
+					node.name,
+					requestOptions.headers as Record<string, string>,
+				);
+			}
 			return await httpRequest(requestOptions, additionalData.ssrfBridge);
 		},
 		requestWithAuthenticationPaginated,
@@ -1617,6 +1620,15 @@ export const getRequestHelperFunctions = (
 					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			if (additionalData.otel?.injectTraceHeaders) {
+				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
+				target.headers ??= {};
+				additionalData.otel.injectTraceHeaders(
+					additionalData.executionId!,
+					node.name,
+					target.headers as Record<string, string>,
+				);
 			}
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
 		},

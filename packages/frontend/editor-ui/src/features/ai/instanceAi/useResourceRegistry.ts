@@ -13,6 +13,13 @@ export interface ResourceEntry {
 	createdAt?: string;
 	updatedAt?: string;
 	projectId?: string;
+	/**
+	 * Set to true when the run-finish reap archived this workflow — a
+	 * stepping-stone the agent created but never promoted to the main
+	 * deliverable. The artifacts panel renders these as dimmed with an
+	 * "Archived" label.
+	 */
+	archived?: boolean;
 }
 
 interface Collections {
@@ -231,6 +238,7 @@ function enrichWorkflowNames(
 export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
 	workflowNameLookup?: (id: string) => string | undefined,
+	archivedWorkflowIds?: () => ReadonlySet<string>,
 ) {
 	const collections = computed((): Collections => {
 		const col: Collections = {
@@ -249,6 +257,15 @@ export function useResourceRegistry(
 
 		if (workflowNameLookup) {
 			enrichWorkflowNames(col, workflowNameLookup);
+		}
+
+		const archived = archivedWorkflowIds?.();
+		if (archived && archived.size > 0) {
+			for (const entry of col.produced.values()) {
+				if (entry.type === 'workflow' && archived.has(entry.id)) {
+					entry.archived = true;
+				}
+			}
 		}
 
 		return col;

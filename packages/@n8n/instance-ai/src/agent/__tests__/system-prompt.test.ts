@@ -59,4 +59,26 @@ describe('getSystemPrompt', () => {
 			expect(prompt).not.toContain('Read-Only Instance');
 		});
 	});
+
+	describe('secret handling guidance', () => {
+		it('instructs the agent not to ask for plaintext secrets in chat', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Never ask the user to paste passwords, API keys');
+			expect(prompt).toContain(
+				'credential setup, browser credential setup, or existing credential selection',
+			);
+		});
+	});
+
+	describe('multi-credential disambiguation guidance', () => {
+		it('instructs the orchestrator to ask once when a service has more than one credential of the same type', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('Ask once when a service has multiple credentials of the same type');
+			expect(prompt).toContain('more than one entry of the type');
+			expect(prompt).toContain('single-select');
+			expect(prompt).toContain('With a single candidate, auto-apply and do not ask');
+		});
+	});
 });

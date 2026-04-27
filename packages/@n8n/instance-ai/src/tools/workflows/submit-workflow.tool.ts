@@ -209,8 +209,8 @@ export function createSubmitWorkflowTool(
 		id: 'submit-workflow',
 		description:
 			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, ' +
-			'and saves it to n8n as a draft. The workflow must be explicitly published via ' +
-			'publish-workflow before it will run on its triggers in production.',
+			'and saves it to n8n as a draft. Publishing policy lives in the builder prompt ' +
+			'(main workflows wait for the user; sub-workflow chunks may be auto-published).',
 		inputSchema: submitWorkflowInputSchema,
 		outputSchema: submitWorkflowOutputSchema,
 		execute: async ({
@@ -232,6 +232,13 @@ export function createSubmitWorkflowTool(
 					...attempt,
 				});
 			};
+
+			const permKey = workflowId ? 'updateWorkflow' : 'createWorkflow';
+			if (context.permissions?.[permKey] === 'blocked') {
+				const errors = ['Action blocked by admin'];
+				await reportAttempt({ success: false, errors });
+				return { success: false, errors };
+			}
 
 			// Execute the TS file in the sandbox via tsx to produce WorkflowJSON.
 			// Node.js module resolution handles local imports naturally (no manual bundling).
@@ -346,18 +353,21 @@ export function createSubmitWorkflowTool(
 
 			// Save
 			let savedId: string;
-			const opts = projectId ? { projectId } : undefined;
 			try {
 				if (workflowId) {
 					const updated = await context.workflowService.updateFromWorkflowJSON(
 						workflowId,
 						json,
-						opts,
+						projectId ? { projectId } : undefined,
 					);
 					savedId = updated.id;
 				} else {
-					const created = await context.workflowService.createFromWorkflowJSON(json, opts);
+					const created = await context.workflowService.createFromWorkflowJSON(json, {
+						...(projectId ? { projectId } : {}),
+						markAsAiTemporary: true,
+					});
 					savedId = created.id;
+					(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
 				}
 			} catch (error) {
 				const errors = [

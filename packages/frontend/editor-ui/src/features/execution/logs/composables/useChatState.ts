@@ -10,7 +10,7 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage, ChatOptions, SendMessageResponse } from '@n8n/chat/types';
+import type { ChatOptions, SendMessageResponse } from '@n8n/chat/types';
 import { v4 as uuid } from 'uuid';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref, toValue, watch } from 'vue';
@@ -26,7 +26,6 @@ import { MessageComponentKey } from '@n8n/chat/constants/messageComponents';
 
 interface ChatState {
 	currentSessionId: ComputedRef<string>;
-	messages: ComputedRef<ChatMessage[]>;
 	previousChatMessages: ComputedRef<string[]>;
 	refreshSession: () => void;
 	displayExecution: (executionId: string) => void;
@@ -261,7 +260,7 @@ export function useChatState(
 			messageComponents: {
 				[MessageComponentKey.WITH_BUTTONS]: MessageWithButtons,
 			},
-			messageHistory: messages.value,
+			messageHistory: isReadOnly ? restoredChatMessages.value : messages.value,
 			disabled: ref(isReadOnly),
 			i18n: {
 				en: {
@@ -348,7 +347,7 @@ export function useChatState(
 	function displayExecution(executionId: string) {
 		const route = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
-			params: { name: workflowsStore.workflowId, executionId },
+			params: { workflowId: workflowsStore.workflowId, executionId },
 		});
 		window.open(route.href, '_blank');
 	}
@@ -366,9 +365,6 @@ export function useChatState(
 
 	return {
 		currentSessionId: computed(() => logsStore.chatSessionId),
-		messages: computed(() =>
-			isReadOnly ? restoredChatMessages.value : logsStore.chatSessionMessages,
-		),
 		previousChatMessages,
 		refreshSession,
 		displayExecution,
