@@ -2,6 +2,19 @@
 
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses.
 
+Three harnesses live here:
+
+- **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
+- **`eval:subagent`** — builder sub-agent against live n8n, scored by binary checks (drives a running n8n instance)
+- **`eval:pairwise`** — builder sub-agent in-process, scored by an LLM judge panel against do/don't lists (no n8n server). Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
+
+Sections:
+
+- [Running e2e + sub-agent evals](#running-evals)
+- [Running pairwise evals](#pairwise-evals)
+- [How the e2e harness works](#how-the-e2e-harness-works)
+- [How the sub-agent harness works](#how-the-sub-agent-harness-works)
+
 ## Running evals
 
 ### CLI
@@ -112,6 +125,139 @@ The eval job is **non-blocking**. Results are posted as a PR comment and uploade
 | `--keep-workflows` | Do not archive/delete workflows created during the run |
 | `--verbose` | Verbose output |
 
+## Pairwise evals
+
+Pairwise evals score a built workflow against the dataset's `dos` / `donts`
+criteria using an LLM judge panel (3 judges by default, majority vote on
+`pairwise_primary`, mean fraction of criteria satisfied on
+`pairwise_diagnostic`). The point is **head-to-head comparison with
+`ai-workflow-builder.ee`** on the same dataset (default
+`notion-pairwise-workflows`), so the judge panel, defaults, and metric keys
+are imported from that package directly.
+
+Unlike the e2e and sub-agent harnesses, pairwise runs the **builder
+sub-agent in-process** — no n8n server, no Docker, no live workflow service.
+Stub services capture `createFromWorkflowJSON` calls; HITL suspensions are
+auto-approved.
+
+### Quick start
+
+```bash
+# From packages/@n8n/instance-ai/
+
+# 1. Local fixture (small smoke set, no LangSmith required)
+N8N_AI_ANTHROPIC_KEY="$ANTHROPIC_API_KEY" pnpm eval:pairwise --judges 1
+
+# 2. Full LangSmith dataset
+LANGSMITH_API_KEY=... N8N_AI_ANTHROPIC_KEY="$ANTHROPIC_API_KEY" \
+  pnpm eval:pairwise:langsmith --judges 3
+
+# 3. Rerun a specific subset (one example ID per line; #-prefixed lines ignored)
+pnpm eval:pairwise:langsmith \
+  --example-ids-file .output/pairwise/failed-ids.txt \
+  --output-dir .output/pairwise/rerun
+```
+
+> **Stale `dist/` warning.** The harness imports the compiled `workflow-sdk`
+> from `packages/@n8n/workflow-sdk/dist/`, not source. If you've changed the
+> SDK's interpreter or validators (e.g., adding allowed methods), rebuild it
+> first or the agent will hit "security violation" errors that don't reflect
+> reality:
+>
+> ```bash
+> pushd packages/@n8n/workflow-sdk && pnpm build && popd
+> ```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--backend` | `local` | `local` reads `evaluations/data/pairwise/local.json`; `langsmith` pulls from the LangSmith dataset |
+| `--dataset` | `notion-pairwise-workflows` | LangSmith dataset name (langsmith backend only) |
+| `--judges` | `3` | Number of judges in the LLM panel |
+| `--judge-model` | `claude-sonnet-4-5-20250929` | LangChain model id for the judge LLM |
+| `--iterations` | `1` | Run each example N times — for measuring judge / build variance |
+| `--concurrency` | `5` | Parallel example workers (`p-limit`) |
+| `--max-examples` | — | Cap dataset to first N examples |
+| `--example-ids-file` | — | Path to a text file of LangSmith example IDs (one per line). Used for rerunning a subset |
+| `--timeout-ms` | `1200000` | Per-example build timeout |
+| `--output-dir` | `.output/pairwise/<iso>` | Where to write artifacts |
+| `--experiment-name` | `pairwise-evals-instance-ai` | LangSmith experiment label |
+| `--verbose` | `false` | Per-example log lines |
+
+### Outputs
+
+Each run writes a self-contained directory:
+
+```
+.output/pairwise/<run>/
+├── summary.json           # totals: pass rate, avg diagnostic, build failures by class, interactivity counters
+├── results.jsonl          # one line per example: prompt, dos/donts, captured workflow, build metadata, feedback rows
+├── workflows/<id>.json    # normalized workflow JSON (matches SimpleWorkflow shape from ai-workflow-builder.ee)
+└── chunks/<id>_<iter>.jsonl  # per-example agent trace: tool-calls, tool-results, suspensions, final text
+```
+
+The `chunks/*.jsonl` traces are the primary tool for root-causing build
+failures. Each line is one event: `tool-call`, `tool-result`, `suspension`,
+`auto-approve`, `text`, `stream-finish`, `captured-workflows`, `error`.
+
+When `LANGSMITH_API_KEY` is set, feedback is also posted to LangSmith with
+metric keys `pairwise_primary`, `pairwise_diagnostic`,
+`pairwise_judges_passed`, `pairwise_total_passes`, `pairwise_total_violations`,
+and per-judge `judge1..N`. Experiment metadata includes
+`builder: 'instance-ai'` so it can be queried alongside the
+`ai-workflow-builder.ee` baseline.
+
+### Build failure classes
+
+Build failures are tracked separately from judge scores:
+
+- **`build_timeout`** — exceeded `--timeout-ms`
+- **`no_workflow_built`** — agent finished without invoking `build-workflow` (no captured workflow)
+- **`agent_error`** — stream errored or the agent threw
+
+A failure produces a row with `workflow: null`, empty `feedback`, and the
+error class — it counts as a primary fail in the comparison report.
+
+### Interactivity gates
+
+The agent is stubbed for non-interactive use. The summary tracks divergence
+from this assumption — investigate any non-zero count:
+
+- `askUserCount` — `ask-user` tool was invoked (eval responds with `{ approved: false }`)
+- `planToolCount` — `plan` tool was invoked (single-prompt dataset shouldn't trigger planning)
+- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data-tables` create); auto-approved
+- `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
+
+### Comparison report
+
+After running both `ai-workflow-builder.ee/evaluations/cli` (the baseline) and
+`eval:pairwise` against the same dataset, generate an HTML side-by-side
+report:
+
+```bash
+pnpm eval:pairwise:compare \
+  --ee-dir   ../ai-workflow-builder.ee/evaluations/.output/pairwise/<ts> \
+  --ia-dir   .output/pairwise/<ts> \
+  --out      .output/pairwise/comparison.html
+```
+
+The report shows headline metrics, per-prompt verdicts (TIE / IA-only /
+Code-only / both-pass / both-fail), and lazy-loaded workflow previews — rows
+collapse by default and only render the heavy `<n8n-demo>` preview when
+expanded.
+
+### When pairwise scores wobble
+
+Judge non-determinism + agent retry behavior mean a single run is not a
+reliable signal. Two specific things to know:
+
+- The agent will sometimes retry `build-workflow` after a parser rejection
+  (e.g., security violation) and sometimes give up. Whether a prompt
+  "fails to build" is non-deterministic across runs.
+- If you're comparing two builders to claim a regression or improvement,
+  bump `--iterations` to ≥3 for both sides.
+
 ## How the e2e harness works
 
 1. **Build** — sends the test case prompt to Instance AI, which builds a workflow
@@ -195,12 +341,13 @@ When a scenario fails, the verifier categorizes the root cause:
 ```
 evaluations/
 ├── index.ts              # Public API
-├── cli/                  # CLI entry point, arg parsing, CI metadata
+├── cli/                  # CLI entries: instance-ai, subagent, pairwise, compare-pairwise, report
 ├── clients/              # n8n REST + SSE clients
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
-├── data/workflows/       # Test case JSON files
-├── harness/              # Runner: buildWorkflow, executeScenario, cleanupBuild
+├── data/workflows/       # e2e/sub-agent test case JSON files
+├── data/pairwise/        # Local pairwise fixture (small smoke set)
+├── harness/              # Runners: buildWorkflow + executeScenario (e2e), in-process-builder (pairwise)
 ├── langsmith/            # Dataset sync + experiment setup
 ├── outcome/              # SSE event parsing, workflow discovery
 ├── report/               # HTML report generator
