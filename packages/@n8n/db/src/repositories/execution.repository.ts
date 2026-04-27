@@ -49,8 +49,10 @@ import {
 	ExecutionMetadata,
 	SharedWorkflow,
 	WorkflowEntity,
+	WorkflowHistory,
 } from '../entities';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
+import { WorkflowHistoryRepository } from './workflow-history.repository';
 import type {
 	ExecutionSummaries,
 	IExecutionBase,
@@ -161,8 +163,45 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly errorReporter: ErrorReporter,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 	) {
 		super(ExecutionEntity, dataSource.manager);
+	}
+
+	/**
+	 * Look up workflow_history rows for the given versionIds. Returns a map
+	 * keyed by versionId. Used to hydrate execution responses with the workflow
+	 * snapshot stored in workflow_history.
+	 */
+	private async fetchWorkflowHistoryByVersionIds(
+		versionIds: string[],
+	): Promise<Map<string, Pick<WorkflowHistory, 'nodes' | 'connections' | 'name'>>> {
+		const uniqueIds = Array.from(new Set(versionIds));
+		if (uniqueIds.length === 0) return new Map();
+
+		const rows = await this.workflowHistoryRepository.find({
+			where: { versionId: In(uniqueIds) },
+			select: ['versionId', 'nodes', 'connections', 'name'],
+		});
+
+		return new Map(
+			rows.map((row) => [
+				row.versionId,
+				{ nodes: row.nodes, connections: row.connections, name: row.name },
+			]),
+		);
+	}
+
+	private applyWorkflowHistoryHydration<T>(
+		snapshot: T,
+		historyRow: Pick<WorkflowHistory, 'nodes' | 'connections' | 'name'>,
+	): T {
+		return {
+			...snapshot,
+			nodes: historyRow.nodes,
+			connections: historyRow.connections,
+			...(historyRow.name !== null ? { name: historyRow.name } : {}),
+		};
 	}
 
 	async findMultipleExecutions(
@@ -217,14 +256,24 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}) as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[];
 		}
 
+		const historyByVersion = await this.fetchWorkflowHistoryByVersionIds(
+			valid.flatMap((e) => (e.workflowVersionId ? [e.workflowVersionId] : [])),
+		);
+
 		return (await Promise.all(
 			valid.map(async (execution) => {
 				const { executionData, metadata, ...rest } = execution;
 				const data = await this.handleExecutionRunData(executionData.data, options);
+				const historyRow = execution.workflowVersionId
+					? historyByVersion.get(execution.workflowVersionId)
+					: undefined;
+				const workflowData = historyRow
+					? this.applyWorkflowHistoryHydration(executionData.workflowData, historyRow)
+					: executionData.workflowData;
 				return {
 					...rest,
 					data,
-					workflowData: executionData.workflowData,
+					workflowData,
 					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				};
 			}),
@@ -339,10 +388,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		// Include the run data.
 		const data = await this.handleExecutionRunData(executionData.data, options);
+		const historyByVersion = execution.workflowVersionId
+			? await this.fetchWorkflowHistoryByVersionIds([execution.workflowVersionId])
+			: undefined;
+		const historyRow = execution.workflowVersionId
+			? historyByVersion?.get(execution.workflowVersionId)
+			: undefined;
+		const workflowData = historyRow
+			? this.applyWorkflowHistoryHydration(executionData.workflowData, historyRow)
+			: executionData.workflowData;
 		return {
 			...rest,
 			data,
-			workflowData: executionData.workflowData,
+			workflowData,
 			customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),

@@ -1,8 +1,10 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
+import { ExecutionDataRepository, ExecutionRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import type { IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
+
+import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 
 describe('ExecutionRepository', () => {
 	beforeAll(async () => {
@@ -61,6 +63,110 @@ describe('ExecutionRepository', () => {
 			});
 		});
 	});
+	describe('workflow-history hydration on read', () => {
+		const HISTORY_NODES = [
+			{
+				id: 'history-node-1',
+				name: 'HistoryNode',
+				parameters: {},
+				position: [0, 0] as [number, number],
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+			},
+		];
+		const SNAPSHOT_NODES = [
+			{
+				id: 'snapshot-node-1',
+				name: 'SnapshotNode',
+				parameters: {},
+				position: [0, 0] as [number, number],
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+			},
+		];
+		const RUN_DATA: IRunExecutionDataAll = {
+			version: 1,
+			startData: {},
+			resultData: { runData: {} },
+		};
+
+		const insertExecutionRow = async (workflowId: string, workflowVersionId: string | null) => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const executionDataRepo = Container.get(ExecutionDataRepository);
+			const { identifiers } = await executionRepo.insert({
+				workflowId,
+				mode: 'manual',
+				startedAt: new Date(),
+				status: 'success',
+				finished: true,
+				createdAt: new Date(),
+				workflowVersionId,
+			});
+			const executionId = identifiers[0].id as string;
+			await executionDataRepo.insert({
+				executionId,
+				workflowData: {
+					id: workflowId,
+					connections: {},
+					nodes: SNAPSHOT_NODES,
+					name: 'snapshot-name',
+				},
+				data: stringify(RUN_DATA),
+			});
+			return executionId;
+		};
+
+		it('returns nodes from workflow_history when versionId resolves to a history row', async () => {
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const history = await createWorkflowHistoryItem(workflow.id, {
+				nodes: HISTORY_NODES,
+				connections: {},
+				name: 'history-name',
+			});
+
+			const executionId = await insertExecutionRow(workflow.id, history.versionId);
+
+			const execution = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			expect(execution?.workflowData.nodes).toEqual(HISTORY_NODES);
+			expect(execution?.workflowData.name).toEqual('history-name');
+		});
+
+		it('falls back to ExecutionData snapshot when workflow_history row is missing', async () => {
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const history = await createWorkflowHistoryItem(workflow.id, {
+				nodes: HISTORY_NODES,
+				connections: {},
+			});
+			const executionId = await insertExecutionRow(workflow.id, history.versionId);
+
+			// Simulate the version being pruned out of workflow_history.
+			await Container.get(WorkflowHistoryRepository).delete({ versionId: history.versionId });
+
+			const execution = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			expect(execution?.workflowData.nodes).toEqual(SNAPSHOT_NODES);
+		});
+
+		it('uses snapshot when workflowVersionId is null (unsaved-workflow runs)', async () => {
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionId = await insertExecutionRow(workflow.id, null);
+
+			const execution = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			expect(execution?.workflowData.nodes).toEqual(SNAPSHOT_NODES);
+		});
+	});
+
 	describe('findByStopExecutionsFilter', () => {
 		it('should find executions by status', async () => {
 			const executionRepo = Container.get(ExecutionRepository);
