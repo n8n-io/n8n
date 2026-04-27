@@ -41,6 +41,7 @@ export const LOG_SCOPES = [
 	'instance-version-history',
 	'instance-settings-loader',
 	'instance-registry',
+	'expression-engine',
 	'encryption-key-manager',
 ] as const;
 

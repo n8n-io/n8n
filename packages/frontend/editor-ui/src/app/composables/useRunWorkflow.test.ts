@@ -63,6 +63,7 @@ const { mockDocumentStore } = vi.hoisted(() => {
 		getPinnedDataLastUpdate: vi.fn(),
 		getPinnedDataLastRemovedAt: vi.fn(),
 		getSnapshot: vi.fn(),
+		serialize: vi.fn(),
 	};
 	store.getSnapshot.mockReturnValue({
 		id: store.workflowId,
@@ -199,7 +200,6 @@ vi.mock('@/app/composables/useToast', () => ({
 vi.mock('@/app/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: vi.fn().mockReturnValue({
 		saveCurrentWorkflow: vi.fn(),
-		getWorkflowDataToSave: vi.fn(),
 		executeData: vi.fn(),
 		getNodeTypes: vi.fn().mockReturnValue([]),
 	}),
@@ -366,7 +366,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(uiStore).activeActions = [''];
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = true;
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
 			} as unknown as WorkflowData);
@@ -385,7 +385,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
 			} as unknown as WorkflowData);
@@ -405,7 +405,7 @@ describe('useRunWorkflow({ router })', () => {
 			const { runWorkflow } = useRunWorkflow({ router });
 
 			vi.mocked(rootStore).binaryDataMode = 'default';
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
 				settings: {
@@ -449,7 +449,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
 			} as unknown as WorkflowData);
@@ -518,7 +518,7 @@ describe('useRunWorkflow({ router })', () => {
 					},
 				],
 			};
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+			mockDocumentStore.serialize.mockReturnValue({
 				nodes: [],
 			} as unknown as WorkflowData);
 			vi.mocked(workflowHelpers).executeData.mockResolvedValue({
@@ -550,9 +550,7 @@ describe('useRunWorkflow({ router })', () => {
 			const composable = useRunWorkflow({ router });
 			const triggerNode = 'Chat Trigger';
 			const nodeData = mock<ITaskData>();
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<WorkflowData>({ nodes: [] }),
-			);
+			mockDocumentStore.serialize.mockReturnValue(mock<WorkflowData>({ nodes: [] }));
 
 			const { runWorkflow } = composable;
 
@@ -579,9 +577,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(mockDocumentStore.getChildNodes).mockReturnValue([
 				{ name: 'Child node', type: 'nodes.child' },
 			]);
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<WorkflowData>({ nodes: [] }),
-			);
+			mockDocumentStore.serialize.mockReturnValue(mock<WorkflowData>({ nodes: [] }));
 
 			const { runWorkflow } = composable;
 
@@ -613,9 +609,7 @@ describe('useRunWorkflow({ router })', () => {
 			const composable = useRunWorkflow({ router });
 			const triggerNode = 'Chat Trigger';
 			const nodeData = mock<ITaskData>();
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<WorkflowData>({ nodes: [] }),
-			);
+			mockDocumentStore.serialize.mockReturnValue(mock<WorkflowData>({ nodes: [] }));
 
 			const { runWorkflow } = composable;
 
@@ -638,9 +632,7 @@ describe('useRunWorkflow({ router })', () => {
 			// ARRANGE
 			const { runWorkflow } = useRunWorkflow({ router });
 			const triggerNode = 'Chat Trigger';
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<WorkflowData>({ nodes: [] }),
-			);
+			mockDocumentStore.serialize.mockReturnValue(mock<WorkflowData>({ nodes: [] }));
 
 			// ACT
 			await runWorkflow({ triggerNode });
@@ -690,7 +682,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(workflowData);
+			mockDocumentStore.serialize.mockReturnValue(workflowData);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
 			vi.mocked(agentRequestStore).getAgentRequest.mockReturnValue(agentRequest);
 
@@ -738,7 +730,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
+			mockDocumentStore.serialize.mockReturnValue(
 				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
 			);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
@@ -767,7 +759,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
+			mockDocumentStore.serialize.mockReturnValue(
 				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
 			);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
@@ -785,7 +777,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should set execution data to null if the execution did not start successfully', async () => {
 			const { runWorkflow } = useRunWorkflow({ router });
 
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
 			} as unknown as WorkflowData);
@@ -830,9 +822,7 @@ describe('useRunWorkflow({ router })', () => {
 				vi.mocked(useChat).mockReturnValue({ ws: null } as unknown as ReturnType<typeof useChat>);
 				const { runWorkflow } = useRunWorkflow({ router });
 
-				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-					workflowWithChatTriggerResponseNodes,
-				);
+				mockDocumentStore.serialize.mockReturnValue(workflowWithChatTriggerResponseNodes);
 
 				await runWorkflow({ triggerNode: 'Chat Trigger' });
 
@@ -845,9 +835,7 @@ describe('useRunWorkflow({ router })', () => {
 				} as unknown as ReturnType<typeof useChat>);
 				const { runWorkflow } = useRunWorkflow({ router });
 
-				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-					workflowWithChatTriggerResponseNodes,
-				);
+				mockDocumentStore.serialize.mockReturnValue(workflowWithChatTriggerResponseNodes);
 
 				await runWorkflow({ triggerNode: 'Chat Trigger' });
 
@@ -858,9 +846,7 @@ describe('useRunWorkflow({ router })', () => {
 				vi.mocked(useChat).mockReturnValue({ ws: null } as unknown as ReturnType<typeof useChat>);
 				const { runWorkflow } = useRunWorkflow({ router });
 
-				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-					workflowWithChatTriggerResponseNodes,
-				);
+				mockDocumentStore.serialize.mockReturnValue(workflowWithChatTriggerResponseNodes);
 
 				await runWorkflow({ triggerNode: 'Chat Trigger', source: 'RunData.ManualChatMessage' });
 
@@ -871,9 +857,7 @@ describe('useRunWorkflow({ router })', () => {
 				vi.mocked(useChat).mockReturnValue({ ws: null } as unknown as ReturnType<typeof useChat>);
 				const { runWorkflow } = useRunWorkflow({ router });
 
-				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-					workflowWithChatTriggerResponseNodes,
-				);
+				mockDocumentStore.serialize.mockReturnValue(workflowWithChatTriggerResponseNodes);
 
 				await runWorkflow({ triggerNode: 'Chat Trigger', source: 'RunData.ManualChatTrigger' });
 
@@ -897,7 +881,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			it("should show a warning if there are no chat response nodes and chat trigger's response mode is `responseNodes`", async () => {
 				const { runWorkflow } = useRunWorkflow({ router });
-				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				mockDocumentStore.serialize.mockReturnValue({
 					id: 'workflowId',
 					nodes: [
 						{
@@ -926,7 +910,7 @@ describe('useRunWorkflow({ router })', () => {
 				"should not show a warning if there are no chat response nodes but chat trigger's response mode is `%s`",
 				async (responseMode) => {
 					const { runWorkflow } = useRunWorkflow({ router });
-					vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+					mockDocumentStore.serialize.mockReturnValue({
 						id: 'workflowId',
 						nodes: [
 							{
@@ -950,7 +934,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			it('should not show a warning if the workflow was started from a different trigger node', async () => {
 				const { runWorkflow } = useRunWorkflow({ router });
-				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				mockDocumentStore.serialize.mockReturnValue({
 					id: 'workflowId',
 					nodes: [
 						{
@@ -984,7 +968,7 @@ describe('useRunWorkflow({ router })', () => {
 				'should not show a warning if the there are response nodes in the workflow (%s)',
 				async (responseNodeType) => {
 					const { runWorkflow } = useRunWorkflow({ router });
-					vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+					mockDocumentStore.serialize.mockReturnValue({
 						id: 'workflowId',
 						nodes: [
 							{
@@ -1012,7 +996,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			it('should show a warning if all the response nodes are disabled', async () => {
 				const { runWorkflow } = useRunWorkflow({ router });
-				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				mockDocumentStore.serialize.mockReturnValue({
 					id: 'workflowId',
 					nodes: [
 						{
@@ -1157,7 +1141,7 @@ describe('useRunWorkflow({ router })', () => {
 		it('should invoke runWorkflow with expected arguments', async () => {
 			const runWorkflowComposable = useRunWorkflow({ router });
 
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
 			} as unknown as WorkflowData);
@@ -1184,7 +1168,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			mockDocumentStore.allNodes = [chatTrigger];
 			vi.mocked(workflowsStore).selectedTriggerNodeName = undefined;
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
 			} as unknown as WorkflowData);
@@ -1214,7 +1198,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			mockDocumentStore.allNodes = [chatTrigger, manualTrigger];
 			vi.mocked(workflowsStore).selectedTriggerNodeName = undefined;
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
 			} as unknown as WorkflowData);

@@ -6,12 +6,10 @@
 	"compilerOptions": {
 		"target": "es2023",
 		"lib": ["es2023"],
-		"rootDir": ".",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"baseUrl": "src",
 		"paths": {
-			"@/*": ["./*"]
+			"@/*": ["./src/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"types": ["node", "jest"]
