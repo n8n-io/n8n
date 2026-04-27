@@ -11,22 +11,93 @@ jobs:
     uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
       build-variant: coverage
-      runner: blacksmith-4vcpu-ubuntu-2204
+      runner: blacksmith-8vcpu-ubuntu-2204
     secrets: inherit
 
+  # Inlined (not using test-e2e-reusable.yml) because coverage runs need
+  # `BUILD_WITH_COVERAGE=true` at test time plus per-shard `.nyc_output`
+  # capture, and pushing those into the shared reusable workflow polluted it
+  # with coverage-only conditionals that no other caller exercises.
   e2e:
     name: E2E (coverage)
     needs: prepare-docker
-    uses: ./.github/workflows/test-e2e-reusable.yml
-    with:
-      test-mode: docker-artifact
-      test-command: pnpm --filter=n8n-playwright test:container:sqlite
-      coverage: true
-      workers: '1'
-      runner: blacksmith-4vcpu-ubuntu-2204
-      timeout-minutes: 45
-      pre-generated-matrix: '[{"shard":1},{"shard":2},{"shard":3},{"shard":4}]'
-    secrets: inherit
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
+      TEST_IMAGE_N8N: 'n8nio/n8n:local'
+      N8N_SKIP_LICENSES: 'true'
+      CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
+      CURRENTS_PROJECT_ID: 'LRxcNt'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Install Browsers
+        run: pnpm turbo run install-browsers --filter=n8n-playwright
+
+      - name: Load n8n image from cache
+        uses: ./.github/actions/load-n8n-docker
+
+      - name: Pre-pull Test Container Images
+        run: npx tsx packages/testing/containers/pull-test-images.ts || true
+
+      - name: Run Tests
+        run: pnpm --filter=n8n-playwright test:container:sqlite --workers=1 --shard=${{ matrix.shard }}/4
+        env:
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+          N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+          BUILD_WITH_COVERAGE: 'true'
+
+      # Currents writes per-project subdirs (e.g. `sqlite:e2e/`), and the colon
+      # is rejected by upload-artifact. Tar sidesteps the path validation
+      # without forcing a rename in currents.config.ts / generate-coverage-report.js.
+      - name: Archive and upload .nyc_output
+        if: always()
+        shell: bash
+        run: |
+          cd packages/testing/playwright
+          if [ -d .nyc_output ] && [ -n "$(ls -A .nyc_output 2>/dev/null)" ]; then
+            tar -czf nyc-output.tar.gz .nyc_output/
+            ls -lh nyc-output.tar.gz
+          else
+            echo "No .nyc_output produced; skipping archive."
+          fi
+
+      - name: Upload .nyc_output (per shard)
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: nyc-output-shard-${{ matrix.shard }}
+          path: packages/testing/playwright/nyc-output.tar.gz
+          retention-days: 1
+          if-no-files-found: ignore
+
+      - name: Cancel Currents run if workflow is cancelled
+        if: cancelled()
+        env:
+          CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
+        run: |
+          if [ -n "$CURRENTS_API_KEY" ]; then
+            curl --location --request PUT \
+              "https://api.currents.dev/v1/runs/cancel-ci/github" \
+              --header "Authorization: Bearer $CURRENTS_API_KEY" \
+              --header "Content-Type: application/json" \
+              --data "{\"githubRunId\": \"${{ github.run_id }}\", \"githubRunAttempt\": \"${{ github.run_attempt }}\"}"
+          fi
 
   aggregate:
     name: Aggregate Coverage
