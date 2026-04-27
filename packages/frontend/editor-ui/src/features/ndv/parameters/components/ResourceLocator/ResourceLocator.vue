@@ -553,11 +553,14 @@ watch(
 			isResourceLocatorValue(props.modelValue) &&
 			props.modelValue.value !== ''
 		) {
+			// Only clear cached metadata, preserve the actual value.
+			// The value (e.g. a model name) may still be valid with the new credential.
+			// The list will be re-fetched and if the value is no longer valid,
+			// the user can update it.
 			emit('update:modelValue', {
 				...props.modelValue,
 				cachedResultName: '',
 				cachedResultUrl: '',
-				value: '',
 			});
 		}
 	},
