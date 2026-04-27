@@ -5,8 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed } from 'vue';
-import { getToolIcon } from '../toolLabels';
-import { getGroupToolIcons, type ResponseGroupSegment } from '../useTimelineGrouping';
+import type { ResponseGroupSegment } from '../useTimelineGrouping';
 import AgentTimeline from './AgentTimeline.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
 
@@ -52,10 +51,6 @@ const summaryText = computed(() => {
 	}
 	return parts.join(', ');
 });
-
-const toolIcons = computed(() =>
-	getGroupToolIcons(props.group, props.agentNode.toolCalls, getToolIcon),
-);
 
 /** Whether any tool call in this group is still loading. */
 const hasLoadingToolCalls = computed(() =>
