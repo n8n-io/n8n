@@ -34,7 +34,7 @@ export async function netlifyApiRequest(
 		delete options.body;
 	}
 
-	if (Object.keys(option)) {
+	if (Object.keys(option).length) {
 		Object.assign(options, option);
 	}
 
@@ -69,7 +69,7 @@ export async function netlifyRequestAllItems(
 		});
 		query.page++;
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);
-	} while (responseData.headers.link.includes('next'));
+	} while (responseData.headers.link?.includes('next'));
 
 	return returnData;
 }
