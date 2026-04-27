@@ -14,6 +14,13 @@ export async function getFrontendBuilderState(
 	return await makeRestApiRequest(context, 'GET', `/workflows/${workflowId}/frontend`);
 }
 
+export async function clearFrontendBuilderChat(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<{ chatId: null }> {
+	return await makeRestApiRequest(context, 'DELETE', `/workflows/${workflowId}/frontend`);
+}
+
 export async function sendFrontendBuilderMessage(
 	context: IRestApiContext,
 	workflowId: string,

@@ -82,6 +82,42 @@ describe('FrontendBuilderController', () => {
 
 			expect(response.statusCode).toBe(401);
 		});
+
+		it('forwards composed prompt with sanitized endpoint examples', async () => {
+			const workflow = await createWorkflow({ name: 'WF', active: true }, owner);
+
+			const response = await authOwnerAgent
+				.post(`/workflows/${workflow.id}/frontend/messages`)
+				.send({
+					prompt: 'show a table',
+					endpoints: [
+						{
+							nodeName: 'List',
+							method: 'GET',
+							url: 'https://example.invalid/webhook/list',
+							responseExample: Array.from({ length: 50 }, (_, i) => ({ id: i, name: `n${i}` })),
+						},
+					],
+				});
+			expect(response.statusCode).toBe(200);
+
+			// FakeV0Client echoes the composed message verbatim back as the
+			// first user message in the chat. Re-fetch state and assert the
+			// recorded user message contains the prompt + sanitized example.
+			const got = await authOwnerAgent.get(`/workflows/${workflow.id}/frontend`);
+			const userMessage = got.body.data.messages.find((m: { role: string }) => m.role === 'user');
+			expect(userMessage.content).toContain('GET https://example.invalid/webhook/list');
+			expect(userMessage.content).toContain('User request: show a table');
+			expect(userMessage.content).toContain('Constraints:');
+
+			// The 50-item array must have been truncated to the first 20.
+			const exampleMatch = userMessage.content.match(/Example response: (\[.*?\])/);
+			expect(exampleMatch).not.toBeNull();
+			const truncated = JSON.parse(exampleMatch![1]) as Array<{ id: number }>;
+			expect(truncated).toHaveLength(20);
+			expect(truncated[0].id).toBe(0);
+			expect(truncated[19].id).toBe(19);
+		});
 	});
 
 	describe('GET /workflows/:workflowId/frontend', () => {
@@ -114,7 +150,8 @@ describe('FrontendBuilderController', () => {
 			expect(got.body.data.messages.length).toBeGreaterThan(0);
 			expect(
 				got.body.data.messages.some(
-					(m: { role: string; content: string }) => m.role === 'user' && m.content === 'a form',
+					(m: { role: string; content: string }) =>
+						m.role === 'user' && m.content.includes('User request: a form'),
 				),
 			).toBe(true);
 		});
@@ -123,6 +160,43 @@ describe('FrontendBuilderController', () => {
 			const workflow = await createWorkflow({ name: 'WF', active: true }, owner);
 
 			const response = await testServer.authlessAgent.get(`/workflows/${workflow.id}/frontend`);
+
+			expect(response.statusCode).toBe(401);
+		});
+	});
+
+	describe('DELETE /workflows/:workflowId/frontend', () => {
+		it('clears the persisted chatId so the next message starts a new chat', async () => {
+			const workflow = await createWorkflow({ name: 'WF', active: true }, owner);
+
+			const first = await authOwnerAgent.post(`/workflows/${workflow.id}/frontend/messages`).send({
+				prompt: 'first',
+				endpoints: [
+					{ nodeName: 'Webhook', method: 'POST', url: 'https://example.invalid/webhook/x' },
+				],
+			});
+			const firstChatId = first.body.data.chatId;
+
+			const cleared = await authOwnerAgent.delete(`/workflows/${workflow.id}/frontend`);
+			expect(cleared.statusCode).toBe(200);
+			expect(cleared.body.data).toEqual({ chatId: null });
+
+			const got = await authOwnerAgent.get(`/workflows/${workflow.id}/frontend`);
+			expect(got.body.data).toEqual({ chatId: null });
+
+			const second = await authOwnerAgent.post(`/workflows/${workflow.id}/frontend/messages`).send({
+				prompt: 'second',
+				endpoints: [
+					{ nodeName: 'Webhook', method: 'POST', url: 'https://example.invalid/webhook/x' },
+				],
+			});
+			expect(second.body.data.chatId).not.toBe(firstChatId);
+		});
+
+		it('rejects unauthenticated callers', async () => {
+			const workflow = await createWorkflow({ name: 'WF', active: true }, owner);
+
+			const response = await testServer.authlessAgent.delete(`/workflows/${workflow.id}/frontend`);
 
 			expect(response.statusCode).toBe(401);
 		});

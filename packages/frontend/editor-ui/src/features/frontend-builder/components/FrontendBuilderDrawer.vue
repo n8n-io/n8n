@@ -11,7 +11,15 @@ import FrontendBuilderPromptInput from './FrontendBuilderPromptInput.vue';
 const props = defineProps<{ open: boolean }>();
 defineEmits<{ close: [] }>();
 
-const { messages, demoUrl, sending, hydrating, error, hydrate, send } = useFrontendBuilder();
+const { messages, demoUrl, sending, hydrating, error, hydrate, send, clear } = useFrontendBuilder();
+
+async function onClear() {
+	const confirmed = window.confirm(
+		'Clear the chat and start a new one? The frontend preview will be reset.',
+	);
+	if (!confirmed) return;
+	await clear();
+}
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const showActivationWarning = computed(() => workflowDocumentStore?.value?.active === false);
@@ -29,7 +37,18 @@ watch(
 	<aside v-if="open" :class="$style.drawer" data-testid="frontend-builder-drawer">
 		<header :class="$style.header">
 			<h2 :class="$style.title">Frontend</h2>
-			<button :class="$style.closeButton" type="button" @click="$emit('close')">×</button>
+			<div :class="$style.headerActions">
+				<button
+					v-if="messages.length > 0"
+					:class="$style.clearButton"
+					type="button"
+					data-testid="frontend-builder-clear"
+					@click="onClear"
+				>
+					Clear
+				</button>
+				<button :class="$style.closeButton" type="button" @click="$emit('close')">×</button>
+			</div>
 		</header>
 		<section :class="$style.body">
 			<p v-if="showActivationWarning" :class="$style.warning">
@@ -68,6 +87,23 @@ watch(
 	margin: 0;
 	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--bold);
+}
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+.clearButton {
+	background: transparent;
+	border: var(--border);
+	border-radius: var(--radius);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	font-size: var(--font-size--xs);
+	cursor: pointer;
+	color: var(--color--text--tint-1);
+}
+.clearButton:hover {
+	color: var(--color--text);
 }
 .closeButton {
 	background: transparent;

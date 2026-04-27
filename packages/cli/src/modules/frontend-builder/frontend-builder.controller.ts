@@ -1,7 +1,7 @@
 import type { FrontendBuilderMessageResponse, FrontendBuilderStateResponse } from '@n8n/api-types';
 import { FrontendBuilderMessageRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 
 import { FrontendBuilderService } from './frontend-builder.service';
 
@@ -17,6 +17,17 @@ export class FrontendBuilderController {
 		@Param('workflowId') workflowId: string,
 	): Promise<FrontendBuilderStateResponse> {
 		return await this.service.getState(workflowId);
+	}
+
+	@Delete('/')
+	@ProjectScope('workflow:update')
+	async clearChat(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+	): Promise<{ chatId: null }> {
+		await this.service.clearChat(workflowId);
+		return { chatId: null };
 	}
 
 	@Post('/messages')
