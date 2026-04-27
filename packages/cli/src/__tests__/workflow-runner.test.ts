@@ -753,6 +753,20 @@ describe('pre-persist context establishment', () => {
 		expect(establishSpy).not.toHaveBeenCalled();
 		expect(callOrder).toEqual(['activeExecutions.add']);
 	});
+
+	it('skips establishExecutionContext when nodeExecutionStack has not been populated yet', async () => {
+		// Queue mode with OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true creates
+		// the outer IRunExecutionData with `executionData: null`, which
+		// `createRunExecutionData` normalises to an object whose inner
+		// `.executionData` is undefined. The worker establishes context
+		// later, once it populates the trigger-item stack.
+		const data = buildRunData(createRunExecutionData({ executionData: null }), 'manual');
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(establishSpy).not.toHaveBeenCalled();
+		expect(callOrder).toEqual(['activeExecutions.add']);
+	});
 });
 
 describe('streaming functionality', () => {

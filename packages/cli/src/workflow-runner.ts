@@ -173,7 +173,11 @@ export class WorkflowRunner {
 		// does not contain raw trigger-item data (e.g. Authorization headers).
 		// The runtimeData early-exit guard in establishExecutionContext keeps
 		// the subsequent worker-side call at workflow-execute.ts idempotent.
-		if (data.executionData) {
+		// Guard on the inner executionData: in queue mode with manual offload
+		// the outer IRunExecutionData is created with `executionData: null`
+		// so the trigger-item stack is undefined here; nothing to mask yet,
+		// the worker will establish context once it populates the stack.
+		if (data.executionData?.executionData) {
 			// Deliberately lightweight: no pinData, no staticData loading,
 			// no additionalData. establishExecutionContext only needs the
 			// workflow's settings (for redactionPolicy) and node lookups.
