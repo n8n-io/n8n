@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 
 import router from '@/app/router';
+import FlagPanel from './FlagPanel.vue';
 import PromptPopover from './PromptPopover.vue';
 import { loadAnnotations, resolveElementForContext, saveAnnotations } from './annotationStorage';
 import { collectElementContext } from './collectElementContext';
@@ -44,6 +45,7 @@ const justCopied = ref(false);
 let copiedResetTimer: ReturnType<typeof setTimeout> | null = null;
 const rectVersion = ref(0);
 const expanded = ref(false);
+const flagsOpen = ref(false);
 const editingId = ref<string | null>(null);
 const currentPath = ref(window.location.pathname);
 
@@ -157,6 +159,7 @@ function handleToggleShortcut(event: KeyboardEvent) {
 	visible.value = !visible.value;
 	if (!visible.value) {
 		expanded.value = false;
+		flagsOpen.value = false;
 		stop();
 		clearSelection();
 		pendingMulti.value = [];
@@ -321,9 +324,14 @@ function expandPanel() {
 
 function collapsePanel() {
 	expanded.value = false;
+	flagsOpen.value = false;
 	stop();
 	clearSelection();
 	pendingMulti.value = [];
+}
+
+function toggleFlags() {
+	flagsOpen.value = !flagsOpen.value;
 }
 
 function togglePicking() {
@@ -479,6 +487,8 @@ async function copyAllAnnotations() {
 			{{ toast.message }}
 		</div>
 
+		<FlagPanel v-if="expanded && flagsOpen" @close="flagsOpen = false" />
+
 		<div class="dev-panel-dock">
 			<button
 				v-if="!expanded"
@@ -531,6 +541,26 @@ async function copyAllAnnotations() {
 						<line x1="2" y1="12" x2="5" y2="12" />
 						<line x1="19" y1="12" x2="22" y2="12" />
 						<circle cx="12" cy="12" r="1.5" fill="currentColor" />
+					</svg>
+				</button>
+				<button
+					type="button"
+					class="dev-panel-toolbar-button"
+					:class="{ 'dev-panel-toolbar-button--active': flagsOpen }"
+					:title="flagsOpen ? 'Close feature flags' : 'Feature flag overrides'"
+					@click="toggleFlags"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+						<line x1="4" y1="22" x2="4" y2="15" />
 					</svg>
 				</button>
 				<button
