@@ -188,9 +188,6 @@ export class Trello implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const operation = this.getNodeParameter('operation', 0);
-		const resource = this.getNodeParameter('resource', 0);
-
 		// For Post
 		let body: IDataObject;
 		// For Query string
@@ -207,6 +204,9 @@ export class Trello implements INodeType {
 				endpoint = '';
 				body = {};
 				qs = {};
+
+				const operation = this.getNodeParameter('operation', i) as string;
+				const resource = this.getNodeParameter('resource', i) as string;
 
 				if (resource === 'board') {
 					if (operation === 'create') {
