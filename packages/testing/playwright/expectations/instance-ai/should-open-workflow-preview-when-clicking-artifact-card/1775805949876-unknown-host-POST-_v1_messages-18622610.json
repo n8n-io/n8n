@@ -4,7 +4,7 @@
 		"path": "/v1/messages",
 		"body": {
 			"type": "STRING",
-			"string": "you will generate a short title based on the first message",
+			"string": "You generate a short descriptive title for a conversation",
 			"subString": true
 		}
 	},
