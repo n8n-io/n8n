@@ -1512,6 +1512,62 @@ describe('OauthService', () => {
 			expect(callArgs[2] || []).toEqual([]);
 		});
 
+		it('should use pkce when server omits grant_types_supported but supports S256 and PKCE', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () =>
+					'https://example.domain/oauth2/auth?client_id=registered_client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getUri: mockGetUri,
+						},
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://example.domain',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			// Simulate an authorization server that omits grant_types_supported (valid per RFC 8414)
+			// but advertises S256 PKCE support and standard token auth methods.
+			jest.mocked(axios.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://example.domain/oauth2/auth',
+					token_endpoint: 'https://example.domain/oauth2/token',
+					registration_endpoint: 'https://example.domain/oauth2/register',
+					// grant_types_supported intentionally omitted
+					token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
+					code_challenge_methods_supported: ['S256', 'plain'],
+				},
+			} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: {
+					client_id: 'registered_client_id',
+					client_secret: 'registered_client_secret',
+				},
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const authUri = await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			expect(authUri).toContain('https://example.domain/oauth2/auth');
+			const callArgs = (service.encryptAndSaveData as jest.Mock).mock.calls[0];
+			expect(callArgs[1]).toHaveProperty('grantType', 'pkce');
+		});
+
 		it('should throw BadRequestError when OAuth2 server metadata is invalid', async () => {
 			const axios = require('axios');
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });

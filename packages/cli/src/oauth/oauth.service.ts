@@ -498,7 +498,10 @@ export class OauthService {
 			}
 
 			const { grantType, authentication } = this.selectGrantTypeAndAuthenticationMethod(
-				metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],
+				metadataValidation.data.grant_types_supported ?? [
+					'authorization_code',
+					'refresh_token',
+				],
 				metadataValidation.data.token_endpoint_auth_methods_supported ?? ['client_secret_basic'],
 				metadataValidation.data.code_challenge_methods_supported ?? [],
 			);
