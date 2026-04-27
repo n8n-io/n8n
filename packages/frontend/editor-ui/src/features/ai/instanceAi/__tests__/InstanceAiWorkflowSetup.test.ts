@@ -19,14 +19,21 @@ import {
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
-		baseText: (key: string, opts?: { interpolate?: Record<string, string> }) => {
-			if (opts?.interpolate) {
-				return Object.entries(opts.interpolate).reduce(
-					(str, [k, v]) => str.replace(`{${k}}`, v),
-					key,
-				);
-			}
-			return key;
+		baseText: (key: string, opts?: { interpolate?: Record<string, string | number> }) => {
+			const templates: Record<string, string> = {
+				'instanceAi.credential.setupTitle': 'Set up {name}',
+				'instanceAi.workflowSetup.cardTitleForNodes': 'Set up {name} for {nodes}',
+				'instanceAi.workflowSetup.cardTitleForNodesPlusMore':
+					'Set up {name} for {nodes} and {extra} more',
+				'instanceAi.workflowSetup.cardTitleForNodesCount': 'Set up {name} for {count} nodes',
+				'instanceAi.workflowSetup.cardTitleNodesSeparator': ', ',
+			};
+			const tpl = templates[key] ?? key;
+			if (!opts?.interpolate) return tpl;
+			return Object.entries(opts.interpolate).reduce(
+				(str, [k, v]) => str.replace(`{${k}}`, String(v)),
+				tpl,
+			);
 		},
 	}),
 }));
@@ -997,6 +1004,70 @@ describe('InstanceAiWorkflowSetup', () => {
 			});
 
 			expect(getByTestId('instance-ai-workflow-setup-card')).toBeTruthy();
+		});
+	});
+
+	describe('multi-node card title', () => {
+		it('renders "Set up Slack for Node A, Node B" — no duplicate "Set up"', async () => {
+			const credentialsStore = useCredentialsStore();
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(credentialsStore, 'getCredentialTypeByName', 'get').mockReturnValue(() => ({
+				name: 'slackApi',
+				displayName: 'Slack',
+			}));
+
+			// Two slackApi requests with no parameterIssues so useSetupCards keeps them in
+			// a single multi-node card (composables/useSetupCards.ts:100,126 splits when any
+			// member has parameterIssues).
+			const requests: InstanceAiWorkflowSetupNode[] = [
+				makeSetupNodeWithCredentials(
+					'slackApi',
+					[
+						{ id: 'cred-1', name: 'Slack Cred' },
+						{ id: 'cred-2', name: 'Slack Cred 2' },
+					],
+					{
+						node: {
+							id: 'node-a',
+							name: 'Node A',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							parameters: {},
+							position: [0, 0],
+						},
+					},
+				),
+				makeSetupNodeWithCredentials(
+					'slackApi',
+					[
+						{ id: 'cred-1', name: 'Slack Cred' },
+						{ id: 'cred-2', name: 'Slack Cred 2' },
+					],
+					{
+						node: {
+							id: 'node-b',
+							name: 'Node B',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							parameters: {},
+							position: [100, 0],
+						},
+					},
+				),
+			];
+
+			const { getByTestId } = await renderAndWait({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			const title = getByTestId('instance-ai-workflow-setup-card-title');
+			expect(title.textContent).toBe('Set up Slack for Node A, Node B');
+			expect(title.textContent).not.toContain('Set up Set up');
 		});
 	});
 

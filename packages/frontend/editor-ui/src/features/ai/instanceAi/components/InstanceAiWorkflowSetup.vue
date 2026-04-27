@@ -24,6 +24,7 @@ import { NodeHelpers } from 'n8n-workflow';
 import { computed, defineComponent, onMounted, onUnmounted, provide, ref, toRef, watch } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import {
+	buildSetupCardTitle,
 	credGroupKey,
 	isTriggerOnly as isTriggerOnlyUtil,
 	shouldUseCredentialIcon,
@@ -441,17 +442,18 @@ onMounted(async () => {
 // Template helpers
 // ---------------------------------------------------------------------------
 
-function getDisplayName(credentialType: string): string {
+function getCredentialAppLabel(credentialType: string): string {
 	const raw =
 		credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
-	const appName = getAppNameFromCredType(raw);
-	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
+	return getAppNameFromCredType(raw);
 }
 
 function getCardTitle(card: SetupCard): string {
-	if (card.nodes.length === 1) return card.nodes[0].node.name;
-	if (card.credentialType) return getDisplayName(card.credentialType);
-	return 'Setup';
+	return buildSetupCardTitle(
+		card,
+		(credentialType) => getCredentialAppLabel(credentialType),
+		(key, opts) => i18n.baseText(key as BaseTextKey, opts),
+	);
 }
 
 function cardNodeUi(card: SetupCard): INodeUi {
@@ -573,7 +575,13 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						:size="16"
 					/>
 					<NodeIcon v-else :node-type="getCardNodeType(currentCard)" :size="16" />
-					<N8nText :class="$style.title" size="medium" color="text-dark" bold>
+					<N8nText
+						data-test-id="instance-ai-workflow-setup-card-title"
+						:class="$style.title"
+						size="medium"
+						color="text-dark"
+						bold
+					>
 						{{ getCardTitle(currentCard) }}
 					</N8nText>
 
