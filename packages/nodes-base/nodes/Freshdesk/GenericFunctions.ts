@@ -27,7 +27,7 @@ export async function freshdeskApiRequest(
 	let options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
-			Authorization: `${Buffer.from(apiKey).toString(BINARY_ENCODING)}`,
+			Authorization: `Basic ${Buffer.from(apiKey).toString(BINARY_ENCODING)}`,
 		},
 		method,
 		body,
