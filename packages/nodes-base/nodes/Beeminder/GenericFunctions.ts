@@ -7,7 +7,7 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
 
@@ -26,7 +26,10 @@ export async function beeminderApiRequest(
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'apiToken');
 
 	if (!isValidAuthenticationMethod(authenticationMethod)) {
-		throw new ApplicationError(`Invalid authentication method: ${authenticationMethod}`);
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid authentication method: ${authenticationMethod}`,
+		);
 	}
 
 	let credentialType = 'beeminderApi';
