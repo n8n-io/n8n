@@ -156,7 +156,11 @@ export async function salesforceApiRequestAllItems(
 
 	do {
 		responseData = await salesforceApiRequest.call(this, method, endpoint, body, query, uri);
-		uri = `${endpoint}/${responseData.nextRecordsUrl?.split('/')?.pop()}`;
+		if (responseData.nextRecordsUrl) {
+			// nextRecordsUrl is an absolute path like "/services/data/v59.0/query/<id>/results".
+			// Strip the versioned API prefix so getOptions prepends only instanceUrl.
+			uri = (responseData.nextRecordsUrl as string).replace(/^\/services\/data\/v[\d.]+/, '');
+		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextRecordsUrl !== undefined && responseData.nextRecordsUrl !== null);
 
