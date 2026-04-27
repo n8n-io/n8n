@@ -56,7 +56,7 @@ export async function wiseApiRequest(
 		delete options.json;
 	}
 
-	if (Object.keys(option)) {
+	if (Object.keys(option).length) {
 		Object.assign(options, option);
 	}
 
