@@ -152,7 +152,7 @@ export class Ghost implements INodeType {
 						}
 
 						if (operation === 'getAll') {
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 
 							const options = this.getNodeParameter('options', i);
 
@@ -168,7 +168,7 @@ export class Ghost implements INodeType {
 									qs,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', 0);
+								qs.limit = this.getNodeParameter('limit', i);
 								responseData = await ghostApiRequest.call(this, 'GET', '/content/posts', {}, qs);
 								responseData = responseData.posts;
 							}
@@ -265,7 +265,7 @@ export class Ghost implements INodeType {
 						}
 
 						if (operation === 'getAll') {
-							const returnAll = this.getNodeParameter('returnAll', 0);
+							const returnAll = this.getNodeParameter('returnAll', i);
 
 							const options = this.getNodeParameter('options', i);
 
@@ -281,7 +281,7 @@ export class Ghost implements INodeType {
 									qs,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', 0);
+								qs.limit = this.getNodeParameter('limit', i);
 								responseData = await ghostApiRequest.call(this, 'GET', '/admin/posts', {}, qs);
 								responseData = responseData.posts;
 							}
