@@ -120,7 +120,7 @@ export function parsePostgresError(
 		} catch (e) {}
 	}
 
-	return new NodeOperationError(node, error as Error, {
+	return new NodeOperationError(node, (error as Error).message ?? String(error), {
 		message,
 		description,
 		itemIndex,
