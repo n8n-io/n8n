@@ -346,13 +346,12 @@ export class Zammad implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as ZammadTypes.Resource;
-		const operation = this.getNodeParameter('operation', 0);
-
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
+			const resource = this.getNodeParameter('resource', i) as ZammadTypes.Resource;
+			const operation = this.getNodeParameter('operation', i);
 			try {
 				if (resource === 'user') {
 					// **********************************************************************
