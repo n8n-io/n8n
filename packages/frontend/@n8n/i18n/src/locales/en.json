@@ -549,6 +549,7 @@
 	"chatHub.chat.header.button.editAgent": "Edit Agent",
 	"chatHub.chat.header.button.newChat": "New Chat",
 	"chatHub.chat.header.button.openWorkflow": "Open Workflow",
+	"chatHub.chat.header.button.manageConnections": "Manage connections",
 	"chatHub.chat.prompt.microphone.accessDenied": "Microphone access denied",
 	"chatHub.chat.prompt.microphone.allowAccess": "Please allow microphone access to use voice input",
 	"chatHub.chat.prompt.microphone.noSpeech": "No speech detected. Please try again",

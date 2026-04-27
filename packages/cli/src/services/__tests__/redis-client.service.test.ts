@@ -5,6 +5,8 @@ import Redis from 'ioredis';
 
 import { RedisClientService } from '@/services/redis-client.service';
 
+type EventHandler = (...args: unknown[]) => void;
+
 jest.mock('ioredis', () => {
 	return jest.fn().mockImplementation(() => {
 		return {
@@ -32,6 +34,9 @@ describe('RedisClientService', () => {
 		},
 	});
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ioRedis constructor overloads prevent jest.mocked() from typing calls correctly
+	const mockedRedis = Redis as unknown as jest.Mock;
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
@@ -50,7 +55,7 @@ describe('RedisClientService', () => {
 			}),
 		);
 
-		const callArgs = (Redis as unknown as jest.Mock).mock.calls[0][0];
+		const callArgs = mockedRedis.mock.calls[0][0];
 		expect(callArgs).not.toHaveProperty('keepAlive');
 	});
 
@@ -81,5 +86,41 @@ describe('RedisClientService', () => {
 				reconnectOnError: expect.any(Function),
 			}),
 		);
+	});
+
+	describe('connection recovery', () => {
+		it('should set lostConnection synchronously in retryStrategy', () => {
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			expect(service.isConnected()).toBe(true);
+
+			const callArgs = mockedRedis.mock.calls[0][0];
+			const retryStrategy = callArgs.retryStrategy as () => number;
+
+			retryStrategy();
+
+			expect(service.isConnected()).toBe(false);
+		});
+
+		it('should recover when ready fires after retryStrategy', () => {
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			const mockClient = mockedRedis.mock.results[0].value;
+			const handlers = new Map<string, EventHandler>();
+			jest.mocked(mockClient.on).mock.calls.forEach(([event, handler]: [string, EventHandler]) => {
+				handlers.set(event, handler);
+			});
+
+			const callArgs = mockedRedis.mock.calls[0][0];
+			const retryStrategy = callArgs.retryStrategy as () => number;
+
+			retryStrategy();
+			expect(service.isConnected()).toBe(false);
+
+			handlers.get('ready')!();
+			expect(service.isConnected()).toBe(true);
+		});
 	});
 });
