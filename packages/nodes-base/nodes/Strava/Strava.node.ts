@@ -58,9 +58,9 @@ export class Strava implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const nodeVersion = this.getNode().typeVersion;
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
+			const resource = this.getNodeParameter('resource', i);
+			const operation = this.getNodeParameter('operation', i);
 			try {
 				if (resource === 'activity') {
 					//https://developers.strava.com/docs/reference/#api-Activities-createActivity
