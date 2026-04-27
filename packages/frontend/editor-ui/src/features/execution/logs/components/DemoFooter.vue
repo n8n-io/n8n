@@ -5,6 +5,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 
@@ -13,7 +14,9 @@ const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
-const hasExecutionData = computed(() => workflowDocumentStore.value.execution);
+const hasExecutionData = computed(
+	() => getActiveExecutionDataStore(workflowDocumentStore.value)?.execution,
+);
 const canExecute = computed(() => route.query.canExecute === 'true');
 </script>
 

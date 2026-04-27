@@ -141,6 +141,7 @@ import {
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 
 type AddNodeData = Partial<INodeUi> & {
@@ -382,7 +383,11 @@ export function useCanvasOperations() {
 		}
 		workflowDocumentStore.value.renameNodeMetadata(currentName, newName);
 		workflowDocumentStore.value.renamePinDataNode(currentName, newName);
-		workflowDocumentStore.value.renameExecutionDataNode(currentName, newName);
+		getActiveExecutionDataStore(workflowDocumentStore.value)?.renameExecutionDataNode(
+			currentName,
+			newName,
+		);
+		workflowDocumentStore.value.renameExecutionSessionNode(currentName, newName);
 
 		workflowDocumentStore.value.setNodes(Object.values(workflow.nodes));
 		workflowDocumentStore.value.setConnections(workflow.connectionsBySourceNode);
@@ -493,7 +498,7 @@ export function useCanvasOperations() {
 		connectAdjacentNodes(id, { trackHistory });
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
-		workflowDocumentStore.value.removeNodeExecutionDataById(id);
+		getActiveExecutionDataStore(workflowDocumentStore.value)?.clearNodeExecutionData(node.name);
 		workflowDocumentStore.value.removeNodeById(id);
 
 		if (trackHistory) {

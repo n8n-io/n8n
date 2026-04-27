@@ -30,6 +30,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import isEqual from 'lodash/isEqual';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ParameterInputFull from '../ParameterInputFull.vue';
@@ -140,7 +141,10 @@ async function checkStaleFields(): Promise<void> {
 
 // Reload fields to map when node is executed
 watch(
-	() => workflowDocumentStore?.value?.execution,
+	() =>
+		workflowDocumentStore?.value
+			? getActiveExecutionDataStore(workflowDocumentStore.value)?.execution
+			: undefined,
 	async (data) => {
 		if (
 			data &&

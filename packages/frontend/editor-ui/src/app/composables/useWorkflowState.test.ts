@@ -14,6 +14,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 import { VIEWS } from '@/app/constants';
 
 const sourceControlStore = vi.hoisted(() => ({
@@ -41,6 +42,7 @@ describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 	let workflowState: WorkflowState;
 	let uiStore: ReturnType<typeof useUIStore>;
 	beforeEach(() => {
@@ -58,6 +60,8 @@ describe('useWorkflowState', () => {
 			createWorkflowDocumentId(workflowsStore.workflow.id),
 		);
 		workflowDocumentStore.setScopes(['workflow:update']);
+		workflowDocumentStore.setActiveExecutionId('test-execution');
+		executionDataStore = useExecutionDataStore('test-execution');
 		uiStore = useUIStore();
 		uiStore.currentView = VIEWS.WORKFLOW.toString();
 		sourceControlStore.preferences.branchReadOnly = false;
@@ -66,8 +70,9 @@ describe('useWorkflowState', () => {
 
 	describe('markExecutionAsStopped', () => {
 		beforeEach(() => {
-			workflowDocumentStore.setExecution(
+			executionDataStore.setExecution(
 				createTestWorkflowExecutionResponse({
+					id: 'test-execution',
 					status: 'running',
 					startedAt: new Date('2023-01-01T09:00:00Z'),
 					stoppedAt: undefined,
@@ -93,7 +98,7 @@ describe('useWorkflowState', () => {
 		it('should remove non successful node runs', () => {
 			workflowState.markExecutionAsStopped();
 
-			const runData = workflowDocumentStore.execution?.data?.resultData?.runData;
+			const runData = executionDataStore.execution?.data?.resultData?.runData;
 			expect(runData?.node1).toHaveLength(1);
 			expect(runData?.node1[0].executionStatus).toBe('success');
 			expect(runData?.node2).toHaveLength(1);
@@ -108,22 +113,22 @@ describe('useWorkflowState', () => {
 				mode: 'manual',
 			});
 
-			expect(workflowDocumentStore.execution?.status).toBe('canceled');
-			expect(workflowDocumentStore.execution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
-			expect(workflowDocumentStore.execution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
+			expect(executionDataStore.execution?.status).toBe('canceled');
+			expect(executionDataStore.execution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
+			expect(executionDataStore.execution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
 		});
 
 		it('should not update execution data when stopData is not provided', () => {
 			workflowState.markExecutionAsStopped();
 
-			expect(workflowDocumentStore.execution?.status).toBe('running');
-			expect(workflowDocumentStore.execution?.startedAt).toEqual(new Date('2023-01-01T09:00:00Z'));
-			expect(workflowDocumentStore.execution?.stoppedAt).toBeUndefined();
+			expect(executionDataStore.execution?.status).toBe('running');
+			expect(executionDataStore.execution?.startedAt).toEqual(new Date('2023-01-01T09:00:00Z'));
+			expect(executionDataStore.execution?.stoppedAt).toBeUndefined();
 		});
 	});
 
 	describe('fetchLastSuccessfulExecution', () => {
-		it('stores the fetched execution in the workflow document store', async () => {
+		it('stores the fetched execution in the execution data store', async () => {
 			const execution = createTestWorkflowExecutionResponse({
 				id: 'last-successful-execution',
 				status: 'success',
@@ -139,7 +144,8 @@ describe('useWorkflowState', () => {
 				}),
 				'test-workflow',
 			);
-			expect(workflowDocumentStore.lastSuccessfulExecution).toEqual(execution);
+			expect(workflowDocumentStore.lastSuccessfulExecutionId).toBe(execution.id);
+			expect(useExecutionDataStore(execution.id).execution).toEqual(execution);
 		});
 
 		it('stores null when the API returns no previous successful execution', async () => {
@@ -150,7 +156,7 @@ describe('useWorkflowState', () => {
 
 			await workflowState.fetchLastSuccessfulExecution();
 
-			expect(workflowDocumentStore.lastSuccessfulExecution).toBeNull();
+			expect(workflowDocumentStore.lastSuccessfulExecutionId).toBeNull();
 		});
 
 		it('skips fetching when the current workflow is archived', async () => {
@@ -179,7 +185,8 @@ describe('useWorkflowState', () => {
 
 			await expect(workflowState.fetchLastSuccessfulExecution()).resolves.toBeUndefined();
 
-			expect(workflowDocumentStore.lastSuccessfulExecution).toEqual(execution);
+			expect(workflowDocumentStore.lastSuccessfulExecutionId).toBe(execution.id);
+			expect(useExecutionDataStore(execution.id).execution).toEqual(execution);
 		});
 	});
 });

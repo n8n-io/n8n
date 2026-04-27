@@ -52,6 +52,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -251,7 +252,9 @@ export function useNodeHelpers() {
 	// Set the status on all the nodes which produced an error so that it can be
 	// displayed in the node-view
 	function hasNodeExecutionIssues(node: INodeUi): boolean {
-		const workflowResultData = workflowDocumentStore.value.executionRunData;
+		const workflowResultData = getActiveExecutionDataStore(
+			workflowDocumentStore.value,
+		)?.executionRunData;
 
 		if (!workflowResultData?.hasOwnProperty(node.name)) {
 			return false;
@@ -630,7 +633,9 @@ export function useNodeHelpers() {
 	}
 
 	function getAllNodeTaskData(nodeName: string, execution?: IRunExecutionData) {
-		const runData = execution?.resultData.runData ?? workflowDocumentStore.value.executionRunData;
+		const runData =
+			execution?.resultData.runData ??
+			getActiveExecutionDataStore(workflowDocumentStore.value)?.executionRunData;
 
 		return runData?.[nodeName] ?? null;
 	}
@@ -750,7 +755,7 @@ export function useNodeHelpers() {
 			});
 
 			workflowDocumentStore.value.updateNodeProperties(updateInformation);
-			workflowDocumentStore.value.clearNodeExecutionData(node.name);
+			getActiveExecutionDataStore(workflowDocumentStore.value)?.clearNodeExecutionData(node.name);
 			updateNodeParameterIssues(node);
 			updateNodeCredentialIssues(node);
 			updateNodesInputIssues();

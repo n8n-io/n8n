@@ -41,6 +41,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -166,7 +167,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				);
 			}
 
-			const runData = workflowDocumentStore.value.executionRunData;
+			const runData = getActiveExecutionDataStore(workflowDocumentStore.value)?.executionRunData;
 
 			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 				await workflowSaving.saveCurrentWorkflow();
@@ -188,7 +189,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const consolidatedData = consolidateRunDataAndStartNodes(
 				directParentNodes,
-				runData,
+				runData ?? null,
 				workflowData.pinData,
 				workflowDocumentStore.value.getSnapshot(),
 			);
@@ -441,7 +442,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			try {
 				await displayForm({
 					nodes: workflowData.nodes,
-					runData: workflowDocumentStore.value.execution?.data?.resultData?.runData,
+					runData: getActiveExecutionDataStore(workflowDocumentStore.value)?.execution?.data
+						?.resultData?.runData,
 					destinationNode: options.destinationNode?.nodeName,
 					triggerNode: options.triggerNode,
 					pinData,

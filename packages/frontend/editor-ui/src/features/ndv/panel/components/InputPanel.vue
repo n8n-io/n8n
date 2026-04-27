@@ -11,6 +11,7 @@ import {
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import uniqBy from 'lodash/uniqBy';
@@ -108,6 +109,9 @@ const inputModes = [
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const executionDataStore = computed(() =>
+	workflowDocumentStore?.value ? getActiveExecutionDataStore(workflowDocumentStore.value) : null,
+);
 const workflowState = injectWorkflowState();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
@@ -130,15 +134,14 @@ const rootNode = computed(() => {
 
 const hasRootNodeRun = computed(() => {
 	return !!(
-		rootNode.value &&
-		workflowDocumentStore?.value?.execution?.data?.resultData.runData[rootNode.value]
+		rootNode.value && executionDataStore.value?.execution?.data?.resultData.runData[rootNode.value]
 	);
 });
 
 const inputMode = ref<MappingMode>(
 	// Show debugging mode by default only when the node has already run
 	activeNode.value &&
-		workflowDocumentStore?.value?.execution?.data?.resultData.runData[activeNode.value.name]
+		executionDataStore.value?.execution?.data?.resultData.runData[activeNode.value.name]
 		? 'debugging'
 		: 'mapping',
 );
@@ -194,7 +197,7 @@ const isExecutingPrevious = computed(() => {
 	if (!workflowDocumentStore?.value?.isWorkflowRunning) {
 		return false;
 	}
-	const triggeredNode = workflowDocumentStore?.value?.executedNode;
+	const triggeredNode = executionDataStore.value?.executedNode;
 	const executingNode = workflowState.executingNode.executingNode;
 
 	if (
@@ -265,7 +268,7 @@ const waitingMessage = computed(() => {
 	const parentNode = parentNodes.value[0];
 	if (!parentNode) return '';
 
-	const runData = workflowDocumentStore?.value?.execution?.data?.resultData?.runData;
+	const runData = executionDataStore.value?.execution?.data?.resultData?.runData;
 	const parentRunData = runData?.[parentNode.name]?.[0];
 
 	return waitingNodeTooltip(

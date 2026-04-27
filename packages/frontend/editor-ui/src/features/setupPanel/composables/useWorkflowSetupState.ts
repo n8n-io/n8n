@@ -21,6 +21,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 
 import {
 	getNodeCredentialTypes,
@@ -252,8 +253,10 @@ export const useWorkflowSetupState = (
 	};
 
 	const hasTriggerExecutedSuccessfully = (nodeName: string): boolean => {
-		const runData = workflowDocumentStore.value.getExecutionRunDataByNodeName(nodeName);
-		return runData !== null && runData.length > 0;
+		const runData = getActiveExecutionDataStore(
+			workflowDocumentStore.value,
+		)?.getExecutionRunDataByNodeName(nodeName);
+		return runData !== null && runData !== undefined && runData.length > 0;
 	};
 
 	/**

@@ -12,6 +12,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 
 const RUNNING_STATES: string[] = ['running', 'waiting'];
 
@@ -64,7 +65,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		stopExecutionWatcher();
 
 		executionWatcherStop = watch(
-			() => workflowDocumentStore.value.execution?.status,
+			() => getActiveExecutionDataStore(workflowDocumentStore.value)?.execution?.status,
 			async (status) => {
 				await nextTick();
 				if (!status || RUNNING_STATES.includes(status)) return;

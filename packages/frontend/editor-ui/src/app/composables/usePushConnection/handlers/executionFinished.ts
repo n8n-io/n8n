@@ -18,6 +18,10 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	getActiveExecutionDataStore,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
@@ -223,7 +227,7 @@ export async function fetchExecutionData(
 			workflowData: workflowsStore.workflow,
 			data: executionResponse.data,
 			status: executionResponse.status,
-			startedAt: workflowDocumentStore.execution?.startedAt as Date,
+			startedAt: getActiveExecutionDataStore(workflowDocumentStore)?.execution?.startedAt as Date,
 			stoppedAt: new Date(),
 		};
 	} catch {
@@ -423,7 +427,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
-	const currentExecution = workflowDocumentStore.execution;
+	const currentExecution = getActiveExecutionDataStore(workflowDocumentStore)?.execution;
 	if (currentExecution?.executedNode) {
 		const node = workflowDocumentStore.getNodeByName(currentExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
@@ -479,7 +483,9 @@ export function setRunExecutionData(
 	const workflowDocumentStore = workflowState.getCurrentWorkflowDocumentStore();
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
-	const currentExecution = workflowDocumentStore?.execution;
+	const currentExecution = workflowDocumentStore
+		? getActiveExecutionDataStore(workflowDocumentStore)?.execution
+		: null;
 
 	workflowState.executingNode.clearNodeExecutionQueue();
 
@@ -493,7 +499,7 @@ export function setRunExecutionData(
 		id: execution.id,
 		stoppedAt: execution.stoppedAt,
 	});
-	workflowDocumentStore.setExecutionRunData(runExecutionData);
+	useExecutionDataStore(execution.id).setExecutionRunData(runExecutionData);
 	workflowState.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that

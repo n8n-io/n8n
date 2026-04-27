@@ -7,6 +7,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 import { mock } from 'vitest-mock-extended';
 
 describe('nodeExecuteAfterData', () => {
@@ -21,7 +22,8 @@ describe('nodeExecuteAfterData', () => {
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId('test-workflow'),
 		);
-		vi.spyOn(workflowDocumentStore, 'updateNodeExecutionRunData');
+		const executionDataStore = useExecutionDataStore('exec-1');
+		vi.spyOn(executionDataStore, 'updateNodeExecutionRunData');
 		const workflowState = mock<WorkflowState>({
 			getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
 		});
@@ -46,7 +48,7 @@ describe('nodeExecuteAfterData', () => {
 
 		await nodeExecuteAfterData(event, { workflowState });
 
-		expect(workflowDocumentStore.updateNodeExecutionRunData).toHaveBeenCalledTimes(1);
-		expect(workflowDocumentStore.updateNodeExecutionRunData).toHaveBeenCalledWith(event.data);
+		expect(executionDataStore.updateNodeExecutionRunData).toHaveBeenCalledTimes(1);
+		expect(executionDataStore.updateNodeExecutionRunData).toHaveBeenCalledWith(event.data);
 	});
 });

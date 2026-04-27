@@ -25,6 +25,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
 
@@ -104,7 +105,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	});
 
 	const ndvInputData = computed(() => {
-		const executionData = workflowDocumentStore.value.execution;
+		const executionData = getActiveExecutionDataStore(workflowDocumentStore.value)?.execution;
 		const inputNodeName: string | undefined = input.value.nodeName;
 		const inputRunIndex: number = input.value.run ?? 0;
 		const inputBranchIndex: number = input.value.branch ?? 0;

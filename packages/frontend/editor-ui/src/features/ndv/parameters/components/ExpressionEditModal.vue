@@ -37,6 +37,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
@@ -65,6 +66,10 @@ const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
 );
+const lastSuccessfulExecution = computed(() => {
+	const executionId = workflowDocumentStore.value.lastSuccessfulExecutionId;
+	return executionId ? useExecutionDataStore(executionId).execution : null;
+});
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -198,7 +203,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						:nodes="parentNodes.length > 0 ? parentNodes : rootNodesParents"
 						:mapping-enabled="!isReadOnly"
 						:connection-type="NodeConnectionTypes.Main"
-						:preview-execution="workflowDocumentStore?.lastSuccessfulExecution"
+						:preview-execution="lastSuccessfulExecution"
 						pane-type="input"
 					/>
 				</div>

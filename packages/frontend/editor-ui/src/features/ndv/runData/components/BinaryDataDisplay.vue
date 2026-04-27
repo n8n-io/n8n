@@ -7,6 +7,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 
@@ -29,8 +30,8 @@ const workflowDocumentStore = useWorkflowDocumentStore(
 const i18n = useI18n();
 
 const workflowRunData = computed<IRunData | null>(() => {
-	const workflowExecution = workflowDocumentStore.execution;
-	if (workflowExecution === null) {
+	const workflowExecution = getActiveExecutionDataStore(workflowDocumentStore)?.execution;
+	if (!workflowExecution) {
 		return null;
 	}
 	const executionData = workflowExecution.data;

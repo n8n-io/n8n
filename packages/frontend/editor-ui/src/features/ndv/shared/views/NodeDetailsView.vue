@@ -24,6 +24,7 @@ import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
@@ -212,7 +213,11 @@ const isActiveStickyNode = computed(
 	() => !!ndvStore.activeNode && ndvStore.activeNode.type === STICKY_NODE_TYPE,
 );
 
-const workflowExecution = computed(() => workflowDocumentStore?.value?.execution ?? null);
+const workflowExecution = computed(() =>
+	workflowDocumentStore?.value
+		? (getActiveExecutionDataStore(workflowDocumentStore.value)?.execution ?? null)
+		: null,
+);
 
 const maxOutputRun = computed(() => {
 	if (activeNode.value === null) {

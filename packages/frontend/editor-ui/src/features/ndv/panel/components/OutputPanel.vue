@@ -29,6 +29,7 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -128,8 +129,11 @@ const hasAiMetadata = computed(() => {
 
 	if (node.value) {
 		const connectedSubNodes = props.workflowObject.getParentNodes(node.value.name, 'ALL_NON_MAIN');
+		const executionDataStore = workflowDocumentStore?.value
+			? getActiveExecutionDataStore(workflowDocumentStore.value)
+			: null;
 		const resultData = connectedSubNodes.map(
-			(nodeName) => workflowDocumentStore?.value?.getExecutionRunDataByNodeName(nodeName) ?? null,
+			(nodeName) => executionDataStore?.getExecutionRunDataByNodeName(nodeName) ?? null,
 		);
 
 		return resultData && Array.isArray(resultData) && resultData.length > 0;

@@ -8,6 +8,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
@@ -43,7 +44,7 @@ watch(
 
 // Refresh after each execution completes so the badge reflects consumed balance.
 watch(
-	() => workflowDocumentStore.value.execution,
+	() => getActiveExecutionDataStore(workflowDocumentStore.value)?.execution,
 	(executionData) => {
 		if (
 			(executionData?.finished || executionData?.stoppedAt !== undefined) &&

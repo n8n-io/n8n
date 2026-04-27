@@ -3,6 +3,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import type { INode, IRunExecutionData } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 
@@ -13,7 +14,7 @@ export function useExecutionData({ node }: { node: ComputedRef<INode | undefined
 	);
 
 	const workflowExecution = computed(() => {
-		return workflowDocumentStore.execution;
+		return getActiveExecutionDataStore(workflowDocumentStore)?.execution ?? null;
 	});
 
 	const workflowRunData = computed(() => {

@@ -12,6 +12,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -45,7 +46,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 	const nodeRunData = computed(() => {
 		if (!node.value) return undefined;
 
-		const execution = workflowDocumentStore.value.execution;
+		const execution = getActiveExecutionDataStore(workflowDocumentStore.value)?.execution;
 		const lastRunData = execution?.data?.resultData.runData[node.value?.name];
 		if (!lastRunData) return undefined;
 		return lastRunData[0];

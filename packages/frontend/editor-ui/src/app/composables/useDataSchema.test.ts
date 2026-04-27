@@ -15,6 +15,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
 
@@ -844,7 +845,10 @@ describe('useDataSchema', () => {
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			workflowDocumentStore.setExecution(execution as IExecutionResponse);
+			workflowDocumentStore.setActiveExecutionId((execution as IExecutionResponse).id);
+			useExecutionDataStore((execution as IExecutionResponse).id).setExecution(
+				execution as IExecutionResponse,
+			);
 			expect(getNodeInputData(node as INodeUi, runIndex, outputIndex)).toEqual(output);
 		});
 	});

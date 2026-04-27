@@ -33,6 +33,7 @@ import { useNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
@@ -216,7 +217,11 @@ const isActiveStickyNode = computed(
 	() => !!ndvStore.activeNode && ndvStore.activeNode.type === STICKY_NODE_TYPE,
 );
 
-const workflowExecution = computed(() => workflowDocumentStore?.value?.execution ?? null);
+const workflowExecution = computed(() =>
+	workflowDocumentStore?.value
+		? (getActiveExecutionDataStore(workflowDocumentStore.value)?.execution ?? null)
+		: null,
+);
 
 const maxOutputRun = computed(() => {
 	if (activeNode.value === null) {

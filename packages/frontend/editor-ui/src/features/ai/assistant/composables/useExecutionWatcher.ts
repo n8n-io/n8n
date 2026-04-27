@@ -4,6 +4,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 
 const RUNNING_STATES = ['running', 'waiting'];
 
@@ -18,7 +19,7 @@ export function watchExecutionCompletion(onComplete: () => void | Promise<void>)
 	);
 
 	const stop = watch(
-		() => workflowDocumentStore.execution?.status,
+		() => getActiveExecutionDataStore(workflowDocumentStore)?.execution?.status,
 		async (status) => {
 			await nextTick();
 			if (!status || RUNNING_STATES.includes(status)) return;

@@ -51,6 +51,7 @@ import { TARGET_NODE_PARAMETER_FACET } from '../plugins/codemirror/completions/c
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 
 export const useExpressionEditor = ({
 	editorRef,
@@ -384,10 +385,10 @@ export const useExpressionEditor = ({
 				);
 			}
 		} catch (error) {
-			const hasRunData =
-				!!workflowDocumentStore?.value?.execution?.data?.resultData?.runData[
-					ndvStore.activeNode?.name ?? ''
-				];
+			const hasRunData = !!(workflowDocumentStore?.value
+				? getActiveExecutionDataStore(workflowDocumentStore.value)?.execution?.data?.resultData
+						?.runData[ndvStore.activeNode?.name ?? '']
+				: undefined);
 			result.resolved = `[${getExpressionErrorMessage(error, hasRunData)}]`;
 			result.error = true;
 			result.fullError = error;
@@ -491,8 +492,14 @@ export const useExpressionEditor = ({
 
 	watch(
 		[
-			() => workflowDocumentStore?.value?.execution,
-			() => workflowDocumentStore?.value?.executionRunData,
+			() =>
+				workflowDocumentStore?.value
+					? getActiveExecutionDataStore(workflowDocumentStore.value)?.execution
+					: undefined,
+			() =>
+				workflowDocumentStore?.value
+					? getActiveExecutionDataStore(workflowDocumentStore.value)?.executionRunData
+					: undefined,
 		],
 		debouncedUpdateSegments,
 	);

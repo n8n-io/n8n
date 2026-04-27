@@ -11,6 +11,7 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { INodeUi } from '@/Interface';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 
 type WorkflowDocumentStore = ReturnType<typeof useWorkflowDocumentStore>;
 
@@ -92,7 +93,9 @@ export async function nodeExecuteAfter(
 		},
 	};
 
-	workflowDocumentStore.updateNodeExecutionStatus(pushDataWithPlaceholderOutputData);
+	useExecutionDataStore(pushData.executionId).updateNodeExecutionStatus(
+		pushDataWithPlaceholderOutputData,
+	);
 
 	if (pushData.data.executionStatus === 'waiting' && pushData.data.metadata?.resumeFormUrl) {
 		openFormPopupWindow(pushData.data.metadata.resumeFormUrl);

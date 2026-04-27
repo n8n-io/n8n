@@ -3,6 +3,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { getPairedItemId } from '@/app/utils/pairedItemUtils';
 import { shorten } from '@/app/utils/typesUtils';
@@ -92,7 +93,10 @@ const {
 const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
 const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
 const pairedItemMappings = computed(
-	() => workflowDocumentStore?.value?.executionPairedItemMappings ?? {},
+	() =>
+		(workflowDocumentStore?.value
+			? getActiveExecutionDataStore(workflowDocumentStore.value)?.executionPairedItemMappings
+			: undefined) ?? {},
 );
 const tableData = computed(() => convertToTable(props.inputData));
 const collapsingColumnIndex = computed(() => {

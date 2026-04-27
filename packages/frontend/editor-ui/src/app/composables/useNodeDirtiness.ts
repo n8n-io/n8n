@@ -13,6 +13,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import {
 	CanvasNodeDirtiness,
 	type CanvasNodeDirtinessType,
@@ -241,7 +242,8 @@ export function useNodeDirtiness() {
 
 	const dirtinessByName = computed(() => {
 		const dirtiness: Record<string, CanvasNodeDirtinessType | undefined> = {};
-		const runDataByNode = workflowDocumentStore.value.executionRunData ?? {};
+		const runDataByNode =
+			getActiveExecutionDataStore(workflowDocumentStore.value)?.executionRunData ?? {};
 
 		function setDirtiness(nodeName: string, value: CanvasNodeDirtinessType) {
 			dirtiness[nodeName] = dirtiness[nodeName] ?? value;

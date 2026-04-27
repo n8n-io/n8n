@@ -1,9 +1,19 @@
 import * as workflowsApi from '@/app/api/workflows';
-import { DEFAULT_NEW_WORKFLOW_NAME, VIEWS, WorkflowStateKey } from '@/app/constants';
+import {
+	DEFAULT_NEW_WORKFLOW_NAME,
+	IN_PROGRESS_EXECUTION_ID,
+	VIEWS,
+	WorkflowStateKey,
+} from '@/app/constants';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import {
+	disposeExecutionDataStore,
+	getActiveExecutionDataStore,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -75,13 +85,31 @@ export function useWorkflowState() {
 			];
 		}
 
-		workflowDocumentStore.setExecution(execution);
+		if (!execution) {
+			getActiveExecutionDataStore(workflowDocumentStore)?.setExecution(null);
+			return;
+		}
+
+		useExecutionDataStore(execution.id).setExecution(execution);
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
 		const workflowDocumentStore = getCurrentWorkflowDocumentStore();
 		if (!workflowDocumentStore) {
 			return;
+		}
+
+		if (id && workflowDocumentStore.activeExecutionId === null) {
+			const inProgressExecutionStore = useExecutionDataStore(IN_PROGRESS_EXECUTION_ID);
+			const executionDataStore = useExecutionDataStore(id);
+
+			if (inProgressExecutionStore.execution && !executionDataStore.execution) {
+				executionDataStore.setExecution({
+					...inProgressExecutionStore.execution,
+					id,
+				});
+				disposeExecutionDataStore(IN_PROGRESS_EXECUTION_ID);
+			}
 		}
 
 		workflowDocumentStore.setActiveExecutionId(id);
@@ -120,7 +148,6 @@ export function useWorkflowState() {
 	////
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
-		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
 		const workflowDocumentStore = getCurrentWorkflowDocumentStore();
 		if (!workflowDocumentStore) {
@@ -130,11 +157,13 @@ export function useWorkflowState() {
 
 		workflowDocumentStore.setExecutionWaitingForWebhook(false);
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
-		workflowDocumentStore.clearExecutionStartedData();
+		const executionDataStore = getActiveExecutionDataStore(workflowDocumentStore);
+		executionDataStore?.clearExecutionStartedData();
 
 		clearPopupWindowState();
 
-		const currentExecution = workflowDocumentStore.execution;
+		const currentExecution = executionDataStore?.execution;
+		setActiveExecutionId(undefined);
 		if (!currentExecution) {
 			return;
 		}
@@ -158,7 +187,7 @@ export function useWorkflowState() {
 			nextExecution.stoppedAt = stopData.stoppedAt;
 		}
 
-		workflowDocumentStore.setExecution(nextExecution);
+		useExecutionDataStore(nextExecution.id).setExecution(nextExecution);
 	}
 
 	function resetState() {

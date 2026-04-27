@@ -12,6 +12,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { generatePath, getNodeParentExpression } from '@/app/utils/mappingUtils';
 import { isObject } from '@/app/utils/objectUtils';
 import { isObj } from '@/app/utils/typeGuards';
@@ -181,9 +182,10 @@ export function useDataSchema() {
 		outputIndex = 0,
 	): INodeExecutionData[] {
 		const workflowsStore = useWorkflowsStore();
-		const { execution } = useWorkflowDocumentStore(
+		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
+		const execution = getActiveExecutionDataStore(workflowDocumentStore)?.execution ?? null;
 		if (node === null) {
 			return [];
 		}

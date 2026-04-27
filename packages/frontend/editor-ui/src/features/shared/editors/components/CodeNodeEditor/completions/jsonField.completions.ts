@@ -5,6 +5,7 @@ import { isAllowedInDotNotation } from '@/features/shared/editors/plugins/codemi
 import { useI18n } from '@n8n/i18n';
 import type { IRunData, IDataObject } from 'n8n-workflow';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 
 function useJsonFieldCompletions() {
 	const i18n = useI18n();
@@ -270,7 +271,9 @@ function useJsonFieldCompletions() {
 			} catch {}
 		}
 
-		const runData: IRunData | null = workflowDocumentStore?.value?.executionRunData ?? null;
+		const runData: IRunData | null = workflowDocumentStore?.value
+			? (getActiveExecutionDataStore(workflowDocumentStore.value)?.executionRunData ?? null)
+			: null;
 
 		const nodeRunData = runData?.[nodeName];
 

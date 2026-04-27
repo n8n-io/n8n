@@ -28,7 +28,7 @@ import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
-import { useWorkflowDocumentExecution } from './workflowDocument/useWorkflowDocumentExecution';
+import { useWorkflowDocumentExecutionSession } from './workflowDocument/useWorkflowDocumentExecutionSession';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -80,7 +80,7 @@ type MetaReturn = ReturnType<typeof useWorkflowDocumentMeta>;
 type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
 type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
-type ExecutionReturn = ReturnType<typeof useWorkflowDocumentExecution>;
+type ExecutionSessionReturn = ReturnType<typeof useWorkflowDocumentExecutionSession>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -103,14 +103,14 @@ void (0 as unknown as [
 	AssertNoOverlap<NodeMetadataReturn, PinDataReturn>,
 	AssertNoOverlap<NodeMetadataReturn, MetaReturn>,
 	AssertNoOverlap<NodeMetadataReturn, SettingsReturn>,
-	AssertNoOverlap<ExecutionReturn, NodesReturn>,
-	AssertNoOverlap<ExecutionReturn, ConnectionsReturn>,
-	AssertNoOverlap<ExecutionReturn, GraphReturn>,
-	AssertNoOverlap<ExecutionReturn, ExpressionReturn>,
-	AssertNoOverlap<ExecutionReturn, MetaReturn>,
-	AssertNoOverlap<ExecutionReturn, PinDataReturn>,
-	AssertNoOverlap<ExecutionReturn, SettingsReturn>,
-	AssertNoOverlap<ExecutionReturn, NodeMetadataReturn>,
+	AssertNoOverlap<ExecutionSessionReturn, NodesReturn>,
+	AssertNoOverlap<ExecutionSessionReturn, ConnectionsReturn>,
+	AssertNoOverlap<ExecutionSessionReturn, GraphReturn>,
+	AssertNoOverlap<ExecutionSessionReturn, ExpressionReturn>,
+	AssertNoOverlap<ExecutionSessionReturn, MetaReturn>,
+	AssertNoOverlap<ExecutionSessionReturn, PinDataReturn>,
+	AssertNoOverlap<ExecutionSessionReturn, SettingsReturn>,
+	AssertNoOverlap<ExecutionSessionReturn, NodeMetadataReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -192,10 +192,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			});
 		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
 		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
-		const workflowDocumentExecution = useWorkflowDocumentExecution({
+		const workflowDocumentExecutionSession = useWorkflowDocumentExecutionSession({
 			workflowId,
 			workflowTriggerNodes: computed(() => workflowsStore.workflowTriggerNodes),
-			getNodeById: (nodeId) => workflowDocumentNodes.getNodeById(nodeId),
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 		});
 
@@ -320,7 +319,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentConnections.setConnections({});
 			workflowDocumentPinData.setPinData({});
 			workflowDocumentViewport.setViewport(null);
-			workflowDocumentExecution.resetExecutionState();
+			workflowDocumentExecutionSession.resetExecutionSession();
 
 			workflowDocumentWorkflowObject.initWorkflowObject({
 				id: workflowId,
@@ -372,7 +371,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
-			...workflowDocumentExecution,
+			...workflowDocumentExecutionSession,
 			removeAllNodes,
 			hydrate,
 			reset,

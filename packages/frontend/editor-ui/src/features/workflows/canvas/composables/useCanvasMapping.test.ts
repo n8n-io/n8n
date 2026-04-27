@@ -26,6 +26,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
@@ -72,6 +73,7 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 });
 
 let workflowState: WorkflowState;
+const TEST_EXECUTION_ID = 'test-execution';
 
 beforeEach(() => {
 	const pinia = createTestingPinia({
@@ -132,10 +134,17 @@ function getWorkflowDocumentStore() {
 	return useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id));
 }
 
+function getExecutionDataStore() {
+	getWorkflowDocumentStore().setActiveExecutionId(TEST_EXECUTION_ID);
+	return useExecutionDataStore(TEST_EXECUTION_ID);
+}
+
 function setExecutionRunData(runData: IRunData) {
 	const workflowsStore = useWorkflowsStore();
-	getWorkflowDocumentStore().setExecution(
+	getWorkflowDocumentStore().setActiveExecutionId(TEST_EXECUTION_ID);
+	useExecutionDataStore(TEST_EXECUTION_ID).setExecution(
 		createTestWorkflowExecutionResponse({
+			id: TEST_EXECUTION_ID,
 			workflowData: workflowsStore.workflow,
 			data: createRunExecutionData({
 				resultData: {
@@ -475,7 +484,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -494,7 +503,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -535,7 +544,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === 'Node 1') {
 							return [
@@ -609,7 +618,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -665,7 +674,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -724,7 +733,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -786,7 +795,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Model node has multiple executions from different sources
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === modelNode.name) {
 							return [
@@ -879,7 +888,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Embedding node returns data wrapped in response field
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === embeddingNode.name) {
 							return [
@@ -1328,7 +1337,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1344,7 +1353,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -1392,7 +1401,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -1430,7 +1439,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -2228,7 +2237,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2272,7 +2281,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2326,7 +2335,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2386,7 +2395,7 @@ describe('useCanvasMapping', () => {
 						return nodeName === manualTriggerNode.name;
 					});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2544,7 +2553,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2588,7 +2597,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2632,7 +2641,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2676,7 +2685,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2720,7 +2729,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2773,7 +2782,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2835,7 +2844,7 @@ describe('useCanvasMapping', () => {
 				setPinData({
 					[manualTriggerNode.name]: [{ json: { id: 1 } }, { json: { id: 2 } }],
 				});
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2880,7 +2889,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2908,7 +2917,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -2962,7 +2971,7 @@ describe('useCanvasMapping', () => {
 					.mockImplementation((nodeName: string) => {
 						return nodeName === manualTriggerNode.name;
 					});
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2991,7 +3000,7 @@ describe('useCanvasMapping', () => {
 				setPinData({
 					[manualTriggerNode.name]: [{ json: {} }],
 				});
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -3061,7 +3070,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -3105,7 +3114,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
 				setPinData({});
 
 				const { connections: mappedConnections } = useCanvasMapping({
@@ -3303,7 +3312,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -3350,7 +3359,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === manualTriggerNode.name) {
 							return [
@@ -3411,7 +3420,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Only source node has execution data, target does not
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === embeddingNode.name) {
 							return [
@@ -3459,7 +3468,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Both source and target have execution data
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === embeddingNode.name) {
 							return [
@@ -3525,7 +3534,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Model node has execution data with source tracking
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === modelNode.name) {
 							return [
@@ -3620,7 +3629,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Embedding node returns data with response array containing 6 items
-				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+				vi.spyOn(getExecutionDataStore(), 'getExecutionRunDataByNodeName').mockImplementation(
 					(nodeName: string) => {
 						if (nodeName === embeddingNode.name) {
 							return [

@@ -11,6 +11,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, within } from '@testing-library/vue';
 import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
@@ -100,7 +101,8 @@ describe('RunDataAi', () => {
 		workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflow.id),
 		);
-		workflowDocumentStore.setExecution(executionResponse);
+		workflowDocumentStore.setActiveExecutionId(executionResponse.id);
+		useExecutionDataStore(executionResponse.id).setExecution(executionResponse);
 	});
 
 	it('should render the log that belong to given run index', async () => {

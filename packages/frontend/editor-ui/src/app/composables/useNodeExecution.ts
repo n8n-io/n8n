@@ -28,6 +28,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -148,7 +149,7 @@ export function useNodeExecution(
 		if (!workflowDocumentStore.value.isWorkflowRunning || codeGenerationInProgress.value) {
 			return false;
 		}
-		const triggeredNode = workflowDocumentStore.value.executedNode;
+		const triggeredNode = getActiveExecutionDataStore(workflowDocumentStore.value)?.executedNode;
 		return (
 			workflowState.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
 			triggeredNode === nodeRef.value?.name
@@ -157,7 +158,7 @@ export function useNodeExecution(
 
 	const isListening = computed(() => {
 		const waitingOnWebhook = workflowDocumentStore.value.executionWaitingForWebhook;
-		const executedNode = workflowDocumentStore.value.executedNode;
+		const executedNode = getActiveExecutionDataStore(workflowDocumentStore.value)?.executedNode;
 
 		return (
 			!!nodeRef.value &&

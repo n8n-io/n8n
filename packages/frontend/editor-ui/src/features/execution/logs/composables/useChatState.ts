@@ -7,6 +7,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -326,7 +327,7 @@ export function useChatState(
 
 	const restoredChatMessages = computed(() =>
 		restoreChatHistory(
-			workflowDocumentStore.value.execution,
+			getActiveExecutionDataStore(workflowDocumentStore.value)?.execution ?? null,
 			locale.baseText('chat.window.chat.response.empty'),
 			locale.baseText('chat.window.chat.response.redacted'),
 		),

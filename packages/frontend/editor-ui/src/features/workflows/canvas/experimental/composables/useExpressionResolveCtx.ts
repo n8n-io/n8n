@@ -5,6 +5,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import { computed, type ComputedRef } from 'vue';
 
@@ -22,7 +23,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 		}
 
 		const runIndex = 0; // not changeable for now
-		const execution = workflowDocumentStore.value.execution;
+		const execution = getActiveExecutionDataStore(workflowDocumentStore.value)?.execution ?? null;
 		const nodeName = node.value.name;
 
 		function findInputNode(): ExpressionLocalResolveContext['inputNode'] {

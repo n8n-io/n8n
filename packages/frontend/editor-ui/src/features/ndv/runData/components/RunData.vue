@@ -94,6 +94,10 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	getActiveExecutionDataStore,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
@@ -289,7 +293,7 @@ const hasAnyDataAvailable = computed(() => {
 		node.value?.disabled ||
 		hasPreviewSchema.value ||
 		hasAnyUpstreamExecuted.value ||
-		!!workflowDocumentStore?.value?.lastSuccessfulExecution
+		!!lastSuccessfulExecution.value
 	);
 });
 const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
@@ -308,9 +312,13 @@ const shouldShowSchemaView = computed(() => {
 	return (
 		hasNodeRun.value ||
 		hasPreviewSchema.value ||
-		(!hasNodeRun.value &&
-			(hasAnyUpstreamExecuted.value || workflowDocumentStore?.value?.lastSuccessfulExecution))
+		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || lastSuccessfulExecution.value))
 	);
+});
+
+const lastSuccessfulExecution = computed(() => {
+	const executionId = workflowDocumentStore?.value?.lastSuccessfulExecutionId;
+	return executionId ? useExecutionDataStore(executionId).execution : null;
 });
 
 // Helper: Get run data for current node (returns null if not available)
@@ -415,7 +423,12 @@ const executionHints = computed(() => {
 });
 
 const workflowExecution = computed(
-	() => props.workflowExecution ?? workflowDocumentStore?.value?.execution?.data ?? undefined,
+	() =>
+		props.workflowExecution ??
+		(workflowDocumentStore?.value
+			? getActiveExecutionDataStore(workflowDocumentStore.value)?.execution?.data
+			: undefined) ??
+		undefined,
 );
 const workflowRunData = computed(() => {
 	if (workflowExecution.value === undefined) {
@@ -958,7 +971,7 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		: Object.keys(inputData ?? {}).length;
 
 	const lastSuccessfulExecutionItems = getOutputtedNodeItems(
-		workflowDocumentStore?.value?.lastSuccessfulExecution ?? null,
+		lastSuccessfulExecution.value,
 		node.value,
 	);
 	previousExecutionDataUsedInEditMode.value =
@@ -2152,7 +2165,7 @@ defineExpose({ enterEditMode });
 					:class="$style.schema"
 					:compact="props.compact"
 					:truncate-limit="props.truncateLimit"
-					:preview-execution="workflowDocumentStore?.lastSuccessfulExecution"
+					:preview-execution="lastSuccessfulExecution"
 					@clear:search="onSearchClear"
 					@execute="executeNode"
 				/>

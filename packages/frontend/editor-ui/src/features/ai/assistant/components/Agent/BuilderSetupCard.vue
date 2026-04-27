@@ -27,6 +27,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const props = defineProps<{
@@ -133,9 +134,9 @@ const showTriggerCallout = computed(() => props.state.isTrigger && isInListening
 // isExecuting stays false throughout the listening lifecycle.
 watch(isActive, (active, wasActive) => {
 	if (wasActive && !active) {
-		const runData = workflowDocumentStore.value.getExecutionRunDataByNodeName(
-			props.state.node.name,
-		);
+		const runData = getActiveExecutionDataStore(
+			workflowDocumentStore.value,
+		)?.getExecutionRunDataByNodeName(props.state.node.name);
 		const lastRun = runData?.[runData.length - 1];
 		if (!lastRun?.error) {
 			emit('stepExecuted');

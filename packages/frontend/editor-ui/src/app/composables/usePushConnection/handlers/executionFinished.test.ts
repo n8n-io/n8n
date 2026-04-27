@@ -24,9 +24,11 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { createTestTaskData } from '@/__tests__/mocks';
 
 const opts = {
 	workflowState: mock<WorkflowState>(),
@@ -254,7 +256,7 @@ describe('getRunExecutionData()', () => {
 
 describe('executionFinished', () => {
 	beforeEach(() => {
-		const pinia = createTestingPinia();
+		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 	});
 
@@ -284,7 +286,7 @@ describe('executionFinished', () => {
 
 	describe('ready-to-run AI workflow tracking', () => {
 		it('should track successful execution of ready-to-run-ai-workflow', async () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const workflowsListStore = useWorkflowsListStore();
@@ -327,7 +329,7 @@ describe('executionFinished', () => {
 		});
 
 		it('should track failed execution of ready-to-run-ai-workflow', async () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const workflowsListStore = useWorkflowsListStore();
@@ -367,7 +369,7 @@ describe('executionFinished', () => {
 		});
 
 		it('should track execution of ready-to-run-ai-workflow-v5', async () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const workflowsListStore = useWorkflowsListStore();
@@ -410,7 +412,7 @@ describe('executionFinished', () => {
 		});
 
 		it('should track execution of ready-to-run-ai-workflow-v6', async () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const workflowsListStore = useWorkflowsListStore();
@@ -450,7 +452,7 @@ describe('executionFinished', () => {
 		});
 
 		it('should not track execution for non-ready-to-run workflows', async () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const workflowsListStore = useWorkflowsListStore();
@@ -496,7 +498,7 @@ describe('executionFinished', () => {
 	});
 
 	it('should return early and clear active execution when fetchExecutionData returns undefined', async () => {
-		const pinia = createTestingPinia();
+		const pinia = createTestingPinia({ stubActions: false });
 
 		setActivePinia(pinia);
 
@@ -552,7 +554,7 @@ describe('executionFinished', () => {
 	});
 
 	it('should clear executing node queue even when fetchExecutionData returns undefined', async () => {
-		const pinia = createTestingPinia();
+		const pinia = createTestingPinia({ stubActions: false });
 
 		setActivePinia(pinia);
 
@@ -603,7 +605,7 @@ describe('executionFinished', () => {
 	});
 
 	it('should clear executing node queue when activeExecutionId is undefined (iframe preview)', async () => {
-		const pinia = createTestingPinia();
+		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 
 		const workflowDocumentStore = createWorkflowDocumentStoreForTest('1', undefined);
@@ -645,7 +647,7 @@ describe('manual execution stats tracking', () => {
 
 	describe('handleExecutionFinishedWithSuccessOrOther', () => {
 		it('increments success stats on successful execution', () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const builderStore = mockedStore(useBuilderStore);
@@ -657,7 +659,7 @@ describe('manual execution stats tracking', () => {
 		});
 
 		it('does not increment success stats when successToastAlreadyShown is true', () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const builderStore = mockedStore(useBuilderStore);
@@ -669,7 +671,7 @@ describe('manual execution stats tracking', () => {
 		});
 
 		it('does not increment stats for non-success status', () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const builderStore = mockedStore(useBuilderStore);
@@ -687,7 +689,7 @@ describe('manual execution stats tracking', () => {
 		});
 
 		it('shows success toast when executed node has run data', () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -696,12 +698,13 @@ describe('manual execution stats tracking', () => {
 			const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 
 			const nodeName = 'Send Telegram';
-			vi.spyOn(workflowDocumentStore, 'execution', 'get').mockReturnValue({
+			useExecutionDataStore('123').setExecution({
+				id: '123',
 				executedNode: nodeName,
 				data: {
 					resultData: {
 						runData: {
-							[nodeName]: [mock<ITaskData>()],
+							[nodeName]: [createTestTaskData()],
 						},
 					},
 				},
@@ -719,7 +722,7 @@ describe('manual execution stats tracking', () => {
 		});
 
 		it('shows warning toast when executed node was not reached', () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -728,7 +731,8 @@ describe('manual execution stats tracking', () => {
 			const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowDocumentStore, 'execution', 'get').mockReturnValue({
+			useExecutionDataStore('123').setExecution({
+				id: '123',
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -749,7 +753,7 @@ describe('manual execution stats tracking', () => {
 		});
 
 		it('does not show warning toast when successToastAlreadyShown is true', () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -758,7 +762,8 @@ describe('manual execution stats tracking', () => {
 			const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowDocumentStore, 'execution', 'get').mockReturnValue({
+			useExecutionDataStore('123').setExecution({
+				id: '123',
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -781,7 +786,7 @@ describe('manual execution stats tracking', () => {
 
 	describe('handleExecutionFinishedWithErrorOrCanceled', () => {
 		it('increments error stats on execution error', () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const builderStore = mockedStore(useBuilderStore);
@@ -805,7 +810,7 @@ describe('manual execution stats tracking', () => {
 		});
 
 		it('does not increment stats for canceled executions', () => {
-			const pinia = createTestingPinia();
+			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
 
 			const builderStore = mockedStore(useBuilderStore);

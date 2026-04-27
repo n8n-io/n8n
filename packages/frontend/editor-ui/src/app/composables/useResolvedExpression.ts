@@ -22,6 +22,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 
@@ -58,10 +59,12 @@ export function useResolvedExpression({
 	const activeNode = computed(() => ndvStore.activeNode);
 	const hasRunData = computed(() =>
 		Boolean(
-			workflowDocumentStore.value.execution?.data?.resultData?.runData[
-				activeNode.value?.name ?? ''
-			],
+			getActiveExecutionDataStore(workflowDocumentStore.value)?.execution?.data?.resultData
+				?.runData[activeNode.value?.name ?? ''],
 		),
+	);
+	const executionDataStore = computed(() =>
+		getActiveExecutionDataStore(workflowDocumentStore.value),
 	);
 	const isExpression = computed(() => isExpressionUtil(toValue(expression)));
 
@@ -126,8 +129,8 @@ export function useResolvedExpression({
 			expressionLocalResolveCtx,
 			toRef(expression),
 			toRef(additionalData),
-			() => workflowDocumentStore.value.execution,
-			() => workflowDocumentStore.value.executionRunData,
+			() => executionDataStore.value?.execution,
+			() => executionDataStore.value?.executionRunData,
 			() => workflowDocumentStore.value.name,
 			targetItem,
 		],

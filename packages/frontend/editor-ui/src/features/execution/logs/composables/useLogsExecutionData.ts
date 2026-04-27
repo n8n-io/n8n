@@ -6,6 +6,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	copyExecutionData,
@@ -36,6 +37,9 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
+	const executionDataStore = computed(() =>
+		getActiveExecutionDataStore(workflowDocumentStore.value),
+	);
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
 
@@ -44,8 +48,8 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		| undefined
 	>();
 	const updateInterval = computed(() =>
-		workflowDocumentStore.value.execution?.status === 'running' &&
-		Object.keys(workflowDocumentStore.value.execution.data?.resultData.runData ?? {}).length > 1
+		executionDataStore.value?.execution?.status === 'running' &&
+		Object.keys(executionDataStore.value.execution.data?.resultData.runData ?? {}).length > 1
 			? LOGS_EXECUTION_DATA_THROTTLE_DURATION
 			: 0,
 	);
@@ -142,21 +146,20 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	watch(
 		// Fields that should trigger update
 		[
-			() => workflowDocumentStore.value.execution?.id,
-			() => workflowDocumentStore.value.execution?.workflowData.id,
-			() => workflowDocumentStore.value.execution?.status,
-			() => workflowDocumentStore.value.executionResultDataLastUpdate,
-			() => workflowDocumentStore.value.executionStartedData,
+			() => executionDataStore.value?.execution?.id,
+			() => executionDataStore.value?.execution?.workflowData.id,
+			() => executionDataStore.value?.execution?.status,
+			() => executionDataStore.value?.executionResultDataLastUpdate,
+			() => executionDataStore.value?.executionStartedData,
 		],
 		useThrottleFn(
 			([executionId], [previousExecutionId]) => {
-				state.value =
-					workflowDocumentStore.value.execution === null
-						? undefined
-						: {
-								response: copyExecutionData(workflowDocumentStore.value.execution),
-								startData: workflowDocumentStore.value.executionStartedData?.[1] ?? {},
-							};
+				state.value = !executionDataStore.value?.execution
+					? undefined
+					: {
+							response: copyExecutionData(executionDataStore.value?.execution),
+							startData: executionDataStore.value?.executionStartedData?.[1] ?? {},
+						};
 
 				if (executionId !== previousExecutionId) {
 					// Reset sub workflow data when top-level execution changes

@@ -14,6 +14,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useRoute, useRouter } from 'vue-router';
 import type {
 	ChatUI,
@@ -451,7 +452,7 @@ async function onWorkflowExecuted() {
 		return;
 	}
 
-	const executionData = workflowDocumentStore.value.execution;
+	const executionData = getActiveExecutionDataStore(workflowDocumentStore.value)?.execution;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
 	const errorNodeType = errorNodeName

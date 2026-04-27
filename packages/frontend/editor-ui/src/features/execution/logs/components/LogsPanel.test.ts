@@ -11,6 +11,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 import { computed, h, nextTick, ref, shallowRef } from 'vue';
 import {
 	aiAgentNode,
@@ -328,6 +329,7 @@ describe('LogsPanel', () => {
 	it('should reflect changes to execution data in workflow store if execution is in progress', async () => {
 		logsStore.toggleOpen(true);
 		workflowsStore.workflow = createAiChatWorkflow();
+		workflowDocumentStore.setActiveExecutionId(IN_PROGRESS_EXECUTION_ID);
 		workflowState.setExecution({
 			...aiChatExecutionResponse,
 			id: IN_PROGRESS_EXECUTION_ID,
@@ -348,9 +350,10 @@ describe('LogsPanel', () => {
 		expect(rendered.getByText(/Running/)).toBeInTheDocument();
 		expect(rendered.queryByText('AI Agent')).not.toBeInTheDocument();
 
-		workflowDocumentStore.addNodeExecutionStartedData({
+		const executionDataStore = useExecutionDataStore(IN_PROGRESS_EXECUTION_ID);
+		executionDataStore.addNodeExecutionStartedData({
 			nodeName: 'AI Agent',
-			executionId: '567',
+			executionId: IN_PROGRESS_EXECUTION_ID,
 			data: { executionIndex: 0, startTime: Date.parse('2025-04-20T12:34:51.000Z'), source: [] },
 		});
 
@@ -366,9 +369,9 @@ describe('LogsPanel', () => {
 		expect(lastTreeItem.getByText('AI Agent')).toBeInTheDocument();
 		expect(lastTreeItem.getByText(/Running/)).toBeInTheDocument();
 
-		workflowDocumentStore.updateNodeExecutionStatus({
+		executionDataStore.updateNodeExecutionStatus({
 			nodeName: 'AI Agent',
-			executionId: '567',
+			executionId: IN_PROGRESS_EXECUTION_ID,
 			itemCountByConnectionType: { ai_agent: [1] },
 			data: {
 				executionIndex: 0,
@@ -386,7 +389,7 @@ describe('LogsPanel', () => {
 		expect(lastTreeItem.getByText('in 33ms')).toBeInTheDocument();
 
 		workflowState.setExecution({
-			...workflowDocumentStore.execution!,
+			...executionDataStore.execution!,
 			id: '1234',
 			status: 'success',
 			finished: true,

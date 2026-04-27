@@ -12,10 +12,12 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 
 describe('nodeExecuteAfter', () => {
 	let mockOptions: { workflowState: Mocked<WorkflowState> };
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 	beforeEach(() => {
 		const pinia = createTestingPinia({
 			stubActions: true,
@@ -23,7 +25,8 @@ describe('nodeExecuteAfter', () => {
 
 		setActivePinia(pinia);
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
-		vi.spyOn(workflowDocumentStore, 'updateNodeExecutionStatus');
+		executionDataStore = useExecutionDataStore('exec-1');
+		vi.spyOn(executionDataStore, 'updateNodeExecutionStatus');
 
 		mockOptions = {
 			workflowState: mock<WorkflowState>({
@@ -55,7 +58,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		expect(workflowDocumentStore.updateNodeExecutionStatus).toHaveBeenCalledTimes(1);
+		expect(executionDataStore.updateNodeExecutionStatus).toHaveBeenCalledTimes(1);
 		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledTimes(1);
 		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledWith(
 			'Test Node',
@@ -64,7 +67,7 @@ describe('nodeExecuteAfter', () => {
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledWith(event.data);
 
 		// Verify the placeholder data structure
-		const updateCall = vi.mocked(workflowDocumentStore.updateNodeExecutionStatus).mock.calls[0][0];
+		const updateCall = vi.mocked(executionDataStore.updateNodeExecutionStatus).mock.calls[0][0];
 		expect(updateCall.data.data).toEqual({
 			main: [
 				Array.from({ length: 2 }).fill({ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }),
@@ -95,7 +98,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const updateCall = vi.mocked(workflowDocumentStore.updateNodeExecutionStatus).mock.calls[0][0];
+		const updateCall = vi.mocked(executionDataStore.updateNodeExecutionStatus).mock.calls[0][0];
 		expect(updateCall.data.data).toEqual({
 			main: [
 				Array.from({ length: 3 }).fill({ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }),
@@ -128,7 +131,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const updateCall = vi.mocked(workflowDocumentStore.updateNodeExecutionStatus).mock.calls[0][0];
+		const updateCall = vi.mocked(executionDataStore.updateNodeExecutionStatus).mock.calls[0][0];
 		expect(updateCall.data.data).toEqual({
 			main: [],
 		});
@@ -152,7 +155,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const updateCall = vi.mocked(workflowDocumentStore.updateNodeExecutionStatus).mock.calls[0][0];
+		const updateCall = vi.mocked(executionDataStore.updateNodeExecutionStatus).mock.calls[0][0];
 		expect(updateCall.executionId).toBe('exec-1');
 		expect(updateCall.nodeName).toBe('Test Node');
 		expect(updateCall.data.executionTime).toBe(100);
@@ -190,7 +193,7 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const updateCall = vi.mocked(workflowDocumentStore.updateNodeExecutionStatus).mock.calls[0][0];
+		const updateCall = vi.mocked(executionDataStore.updateNodeExecutionStatus).mock.calls[0][0];
 		// Should only contain main connection, invalid_connection should be filtered out
 		expect(updateCall.data.data).toEqual({
 			main: [

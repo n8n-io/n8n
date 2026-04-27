@@ -12,6 +12,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
@@ -349,7 +350,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const activeCredential = isCredentialModalActive
 			? useCredentialsStore().getCredentialTypeByName(uiStore.activeCredentialType ?? '')
 			: undefined;
-		const executionResult = workflowDocumentStore.value.execution?.data?.resultData;
+		const executionResult = getActiveExecutionDataStore(workflowDocumentStore.value)?.execution
+			?.data?.resultData;
 		const isCurrentNodeExecuted = Boolean(
 			executionResult?.runData?.hasOwnProperty(activeNode?.name ?? ''),
 		);
@@ -741,7 +743,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	);
 
 	watch(
-		() => workflowDocumentStore.value.executionResultDataLastUpdate,
+		() => getActiveExecutionDataStore(workflowDocumentStore.value)?.executionResultDataLastUpdate,
 		() => {
 			executionStale.value = true;
 		},

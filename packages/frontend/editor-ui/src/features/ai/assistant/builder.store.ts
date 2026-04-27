@@ -17,6 +17,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
 import {
 	chatWithBuilder,
@@ -787,7 +788,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			let resultDataSizeKb = 0;
 
 			try {
-				resultData = JSON.stringify(workflowDocumentStore.value.execution ?? {});
+				resultData = JSON.stringify(
+					getActiveExecutionDataStore(workflowDocumentStore.value)?.execution ?? {},
+				);
 				resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
 			} catch (error) {
 				// Handle circular structure errors gracefully
@@ -996,7 +999,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			options.skipUserMessage,
 		);
 
-		const executionResult = workflowDocumentStore.value.execution?.data?.resultData;
+		const executionResult = getActiveExecutionDataStore(workflowDocumentStore.value)?.execution
+			?.data?.resultData;
 		const modeForPayload =
 			resumeData !== undefined
 				? mode

@@ -23,6 +23,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 const props = defineProps<{
@@ -104,9 +105,9 @@ const isAnyCredentialTesting = computed(() =>
 // Notify parent on execution finish
 watch(isActive, (active, wasActive) => {
 	if (wasActive && !active) {
-		const runData = workflowDocumentStore.value.getExecutionRunDataByNodeName(
-			props.nodeGroup.parentNode.name,
-		);
+		const runData = getActiveExecutionDataStore(
+			workflowDocumentStore.value,
+		)?.getExecutionRunDataByNodeName(props.nodeGroup.parentNode.name);
 		const lastRun = runData?.[runData.length - 1];
 		if (!lastRun?.error) {
 			emit('stepExecuted');

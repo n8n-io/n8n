@@ -3,6 +3,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 
 /**
  * Handles the 'executionStarted' event, which happens when a workflow is executed.
@@ -32,9 +33,11 @@ export async function executionStarted(
 		options.workflowState.setActiveExecutionId(data.executionId);
 	}
 
+	const executionDataStore = useExecutionDataStore(data.executionId);
+
 	// Initialize or reinitialize execution to clear previous execution's
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
-	if (!workflowDocumentStore?.execution?.data || needsInit) {
+	if (!executionDataStore.execution?.data) {
 		const wf = workflowsStore.workflow;
 		options.workflowState.setExecution({
 			id: data.executionId,
@@ -59,11 +62,11 @@ export async function executionStarted(
 		});
 	}
 
-	if (workflowDocumentStore?.execution?.data && data.flattedRunData) {
-		workflowDocumentStore.setExecutionRunData({
-			...workflowDocumentStore.execution.data,
+	if (executionDataStore.execution?.data && data.flattedRunData) {
+		executionDataStore.setExecutionRunData({
+			...executionDataStore.execution.data,
 			resultData: {
-				...workflowDocumentStore.execution.data.resultData,
+				...executionDataStore.execution.data.resultData,
 				runData: parse(data.flattedRunData),
 			},
 		});

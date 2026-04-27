@@ -4,6 +4,10 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import {
+	getActiveExecutionDataStore,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -21,7 +25,8 @@ export function useExecutionRedaction() {
 	const { showError } = useToast();
 	const i18n = useI18n();
 
-	const redactionInfo = computed(() => workflowDocumentStore.execution?.data?.redactionInfo);
+	const executionDataStore = computed(() => getActiveExecutionDataStore(workflowDocumentStore));
+	const redactionInfo = computed(() => executionDataStore.value?.execution?.data?.redactionInfo);
 
 	const isRedacted = computed(() => redactionInfo.value?.isRedacted === true);
 
@@ -34,7 +39,7 @@ export function useExecutionRedaction() {
 	async function revealData() {
 		telemetry.track('User clicked reveal data', {
 			workflow_id: workflowsStore.workflowId,
-			execution_id: workflowDocumentStore.execution?.id,
+			execution_id: executionDataStore.value?.execution?.id,
 		});
 
 		const warningContent = h(RevealDataWarning, {
@@ -56,7 +61,7 @@ export function useExecutionRedaction() {
 
 		if (confirmed !== MODAL_CONFIRM) return;
 
-		const executionId = workflowDocumentStore.execution?.id;
+		const executionId = executionDataStore.value?.execution?.id;
 		if (!executionId) return;
 
 		try {
@@ -64,7 +69,7 @@ export function useExecutionRedaction() {
 				redactExecutionData: false,
 			});
 			if (revealed?.data) {
-				workflowDocumentStore.setExecutionRunData(revealed.data);
+				useExecutionDataStore(executionId).setExecutionRunData(revealed.data);
 			}
 		} catch (error) {
 			showError(error, i18n.baseText('ndv.redacted.revealError'));

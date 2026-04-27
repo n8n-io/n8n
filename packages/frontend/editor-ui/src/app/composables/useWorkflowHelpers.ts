@@ -55,6 +55,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 import { computed } from 'vue';
 import type { WorkflowObjectAccessors } from '../types';
 
@@ -102,7 +103,7 @@ export async function resolveParameter<T = IDataObject>(
 		workflowDocumentStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
-		workflowDocumentStore.execution,
+		getActiveExecutionDataStore(workflowDocumentStore)?.execution ?? null,
 		workflowDocumentStore.getPinDataSnapshot(),
 		opts,
 	);
@@ -397,7 +398,7 @@ export function executeData(
 		inputName,
 		runIndex,
 		workflowDocumentStore.getPinDataSnapshot(),
-		workflowDocumentStore.executionRunData,
+		getActiveExecutionDataStore(workflowDocumentStore)?.executionRunData ?? null,
 		parentRunIndex,
 	);
 }

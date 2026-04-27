@@ -25,6 +25,7 @@ import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
 
 import {
 	N8nButton,
@@ -54,6 +55,9 @@ const workflowId = useInjectWorkflowId();
 const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const executionDataStore = computed(() =>
+	workflowDocumentStore?.value ? getActiveExecutionDataStore(workflowDocumentStore.value) : null,
+);
 const ndvStore = useNDVStore();
 
 const router = useRouter();
@@ -173,7 +177,7 @@ const isListeningForEvents = computed(() => {
 		return false;
 	}
 
-	const executedNode = workflowDocumentStore?.value?.executedNode;
+	const executedNode = executionDataStore.value?.executedNode;
 	const isCurrentNodeExecuted = executedNode === props.nodeName;
 	const isChildNodeExecuted = executedNode
 		? (workflowDocumentStore?.value?.getParentNodes(executedNode).includes(props.nodeName) ?? false)
@@ -185,7 +189,7 @@ const isListeningForEvents = computed(() => {
 const workflowRunning = computed(() => workflowDocumentStore?.value?.isWorkflowRunning ?? false);
 
 const isActivelyPolling = computed(() => {
-	const triggeredNode = workflowDocumentStore?.value?.executedNode;
+	const triggeredNode = executionDataStore.value?.executedNode;
 
 	return workflowRunning.value && isPollingNode.value && props.nodeName === triggeredNode;
 });

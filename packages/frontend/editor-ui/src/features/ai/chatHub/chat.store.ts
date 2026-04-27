@@ -98,6 +98,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useExecutionDataStore } from '@/app/stores/executionData.store';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores/constants';
@@ -568,7 +569,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 
-		workflowDocumentStore.setExecution({
+		useExecutionDataStore(IN_PROGRESS_EXECUTION_ID).setExecution({
 			id: IN_PROGRESS_EXECUTION_ID,
 			finished: false,
 			mode: 'manual',

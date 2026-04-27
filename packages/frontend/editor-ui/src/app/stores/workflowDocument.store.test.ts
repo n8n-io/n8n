@@ -16,15 +16,10 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	createTestNode,
-	createTestTaskData,
-	createTestWorkflowExecutionResponse,
-} from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
-import { createRunExecutionData } from 'n8n-workflow';
 
 const { getNodeTypeMock } = vi.hoisted(() => ({
 	getNodeTypeMock: vi.fn().mockReturnValue(null),
@@ -355,29 +350,15 @@ describe('workflowDocument.store orchestration', () => {
 			});
 		});
 
-		it('preserves existing execution state when hydrating workflow metadata', () => {
+		it('preserves existing execution session state when hydrating workflow metadata', () => {
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
 			const workflow = buildFullWorkflow();
-			const execution = createTestWorkflowExecutionResponse({
-				id: 'execution-123',
-				finished: false,
-				status: 'running',
-				data: createRunExecutionData({
-					resultData: {
-						runData: {
-							A: [createTestTaskData({ data: { main: [[{ json: { value: 1 } }]] } })],
-						},
-					},
-				}),
-			});
 
-			store.setExecution(execution);
-			store.setActiveExecutionId(execution.id);
+			store.setActiveExecutionId('execution-123');
 			store.setExecutionWaitingForWebhook(true);
 
 			store.hydrate(workflow);
 
-			expect(store.execution).toEqual(execution);
 			expect(store.activeExecutionId).toBe('execution-123');
 			expect(store.executionWaitingForWebhook).toBe(true);
 		});
@@ -548,16 +529,10 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.viewport).toBeNull();
 		});
 
-		it('clears the execution slice back to its defaults', () => {
+		it('clears the execution session slice back to its defaults', () => {
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-reset'));
-			const execution = createTestWorkflowExecutionResponse({
-				id: 'execution-456',
-				finished: false,
-				status: 'running',
-			});
 
-			store.setExecution(execution);
-			store.setActiveExecutionId(execution.id);
+			store.setActiveExecutionId('execution-456');
 			store.setExecutionWaitingForWebhook(true);
 			store.setDebugMode(true);
 			store.appendChatMessage('hello');
@@ -578,7 +553,6 @@ describe('workflowDocument.store orchestration', () => {
 
 			store.reset();
 
-			expect(store.execution).toBeNull();
 			expect(store.activeExecutionId).toBeUndefined();
 			expect(store.previousExecutionId).toBeUndefined();
 			expect(store.executionWaitingForWebhook).toBe(false);
@@ -586,7 +560,7 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.chatMessages).toEqual([]);
 			expect(store.chatPartialExecutionDestinationNode).toBeNull();
 			expect(store.currentWorkflowExecutions).toEqual([]);
-			expect(store.lastSuccessfulExecution).toBeNull();
+			expect(store.lastSuccessfulExecutionId).toBeNull();
 		});
 	});
 });
