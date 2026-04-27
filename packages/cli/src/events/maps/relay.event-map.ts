@@ -476,6 +476,18 @@ export type RelayEventMap = {
 		deleteBefore?: Date;
 	};
 
+	'execution-waiting': {
+		executionId: string;
+		workflowId: string;
+	};
+
+	'execution-resumed': {
+		executionId: string;
+		workflowId: string;
+		resumeSource: 'webhook';
+		responseAt: Date;
+	};
+
 	'execution-data-revealed': {
 		user: UserLike;
 		executionId: string;
@@ -763,6 +775,12 @@ export type RelayEventMap = {
 		user: UserLike;
 		ruleId: string;
 		ruleType: 'instance' | 'project';
+	};
+
+	'role-mapping-rules-bulk-deleted': {
+		ruleType: 'instance' | 'project';
+		count: number;
+		reason: 'strategy-switch';
 	};
 
 	// #endregion

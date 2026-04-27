@@ -174,6 +174,8 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "breakingChanges:*",
   "apiKey:manage",
   "apiKey:*",
+  "encryptionKey:manage",
+  "encryptionKey:*",
   "credentialResolver:create",
   "credentialResolver:read",
   "credentialResolver:update",

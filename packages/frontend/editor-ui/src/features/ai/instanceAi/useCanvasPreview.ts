@@ -39,7 +39,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	const workflowsListStore = useWorkflowsListStore();
 
 	// --- Tab state ---
-	const activeTabId = ref<string | null>(null);
+	const activeTabId = ref<string>();
 	const activeExecutionId = ref<string | null>(null);
 
 	// --- Preview state persistence ---
@@ -50,10 +50,12 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		return typeof id === 'string' ? id : store.currentThreadId;
 	}
 
-	const debouncedSavePreviewState = useDebounceFn((tabId: string | null) => {
+	const debouncedSavePreviewState = useDebounceFn((tabId: string | undefined) => {
 		const threadId = currentThreadId();
 		if (!threadId) return;
-		void store.updateThreadMetadata(threadId, { activePreviewTab: tabId });
+		// Coalesce undefined → null: JSON.stringify drops undefined keys, which
+		// would leave a stale activePreviewTab in backend metadata after close.
+		void store.updateThreadMetadata(threadId, { activePreviewTab: tabId ?? null });
 	}, 500);
 
 	// Save activeTabId to thread metadata when it changes (skip during restore)
@@ -142,7 +144,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 	const dataTableRefreshKey = ref(0);
 
-	const isPreviewVisible = computed(() => activeTabId.value !== null);
+	const isPreviewVisible = computed(() => activeTabId.value !== undefined);
 
 	// Tracks whether the user sent a message in the current thread session.
 	// Used to distinguish live operations (should auto-open preview) from
@@ -160,7 +162,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	}
 
 	function closePreview() {
-		activeTabId.value = null;
+		activeTabId.value = undefined;
 		activeExecutionId.value = null;
 	}
 
@@ -214,7 +216,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
 
 	watch(allArtifactTabs, (tabs) => {
-		if (activeTabId.value === null || tabs.length === 0) return;
+		if (activeTabId.value === undefined || tabs.length === 0) return;
 		const stillExists = tabs.some((t) => t.id === activeTabId.value);
 		if (!stillExists) {
 			activeTabId.value = tabs[0].id;
@@ -234,7 +236,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 			wasCanvasOpenBeforeSwitch.value = isPreviewVisible.value;
 			pendingRestore.value = true;
-			activeTabId.value = null;
+			activeTabId.value = undefined;
 			activeExecutionId.value = null;
 			userSentMessage.value = false;
 		},
@@ -402,7 +404,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	watch(latestDeletedDataTableId, (deletedId) => {
 		if (deletedId && deletedId === activeTabId.value) {
 			const remaining = allArtifactTabs.value.filter((t) => t.id !== deletedId);
-			activeTabId.value = remaining.length > 0 ? remaining[0].id : null;
+			activeTabId.value = remaining.length > 0 ? remaining[0].id : undefined;
 		}
 	});
 

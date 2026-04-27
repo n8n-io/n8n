@@ -103,7 +103,7 @@ export const toCronExpression = (interval: ScheduleInterval): CronExpression => 
 		return `${randomSecond} ${minute} ${hour} * * ${daysOfWeek}` as CronExpression;
 	}
 
-	const dayOfMonth = interval.triggerAtDayOfMonth ?? randomInt(0, 31);
+	const dayOfMonth = interval.triggerAtDayOfMonth ?? randomInt(1, 31);
 	return `${randomSecond} ${minute} ${hour} ${dayOfMonth} */${interval.monthsInterval} *`;
 };
 

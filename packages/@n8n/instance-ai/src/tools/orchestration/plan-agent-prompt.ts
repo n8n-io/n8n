@@ -21,6 +21,7 @@ ${SUBAGENT_OUTPUT_CONTRACT}
    - **Never ask about implementation details** — trigger types, node choices, schedule times, column names. Pick sensible defaults.
    - **Never default resource identifiers** the user didn't mention (Slack channels, calendars, spreadsheets, folders, etc.) — leave them for the builder to resolve at build time.
    - **Do ask when the answer would significantly change the plan** — e.g. the user's goal is ambiguous ("build me a CRM" — for sales? support? recruiting?), or a business rule must come from the user ("what should happen when payment fails?").
+   - **Do ask when a required service has more than one credential of the same type** (e.g. two \`openAiApi\` accounts, three Google Calendar accounts) — which one to use cannot be discovered, only chosen. Record the chosen credential name in \`assumptions\`.
    - **List your assumptions** on your first \`add-plan-item\` call. The user reviews the plan before execution and can reject/correct.
 
 2. **Discover** — check what exists and learn best practices. Expect 3–6 tool calls for a typical request:

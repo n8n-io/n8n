@@ -45,7 +45,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { UserRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
-import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { JwtService } from '@/services/jwt.service';
@@ -68,7 +67,6 @@ export class UsersController {
 		private readonly folderService: FolderService,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
-		private readonly projectService: ProjectService,
 		private readonly provisioningService: ProvisioningService,
 	) {}
 
@@ -118,20 +116,7 @@ export class UsersController {
 		_res: Response,
 		@Query listQueryOptions: UsersListFilterDto,
 	) {
-		if (listQueryOptions.filter?.projectId) {
-			const project = await this.projectService.getProjectWithScope(
-				req.user,
-				listQueryOptions.filter.projectId,
-				['project:list'],
-			);
-			if (!project) {
-				throw new NotFoundError('Project not found');
-			}
-		} else if (!['global:owner', 'global:admin'].includes(req.user.role.slug)) {
-			throw new ForbiddenError(
-				'Listing all users is limited to instance administrators. Filter by project to list project members.',
-			);
-		}
+		await this.userService.assertGetUsersAccess(req.user, listQueryOptions.filter?.projectId);
 
 		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
 		const response = await userQuery.getManyAndCount();

@@ -15,24 +15,36 @@ import type {
 } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { isObject } from '@/app/utils/objectUtils';
+import { getCredentialOnlyNodeTypeName } from '@/app/utils/credentialOnlyNodes';
+import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import pick from 'lodash/pick';
 import isEqual from 'lodash/isEqual';
 import findLast from 'lodash/findLast';
 import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
 import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
+import { isPresent } from '@/app/utils/typesUtils';
 
 // --- Event types ---
 
 export type NodeAddedPayload = { node: INodeUi };
 export type NodeRemovedPayload = { name: string; id: string };
+export type NodeUpdatedPayload = { name: string };
+export type NodesResetPayload = object;
 
-export type NodesChangeEvent = ChangeEvent<NodeAddedPayload> | ChangeEvent<NodeRemovedPayload>;
+export type NodesChangeEvent =
+	| ChangeEvent<NodeAddedPayload>
+	| ChangeEvent<NodeRemovedPayload>
+	| ChangeEvent<NodeUpdatedPayload>
+	| ChangeEvent<NodesResetPayload>;
 
 // --- Deps ---
 
 export interface WorkflowDocumentNodesDeps {
 	getNodeType: (typeName: string, version?: number) => INodeTypeDescription | null;
+	assignNodeId: (node: INodeUi) => string;
+	syncWorkflowObject: (nodes: INodeUi[]) => void;
+	unpinNodeData: (name: string) => void;
 	nodeMetadata: ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 }
 
@@ -68,7 +80,11 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		if (changed) {
 			Object.assign(node, nodeData);
 			workflowsStore.workflow.nodes[nodeIndex] = node;
-			workflowsStore.workflowObject.setNodes(workflowsStore.workflow.nodes);
+			deps.syncWorkflowObject(workflowsStore.workflow.nodes);
+			void onNodesChange.trigger({
+				action: CHANGE_ACTION.UPDATE,
+				payload: { name: node.name },
+			});
 		}
 
 		return changed;
@@ -79,7 +95,22 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	// -----------------------------------------------------------------------
 
 	function applySetNodes(nodes: INodeUi[]) {
-		workflowsStore.setNodes(nodes);
+		for (const node of nodes) {
+			if (!node.id) {
+				deps.assignNodeId(node);
+			}
+
+			if (node.extendsCredential) {
+				node.type = getCredentialOnlyNodeTypeName(node.extendsCredential);
+			}
+
+			if (node.position) {
+				node.position = snapPositionToGrid(node.position);
+			}
+		}
+
+		workflowsStore.workflow.nodes = nodes;
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		// setNodes replaces the full node list, so reset metadata to match
 		deps.nodeMetadata.setAllNodeMetadata({});
 		for (const node of nodes) {
@@ -88,7 +119,12 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function applyAddNode(node: INodeUi) {
-		workflowsStore.addNode(node);
+		if (!node.hasOwnProperty('name')) {
+			return;
+		}
+
+		workflowsStore.workflow.nodes.push(node);
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		deps.nodeMetadata.initNodeMetadata(node.name);
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.ADD,
@@ -98,8 +134,17 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function applyRemoveNode(node: INodeUi) {
-		workflowsStore.removeNode(node);
+		const idx = workflowsStore.workflow.nodes.findIndex((n) => n.name === node.name);
+		if (idx !== -1) {
+			workflowsStore.workflow.nodes = [
+				...workflowsStore.workflow.nodes.slice(0, idx),
+				...workflowsStore.workflow.nodes.slice(idx + 1),
+			];
+		}
+
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		deps.nodeMetadata.removeNodeMetadata(node.name);
+		deps.unpinNodeData(node.name);
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { name: node.name, id: node.id },
@@ -108,10 +153,18 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function applyRemoveNodeById(id: string) {
-		const node = workflowsStore.getNodeById(id);
-		workflowsStore.removeNodeById(id);
+		const node = workflowsStore.workflow.nodes.find((n) => n.id === id);
+		const idx = workflowsStore.workflow.nodes.findIndex((n) => n.id === id);
+		if (idx !== -1) {
+			workflowsStore.workflow.nodes = [
+				...workflowsStore.workflow.nodes.slice(0, idx),
+				...workflowsStore.workflow.nodes.slice(idx + 1),
+			];
+		}
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		if (node) {
 			deps.nodeMetadata.removeNodeMetadata(node.name);
+			deps.unpinNodeData(node.name);
 		}
 		void onNodesChange.trigger({
 			action: CHANGE_ACTION.DELETE,
@@ -128,12 +181,10 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	const nodesByName = computed<Record<string, INodeUi>>(() => workflowsStore.nodesByName);
 
-	const canvasNames = computed<Set<string>>(
-		() => new Set(workflowsStore.allNodes.map((n) => n.name)),
-	);
+	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
 	function getNodeById(id: string): INodeUi | undefined {
-		return workflowsStore.getNodeById(id);
+		return workflowsStore.workflow.nodes.find((node) => node.id === id);
 	}
 
 	function getNodeByName(name: string): INodeUi | null {
@@ -145,11 +196,11 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
-		return workflowsStore.findNodeByPartialId(partialId);
+		return workflowsStore.workflow.nodes.find((node) => node.id.startsWith(partialId));
 	}
 
-	function getNodesByIds(ids: string[]): INodeUi[] {
-		return workflowsStore.getNodesByIds(ids);
+	function getNodesByIds(nodeIds: string[]): INodeUi[] {
+		return nodeIds.map(getNodeById).filter(isPresent);
 	}
 
 	// -----------------------------------------------------------------------
@@ -312,8 +363,12 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function removeAllNodes(): void {
 		workflowsStore.workflow.nodes.splice(0, workflowsStore.workflow.nodes.length);
-		workflowsStore.workflowObject.setNodes(workflowsStore.workflow.nodes);
+		deps.syncWorkflowObject(workflowsStore.workflow.nodes);
 		deps.nodeMetadata.setAllNodeMetadata({});
+		void onNodesChange.trigger({
+			action: CHANGE_ACTION.DELETE,
+			payload: {},
+		});
 	}
 
 	function resetAllNodesIssues(): boolean {

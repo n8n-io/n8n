@@ -108,6 +108,7 @@ export const defaultSettings: FrontendSettings = {
 		smtpSetup: true,
 		authenticationMethod: 'email',
 		quota: 10,
+		passwordMinLength: 8,
 	},
 	versionCli: '',
 	nodeJsVersion: '',
