@@ -34,7 +34,14 @@ const GOOGLE_SHEETS_APP: AppDefinition = {
 	credentialType: 'googleSheetsOAuth2Api',
 };
 
-export const APP_REGISTRY: readonly AppDefinition[] = [GMAIL_APP, GOOGLE_SHEETS_APP];
+const SLACK_APP: AppDefinition = {
+	kind: 'slack',
+	nodeType: 'n8n-nodes-base.slack',
+	nodeTypeVersion: 2.4,
+	credentialType: 'slackApi',
+};
+
+export const APP_REGISTRY: readonly AppDefinition[] = [GMAIL_APP, GOOGLE_SHEETS_APP, SLACK_APP];
 
 export function findAppDefinition(kind: string): AppDefinition | undefined {
 	return APP_REGISTRY.find((a) => a.kind === kind);
