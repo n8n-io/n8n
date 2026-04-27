@@ -31,7 +31,11 @@ export class Cipher {
 	async encryptV2(data: string | object, customEncryptionKey?: string): Promise<string> {
 		const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
 
-		if (!customEncryptionKey && this.encryptionKeyProxy.isConfigured()) {
+		if (
+			!customEncryptionKey &&
+			this.encryptionKeyProxy.isConfigured() &&
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION === 'true'
+		) {
 			const keyInfo = await this.encryptionKeyProxy.getActiveKey();
 			const plaintextKey = this.decryptWithInstanceKey(keyInfo.value);
 			const ciphertext = this.encryptWithKey(
@@ -47,7 +51,11 @@ export class Cipher {
 	}
 
 	async decryptV2(data: string, customEncryptionKey?: string): Promise<string> {
-		if (!customEncryptionKey && this.encryptionKeyProxy.isConfigured()) {
+		if (
+			!customEncryptionKey &&
+			this.encryptionKeyProxy.isConfigured() &&
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION === 'true'
+		) {
 			const colonIdx = data.indexOf(':');
 			if (colonIdx !== -1) {
 				const keyId = data.slice(0, colonIdx);
@@ -59,7 +67,7 @@ export class Cipher {
 			}
 			const keyInfo = await this.encryptionKeyProxy.getLegacyKey();
 			const plaintextKey = this.decryptWithInstanceKey(keyInfo.value);
-			return this.decryptWithKey(data, plaintextKey, 'aes-256-cbc');
+			return this.decryptWithKey(data, plaintextKey, keyInfo.algorithm as CipherAlgorithm);
 		}
 
 		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
