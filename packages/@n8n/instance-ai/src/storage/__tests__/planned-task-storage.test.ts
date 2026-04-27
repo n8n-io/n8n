@@ -14,21 +14,21 @@ jest.mock('../thread-patch', () => ({
 				};
 			},
 		) => {
-			const currentMetadata = metadataByThread.get(opts.threadId) ?? {};
+			const currentMetadata = mockMetadataByThread.get(opts.threadId) ?? {};
 			const next = opts.update({ metadata: currentMetadata });
-			metadataByThread.set(opts.threadId, next.metadata);
+			mockMetadataByThread.set(opts.threadId, next.metadata);
 		},
 	),
 }));
 
-const metadataByThread = new Map<string, Record<string, unknown>>();
+const mockMetadataByThread = new Map<string, Record<string, unknown>>();
 
 function makeMemory(): Memory {
 	return {
 		getThreadById: jest.fn(({ threadId }: { threadId: string }) => ({
 			id: threadId,
 			title: 'Test',
-			metadata: metadataByThread.get(threadId),
+			metadata: mockMetadataByThread.get(threadId),
 			resourceId: 'res-1',
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -55,7 +55,7 @@ function baseGraph(): PlannedTaskGraph {
 
 describe('PlannedTaskStorage', () => {
 	beforeEach(() => {
-		metadataByThread.clear();
+		mockMetadataByThread.clear();
 	});
 
 	it('round-trips a graph through save -> get', async () => {

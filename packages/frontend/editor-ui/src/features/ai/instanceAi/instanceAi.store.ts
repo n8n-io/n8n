@@ -134,7 +134,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const lastEventIdByThread = ref<Record<string, number>>({});
 	const activeRunId = ref<string | null>(null);
 	const messages = ref<InstanceAiMessage[]>([]);
-	const archivedWorkflowIds = ref<Set<string>>(new Set());
+	const archivedWorkflowIdsByThread = ref<Record<string, Set<string>>>({});
+	const archivedWorkflowIds = computed<ReadonlySet<string>>(
+		() => archivedWorkflowIdsByThread.value[currentThreadId.value] ?? new Set(),
+	);
 	const latestTasks = ref<TaskList | null>(null);
 	const hydratingThreadId = ref<string | null>(null);
 	const pendingMessageCount = ref(0);
@@ -347,10 +350,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			if (parsed.data.type === 'run-finish') {
 				const ids = parsed.data.payload.archivedWorkflowIds;
 				if (ids && ids.length > 0) {
-					// Reassign instead of mutating: Set.add() on a ref doesn't trigger reactivity.
-					const next = new Set(archivedWorkflowIds.value);
+					const threadId = currentThreadId.value;
+					const next = new Set(archivedWorkflowIdsByThread.value[threadId] ?? []);
 					for (const id of ids) next.add(id);
-					archivedWorkflowIds.value = next;
+					archivedWorkflowIdsByThread.value = {
+						...archivedWorkflowIdsByThread.value,
+						[threadId]: next,
+					};
 				}
 			}
 			// Force Vue reactivity when streaming state changes (run-start can
@@ -518,7 +524,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	function resetThreadRuntimeState(nextHydratingThreadId: string | null): void {
 		hydratingThreadId.value = nextHydratingThreadId;
 		messages.value = [];
-		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];

@@ -883,7 +883,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyParentFolderFilter(qb, filter);
 		this.applyNodeTypesFilter(qb, filter);
 		this.applyAvailableInMCPFilter(qb, filter);
-		this.applyAiBuilderTemporaryFilter(qb);
+		if (filter?.isArchived !== true) {
+			this.applyAiBuilderTemporaryFilter(qb);
+		}
 	}
 
 	/**
