@@ -60,10 +60,13 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 		return source;
 	}
 	// Date and other objects with toJSON method
-	// TODO: remove this when other code parts not expecting objects with `.toJSON` method called and add back checking for Date and cloning it properly
-	if (typeof source.toJSON === 'function') {
-		return source.toJSON() as T;
+	// Replace the toJSON block with this:
+	// 1. Handle Dates properly
+	if (source instanceof Date) {
+		return new Date(source.getTime()) as unknown as T;
 	}
+	// 2. We no longer call .toJSON() on random objects.
+	// They will now fall through to the Object clone logic below.
 	if (hash.has(source)) {
 		return hash.get(source);
 	}

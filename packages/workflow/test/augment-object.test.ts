@@ -229,7 +229,7 @@ describe('AugmentObject', () => {
 
 			augmentedObject.c = 3;
 
-			expect({ ...originalObject, d: date.toJSON(), r: {} }).toEqual(copyOriginal);
+			expect({ ...originalObject, d: date, r: {} }).toEqual(copyOriginal);
 
 			expect(augmentedObject).toEqual({
 				1: 911,

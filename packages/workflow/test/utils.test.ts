@@ -345,8 +345,10 @@ describe('deepCopy', () => {
 		expect(copy).not.toBe(object);
 		expect(copy.arr).toEqual(object.arr);
 		expect(copy.arr).not.toBe(object.arr);
-		expect(copy.date).toBe('2022-11-02T11:39:32.201Z');
-		expect(copy.serializable).toBe(serializable.toJSON());
+		expect(copy.date).toEqual(object.date);
+		expect(copy.date).not.toBe(object.date);
+		expect(copy.serializable).toEqual(object.serializable);
+		expect(copy.serializable).not.toBe(object.serializable);
 		expect(copy.deep.props).toEqual(object.deep.props);
 		expect(copy.deep.props).not.toBe(object.deep.props);
 	});
@@ -382,7 +384,8 @@ describe('deepCopy', () => {
 		expect(copy).not.toBe(object);
 		expect(copy.arr).toEqual(object.arr);
 		expect(copy.arr).not.toBe(object.arr);
-		expect(copy.date).toBe('2022-11-02T11:39:32.201Z');
+		expect(copy.date).toEqual(object.date);
+		expect(copy.date).not.toBe(object.date);
 		expect(copy.deep.props.circular).toBe(copy);
 		expect(copy.deep.props.circular).not.toBe(object);
 		expect(copy.deep.arr.slice(-1)[0]).toBe(copy);
