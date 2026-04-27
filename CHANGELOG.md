@@ -1,3 +1,12 @@
+## [2.17.8](https://github.com/n8n-io/n8n/compare/n8n@2.17.7...n8n@2.17.8) (2026-04-27)
+
+
+### Bug Fixes
+
+* Disable "Get 100 free OpenAI API credits"  if aiGateway enabled in the license ([#29058](https://github.com/n8n-io/n8n/issues/29058)) ([11c5ad9](https://github.com/n8n-io/n8n/commit/11c5ad9e7100c5fa0f8462800bee7d5e43317058))
+* **editor:** Refresh wallet balance when usage refresh is clicked ([#29081](https://github.com/n8n-io/n8n/issues/29081)) ([5e95d38](https://github.com/n8n-io/n8n/commit/5e95d3887efb1faa9b22a2ab754633dab279b584))
+
+
 ## [2.17.7](https://github.com/n8n-io/n8n/compare/n8n@2.17.6...n8n@2.17.7) (2026-04-24)
 
 
