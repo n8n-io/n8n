@@ -31,7 +31,7 @@ export async function stravaApiRequest(
 			options.headers = Object.assign({}, options.headers, headers);
 		}
 		if (Object.keys(body).length === 0) {
-			delete options.body;
+			delete options.form;
 		}
 
 		if (this.getNode().type.includes('Trigger') && resource.includes('/push_subscriptions')) {
