@@ -15,6 +15,7 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
+import { DateTime } from 'luxon';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -139,6 +140,9 @@ function formatMessagesForBriefing(
 ): string {
 	const parts: string[] = [];
 
+	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
+	const isoNow = now.toISO({ includeOffset: true }) ?? new Date().toISOString();
+	parts.push(`<current-datetime>${isoNow}</current-datetime>`);
 	if (timeZone) {
 		parts.push(`<user-timezone>${timeZone}</user-timezone>`);
 	}
@@ -161,6 +165,8 @@ function formatMessagesForBriefing(
 
 	return parts.join('\n\n');
 }
+
+export const __testFormatMessagesForBriefing = formatMessagesForBriefing;
 
 // ---------------------------------------------------------------------------
 // Helper: clear draft checklist from taskStorage

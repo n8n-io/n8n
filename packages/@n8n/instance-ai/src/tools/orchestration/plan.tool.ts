@@ -217,7 +217,12 @@ export function createPlanTool(context: OrchestrationContext) {
 			// scheduler ignores `awaiting_approval` graphs, so leaving the graph
 			// in place can't dispatch the rejected plan; the next createPlan
 			// call overwrites it with the revised tasks.
-			await context.taskStorage.save(context.threadId, { tasks: [] });
+			// Best-effort: a storage failure here must not abort the revision flow.
+			try {
+				await context.taskStorage.save(context.threadId, { tasks: [] });
+			} catch (error) {
+				context.logger.warn('Failed to clear rejected plan checklist', { error });
+			}
 			context.eventBus.publish(context.threadId, {
 				type: 'tasks-update',
 				runId: context.runId,

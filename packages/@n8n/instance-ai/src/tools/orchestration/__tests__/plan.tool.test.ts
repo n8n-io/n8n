@@ -243,6 +243,33 @@ describe('createPlanTool — replan-only guard', () => {
 		expect(context.schedulePlannedTasks).toHaveBeenCalled();
 	});
 
+	it('returns the rejection result even when taskStorage.save fails so the revision flow can proceed', async () => {
+		// The persisted graph stays in awaiting_approval regardless of UI cleanup
+		// — the next createPlan overwrites it. A storage flake here must not abort
+		// the rejection path or strand the user without a "User requested changes"
+		// message and a chance to revise.
+		const context = createMockContext({
+			currentUserMessage: 'ordinary message',
+			taskStorage: {
+				get: jest.fn(),
+				save: jest.fn().mockRejectedValue(new Error('storage flake')),
+			} as TaskStorage,
+		});
+		const tool = createPlanTool(context) as unknown as Executable;
+
+		const out = await tool.execute(
+			{ tasks: validTasks() },
+			{ agent: { resumeData: { approved: false, userInput: 'try again' } } },
+		);
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('User requested changes');
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'Failed to clear rejected plan checklist',
+			expect.objectContaining({ error: expect.anything() as unknown }),
+		);
+	});
+
 	it('keeps the awaiting_approval graph on rejection so a same-turn revision can pass the guard', async () => {
 		// The rejected plan stays in `awaiting_approval` (scoped to runId) so the
 		// LLM's next create-tasks call — which the tool result tells it to make —

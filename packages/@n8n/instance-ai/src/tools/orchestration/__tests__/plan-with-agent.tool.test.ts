@@ -11,7 +11,7 @@ jest.mock('@mastra/core/tools', () => ({
 
 import type { OrchestrationContext, PlannedTaskGraph, PlannedTaskService } from '../../../types';
 
-const { __testClearPlannedTaskGraph } =
+const { __testClearPlannedTaskGraph, __testFormatMessagesForBriefing } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../plan-with-agent.tool') as typeof import('../plan-with-agent.tool');
 
@@ -105,5 +105,29 @@ describe('clearPlannedTaskGraph', () => {
 		getGraph.mockRejectedValueOnce(new Error('db down'));
 
 		await expect(__testClearPlannedTaskGraph(context)).resolves.toBeUndefined();
+	});
+});
+
+describe('formatMessagesForBriefing', () => {
+	// The planner system prompt (plan-agent-prompt.ts) treats <current-datetime>
+	// and <user-timezone> as a paired contract — schedule/cron decisions read
+	// both. Emitting only one drops half the contract.
+
+	it('emits <current-datetime> alongside <user-timezone> when a zone is provided', () => {
+		const briefing = __testFormatMessagesForBriefing(
+			[{ role: 'user', content: 'schedule me a daily digest' }],
+			undefined,
+			'America/New_York',
+		);
+
+		expect(briefing).toMatch(/<current-datetime>[^<]+<\/current-datetime>/);
+		expect(briefing).toContain('<user-timezone>America/New_York</user-timezone>');
+	});
+
+	it('still emits <current-datetime> when no zone is provided', () => {
+		const briefing = __testFormatMessagesForBriefing([], undefined, undefined);
+
+		expect(briefing).toMatch(/<current-datetime>[^<]+<\/current-datetime>/);
+		expect(briefing).not.toContain('<user-timezone>');
 	});
 });
