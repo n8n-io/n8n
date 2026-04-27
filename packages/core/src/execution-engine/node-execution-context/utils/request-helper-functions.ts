@@ -71,6 +71,7 @@ import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
+import { applyDefaultOutboundUserAgent } from './outbound-user-agent';
 import { parseIncomingMessage } from './parse-incoming-message';
 // Imported for side effects: sets axios defaults and registers the request interceptor
 import './request-helpers/axios-config';
@@ -400,6 +401,8 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		axiosConfig.validateStatus = () => true;
 	}
 
+	applyDefaultOutboundUserAgent(axiosConfig);
+
 	/**
 	 * Missing properties:
 	 * encoding (need testing)
@@ -607,15 +610,7 @@ export function convertN8nRequestToAxios(
 		}
 	}
 
-	const userAgentHeader = searchForHeader(axiosRequest, 'user-agent');
-	// If key exists, then the user has set both accept
-	// header and the json flag. Header should take precedence.
-	if (!userAgentHeader) {
-		axiosRequest.headers = {
-			...axiosRequest.headers,
-			'User-Agent': 'n8n',
-		};
-	}
+	applyDefaultOutboundUserAgent(axiosRequest);
 
 	if (n8nRequest.ignoreHttpStatusErrors) {
 		const ignoreHttpStatusErrors = n8nRequest.ignoreHttpStatusErrors;
