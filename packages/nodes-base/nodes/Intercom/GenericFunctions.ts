@@ -56,9 +56,9 @@ export async function intercomApiRequestAllItems(
 
 	do {
 		responseData = await intercomApiRequest.call(this, endpoint, method, body, query, uri);
-		uri = responseData.pages.next;
+		uri = responseData.pages?.next;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-	} while (responseData.pages?.next !== null);
+	} while (responseData.pages?.next != null);
 
 	return returnData;
 }
