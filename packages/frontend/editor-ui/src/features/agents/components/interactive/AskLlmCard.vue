@@ -14,6 +14,7 @@ import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCre
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { CHATHUB_TO_CATALOG, AGENT_UNSUPPORTED_PROVIDERS } from '../../provider-mapping';
+import { sanitizeModelId } from '../../utils/model-string';
 
 const props = defineProps<{
 	purpose?: string;
@@ -59,14 +60,6 @@ const filteredAgents = computed<ChatModelsResponse>(
 			),
 		) as ChatModelsResponse,
 );
-
-/** Strip "models/" prefix from Gemini model IDs */
-function sanitizeModelId(provider: string, modelId: string): string {
-	if (provider === 'google') {
-		return modelId.replace(/^models\//, '');
-	}
-	return modelId;
-}
 
 function onModelChange(selection: ChatHubConversationModel) {
 	if (!isLlmProviderModel(selection) || props.disabled) return;

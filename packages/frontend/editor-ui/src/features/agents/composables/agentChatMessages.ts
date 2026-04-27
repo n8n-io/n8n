@@ -19,22 +19,14 @@ import {
 	type InteractiveToolName,
 } from '@n8n/api-types';
 
-// ---------------------------------------------------------------------------
-// Tool call state
-// ---------------------------------------------------------------------------
+import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
+import type { ChatMessageStatus, ToolCallState } from '../constants';
+export { type ChatMessageStatus, type ToolCallState };
 
-/**
- * Lifecycle state of a single tool call inside a ChatMessage.
- *
- * - `pending` — LLM has committed to the call but the handler hasn't started
- *   executing yet (e.g. arguments still streaming, or runtime hasn't dispatched)
- * - `running` — handler is executing (received `tool-execution-start`); waiting
- *   for it to return
- * - `suspended` — handler called `ctx.suspend(...)`; awaiting user resume
- * - `done` — tool returned (either via the handler or via `agent.resume()`)
- * - `error` — tool threw or the input failed validation
- */
-export type ToolCallState = 'pending' | 'running' | 'suspended' | 'done' | 'error';
+// ---------------------------------------------------------------------------
+// Tool call state — type lives in `../constants` so the literal values and
+// the type stay in one place. See ToolCallState there for state transitions.
+// ---------------------------------------------------------------------------
 
 export interface ToolCall {
 	tool: string;
@@ -42,6 +34,12 @@ export interface ToolCall {
 	input?: unknown;
 	output?: unknown;
 	state: ToolCallState;
+	/**
+	 * One-line answer label rendered next to the tool name in
+	 * `AgentChatToolSteps`. Set when an interactive tool resolves so the user
+	 * sees what they picked (e.g. "Slack") instead of just "ask_question".
+	 */
+	displaySummary?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +102,7 @@ export interface ChatMessage {
 	content: string;
 	thinking?: string;
 	toolCalls?: ToolCall[];
-	status?: 'streaming' | 'success' | 'error' | 'awaitingUser';
+	status?: ChatMessageStatus;
 	interactive?: InteractivePayload;
 }
 
@@ -133,6 +131,12 @@ export type DisplayGroup =
 			toolCalls: ToolCall[];
 			/** Interactive cards belonging to messages folded into this group. */
 			interactives: InteractivePayload[];
+			/**
+			 * Trailing assistant message in the turn that carries text content.
+			 * Folding it into the same group keeps a single bubble per turn
+			 * (thinking → tools → interactives → final text).
+			 */
+			finalMessage?: ChatMessage;
 	  };
 
 export function isGroupable(msg: ChatMessage): boolean {
@@ -144,7 +148,7 @@ export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
 	for (const msg of messages) {
 		if (isGroupable(msg)) {
 			const last = groups[groups.length - 1];
-			if (last && last.kind === 'toolRun') {
+			if (last && last.kind === 'toolRun' && !last.finalMessage) {
 				last.toolCalls = [...last.toolCalls, ...(msg.toolCalls ?? [])];
 				if (msg.thinking) {
 					last.thinking = last.thinking ? `${last.thinking}\n\n${msg.thinking}` : msg.thinking;
@@ -160,6 +164,22 @@ export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
 				interactives: msg.interactive ? [msg.interactive] : [],
 			});
 			continue;
+		}
+		// Assistant message with text content: fold into the open toolRun (if any)
+		// so tools and their trailing answer share a single bubble per turn.
+		if (msg.role === 'assistant') {
+			const last = groups[groups.length - 1];
+			if (last && last.kind === 'toolRun' && !last.finalMessage) {
+				last.finalMessage = msg;
+				if (msg.thinking) {
+					last.thinking = last.thinking ? `${last.thinking}\n\n${msg.thinking}` : msg.thinking;
+				}
+				if (msg.toolCalls?.length) {
+					last.toolCalls = [...last.toolCalls, ...msg.toolCalls];
+				}
+				if (msg.interactive) last.interactives.push(msg.interactive);
+				continue;
+			}
 		}
 		groups.push({ kind: 'message', id: msg.id, message: msg });
 	}
@@ -319,8 +339,8 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			if (rebuilt) {
 				interactive = rebuilt;
 				if (rebuilt.resolvedAt === undefined) {
-					tc.state = 'suspended';
-					status = 'awaitingUser';
+					tc.state = TOOL_CALL_STATE.SUSPENDED;
+					status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
 				break;
 			}

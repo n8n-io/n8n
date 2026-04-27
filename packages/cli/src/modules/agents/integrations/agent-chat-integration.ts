@@ -28,6 +28,18 @@ export abstract class AgentChatIntegration {
 	/** Credential types accepted by the frontend selector. */
 	abstract readonly credentialTypes: string[];
 
+	// ---------------------------------------------------------------------------
+	// FE display metadata — shown in the trigger-picker and integration cards.
+	// Localizable copy (help text, connected confirmation) lives in the FE i18n
+	// catalog keyed by `type`; only stable, brand-level metadata lives here.
+	// ---------------------------------------------------------------------------
+
+	/** Brand-name label shown in UI (not localized — e.g. "Slack", "Linear"). */
+	abstract readonly displayLabel: string;
+
+	/** Lucide icon name (from the shared icon set) for the integration card. */
+	abstract readonly displayIcon: string;
+
 	/**
 	 * Component types this platform supports in rich_interaction cards.
 	 * Omit to signal that the platform has no rich_interaction surface — the

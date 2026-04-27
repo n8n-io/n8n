@@ -24,6 +24,10 @@ export class LinearIntegration extends AgentChatIntegration {
 
 	readonly credentialTypes = ['linearApi', 'linearOAuth2Api'];
 
+	readonly displayLabel = 'Linear';
+
+	readonly displayIcon = 'list-checks';
+
 	constructor(private readonly logger: Logger) {
 		super();
 	}

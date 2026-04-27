@@ -2,6 +2,7 @@ import {
 	type AgentBuilderMessagesResponse,
 	type AgentPersistedMessageDto,
 	type AgentSseEvent,
+	type ChatIntegrationDescriptor,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
 	AgentIntegrationDto,
@@ -29,6 +30,7 @@ import {
 } from './agent-sse-stream';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
+import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -47,16 +49,16 @@ function makeBuilderToolEvents(send: (e: AgentSseEvent) => void): ToolEventCallb
 			streamingToolName = name;
 		},
 		toolInputDelta: (_toolCallId, delta) => {
-			if (streamingToolName === 'build_custom_tool') {
+			if (streamingToolName === BUILDER_TOOLS.BUILD_CUSTOM_TOOL) {
 				send({ type: 'code-delta', delta });
 			}
 		},
 		toolResult: (name) => {
-			if (name === 'write_config' || name === 'patch_config') {
+			if (name === BUILDER_TOOLS.WRITE_CONFIG || name === BUILDER_TOOLS.PATCH_CONFIG) {
 				send({ type: 'config-updated' });
 				streamingToolName = undefined;
 			}
-			if (name === 'build_custom_tool') {
+			if (name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL) {
 				send({ type: 'tool-updated' });
 				streamingToolName = undefined;
 			}
@@ -136,6 +138,11 @@ export class AgentsController {
 	async getModelCatalog() {
 		const { fetchProviderCatalog } = await import('@n8n/agents');
 		return await fetchProviderCatalog();
+	}
+
+	@Get('/catalog/integrations')
+	listIntegrations(): ChatIntegrationDescriptor[] {
+		return this.agentsService.listChatIntegrations();
 	}
 
 	@Get('/threads')

@@ -30,6 +30,10 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly credentialTypes = ['telegramApi'];
 
+	readonly displayLabel = 'Telegram';
+
+	readonly displayIcon = 'paper-plane';
+
 	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
 
 	readonly description =

@@ -70,6 +70,8 @@ class BufferingTestIntegration extends AgentChatIntegration {
 	readonly credentialTypes: string[] = [];
 	readonly supportedComponents: string[] = [];
 	readonly description = '';
+	readonly displayLabel = 'Test Buffered';
+	readonly displayIcon = 'circle';
 	readonly disableStreaming = true;
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
@@ -81,6 +83,8 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	readonly credentialTypes: string[] = [];
 	readonly supportedComponents: string[] = [];
 	readonly description = '';
+	readonly displayLabel = 'Test Streaming';
+	readonly displayIcon = 'circle';
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
