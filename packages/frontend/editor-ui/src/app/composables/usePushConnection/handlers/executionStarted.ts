@@ -14,20 +14,22 @@ export async function executionStarted(
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = options.workflowState.getCurrentWorkflowDocumentStore();
+	const workflowExecutionSessionStore =
+		options.workflowState.getCurrentWorkflowExecutionSessionStore();
 	const isIframe = window !== window.parent;
 
 	// In non-iframe context, undefined means "not tracking executions" → skip.
 	// In iframe context, executionFinished resets activeExecutionId to undefined,
 	// but we still want to accept new executions (re-execution scenario).
-	if (typeof workflowDocumentStore?.activeExecutionId === 'undefined' && !isIframe) {
+	if (typeof workflowExecutionSessionStore?.activeExecutionId === 'undefined' && !isIframe) {
 		return;
 	}
 
 	// Determine if we need to (re)initialize execution tracking state
 	const needsInit =
-		workflowDocumentStore?.activeExecutionId === null ||
-		typeof workflowDocumentStore?.activeExecutionId === 'undefined' ||
-		(isIframe && workflowDocumentStore.activeExecutionId !== data.executionId);
+		workflowExecutionSessionStore?.activeExecutionId === null ||
+		typeof workflowExecutionSessionStore?.activeExecutionId === 'undefined' ||
+		(isIframe && workflowExecutionSessionStore.activeExecutionId !== data.executionId);
 
 	if (needsInit) {
 		options.workflowState.setActiveExecutionId(data.executionId);

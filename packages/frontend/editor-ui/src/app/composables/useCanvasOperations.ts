@@ -142,6 +142,7 @@ import {
 	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 
 type AddNodeData = Partial<INodeUi> & {
@@ -194,6 +195,9 @@ export function useCanvasOperations() {
 	const setupPanelStore = useSetupPanelStore();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+	const workflowExecutionSessionStore = computed(() =>
+		useWorkflowExecutionSessionStore(workflowsStore.workflowId),
 	);
 
 	const i18n = useI18n();
@@ -383,11 +387,11 @@ export function useCanvasOperations() {
 		}
 		workflowDocumentStore.value.renameNodeMetadata(currentName, newName);
 		workflowDocumentStore.value.renamePinDataNode(currentName, newName);
-		getActiveExecutionDataStore(workflowDocumentStore.value)?.renameExecutionDataNode(
+		getActiveExecutionDataStore(workflowExecutionSessionStore.value)?.renameExecutionDataNode(
 			currentName,
 			newName,
 		);
-		workflowDocumentStore.value.renameExecutionSessionNode(currentName, newName);
+		workflowExecutionSessionStore.value.renameExecutionSessionNode(currentName, newName);
 
 		workflowDocumentStore.value.setNodes(Object.values(workflow.nodes));
 		workflowDocumentStore.value.setConnections(workflow.connectionsBySourceNode);
@@ -498,7 +502,9 @@ export function useCanvasOperations() {
 		connectAdjacentNodes(id, { trackHistory });
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
-		getActiveExecutionDataStore(workflowDocumentStore.value)?.clearNodeExecutionData(node.name);
+		getActiveExecutionDataStore(workflowExecutionSessionStore.value)?.clearNodeExecutionData(
+			node.name,
+		);
 		workflowDocumentStore.value.removeNodeById(id);
 
 		if (trackHistory) {
@@ -2312,15 +2318,11 @@ export function useCanvasOperations() {
 	 */
 
 	function resetWorkspace() {
-		const currentWorkflowDocumentStore = workflowsStore.workflowId
-			? workflowDocumentStore.value
-			: null;
-
 		// Reset node creator
 		nodeCreatorStore.setNodeCreatorState({ createNodeActive: false });
 
 		// Make sure that if there is a waiting test-webhook, it gets removed
-		if (currentWorkflowDocumentStore?.executionWaitingForWebhook) {
+		if (workflowExecutionSessionStore.value.executionWaitingForWebhook) {
 			try {
 				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
 			} catch (error) {}

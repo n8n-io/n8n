@@ -15,6 +15,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { VIEWS } from '@/app/constants';
 
 const sourceControlStore = vi.hoisted(() => ({
@@ -42,6 +43,7 @@ describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+	let workflowExecutionSessionStore: ReturnType<typeof useWorkflowExecutionSessionStore>;
 	let executionDataStore: ReturnType<typeof useExecutionDataStore>;
 	let workflowState: WorkflowState;
 	let uiStore: ReturnType<typeof useUIStore>;
@@ -60,7 +62,8 @@ describe('useWorkflowState', () => {
 			createWorkflowDocumentId(workflowsStore.workflow.id),
 		);
 		workflowDocumentStore.setScopes(['workflow:update']);
-		workflowDocumentStore.setActiveExecutionId('test-execution');
+		workflowExecutionSessionStore = useWorkflowExecutionSessionStore(workflowsStore.workflow.id);
+		workflowExecutionSessionStore.setActiveExecutionId('test-execution');
 		executionDataStore = useExecutionDataStore('test-execution');
 		uiStore = useUIStore();
 		uiStore.currentView = VIEWS.WORKFLOW.toString();
@@ -144,19 +147,19 @@ describe('useWorkflowState', () => {
 				}),
 				'test-workflow',
 			);
-			expect(workflowDocumentStore.lastSuccessfulExecutionId).toBe(execution.id);
+			expect(workflowExecutionSessionStore.lastSuccessfulExecutionId).toBe(execution.id);
 			expect(useExecutionDataStore(execution.id).execution).toEqual(execution);
 		});
 
 		it('stores null when the API returns no previous successful execution', async () => {
-			workflowDocumentStore.setLastSuccessfulExecution(
+			workflowExecutionSessionStore.setLastSuccessfulExecution(
 				createTestWorkflowExecutionResponse({ id: 'stale-execution', status: 'success' }),
 			);
 			vi.mocked(workflowsApi.getLastSuccessfulExecution).mockResolvedValue(null);
 
 			await workflowState.fetchLastSuccessfulExecution();
 
-			expect(workflowDocumentStore.lastSuccessfulExecutionId).toBeNull();
+			expect(workflowExecutionSessionStore.lastSuccessfulExecutionId).toBeNull();
 		});
 
 		it('skips fetching when the current workflow is archived', async () => {
@@ -180,12 +183,12 @@ describe('useWorkflowState', () => {
 				id: 'existing-execution',
 				status: 'success',
 			});
-			workflowDocumentStore.setLastSuccessfulExecution(execution);
+			workflowExecutionSessionStore.setLastSuccessfulExecution(execution);
 			vi.mocked(workflowsApi.getLastSuccessfulExecution).mockRejectedValue(new Error('boom'));
 
 			await expect(workflowState.fetchLastSuccessfulExecution()).resolves.toBeUndefined();
 
-			expect(workflowDocumentStore.lastSuccessfulExecutionId).toBe(execution.id);
+			expect(workflowExecutionSessionStore.lastSuccessfulExecutionId).toBe(execution.id);
 			expect(useExecutionDataStore(execution.id).execution).toEqual(execution);
 		});
 	});

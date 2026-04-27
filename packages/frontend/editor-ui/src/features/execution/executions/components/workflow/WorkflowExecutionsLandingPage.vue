@@ -5,10 +5,7 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import { useI18n } from '@n8n/i18n';
 
@@ -20,11 +17,13 @@ const locale = useI18n();
 const workflowId = useInjectWorkflowId();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+const workflowExecutionSessionStore = computed(() =>
+	useWorkflowExecutionSessionStore(workflowsStore.workflowId),
 );
 
-const executionCount = computed(() => workflowDocumentStore.value.currentWorkflowExecutions.length);
+const executionCount = computed(
+	() => workflowExecutionSessionStore.value.currentWorkflowExecutions.length,
+);
 const containsTrigger = computed(() => workflowsStore.workflowTriggerNodes.length > 0);
 
 function onSetupFirstStep(): void {

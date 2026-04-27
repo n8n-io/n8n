@@ -15,6 +15,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useRoute, useRouter } from 'vue-router';
 import type {
 	ChatUI,
@@ -87,6 +88,9 @@ const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
+);
+const workflowExecutionSessionStore = computed(() =>
+	useWorkflowExecutionSessionStore(workflowId.value),
 );
 const assistantStore = useAssistantStore();
 const settingsStore = useSettingsStore();
@@ -452,7 +456,7 @@ async function onWorkflowExecuted() {
 		return;
 	}
 
-	const executionData = getActiveExecutionDataStore(workflowDocumentStore.value)?.execution;
+	const executionData = getActiveExecutionDataStore(workflowExecutionSessionStore.value)?.execution;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
 	const errorNodeType = errorNodeName
@@ -532,7 +536,7 @@ async function onExecuteWithMockData() {
 	});
 
 	await runWorkflow({
-		triggerNode: workflowDocumentStore.value.selectedTriggerNodeName ?? triggerNode?.name,
+		triggerNode: workflowExecutionSessionStore.value.selectedTriggerNodeName ?? triggerNode?.name,
 	});
 }
 

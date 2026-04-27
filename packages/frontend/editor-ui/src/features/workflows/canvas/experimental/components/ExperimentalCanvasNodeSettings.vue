@@ -6,6 +6,7 @@ import { type IUpdateInformation } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { computed } from 'vue';
 
 const { nodeId, isReadOnly, subTitle, isEmbeddedInCanvas } = defineProps<{
@@ -22,6 +23,11 @@ const emit = defineEmits<{
 }>();
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionSessionStore = computed(() =>
+	workflowDocumentStore?.value
+		? useWorkflowExecutionSessionStore(workflowDocumentStore.value.workflowId)
+		: null,
+);
 const uiStore = useUIStore();
 const { renameNode } = useCanvasOperations();
 const nodeHelpers = useNodeHelpers();
@@ -33,7 +39,7 @@ const foreignCredentials = computed(() =>
 );
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 const isExecutionWaitingForWebhook = computed(
-	() => workflowDocumentStore?.value?.executionWaitingForWebhook ?? false,
+	() => workflowExecutionSessionStore.value?.executionWaitingForWebhook ?? false,
 );
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 

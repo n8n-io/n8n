@@ -1,10 +1,7 @@
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { computed } from 'vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useRoute } from 'vue-router';
@@ -14,13 +11,13 @@ export function useClearExecutionButtonVisible() {
 	const route = useRoute();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	const workflowExecutionSessionStore = computed(() =>
+		useWorkflowExecutionSessionStore(workflowsStore.workflowId),
 	);
 	const execution = computed(
-		() => getActiveExecutionDataStore(workflowDocumentStore.value)?.execution,
+		() => getActiveExecutionDataStore(workflowExecutionSessionStore.value)?.execution,
 	);
-	const isWorkflowRunning = computed(() => workflowDocumentStore.value.isWorkflowRunning);
+	const isWorkflowRunning = computed(() => workflowExecutionSessionStore.value.isWorkflowRunning);
 	const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 	const { editableWorkflow } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();

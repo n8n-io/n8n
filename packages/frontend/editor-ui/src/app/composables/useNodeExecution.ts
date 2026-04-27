@@ -29,6 +29,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -107,6 +108,9 @@ export function useNodeExecution(
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
+	const workflowExecutionSessionStore = computed(() =>
+		useWorkflowExecutionSessionStore(workflowsStore.workflowId),
+	);
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 	const nodeHelpers = useNodeHelpers();
@@ -146,10 +150,12 @@ export function useNodeExecution(
 	const isWebhookNode = computed(() => nodeType.value?.name === WEBHOOK_NODE_TYPE);
 
 	const isNodeRunning = computed(() => {
-		if (!workflowDocumentStore.value.isWorkflowRunning || codeGenerationInProgress.value) {
+		if (!workflowExecutionSessionStore.value.isWorkflowRunning || codeGenerationInProgress.value) {
 			return false;
 		}
-		const triggeredNode = getActiveExecutionDataStore(workflowDocumentStore.value)?.executedNode;
+		const triggeredNode = getActiveExecutionDataStore(
+			workflowExecutionSessionStore.value,
+		)?.executedNode;
 		return (
 			workflowState.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
 			triggeredNode === nodeRef.value?.name
@@ -157,8 +163,10 @@ export function useNodeExecution(
 	});
 
 	const isListening = computed(() => {
-		const waitingOnWebhook = workflowDocumentStore.value.executionWaitingForWebhook;
-		const executedNode = getActiveExecutionDataStore(workflowDocumentStore.value)?.executedNode;
+		const waitingOnWebhook = workflowExecutionSessionStore.value.executionWaitingForWebhook;
+		const executedNode = getActiveExecutionDataStore(
+			workflowExecutionSessionStore.value,
+		)?.executedNode;
 
 		return (
 			!!nodeRef.value &&
@@ -207,7 +215,7 @@ export function useNodeExecution(
 			return i18n.baseText('ndv.execute.requiredFieldsMissing');
 		}
 
-		if (workflowDocumentStore.value.isWorkflowRunning && !isNodeRunning.value) {
+		if (workflowExecutionSessionStore.value.isWorkflowRunning && !isNodeRunning.value) {
 			return i18n.baseText('ndv.execute.workflowAlreadyRunning');
 		}
 

@@ -179,11 +179,14 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
-		if (!currentWorkflowDocumentStore.value?.isInDebugMode) {
+		const workflowExecutionSessionStore = workflowState.getCurrentWorkflowExecutionSessionStore();
+		if (!workflowExecutionSessionStore) return;
+
+		if (!workflowExecutionSessionStore.isInDebugMode) {
 			const executionId = route.params.executionId;
 			if (typeof executionId === 'string') {
 				await applyExecutionData(executionId);
-				currentWorkflowDocumentStore.value?.setDebugMode(true);
+				workflowExecutionSessionStore.setDebugMode(true);
 			}
 		}
 	}

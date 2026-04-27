@@ -12,6 +12,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import uniqBy from 'lodash/uniqBy';
@@ -109,8 +110,15 @@ const inputModes = [
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionSessionStore = computed(() =>
+	workflowDocumentStore?.value
+		? useWorkflowExecutionSessionStore(workflowDocumentStore.value.workflowId)
+		: null,
+);
 const executionDataStore = computed(() =>
-	workflowDocumentStore?.value ? getActiveExecutionDataStore(workflowDocumentStore.value) : null,
+	workflowDocumentStore?.value
+		? getActiveExecutionDataStore(workflowExecutionSessionStore.value)
+		: null,
 );
 const workflowState = injectWorkflowState();
 const router = useRouter();
@@ -194,7 +202,7 @@ const isMappingEnabled = computed(() => {
 	return true;
 });
 const isExecutingPrevious = computed(() => {
-	if (!workflowDocumentStore?.value?.isWorkflowRunning) {
+	if (!workflowExecutionSessionStore.value?.isWorkflowRunning) {
 		return false;
 	}
 	const triggeredNode = executionDataStore.value?.executedNode;

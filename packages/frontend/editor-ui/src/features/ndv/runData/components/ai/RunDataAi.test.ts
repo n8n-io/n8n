@@ -12,6 +12,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, within } from '@testing-library/vue';
 import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
@@ -23,7 +24,6 @@ const renderComponent = createComponentRenderer(RunDataAi);
 
 describe('RunDataAi', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
 	const agentNode = createTestNode({ name: 'a0', type: AGENT_NODE_TYPE });
 
@@ -98,10 +98,10 @@ describe('RunDataAi', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.workflow.id = workflow.id;
-		workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflow.id),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id));
+		useWorkflowExecutionSessionStore(workflowsStore.workflow.id).setActiveExecutionId(
+			executionResponse.id,
 		);
-		workflowDocumentStore.setActiveExecutionId(executionResponse.id);
 		useExecutionDataStore(executionResponse.id).setExecution(executionResponse);
 	});
 

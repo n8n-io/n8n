@@ -12,6 +12,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { computed, h, nextTick, ref, shallowRef } from 'vue';
 import {
 	aiAgentNode,
@@ -329,7 +330,9 @@ describe('LogsPanel', () => {
 	it('should reflect changes to execution data in workflow store if execution is in progress', async () => {
 		logsStore.toggleOpen(true);
 		workflowsStore.workflow = createAiChatWorkflow();
-		workflowDocumentStore.setActiveExecutionId(IN_PROGRESS_EXECUTION_ID);
+		useWorkflowExecutionSessionStore(workflowsStore.workflowId).setActiveExecutionId(
+			IN_PROGRESS_EXECUTION_ID,
+		);
 		workflowState.setExecution({
 			...aiChatExecutionResponse,
 			id: IN_PROGRESS_EXECUTION_ID,

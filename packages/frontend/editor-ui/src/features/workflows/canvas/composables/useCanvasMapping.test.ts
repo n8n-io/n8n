@@ -27,6 +27,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
@@ -129,19 +130,19 @@ function setPinData(pinData: IPinData) {
 	workflowDocumentStore.setPinData(pinData);
 }
 
-function getWorkflowDocumentStore() {
+function getWorkflowExecutionSessionStore() {
 	const workflowsStore = useWorkflowsStore();
-	return useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id));
+	return useWorkflowExecutionSessionStore(workflowsStore.workflow.id);
 }
 
 function getExecutionDataStore() {
-	getWorkflowDocumentStore().setActiveExecutionId(TEST_EXECUTION_ID);
+	getWorkflowExecutionSessionStore().setActiveExecutionId(TEST_EXECUTION_ID);
 	return useExecutionDataStore(TEST_EXECUTION_ID);
 }
 
 function setExecutionRunData(runData: IRunData) {
 	const workflowsStore = useWorkflowsStore();
-	getWorkflowDocumentStore().setActiveExecutionId(TEST_EXECUTION_ID);
+	getWorkflowExecutionSessionStore().setActiveExecutionId(TEST_EXECUTION_ID);
 	useExecutionDataStore(TEST_EXECUTION_ID).setExecution(
 		createTestWorkflowExecutionResponse({
 			id: TEST_EXECUTION_ID,
@@ -1858,7 +1859,7 @@ describe('useCanvasMapping', () => {
 
 			workflowState.executingNode.executingNode = [];
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
-			getWorkflowDocumentStore().setActiveExecutionId(null);
+			getWorkflowExecutionSessionStore().setActiveExecutionId(null);
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
 				nodes: ref(nodes),
@@ -1887,7 +1888,7 @@ describe('useCanvasMapping', () => {
 
 			workflowState.executingNode.executingNode = [];
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
-			getWorkflowDocumentStore().setActiveExecutionId(undefined);
+			getWorkflowExecutionSessionStore().setActiveExecutionId(undefined);
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
 				nodes: ref(nodes),
@@ -1916,7 +1917,7 @@ describe('useCanvasMapping', () => {
 
 			workflowState.executingNode.executingNode = [node2.name];
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
-			getWorkflowDocumentStore().setActiveExecutionId(undefined);
+			getWorkflowExecutionSessionStore().setActiveExecutionId(undefined);
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
 				nodes: ref(nodes),
@@ -1943,7 +1944,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			getWorkflowDocumentStore().setActiveExecutionId(null);
+			getWorkflowExecutionSessionStore().setActiveExecutionId(null);
 			setExecutionRunData({});
 			setPinData({});
 
@@ -1971,7 +1972,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				getWorkflowDocumentStore().setActiveExecutionId(null);
+				getWorkflowExecutionSessionStore().setActiveExecutionId(null);
 				setExecutionRunData({});
 				setPinData({});
 
@@ -1999,7 +2000,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			getWorkflowDocumentStore().setActiveExecutionId(null);
+			getWorkflowExecutionSessionStore().setActiveExecutionId(null);
 			setExecutionRunData({});
 			setPinData({ 'Manual Trigger': [{ json: {} }] }); // Node has pinned data
 
@@ -2026,7 +2027,7 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			getWorkflowDocumentStore().setActiveExecutionId(undefined);
+			getWorkflowExecutionSessionStore().setActiveExecutionId(undefined);
 			setExecutionRunData({});
 			setPinData({});
 

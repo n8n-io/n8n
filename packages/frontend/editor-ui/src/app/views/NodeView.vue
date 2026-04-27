@@ -135,6 +135,7 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
@@ -266,6 +267,11 @@ const fallbackNodes = ref<INodeUi[]>([]);
 
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionSessionStore = computed(() =>
+	workflowDocumentStore?.value
+		? useWorkflowExecutionSessionStore(workflowDocumentStore.value.workflowId)
+		: null,
+);
 const routeNodeId = computed(() => {
 	const nodeId = route.params.nodeId;
 	return Array.isArray(nodeId) ? nodeId[0] : nodeId;
@@ -413,7 +419,7 @@ const isRunButtonSplit = computed(() => {
 	);
 	return (
 		selectableTriggerNodes.length > 1 &&
-		workflowDocumentStore?.value?.selectedTriggerNodeName !== undefined
+		workflowExecutionSessionStore.value?.selectedTriggerNodeName !== undefined
 	);
 });
 
@@ -1028,9 +1034,11 @@ const projectPermissions = computed(() => {
 
 const isStoppingExecution = ref(false);
 
-const isWorkflowRunning = computed(() => workflowDocumentStore?.value?.isWorkflowRunning ?? false);
+const isWorkflowRunning = computed(
+	() => workflowExecutionSessionStore.value?.isWorkflowRunning ?? false,
+);
 const isExecutionWaitingForWebhook = computed(
-	() => workflowDocumentStore?.value?.executionWaitingForWebhook ?? false,
+	() => workflowExecutionSessionStore.value?.executionWaitingForWebhook ?? false,
 );
 
 const isExecutionDisabled = computed(() => {
@@ -1861,11 +1869,11 @@ onBeforeUnmount(() => {
 					:executing="isWorkflowRunning"
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowDocumentStore?.selectedTriggerNodeName"
+					:selected-trigger-node-name="workflowExecutionSessionStore?.selectedTriggerNodeName"
 					@mouseenter="onRunWorkflowButtonMouseEnter"
 					@mouseleave="onRunWorkflowButtonMouseLeave"
 					@execute="runEntireWorkflow('main')"
-					@select-trigger-node="workflowDocumentStore?.setSelectedTriggerNodeName"
+					@select-trigger-node="workflowExecutionSessionStore?.setSelectedTriggerNodeName"
 				/>
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton

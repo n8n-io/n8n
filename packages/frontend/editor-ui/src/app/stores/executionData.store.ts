@@ -27,6 +27,10 @@ type PiniaInternal = ReturnType<typeof getActivePinia> & {
 
 const EXECUTION_DATA_STORE_PREFIX =
 	'EXECUTION_DATA' in STORES ? STORES.EXECUTION_DATA : 'executionData';
+const WORKFLOW_EXECUTION_SESSION_STORE_PREFIX =
+	'WORKFLOW_EXECUTION_SESSIONS' in STORES
+		? STORES.WORKFLOW_EXECUTION_SESSIONS
+		: 'workflowExecutionSessions';
 
 function replaceExecutionTaskData(
 	tasksData: ITaskData[],
@@ -185,11 +189,31 @@ export function getExecutionDataStoreId(executionId: ExecutionDataId) {
 	return `${EXECUTION_DATA_STORE_PREFIX}/${executionId}`;
 }
 
-export function getActiveExecutionDataStore(session: {
-	activeExecutionId: string | null | undefined;
-}) {
-	const executionId =
-		session.activeExecutionId === null ? IN_PROGRESS_EXECUTION_ID : session.activeExecutionId;
+export function getActiveExecutionDataStore(
+	session:
+		| {
+				activeExecutionId?: string | null | undefined;
+				workflowId?: string;
+		  }
+		| null
+		| undefined,
+) {
+	if (!session) {
+		return null;
+	}
+	const pinia = getActivePinia();
+	const workflowExecutionSessionStoreId = session.workflowId
+		? WORKFLOW_EXECUTION_SESSION_STORE_PREFIX + '/' + session.workflowId
+		: undefined;
+	const activeExecutionId =
+		session.activeExecutionId ??
+		(workflowExecutionSessionStoreId && pinia
+			? (pinia.state.value[workflowExecutionSessionStoreId]?.activeExecutionId as
+					| string
+					| null
+					| undefined)
+			: undefined);
+	const executionId = activeExecutionId === null ? IN_PROGRESS_EXECUTION_ID : activeExecutionId;
 
 	return executionId ? useExecutionDataStore(executionId) : null;
 }

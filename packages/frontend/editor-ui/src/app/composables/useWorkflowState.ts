@@ -9,6 +9,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import {
 	disposeExecutionDataStore,
 	getActiveExecutionDataStore,
@@ -69,13 +70,22 @@ export function useWorkflowState() {
 		return useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 	}
 
+	function getCurrentWorkflowExecutionSessionStore() {
+		const workflowId = getCurrentWorkflowId();
+		if (!workflowId) {
+			return null;
+		}
+
+		return useWorkflowExecutionSessionStore(workflowId);
+	}
+
 	////
 	// Workflow editing state
 	////
 
 	function setExecution(execution: IExecutionResponse | null) {
-		const workflowDocumentStore = getCurrentWorkflowDocumentStore();
-		if (!workflowDocumentStore) {
+		const workflowExecutionSessionStore = getCurrentWorkflowExecutionSessionStore();
+		if (!workflowExecutionSessionStore) {
 			return;
 		}
 
@@ -86,7 +96,7 @@ export function useWorkflowState() {
 		}
 
 		if (!execution) {
-			getActiveExecutionDataStore(workflowDocumentStore)?.setExecution(null);
+			getActiveExecutionDataStore(workflowExecutionSessionStore)?.setExecution(null);
 			return;
 		}
 
@@ -94,12 +104,12 @@ export function useWorkflowState() {
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
-		const workflowDocumentStore = getCurrentWorkflowDocumentStore();
-		if (!workflowDocumentStore) {
+		const workflowExecutionSessionStore = getCurrentWorkflowExecutionSessionStore();
+		if (!workflowExecutionSessionStore) {
 			return;
 		}
 
-		if (id && workflowDocumentStore.activeExecutionId === null) {
+		if (id && workflowExecutionSessionStore.activeExecutionId === null) {
 			const inProgressExecutionStore = useExecutionDataStore(IN_PROGRESS_EXECUTION_ID);
 			const executionDataStore = useExecutionDataStore(id);
 
@@ -112,7 +122,7 @@ export function useWorkflowState() {
 			}
 		}
 
-		workflowDocumentStore.setActiveExecutionId(id);
+		workflowExecutionSessionStore.setActiveExecutionId(id);
 	}
 
 	async function getNewWorkflowData(
@@ -155,9 +165,12 @@ export function useWorkflowState() {
 			return;
 		}
 
-		workflowDocumentStore.setExecutionWaitingForWebhook(false);
+		const workflowExecutionSessionStore = getCurrentWorkflowExecutionSessionStore();
+		workflowExecutionSessionStore?.setExecutionWaitingForWebhook(false);
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
-		const executionDataStore = getActiveExecutionDataStore(workflowDocumentStore);
+		const executionDataStore = workflowExecutionSessionStore
+			? getActiveExecutionDataStore(workflowExecutionSessionStore)
+			: null;
 		executionDataStore?.clearExecutionStartedData();
 
 		clearPopupWindowState();
@@ -194,14 +207,15 @@ export function useWorkflowState() {
 		setExecution(null);
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
-		getCurrentWorkflowDocumentStore()?.setExecutionWaitingForWebhook(false);
+		getCurrentWorkflowExecutionSessionStore()?.setExecutionWaitingForWebhook(false);
 		useBuilderStore().resetManualExecutionStats();
 	}
 
 	async function fetchLastSuccessfulExecution() {
 		const workflowId = ws.workflow.id;
 		const workflowDocumentStore = getCurrentWorkflowDocumentStore();
-		if (!workflowId || !workflowDocumentStore) {
+		const workflowExecutionSessionStore = getCurrentWorkflowExecutionSessionStore();
+		if (!workflowId || !workflowDocumentStore || !workflowExecutionSessionStore) {
 			return;
 		}
 
@@ -222,7 +236,7 @@ export function useWorkflowState() {
 				rootStore.restApiContext,
 				workflowId,
 			);
-			workflowDocumentStore.setLastSuccessfulExecution(lastSuccessfulExecution);
+			workflowExecutionSessionStore.setLastSuccessfulExecution(lastSuccessfulExecution);
 		} catch {}
 	}
 
@@ -234,6 +248,7 @@ export function useWorkflowState() {
 		getNewWorkflowData,
 		fetchLastSuccessfulExecution,
 		getCurrentWorkflowDocumentStore,
+		getCurrentWorkflowExecutionSessionStore,
 
 		// Execution
 		markExecutionAsStopped,

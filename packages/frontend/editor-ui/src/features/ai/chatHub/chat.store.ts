@@ -94,11 +94,8 @@ import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { createRunExecutionData, deepCopy, type INode } from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores/constants';
@@ -565,8 +562,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			return;
 		}
 
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+		const workflowExecutionSessionStore = useWorkflowExecutionSessionStore(
+			workflowsStore.workflowId,
 		);
 
 		useExecutionDataStore(IN_PROGRESS_EXECUTION_ID).setExecution({
@@ -585,7 +582,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		});
 
 		// Signal canvas that an execution is pending (null = waiting for execution ID)
-		workflowDocumentStore.setActiveExecutionId(null);
+		workflowExecutionSessionStore.setActiveExecutionId(null);
 	}
 
 	async function sendMessage(

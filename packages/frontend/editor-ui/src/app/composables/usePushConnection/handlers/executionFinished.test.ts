@@ -25,6 +25,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -41,7 +42,7 @@ function createWorkflowDocumentStoreForTest(
 ) {
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 	workflowDocumentStore.name = 'Test Workflow';
-	workflowDocumentStore.activeExecutionId = activeExecutionId;
+	useWorkflowExecutionSessionStore(workflowId).setActiveExecutionId(activeExecutionId);
 	return workflowDocumentStore;
 }
 
@@ -305,6 +306,7 @@ describe('executionFinished', () => {
 
 			const workflowState = mock<WorkflowState>({
 				getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
+				getCurrentWorkflowExecutionSessionStore: vi.fn(() => useWorkflowExecutionSessionStore('1')),
 				executingNode: {
 					lastAddedExecutingNode: null,
 				},
@@ -345,6 +347,7 @@ describe('executionFinished', () => {
 
 			const workflowState = mock<WorkflowState>({
 				getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
+				getCurrentWorkflowExecutionSessionStore: vi.fn(() => useWorkflowExecutionSessionStore('1')),
 				executingNode: {
 					lastAddedExecutingNode: null,
 				},
@@ -388,6 +391,7 @@ describe('executionFinished', () => {
 
 			const workflowState = mock<WorkflowState>({
 				getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
+				getCurrentWorkflowExecutionSessionStore: vi.fn(() => useWorkflowExecutionSessionStore('1')),
 				executingNode: {
 					lastAddedExecutingNode: null,
 				},
@@ -428,6 +432,7 @@ describe('executionFinished', () => {
 
 			const workflowState = mock<WorkflowState>({
 				getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
+				getCurrentWorkflowExecutionSessionStore: vi.fn(() => useWorkflowExecutionSessionStore('1')),
 				executingNode: {
 					lastAddedExecutingNode: null,
 				},
@@ -472,6 +477,7 @@ describe('executionFinished', () => {
 
 			const workflowState = mock<WorkflowState>({
 				getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
+				getCurrentWorkflowExecutionSessionStore: vi.fn(() => useWorkflowExecutionSessionStore('1')),
 				executingNode: {
 					lastAddedExecutingNode: null,
 				},
@@ -523,6 +529,7 @@ describe('executionFinished', () => {
 
 		const workflowState = mock<WorkflowState>({
 			getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
+			getCurrentWorkflowExecutionSessionStore: vi.fn(() => useWorkflowExecutionSessionStore('1')),
 			executingNode: {
 				lastAddedExecutingNode: 'test-node',
 			},
@@ -577,6 +584,7 @@ describe('executionFinished', () => {
 		const clearNodeExecutionQueue = vi.fn();
 		const workflowState = mock<WorkflowState>({
 			getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
+			getCurrentWorkflowExecutionSessionStore: vi.fn(() => useWorkflowExecutionSessionStore('1')),
 			executingNode: {
 				lastAddedExecutingNode: 'LastNode',
 				clearNodeExecutionQueue,
@@ -613,6 +621,7 @@ describe('executionFinished', () => {
 		const clearNodeExecutionQueue = vi.fn();
 		const workflowState = mock<WorkflowState>({
 			getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
+			getCurrentWorkflowExecutionSessionStore: vi.fn(() => useWorkflowExecutionSessionStore('1')),
 			executingNode: {
 				lastAddedExecutingNode: 'LastNode',
 				clearNodeExecutionQueue,

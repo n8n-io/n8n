@@ -25,6 +25,7 @@ import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
@@ -72,6 +73,11 @@ const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionSessionStore = computed(() =>
+	workflowDocumentStore?.value
+		? useWorkflowExecutionSessionStore(workflowDocumentStore.value.workflowId)
+		: null,
+);
 const deviceSupport = useDeviceSupport();
 const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
@@ -111,8 +117,8 @@ const showTriggerWaitingWarning = computed(
 		triggerWaitingWarningEnabled.value &&
 		!!activeNodeType.value &&
 		!activeNodeType.value.group.includes('trigger') &&
-		workflowDocumentStore?.value?.isWorkflowRunning &&
-		workflowDocumentStore?.value?.executionWaitingForWebhook,
+		workflowExecutionSessionStore.value?.isWorkflowRunning &&
+		workflowExecutionSessionStore.value?.executionWaitingForWebhook,
 );
 
 const workflowRunData = computed(() => {
@@ -215,7 +221,7 @@ const isActiveStickyNode = computed(
 
 const workflowExecution = computed(() =>
 	workflowDocumentStore?.value
-		? (getActiveExecutionDataStore(workflowDocumentStore.value)?.execution ?? null)
+		? (getActiveExecutionDataStore(workflowExecutionSessionStore.value)?.execution ?? null)
 		: null,
 );
 
@@ -317,12 +323,12 @@ const featureRequestUrl = computed(() => {
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isExecutionWaitingForWebhook = computed(
-	() => workflowDocumentStore?.value?.executionWaitingForWebhook ?? false,
+	() => workflowExecutionSessionStore.value?.executionWaitingForWebhook ?? false,
 );
 
 const blockUi = computed(
 	() =>
-		(workflowDocumentStore?.value?.isWorkflowRunning ?? false) ||
+		(workflowExecutionSessionStore.value?.isWorkflowRunning ?? false) ||
 		isExecutionWaitingForWebhook.value,
 );
 
@@ -436,7 +442,7 @@ const onUnlinkRun = (pane: string) => {
 
 const onNodeExecute = () => {
 	setTimeout(() => {
-		if (!activeNode.value || !workflowDocumentStore?.value?.isWorkflowRunning) {
+		if (!activeNode.value || !workflowExecutionSessionStore.value?.isWorkflowRunning) {
 			return;
 		}
 		triggerWaitingWarningEnabled.value = true;

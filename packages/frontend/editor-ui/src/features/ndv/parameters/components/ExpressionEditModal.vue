@@ -38,6 +38,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
@@ -66,8 +67,11 @@ const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
 );
+const workflowExecutionSessionStore = computed(() =>
+	useWorkflowExecutionSessionStore(workflowsStore.workflow.id),
+);
 const lastSuccessfulExecution = computed(() => {
-	const executionId = workflowDocumentStore.value.lastSuccessfulExecutionId;
+	const executionId = workflowExecutionSessionStore.value.lastSuccessfulExecutionId;
 	return executionId ? useExecutionDataStore(executionId).execution : null;
 });
 

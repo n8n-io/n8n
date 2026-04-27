@@ -13,6 +13,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
@@ -43,6 +44,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+	const workflowExecutionSessionStore = computed(() =>
+		useWorkflowExecutionSessionStore(workflowsStore.workflowId),
 	);
 	const route = useRoute();
 	const streaming = ref<boolean>();
@@ -199,7 +203,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		return (
 			chatSessionTask.value === 'error' &&
-			workflowDocumentStore.value.activeExecutionId === currentSessionActiveExecutionId.value &&
+			workflowExecutionSessionStore.value.activeExecutionId ===
+				currentSessionActiveExecutionId.value &&
 			targetNode === chatSessionError.value?.node.name
 		);
 	}
@@ -350,8 +355,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const activeCredential = isCredentialModalActive
 			? useCredentialsStore().getCredentialTypeByName(uiStore.activeCredentialType ?? '')
 			: undefined;
-		const executionResult = getActiveExecutionDataStore(workflowDocumentStore.value)?.execution
-			?.data?.resultData;
+		const executionResult = getActiveExecutionDataStore(workflowExecutionSessionStore.value)
+			?.execution?.data?.resultData;
 		const isCurrentNodeExecuted = Boolean(
 			executionResult?.runData?.hasOwnProperty(activeNode?.name ?? ''),
 		);
@@ -490,8 +495,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionError.value = context;
 		currentSessionWorkflowId.value = workflowId;
 
-		if (workflowDocumentStore.value.activeExecutionId) {
-			currentSessionActiveExecutionId.value = workflowDocumentStore.value.activeExecutionId;
+		if (workflowExecutionSessionStore.value.activeExecutionId) {
+			currentSessionActiveExecutionId.value = workflowExecutionSessionStore.value.activeExecutionId;
 		}
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
@@ -743,7 +748,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	);
 
 	watch(
-		() => getActiveExecutionDataStore(workflowDocumentStore.value)?.executionResultDataLastUpdate,
+		() =>
+			getActiveExecutionDataStore(workflowExecutionSessionStore.value)
+				?.executionResultDataLastUpdate,
 		() => {
 			executionStale.value = true;
 		},

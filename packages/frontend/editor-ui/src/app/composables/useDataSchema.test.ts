@@ -16,6 +16,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
 
@@ -842,10 +843,10 @@ describe('useDataSchema', () => {
 			],
 		])('should return correct output %s', ([node, runIndex, outputIndex, execution], output) => {
 			const workflowsStore = useWorkflowsStore();
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
+			useWorkflowExecutionSessionStore(workflowsStore.workflowId).setActiveExecutionId(
+				(execution as IExecutionResponse).id,
 			);
-			workflowDocumentStore.setActiveExecutionId((execution as IExecutionResponse).id);
 			useExecutionDataStore((execution as IExecutionResponse).id).setExecution(
 				execution as IExecutionResponse,
 			);

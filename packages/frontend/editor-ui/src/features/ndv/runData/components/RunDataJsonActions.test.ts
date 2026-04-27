@@ -15,6 +15,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
@@ -63,7 +64,7 @@ async function createPiniaWithActiveNode() {
 	workflowsStore.workflow = workflow;
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.initPristineNodeMetadata(node.name);
-	workflowDocumentStore.setActiveExecutionId('1');
+	useWorkflowExecutionSessionStore(workflow.id).setActiveExecutionId('1');
 	useExecutionDataStore('1').setExecution({
 		id: '1',
 		finished: true,

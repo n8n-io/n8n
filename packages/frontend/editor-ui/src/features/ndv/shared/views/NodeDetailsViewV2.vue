@@ -34,6 +34,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
@@ -74,6 +75,11 @@ const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionSessionStore = computed(() =>
+	workflowDocumentStore?.value
+		? useWorkflowExecutionSessionStore(workflowDocumentStore.value.workflowId)
+		: null,
+);
 const deviceSupport = useDeviceSupport();
 const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
@@ -219,7 +225,7 @@ const isActiveStickyNode = computed(
 
 const workflowExecution = computed(() =>
 	workflowDocumentStore?.value
-		? (getActiveExecutionDataStore(workflowDocumentStore.value)?.execution ?? null)
+		? (getActiveExecutionDataStore(workflowExecutionSessionStore.value)?.execution ?? null)
 		: null,
 );
 
@@ -305,7 +311,7 @@ const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const isExecutionWaitingForWebhook = computed(
-	() => workflowDocumentStore?.value?.executionWaitingForWebhook ?? false,
+	() => workflowExecutionSessionStore.value?.executionWaitingForWebhook ?? false,
 );
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);

@@ -13,6 +13,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 
 const RUNNING_STATES: string[] = ['running', 'waiting'];
 
@@ -28,6 +29,9 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+	const workflowExecutionSessionStore = computed(() =>
+		useWorkflowExecutionSessionStore(workflowsStore.workflowId),
 	);
 	const nodeTypesStore = useNodeTypesStore();
 	const logsStore = useLogsStore();
@@ -46,9 +50,9 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		!isReady.value ? i18n.baseText('aiAssistant.builder.executeMessage.validationTooltip') : '',
 	);
 
-	const isWorkflowRunning = computed(() => workflowDocumentStore.value.isWorkflowRunning);
+	const isWorkflowRunning = computed(() => workflowExecutionSessionStore.value.isWorkflowRunning);
 	const isExecutionWaitingForWebhook = computed(
-		() => workflowDocumentStore.value.executionWaitingForWebhook,
+		() => workflowExecutionSessionStore.value.executionWaitingForWebhook,
 	);
 
 	// --- Execution watcher ---
@@ -65,7 +69,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		stopExecutionWatcher();
 
 		executionWatcherStop = watch(
-			() => getActiveExecutionDataStore(workflowDocumentStore.value)?.execution?.status,
+			() => getActiveExecutionDataStore(workflowExecutionSessionStore.value)?.execution?.status,
 			async (status) => {
 				await nextTick();
 				if (!status || RUNNING_STATES.includes(status)) return;
@@ -86,7 +90,8 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		if (!isReady.value) return false;
 
 		const selectedTriggerNode =
-			workflowDocumentStore.value.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
+			workflowExecutionSessionStore.value.selectedTriggerNodeName ??
+			availableTriggerNodes.value[0]?.name;
 		const selectedTriggerNodeType = selectedTriggerNode
 			? workflowDocumentStore.value?.getNodeByName(selectedTriggerNode)
 			: null;

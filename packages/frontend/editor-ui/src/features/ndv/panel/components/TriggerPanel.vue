@@ -26,6 +26,7 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 
 import {
 	N8nButton,
@@ -55,8 +56,15 @@ const workflowId = useInjectWorkflowId();
 const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionSessionStore = computed(() =>
+	workflowDocumentStore?.value
+		? useWorkflowExecutionSessionStore(workflowDocumentStore.value.workflowId)
+		: null,
+);
 const executionDataStore = computed(() =>
-	workflowDocumentStore?.value ? getActiveExecutionDataStore(workflowDocumentStore.value) : null,
+	workflowDocumentStore?.value
+		? getActiveExecutionDataStore(workflowExecutionSessionStore.value)
+		: null,
 );
 const ndvStore = useNDVStore();
 
@@ -173,7 +181,7 @@ const isListeningForEvents = computed(() => {
 		return false;
 	}
 
-	if (!workflowDocumentStore?.value?.executionWaitingForWebhook) {
+	if (!workflowExecutionSessionStore.value?.executionWaitingForWebhook) {
 		return false;
 	}
 
@@ -186,7 +194,9 @@ const isListeningForEvents = computed(() => {
 	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;
 });
 
-const workflowRunning = computed(() => workflowDocumentStore?.value?.isWorkflowRunning ?? false);
+const workflowRunning = computed(
+	() => workflowExecutionSessionStore.value?.isWorkflowRunning ?? false,
+);
 
 const isActivelyPolling = computed(() => {
 	const triggeredNode = executionDataStore.value?.executedNode;

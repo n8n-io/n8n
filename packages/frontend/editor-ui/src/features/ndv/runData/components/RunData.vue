@@ -98,6 +98,7 @@ import {
 	getActiveExecutionDataStore,
 	useExecutionDataStore,
 } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
@@ -232,6 +233,11 @@ const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionSessionStore = computed(() =>
+	workflowDocumentStore?.value
+		? useWorkflowExecutionSessionStore(workflowDocumentStore.value.workflowId)
+		: null,
+);
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const rootStore = useRootStore();
@@ -317,7 +323,7 @@ const shouldShowSchemaView = computed(() => {
 });
 
 const lastSuccessfulExecution = computed(() => {
-	const executionId = workflowDocumentStore?.value?.lastSuccessfulExecutionId;
+	const executionId = workflowExecutionSessionStore.value?.lastSuccessfulExecutionId;
 	return executionId ? useExecutionDataStore(executionId).execution : null;
 });
 
@@ -426,7 +432,7 @@ const workflowExecution = computed(
 	() =>
 		props.workflowExecution ??
 		(workflowDocumentStore?.value
-			? getActiveExecutionDataStore(workflowDocumentStore.value)?.execution?.data
+			? getActiveExecutionDataStore(workflowExecutionSessionStore.value)?.execution?.data
 			: undefined) ??
 		undefined,
 );

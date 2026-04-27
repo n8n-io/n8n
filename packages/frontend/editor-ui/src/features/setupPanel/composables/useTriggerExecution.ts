@@ -8,6 +8,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useLogsStore } from '@/app/stores/logs.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -27,6 +28,9 @@ export function useTriggerExecution(
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+	const workflowExecutionSessionStore = computed(() =>
+		useWorkflowExecutionSessionStore(workflowsStore.workflowId),
 	);
 	const logsStore = useLogsStore();
 
@@ -55,7 +59,8 @@ export function useTriggerExecution(
 		return (
 			nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE &&
 			logsStore.isOpen &&
-			workflowDocumentStore.value.chatPartialExecutionDestinationNode === nodeValue.value?.name
+			workflowExecutionSessionStore.value.chatPartialExecutionDestinationNode ===
+				nodeValue.value?.name
 		);
 	});
 

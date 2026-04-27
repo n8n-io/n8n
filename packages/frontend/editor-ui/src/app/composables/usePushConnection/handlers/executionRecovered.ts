@@ -16,10 +16,11 @@ export async function executionRecovered(
 	options: { router: ReturnType<typeof useRouter>; workflowState: WorkflowState },
 ) {
 	const uiStore = useUIStore();
-	const workflowDocumentStore = options.workflowState.getCurrentWorkflowDocumentStore();
+	const workflowExecutionSessionStore =
+		options.workflowState.getCurrentWorkflowExecutionSessionStore();
 
 	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowDocumentStore?.activeExecutionId === 'undefined') {
+	if (typeof workflowExecutionSessionStore?.activeExecutionId === 'undefined') {
 		return;
 	}
 

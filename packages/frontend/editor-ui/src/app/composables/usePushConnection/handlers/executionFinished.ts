@@ -22,6 +22,7 @@ import {
 	getActiveExecutionDataStore,
 	useExecutionDataStore,
 } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
@@ -69,7 +70,8 @@ export async function executionFinished(
 	{ data }: ExecutionFinished,
 	options: ExecutionFinishedOptions,
 ) {
-	const workflowDocumentStore = options.workflowState.getCurrentWorkflowDocumentStore();
+	const workflowExecutionSessionStore =
+		options.workflowState.getCurrentWorkflowExecutionSessionStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
@@ -79,7 +81,7 @@ export async function executionFinished(
 	options.workflowState.executingNode.clearNodeExecutionQueue();
 
 	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowDocumentStore?.activeExecutionId === 'undefined') {
+	if (typeof workflowExecutionSessionStore?.activeExecutionId === 'undefined') {
 		return;
 	}
 
@@ -217,8 +219,8 @@ export async function fetchExecutionData(
 			return;
 		}
 
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(executionResponse.workflowId ?? workflowsStore.workflowId),
+		const workflowExecutionSessionStore = useWorkflowExecutionSessionStore(
+			executionResponse.workflowId ?? workflowsStore.workflowId,
 		);
 
 		return {
@@ -227,7 +229,8 @@ export async function fetchExecutionData(
 			workflowData: workflowsStore.workflow,
 			data: executionResponse.data,
 			status: executionResponse.status,
-			startedAt: getActiveExecutionDataStore(workflowDocumentStore)?.execution?.startedAt as Date,
+			startedAt: getActiveExecutionDataStore(workflowExecutionSessionStore)?.execution
+				?.startedAt as Date,
 			stoppedAt: new Date(),
 		};
 	} catch {
@@ -258,12 +261,12 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
 		return i18n.baseText('pushConnection.executionFailed.message');
 	} else if (execution.status === 'canceled') {
 		const workflowsStore = useWorkflowsStore();
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+		const workflowExecutionSessionStore = useWorkflowExecutionSessionStore(
+			workflowsStore.workflowId,
 		);
 
 		return i18n.baseText('executionsList.showMessage.stopExecution.message', {
-			interpolate: { activeExecutionId: workflowDocumentStore.activeExecutionId ?? '' },
+			interpolate: { activeExecutionId: workflowExecutionSessionStore.activeExecutionId ?? '' },
 		});
 	}
 
@@ -423,11 +426,12 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
+	const workflowExecutionSessionStore = useWorkflowExecutionSessionStore(workflowsStore.workflowId);
 	const workflowName = workflowDocumentStore.name;
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
-	const currentExecution = getActiveExecutionDataStore(workflowDocumentStore)?.execution;
+	const currentExecution = getActiveExecutionDataStore(workflowExecutionSessionStore)?.execution;
 	if (currentExecution?.executedNode) {
 		const node = workflowDocumentStore.getNodeByName(currentExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
@@ -481,10 +485,11 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowDocumentStore = workflowState.getCurrentWorkflowDocumentStore();
+	const workflowExecutionSessionStore = workflowState.getCurrentWorkflowExecutionSessionStore();
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
-	const currentExecution = workflowDocumentStore
-		? getActiveExecutionDataStore(workflowDocumentStore)?.execution
+	const currentExecution = workflowExecutionSessionStore
+		? getActiveExecutionDataStore(workflowExecutionSessionStore)?.execution
 		: null;
 
 	workflowState.executingNode.clearNodeExecutionQueue();

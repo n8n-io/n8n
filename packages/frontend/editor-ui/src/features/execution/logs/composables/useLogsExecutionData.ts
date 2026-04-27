@@ -7,6 +7,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	copyExecutionData,
@@ -37,8 +38,11 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
+	const workflowExecutionSessionStore = computed(() =>
+		useWorkflowExecutionSessionStore(workflowsStore.workflowId),
+	);
 	const executionDataStore = computed(() =>
-		getActiveExecutionDataStore(workflowDocumentStore.value),
+		getActiveExecutionDataStore(workflowExecutionSessionStore.value),
 	);
 	const workflowState = injectWorkflowState();
 	const toast = useToast();
@@ -114,7 +118,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		workflowState.setExecution(null);
 		nodeHelpers.updateNodesExecutionIssues();
 		// Clear partial execution destination to allow full workflow execution
-		workflowDocumentStore.value.setChatPartialExecutionDestinationNode(null);
+		workflowExecutionSessionStore.value.setChatPartialExecutionDestinationNode(null);
 		void workflowState.fetchLastSuccessfulExecution();
 	}
 

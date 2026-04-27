@@ -13,6 +13,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -35,6 +36,9 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+	const workflowExecutionSessionStore = computed(() =>
+		useWorkflowExecutionSessionStore(workflowsStore.workflowId),
 	);
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();
@@ -170,7 +174,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			event.stopPropagation();
 			return;
 		}
-		workflowDocumentStore.value.setDebugMode(false);
+		workflowExecutionSessionStore.value.setDebugMode(false);
 	};
 
 	return {

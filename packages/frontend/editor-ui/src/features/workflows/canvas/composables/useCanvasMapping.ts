@@ -11,6 +11,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
 import type {
@@ -83,8 +84,11 @@ export function useCanvasMapping({
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
+	const workflowExecutionSessionStore = computed(() =>
+		useWorkflowExecutionSessionStore(workflowsStore.workflowId),
+	);
 	const executionDataStore = computed(() =>
-		getActiveExecutionDataStore(workflowDocumentStore.value),
+		getActiveExecutionDataStore(workflowExecutionSessionStore.value),
 	);
 	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
@@ -301,7 +305,7 @@ export function useCanvasMapping({
 	);
 
 	const nodeTooltipById = computed(() => {
-		if (!workflowDocumentStore.value.isWorkflowRunning) {
+		if (!workflowExecutionSessionStore.value.isWorkflowRunning) {
 			return {};
 		}
 
@@ -359,7 +363,7 @@ export function useCanvasMapping({
 			acc[node.id] =
 				node.name === workflowState.executingNode.lastAddedExecutingNode &&
 				workflowState.executingNode.executingNode.length === 0 &&
-				workflowDocumentStore.value.isWorkflowRunning;
+				workflowExecutionSessionStore.value.isWorkflowRunning;
 
 			return acc;
 		}, {}),

@@ -6,6 +6,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
@@ -37,6 +38,9 @@ const workflowsStore = useWorkflowsStore();
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
+);
+const workflowExecutionSessionStore = computed(() =>
+	useWorkflowExecutionSessionStore(workflowId.value),
 );
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -304,9 +308,9 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 					size="medium"
 					:trigger-nodes="availableTriggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowDocumentStore.selectedTriggerNodeName"
+					:selected-trigger-node-name="workflowExecutionSessionStore.selectedTriggerNodeName"
 					@execute="onExecute"
-					@select-trigger-node="workflowDocumentStore.setSelectedTriggerNodeName"
+					@select-trigger-node="workflowExecutionSessionStore.setSelectedTriggerNodeName"
 				/>
 			</N8nTooltip>
 

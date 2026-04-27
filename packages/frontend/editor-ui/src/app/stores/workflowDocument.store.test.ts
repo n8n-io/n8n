@@ -15,6 +15,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -352,15 +353,16 @@ describe('workflowDocument.store orchestration', () => {
 
 		it('preserves existing execution session state when hydrating workflow metadata', () => {
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+			const sessionStore = useWorkflowExecutionSessionStore('wf-1');
 			const workflow = buildFullWorkflow();
 
-			store.setActiveExecutionId('execution-123');
-			store.setExecutionWaitingForWebhook(true);
+			sessionStore.setActiveExecutionId('execution-123');
+			sessionStore.setExecutionWaitingForWebhook(true);
 
 			store.hydrate(workflow);
 
-			expect(store.activeExecutionId).toBe('execution-123');
-			expect(store.executionWaitingForWebhook).toBe(true);
+			expect(sessionStore.activeExecutionId).toBe('execution-123');
+			expect(sessionStore.executionWaitingForWebhook).toBe(true);
 		});
 	});
 
@@ -529,15 +531,16 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.viewport).toBeNull();
 		});
 
-		it('clears the execution session slice back to its defaults', () => {
+		it('clears the execution session store back to its defaults', () => {
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-reset'));
+			const sessionStore = useWorkflowExecutionSessionStore('wf-reset');
 
-			store.setActiveExecutionId('execution-456');
-			store.setExecutionWaitingForWebhook(true);
-			store.setDebugMode(true);
-			store.appendChatMessage('hello');
-			store.setChatPartialExecutionDestinationNode('Chat Node');
-			store.setCurrentWorkflowExecutions([
+			sessionStore.setActiveExecutionId('execution-456');
+			sessionStore.setExecutionWaitingForWebhook(true);
+			sessionStore.setDebugMode(true);
+			sessionStore.appendChatMessage('hello');
+			sessionStore.setChatPartialExecutionDestinationNode('Chat Node');
+			sessionStore.setCurrentWorkflowExecutions([
 				{
 					id: 'execution-456',
 					mode: 'manual',
@@ -547,20 +550,20 @@ describe('workflowDocument.store orchestration', () => {
 					status: 'running',
 				},
 			]);
-			store.setLastSuccessfulExecution(
+			sessionStore.setLastSuccessfulExecution(
 				createTestWorkflowExecutionResponse({ id: 'last-successful', status: 'success' }),
 			);
 
 			store.reset();
 
-			expect(store.activeExecutionId).toBeUndefined();
-			expect(store.previousExecutionId).toBeUndefined();
-			expect(store.executionWaitingForWebhook).toBe(false);
-			expect(store.isInDebugMode).toBe(false);
-			expect(store.chatMessages).toEqual([]);
-			expect(store.chatPartialExecutionDestinationNode).toBeNull();
-			expect(store.currentWorkflowExecutions).toEqual([]);
-			expect(store.lastSuccessfulExecutionId).toBeNull();
+			expect(sessionStore.activeExecutionId).toBeUndefined();
+			expect(sessionStore.previousExecutionId).toBeUndefined();
+			expect(sessionStore.executionWaitingForWebhook).toBe(false);
+			expect(sessionStore.isInDebugMode).toBe(false);
+			expect(sessionStore.chatMessages).toEqual([]);
+			expect(sessionStore.chatPartialExecutionDestinationNode).toBeNull();
+			expect(sessionStore.currentWorkflowExecutions).toEqual([]);
+			expect(sessionStore.lastSuccessfulExecutionId).toBeNull();
 		});
 	});
 });

@@ -30,6 +30,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -84,6 +85,11 @@ const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowState = injectWorkflowState();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionSessionStore = computed(() =>
+	workflowDocumentStore?.value
+		? useWorkflowExecutionSessionStore(workflowDocumentStore.value.workflowId)
+		: null,
+);
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
@@ -130,7 +136,7 @@ const hasAiMetadata = computed(() => {
 	if (node.value) {
 		const connectedSubNodes = props.workflowObject.getParentNodes(node.value.name, 'ALL_NON_MAIN');
 		const executionDataStore = workflowDocumentStore?.value
-			? getActiveExecutionDataStore(workflowDocumentStore.value)
+			? getActiveExecutionDataStore(workflowExecutionSessionStore.value)
 			: null;
 		const resultData = connectedSubNodes.map(
 			(nodeName) => executionDataStore?.getExecutionRunDataByNodeName(nodeName) ?? null,
@@ -162,7 +168,9 @@ const isNodeRunning = computed(() => {
 	);
 });
 
-const workflowRunning = computed(() => workflowDocumentStore?.value?.isWorkflowRunning ?? false);
+const workflowRunning = computed(
+	() => workflowExecutionSessionStore.value?.isWorkflowRunning ?? false,
+);
 
 const runTaskData = computed(() => {
 	if (!node.value || workflowExecution.value === null) {

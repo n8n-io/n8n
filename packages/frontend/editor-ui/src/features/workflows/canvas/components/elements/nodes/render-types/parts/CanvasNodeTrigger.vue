@@ -7,6 +7,7 @@ import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
@@ -43,6 +44,11 @@ const router = useRouter();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionSessionStore = computed(() =>
+	workflowDocumentStore?.value
+		? useWorkflowExecutionSessionStore(workflowDocumentStore.value.workflowId)
+		: null,
+);
 const logsStore = useLogsStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
@@ -60,7 +66,7 @@ const isChatHubOpen = computed(() => chatHubPanelStore.isOpen);
 const isChatOpen = computed(() =>
 	isChatHubAvailable.value ? isChatHubOpen.value : logsStore.isOpen,
 );
-const isExecuting = computed(() => workflowDocumentStore?.value?.isWorkflowRunning ?? false);
+const isExecuting = computed(() => workflowExecutionSessionStore.value?.isWorkflowRunning ?? false);
 const testId = computed(() => `execute-workflow-button-${name}`);
 
 function openChat() {
@@ -80,7 +86,7 @@ function closeChat() {
 }
 
 async function handleClickExecute() {
-	workflowDocumentStore?.value?.setSelectedTriggerNodeName(name);
+	workflowExecutionSessionStore.value?.setSelectedTriggerNodeName(name);
 	await runEntireWorkflow('node', name);
 }
 </script>

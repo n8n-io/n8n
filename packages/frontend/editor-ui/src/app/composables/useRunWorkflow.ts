@@ -42,6 +42,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { getActiveExecutionDataStore } from '@/app/stores/executionData.store';
+import { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -84,6 +85,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+	const workflowExecutionSessionStore = computed(() =>
+		useWorkflowExecutionSessionStore(workflowsStore.workflowId),
 	);
 
 	const nodeHelpers = useNodeHelpers();
@@ -129,14 +133,15 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		}
 
 		const workflowExecutionIdIsNew =
-			workflowDocumentStore.value.previousExecutionId !== response.executionId;
-		const workflowExecutionIdIsPending = workflowDocumentStore.value.activeExecutionId === null;
+			workflowExecutionSessionStore.value.previousExecutionId !== response.executionId;
+		const workflowExecutionIdIsPending =
+			workflowExecutionSessionStore.value.activeExecutionId === null;
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
 			workflowState.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true) {
-			workflowDocumentStore.value.setExecutionWaitingForWebhook(true);
+			workflowExecutionSessionStore.value.setExecutionWaitingForWebhook(true);
 		}
 
 		return response;
@@ -150,7 +155,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		source?: string;
 		sessionId?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		if (workflowDocumentStore.value.activeExecutionId) {
+		if (workflowExecutionSessionStore.value.activeExecutionId) {
 			return;
 		}
 
@@ -167,7 +172,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				);
 			}
 
-			const runData = getActiveExecutionDataStore(workflowDocumentStore.value)?.executionRunData;
+			const runData = getActiveExecutionDataStore(
+				workflowExecutionSessionStore.value,
+			)?.executionRunData;
 
 			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 				await workflowSaving.saveCurrentWorkflow();
@@ -252,7 +259,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					// If the chat node has no input data or pin data, open the chat modal
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
-						workflowDocumentStore.value.setChatPartialExecutionDestinationNode(
+						workflowExecutionSessionStore.value.setChatPartialExecutionDestinationNode(
 							options.destinationNode.nodeName,
 						);
 						startChat();
@@ -442,7 +449,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			try {
 				await displayForm({
 					nodes: workflowData.nodes,
-					runData: getActiveExecutionDataStore(workflowDocumentStore.value)?.execution?.data
+					runData: getActiveExecutionDataStore(workflowExecutionSessionStore.value)?.execution?.data
 						?.resultData?.runData,
 					destinationNode: options.destinationNode?.nodeName,
 					triggerNode: options.triggerNode,
@@ -520,7 +527,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	async function stopCurrentExecution() {
-		const executionId = workflowDocumentStore.value.activeExecutionId;
+		const executionId = workflowExecutionSessionStore.value.activeExecutionId;
 		let stopData: IExecutionsStopData | undefined;
 
 		if (!executionId) {
@@ -606,7 +613,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		telemetry.track('User clicked execute workflow button', telemetryPayload);
 		void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 
-		let resolvedTriggerNode = triggerNode ?? workflowDocumentStore.value.selectedTriggerNodeName;
+		let resolvedTriggerNode =
+			triggerNode ?? workflowExecutionSessionStore.value.selectedTriggerNodeName;
 
 		// When no trigger is explicitly selected (e.g. chat trigger is the only trigger
 		// and the Run button doesn't offer it for selection), resolve it from the workflow.

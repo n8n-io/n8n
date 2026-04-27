@@ -12,7 +12,9 @@ export async function testWebhookDeleted(
 	const workflowsStore = useWorkflowsStore();
 
 	if (data.workflowId === workflowsStore.workflowId) {
-		options.workflowState.getCurrentWorkflowDocumentStore()?.setExecutionWaitingForWebhook(false);
+		options.workflowState
+			.getCurrentWorkflowExecutionSessionStore()
+			?.setExecutionWaitingForWebhook(false);
 		options.workflowState.setActiveExecutionId(undefined);
 	}
 }
