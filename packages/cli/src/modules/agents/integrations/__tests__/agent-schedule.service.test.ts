@@ -43,7 +43,7 @@ describe('AgentScheduleService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		jest.useFakeTimers().setSystemTime(new Date('2026-04-24T13:00:00Z'));
+		jest.useFakeTimers().setSystemTime(new Date('2026-05-04T13:00:00Z'));
 
 		agentRepository = {
 			save: jest.fn(async (agent: Agent) => agent),
