@@ -26,11 +26,16 @@ import type { ComponentPublicInstance } from 'vue';
 import type { useWebhooksStore } from '@/app/stores/webhooks.store';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
-// NDV state is spread into the hook store only when a workflow is loaded
+// NDV state is merged into the hook store only when a workflow is loaded
 // (see `runExternalHook` in `useExternalHooks.ts`). External hook authors
-// must treat NDV fields as optional.
-export type ExternalHookStore = ReturnType<typeof useWebhooksStore> &
-	Partial<ReturnType<typeof useNDVStore>>;
+// must treat NDV-specific fields as optional. Pinia internals ($state, $id, …)
+// already live on the webhooks store, so we only expose NDV-only keys here.
+type WebhooksHookStore = ReturnType<typeof useWebhooksStore>;
+type NDVHookStore = ReturnType<typeof useNDVStore>;
+type NDVOnlyKeys = Exclude<keyof NDVHookStore, keyof WebhooksHookStore>;
+export type ExternalHookStore = WebhooksHookStore & {
+	[K in NDVOnlyKeys]?: NDVHookStore[K];
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ExternalHooksMethod<T = any, R = void> {
