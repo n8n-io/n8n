@@ -77,6 +77,16 @@ export class AgentEventBus {
 	get isAborted(): boolean {
 		return this.controller.signal.aborted;
 	}
+
+	/**
+	 * Remove the external AbortSignal listener registered by resetAbort().
+	 * Must be called when a per-run bus is retired so the listener does not
+	 * accumulate on long-lived signals when runs complete without aborting.
+	 */
+	dispose(): void {
+		this.externalCleanup?.();
+		this.externalCleanup = undefined;
+	}
 }
 
 export { AgentEvent };

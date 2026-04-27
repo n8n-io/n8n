@@ -323,12 +323,39 @@ export class DynamicNodeParametersService {
 		methodName: string,
 		nodeType: INodeType,
 	): NodeMethod {
-		const method = nodeType.methods?.[type]?.[methodName] as NodeMethod;
+		const methodsOfType = nodeType.methods?.[type];
+		const method = methodsOfType?.[methodName] as NodeMethod;
 		if (typeof method !== 'function') {
-			throw new UnexpectedError('Node type does not have method defined', {
-				tags: { nodeType: nodeType.description.name },
-				extra: { methodName },
-			});
+			const available = methodsOfType ? Object.keys(methodsOfType) : [];
+
+			// Cross-reference: if the requested type has nothing (or lacks this
+			// method), surface other method-type registrations so callers can
+			// self-correct when they picked the wrong methodType. E.g. asking
+			// for `loadOptions.listModels` on a node that only has
+			// `listSearch.searchModels` now returns both pieces of information.
+			const otherTypesWithMethods: string[] = [];
+			for (const [otherType, otherMethods] of Object.entries(nodeType.methods ?? {})) {
+				if (otherType === type || !otherMethods) continue;
+				const names = Object.keys(otherMethods);
+				if (names.length > 0) {
+					otherTypesWithMethods.push(`${otherType}: ${names.join(', ')}`);
+				}
+			}
+
+			const availableText =
+				available.length > 0 ? available.join(', ') : `<no ${type} methods declared>`;
+			const otherTypesText =
+				otherTypesWithMethods.length > 0
+					? ` Other method types on this node — ${otherTypesWithMethods.join('; ')}.`
+					: '';
+
+			throw new UnexpectedError(
+				`Node type "${nodeType.description.name}" has no ${type} method named "${methodName}". Available ${type} methods: ${availableText}.${otherTypesText}`,
+				{
+					tags: { nodeType: nodeType.description.name },
+					extra: { methodName, type, available, otherTypes: otherTypesWithMethods },
+				},
+			);
 		}
 		return method;
 	}
