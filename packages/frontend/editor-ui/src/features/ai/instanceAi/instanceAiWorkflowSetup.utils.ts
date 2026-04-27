@@ -108,10 +108,75 @@ export function isTriggerOnly(
 }
 
 /**
- * Use credential icon only for multi-node credential-grouping cards, where the card
- * title is the credential display name. By construction (see `useSetupCards`), cards
- * with more than one node always have a credentialType.
+ * Use credential icon only for multi-node credential-grouping cards. The card title
+ * for these cards is built from the credential label plus the node names
+ * (see `buildSetupCardTitle`). By construction (see `useSetupCards`), cards with more
+ * than one node always have a credentialType.
  */
 export function shouldUseCredentialIcon(card: SetupCard): boolean {
 	return card.nodes.length > 1;
+}
+
+// ---------------------------------------------------------------------------
+// buildSetupCardTitle
+// ---------------------------------------------------------------------------
+
+const MULTI_NODE_NAME_LIMIT = 3;
+const MAX_NODE_NAME_LEN = 40;
+
+function truncateNodeName(name: string): string {
+	return name.length > MAX_NODE_NAME_LEN ? name.slice(0, MAX_NODE_NAME_LEN - 1) + '…' : name;
+}
+
+function sanitizeNodeNameForList(name: string | undefined): string | undefined {
+	const trimmed = name?.trim();
+	if (!trimmed) return undefined;
+	return truncateNodeName(trimmed);
+}
+
+function stripLeadingSetUp(label: string): string {
+	// Defensive: callers might accidentally pass the full "Set up X" template result
+	// (e.g. by reusing `getDisplayName`). Strip the leading "Set up " so we don't
+	// produce "Set up Set up X for ...".
+	return label.replace(/^Set up\s+/i, '');
+}
+
+export function buildSetupCardTitle(
+	card: SetupCard,
+	getCredentialAppLabel: (credentialType: string) => string,
+	t: (key: string, opts?: { interpolate?: Record<string, string | number> }) => string,
+): string {
+	// Single-node cards preserve the existing raw node-name behavior — no trimming, no truncation.
+	if (card.nodes.length === 1) {
+		return card.nodes[0].node.name;
+	}
+	if (!card.credentialType) return 'Setup';
+
+	const credLabel = stripLeadingSetUp(getCredentialAppLabel(card.credentialType));
+	const sep = t('instanceAi.workflowSetup.cardTitleNodesSeparator');
+
+	const cleanNames = card.nodes
+		.map((n) => sanitizeNodeNameForList(n.node.name))
+		.filter((name): name is string => Boolean(name));
+
+	if (cleanNames.length === 0) {
+		return t('instanceAi.workflowSetup.cardTitleForNodesCount', {
+			interpolate: { name: credLabel, count: card.nodes.length },
+		});
+	}
+
+	if (cleanNames.length <= MULTI_NODE_NAME_LIMIT) {
+		return t('instanceAi.workflowSetup.cardTitleForNodes', {
+			interpolate: { name: credLabel, nodes: cleanNames.join(sep) },
+		});
+	}
+
+	const head = cleanNames.slice(0, MULTI_NODE_NAME_LIMIT).join(sep);
+	return t('instanceAi.workflowSetup.cardTitleForNodesPlusMore', {
+		interpolate: {
+			name: credLabel,
+			nodes: head,
+			extra: cleanNames.length - MULTI_NODE_NAME_LIMIT,
+		},
+	});
 }

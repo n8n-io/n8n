@@ -1,6 +1,7 @@
-import { describe, test, expect } from 'vitest';
+import { describe, it, test, expect } from 'vitest';
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import {
+	buildSetupCardTitle,
 	credGroupKey,
 	isParamValueSet,
 	isNestedParam,
@@ -388,5 +389,117 @@ describe('shouldUseCredentialIcon', () => {
 	test('returns false for single-node cards', () => {
 		const card = makeCard({ credentialType: 'slackApi', nodes: [makeSetupNode()] });
 		expect(shouldUseCredentialIcon(card)).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildSetupCardTitle
+// ---------------------------------------------------------------------------
+
+function makeNamedNode(name: string): InstanceAiWorkflowSetupNode {
+	return {
+		node: {
+			name,
+			type: 'n8n-nodes-base.slack',
+			typeVersion: 2,
+			parameters: {},
+			position: [0, 0] as [number, number],
+			id: name,
+		},
+		isTrigger: false,
+		needsAction: true,
+	} as InstanceAiWorkflowSetupNode;
+}
+
+function makeTitleCard(
+	nodes: string[],
+	credentialType: string | undefined = 'slackApi',
+): SetupCard {
+	return {
+		id: 'c1',
+		credentialType,
+		nodes: nodes.map(makeNamedNode),
+		isTrigger: false,
+		isFirstTrigger: false,
+		isTestable: false,
+		isAutoApplied: false,
+		hasParamIssues: false,
+	};
+}
+
+const credLabel = () => 'Slack';
+
+const t = (key: string, opts?: { interpolate?: Record<string, string | number> }) => {
+	const templates: Record<string, string> = {
+		'instanceAi.workflowSetup.cardTitleForNodes': 'Set up {name} for {nodes}',
+		'instanceAi.workflowSetup.cardTitleForNodesPlusMore':
+			'Set up {name} for {nodes} and {extra} more',
+		'instanceAi.workflowSetup.cardTitleForNodesCount': 'Set up {name} for {count} nodes',
+		'instanceAi.workflowSetup.cardTitleNodesSeparator': ', ',
+	};
+	const tpl = templates[key] ?? key;
+	if (!opts?.interpolate) return tpl;
+	return Object.entries(opts.interpolate).reduce(
+		(acc, [k, v]) => acc.replace(`{${k}}`, String(v)),
+		tpl,
+	);
+};
+
+describe('buildSetupCardTitle', () => {
+	it('returns the raw node name for a single-node card with a credential (preserves current behavior, no trimming)', () => {
+		expect(buildSetupCardTitle(makeTitleCard(['Send Welcome']), credLabel, t)).toBe('Send Welcome');
+	});
+
+	it('returns the raw node name for a single-node card even when credentialType is missing', () => {
+		const card = { ...makeTitleCard(['Some Node']), credentialType: undefined };
+		expect(buildSetupCardTitle(card, credLabel, t)).toBe('Some Node');
+	});
+
+	it('returns the literal "Setup" for a multi-node card with no credentialType', () => {
+		const card = { ...makeTitleCard(['A', 'B']), credentialType: undefined };
+		expect(buildSetupCardTitle(card, credLabel, t)).toBe('Setup');
+	});
+
+	it('joins all node names for 2-3 nodes', () => {
+		expect(buildSetupCardTitle(makeTitleCard(['Send Welcome', 'Send Goodbye']), credLabel, t)).toBe(
+			'Set up Slack for Send Welcome, Send Goodbye',
+		);
+	});
+
+	it('uses the +N more form for 4+ nodes (showing first 3 names)', () => {
+		expect(
+			buildSetupCardTitle(
+				makeTitleCard([
+					'Send Welcome',
+					'Send Goodbye',
+					'Send Reminder',
+					'Send Followup',
+					'Send Bye',
+				]),
+				credLabel,
+				t,
+			),
+		).toBe('Set up Slack for Send Welcome, Send Goodbye, Send Reminder and 2 more');
+	});
+
+	it('trims whitespace and applies a per-name length cap on multi-node titles only', () => {
+		const longName = 'A'.repeat(80);
+		const result = buildSetupCardTitle(makeTitleCard([longName, '   Trimmed   ']), credLabel, t);
+		expect(result).toMatch(/A{39}…/); // 39 chars + ellipsis
+		expect(result).toContain('Trimmed');
+		expect(result).not.toContain('   Trimmed   ');
+	});
+
+	it('falls back to the dedicated count key if all multi-node names are blank/whitespace', () => {
+		expect(buildSetupCardTitle(makeTitleCard(['   ', '   ', '   ']), credLabel, t)).toBe(
+			'Set up Slack for 3 nodes',
+		);
+	});
+
+	it('does NOT double-prefix "Set up" if the credential-label callback misbehaves', () => {
+		// Defensive: even if a caller passes "Set up Slack" by mistake, we strip the leading "Set up " prefix.
+		const result = buildSetupCardTitle(makeTitleCard(['A', 'B']), () => 'Set up Slack', t);
+		expect(result).not.toContain('Set up Set up');
+		expect(result).toBe('Set up Slack for A, B');
 	});
 });
