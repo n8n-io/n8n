@@ -234,8 +234,14 @@ describe('Cipher', () => {
 				}),
 			});
 
-			const decrypted = await cipher.decryptV2(prefixed);
-			expect(decrypted).toEqual('world');
+			const originalFlag = process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
+			try {
+				const decrypted = await cipher.decryptV2(prefixed);
+				expect(decrypted).toEqual('world');
+			} finally {
+				process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = originalFlag;
+			}
 		});
 
 		it('should use legacy CBC key for unprefixed data when proxy is registered', async () => {
