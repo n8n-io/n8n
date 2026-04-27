@@ -68,6 +68,10 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_NAME_LABEL')
 	includeWorkflowNameLabel: boolean = false;
 
+	/** Whether to include a label for project name on workflow metrics. */
+	@Env('N8N_METRICS_INCLUDE_PROJECT_NAME_LABEL')
+	includeProjectNameLabel: boolean = false;
+
 	/** Whether to include a histogram metric for workflow execution duration. */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_EXECUTION_DURATION')
 	includeWorkflowExecutionDuration: boolean = true;
