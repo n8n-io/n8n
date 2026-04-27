@@ -40,12 +40,23 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
 
-      - name: Download .nyc_output from all shards
+      - name: Download .nyc_output tars from all shards
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: nyc-output-shard-*
-          path: packages/testing/playwright/.nyc_output/
-          merge-multiple: true
+          path: /tmp/nyc-tars/
+
+      - name: Extract all shard archives
+        shell: bash
+        run: |
+          mkdir -p packages/testing/playwright/.nyc_output
+          shopt -s nullglob
+          for tar in /tmp/nyc-tars/*/nyc-output.tar.gz; do
+            echo "Extracting $tar"
+            tar -xzf "$tar" -C packages/testing/playwright/
+          done
+          echo "--- Combined .nyc_output contents:"
+          ls -la packages/testing/playwright/.nyc_output/
 
       - name: Generate Coverage Report
         run: pnpm --filter n8n-playwright coverage:report

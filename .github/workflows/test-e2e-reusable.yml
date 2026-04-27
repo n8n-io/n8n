@@ -120,14 +120,29 @@ jobs:
           N8N_TEST_ENV: ${{ inputs.n8n-env }}
           BUILD_WITH_COVERAGE: ${{ inputs.coverage }}
 
+      # Currents writes per-project subdirs (e.g. `sqlite:e2e/`), and the colon
+      # in those names is forbidden by upload-artifact. Tarring sidesteps the
+      # path validation and avoids renaming the dirs (which would also require
+      # changes in currents.config.ts and generate-coverage-report.js).
+      - name: Archive .nyc_output (per shard)
+        if: ${{ always() && inputs.coverage }}
+        shell: bash
+        run: |
+          cd packages/testing/playwright
+          if [ -d .nyc_output ] && [ -n "$(ls -A .nyc_output 2>/dev/null)" ]; then
+            tar -czf nyc-output.tar.gz .nyc_output/
+            ls -lh nyc-output.tar.gz
+          else
+            echo "No .nyc_output produced; skipping archive."
+          fi
+
       - name: Upload .nyc_output (per shard)
         if: ${{ always() && inputs.coverage }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: nyc-output-shard-${{ matrix.shard }}
-          path: packages/testing/playwright/.nyc_output/
+          path: packages/testing/playwright/nyc-output.tar.gz
           retention-days: 1
-          include-hidden-files: true
           if-no-files-found: ignore
 
       - name: Upload Failure Artifacts
