@@ -91,9 +91,9 @@ export class PhilipsHue implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
+			const resource = this.getNodeParameter('resource', i);
+			const operation = this.getNodeParameter('operation', i);
 			if (resource === 'light') {
 				if (operation === 'update') {
 					const lightId = this.getNodeParameter('lightId', i) as string;
