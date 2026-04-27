@@ -36,7 +36,7 @@ if (useRaw) {
 	// Task is a skill invocation (e.g. "/n8n:linear-issue CAT-2820").
 	// Wrap it so the model invokes the Skill tool instead of implementing code.
 	prompt = `# Skill Invocation
-Invoke the following skill using the Skill tool. Do NOT implement code changes, do NOT make commits, do NOT create branches. Your only job is to run this skill and report its output.
+Invoke the following skill using the Skill tool and follow its instructions.
 
 ${task}`;
 } else {
