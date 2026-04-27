@@ -535,4 +535,207 @@ describe('Form Node', () => {
 			});
 		});
 	});
+
+	describe('webhook method - returnBinary with multiple files (GHC-7859)', () => {
+		it('should successfully return a single binary file', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'operation') return 'completion';
+				if (paramName === 'respondWith') return 'returnBinary';
+				if (paramName === 'completionTitle') return 'Download File';
+				if (paramName === 'completionMessage') return 'Your file is ready';
+				if (paramName === 'inputDataFieldName') return 'data1';
+				if (paramName === 'formFields.values') return [];
+				if (paramName === 'options') return { formTitle: 'Test Form' };
+				return {};
+			});
+
+			mockWebhookFunctions.getParentNodes.mockReturnValue([
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
+				{
+					type: 'n8n-nodes-base.code',
+					name: 'Code',
+					typeVersion: 2,
+					disabled: false,
+				},
+			]);
+
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+				if (expression.includes('formMode')) return 'test';
+				if (expression.includes('appendAttribution')) return true;
+				if (expression.includes("$('Code').first().binary")) {
+					return {
+						data1: {
+							data: btoa('test file content 1'),
+							mimeType: 'text/plain',
+							fileName: 'test1.txt',
+						},
+					};
+				}
+				return expression;
+			});
+
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ name: 'Form Completion' }));
+
+			const mockResponseObject = {
+				render: jest.fn(),
+				setHeader: jest.fn(),
+			};
+			mockWebhookFunctions.getResponseObject.mockReturnValue(
+				mockResponseObject as unknown as Response,
+			);
+
+			const result = await form.webhook(mockWebhookFunctions);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponseObject.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					title: 'Download File',
+					message: 'Your file is ready',
+					responseBinary: expect.any(String),
+				}),
+			);
+		});
+
+		it('should fail when trying to return multiple binary files with comma-separated names', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'operation') return 'completion';
+				if (paramName === 'respondWith') return 'returnBinary';
+				if (paramName === 'completionTitle') return 'Download Files';
+				if (paramName === 'completionMessage') return 'Your files are ready';
+				if (paramName === 'inputDataFieldName') return 'data1,data2'; // Multiple files
+				if (paramName === 'formFields.values') return [];
+				if (paramName === 'options') return { formTitle: 'Test Form' };
+				return {};
+			});
+
+			mockWebhookFunctions.getParentNodes.mockReturnValue([
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
+				{
+					type: 'n8n-nodes-base.code',
+					name: 'Code',
+					typeVersion: 2,
+					disabled: false,
+				},
+			]);
+
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+				if (expression.includes('formMode')) return 'test';
+				if (expression.includes('appendAttribution')) return true;
+				if (expression.includes("$('Code').first().binary")) {
+					return {
+						data1: {
+							data: btoa('test file content 1'),
+							mimeType: 'text/plain',
+							fileName: 'test1.txt',
+						},
+						data2: {
+							data: btoa('test file content 2'),
+							mimeType: 'text/plain',
+							fileName: 'test2.txt',
+						},
+					};
+				}
+				if (expression.includes("$('Form Trigger').first().binary")) {
+					return {};
+				}
+				return expression;
+			});
+
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ name: 'Form Completion' }));
+
+			const mockResponseObject = {
+				render: jest.fn(),
+				setHeader: jest.fn(),
+			};
+			mockWebhookFunctions.getResponseObject.mockReturnValue(
+				mockResponseObject as unknown as Response,
+			);
+
+			// This should fail with an error about not finding the binary field
+			await expect(form.webhook(mockWebhookFunctions)).rejects.toThrow(
+				'No binary data with field data1,data2 found',
+			);
+		});
+
+		it('should fail when using expression to return all binary files', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'operation') return 'completion';
+				if (paramName === 'respondWith') return 'returnBinary';
+				if (paramName === 'completionTitle') return 'Download Files';
+				if (paramName === 'completionMessage') return 'Your files are ready';
+				// Expression that evaluates to comma-separated binary keys
+				if (paramName === 'inputDataFieldName') return 'data1, data2';
+				if (paramName === 'formFields.values') return [];
+				if (paramName === 'options') return { formTitle: 'Test Form' };
+				return {};
+			});
+
+			mockWebhookFunctions.getParentNodes.mockReturnValue([
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
+				{
+					type: 'n8n-nodes-base.code',
+					name: 'Code',
+					typeVersion: 2,
+					disabled: false,
+				},
+			]);
+
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression: string) => {
+				if (expression.includes('formMode')) return 'test';
+				if (expression.includes('appendAttribution')) return true;
+				if (expression.includes("$('Code').first().binary")) {
+					return {
+						data1: {
+							data: btoa('test file content 1'),
+							mimeType: 'application/pdf',
+							fileName: 'document1.pdf',
+						},
+						data2: {
+							data: btoa('test file content 2'),
+							mimeType: 'image/png',
+							fileName: 'image2.png',
+						},
+					};
+				}
+				if (expression.includes("$('Form Trigger').first().binary")) {
+					return {};
+				}
+				return expression;
+			});
+
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ name: 'Form Completion' }));
+
+			const mockResponseObject = {
+				render: jest.fn(),
+				setHeader: jest.fn(),
+			};
+			mockWebhookFunctions.getResponseObject.mockReturnValue(
+				mockResponseObject as unknown as Response,
+			);
+
+			// This should fail because it tries to find a field named "data1, data2" (with space)
+			await expect(form.webhook(mockWebhookFunctions)).rejects.toThrow(
+				'No binary data with field data1, data2 found',
+			);
+		});
+	});
 });
