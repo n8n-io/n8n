@@ -91,7 +91,7 @@ const model = languageModel({
   version: 1.3,
   config: {
     name: 'OpenAI Chat Model',
-    parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' } },
+    parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
     credentials: { openAiApi: ${openAiCredExample} }
   }
 });
@@ -596,8 +596,10 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 
 4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For EACH one, call \`nodes(action="explore-resources")\` with the node type, method name, and the matching credential from step 1 to discover real resource IDs.
    - **This is mandatory for: calendars, spreadsheets, channels, folders, models, databases, and any other list-based parameter.** Do NOT assume values like "primary", "default", or "General" — always look up the real ID.
+   - **LLM models in particular** (OpenAI, Anthropic, Groq, etc.): always call \`explore-resources\` with the node's \`@searchListMethod\` when a credential for that provider is attached. The live list reflects what the credential can actually access — free/cheap tiers are often limited (e.g. an OpenAI free-tier key may only return \`gpt-5-mini\`). Picking a model ID that the credential can't access produces a broken workflow. The list is sorted newest-first; use the \`@builderHint\` as selection guidance (e.g. "prefer the GPT-5.4 family") over the live results, not as a hard-coded pick.
    - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`nodes(action="explore-resources")\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
    - **Never use \`placeholder()\` or fake IDs for discoverable resources.** Create them via a setup workflow instead (see "Setup Workflows" section). For user-provided values, follow the placeholder rules in "SDK Code Rules".
+   - **If \`explore-resources\` returns more than one match and the user did not name a specific one, use \`placeholder('Select <resource>')\` for that parameter** (e.g. \`placeholder('Select a calendar')\`, \`placeholder('Select a Slack channel')\`). Picking one silently is a guess; the setup wizard surfaces placeholders so the user can choose after the build. Only pick a single match without prompting.
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
 5. **Write workflow code** to \`${workspaceRoot}/src/workflow.ts\`.
@@ -635,8 +637,16 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
 Do NOT produce visible output until the final step. All reasoning happens internally.
 
 ## Modifying Existing Workflows
-When modifying an existing workflow, the current code is **already pre-loaded** into \`${workspaceRoot}/src/workflow.ts\` with SDK imports. You can:
-- Read it with \`read_file\` to see the current code
+When modifying an existing workflow, the current code is **already pre-loaded** into \`${workspaceRoot}/src/workflow.ts\` with SDK imports.
+
+**Pre-flight check before any edit**: If the change introduces a node type not already in the file, or touches parameter values you haven't just looked up (model IDs, RLC values, enum selections, credential types, versions, etc.), call \`nodes(action="type-definition")\` first. Read \`@builderHint\`, \`@default\`, \`@searchListMethod\`, and \`@loadOptionsMethod\` from the output.
+
+**Live credential-backed lookups are the source of truth for RLC/list parameters.** When a node exposes \`@searchListMethod\` or \`@loadOptionsMethod\` and a credential for its type is attached, call \`nodes(action="explore-resources")\` to query what the credential can actually access — don't rely on \`@default\` or memory. Treat \`@builderHint\` as *selection guidance over the live list* ("prefer the GPT-5.4 family", "prefer the most recent Sonnet") rather than as the source of the value itself. When no credential is attached, fall back to \`@default\`. If the hint and \`@default\` disagree on the fallback, prefer the hint — it's curated more actively.
+
+Do not guess method names for \`explore-resources\`, and do not fill parameter values in from memory, even when the node or parameter feels familiar. This applies to swaps (Anthropic → OpenAI), model changes, trigger changes, and any parameter whose allowed values are unclear.
+
+Steps:
+- Read the current code with \`read_file\`
 - Edit using \`edit_file\` for targeted changes or \`write_file\` for full rewrites (always use absolute paths)
 - Run tsc → submit-workflow with the \`workflowId\`
 - Do NOT call \`workflows(action="get-as-code")\` — the file is already populated

@@ -168,7 +168,7 @@ describe('WebhookRequestHandler', () => {
 
 			await handler(req, res);
 
-			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res, undefined);
 			expect(res.status).toHaveBeenCalledWith(200);
 			expect(res.setHeaders).toHaveBeenCalledWith(new Map([['x-custom-header', 'test']]));
 			expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
@@ -190,7 +190,7 @@ describe('WebhookRequestHandler', () => {
 
 			await handler(req, res);
 
-			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res, undefined);
 			expect(res.status).toHaveBeenCalledWith(500);
 			expect(res.json).toHaveBeenCalledWith({
 				code: 100,
@@ -264,7 +264,7 @@ describe('WebhookRequestHandler', () => {
 
 				await handler(req, res);
 
-				expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+				expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res, undefined);
 				expect(res.status).toHaveBeenCalledWith(200);
 				expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
 			},

@@ -24,6 +24,7 @@ import {
 	filterPropertiesForVersion,
 	buildDiscriminatorTree,
 	extractAIInputTypesFromBuilderHint,
+	narrowDisplayOptionsByDisabled,
 } from './generate-types';
 
 // =============================================================================
@@ -53,6 +54,33 @@ const GENERIC_AUTH_TYPE_VALUES = [
 	'oAuth1Api',
 	'oAuth2Api',
 ] as const;
+
+/**
+ * Property types that render UI affordances but carry no data in the saved
+ * workflow JSON. They are skipped entirely from generated schemas so that
+ * Zod validation does not reject configurations that omit them.
+ *
+ * Note: `button` and `icon` are not in this list — they can carry data.
+ * See mapNestedPropertyToZodSchemaInner / mapPropertyToZodSchemaInner for
+ * their dedicated schemas.
+ */
+const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credentials', 'callout']);
+
+/**
+ * Runtime shape for `type: 'icon'` properties (see N8nIconPicker).
+ * Values are stored as `{ type: 'icon' | 'emoji'; value: string }`.
+ */
+const ICON_ZOD_SCHEMA =
+	"z.object({ type: z.union([z.literal('icon'), z.literal('emoji')]), value: z.string() })";
+
+/**
+ * Runtime shape for `type: 'workflowSelector'` properties.
+ * The UI hardcodes two modes (see useWorkflowResourceLocatorModes.ts): `list` and `id`.
+ * Stored as an `INodeParameterResourceLocator` object, or as an `={{...}}` expression
+ * string when the user enters an expression.
+ */
+const WORKFLOW_SELECTOR_ZOD_SCHEMA =
+	"z.union([z.object({ __rl: z.literal(true), mode: z.union([z.literal('list'), z.literal('id')]), value: z.union([z.string(), z.number()]), cachedResultName: z.string().optional(), cachedResultUrl: z.string().optional() }), expressionSchema])";
 
 /**
  * TypeScript reserved words that need quoting
@@ -177,15 +205,44 @@ const AI_TYPE_TO_SCHEMA_FIELD: Record<
 // =============================================================================
 
 /**
- * Determine if a property should be optional in the schema.
- * A property is optional if it's not required OR if it has a default value.
- * Properties with defaults can be omitted - the default will be used at runtime.
+ * Whether a property's `default` value actually satisfies a `required: true`
+ * constraint at runtime. The runtime check in `getNodeParametersIssues`
+ * (`n8n-workflow/node-helpers`) rejects the "empty" form of these types even
+ * when a default is present:
+ *
+ * - `string` / `options` / `dateTime`: `''` is treated as missing
+ * - `multiOptions`: `[]` is treated as missing
+ *
+ * The Zod schema must agree — otherwise `required: true, default: ''` (e.g.
+ * `splitOut.fieldToSplitOut`) silently generates `.optional()`, the LLM-facing
+ * TS type loses the required signal, and the workflow submits cleanly only to
+ * fail at execution time with `Parameter "X" is required`.
  */
-function isPropertyOptional(prop: NodeProperty): boolean {
-	const hasDefault = 'default' in prop && prop.default !== undefined;
+function defaultSatisfiesRequired(prop: NodeProperty): boolean {
+	if (!('default' in prop) || prop.default === undefined) return false;
+
+	switch (prop.type) {
+		case 'string':
+		case 'options':
+		case 'dateTime':
+			return prop.default !== '';
+		case 'multiOptions':
+			return !(Array.isArray(prop.default) && prop.default.length === 0);
+		default:
+			return true;
+	}
+}
+
+/**
+ * Determine if a property should be optional in the schema.
+ * A property is optional if it's not required OR if it has a default value
+ * that actually satisfies the required constraint (see
+ * `defaultSatisfiesRequired`).
+ */
+export function isPropertyOptional(prop: NodeProperty): boolean {
 	// A fixedCollection with minRequiredFields > 0 cannot satisfy the
 	// constraint via its default (typically `{}`), so the property itself
-	// must be present — overrides the hasDefault shortcut.
+	// must be present — overrides the default shortcut.
 	const minRequired = prop.typeOptions?.minRequiredFields;
 	if (
 		prop.type === 'fixedCollection' &&
@@ -195,7 +252,7 @@ function isPropertyOptional(prop: NodeProperty): boolean {
 	) {
 		return false;
 	}
-	return !prop.required || hasDefault;
+	return !prop.required || defaultSatisfiesRequired(prop);
 }
 
 /**
@@ -370,7 +427,7 @@ function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
 
 function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 	// Skip display-only types
-	if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+	if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
 		return '';
 	}
 
@@ -442,6 +499,18 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 		case 'collection':
 			return generateCollectionZodSchema(prop);
 
+		case 'button':
+			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
+			// store the user-typed text; pure-action buttons store the default ''.
+			// In both cases the value is a string.
+			return 'stringOrExpression';
+
+		case 'icon':
+			return ICON_ZOD_SCHEMA;
+
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
+
 		case 'hidden':
 			return 'z.unknown()';
 
@@ -471,7 +540,7 @@ function generateFixedCollectionZodSchema(prop: NodeProperty): string {
 		const nestedProps: string[] = [];
 
 		for (const nestedProp of group.values) {
-			if (['notice', 'curlImport', 'credentials'].includes(nestedProp.type)) {
+			if (DISPLAY_ONLY_PROPERTY_TYPES.has(nestedProp.type)) {
 				continue;
 			}
 
@@ -530,7 +599,7 @@ function generateCollectionZodSchema(prop: NodeProperty): string {
 
 		// Cast to NodeProperty since collection options are actually NodeProperty-like
 		const asNodeProp = nestedProp as unknown as NodeProperty;
-		if (['notice', 'curlImport', 'credentials'].includes(asNodeProp.type)) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(asNodeProp.type)) {
 			continue;
 		}
 
@@ -662,7 +731,20 @@ function mapPropertyToZodSchemaInner(prop: NodeProperty): string {
 		case 'notice':
 		case 'curlImport':
 		case 'credentials':
-			return ''; // Skip these types
+		case 'callout':
+			return ''; // Skip display-only types
+
+		case 'button':
+			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
+			// store the user-typed text; pure-action buttons store the default ''.
+			// In both cases the value is a string.
+			return 'stringOrExpression';
+
+		case 'icon':
+			return ICON_ZOD_SCHEMA;
+
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
 
 		case 'credentialsSelect':
 			return 'stringOrExpression';
@@ -798,6 +880,12 @@ export function mergeDisplayOptions(
  * When multiple properties have the same name (e.g., multiple 'options' collections
  * with different displayOptions), their displayOptions and nested options are merged.
  *
+ * Properties whose displayOptions are fully covered by disabledOptions (the field
+ * is rendered read-only in all its visible states, e.g. the expression-prefilled
+ * variant of a sessionKey) contribute no settable states and are skipped, so the
+ * generated schema only accepts values in states where the field is actually
+ * user-editable.
+ *
  * @param properties - Array of node properties, possibly with duplicates
  * @returns Map of property name to merged property
  */
@@ -806,28 +894,39 @@ export function mergePropertiesByName(properties: NodeProperty[]): Map<string, N
 
 	for (const prop of properties) {
 		// Skip display-only types
-		if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
 			continue;
 		}
 
-		const existing = propsByName.get(prop.name);
+		const { displayOptions: narrowedDisplayOptions, fullyDisabled } =
+			narrowDisplayOptionsByDisabled(prop);
+		if (fullyDisabled) {
+			continue;
+		}
+
+		const normalizedProp: NodeProperty = { ...prop, displayOptions: narrowedDisplayOptions };
+
+		const existing = propsByName.get(normalizedProp.name);
 		if (existing) {
 			// Merge displayOptions from duplicate property
-			if (prop.displayOptions && existing.displayOptions) {
-				existing.displayOptions = mergeDisplayOptions(existing.displayOptions, prop.displayOptions);
-			} else if (prop.displayOptions && !existing.displayOptions) {
+			if (normalizedProp.displayOptions && existing.displayOptions) {
+				existing.displayOptions = mergeDisplayOptions(
+					existing.displayOptions,
+					normalizedProp.displayOptions,
+				);
+			} else if (normalizedProp.displayOptions && !existing.displayOptions) {
 				// If only the new one has displayOptions, the existing one has no condition
 				// which means it's always visible - keep existing as-is (no condition)
 			}
 
 			// For collection/fixedCollection types, merge nested options
 			if (
-				(prop.type === 'collection' || prop.type === 'fixedCollection') &&
-				prop.options &&
+				(normalizedProp.type === 'collection' || normalizedProp.type === 'fixedCollection') &&
+				normalizedProp.options &&
 				existing.options
 			) {
 				const existingOptionNames = new Set(existing.options.map((o) => o.name));
-				for (const opt of prop.options) {
+				for (const opt of normalizedProp.options) {
 					if (!existingOptionNames.has(opt.name)) {
 						existing.options.push(opt);
 					}
@@ -836,9 +935,9 @@ export function mergePropertiesByName(properties: NodeProperty[]): Map<string, N
 			// Keep the first property's other attributes (type, required, etc.)
 		} else {
 			// Create a shallow copy to avoid mutating the original when merging
-			propsByName.set(prop.name, {
-				...prop,
-				options: prop.options ? [...prop.options] : undefined,
+			propsByName.set(normalizedProp.name, {
+				...normalizedProp,
+				options: normalizedProp.options ? [...normalizedProp.options] : undefined,
 			});
 		}
 	}

@@ -1,0 +1,20 @@
+{
+	"prompt": "Every hour, fetch all records from an Airtable table. Use the HTTP Request node to call GET https://api.airtable.com/v0/app123abc/Tasks with a Bearer token auth header — Airtable responds with a JSON object of the shape { \"records\": [...] } where each record has an id and a fields object. For each record, post a message to the Slack channel #daily-tasks containing the task name ({{ fields.Name }}) and status ({{ fields.Status }}). Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "schedule", "http-request", "airtable", "slack", "split-out"],
+	"triggerType": "schedule",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "Airtable returns a named 'records' array with 3 tasks; each is posted to Slack",
+			"dataSetup": "The HTTP Request node returns a single JSON object of the shape { \"records\": [...] } (Airtable's real envelope — NOT a bare array). The 'records' array contains exactly 3 items. Record 1: id='rec001', fields.Name='Write spec', fields.Status='In Progress'. Record 2: id='rec002', fields.Name='Review PR', fields.Status='Done'. Record 3: id='rec003', fields.Name='Deploy fix', fields.Status='Todo'. The Slack postMessage call returns a success response { ok: true, ts: '1700000000.000100' }.",
+			"successCriteria": "The workflow executes without errors. The HTTP Request returns the Airtable response as a single item whose $json.records holds the 3-record array. The workflow iterates over records (e.g. Split Out with fieldToSplitOut='records', or any equivalent transformation) so the downstream Slack node runs exactly 3 times — once per record. Each Slack message is posted to #daily-tasks and contains BOTH the task name and the status (e.g. includes 'Write spec' and 'In Progress'). No Slack message references '$json' as a literal string or posts the raw JSON envelope."
+		},
+		{
+			"name": "empty-records",
+			"description": "Airtable returns { records: [] } — table is empty",
+			"dataSetup": "The HTTP Request node returns { \"records\": [] } — the envelope is present but the 'records' array is empty. No downstream Slack calls should succeed.",
+			"successCriteria": "The workflow handles the empty records array without errors. The Slack postMessage node is either not invoked or invoked zero times. The workflow completes cleanly."
+		}
+	]
+}
