@@ -199,8 +199,8 @@ export function addNextOccurrence(items: RecurrentEvent[]) {
 						},
 					};
 				}
-			} catch (error) {
-				console.log(`Error adding next occurrence ${eventRecurrence}`);
+			} catch {
+				// Skip recurring event occurrences that cannot be parsed
 			}
 		}
 	}
@@ -232,8 +232,6 @@ async function requestWithRetries(
 
 		if (error.httpCode === '403' || error.httpCode === '429') {
 			const delay = 1000 * Math.pow(2, retryCount);
-
-			console.log(`Rate limit hit. Retrying in ${delay}ms... (Attempt ${retryCount + 1})`);
 
 			await sleep(delay);
 			return await requestWithRetries(node, requestFn, retryCount + 1, maxRetries, itemIndex);
