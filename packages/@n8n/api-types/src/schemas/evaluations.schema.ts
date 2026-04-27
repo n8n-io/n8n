@@ -33,3 +33,10 @@ export type StartTestRunPayload = z.infer<typeof startTestRunPayloadSchema>;
 // Shares the same shape as `startTestRunPayloadSchema` — single source of truth
 // so the two validators cannot silently diverge.
 export class StartTestRunRequestDto extends Z.class(startTestRunPayloadShape) {}
+
+// Request body for POST /instance-ai/eval-plan — the AI-wizard bootstrap
+// endpoint. Response shape is `EvalPlan` above.
+export class EvalPlanRequestDto extends Z.class({
+	workflowId: z.string().min(1),
+	userIntent: z.string().min(1).max(2000),
+}) {}
