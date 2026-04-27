@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
-import { sendFrontendBuilderMessage } from '../api/frontend-builder.api';
+import { getFrontendBuilderState, sendFrontendBuilderMessage } from '../api/frontend-builder.api';
 
 const WEBHOOK_TRIGGER_TYPE = 'n8n-nodes-base.webhook';
 
@@ -17,6 +17,7 @@ export function useFrontendBuilder() {
 	const messages = ref<FrontendBuilderMessage[]>([]);
 	const demoUrl = ref<string | null>(null);
 	const sending = ref(false);
+	const hydrating = ref(false);
 	const error = ref<string | null>(null);
 
 	const webhookTriggerNodes = computed(() =>
@@ -24,6 +25,28 @@ export function useFrontendBuilder() {
 	);
 
 	const hasWebhookTrigger = computed(() => webhookTriggerNodes.value.length > 0);
+
+	async function hydrate() {
+		hydrating.value = true;
+		error.value = null;
+		try {
+			const state = await getFrontendBuilderState(
+				rootStore.restApiContext,
+				workflowsStore.workflowId,
+			);
+			if (state.chatId === null) {
+				messages.value = [];
+				demoUrl.value = null;
+			} else {
+				messages.value = state.messages;
+				demoUrl.value = state.demoUrl;
+			}
+		} catch (err) {
+			error.value = err instanceof Error ? err.message : String(err);
+		} finally {
+			hydrating.value = false;
+		}
+	}
 
 	async function send(prompt: string) {
 		if (!prompt.trim()) return;
@@ -60,5 +83,5 @@ export function useFrontendBuilder() {
 		}
 	}
 
-	return { messages, demoUrl, sending, error, hasWebhookTrigger, send };
+	return { messages, demoUrl, sending, hydrating, error, hasWebhookTrigger, hydrate, send };
 }

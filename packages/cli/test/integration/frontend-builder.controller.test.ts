@@ -83,4 +83,48 @@ describe('FrontendBuilderController', () => {
 			expect(response.statusCode).toBe(401);
 		});
 	});
+
+	describe('GET /workflows/:workflowId/frontend', () => {
+		it('returns { chatId: null } when no chat has been started', async () => {
+			const workflow = await createWorkflow({ name: 'WF', active: true }, owner);
+
+			const response = await authOwnerAgent.get(`/workflows/${workflow.id}/frontend`);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toEqual({ chatId: null });
+		});
+
+		it('rehydrates drawer state from v0 when a chat is persisted', async () => {
+			const workflow = await createWorkflow({ name: 'WF', active: true }, owner);
+
+			const posted = await authOwnerAgent.post(`/workflows/${workflow.id}/frontend/messages`).send({
+				prompt: 'a form',
+				endpoints: [
+					{ nodeName: 'Webhook', method: 'POST', url: 'https://example.invalid/webhook/x' },
+				],
+			});
+			expect(posted.statusCode).toBe(200);
+			const chatId = posted.body.data.chatId;
+
+			const got = await authOwnerAgent.get(`/workflows/${workflow.id}/frontend`);
+
+			expect(got.statusCode).toBe(200);
+			expect(got.body.data.chatId).toBe(chatId);
+			expect(got.body.data.demoUrl).toBe(posted.body.data.demoUrl);
+			expect(got.body.data.messages.length).toBeGreaterThan(0);
+			expect(
+				got.body.data.messages.some(
+					(m: { role: string; content: string }) => m.role === 'user' && m.content === 'a form',
+				),
+			).toBe(true);
+		});
+
+		it('rejects unauthenticated callers', async () => {
+			const workflow = await createWorkflow({ name: 'WF', active: true }, owner);
+
+			const response = await testServer.authlessAgent.get(`/workflows/${workflow.id}/frontend`);
+
+			expect(response.statusCode).toBe(401);
+		});
+	});
 });

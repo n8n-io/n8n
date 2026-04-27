@@ -1,4 +1,7 @@
-import type { FrontendBuilderMessageRequestDto } from '@n8n/api-types';
+import type {
+	FrontendBuilderMessageRequestDto,
+	FrontendBuilderStateResponse,
+} from '@n8n/api-types';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IDataObject } from 'n8n-workflow';
@@ -10,12 +13,29 @@ type WorkflowStaticData = IDataObject & {
 	global?: IDataObject & { v0Chat?: { chatId: string } };
 };
 
+function readChatId(staticData: unknown): string | undefined {
+	const sd = (staticData ?? {}) as WorkflowStaticData;
+	return sd.global?.v0Chat?.chatId;
+}
+
 @Service()
 export class FrontendBuilderService {
 	constructor(
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly v0Client: V0Client,
 	) {}
+
+	async getState(workflowId: string): Promise<FrontendBuilderStateResponse> {
+		const workflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			select: ['id', 'staticData'],
+		});
+		const chatId = readChatId(workflow?.staticData);
+		if (!chatId) return { chatId: null };
+
+		const result = await this.v0Client.getChat(chatId);
+		return { chatId: result.chatId, demoUrl: result.demoUrl, messages: result.messages };
+	}
 
 	async sendMessage(
 		workflowId: string,

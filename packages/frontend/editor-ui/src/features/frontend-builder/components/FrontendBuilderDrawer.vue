@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -8,13 +8,21 @@ import FrontendBuilderIframe from './FrontendBuilderIframe.vue';
 import FrontendBuilderMessageList from './FrontendBuilderMessageList.vue';
 import FrontendBuilderPromptInput from './FrontendBuilderPromptInput.vue';
 
-defineProps<{ open: boolean }>();
+const props = defineProps<{ open: boolean }>();
 defineEmits<{ close: [] }>();
 
-const { messages, demoUrl, sending, error, send } = useFrontendBuilder();
+const { messages, demoUrl, sending, hydrating, error, hydrate, send } = useFrontendBuilder();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const showActivationWarning = computed(() => workflowDocumentStore?.value?.active === false);
+
+watch(
+	() => props.open,
+	(open) => {
+		if (open) void hydrate();
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -31,7 +39,7 @@ const showActivationWarning = computed(() => workflowDocumentStore?.value?.activ
 			<FrontendBuilderMessageList :messages="messages" />
 			<p v-if="error" :class="$style.error">{{ error }}</p>
 			<FrontendBuilderIframe :demo-url="demoUrl" :has-messages="messages.length > 0" />
-			<FrontendBuilderPromptInput :disabled="sending" @send="send" />
+			<FrontendBuilderPromptInput :disabled="sending || hydrating" @send="send" />
 		</section>
 	</aside>
 </template>
