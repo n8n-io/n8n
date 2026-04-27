@@ -81,7 +81,7 @@ export class BreakingChangeService {
 					});
 				}
 			} catch (error) {
-				console.log('error', error);
+				this.logger.error('Failed to evaluate breaking-change rule', { error });
 				this.errorReporter.error(error, { shouldBeLogged: true });
 			}
 		}
