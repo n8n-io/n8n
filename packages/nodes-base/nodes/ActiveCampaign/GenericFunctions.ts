@@ -96,10 +96,9 @@ export async function activeCampaignApiRequestAllItems(
 		responseData = await activeCampaignApiRequest.call(this, method, endpoint, body, query);
 
 		if (dataKey === undefined) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-			if (returnData !== undefined) {
-				itemsReceived += returnData.length;
-			}
+			const newItems = responseData as IDataObject[];
+			returnData.push.apply(returnData, newItems);
+			itemsReceived += newItems.length;
 		} else {
 			returnData.push.apply(returnData, responseData[dataKey] as IDataObject[]);
 			if (responseData[dataKey] !== undefined) {
