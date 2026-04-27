@@ -1,0 +1,111 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-node-id",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "field-1",
+							"name": "step",
+							"value": "1",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "set-node-1-id",
+			"name": "Set Step 1"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "field-2",
+							"name": "step",
+							"value": "2",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0],
+			"id": "set-node-2-id",
+			"name": "Set Step 2"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "field-3",
+							"name": "step",
+							"value": "3",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [660, 0],
+			"id": "set-node-3-id",
+			"name": "Set Step 3"
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Set Step 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Step 1": {
+			"main": [
+				[
+					{
+						"node": "Set Step 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Step 2": {
+			"main": [
+				[
+					{
+						"node": "Set Step 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "test-instance-id"
+	}
+}
