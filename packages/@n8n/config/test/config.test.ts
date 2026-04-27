@@ -163,6 +163,7 @@ describe('GlobalConfig', () => {
 				logBaseName: 'n8nEventLog',
 				maxFileSizeInKB: 10240,
 				maxMessagesPerParse: 10_000,
+				maxTotalMessagesPerFile: 500_000,
 			},
 		},
 		externalHooks: {
@@ -531,6 +532,8 @@ describe('GlobalConfig', () => {
 			samlMetadata: '',
 			samlMetadataUrl: '',
 			samlLoginEnabled: false,
+			logStreamingManagedByEnv: false,
+			logStreamingDestinations: '',
 		},
 	} satisfies GlobalConfigShape;
 

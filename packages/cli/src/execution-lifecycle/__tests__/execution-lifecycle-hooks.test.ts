@@ -689,6 +689,38 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(redactionProxy.processExecution).toHaveBeenCalledTimes(1);
 			});
 
+			it('should skip nodeExecuteAfterData push when userId is not provided (e.g. webhook execution missing userId)', async () => {
+				lifecycleHooks = getLifecycleHooksForRegularMain(
+					{ executionMode: 'manual', workflowData, pushRef, retryOf, userId: undefined },
+					executionId,
+				);
+
+				const mockTaskData: ITaskData = {
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					source: [],
+					data: { main: [[{ json: { key: 'value' } }]] },
+				};
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfter' }),
+					pushRef,
+				);
+
+				expect(push.send).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
+					pushRef,
+					true,
+				);
+			});
+
 			it('should skip nodeExecuteAfterData push when user cannot be resolved (fail-closed)', async () => {
 				userRepository.findOne.mockResolvedValue(null);
 				lifecycleHooks = createHooks();
