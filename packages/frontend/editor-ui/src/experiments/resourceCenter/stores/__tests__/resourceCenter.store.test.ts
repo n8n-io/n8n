@@ -5,6 +5,7 @@ import { useResourceCenterStore } from '../resourceCenter.store';
 const mocks = vi.hoisted(() => ({
 	track: vi.fn(),
 	getVariant: vi.fn(),
+	isVariantEnabled: vi.fn(),
 }));
 
 const storage = vi.hoisted(() => {
@@ -29,7 +30,10 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 }));
 
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ getVariant: mocks.getVariant }),
+	usePostHog: () => ({
+		getVariant: mocks.getVariant,
+		isVariantEnabled: mocks.isVariantEnabled,
+	}),
 }));
 
 vi.mock('@/app/stores/workflows.store', () => ({
@@ -65,6 +69,10 @@ describe('resourceCenter.store', () => {
 		resetResourceCenterStorage();
 		mocks.track.mockClear();
 		mocks.getVariant.mockReset();
+		mocks.isVariantEnabled.mockReset();
+		mocks.isVariantEnabled.mockImplementation(
+			(experiment: string, variant: string) => mocks.getVariant(experiment) === variant,
+		);
 	});
 
 	describe('tooltip persistence (GRO-284 fix)', () => {

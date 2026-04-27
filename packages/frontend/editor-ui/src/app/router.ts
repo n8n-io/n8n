@@ -151,7 +151,10 @@ const allowResourceCenterRoute = (
 	next: NavigationGuardNext,
 ) => {
 	if (
-		posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name) === RESOURCE_CENTER_EXPERIMENT.variant
+		posthogStore.isVariantEnabled(
+			RESOURCE_CENTER_EXPERIMENT.name,
+			RESOURCE_CENTER_EXPERIMENT.variant,
+		)
 	) {
 		next();
 	} else {
@@ -285,8 +288,10 @@ export const routes: RouteRecordRaw[] = [
 			const posthogStore = usePostHog();
 
 			if (
-				posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name) ===
-				RESOURCE_CENTER_EXPERIMENT.variant
+				posthogStore.isVariantEnabled(
+					RESOURCE_CENTER_EXPERIMENT.name,
+					RESOURCE_CENTER_EXPERIMENT.variant,
+				)
 			) {
 				next();
 				return;

@@ -32,7 +32,10 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	);
 
 	const isFeatureEnabled = () =>
-		posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name) === RESOURCE_CENTER_EXPERIMENT.variant;
+		posthogStore.isVariantEnabled(
+			RESOURCE_CENTER_EXPERIMENT.name,
+			RESOURCE_CENTER_EXPERIMENT.variant,
+		);
 
 	const shouldShowResourceCenterTooltip = computed(() => {
 		return isFeatureEnabled() && !hasTooltipBeenDismissed.value;
