@@ -1,4 +1,5 @@
 import type { Workspace } from '@mastra/core/workspace';
+import { validateWorkflow } from '@n8n/workflow-sdk';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypes } from 'n8n-workflow';
 
@@ -14,13 +15,15 @@ jest.mock('@n8n/workflow-sdk', () => ({
 	layoutWorkflowJSON: jest.fn((wf: unknown) => wf),
 }));
 
+// `require` (rather than `import`) is needed because `submit-workflow.tool`
+// transitively pulls in @mastra/core (ESM-only); the require call here runs
+// AFTER the `jest.mock('@mastra/core/tools', …)` above, so the mock is in
+// place before the module is evaluated.
 const { createSubmitWorkflowTool } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../submit-workflow.tool') as typeof import('../submit-workflow.tool');
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-const workflowSdk = require('@n8n/workflow-sdk') as typeof import('@n8n/workflow-sdk');
-const mockedValidateWorkflow = jest.mocked(workflowSdk.validateWorkflow);
+const mockedValidateWorkflow = jest.mocked(validateWorkflow);
 
 type Executable = {
 	execute: (input: Record<string, unknown>) => Promise<{
@@ -117,10 +120,13 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 
 		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
 
-		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), { nodeTypesProvider });
+		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
+			nodeTypesProvider,
+			strictMode: true,
+		});
 	});
 
-	it('passes undefined nodeTypesProvider when context has none', async () => {
+	it('passes undefined nodeTypesProvider when context has none, strictMode still on', async () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext(),
 			makeBuildSuccessWorkspace(),
@@ -131,6 +137,7 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 
 		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
 			nodeTypesProvider: undefined,
+			strictMode: true,
 		});
 	});
 });

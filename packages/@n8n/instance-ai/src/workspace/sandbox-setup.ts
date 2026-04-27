@@ -83,7 +83,7 @@ function buildPackageJson(sdkSpecifier: string): string {
 			name: 'sandbox-workspace',
 			private: true,
 			dependencies: {
-				'@n8n/workflow-sdk': sdkSpecifier,
+				'@n8n/workflow-sdk': '0.11.3',
 				tsx: SANDBOX_TSX_VERSION,
 			},
 			devDependencies: {

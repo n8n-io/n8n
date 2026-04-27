@@ -122,7 +122,7 @@ describe('parseAndValidate', () => {
 		);
 	});
 
-	it('forwards nodeTypesProvider to both graph and schema validators', () => {
+	it('forwards nodeTypesProvider to both validators with strictMode on for schema validation', () => {
 		const builder = makeBuilder();
 		mockedParseWorkflowCodeToBuilder.mockReturnValue(builder as never);
 		const nodeTypesProvider = mock<INodeTypes>();
@@ -130,10 +130,13 @@ describe('parseAndValidate', () => {
 		parseAndValidate('code', { nodeTypesProvider });
 
 		expect(builder.validate).toHaveBeenCalledWith({ nodeTypesProvider });
-		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), { nodeTypesProvider });
+		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
+			nodeTypesProvider,
+			strictMode: true,
+		});
 	});
 
-	it('passes undefined provider when no options are supplied', () => {
+	it('passes undefined provider but keeps strictMode on when no options are supplied', () => {
 		const builder = makeBuilder();
 		mockedParseWorkflowCodeToBuilder.mockReturnValue(builder as never);
 
@@ -142,6 +145,7 @@ describe('parseAndValidate', () => {
 		expect(builder.validate).toHaveBeenCalledWith({ nodeTypesProvider: undefined });
 		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
 			nodeTypesProvider: undefined,
+			strictMode: true,
 		});
 	});
 });

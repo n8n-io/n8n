@@ -80,8 +80,10 @@ export function parseAndValidate(
 
 		const json = builder.toJSON();
 
-		// Stage 2: Schema validation via Zod schemas from schemaBaseDirs
-		const schemaValidation = validateWorkflow(json, { nodeTypesProvider });
+		// Stage 2: Schema validation via Zod schemas from schemaBaseDirs.
+		// strictMode is hardcoded on at AI-builder call sites — we want every
+		// catchable bug surfaced as a blocking error so the agent can self-correct.
+		const schemaValidation = validateWorkflow(json, { nodeTypesProvider, strictMode: true });
 		collectValidationIssues(schemaValidation.errors, allWarnings);
 		collectValidationIssues(schemaValidation.warnings, allWarnings);
 
