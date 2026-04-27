@@ -377,6 +377,7 @@ export function getSafeJSONMethod(
  */
 const SAFE_STRING_METHODS: Record<string, (str: string, ...args: unknown[]) => unknown> = {
 	repeat: (str: string, count: unknown) => str.repeat(count as number),
+	trim: (str: string) => str.trim(),
 };
 
 /**
