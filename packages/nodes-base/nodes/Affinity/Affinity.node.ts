@@ -144,9 +144,9 @@ export class Affinity implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
+			const resource = this.getNodeParameter('resource', i) as string;
+			const operation = this.getNodeParameter('operation', i) as string;
 			try {
 				if (resource === 'list') {
 					//https://api-docs.affinity.co/#get-a-specific-list
