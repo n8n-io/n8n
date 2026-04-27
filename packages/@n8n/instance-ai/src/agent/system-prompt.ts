@@ -4,6 +4,9 @@ import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
 import type { LocalGatewayStatus } from '../types';
 
+const BROWSER_USE_EXTENSION_URL =
+	'https://chromewebstore.google.com/detail/n8n-browser-use/cegmdpndekdfpnafgacidejijecomlhh';
+
 interface SystemPromptOptions {
 	researchMode?: boolean;
 	webhookBaseUrl?: string;
@@ -99,13 +102,22 @@ function getBrowserSection(
 	localGateway: LocalGatewayStatus | undefined,
 ): string {
 	if (!browserAvailable) {
-		if (localGateway?.status === 'disconnected' && localGateway.capabilities.includes('browser')) {
+		if (localGateway?.status === 'disconnected') {
 			return `
 
 ## Browser Automation (Unavailable)
 
-Browser tools require a connected Computer Use. They are not available until your computer connects.`;
+Browser tools require both the Computer Use daemon (see above) **and** the n8n Browser Use Chrome extension. If the user asks for browser automation, tell them to start the daemon and install the extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`;
 		}
+
+		if (localGateway?.status === 'connected') {
+			return `
+
+## Browser Automation (Disabled in Computer Use)
+
+Browser tools are not enabled in the user's Computer Use configuration. If the user asks for browser automation, tell them to (1) enable browser tools in their Computer Use config, and (2) install the n8n Browser Use Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`;
+		}
+
 		return '';
 	}
 	return `
@@ -127,7 +139,11 @@ After the user confirms they're done, take a snapshot to verify before continuin
 
 ### Secrets and sensitive data
 
-**NEVER include passwords, API keys, tokens, or secrets in your chat messages** — even if visible on a page. If the user asks you to retrieve a secret, tell them to read it directly from their browser.`;
+**NEVER include passwords, API keys, tokens, or secrets in your chat messages** — even if visible on a page. If the user asks you to retrieve a secret, tell them to read it directly from their browser.
+
+### When browser tools fail at runtime
+
+If a browser_* tool call fails because the browser is unreachable (e.g. connection lost, extension not responding), ask the user to verify the **n8n Browser Use** Chrome extension is installed and connected. If needed, they can reinstall from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`;
 }
 
 function getReadOnlySection(branchReadOnly?: boolean): string {
@@ -204,6 +220,8 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 **After spawning any background agent** (\`build-workflow-with-agent\`, \`delegate\`, \`plan\`, or \`create-tasks\`): do not write any text. The task card shows the user what's being built or done; restating it (e.g. the workflow name, what the agent will do) is redundant. Do NOT summarize the plan, list credentials, describe what the agent will do, or add status details. The agent's progress is already visible to the user in real time.
 
 **Credentials**: Call \`credentials(action="list")\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow.
+
+**Ask once when a service has multiple credentials of the same type.** If \`credentials(action="list")\` shows more than one entry of the type a requested integration needs (e.g. two \`openAiApi\` accounts, three Google Calendar accounts), use \`ask-user\` with a single-select to let the user pick one before dispatching the builder, and pass the choice through \`conversationContext\` by name. Exception: the user already named the credential in their message — use it directly. With a single candidate, auto-apply and do not ask.
 
 ${SECRET_ASK_GUARDRAIL}
 

@@ -4,14 +4,12 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
-		"rootDir": ".",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"baseUrl": "src",
 		"paths": {
-			"@/*": ["./*"],
-			"@test/*": ["../test/shared/*"],
-			"@test-integration/*": ["../test/integration/shared/*"]
+			"@/*": ["./src/*"],
+			"@test/*": ["./test/shared/*"],
+			"@test-integration/*": ["./test/integration/shared/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line
