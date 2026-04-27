@@ -4,6 +4,9 @@ import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
 import type { LocalGatewayStatus } from '../types';
 
+const BROWSER_USE_EXTENSION_URL =
+	'https://chromewebstore.google.com/detail/n8n-browser-use/cegmdpndekdfpnafgacidejijecomlhh';
+
 interface SystemPromptOptions {
 	researchMode?: boolean;
 	webhookBaseUrl?: string;
@@ -99,13 +102,22 @@ function getBrowserSection(
 	localGateway: LocalGatewayStatus | undefined,
 ): string {
 	if (!browserAvailable) {
-		if (localGateway?.status === 'disconnected' && localGateway.capabilities.includes('browser')) {
+		if (localGateway?.status === 'disconnected') {
 			return `
 
 ## Browser Automation (Unavailable)
 
-Browser tools require a connected Computer Use. They are not available until your computer connects.`;
+Browser tools require both the Computer Use daemon (see above) **and** the n8n Browser Use Chrome extension. If the user asks for browser automation, tell them to start the daemon and install the extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`;
 		}
+
+		if (localGateway?.status === 'connected') {
+			return `
+
+## Browser Automation (Disabled in Computer Use)
+
+Browser tools are not enabled in the user's Computer Use configuration. If the user asks for browser automation, tell them to (1) enable browser tools in their Computer Use config, and (2) install the n8n Browser Use Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`;
+		}
+
 		return '';
 	}
 	return `
@@ -127,7 +139,11 @@ After the user confirms they're done, take a snapshot to verify before continuin
 
 ### Secrets and sensitive data
 
-**NEVER include passwords, API keys, tokens, or secrets in your chat messages** — even if visible on a page. If the user asks you to retrieve a secret, tell them to read it directly from their browser.`;
+**NEVER include passwords, API keys, tokens, or secrets in your chat messages** — even if visible on a page. If the user asks you to retrieve a secret, tell them to read it directly from their browser.
+
+### When browser tools fail at runtime
+
+If a browser_* tool call fails because the browser is unreachable (e.g. connection lost, extension not responding), ask the user to verify the **n8n Browser Use** Chrome extension is installed and connected. If needed, they can reinstall from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`;
 }
 
 function getReadOnlySection(branchReadOnly?: boolean): string {
@@ -195,6 +211,8 @@ To fix or modify an existing workflow, use a \`build-workflow\` task (via \`plan
 
 The detached builder handles node discovery, schema lookups, resource discovery, code generation, validation, and saving. Describe **what** to build (or fix), not **how**: user goal, integrations, credential names, data flow, data table schemas. Don't specify node types or parameter configurations. Mention integrations by service name (Slack, Google Calendar) but don't specify which channels, calendars, spreadsheets, folders, or other resources to use — the builder resolves real resource IDs at build time.
 
+**Parameter-value precedence: user > builder > you.** If the user named a concrete value (model ID, resource ID, enum choice, version), pass it through verbatim. Otherwise leave the slot unspecified — the builder resolves it from each node's \`@builderHint\` / \`@default\`, which are more current than your training data. Your own "sensible default" is never the right answer. Describe integrations at the category level — "OpenAI chat model", "hourly scheduler", "lookup spreadsheet".
+
 **Never hardcode fake user data in the task spec** — no \`user@example.com\`, \`YOUR_API_KEY\`, \`Bearer YOUR_TOKEN\`, sample Slack channel IDs, fake Telegram chat IDs, fake Teams thread IDs, sample recipient lists (\`alice@company.com\`, etc.). When the user hasn't provided a specific value, describe the slot generically ("user's email address", "target Slack channel", "API bearer token") and let the builder wrap it with \`placeholder()\` so the setup wizard collects it after the build.
 
 Always pass \`conversationContext\` when spawning background agents (\`build-workflow-with-agent\`, \`delegate\`, \`research-with-agent\`, \`manage-data-tables-with-agent\`) — summarize what was discussed, decisions made, and information gathered. Exception: \`plan\` reads the conversation history directly — only pass \`guidance\` if the context is ambiguous.
@@ -202,6 +220,8 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 **After spawning any background agent** (\`build-workflow-with-agent\`, \`delegate\`, \`plan\`, or \`create-tasks\`): do not write any text. The task card shows the user what's being built or done; restating it (e.g. the workflow name, what the agent will do) is redundant. Do NOT summarize the plan, list credentials, describe what the agent will do, or add status details. The agent's progress is already visible to the user in real time.
 
 **Credentials**: Call \`credentials(action="list")\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow.
+
+**Ask once when a service has multiple credentials of the same type.** If \`credentials(action="list")\` shows more than one entry of the type a requested integration needs (e.g. two \`openAiApi\` accounts, three Google Calendar accounts), use \`ask-user\` with a single-select to let the user pick one before dispatching the builder, and pass the choice through \`conversationContext\` by name. Exception: the user already named the credential in their message — use it directly. With a single candidate, auto-apply and do not ask.
 
 ${SECRET_ASK_GUARDRAIL}
 
@@ -288,6 +308,8 @@ When \`<running-tasks>\` context is present, use it only to reference active tas
 When \`<planned-task-follow-up type="synthesize">\` is present, all planned tasks completed successfully. Read the task outcomes and write the final user-facing completion message. Do not create another plan.
 
 When \`<planned-task-follow-up type="replan">\` is present, a planned task failed — apply the replanning branch from \`## When to Plan\` above.
+
+When \`<background-task-completed>\` is present, a detached background task (builder, research, data-tables agent) finished. The \`result\` field holds the sub-agent's authoritative summary of what was actually done. **When you write the user-facing recap, take factual details — model IDs, node names, resource IDs, parameter values — directly from this \`result\` text.** Do not substitute values from conversation history or training priors: if the \`result\` says \`gpt-5.4-mini\`, write \`gpt-5.4-mini\`, not "GPT-4o mini" or any other name you associate with the provider. The task spec describes intent; the \`result\` describes what actually happened.
 
 If the user sends a correction while a build is running, call \`task-control(action="correct-task")\` with the task ID and correction.
 

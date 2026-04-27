@@ -112,6 +112,10 @@ export class LmChatMistralCloud implements INodeType {
 					},
 				},
 				default: 'mistral-small',
+				builderHint: {
+					message:
+						'Default to the latest flagship Mistral (mistral-large-2512, aka Mistral Large 3). Use mistral-small for cost-efficient builds. Avoid older dated snapshots and Medium/Small 2.x.',
+				},
 			},
 			{
 				displayName: 'Options',

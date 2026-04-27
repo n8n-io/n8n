@@ -19,13 +19,19 @@ interface PendingRequest {
 	toolCall: McpToolCallRequest;
 }
 
-export interface LocalGatewayEvent {
+export interface LocalGatewayRequestEvent {
 	type: 'filesystem-request';
 	payload: {
 		requestId: string;
 		toolCall: McpToolCallRequest;
 	};
 }
+
+export interface LocalGatewayDisconnectEvent {
+	type: 'gateway-disconnect';
+}
+
+export type LocalGatewayEvent = LocalGatewayRequestEvent | LocalGatewayDisconnectEvent;
 
 /**
  * Singleton MCP gateway for a connected local client (e.g. the computer-use daemon).
@@ -84,9 +90,15 @@ export class LocalGateway {
 	}
 
 	/** Subscribe to outbound tool call events (consumed by the SSE endpoint). */
-	onRequest(listener: (event: LocalGatewayEvent) => void): () => void {
+	onRequest(listener: (event: LocalGatewayRequestEvent) => void): () => void {
 		this.emitter.on('filesystem-request', listener);
 		return () => this.emitter.off('filesystem-request', listener);
+	}
+
+	/** Subscribe to disconnect events so the SSE endpoint can tell the daemon to tear down. */
+	onDisconnect(listener: (event: LocalGatewayDisconnectEvent) => void): () => void {
+		this.emitter.on('gateway-disconnect', listener);
+		return () => this.emitter.off('gateway-disconnect', listener);
 	}
 
 	/** Called when the client uploads its MCP tool capabilities. */
@@ -121,6 +133,10 @@ export class LocalGateway {
 
 	/** Mark the gateway as disconnected and reject all pending requests. */
 	disconnect(): void {
+		this.emitter.emit('gateway-disconnect', {
+			type: 'gateway-disconnect',
+		} satisfies LocalGatewayDisconnectEvent);
+
 		this._connected = false;
 		this._connectedAt = null;
 		this._rootPath = null;

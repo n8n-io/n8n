@@ -9,9 +9,9 @@
  */
 
 import { validateNodeConfig, loadSchema } from './schema-validator';
+import { setupTestSchemas, teardownTestSchemas } from './test-schema-setup';
 import { parseWorkflowCode } from '../codegen/parse-workflow-code';
 import { validateWorkflow } from '../validation';
-import { setupTestSchemas, teardownTestSchemas } from './test-schema-setup';
 
 function requireSchema(nodeType: string, version: number): void {
 	if (!loadSchema(nodeType, version)) {
