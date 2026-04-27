@@ -53,11 +53,11 @@ export async function linearApiRequest(
 			{
 				message:
 					error.errorResponse?.[0]?.message ||
-					error.context.data.errors[0]?.message ||
+					error.context?.data?.errors?.[0]?.message ||
 					'Unknown API error',
 				description:
 					error.errorResponse?.[0]?.extensions?.userPresentableMessage ||
-					error.context.data.errors[0]?.extensions?.userPresentableMessage,
+					error.context?.data?.errors?.[0]?.extensions?.userPresentableMessage,
 			},
 		);
 	}
