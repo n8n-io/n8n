@@ -35,7 +35,6 @@
     "@codemirror/view": "catalog:",
     "@dagrejs/dagre": "^1.1.4",
     "@lezer/common": "catalog:",
-    "@n8n/agents": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/chat": "workspace:*",
     "@n8n/chat-hub": "workspace:*",

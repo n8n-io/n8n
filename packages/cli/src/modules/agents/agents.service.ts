@@ -6,7 +6,7 @@ import type {
 	ToolDescriptor,
 } from '@n8n/agents';
 import * as agents from '@n8n/agents';
-import { findAppDefinition } from '@n8n/agents/toolsets';
+import { findAppDefinition } from '@n8n/agents';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';

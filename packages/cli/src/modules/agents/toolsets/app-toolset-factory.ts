@@ -1,10 +1,12 @@
-import { Tool, type BuiltTool, zodToJsonSchema } from '@n8n/agents';
 import {
+	Tool,
+	type BuiltTool,
+	zodToJsonSchema,
 	buildManifest,
 	buildOperationsFromDescription,
 	type AppDefinition,
 	type OperationEntry,
-} from '@n8n/agents/toolsets';
+} from '@n8n/agents';
 import {
 	generateZodSchema,
 	type FromAIArgument,

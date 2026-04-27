@@ -6,7 +6,7 @@
 import { computed } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import { findAppDefinition } from '@n8n/agents/toolsets';
+import { findAppDefinition } from '../utils/appToolsets';
 import shared from '../styles/agent-panel.module.scss';
 import type { AgentJsonAppRef } from '../types';
 

@@ -8,7 +8,7 @@ import { buildAppToolset } from '../app-toolset-factory';
 
 // Use Gmail definition since it ships in the registry. Importing from the
 // public toolsets surface ensures we cover the same shape consumers see.
-import { findAppDefinition } from '@n8n/agents/toolsets';
+import { findAppDefinition } from '@n8n/agents';
 
 const GMAIL_APP = findAppDefinition('gmail')!;
 

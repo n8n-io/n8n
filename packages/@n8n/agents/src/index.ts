@@ -53,6 +53,18 @@ export { evaluate } from './sdk/evaluate';
 export type { DatasetRow, EvaluateConfig } from './sdk/evaluate';
 export * as evals from './evals/index';
 export * as toolsets from './toolsets';
+export type {
+	AppDefinition,
+	AppOperationStatus,
+	OperationCuration,
+	OperationEntry,
+} from './toolsets';
+export {
+	APP_REGISTRY,
+	buildManifest,
+	buildOperationsFromDescription,
+	findAppDefinition,
+} from './toolsets';
 export { Telemetry } from './sdk/telemetry';
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
