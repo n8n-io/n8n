@@ -131,9 +131,11 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			}
 		});
 
-		// Mark workflow dirty so it gets saved before execution.
-		// Without this, the backend loads stale pinData from the DB.
-		markStateDirty();
+		if (pinnings > 0 || matchingPinnedNodeNames.length > 0) {
+			// Mark workflow dirty so it gets saved before execution.
+			// Without this, the backend loads stale pinData from the DB.
+			markStateDirty();
+		}
 
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.debug.title'),
