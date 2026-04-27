@@ -81,6 +81,8 @@ catalog:
   nanoid: 3.3.8
   nodemailer: 7.0.11
   openai: 6.19.0
+  oxlint: ^1.61.0
+  oxlint-tsgolint: ^0.21.1
   pg: 8.17.0
   picocolors: 1.0.1
   playwright-core: 1.58.0
