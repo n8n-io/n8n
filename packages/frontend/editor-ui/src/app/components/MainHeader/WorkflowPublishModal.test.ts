@@ -274,6 +274,20 @@ describe('WorkflowPublishModal', () => {
 			expect(warning).toHaveTextContent('Message a model');
 		});
 
+		it('should show singular copy for a single active AI gateway node', () => {
+			workflowsStore.workflow = { ...workflowsStore.workflow, nodes: [AI_GATEWAY_NODE] };
+
+			const { getByTestId } = renderComponent();
+
+			const warning = getByTestId('workflow-publish-ai-gateway-warning');
+			expect(warning).toHaveTextContent('The node');
+			expect(warning).toHaveTextContent('uses an n8n Connect credential');
+			expect(warning).toHaveTextContent(
+				'Once your n8n Connect balance is depleted, this workflow will stop working.',
+			);
+			expect(warning).not.toHaveTextContent('Top-up');
+		});
+
 		it('should show warning with all node names for multiple active AI gateway nodes', () => {
 			workflowsStore.workflow = {
 				...workflowsStore.workflow,
@@ -286,6 +300,23 @@ describe('WorkflowPublishModal', () => {
 			expect(warning).toBeInTheDocument();
 			expect(warning).toHaveTextContent('Message a model');
 			expect(warning).toHaveTextContent('Generate Image');
+		});
+
+		it('should show plural copy for multiple active AI gateway nodes', () => {
+			workflowsStore.workflow = {
+				...workflowsStore.workflow,
+				nodes: [AI_GATEWAY_NODE, { ...AI_GATEWAY_NODE, id: 'ai-node-2', name: 'Generate Image' }],
+			};
+
+			const { getByTestId } = renderComponent();
+
+			const warning = getByTestId('workflow-publish-ai-gateway-warning');
+			expect(warning).toHaveTextContent('The nodes');
+			expect(warning).toHaveTextContent('use n8n Connect credentials');
+			expect(warning).toHaveTextContent(
+				'Once your n8n Connect balance is depleted, this workflow will stop working.',
+			);
+			expect(warning).not.toHaveTextContent('Top-up');
 		});
 	});
 
