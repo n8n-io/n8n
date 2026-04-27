@@ -1,0 +1,26 @@
+{
+	"prompt": "Every weekday morning at 08:00, build an AI-curated news digest for the team. Use a Schedule Trigger configured for cron '0 8 * * 1-5'. After the trigger, an AI Agent (Anthropic Chat Model) should produce a 5-bullet daily digest. Give the agent these tools, all HTTP Request tools: (1) GET https://hacker-news.firebaseio.com/v0/topstories.json then for each id GET https://hacker-news.firebaseio.com/v0/item/{id}.json (give the agent a single 'hackerNewsTopStories' tool that takes a 'limit' argument and returns the top N stories with title and url), (2) GET https://newsapi.org/v2/top-headlines?country=us&category=technology&pageSize=10 (a 'techHeadlines' tool), (3) GET https://www.reddit.com/r/programming/top.json?t=day&limit=10 (a 'redditProgrammingTop' tool). The agent's system prompt: 'You are a news curator. Use the tools to gather today's most relevant tech stories, deduplicate, and write a digest with exactly 5 bullets. Each bullet has the form: TITLE — one-sentence why-it-matters — URL. Skip clickbait and crypto-pump stories.' Then post the digest to Slack channel #daily-tech-digest (id C0DAILYDIG01). Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "complex",
+	"tags": ["build", "schedule", "ai", "agent", "tools", "http-request", "slack", "news"],
+	"triggerType": "schedule",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "All 3 sources return stories, agent produces a 5-bullet digest",
+			"dataSetup": "The Hacker News tool returns 5 stories: 'Rust 1.85 released' (https://blog.rust-lang.org/...), 'A simple guide to LLM evals' (https://example.com/llm-evals), 'Open-source CAD tools roundup' (https://example.com/cad), 'Postgres 17 performance numbers' (https://example.com/pg17), 'YC W26 batch announced' (https://example.com/yc). The techHeadlines tool returns 5 stories about chip manufacturing, a major cloud outage post-mortem, AI regulation, an iPhone product launch, and a layoffs report. The redditProgrammingTop tool returns 5 stories about a popular dev tool release, a deep-dive on memory management, and three duplicates of the Rust release and the Postgres post. The Anthropic chat model returns a 5-bullet digest that deduplicates and picks the strongest stories. The Slack post-message node returns a success response.",
+			"successCriteria": "The workflow executes without errors. The agent invokes at least 2 of the 3 news tools. The Slack message contains exactly 5 bullets and each bullet contains a URL. The same story is not listed twice. The Slack post-message node is invoked with channel id C0DAILYDIG01."
+		},
+		{
+			"name": "one-source-empty",
+			"description": "Reddit returns no stories — digest is built from the other two",
+			"dataSetup": "The Hacker News tool returns 5 stories with substantive tech topics. The techHeadlines tool returns 5 stories with substantive tech topics. The redditProgrammingTop tool returns an empty list. The Anthropic chat model returns a 5-bullet digest sourced only from Hacker News and tech headlines. The Slack node returns success.",
+			"successCriteria": "The workflow completes without errors. The Slack message contains 5 bullets with URLs. The agent does not fabricate Reddit content to fill space."
+		},
+		{
+			"name": "duplicates-and-clickbait",
+			"description": "Sources return many duplicates and some clickbait — agent must filter",
+			"dataSetup": "Hacker News returns 5 stories where 3 are about the same Postgres release. techHeadlines returns 5 stories with 2 obvious clickbait titles ('You won't believe what AI did next!') and a crypto pump piece. redditProgrammingTop returns 4 substantive stories. The Anthropic chat model returns a 5-bullet digest that drops the clickbait and the crypto piece, and includes Postgres only once. The Slack node returns success.",
+			"successCriteria": "The workflow completes without errors. The Slack message has 5 bullets. The Postgres release is mentioned at most once across the bullets. None of the bullets is the clickbait or the crypto-pump piece."
+		}
+	]
+}

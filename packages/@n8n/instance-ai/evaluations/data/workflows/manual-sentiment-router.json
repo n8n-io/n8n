@@ -1,0 +1,42 @@
+{
+	"prompt": "Create a manually-triggered workflow that processes a hardcoded list of customer reviews. After the Manual Trigger, place a Set node called 'Reviews' that emits an array of objects with keys { reviewId, customer, text }. Use exactly these reviews:\n\n[\n  { reviewId: 'R-1', customer: 'maya@example.com', text: 'Absolutely love this product, the support team was incredible.' },\n  { reviewId: 'R-2', customer: 'jordan@example.com', text: 'It is fine, does what it says, nothing extraordinary.' },\n  { reviewId: 'R-3', customer: 'lee@example.com', text: 'Terrible experience. The app crashes constantly and billing overcharged me twice.' }\n]\n\nUse a Split In Batches (or 'loop over items') node so each review is processed individually. For each review, an AI Agent (Anthropic Chat Model) with a Structured Output Parser emits { reviewId: string, sentiment: 'positive'|'neutral'|'negative', confidence: number, oneLineSummary: string }. Then a Switch node routes on sentiment. 'positive' → send a Gmail thank-you email to the customer email with subject 'Thanks for your review'. 'neutral' → no-op (just continue). 'negative' → post a Slack alert to channel #escalations (channel id C0ESCALATE01) including the reviewId, the oneLineSummary, and the customer email. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": [
+		"build",
+		"manual",
+		"ai",
+		"agent",
+		"structured-output",
+		"switch",
+		"loop",
+		"gmail",
+		"slack"
+	],
+	"triggerType": "manual",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "All 3 reviews are processed and routed to the correct branches",
+			"dataSetup": "The workflow runs with the hardcoded reviews above. For R-1 the Anthropic chat model returns { reviewId: 'R-1', sentiment: 'positive', confidence: 0.95, oneLineSummary: 'Praises product and support.' }. For R-2 it returns { reviewId: 'R-2', sentiment: 'neutral', confidence: 0.78, oneLineSummary: 'Functional but unremarkable.' }. For R-3 it returns { reviewId: 'R-3', sentiment: 'negative', confidence: 0.92, oneLineSummary: 'App crashes and double-billing complaint.' }. The Gmail send returns success. The Slack post-message returns success.",
+			"successCriteria": "The workflow executes without errors. The agent is invoked 3 times (once per review). The Gmail send is invoked once with recipient maya@example.com. The Slack post-message is invoked once for channel C0ESCALATE01 and references R-3 and lee@example.com. No Slack alert is sent for R-1 or R-2; no Gmail thank-you is sent for R-2 or R-3."
+		},
+		{
+			"name": "all-negative",
+			"description": "All 3 reviews are negative — every iteration triggers a Slack alert",
+			"dataSetup": "The workflow runs with the same 3 reviews as input shape. The Anthropic chat model returns sentiment='negative' for all 3 reviews with relevant oneLineSummary values reflecting each review's complaint. The Slack post-message returns success.",
+			"successCriteria": "The workflow executes without errors. The Slack post-message is invoked 3 times, once per reviewId. No Gmail thank-you is sent. The Slack messages mention reviewId values R-1, R-2, R-3 across the 3 invocations."
+		},
+		{
+			"name": "all-neutral",
+			"description": "All 3 reviews are neutral — nothing routes downstream",
+			"dataSetup": "The workflow runs with the same 3 reviews. The Anthropic chat model returns sentiment='neutral' for all 3 reviews. Neither the Gmail nor the Slack downstream node is invoked.",
+			"successCriteria": "The workflow executes without errors. No Gmail send is invoked. No Slack post-message is invoked. The workflow completes after the loop and no error is raised."
+		},
+		{
+			"name": "low-confidence",
+			"description": "Agent returns low confidence sentiments — workflow still routes based on the chosen label",
+			"dataSetup": "The workflow runs with the same 3 reviews. The Anthropic chat model returns: R-1 sentiment='positive' confidence=0.41, R-2 sentiment='positive' confidence=0.35, R-3 sentiment='negative' confidence=0.55. The Gmail and Slack nodes return success.",
+			"successCriteria": "The workflow executes without errors. The Gmail send is invoked twice (R-1 and R-2). The Slack post-message is invoked once (R-3). The workflow does not branch on confidence — only on the sentiment label."
+		}
+	]
+}

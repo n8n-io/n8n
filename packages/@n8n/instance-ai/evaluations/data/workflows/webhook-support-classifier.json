@@ -1,0 +1,44 @@
+{
+	"prompt": "Create a customer support classification workflow. A webhook (path 'support-ticket') receives JSON with { ticketId, customerEmail, subject, body }. First AI Agent (the 'classifier') uses an Anthropic Chat Model and a Structured Output Parser to classify the ticket into exactly one of: 'billing', 'technical', 'feature_request', 'other'. The output schema is { category: 'billing'|'technical'|'feature_request'|'other', urgency: 'low'|'medium'|'high', shortReason: string }. Pass the classifier output into a Switch node that routes on 'category'. For 'billing' → post a Slack message to channel #billing-team (channel id C0BILLING01) with the ticket details. For 'technical' → call a second AI Agent (the 'responder', also Anthropic Chat Model, no tools) with a system prompt 'You are a technical support assistant. Draft a polite reply that acknowledges the issue and asks one clarifying question.' Then create a Linear issue using HTTP Request to POST https://api.linear.app/graphql with the drafted reply attached as a comment description. For 'feature_request' → append a row to Google Sheets (documentId '1Z9YxFEATURESHEET0001abcdef234567ghijklmn', sheet 'Feature Requests') with the ticket fields. For 'other' → send an email via Gmail to support-fallback@ourcompany.com summarising the ticket. The webhook should respond 200 with { ticketId, category }. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "complex",
+	"tags": [
+		"build",
+		"webhook",
+		"ai",
+		"agent",
+		"structured-output",
+		"switch",
+		"multi-stage",
+		"slack",
+		"linear",
+		"google-sheets",
+		"gmail"
+	],
+	"triggerType": "webhook",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "A billing ticket is classified and routed to Slack",
+			"dataSetup": "The webhook receives { ticketId: 'T-1042', customerEmail: 'lisa@bigco.com', subject: 'Wrong charge on April invoice', body: 'I was charged twice for the Pro plan this month, please refund the duplicate.' }. The Anthropic classifier returns { category: 'billing', urgency: 'high', shortReason: 'duplicate charge complaint' }. The Slack post-message node returns a success response.",
+			"successCriteria": "The workflow executes without errors. The classifier returns category='billing'. The Slack node is invoked and the message references ticket T-1042 and the duplicate-charge complaint. The other branches (Linear, Sheets, Gmail) are not invoked. The webhook responds with { ticketId: 'T-1042', category: 'billing' }."
+		},
+		{
+			"name": "technical-with-responder",
+			"description": "A technical ticket triggers the second agent and creates a Linear issue",
+			"dataSetup": "The webhook receives { ticketId: 'T-1043', customerEmail: 'dev@example.com', subject: 'API returning 500 on /workflows', body: 'Since this morning every POST to /api/v1/workflows returns 500. We did not change anything on our side.' }. The Anthropic classifier returns { category: 'technical', urgency: 'high', shortReason: 'production API errors' }. The responder Anthropic agent returns a draft reply that acknowledges the outage and asks for a sample request ID. The Linear HTTP POST returns { data: { issueCreate: { success: true, issue: { id: 'lin_xyz', identifier: 'ENG-501' } } } }.",
+			"successCriteria": "The workflow executes without errors. Only the technical branch runs — Slack, Sheets and Gmail are not invoked. The responder agent is called and produces a non-empty draft. The Linear HTTP request is made with a body that contains the drafted reply or the ticket subject. The webhook responds with category='technical'."
+		},
+		{
+			"name": "feature-request-to-sheet",
+			"description": "A feature request is logged to Google Sheets",
+			"dataSetup": "The webhook receives { ticketId: 'T-1044', customerEmail: 'pm@startup.io', subject: 'Add dark mode', body: 'Would love a dark mode for the dashboard, my team uses it all evening.' }. The Anthropic classifier returns { category: 'feature_request', urgency: 'low', shortReason: 'dark mode request' }. The Google Sheets append node returns a success response.",
+			"successCriteria": "The workflow executes without errors. Only the feature_request branch runs. The Google Sheets append is called against documentId '1Z9YxFEATURESHEET0001abcdef234567ghijklmn' and includes ticketId T-1044 and the subject. The webhook responds with category='feature_request'."
+		},
+		{
+			"name": "other-fallback",
+			"description": "An ambiguous ticket is classified as 'other' and emailed to the fallback inbox",
+			"dataSetup": "The webhook receives { ticketId: 'T-1045', customerEmail: 'random@person.com', subject: 'Hello', body: 'Hi, just saying hi.' }. The Anthropic classifier returns { category: 'other', urgency: 'low', shortReason: 'non-actionable greeting' }. The Gmail send node returns a success response.",
+			"successCriteria": "The workflow executes without errors. Only the 'other' branch runs. The Gmail send is invoked with recipient support-fallback@ourcompany.com and references ticket T-1045. The webhook responds with category='other'."
+		}
+	]
+}

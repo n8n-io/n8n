@@ -1,0 +1,32 @@
+{
+	"prompt": "Build an HR FAQ chatbot. The entry point is the n8n Chat Trigger. Before the AI Agent, place a Set node called 'HR Knowledge' that holds a string field named 'faq' containing the company HR knowledge base verbatim. Use exactly this content for the faq field:\n\n'Vacation: full-time employees get 25 paid vacation days per calendar year, accrued monthly; unused days roll over up to 5 days into the next year.\nSick leave: up to 10 paid sick days per year, no doctor note required for absences under 3 consecutive days.\nParental leave: 16 weeks at full pay for the primary caregiver, 6 weeks at full pay for the secondary caregiver.\nRemote work: employees may work remotely up to 3 days per week, subject to manager approval.\nReimbursements: home-office stipend of USD 500 per year, learning & development stipend of USD 1000 per year.\nHealth insurance: enrollment opens within 30 days of joining; the company covers 80%% of the premium for the employee and 50%% for dependents.\nWorking hours: standard hours are 09:00-18:00 local time with a 1-hour break; flexible start times between 08:00 and 10:00 are allowed.\nResignation notice: 4 weeks for individual contributors, 8 weeks for managers and above.'\n\nConnect the Set node to an AI Agent (Anthropic Chat Model, no tools). The agent's system prompt must include the faq string from the previous node and instruct: 'Answer the user's HR question using ONLY the provided FAQ. If the answer is not in the FAQ, say so and recommend emailing people@ourcompany.com. Quote the relevant policy text when you can.' The agent's reply is returned to the Chat Trigger output. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "chat", "ai", "agent", "rag", "set"],
+	"triggerType": "manual",
+	"scenarios": [
+		{
+			"name": "happy-path-vacation",
+			"description": "User asks a question that the FAQ answers directly",
+			"dataSetup": "The Chat Trigger fires with chatInput='How many vacation days do I get?' and a sessionId of 'hr-1'. The Anthropic chat model returns a reply citing 25 paid vacation days per calendar year, accrued monthly, with up to 5 days rollover.",
+			"successCriteria": "The workflow executes without errors. The agent's reply mentions 25 vacation days and the rollover policy. The reply does not invent details that are not in the knowledge base."
+		},
+		{
+			"name": "out-of-scope-question",
+			"description": "User asks something not covered in the FAQ",
+			"dataSetup": "The Chat Trigger fires with chatInput='What is the company stock option vesting schedule?' and a sessionId of 'hr-2'. The Anthropic chat model returns a reply explaining the FAQ does not cover stock options and recommending the user email people@ourcompany.com.",
+			"successCriteria": "The workflow completes without errors. The reply tells the user the topic is not in the knowledge base and points them to people@ourcompany.com. The reply does not fabricate a vesting schedule."
+		},
+		{
+			"name": "multi-topic-question",
+			"description": "User asks about two policies at once",
+			"dataSetup": "The Chat Trigger fires with chatInput='How long is parental leave and how many remote days am I allowed?' and a sessionId of 'hr-3'. The Anthropic chat model returns a reply that covers both 16 weeks parental leave (primary), 6 weeks (secondary), and up to 3 remote days per week.",
+			"successCriteria": "The workflow completes without errors. The reply addresses both parental leave (mentioning 16 weeks and 6 weeks) and remote work (mentioning 3 days per week)."
+		},
+		{
+			"name": "ambiguous-question",
+			"description": "User asks a vague question that could match several entries",
+			"dataSetup": "The Chat Trigger fires with chatInput='What benefits do I get?' and a sessionId of 'hr-4'. The Anthropic chat model returns a reply summarising the listed benefits (vacation, sick leave, parental leave, remote work, reimbursements, health insurance) without going off-script.",
+			"successCriteria": "The workflow completes without errors. The reply mentions at least 4 of the topics from the FAQ. The agent does not invent benefits that are not in the knowledge base (e.g., gym memberships, free lunches)."
+		}
+	]
+}

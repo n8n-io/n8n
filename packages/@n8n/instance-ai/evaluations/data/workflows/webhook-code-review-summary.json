@@ -1,0 +1,33 @@
+{
+	"prompt": "Build a code review summarizer. A webhook (path 'pr-opened') receives the GitHub pull-request 'opened' event payload. From the payload extract: pull_request.title, pull_request.body, pull_request.user.login, pull_request.html_url, pull_request.diff_url, repository.full_name. Use an HTTP Request node to GET the diff_url with header 'Accept: application/vnd.github.v3.diff' and a Bearer token to retrieve the unified diff. Pass the diff plus the PR metadata to an AI Agent (Anthropic Chat Model, no tools). The agent's system prompt: 'You are a senior code reviewer. Read the unified diff and write a concise review summary in 4 sections: Overview (2-3 sentences), Key changes (3-6 bullets, each one line), Risks (bullets, only if any), Suggestions (bullets, only if any). Be specific about file paths and function names. Do not invent issues that are not in the diff.' After the agent runs, post a summary message to Slack channel #code-reviews (channel id C0CODEREV001) including the PR title, URL, author, and the summary. Also post the summary as a comment on the PR via HTTP Request POST https://api.github.com/repos/{repository.full_name}/issues/{pull_request.number}/comments with body containing the summary. The webhook should respond 200 with { ok: true }. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "complex",
+	"tags": ["build", "webhook", "ai", "agent", "http-request", "github-api", "slack", "code-review"],
+	"triggerType": "webhook",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "A PR with a real-looking diff is summarized and posted",
+			"dataSetup": "The webhook receives a GitHub pull_request opened payload with pull_request.number=314, pull_request.title='Add retry logic to job runner', pull_request.body='Fixes flaky job startup', pull_request.user.login='alice', pull_request.html_url='https://github.com/acme-corp/backend/pull/314', pull_request.diff_url='https://github.com/acme-corp/backend/pull/314.diff', repository.full_name='acme-corp/backend'. The diff HTTP GET returns a unified diff that shows changes in src/jobs/runner.ts (adding a retry-with-backoff helper) and src/jobs/runner.test.ts (adding a flaky-job test case). The Anthropic chat model returns a 4-section summary mentioning runner.ts, the retry helper, and the new test. The Slack post-message node returns success. The GitHub create-comment HTTP POST returns { id: 9001, html_url: 'https://github.com/acme-corp/backend/pull/314#issuecomment-9001' }.",
+			"successCriteria": "The workflow executes without errors. The diff is fetched. The agent's summary contains the 4 named sections (Overview, Key changes, Risks or Suggestions). The Slack message contains the PR title, URL, author 'alice', and the summary. The GitHub comment POST is made against issues/314/comments. The webhook responds with { ok: true }."
+		},
+		{
+			"name": "tiny-diff",
+			"description": "The PR is a one-line typo fix",
+			"dataSetup": "The webhook receives a payload with pull_request.number=315, pull_request.title='Fix typo in README', pull_request.user.login='bob', repository.full_name='acme-corp/backend'. The diff HTTP GET returns a unified diff with a single line change in README.md ('Receieve' → 'Receive'). The Anthropic chat model returns a short summary acknowledging the typo fix, no Risks or Suggestions sections. The Slack and GitHub comment endpoints return success.",
+			"successCriteria": "The workflow completes without errors. The summary is short and accurate (mentions the typo). The Slack and GitHub comment posts are still made. The agent does not invent risks for a trivial change."
+		},
+		{
+			"name": "large-multi-file-diff",
+			"description": "A larger PR with several files",
+			"dataSetup": "The webhook receives a payload with pull_request.number=316, pull_request.title='Refactor auth middleware', pull_request.user.login='carol', repository.full_name='acme-corp/backend'. The diff HTTP GET returns a unified diff touching 6 files: src/auth/middleware.ts, src/auth/session.ts, src/auth/types.ts, src/server.ts, src/auth/middleware.test.ts, src/auth/session.test.ts. The Anthropic chat model returns a 4-section summary that mentions at least middleware.ts and session.ts by name, lists 4-6 key changes, and includes a Risks section about session invalidation. The Slack and GitHub comment endpoints return success.",
+			"successCriteria": "The workflow completes without errors. The summary references multiple file paths from the diff. The Slack message and GitHub PR comment both contain the summary. The Risks section is non-empty given the auth-touching change."
+		},
+		{
+			"name": "diff-fetch-fails",
+			"description": "GitHub returns a 404 for the diff URL",
+			"dataSetup": "The webhook receives a normal pull_request payload with pull_request.number=317, repository.full_name='acme-corp/backend'. The diff HTTP GET returns a 404 error. The Anthropic chat model is not necessarily called or returns a brief 'cannot review without diff' message if it is.",
+			"successCriteria": "The workflow handles the diff fetch failure without crashing. It either short-circuits with a clear error response, or continues and posts a Slack message indicating the diff could not be fetched. It does not post a fabricated summary as if the diff had been read.",
+			"requires": "mock-server"
+		}
+	]
+}

@@ -1,0 +1,32 @@
+{
+	"prompt": "Build a chat workflow where a user can describe ingredients they have and dietary constraints, and an AI generates a recipe. Use the n8n Chat Trigger as the entry point. Connect the chat trigger to an AI Agent (no tools, just an Anthropic Chat Model as the LLM) with a system prompt that says: 'You are a helpful chef. Suggest a single recipe the user can make with the ingredients they list. Always respect their dietary constraints. Reply with a title, an ingredient list (using the ingredients they have plus common pantry items), and numbered steps. Keep it under 250 words.' The agent's reply should be returned to the chat trigger so the user sees it in the chat UI. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "simple",
+	"tags": ["build", "chat", "ai", "agent", "langchain"],
+	"triggerType": "manual",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "User describes ingredients and dietary constraints, agent returns a recipe",
+			"dataSetup": "The Chat Trigger fires with chatInput='I have chicken thighs, garlic, lemon, rosemary, and olive oil. No dairy please. What can I make?' and a sessionId of 'session-recipe-1'. The Anthropic chat model returns a recipe titled 'Lemon Rosemary Chicken Thighs' with a short ingredient list (using the listed ingredients plus salt, pepper, olive oil) and 5–7 numbered steps. No dairy ingredients appear.",
+			"successCriteria": "The workflow executes without errors. The agent's reply contains a recipe title, an ingredient list, and numbered steps. None of the ingredients in the reply are dairy products (no butter, cheese, milk, cream, yogurt). The reply is returned to the Chat Trigger output."
+		},
+		{
+			"name": "vegan-constraint",
+			"description": "User asks for a vegan recipe with limited ingredients",
+			"dataSetup": "The Chat Trigger fires with chatInput='Vegan dinner idea using chickpeas, spinach, tomatoes, and onion?' and a sessionId of 'session-recipe-2'. The Anthropic chat model returns a recipe titled something like 'Chickpea & Spinach Stew' with ingredients limited to plant-based items (chickpeas, spinach, tomatoes, onion, olive oil, spices) and clear numbered steps.",
+			"successCriteria": "The workflow completes without errors. The reply contains a vegan recipe — no animal products are mentioned in the ingredient list (no meat, fish, dairy, eggs, honey). The recipe uses the ingredients the user listed."
+		},
+		{
+			"name": "minimal-input",
+			"description": "User sends a very short message",
+			"dataSetup": "The Chat Trigger fires with chatInput='pasta' and a sessionId of 'session-recipe-3'. The Anthropic chat model returns a simple pasta recipe with pantry-friendly ingredients and steps, even though the input was minimal.",
+			"successCriteria": "The workflow completes without errors. The agent returns a coherent recipe rather than an error or a question. The reply has at least a title, ingredients, and steps."
+		},
+		{
+			"name": "off-topic",
+			"description": "User sends a message that is not about food",
+			"dataSetup": "The Chat Trigger fires with chatInput='What is the capital of France?' and a sessionId of 'session-recipe-4'. The Anthropic chat model replies that it is a recipe assistant and asks the user to share ingredients.",
+			"successCriteria": "The workflow completes without errors. The reply is returned to the Chat Trigger. The agent stays in role — it does not answer the geography question with a recipe-shaped fabrication, and it nudges the user back to ingredients."
+		}
+	]
+}

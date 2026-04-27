@@ -1,0 +1,41 @@
+{
+	"prompt": "Build a meeting transcript processor. The entry point is the n8n Chat Trigger — the user pastes a meeting transcript into the chat. An AI Agent (Anthropic Chat Model) extracts action items using a Structured Output Parser. The schema is { meetingSummary: string, actionItems: Array<{ assignee: string, assigneeEmail: string, task: string, dueDate: string, priority: 'low'|'medium'|'high' }>, decisions: string[] }. The agent should infer assignee emails as firstname.lastname@ourcompany.com if not stated explicitly. After the agent runs: (a) for every action item, append a row to Google Sheets (documentId '1MEETINGACTIONS00001abcdefXYZ123456789mn', sheet 'Action Items') with columns Assignee, Email, Task, Due Date, Priority, Source Meeting (use the first 60 chars of the transcript as Source Meeting), and (b) for every action item, send a Gmail email to assigneeEmail with subject 'Follow-up: {task}' and a body that includes the task, due date, and priority. Reply on the chat with the meetingSummary and a count of action items extracted. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "complex",
+	"tags": [
+		"build",
+		"chat",
+		"ai",
+		"agent",
+		"structured-output",
+		"multi-stage",
+		"google-sheets",
+		"gmail"
+	],
+	"triggerType": "manual",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "A short transcript with 3 action items and 2 decisions",
+			"dataSetup": "The Chat Trigger fires with chatInput containing this transcript: 'Sprint planning, April 10. Alice will draft the API spec by Friday. Bob agreed to set up the staging cluster by next Wednesday — high priority, blocking QA. Carol said she will write the customer email by EOD Monday. Decisions: ship the new pricing on May 1; deprecate the legacy export endpoint by Q3.'. SessionId is 'meet-1'. The Anthropic chat model returns: meetingSummary='Sprint planning meeting on April 10 covering pricing, staging readiness, and customer comms.', actionItems=[{assignee:'Alice', assigneeEmail:'alice@ourcompany.com', task:'Draft API spec', dueDate:'2026-04-24', priority:'medium'}, {assignee:'Bob', assigneeEmail:'bob@ourcompany.com', task:'Set up staging cluster', dueDate:'2026-04-29', priority:'high'}, {assignee:'Carol', assigneeEmail:'carol@ourcompany.com', task:'Write customer email', dueDate:'2026-04-27', priority:'medium'}], decisions=['Ship new pricing on May 1', 'Deprecate legacy export endpoint by Q3']. The Google Sheets append node returns success for each row. The Gmail send node returns success for each send.",
+			"successCriteria": "The workflow executes without errors. The structured output parses with 3 action items. The Google Sheets append is called 3 times with documentId '1MEETINGACTIONS00001abcdefXYZ123456789mn'. The Gmail send is called 3 times with recipients alice@ourcompany.com, bob@ourcompany.com, carol@ourcompany.com. The chat reply contains the meeting summary and a number 3."
+		},
+		{
+			"name": "no-action-items",
+			"description": "Transcript is informational only, no action items",
+			"dataSetup": "The Chat Trigger fires with chatInput='Town hall, April 12. CEO recapped Q1 results: revenue up 22%%, churn down to 1.8%%. Discussed remote work flexibility. No follow-up tasks were assigned.'. SessionId is 'meet-2'. The Anthropic chat model returns meetingSummary='Q1 town hall — financial recap and remote work discussion.', actionItems=[], decisions=['Continue current remote work flexibility']. The Google Sheets and Gmail nodes are not necessarily called.",
+			"successCriteria": "The workflow handles the empty actionItems list without errors. No Gmail send is invoked. The chat reply mentions the meeting summary and 0 action items."
+		},
+		{
+			"name": "explicit-emails-in-transcript",
+			"description": "Transcript already includes attendee emails — agent should use them",
+			"dataSetup": "The Chat Trigger fires with chatInput='Architecture review, April 15. David Park (david.park@external-contractor.io) will benchmark the new cache by next Friday. Eve (eve@ourcompany.com) will document the migration steps by Monday.'. SessionId is 'meet-3'. The Anthropic chat model returns 2 action items where assigneeEmail for David is the explicit david.park@external-contractor.io (not the derived form), and Eve's email is eve@ourcompany.com. The Google Sheets append and Gmail send nodes return success.",
+			"successCriteria": "The workflow executes without errors. The Gmail send is called for david.park@external-contractor.io (the explicit email), not for david.park@ourcompany.com. Eve's email is also sent. The Google Sheets log has 2 rows."
+		},
+		{
+			"name": "long-transcript",
+			"description": "A longer transcript with several decisions and a mix of priorities",
+			"dataSetup": "The Chat Trigger fires with a longer transcript covering a quarterly planning meeting with 5 action items spread across 4 different assignees (Alice, Bob, Carol, Frank), priorities mixed across low/medium/high, and 3 decisions. SessionId is 'meet-4'. The Anthropic chat model returns 5 action items with valid emails inferred for each assignee. The Google Sheets and Gmail nodes return success.",
+			"successCriteria": "The workflow executes without errors. The Google Sheets append is called 5 times. The Gmail send is called 5 times across at least 4 distinct recipient emails. The chat reply mentions the action item count of 5."
+		}
+	]
+}

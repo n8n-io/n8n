@@ -1,0 +1,32 @@
+{
+	"prompt": "Create a Form Trigger workflow that builds a travel itinerary. The form has these fields: Destination (string), Trip start date (date), Trip end date (date), Budget in USD (number), Travel style (dropdown: 'relaxed', 'balanced', 'packed'). When submitted, an AI Agent (Anthropic Chat Model) with a Structured Output Parser builds an itinerary. The output schema is { destination: string, days: Array<{ day: number, theme: string, activities: Array<{ time: string, title: string, description: string, estimatedCostUsd: number }> }>, totalEstimatedCostUsd: number, packingTips: string[] }. The agent must keep totalEstimatedCostUsd within the user's budget. After the agent runs, send the itinerary to the user by Gmail (the form collects an email field — 'Email' — make sure to include it). The email subject should be 'Your trip to {destination}' and the body should be a readable HTML version of the itinerary. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "form", "ai", "agent", "structured-output", "gmail"],
+	"triggerType": "form",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "A 3-day relaxed trip to Lisbon under budget",
+			"dataSetup": "The form is submitted with Destination='Lisbon', start='2026-05-10', end='2026-05-12', Budget=600, Travel style='relaxed', Email='taylor@example.com'. The Anthropic agent returns an itinerary with destination='Lisbon', 3 days, each day with a theme and 3-4 activities (with time, title, description, estimatedCostUsd), totalEstimatedCostUsd ≤ 600, and 4-5 packingTips entries. The Gmail send node returns a success response.",
+			"successCriteria": "The workflow executes without errors. The structured output parses successfully — days has length 3, totalEstimatedCostUsd ≤ 600, packingTips is a non-empty array. The Gmail send is invoked with recipient taylor@example.com and a subject containing 'Lisbon'. The HTML body contains itinerary content."
+		},
+		{
+			"name": "long-packed-trip",
+			"description": "A 7-day packed trip to Tokyo",
+			"dataSetup": "The form is submitted with Destination='Tokyo', start='2026-06-01', end='2026-06-07', Budget=2500, Travel style='packed', Email='kira@example.com'. The Anthropic agent returns 7 days, each with 4-6 activities, totalEstimatedCostUsd around 2400 and within budget. The Gmail send node returns success.",
+			"successCriteria": "The workflow executes without errors. The output contains 7 days. totalEstimatedCostUsd ≤ 2500. The email is sent to kira@example.com with a subject mentioning Tokyo."
+		},
+		{
+			"name": "tight-budget",
+			"description": "A 2-day balanced trip with a very small budget",
+			"dataSetup": "The form is submitted with Destination='Porto', start='2026-09-04', end='2026-09-05', Budget=120, Travel style='balanced', Email='jules@example.com'. The Anthropic agent returns 2 days with budget-friendly activities, totalEstimatedCostUsd ≤ 120. The Gmail send node returns success.",
+			"successCriteria": "The workflow executes without errors. The output has 2 days and totalEstimatedCostUsd ≤ 120. Activities lean toward free or low-cost (parks, viewpoints, walking tours). The email is sent to jules@example.com."
+		},
+		{
+			"name": "single-day-trip",
+			"description": "Start date equals end date — a one-day trip",
+			"dataSetup": "The form is submitted with Destination='Paris', start='2026-07-15', end='2026-07-15', Budget=300, Travel style='packed', Email='sam@example.com'. The Anthropic agent returns exactly 1 day with several activities, totalEstimatedCostUsd within budget. The Gmail send node returns success.",
+			"successCriteria": "The workflow handles the same-day trip without errors. The output has exactly 1 day. The email is sent to sam@example.com with subject mentioning Paris."
+		}
+	]
+}

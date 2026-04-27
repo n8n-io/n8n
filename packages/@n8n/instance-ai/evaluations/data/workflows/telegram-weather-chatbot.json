@@ -1,0 +1,32 @@
+{
+	"prompt": "Create a Telegram chatbot that answers weather questions. When a user sends a message to the Telegram bot, an AI Agent should answer the user's weather question. Give the agent an HTTP Request tool that calls the Open-Meteo geocoding endpoint (GET https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1) to resolve a city name to latitude/longitude, and a second HTTP Request tool that calls the Open-Meteo forecast endpoint (GET https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,wind_speed_10m&temperature_unit=celsius) to fetch the current weather. Use an Anthropic Chat Model as the LLM. Once the agent has its answer, reply back in the same Telegram chat using the chat ID from the trigger. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "telegram", "ai", "agent", "http-request", "tools", "chatbot"],
+	"triggerType": "manual",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "User asks about the weather in a single city",
+			"dataSetup": "The Telegram trigger fires with a message from chat ID 482910337: 'What is the weather in Berlin right now?'. The geocoding HTTP tool returns { results: [{ name: 'Berlin', latitude: 52.52, longitude: 13.41, country: 'Germany' }] }. The forecast HTTP tool returns { current: { temperature_2m: 14.3, weather_code: 3, wind_speed_10m: 12.5 } }. The Anthropic chat model returns a reply that mentions Berlin, ~14°C, overcast/cloudy, and wind around 12 km/h. The Telegram send-message node returns a success response.",
+			"successCriteria": "The workflow executes without errors. Both HTTP tools are invoked at least once by the agent. The Telegram reply is sent to chat ID 482910337 and mentions Berlin and a temperature value close to 14°C. The reply does not contain unresolved placeholders or empty content."
+		},
+		{
+			"name": "ambiguous-city",
+			"description": "Geocoding returns multiple results, the agent picks one and answers",
+			"dataSetup": "The Telegram trigger fires with a message from chat ID 482910337: 'How is the weather in Springfield?'. The geocoding HTTP tool returns { results: [{ name: 'Springfield', latitude: 39.78, longitude: -89.65, country: 'United States', admin1: 'Illinois' }, { name: 'Springfield', latitude: 42.10, longitude: -72.59, country: 'United States', admin1: 'Massachusetts' }] }. The forecast tool returns { current: { temperature_2m: 8.0, weather_code: 61, wind_speed_10m: 9.0 } }. The Anthropic chat model returns a reply that picks one Springfield (mentioning the state) and reports the weather. The Telegram send-message node returns a success response.",
+			"successCriteria": "The workflow completes without errors. The agent calls the forecast tool at least once. The Telegram reply mentions Springfield and includes weather information. The agent does not crash on the ambiguous result."
+		},
+		{
+			"name": "unknown-city",
+			"description": "Geocoding returns no results for a typo'd city name",
+			"dataSetup": "The Telegram trigger fires with a message from chat ID 482910337: 'weather in Nowheresvilllle'. The geocoding HTTP tool returns { results: [] } (empty). The Anthropic chat model returns a reply explaining the city could not be found and asking the user to clarify. The Telegram send-message node returns a success response.",
+			"successCriteria": "The workflow completes without errors. The Telegram reply is sent to chat ID 482910337. The reply tells the user that the city could not be resolved or asks them to clarify, rather than fabricating weather data."
+		},
+		{
+			"name": "non-weather-question",
+			"description": "User sends a message that is not a weather question",
+			"dataSetup": "The Telegram trigger fires with a message from chat ID 482910337: 'Tell me a joke'. The Anthropic chat model returns a reply that politely indicates this is a weather bot and asks the user for a city. The Telegram send-message node returns a success response.",
+			"successCriteria": "The workflow completes without errors. The Telegram reply is sent and stays on-topic — it either redirects the user or politely declines, without calling the weather tools unnecessarily."
+		}
+	]
+}

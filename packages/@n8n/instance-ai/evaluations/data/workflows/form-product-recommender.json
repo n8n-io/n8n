@@ -1,0 +1,26 @@
+{
+	"prompt": "Create a Form Trigger workflow for product recommendations on an outdoor-gear store. The form has these fields: Email (string), Activity (dropdown: 'hiking', 'running', 'cycling', 'climbing'), Budget USD (number), Experience level (dropdown: 'beginner', 'intermediate', 'advanced'), Notes (long text). The workflow has two AI stages. STAGE 1 — a 'profile builder' AI Agent (Anthropic Chat Model) reads the form input and uses a Structured Output Parser to emit { primaryActivity: string, budgetTier: 'low'|'mid'|'premium', sizingHints: string, mustHaveFeatures: string[], avoidFeatures: string[] }. STAGE 2 — a 'recommender' AI Agent (Anthropic Chat Model, no tools) is invoked with the stage 1 output and returns a recommendation list with a Structured Output Parser using schema { recommendations: Array<{ rank: number, productName: string, category: string, priceUsd: number, why: string }> }. After both agents run, append a row per recommendation to a Google Sheets log (documentId '1RECPRODUCTSHEET00009876xyzqwertyabc1234', sheet 'Recommendations Log') with columns: Email, Activity, Budget, Rank, Product Name, Category, Price USD, Why, Submitted At. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "complex",
+	"tags": ["build", "form", "ai", "agent", "structured-output", "multi-stage", "google-sheets"],
+	"triggerType": "form",
+	"scenarios": [
+		{
+			"name": "happy-path-hiking",
+			"description": "An intermediate hiker submits the form and gets recommendations",
+			"dataSetup": "The form is submitted with Email='dana@example.com', Activity='hiking', Budget USD=400, Experience level='intermediate', Notes='Looking for a daypack and waterproof shoes for weekend trails'. The profile builder agent returns { primaryActivity: 'hiking', budgetTier: 'mid', sizingHints: 'no preference noted', mustHaveFeatures: ['daypack', 'waterproof shoes'], avoidFeatures: [] }. The recommender agent returns 4 recommendations with priceUsd values that sum within the budget tier (e.g., a 30L pack at 110, hiking shoes at 150, a rain shell at 90, trekking poles at 50). The Google Sheets append node returns success for each row.",
+			"successCriteria": "The workflow executes without errors. Both agents are invoked. The Google Sheets append is called once per recommendation (4 rows total) with documentId '1RECPRODUCTSHEET00009876xyzqwertyabc1234' and sheet 'Recommendations Log'. Each appended row has the email dana@example.com and a non-empty Product Name."
+		},
+		{
+			"name": "premium-budget",
+			"description": "An advanced climber with a high budget",
+			"dataSetup": "The form is submitted with Email='marco@example.com', Activity='climbing', Budget USD=1500, Experience level='advanced', Notes='Trad climbing setup, size 41 EU shoes, no Black Diamond brand please'. The profile builder agent returns { primaryActivity: 'climbing', budgetTier: 'premium', sizingHints: 'EU size 41 shoes', mustHaveFeatures: ['trad rack basics'], avoidFeatures: ['Black Diamond'] }. The recommender agent returns 5 recommendations under 1500 total, none branded Black Diamond. The Google Sheets append returns success for each row.",
+			"successCriteria": "The workflow executes without errors. The recommendations do not include any product whose name starts with 'Black Diamond'. The Google Sheets append is called 5 times with email marco@example.com."
+		},
+		{
+			"name": "low-budget-beginner",
+			"description": "A beginner runner with a tight budget",
+			"dataSetup": "The form is submitted with Email='sam@example.com', Activity='running', Budget USD=120, Experience level='beginner', Notes=''. The profile builder agent returns { primaryActivity: 'running', budgetTier: 'low', sizingHints: 'unspecified', mustHaveFeatures: ['entry-level shoes'], avoidFeatures: [] }. The recommender agent returns 2-3 budget-friendly recommendations whose total priceUsd is at most 120. The Google Sheets append returns success.",
+			"successCriteria": "The workflow executes without errors. The recommender returns at least 2 recommendations. The sum of their priceUsd values is ≤ 120. The Google Sheets append is called once per recommendation with email sam@example.com."
+		}
+	]
+}

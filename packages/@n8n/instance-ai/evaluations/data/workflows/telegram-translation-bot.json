@@ -1,0 +1,32 @@
+{
+	"prompt": "Create a Telegram translation chatbot with conversational memory. The Telegram Trigger receives messages. An AI Agent (Anthropic Chat Model) translates and reformats the user's text. Attach a Window Buffer Memory node to the agent (key: chat ID from the trigger so each Telegram chat has its own conversation history) with a window of 10 messages. The agent's system prompt: 'You are a translation assistant. By default translate everything the user sends into English. If the user sets a target language with the command /to <language>, remember that target language for the rest of the conversation and translate everything they send next into that language. If the user sends /style formal or /style casual, remember that style preference. Always reply with just the translated text, no explanations.' Reply to the user via the Telegram Send Message node using the chat ID from the trigger. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "telegram", "ai", "agent", "memory", "translation"],
+	"triggerType": "manual",
+	"scenarios": [
+		{
+			"name": "default-english",
+			"description": "User sends Spanish text without any command — agent translates to English",
+			"dataSetup": "The Telegram trigger fires with a message from chat ID 555000111: 'Hola, ¿cómo estás hoy?'. The window buffer memory has no prior history for this chat. The Anthropic chat model returns: 'Hello, how are you today?'. The Telegram send-message node returns a success response.",
+			"successCriteria": "The workflow executes without errors. The Telegram reply is sent to chat ID 555000111. The reply is the English translation. The reply does not contain explanatory text or quotes around the translation."
+		},
+		{
+			"name": "remembered-target-language",
+			"description": "User sets a target language with /to, then sends text in a later message",
+			"dataSetup": "This scenario simulates the second message in a conversation. The Telegram trigger fires with a message from chat ID 555000222: 'Good morning, hope you have a great day.'. The window buffer memory contains an earlier exchange where the user sent '/to french' and the agent acknowledged 'OK, translating to French.'. The Anthropic chat model returns a French translation of the morning greeting (e.g., 'Bonjour, j'espère que vous passerez une excellente journée.'). The Telegram send-message node returns a success response.",
+			"successCriteria": "The workflow executes without errors. The Telegram reply is sent to chat ID 555000222. The reply is in French (not English) — confirming the agent honored the remembered /to french setting from memory."
+		},
+		{
+			"name": "style-preference",
+			"description": "User has previously set /style casual",
+			"dataSetup": "The Telegram trigger fires with a message from chat ID 555000333: 'I would like to schedule a meeting at your earliest convenience.'. The window buffer memory contains an earlier '/style casual' command and the agent's acknowledgement, with target language English (the default, no /to issued). The Anthropic chat model returns a casual English rewording (e.g., 'Wanna set up a meeting whenever works for you?'). The Telegram send-message node returns success.",
+			"successCriteria": "The workflow executes without errors. The reply is sent to chat ID 555000333. The reply reads casually and is shorter / more informal than the input, reflecting the remembered /style casual preference."
+		},
+		{
+			"name": "command-acknowledgement",
+			"description": "User issues /to japanese and the agent acknowledges, no translation yet",
+			"dataSetup": "The Telegram trigger fires with a message from chat ID 555000444: '/to japanese'. The window buffer memory is empty for this chat. The Anthropic chat model returns a brief acknowledgement like 'OK, I'll translate to Japanese from now on.'. The Telegram send-message node returns success.",
+			"successCriteria": "The workflow completes without errors. The reply is sent to chat ID 555000444 and acknowledges the language change. The reply does not attempt to translate the command itself into Japanese."
+		}
+	]
+}

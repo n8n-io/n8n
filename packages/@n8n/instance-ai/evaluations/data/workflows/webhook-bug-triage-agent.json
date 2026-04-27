@@ -1,0 +1,27 @@
+{
+	"prompt": "Build a bug triage workflow. A webhook at path 'bug-report' receives JSON with { reporter, title, description, stepsToReproduce, environment }. An AI Agent (Anthropic Chat Model) triages the bug. Give the agent these tools: (1) an HTTP Request tool that searches existing GitHub issues via GET https://api.github.com/search/issues?q=repo:acme-corp/backend+is:issue+{query}, (2) a Calculator tool, and (3) an HTTP Request tool that fetches the recent error count from our internal metrics API: GET https://metrics.internal.acme-corp.com/errors?signature={signature}&windowMinutes=60. The agent's job is to: search for duplicate issues, use the metrics tool to assess impact (errors per hour), use the calculator if it needs to compute frequency or affected-user estimates, and decide a severity ('S0'|'S1'|'S2'|'S3') plus a short triage note. Then the workflow should call the GitHub API via HTTP Request to POST https://api.github.com/repos/acme-corp/backend/issues with title, body (containing the original report and the agent's triage note), and labels=['bug', '<severity>']. The webhook responds 200 with { severity, githubIssueNumber }. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "complex",
+	"tags": ["build", "webhook", "ai", "agent", "tools", "http-request", "calculator", "github-api"],
+	"triggerType": "webhook",
+	"scenarios": [
+		{
+			"name": "happy-path-high-severity",
+			"description": "A high-impact bug with no duplicates becomes a new GitHub issue tagged S1",
+			"dataSetup": "The webhook receives { reporter: 'oncall@acme-corp.com', title: 'Login screen blank for SSO users', description: 'After SSO redirect users see a blank page', stepsToReproduce: '1. Click SSO 2. Authenticate 3. Land on blank page', environment: 'prod, web, all browsers' }. The GitHub search HTTP tool returns { total_count: 0, items: [] }. The metrics HTTP tool returns { errorsPerHour: 412, affectedUsers: 230 }. The Anthropic chat model uses the search and metrics tools and (optionally) the calculator, and concludes severity='S1' with a triage note that mentions ~412 errors/hour and 230 affected users. The GitHub create-issue HTTP POST returns { number: 921, html_url: 'https://github.com/acme-corp/backend/issues/921' }.",
+			"successCriteria": "The workflow executes without errors. The agent invokes the GitHub search tool and the metrics tool at least once. The GitHub POST is made with labels containing 'bug' and 'S1', and the body contains the original description and the agent's triage note. The webhook responds with severity='S1' and githubIssueNumber=921."
+		},
+		{
+			"name": "duplicate-detected",
+			"description": "An existing issue matches; agent flags duplicate but still creates the issue at lower severity",
+			"dataSetup": "The webhook receives { reporter: 'qa@acme-corp.com', title: 'Export CSV missing column header', description: 'Headers row is empty in exported CSV', stepsToReproduce: 'Export a workflow run to CSV', environment: 'prod, all browsers' }. The GitHub search HTTP tool returns { total_count: 1, items: [{ number: 812, title: 'CSV export missing headers', html_url: 'https://github.com/acme-corp/backend/issues/812', state: 'open' }] }. The metrics HTTP tool returns { errorsPerHour: 3, affectedUsers: 4 }. The Anthropic chat model concludes severity='S3' with a triage note that mentions issue #812 as a likely duplicate. The GitHub create-issue HTTP POST returns { number: 922, html_url: 'https://github.com/acme-corp/backend/issues/922' }.",
+			"successCriteria": "The workflow executes without errors. The agent's triage note (in the GitHub POST body) references issue #812 as a possible duplicate. Severity is S2 or S3 (not S0/S1) given the low impact. The GitHub POST is still made and the webhook responds with the issue number."
+		},
+		{
+			"name": "metrics-tool-fails",
+			"description": "The metrics tool errors out; agent should still produce a best-effort triage",
+			"dataSetup": "The webhook receives { reporter: 'support@acme-corp.com', title: 'Profile picture upload silently fails', description: 'No error shown but the picture is not saved', stepsToReproduce: 'Settings > Profile > Upload picture', environment: 'prod, web' }. The GitHub search tool returns { total_count: 0, items: [] }. The metrics HTTP tool returns a 500 error response. The Anthropic chat model still produces a triage with severity='S2' or 'S3' and a note that metrics were unavailable. The GitHub create-issue HTTP POST returns { number: 923, html_url: 'https://github.com/acme-corp/backend/issues/923' }.",
+			"successCriteria": "The workflow does not crash on the metrics tool failure. The agent still emits a severity decision. The GitHub POST is made with labels containing 'bug' plus the chosen severity. The webhook responds with the chosen severity and issue number 923.",
+			"requires": "mock-server"
+		}
+	]
+}
