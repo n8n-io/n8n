@@ -78,12 +78,29 @@ export class WorkflowExecutionService {
 			},
 		});
 
+		// Look up the owning project so that metrics (e.g. project_name label) are
+		// populated for trigger- and poll-driven executions. The result is cached, so
+		// this is cheap after the first call for a given workflow.
+		let projectId: string | undefined;
+		let projectName: string | undefined;
+		if (workflowData.id) {
+			try {
+				const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
+				projectId = project.id;
+				projectName = project.name;
+			} catch {
+				// Non-fatal: project info is optional for metrics labels.
+			}
+		}
+
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
 			userId: additionalData.userId,
 			executionMode: mode,
 			executionData,
 			workflowData,
+			projectId,
+			projectName,
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);

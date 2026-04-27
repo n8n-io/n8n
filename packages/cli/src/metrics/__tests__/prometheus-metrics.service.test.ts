@@ -55,6 +55,7 @@ describe('PrometheusMetricsService', () => {
 					includeQueueMetrics: false,
 					includeWorkflowExecutionDuration: false,
 					includeWorkflowNameLabel: false,
+					includeProjectNameLabel: false,
 					includeWorkflowStatistics: false,
 					activeWorkflowCountInterval: 30,
 					workflowStatisticsInterval: 30,
@@ -548,6 +549,64 @@ describe('PrometheusMetricsService', () => {
 
 			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({}, 1);
 		});
+
+		it('should create a counter with `project_name` label for workflow events', async () => {
+			prometheusMetricsService.enableMetric('logs');
+			prometheusMetricsService.enableLabels(['projectName']);
+			await prometheusMetricsService.init(app);
+
+			const eventHandler = getEventHandler();
+			const mockEvent = {
+				__type: EventMessageTypeNames.workflow,
+				eventName: 'n8n.workflow.success',
+				payload: { projectName: 'My Project' },
+			};
+			eventHandler(mockEvent);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_workflow_success_total',
+				help: 'Total number of n8n.workflow.success events.',
+				labelNames: ['project_name'],
+			});
+
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith(
+				{ project_name: 'My Project' },
+				1,
+			);
+		});
+
+		it('should create a counter with workflow_id, workflow_name, and project_name labels for workflow events', async () => {
+			prometheusMetricsService.enableMetric('logs');
+			prometheusMetricsService.enableLabels(['workflowId', 'workflowName', 'projectName']);
+			await prometheusMetricsService.init(app);
+
+			const eventHandler = getEventHandler();
+			const mockEvent = {
+				__type: EventMessageTypeNames.workflow,
+				eventName: 'n8n.workflow.success',
+				payload: {
+					workflowId: 'wf_123',
+					workflowName: 'My Workflow',
+					projectName: 'My Project',
+				},
+			};
+			eventHandler(mockEvent);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_workflow_success_total',
+				help: 'Total number of n8n.workflow.success events.',
+				labelNames: ['workflow_id', 'workflow_name', 'project_name'],
+			});
+
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith(
+				{
+					workflow_id: 'wf_123',
+					workflow_name: 'My Workflow',
+					project_name: 'My Project',
+				},
+				1,
+			);
+		});
 	});
 
 	describe('instance role metric', () => {
@@ -741,6 +800,101 @@ describe('PrometheusMetricsService', () => {
 			});
 
 			expect(promClient.Histogram.prototype.observe).not.toHaveBeenCalled();
+		});
+
+		it('should include workflow_name label in histogram when enabled', async () => {
+			prometheusMetricsService.enableMetric('workflowExecutionDuration');
+			prometheusMetricsService.enableLabels(['workflowName']);
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Histogram).toHaveBeenCalledWith(
+				expect.objectContaining({
+					labelNames: ['status', 'mode', 'workflow_name'],
+				}),
+			);
+		});
+
+		it('should include workflow_name in observation labels when enabled', async () => {
+			prometheusMetricsService.enableMetric('workflowExecutionDuration');
+			prometheusMetricsService.enableLabels(['workflowName']);
+			promClient.Histogram.prototype.observe = jest.fn();
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventHandler();
+			handler({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:02Z'),
+					status: 'success',
+					mode: 'trigger',
+				},
+				workflow: { id: 'wf_123', name: 'My Named Workflow' },
+			});
+
+			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
+				{ status: 'success', mode: 'trigger', workflow_name: 'My Named Workflow' },
+				2,
+			);
+		});
+
+		it('should include project_name label in histogram when enabled', async () => {
+			prometheusMetricsService.enableMetric('workflowExecutionDuration');
+			prometheusMetricsService.enableLabels(['projectName']);
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Histogram).toHaveBeenCalledWith(
+				expect.objectContaining({
+					labelNames: ['status', 'mode', 'project_name'],
+				}),
+			);
+		});
+
+		it('should include project_name in observation labels when enabled', async () => {
+			prometheusMetricsService.enableMetric('workflowExecutionDuration');
+			prometheusMetricsService.enableLabels(['projectName']);
+			promClient.Histogram.prototype.observe = jest.fn();
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventHandler();
+			handler({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:03Z'),
+					status: 'success',
+					mode: 'webhook',
+				},
+				workflow: { id: 'wf_456', name: 'Project Workflow' },
+				projectName: 'My Project',
+			});
+
+			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
+				{ status: 'success', mode: 'webhook', project_name: 'My Project' },
+				3,
+			);
+		});
+
+		it('should fall back to empty string for project_name when not provided when not provided', async () => {
+			prometheusMetricsService.enableMetric('workflowExecutionDuration');
+			prometheusMetricsService.enableLabels(['projectName']);
+			promClient.Histogram.prototype.observe = jest.fn();
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventHandler();
+			handler({
+				runData: {
+					startedAt: new Date('2026-01-01T00:00:00Z'),
+					stoppedAt: new Date('2026-01-01T00:00:01Z'),
+					status: 'success',
+					mode: 'trigger',
+				},
+				workflow: { id: 'wf_789', name: 'Workflow Without Project' },
+				projectName: undefined,
+			});
+
+			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
+				{ status: 'success', mode: 'trigger', project_name: '' },
+				1,
+			);
 		});
 	});
 
