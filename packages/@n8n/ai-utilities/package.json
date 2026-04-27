@@ -43,7 +43,7 @@
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",
     "@langchain/core": "catalog:",
-    "@langchain/classic": "1.0.5",
+    "@langchain/classic": "1.0.27",
     "@langchain/community": "catalog:",
     "@langchain/textsplitters": "1.0.1",
     "@langchain/openai": "catalog:",

@@ -18,10 +18,10 @@ catalog:
   '@codemirror/search': 6.5.11
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
-  '@langchain/anthropic': 1.1.3
-  '@langchain/community': 1.1.14
-  '@langchain/core': 1.1.34
-  '@langchain/openai': 1.1.3
+  '@langchain/anthropic': 1.3.27
+  '@langchain/community': 1.1.27
+  '@langchain/core': 1.1.41
+  '@langchain/openai': 1.4.4
   '@lezer/common': 1.5.0
   '@lezer/css': 1.3.0
   '@lezer/generator': 1.8.0
