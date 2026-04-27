@@ -38,6 +38,7 @@ import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 import { isString } from '@/app/utils/typeGuards';
 import { isObject } from '@/app/utils/objectUtils';
+import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -79,10 +80,6 @@ export function useNodeHelpers() {
 	const credentialsUpdated = ref(false);
 	const isProductionExecutionPreview = ref(false);
 	const pullConnActiveNodeName = ref<string | null>(null);
-
-	function hasProxyAuth(node: INodeUi): boolean {
-		return Object.keys(node.parameters).includes('nodeCredentialType');
-	}
 
 	function isCustomApiCallSelected(nodeValues: INodeParameters): boolean {
 		const { parameters } = nodeValues;
@@ -1090,7 +1087,6 @@ export function useNodeHelpers() {
 	}
 
 	return {
-		hasProxyAuth,
 		isCustomApiCallSelected,
 		isNodeExecutable,
 		getForeignCredentialsIfSharingEnabled,
