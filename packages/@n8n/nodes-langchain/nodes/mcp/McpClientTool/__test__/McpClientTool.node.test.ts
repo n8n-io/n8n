@@ -12,15 +12,13 @@ import {
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
+import { Container } from '@n8n/di';
+
 import { proxyFetch } from '@n8n/ai-utilities';
 
 import { getTools } from '../loadOptions';
-import {
-	McpClientTool,
-	activeClients,
-	evictStaleClients,
-	resetEvictionTimer,
-} from '../McpClientTool.node';
+import { McpClientTool } from '../McpClientTool.node';
+import { McpClientsManager } from '../../shared/McpClientsManager';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
@@ -887,14 +885,7 @@ describe('McpClientTool', () => {
 				onExecutionCancellation: jest.fn((handler: () => void) => {
 					abortController.signal.addEventListener('abort', handler, { once: true });
 				}),
-				getInputData: jest.fn(() => [
-					{
-						json: {
-							tool: 'get_weather',
-							location: 'Berlin',
-						},
-					},
-				]),
+				getInputData: jest.fn(() => [{ json: { tool: 'get_weather', location: 'Berlin' } }]),
 				getNodeParameter: jest.fn((key) => {
 					const params: Record<string, unknown> = {
 						include: 'all',
@@ -914,7 +905,7 @@ describe('McpClientTool', () => {
 
 		beforeEach(() => {
 			jest.resetAllMocks();
-			activeClients.clear();
+			Container.get(McpClientsManager).clearForTests();
 		});
 
 		it('should cache client and reuse on subsequent execute calls', async () => {
@@ -932,14 +923,13 @@ describe('McpClientTool', () => {
 				],
 			});
 
+			const manager = Container.get(McpClientsManager);
 			const { mockExecuteFunctions } = createV13MockExecuteFunctions();
 
-			// First call: should connect and cache
 			await new McpClientTool().execute.call(mockExecuteFunctions);
 			expect(connectSpy).toHaveBeenCalledTimes(1);
-			expect(activeClients.size).toBe(1);
+			expect(manager.size).toBe(1);
 
-			// Second call: should reuse cached client, not connect again
 			await new McpClientTool().execute.call(mockExecuteFunctions);
 			expect(connectSpy).toHaveBeenCalledTimes(1);
 			expect(Client.prototype.callTool).toHaveBeenCalledTimes(2);
@@ -960,10 +950,10 @@ describe('McpClientTool', () => {
 				],
 			});
 
+			const manager = Container.get(McpClientsManager);
 			const { mockExecuteFunctions: exec1 } = createV13MockExecuteFunctions();
 			await new McpClientTool().execute.call(exec1);
 
-			// Different execution ID
 			const abortController2 = new AbortController();
 			const mockNode2 = mock<INode>({
 				typeVersion: 1.3,
@@ -974,6 +964,9 @@ describe('McpClientTool', () => {
 				getNode: jest.fn(() => mockNode2),
 				getExecutionId: jest.fn(() => 'different-execution-456'),
 				getExecutionCancelSignal: jest.fn(() => abortController2.signal),
+				onExecutionCancellation: jest.fn((handler: () => void) => {
+					abortController2.signal.addEventListener('abort', handler, { once: true });
+				}),
 				getInputData: jest.fn(() => [{ json: { tool: 'get_weather', location: 'London' } }]),
 				getNodeParameter: jest.fn((key) => {
 					const params: Record<string, unknown> = {
@@ -991,7 +984,7 @@ describe('McpClientTool', () => {
 
 			await new McpClientTool().execute.call(exec2);
 			expect(connectSpy).toHaveBeenCalledTimes(2);
-			expect(activeClients.size).toBe(2);
+			expect(manager.size).toBe(2);
 		});
 
 		it('should clean up cached client when execution is cancelled', async () => {
@@ -1010,83 +1003,31 @@ describe('McpClientTool', () => {
 				],
 			});
 
+			const manager = Container.get(McpClientsManager);
 			const { mockExecuteFunctions, abortController } = createV13MockExecuteFunctions();
 
 			await new McpClientTool().execute.call(mockExecuteFunctions);
-			expect(activeClients.size).toBe(1);
+			expect(manager.size).toBe(1);
 
-			// Simulate execution cancellation
 			abortController.abort();
 
 			expect(closeSpy).toHaveBeenCalledTimes(1);
-			expect(activeClients.size).toBe(0);
-		});
-
-		it('should evict oldest entries when cache exceeds max size', () => {
-			const closeSpy = jest.fn().mockResolvedValue(undefined);
-			const now = Date.now();
-
-			// Pre-populate cache with 502 entries (default max is 500)
-			// All entries are recent (within TTL) so only max-size eviction applies
-			for (let i = 0; i < 502; i++) {
-				activeClients.set(`exec-${i}:node`, {
-					client: { close: closeSpy } as unknown as Client,
-					mcpTools: [],
-					createdAt: now - 1000 + i, // all recent, oldest first
-					lastUsedAt: now - 1000 + i,
-				});
-			}
-
-			expect(activeClients.size).toBe(502);
-			resetEvictionTimer();
-			evictStaleClients();
-
-			// Should have evicted 2 oldest entries to get back to 500
-			expect(activeClients.size).toBe(500);
-			expect(activeClients.has('exec-0:node')).toBe(false);
-			expect(activeClients.has('exec-1:node')).toBe(false);
-			expect(activeClients.has('exec-2:node')).toBe(true);
-			expect(closeSpy).toHaveBeenCalledTimes(2);
-		});
-
-		it('should evict entries older than TTL', () => {
-			const closeSpy = jest.fn().mockResolvedValue(undefined);
-			const now = Date.now();
-
-			activeClients.set('old:node', {
-				client: { close: closeSpy } as unknown as Client,
-				mcpTools: [],
-				createdAt: now - 600_000,
-				lastUsedAt: now - 600_000, // idle 10 min, past 5 min default TTL
-			});
-			activeClients.set('recent:node', {
-				client: { close: closeSpy } as unknown as Client,
-				mcpTools: [],
-				createdAt: now - 600_000, // old by createdAt
-				lastUsedAt: now - 1000, // but idle only 1 sec
-			});
-
-			resetEvictionTimer();
-			evictStaleClients();
-
-			expect(activeClients.size).toBe(1);
-			expect(activeClients.has('old:node')).toBe(false);
-			expect(activeClients.has('recent:node')).toBe(true);
-			expect(closeSpy).toHaveBeenCalledTimes(1);
+			expect(manager.size).toBe(0);
 		});
 
 		it('should not cache client when connection fails on v1.3', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('Connection failed'));
 
+			const manager = Container.get(McpClientsManager);
 			const { mockExecuteFunctions } = createV13MockExecuteFunctions();
 
 			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
 				NodeOperationError,
 			);
-			expect(activeClients.size).toBe(0);
+			expect(manager.size).toBe(0);
 		});
 
-		it('should refresh lastUsedAt on cache hit (idle TTL semantics)', async () => {
+		it('should refresh lastUsedAt on cache hit', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				content: [{ type: 'text', text: 'Sunny' }],
@@ -1101,49 +1042,19 @@ describe('McpClientTool', () => {
 				],
 			});
 
+			const manager = Container.get(McpClientsManager);
 			const { mockExecuteFunctions } = createV13MockExecuteFunctions();
 			await new McpClientTool().execute.call(mockExecuteFunctions);
 
 			const cacheKey = `${executionId}:${nodeName}`;
-			const entry = activeClients.get(cacheKey);
+			const entry = manager.getEntry(cacheKey);
 			expect(entry).toBeDefined();
 			const firstLastUsed = entry!.lastUsedAt;
 
 			await new Promise((resolve) => setTimeout(resolve, 5));
 			await new McpClientTool().execute.call(mockExecuteFunctions);
 
-			const updated = activeClients.get(cacheKey);
-			expect(updated!.lastUsedAt).toBeGreaterThan(firstLastUsed);
-		});
-
-		it('should evict cache entry when transport closes', async () => {
-			let onCloseHandler: (() => void) | undefined;
-			const mockClient = {
-				close: jest.fn().mockResolvedValue(undefined),
-				set onclose(handler: (() => void) | undefined) {
-					onCloseHandler = handler;
-				},
-				get onclose() {
-					return onCloseHandler as () => void;
-				},
-				onerror: undefined,
-			} as unknown as Client;
-
-			activeClients.set('exec-x:node', {
-				client: mockClient,
-				mcpTools: [],
-				createdAt: Date.now(),
-				lastUsedAt: Date.now(),
-			});
-
-			// Simulate attaching lifecycle then transport closing
-			const cacheKey = 'exec-x:node';
-			(mockClient as { onclose?: () => void }).onclose = () => {
-				activeClients.delete(cacheKey);
-			};
-			(mockClient as { onclose?: () => void }).onclose!();
-
-			expect(activeClients.has('exec-x:node')).toBe(false);
+			expect(manager.getEntry(cacheKey)!.lastUsedAt).toBeGreaterThan(firstLastUsed);
 		});
 
 		it('should throw NodeOperationError on v1.2 connection failure', async () => {
@@ -1187,6 +1098,7 @@ describe('McpClientTool', () => {
 				],
 			});
 
+			const manager = Container.get(McpClientsManager);
 			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool', name: nodeName });
 			const mockExecuteFunctions = mock<any>({
 				getNode: jest.fn(() => mockNode),
@@ -1205,11 +1117,10 @@ describe('McpClientTool', () => {
 				}),
 			});
 
-			// Call twice - should connect each time (no caching)
 			await new McpClientTool().execute.call(mockExecuteFunctions);
 			await new McpClientTool().execute.call(mockExecuteFunctions);
 			expect(connectSpy).toHaveBeenCalledTimes(2);
-			expect(activeClients.size).toBe(0);
+			expect(manager.size).toBe(0);
 		});
 	});
 });
