@@ -233,7 +233,33 @@ export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSe
 };
 
 export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}): string => {
-	return JSON.stringify(options?.replaceCircularRefs ? replaceCircularReferences(obj) : obj);
+	if (!options?.replaceCircularRefs) {
+		return JSON.stringify(obj);
+	}
+
+	// Single-pass circular reference detection during JSON.stringify.
+	// Uses ancestor tracking to correctly allow shared (non-circular) references
+	// while detecting true circular references. This avoids the previous approach
+	// of deep-copying the entire data structure before stringifying.
+	const ancestors: object[] = [];
+	return JSON.stringify(obj, function (_key: string, value: unknown) {
+		if (typeof value !== 'object' || value === null) {
+			return value;
+		}
+
+		// `this` is the parent object containing the current key.
+		// Pop ancestors until we find the parent to maintain the current path.
+		while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
+			ancestors.pop();
+		}
+
+		if (ancestors.includes(value)) {
+			return '[Circular Reference]';
+		}
+
+		ancestors.push(value);
+		return value;
+	});
 };
 
 export const sleep = async (ms: number): Promise<void> =>

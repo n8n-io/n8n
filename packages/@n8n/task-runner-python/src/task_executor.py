@@ -73,11 +73,17 @@ class TaskExecutor:
         # thread in runner process reads, subprocess writes
         read_conn, write_conn = MULTIPROCESSING_CONTEXT.Pipe(duplex=False)
 
+        # Pre-serialize items to JSON bytes to avoid expensive pickle traversal
+        # of nested Python objects when sending to the subprocess. Pickle of a
+        # bytes object is nearly instant, whereas pickle of list[dict] must
+        # traverse every nested element individually.
+        items_json = json.dumps(items, default=str, ensure_ascii=False).encode("utf-8")
+
         process = MULTIPROCESSING_CONTEXT.Process(
             target=fn,
             args=(
                 code,
-                items,
+                items_json,
                 write_conn,
                 security_config,
                 query,
@@ -185,7 +191,7 @@ class TaskExecutor:
     @staticmethod
     def _all_items(
         raw_code: str,
-        items: Items,
+        items_json: bytes,
         write_conn,
         security_config: SecurityConfig,
         query: Query = None,
@@ -196,6 +202,8 @@ class TaskExecutor:
             os.environ.clear()
 
         TaskExecutor._sanitize_sys_modules(security_config)
+
+        items = json.loads(items_json)
 
         print_args: PrintArgs = []
         sys.stderr = stderr_capture = io.StringIO()
@@ -224,7 +232,7 @@ class TaskExecutor:
     @staticmethod
     def _per_item(
         raw_code: str,
-        items: Items,
+        items_json: bytes,
         write_conn,
         security_config: SecurityConfig,
         _query: Query = None,  # unused, only to keep signatures consistent across modes
@@ -235,6 +243,8 @@ class TaskExecutor:
             os.environ.clear()
 
         TaskExecutor._sanitize_sys_modules(security_config)
+
+        items = json.loads(items_json)
 
         print_args: PrintArgs = []
         sys.stderr = stderr_capture = io.StringIO()
