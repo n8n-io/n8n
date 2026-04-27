@@ -25,7 +25,7 @@ export async function spotifyApiRequest(
 		method,
 		headers: {
 			'Content-Type': 'text/plain',
-			Accept: ' application/json',
+			Accept: 'application/json',
 		},
 		qs: query,
 		url: uri ?? `https://api.spotify.com/v1${endpoint}`,
