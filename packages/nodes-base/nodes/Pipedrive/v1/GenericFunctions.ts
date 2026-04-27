@@ -126,7 +126,7 @@ export async function pipedriveApiRequestAllItems(
 			returnData.push.apply(returnData, responseData.data as IDataObject[]);
 		}
 
-		query.start = responseData.additionalData.pagination.next_start;
+		query.start = responseData.additionalData?.pagination?.next_start;
 	} while (responseData.additionalData?.pagination?.more_items_in_collection === true);
 
 	return {
