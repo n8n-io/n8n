@@ -65,7 +65,7 @@ export = {
 	],
 
 	updateDataTableColumn: [
-		publicApiScope('dataTableColumn:create'),
+		publicApiScope('dataTableColumn:update'),
 		projectScope('dataTable:writeColumn', 'dataTable'),
 		async (req: DataTableRequest.UpdateColumn, res: express.Response) => {
 			try {
