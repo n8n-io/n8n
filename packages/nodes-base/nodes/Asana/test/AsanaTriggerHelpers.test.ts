@@ -83,6 +83,28 @@ describe('AsanaTriggerHelpers', () => {
 			expect(result).toBe(false);
 		});
 
+		it('should return true if rawBody is a string and signature matches', () => {
+			const stringPayload = '{"events":[{"action":"changed"}]}';
+			const hmac = createHmac('sha256', testSecret);
+			hmac.update(Buffer.from(stringPayload));
+			const expectedSignature = hmac.digest('hex');
+
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
+				hookSecret: testSecret,
+			});
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				header: jest.fn().mockImplementation((header: string) => {
+					if (header === 'x-hook-signature') return expectedSignature;
+					return null;
+				}),
+				rawBody: stringPayload,
+			});
+
+			const result = verifySignature.call(mockWebhookFunctions);
+
+			expect(result).toBe(true);
+		});
+
 		it('should return false if raw body is missing when secret is set', () => {
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
 				hookSecret: testSecret,
