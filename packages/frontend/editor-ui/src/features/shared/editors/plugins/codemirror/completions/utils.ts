@@ -194,7 +194,9 @@ export async function hasNoParams(toResolve: string, contextNodeName?: string) {
 }
 
 export async function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
-	const ndvStore = useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId || '__default__'));
+	const ndvStore = useNDVStore(
+		createWorkflowDocumentId(useWorkflowsStore().workflowId || '__default__'),
+	);
 	const inputData =
 		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
 			? {
@@ -223,7 +225,9 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 		nodeType = targetNodeParameterContext.nodeName;
 		path = targetNodeParameterContext.parameterPath;
 	} else {
-		const ndvStore = useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId || '__default__'));
+		const ndvStore = useNDVStore(
+			createWorkflowDocumentId(useWorkflowsStore().workflowId || '__default__'),
+		);
 		nodeType = ndvStore.activeNode?.type;
 		path = ndvStore.focusedInputPath;
 	}
@@ -234,8 +238,8 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) =>
 	(targetNodeParameterContext !== undefined &&
 		useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName) !== null) ||
-	useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId || '__default__')).activeNode?.name !==
-		undefined;
+	useNDVStore(createWorkflowDocumentId(useWorkflowsStore().workflowId || '__default__')).activeNode
+		?.name !== undefined;
 
 export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
