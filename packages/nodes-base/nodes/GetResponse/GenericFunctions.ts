@@ -73,7 +73,7 @@ export async function getResponseApiRequestAllItems(
 		);
 		query.page++;
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);
-	} while (responseData.headers.TotalPages !== responseData.headers.CurrentPage);
+	} while (responseData.headers['totalpages'] !== responseData.headers['currentpage']);
 
 	return returnData;
 }
