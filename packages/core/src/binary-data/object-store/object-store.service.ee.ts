@@ -18,7 +18,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-import { Readable } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 
 import { ObjectStoreConfig } from './object-store.config';
 import type { MetadataResponseHeaders } from './types';
@@ -137,13 +137,44 @@ export class ObjectStoreService {
 		});
 
 		try {
+			if (mode === 'stream') {
+				const abortController = new AbortController();
+				const { Body: body } = await this.s3Client.send(command, {
+					abortSignal: abortController.signal,
+				});
+				if (!body) throw new UnexpectedError('Received empty response body');
+
+				if (!(body instanceof Readable)) {
+					throw new UnexpectedError('Expected stream but received different type', {
+						extra: { bodyType: typeof body },
+					});
+				}
+
+				// Wrap to prevent socket pool exhaustion when callers destroy the
+				// stream early. AbortController lets the SDK free the socket slot
+				// properly. See: https://github.com/aws/aws-sdk-js-v3/issues/6691
+				const wrapper = new PassThrough();
+				let bodyFullyConsumed = false;
+
+				body.on('end', () => {
+					bodyFullyConsumed = true;
+				});
+
+				wrapper.on('close', () => {
+					if (!bodyFullyConsumed) {
+						abortController.abort();
+						body.destroy();
+					}
+				});
+
+				body.on('error', (error) => wrapper.destroy(error));
+				body.pipe(wrapper);
+
+				return wrapper;
+			}
+
 			const { Body: body } = await this.s3Client.send(command);
 			if (!body) throw new UnexpectedError('Received empty response body');
-
-			if (mode === 'stream') {
-				if (body instanceof Readable) return body;
-				throw new UnexpectedError(`Expected stream but received ${typeof body}.`);
-			}
 
 			return await streamToBuffer(body as Readable);
 		} catch (e) {

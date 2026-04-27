@@ -255,6 +255,9 @@ describe('GlobalConfig', () => {
 				ttl: 3600000,
 			},
 		},
+		chatTrigger: {
+			disablePublicChat: false,
+		},
 		chatHub: {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
@@ -498,6 +501,10 @@ describe('GlobalConfig', () => {
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
 			bridgeMemoryLimit: 128,
+			observabilityEnabled: true,
+			tracesEnabled: true,
+			slowEvaluationThresholdMs: 50,
+			tracesSampleRate: 0.0,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
