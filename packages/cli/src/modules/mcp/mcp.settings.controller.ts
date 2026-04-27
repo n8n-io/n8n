@@ -76,6 +76,7 @@ export class McpSettingsController {
 		res.json({ count, data: workflows });
 	}
 
+	// Ideally we would use ProjectScope here but it only works if projectId is a URL parameter
 	@Patch('/workflows/toggle-access')
 	async toggleWorkflowsMCPAccess(
 		req: AuthenticatedRequest,

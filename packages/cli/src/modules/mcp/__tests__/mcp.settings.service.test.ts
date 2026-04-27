@@ -30,6 +30,8 @@ describe('McpSettingsService', () => {
 		findByKey = jest.fn<Promise<Settings | null>, [string]>();
 		upsert = jest.fn();
 		settingsRepository = { findByKey, upsert } as unknown as SettingsRepository;
+		workflowFinderService.hasProjectScopeForUser.mockResolvedValue(true);
+		workflowFinderService.findProjectIdForFolder.mockResolvedValue('project-1');
 
 		service = new McpSettingsService(
 			settingsRepository,
@@ -289,6 +291,11 @@ describe('McpSettingsService', () => {
 			const result = await service.bulkSetAvailableInMCP(user, dto);
 
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+			expect(workflowFinderService.hasProjectScopeForUser).toHaveBeenCalledWith(
+				user,
+				['workflow:update'],
+				'project-1',
+			);
 			expect(workflowFinderService.findAllWorkflowIdsForUser).toHaveBeenCalledWith(
 				user,
 				['workflow:update'],
@@ -297,6 +304,26 @@ describe('McpSettingsService', () => {
 			);
 			expect(stubs.update).toHaveBeenCalledTimes(1);
 			expect(result.updatedCount).toBe(1);
+		});
+
+		test('does not resolve project-scoped workflows when user lacks project scope', async () => {
+			const stubs = setupRepository([]);
+			workflowFinderService.hasProjectScopeForUser.mockResolvedValueOnce(false);
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				projectId: 'project-1',
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(workflowFinderService.findAllWorkflowIdsForUser).not.toHaveBeenCalled();
+			expect(stubs.manager.transaction).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				updatedCount: 0,
+				skippedCount: 0,
+				failedCount: 0,
+			});
 		});
 
 		test('omits updatedIds from the response when scoped by projectId', async () => {
@@ -343,12 +370,39 @@ describe('McpSettingsService', () => {
 
 			await service.bulkSetAvailableInMCP(user, dto);
 
+			expect(workflowFinderService.findProjectIdForFolder).toHaveBeenCalledWith('folder-1');
+			expect(workflowFinderService.hasProjectScopeForUser).toHaveBeenCalledWith(
+				user,
+				['workflow:update'],
+				'project-1',
+			);
 			expect(workflowFinderService.findAllWorkflowIdsForUser).toHaveBeenCalledWith(
 				user,
 				['workflow:update'],
 				'folder-1',
-				undefined,
+				'project-1',
 			);
+		});
+
+		test('does not resolve folder-scoped workflows when folder project cannot be scoped', async () => {
+			const stubs = setupRepository([]);
+			workflowFinderService.findProjectIdForFolder.mockResolvedValueOnce(null);
+
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				folderId: 'folder-1',
+			});
+
+			const result = await service.bulkSetAvailableInMCP(user, dto);
+
+			expect(workflowFinderService.hasProjectScopeForUser).not.toHaveBeenCalled();
+			expect(workflowFinderService.findAllWorkflowIdsForUser).not.toHaveBeenCalled();
+			expect(stubs.manager.transaction).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				updatedCount: 0,
+				skippedCount: 0,
+				failedCount: 0,
+			});
 		});
 
 		test('returns zeroed result and does not open a transaction when no candidates are found', async () => {

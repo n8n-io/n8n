@@ -170,11 +170,28 @@ export class McpSettingsService {
 			return uniqueIds.filter((id) => accessibleIds.has(id));
 		}
 
+		const projectId =
+			scope.projectId ??
+			(scope.folderId
+				? await this.workflowFinderService.findProjectIdForFolder(scope.folderId)
+				: null);
+
+		if (
+			projectId === null ||
+			!(await this.workflowFinderService.hasProjectScopeForUser(
+				user,
+				['workflow:update'],
+				projectId,
+			))
+		) {
+			return [];
+		}
+
 		return await this.workflowFinderService.findAllWorkflowIdsForUser(
 			user,
 			['workflow:update'],
 			scope.folderId,
-			scope.projectId,
+			projectId,
 		);
 	}
 }
