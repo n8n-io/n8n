@@ -26,6 +26,7 @@ import {
 	isSplitInBatchesBuilder,
 	extractSplitInBatchesBuilder,
 } from '../type-guards';
+import { assertPlainObject } from '../validation-helpers';
 
 /**
  * Type guard to check if a value is an InputTarget
@@ -123,7 +124,7 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		this.version = version;
 		this.config = { ...config };
 		this.id = id ?? uuid();
-		this.name = name ?? config.name ?? generateNodeName(type);
+		this.name = name ?? config?.name ?? generateNodeName(type);
 		this._connections = connections ?? [];
 	}
 
@@ -763,6 +764,11 @@ class SwitchCaseBuilderImpl<TOutput = unknown> implements SwitchCaseBuilder<TOut
 export function node<TNode extends NodeInput>(
 	input: TNode,
 ): NodeInstance<TNode['type'], `${TNode['version']}`, unknown> {
+	assertPlainObject(
+		input,
+		'node',
+		"a configuration object { type, version, config }. Example: node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } })",
+	);
 	const versionStr = String(input.version) as `${TNode['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output
@@ -802,6 +808,7 @@ export interface IfElseFactoryConfig {
 export function ifElse<TOutput = unknown>(
 	input: IfElseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.if', string, TOutput> {
+	assertPlainObject(input, 'ifElse', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.if',
 		version: input.version,
@@ -837,6 +844,7 @@ export interface MergeFactoryConfig {
 export function merge<TOutput = unknown>(
 	input: MergeFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.merge', string, TOutput> {
+	assertPlainObject(input, 'merge', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.merge',
 		version: input.version,
@@ -872,6 +880,7 @@ export interface SwitchCaseFactoryConfig {
 export function switchCase<TOutput = unknown>(
 	input: SwitchCaseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.switch', string, TOutput> {
+	assertPlainObject(input, 'switchCase', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.switch',
 		version: input.version,
@@ -897,6 +906,11 @@ export function switchCase<TOutput = unknown>(
 export function trigger<TTrigger extends TriggerInput>(
 	input: TTrigger,
 ): TriggerInstance<TTrigger['type'], `${TTrigger['version']}`, unknown> {
+	assertPlainObject(
+		input,
+		'trigger',
+		"a configuration object { type, version, config }. Example: trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } })",
+	);
 	const versionStr = String(input.version) as `${TTrigger['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output

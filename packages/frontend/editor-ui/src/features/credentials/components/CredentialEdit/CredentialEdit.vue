@@ -888,8 +888,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	}
 
 	const appliedAuthType = pendingAuthType.value;
-	if (appliedAuthType && contextNode.value) {
-		updateNodeAuthType(workflowsStore.workflowId, contextNode.value, appliedAuthType);
+	if (appliedAuthType && contextNode.value && workflowDocumentStore.value) {
+		updateNodeAuthType(
+			workflowDocumentStore.value.updateNodeProperties,
+			contextNode.value,
+			appliedAuthType,
+		);
 		pendingAuthType.value = null;
 	}
 

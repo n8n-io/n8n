@@ -709,6 +709,7 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }
 

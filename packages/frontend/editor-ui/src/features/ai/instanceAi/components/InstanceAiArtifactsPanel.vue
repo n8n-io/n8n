@@ -6,6 +6,7 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { ResourceEntry } from '../useResourceRegistry';
+import ConnectionsCard from './ConnectionsCard.vue';
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
@@ -134,6 +135,9 @@ const artifactIconMap: Record<string, IconName> = {
 				</div>
 			</div>
 		</div>
+
+		<!-- Connections section -->
+		<ConnectionsCard />
 	</div>
 </template>
 
