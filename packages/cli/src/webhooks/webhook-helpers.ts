@@ -16,6 +16,7 @@ import type {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteData,
+	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
 	INode,
 	IPinData,
@@ -657,6 +658,7 @@ export async function executeWebhook(
 			pinData,
 			projectId: project?.id,
 			projectName: project?.name,
+			userId: webhookData.userId,
 		};
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
@@ -753,7 +755,7 @@ export async function executeWebhook(
 			true,
 			!didSendResponse && !shouldDeferOnReceivedResponse,
 			executionId,
-			responsePromise,
+			responsePromise as IDeferredPromise<IExecuteResponsePromiseData> | undefined,
 		);
 
 		/**

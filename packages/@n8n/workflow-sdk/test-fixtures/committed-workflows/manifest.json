@@ -70,6 +70,15 @@
 			"id": 4,
 			"name": "Unknown nodes with connections",
 			"success": true
+		},
+		{
+			"id": 5,
+			"name": "Chat trigger with loadPreviousSession=memory but no memory subnode (INS-136)",
+			"success": true,
+			"expectedErrors": [
+				{ "code": "MISSING_REQUIRED_INPUT", "nodeName": "Chat Trigger" },
+				{ "code": "MISSING_REQUIRED_INPUT", "nodeName": "Agent" }
+			]
 		}
 	]
 }

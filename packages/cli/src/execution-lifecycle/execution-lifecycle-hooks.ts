@@ -58,7 +58,7 @@ class ModulesHooksRegistry {
 				case 'workflowExecuteAfter':
 					hooks.addHandler(eventName, async function (runData, newStaticData) {
 						const context = {
-							type: 'workflowExecuteAfter',
+							type: 'workflowExecuteAfter' as const,
 							workflow: this.workflowData,
 							runData,
 							newStaticData,
@@ -73,7 +73,7 @@ class ModulesHooksRegistry {
 				case 'nodeExecuteBefore':
 					hooks.addHandler(eventName, async function (nodeName, taskData) {
 						const context = {
-							type: 'nodeExecuteBefore',
+							type: 'nodeExecuteBefore' as const,
 							workflow: this.workflowData,
 							nodeName,
 							taskData,
@@ -87,7 +87,7 @@ class ModulesHooksRegistry {
 				case 'nodeExecuteAfter':
 					hooks.addHandler(eventName, async function (nodeName, taskData, executionData) {
 						const context = {
-							type: 'nodeExecuteAfter',
+							type: 'nodeExecuteAfter' as const,
 							workflow: this.workflowData,
 							nodeName,
 							taskData,
@@ -102,7 +102,7 @@ class ModulesHooksRegistry {
 				case 'workflowExecuteBefore':
 					hooks.addHandler(eventName, async function (workflowInstance, executionData) {
 						const context = {
-							type: 'workflowExecuteBefore',
+							type: 'workflowExecuteBefore' as const,
 							workflow: this.workflowData,
 							workflowInstance,
 							executionData,
@@ -116,7 +116,7 @@ class ModulesHooksRegistry {
 				case 'workflowExecuteResume':
 					hooks.addHandler(eventName, async function (workflowInstance, executionData) {
 						const context = {
-							type: 'workflowExecuteResume',
+							type: 'workflowExecuteResume' as const,
 							workflow: this.workflowData,
 							workflowInstance,
 							executionData,
