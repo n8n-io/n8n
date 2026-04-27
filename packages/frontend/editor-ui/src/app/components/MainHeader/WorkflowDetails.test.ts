@@ -35,7 +35,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRoute: vi.fn().mockReturnValue({
-		params: { name: 'test' },
+		params: { workflowId: 'test' },
 		query: { parentFolderId: '1' },
 		meta: {
 			nodeView: true,
@@ -47,7 +47,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 		currentRoute: {
 			value: {
 				params: {
-					name: 'test',
+					workflowId: 'test',
 				},
 				query: { parentFolderId: '1' },
 			},
@@ -256,7 +256,7 @@ describe('WorkflowDetails', () => {
 					nodeView: true,
 				},
 				query: { parentFolderId: '1' },
-				params: { name: 'test' },
+				params: { workflowId: 'test' },
 			} as unknown as ReturnType<typeof useRoute>);
 		});
 
@@ -324,7 +324,7 @@ describe('WorkflowDetails', () => {
 						nodeView: true,
 					},
 					query: { parentFolderId: '1', new: 'true' },
-					params: { name: 'test' },
+					params: { workflowId: 'test' },
 				} as unknown as ReturnType<typeof useRoute>);
 
 			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);

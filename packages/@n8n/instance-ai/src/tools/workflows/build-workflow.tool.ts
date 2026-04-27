@@ -178,12 +178,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await ensureWebhookIds(json, workflowId, context);
 
 			try {
-				const opts = projectId ? { projectId } : undefined;
 				if (workflowId) {
 					const updated = await context.workflowService.updateFromWorkflowJSON(
 						workflowId,
 						json,
-						opts,
+						projectId ? { projectId } : undefined,
 					);
 					return {
 						success: true,
@@ -194,7 +193,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								: undefined,
 					};
 				} else {
-					const created = await context.workflowService.createFromWorkflowJSON(json, opts);
+					const created = await context.workflowService.createFromWorkflowJSON(json, {
+						...(projectId ? { projectId } : {}),
+						markAsAiTemporary: true,
+					});
+					(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
 					return {
 						success: true,
 						workflowId: created.id,

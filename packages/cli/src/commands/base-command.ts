@@ -156,6 +156,13 @@ export abstract class BaseCommand<F = never> {
 			);
 		}
 
+		// Ensures that when a CLI command has a check for "instanceSettings.isMultiMainEnabled"
+		// that it reflects the configuration of the n8n instance running on the server.
+		const isMultiMainEnabled =
+			this.globalConfig.executions.mode === 'queue' && this.globalConfig.multiMainSetup.enabled;
+		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
+		this.instanceSettings.setMultiMainLicensed(isMultiMainEnabled); // no license check here, as the start command already implements that
+
 		const taskRunnersConfig = this.globalConfig.taskRunners;
 
 		if (this.needsTaskRunner) {

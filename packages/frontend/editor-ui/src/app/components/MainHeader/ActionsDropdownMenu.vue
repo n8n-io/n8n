@@ -246,7 +246,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
-			const workflowId = getWorkflowId(props.id, route.params.name);
+			const workflowId = getWorkflowId(props.id, route.params.workflowId);
 			if (!workflowId) return;
 
 			const workflowDescription =
@@ -375,7 +375,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {
-			const workflowId = getWorkflowId(props.id, route.params.name);
+			const workflowId = getWorkflowId(props.id, route.params.workflowId);
 			if (!workflowId) {
 				return;
 			}
