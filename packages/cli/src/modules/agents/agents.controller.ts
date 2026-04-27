@@ -11,7 +11,17 @@ import {
 	UpdateAgentDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	Put,
+	RestController,
+} from '@n8n/decorators';
 import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 
@@ -78,6 +88,7 @@ export class AgentsController {
 	) {}
 
 	@Post('/')
+	@ProjectScope('agent:create')
 	async create(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -89,6 +100,7 @@ export class AgentsController {
 	}
 
 	@Get('/')
+	@ProjectScope('agent:list')
 	async list(req: AuthenticatedRequest<{ projectId: string }, unknown, unknown, { all?: string }>) {
 		// ?all=true returns all agents for this user (cross-project, for Instance AI switcher)
 		if (req.query.all === 'true') {
@@ -98,12 +110,14 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/config')
+	@ProjectScope('agent:read')
 	async getConfig(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
 		return await this.agentsService.getConfig(agentId, projectId);
 	}
 
 	@Put('/:agentId/config')
+	@ProjectScope('agent:update')
 	async putConfig(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 		_res: Response,
@@ -116,6 +130,7 @@ export class AgentsController {
 	}
 
 	@Delete('/:agentId/tools/:toolId')
+	@ProjectScope('agent:update')
 	async deleteTool(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; toolId: string }>,
 		_res: Response,
@@ -128,6 +143,7 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/credentials')
+	@ProjectScope('agent:read')
 	async listCredentials(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId } = req.params;
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
@@ -135,6 +151,7 @@ export class AgentsController {
 	}
 
 	@Get('/catalog/models')
+	@ProjectScope('agent:list')
 	async getModelCatalog() {
 		const { fetchProviderCatalog } = await import('@n8n/agents');
 		return await fetchProviderCatalog();
@@ -146,6 +163,7 @@ export class AgentsController {
 	}
 
 	@Get('/threads')
+	@ProjectScope('agent:read')
 	async listThreads(
 		req: AuthenticatedRequest<
 			{ projectId: string },
@@ -164,6 +182,7 @@ export class AgentsController {
 	}
 
 	@Get('/threads/:threadId')
+	@ProjectScope('agent:read')
 	async getThread(
 		req: AuthenticatedRequest<
 			{ projectId: string; threadId: string },
@@ -184,6 +203,7 @@ export class AgentsController {
 	}
 
 	@Delete('/threads/:threadId')
+	@ProjectScope('agent:update')
 	async deleteThread(req: AuthenticatedRequest<{ projectId: string; threadId: string }>) {
 		const { projectId, threadId } = req.params;
 		const deleted = await this.agentExecutionService.deleteThread(projectId, threadId);
@@ -194,6 +214,7 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId')
+	@ProjectScope('agent:read')
 	async get(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -209,6 +230,7 @@ export class AgentsController {
 	}
 
 	@Patch('/:agentId')
+	@ProjectScope('agent:update')
 	async update(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -243,6 +265,7 @@ export class AgentsController {
 	}
 
 	@Delete('/:agentId')
+	@ProjectScope('agent:delete')
 	async delete(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -258,6 +281,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/publish')
+	@ProjectScope('agent:update')
 	async publish(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -267,6 +291,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/unpublish')
+	@ProjectScope('agent:update')
 	async unpublish(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -276,6 +301,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
+	@ProjectScope('agent:execute')
 	async chat(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: FlushableResponse,
@@ -343,6 +369,7 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/chat/:threadId/messages')
+	@ProjectScope('agent:read')
 	async getChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
@@ -357,6 +384,7 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/build/messages')
+	@ProjectScope('agent:update')
 	async getBuilderMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 	): Promise<AgentBuilderMessagesResponse> {
@@ -389,6 +417,7 @@ export class AgentsController {
 	}
 
 	@Delete('/:agentId/build/messages')
+	@ProjectScope('agent:update')
 	async clearBuilderMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
@@ -398,6 +427,7 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/chat/messages')
+	@ProjectScope('agent:read')
 	async getTestChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 	): Promise<AgentPersistedMessageDto[]> {
@@ -409,6 +439,7 @@ export class AgentsController {
 	}
 
 	@Delete('/:agentId/chat/messages')
+	@ProjectScope('agent:update')
 	async clearTestChatMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
@@ -418,6 +449,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/build', { usesTemplates: true })
+	@ProjectScope('agent:update')
 	async build(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: FlushableResponse,
@@ -462,6 +494,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/build/resume', { usesTemplates: true })
+	@ProjectScope('agent:update')
 	async buildResume(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: FlushableResponse,
@@ -507,6 +540,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/integrations/connect')
+	@ProjectScope('agent:update')
 	async connectIntegration(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -541,6 +575,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/integrations/disconnect')
+	@ProjectScope('agent:update')
 	async disconnectIntegration(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -563,6 +598,7 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/integrations/status')
+	@ProjectScope('agent:read')
 	async integrationStatus(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -574,6 +610,12 @@ export class AgentsController {
 		return this.chatIntegrationService.getStatus(agentId);
 	}
 
+	// Intentionally no @ProjectScope: skipAuth means there is no req.user, so the
+	// scope middleware would always 401 incoming third-party callbacks. Auth is
+	// performed inside webhookHandler via per-platform signature verification, and
+	// the handler resolves by (agentId, platform) only — the :projectId segment
+	// in the URL is decorative and kept for stability of already-registered
+	// webhook URLs at Slack/Telegram/Linear.
 	@Post('/:agentId/webhooks/:platform', { skipAuth: true, allowBots: true })
 	async handleWebhook(
 		req: Request<{ projectId: string; agentId: string; platform: string }>,

@@ -2,6 +2,13 @@
 
 exports[`Scope Information > ensure scopes are defined correctly 1`] = `
 [
+  "agent:create",
+  "agent:read",
+  "agent:update",
+  "agent:delete",
+  "agent:list",
+  "agent:execute",
+  "agent:*",
   "aiAssistant:manage",
   "aiAssistant:*",
   "annotationTag:create",

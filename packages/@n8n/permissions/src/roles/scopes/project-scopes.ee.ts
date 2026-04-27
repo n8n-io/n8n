@@ -7,6 +7,12 @@ import type { Scope } from '../../types.ee';
  */
 
 export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
+	'agent:create',
+	'agent:read',
+	'agent:update',
+	'agent:delete',
+	'agent:list',
+	'agent:execute',
 	'workflow:create',
 	'workflow:read',
 	'workflow:update',
@@ -53,6 +59,12 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
+	'agent:create',
+	'agent:read',
+	'agent:update',
+	'agent:delete',
+	'agent:list',
+	'agent:execute',
 	'workflow:create',
 	'workflow:read',
 	'workflow:update',
@@ -90,6 +102,12 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
+	'agent:create',
+	'agent:read',
+	'agent:update',
+	'agent:delete',
+	'agent:list',
+	'agent:execute',
 	'workflow:create',
 	'workflow:read',
 	'workflow:update',
@@ -126,6 +144,9 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
+	'agent:read',
+	'agent:list',
+	'agent:execute',
 	'credential:list',
 	'credential:read',
 	'project:list',
@@ -142,4 +163,4 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'projectVariable:read',
 ];
 
-export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['workflow:execute-chat'];
+export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];
