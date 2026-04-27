@@ -14,6 +14,7 @@ import {
 	connect,
 	destroy,
 	escapeSnowflakeIdentifier,
+	escapeSnowflakeObjectIdentifier,
 	execute,
 	getConnectionOptions,
 	type SnowflakeCredential,
@@ -216,7 +217,7 @@ export class Snowflake implements INodeType {
 			const table = this.getNodeParameter('table', 0) as string;
 			const columnString = this.getNodeParameter('columns', 0) as string;
 			const columns = columnString.split(',').map((column) => column.trim());
-			const quotedTable = escapeSnowflakeIdentifier(table);
+			const quotedTable = escapeSnowflakeObjectIdentifier(table);
 			const quotedColumns = columns.map(escapeSnowflakeIdentifier);
 			const query = `INSERT INTO ${quotedTable} (${quotedColumns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
 			const data = this.helpers.copyInputItems(items, columns);
@@ -245,7 +246,7 @@ export class Snowflake implements INodeType {
 				columns.unshift(updateKey);
 			}
 
-			const quotedTable = escapeSnowflakeIdentifier(table);
+			const quotedTable = escapeSnowflakeObjectIdentifier(table);
 			const quotedColumns = columns.map(escapeSnowflakeIdentifier);
 			const quotedUpdateKey = escapeSnowflakeIdentifier(updateKey);
 			const query = `UPDATE ${quotedTable} SET ${quotedColumns.map((col) => `${col} = ?`).join(',')} WHERE ${quotedUpdateKey} = ?;`;

@@ -83,6 +83,10 @@ export function escapeSnowflakeIdentifier(identifier: string): string {
 	return `"${bare.toUpperCase().replace(/"/g, '""')}"`;
 }
 
+export function escapeSnowflakeObjectIdentifier(identifier: string): string {
+	return identifier.split('.').map(escapeSnowflakeIdentifier).join('.');
+}
+
 export async function execute(
 	conn: snowflake.Connection,
 	sqlText: string,
