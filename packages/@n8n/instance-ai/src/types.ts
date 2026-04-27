@@ -271,6 +271,10 @@ export interface ExploreResourcesResult {
 		description?: string;
 	}>;
 	paginationToken?: unknown;
+	/** The `@builderHint` from the node property whose method was queried, if any.
+	 *  Surfaced alongside results so agents that skip the `type-definition` step
+	 *  still receive selection guidance at the point of decision. */
+	builderHint?: string;
 }
 
 export interface InstanceAiNodeService {

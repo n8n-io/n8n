@@ -21,9 +21,13 @@ import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 
+const { getNodeTypeMock } = vi.hoisted(() => ({
+	getNodeTypeMock: vi.fn().mockReturnValue(null),
+}));
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
-		getNodeType: vi.fn().mockReturnValue(null),
+		getNodeType: getNodeTypeMock,
 		communityNodeType: vi.fn().mockReturnValue(null),
 	})),
 }));
@@ -35,6 +39,7 @@ function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 describe('workflowDocument.store orchestration', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		getNodeTypeMock.mockReturnValue(null);
 	});
 
 	it('removeAllNodes clears nodes, connections, and pin data', () => {
@@ -93,6 +98,47 @@ describe('workflowDocument.store orchestration', () => {
 		});
 
 		expect(uiStore.stateIsDirty).toBe(true);
+	});
+
+	describe('serialize', () => {
+		it('assembles every doc field into WorkflowData', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-42'));
+
+			workflowDocumentStore.setName('My Workflow');
+			workflowDocumentStore.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+			workflowDocumentStore.setConnections({
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+			workflowDocumentStore.setPinData({ A: [{ json: { value: 1 } }] });
+			workflowDocumentStore.setTags(['tag-1', 'tag-2']);
+
+			const data = workflowDocumentStore.serialize();
+
+			expect(data.name).toBe('My Workflow');
+			expect(data.nodes).toHaveLength(2);
+			expect(data.connections).toHaveProperty('A');
+			expect(data.pinData).toHaveProperty('A');
+			expect(data.tags).toEqual(['tag-1', 'tag-2']);
+			expect(data.id).toBe('wf-42');
+		});
+
+		it('deep-copies connections so later store mutations do not affect saved data', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+
+			workflowDocumentStore.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+			workflowDocumentStore.setConnections({
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+
+			const data = workflowDocumentStore.serialize();
+
+			workflowDocumentStore.setConnections({
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				C: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+
+			expect(data.connections).not.toHaveProperty('C');
+		});
 	});
 
 	describe('hydrate', () => {
@@ -302,6 +348,105 @@ describe('workflowDocument.store orchestration', () => {
 				expect(store.name).toBe('My Workflow');
 				expect(store.versionId).toBe('ver-123');
 			});
+		});
+	});
+
+	describe('workflowObject sync', () => {
+		it('setNodes syncs nodes to workflowObject', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			expect(store.getNodeByNameFromWorkflow('A')).toBeNull();
+
+			store.setNodes([createNode({ name: 'A' })]);
+
+			expect(store.getNodeByNameFromWorkflow('A')).toEqual(expect.objectContaining({ name: 'A' }));
+		});
+
+		it('addNode syncs to workflowObject', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			expect(store.getNodeByNameFromWorkflow('A')).toBeNull();
+
+			store.addNode(createNode({ name: 'A' }));
+
+			expect(store.getNodeByNameFromWorkflow('A')).toEqual(expect.objectContaining({ name: 'A' }));
+		});
+
+		it('removeNode syncs to workflowObject', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			const node = createNode({ name: 'A' });
+			store.setNodes([node]);
+			expect(store.getNodeByNameFromWorkflow('A')).toEqual(expect.objectContaining({ name: 'A' }));
+
+			store.removeNode(node);
+
+			expect(store.getNodeByNameFromWorkflow('A')).toBeNull();
+		});
+
+		it('removeNodeById syncs to workflowObject', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			const node = createNode({ name: 'A' });
+			store.setNodes([node]);
+			expect(store.getNodeByNameFromWorkflow('A')).toEqual(expect.objectContaining({ name: 'A' }));
+
+			store.removeNodeById(node.id);
+
+			expect(store.getNodeByNameFromWorkflow('A')).toBeNull();
+		});
+
+		it('setConnections syncs to workflowObject for graph traversal', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			store.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+			expect(store.getChildNodes('A', NodeConnectionTypes.Main)).toEqual([]);
+
+			store.setConnections({
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+
+			expect(store.getChildNodes('A', NodeConnectionTypes.Main)).toEqual(['B']);
+			expect(store.getParentNodes('B', NodeConnectionTypes.Main)).toEqual(['A']);
+		});
+
+		it('setName syncs name to workflowObject', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			store.setNodes([createNode({ name: 'A' })]);
+			expect(store.name).toBe('');
+
+			store.setName('Updated Name');
+
+			expect(store.name).toBe('Updated Name');
+			expect(store.getStartNode()).toBeDefined();
+		});
+
+		it('setSettings syncs settings to workflowObject', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			expect(store.settings).toEqual({ ...DEFAULT_SETTINGS });
+
+			store.setSettings({ ...DEFAULT_SETTINGS, timezone: 'Europe/Berlin' });
+
+			expect(store.settings).toEqual({ ...DEFAULT_SETTINGS, timezone: 'Europe/Berlin' });
+		});
+
+		it('removeNode unpins node data', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			const node = createNode({ name: 'A' });
+			store.setNodes([node]);
+			store.setPinData({ A: [{ json: { value: 1 } }] });
+			expect(store.pinData).toHaveProperty('A');
+
+			store.removeNode(node);
+
+			expect(store.pinData).not.toHaveProperty('A');
+		});
+
+		it('removeNodeById unpins node data', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			const node = createNode({ name: 'A' });
+			store.setNodes([node]);
+			store.setPinData({ A: [{ json: { value: 1 } }] });
+			expect(store.pinData).toHaveProperty('A');
+
+			store.removeNodeById(node.id);
+
+			expect(store.pinData).not.toHaveProperty('A');
 		});
 	});
 

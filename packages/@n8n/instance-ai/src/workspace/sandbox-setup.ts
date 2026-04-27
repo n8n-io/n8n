@@ -23,9 +23,13 @@
  */
 
 import type { Workspace } from '@mastra/core/workspace';
+import { createRequire } from 'node:module';
 
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
+import { isLinkWorkspaceSdkEnabled } from './pack-workspace-sdk';
 import { runInSandbox, readFileViaSandbox, escapeSingleQuotes } from './sandbox-fs';
+
+const hostRequire = createRequire(__filename);
 
 export const WORKSPACE_DIR = 'workspace';
 
@@ -35,21 +39,108 @@ export const N8N_SANDBOX_HOME = '/home/user';
 /** Absolute workspace root for n8n sandbox service Dockerfile steps (build-time). */
 export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
 
-export const PACKAGE_JSON = JSON.stringify(
-	{
-		name: 'sandbox-workspace',
-		private: true,
-		dependencies: {
-			'@n8n/workflow-sdk': '*',
-			tsx: '*',
+/**
+ * Resolve a dependency's installed version from the host's node_modules.
+ * Falls back to `'*'` if the package is unresolvable (should only happen in
+ * out-of-tree test setups — production always has these as real deps).
+ */
+function resolveHostDepVersion(name: string): string {
+	try {
+		const pkg = hostRequire(`${name}/package.json`) as { version?: string };
+		return pkg.version ?? '*';
+	} catch {
+		return '*';
+	}
+}
+
+/**
+ * Versions pinned from the host's installed packages. Pinning is load-bearing
+ * for two reasons:
+ *   1. `npm install '@n8n/workflow-sdk': '*'` inside the sandbox resolves to
+ *      the dist-tag `latest`, which lags well behind the version the CLI was
+ *      built against. Host-pinned versions keep the sandbox SDK in lock-step
+ *      with the server that orchestrates it.
+ *   2. Sandbox images are content-addressed by their Dockerfile bytes. When
+ *      the SDK version bumps on a new release, PACKAGE_JSON changes, the
+ *      `npm install` RUN layer's hash changes, and the sandbox service
+ *      rebuilds the image. Floating `'*'` never changes the bytes, so stale
+ *      images are reused indefinitely.
+ */
+const SANDBOX_SDK_VERSION = resolveHostDepVersion('@n8n/workflow-sdk');
+const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
+
+/**
+ * Hard-coded to match the monorepo-wide `@types/node` catalog entry in
+ * `pnpm-workspace.yaml`. `@types/node` isn't a direct dep of this package, so
+ * `resolveHostDepVersion` wouldn't find it reliably; a fixed version also
+ * keeps Dockerfile bytes stable and avoids the floating-`*` dist-tag problem
+ * described above. Keep this in sync with the catalog entry on upgrades.
+ */
+const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
+
+function buildPackageJson(sdkSpecifier: string | null): string {
+	const dependencies: Record<string, string> = {
+		tsx: SANDBOX_TSX_VERSION,
+	};
+	if (sdkSpecifier) {
+		dependencies['@n8n/workflow-sdk'] = sdkSpecifier;
+	}
+
+	return JSON.stringify(
+		{
+			name: 'sandbox-workspace',
+			private: true,
+			dependencies,
+			devDependencies: {
+				'@types/node': SANDBOX_TYPES_NODE_VERSION,
+			},
 		},
-		devDependencies: {
-			'@types/node': '*',
-		},
-	},
-	null,
-	2,
+		null,
+		2,
+	);
+}
+
+/**
+ * PACKAGE_JSON used for Dockerfile-baked images (Daytona / n8n-sandbox).
+ *
+ * Normal mode pins to the host SDK version. See `resolveHostDepVersion` for
+ * why pinning matters.
+ *
+ * Linked-SDK mode intentionally omits @n8n/workflow-sdk from the baked image:
+ * the host SDK may be ahead of npm on master, and the packed workspace tarball
+ * is installed after sandbox creation.
+ */
+export const PACKAGE_JSON = buildPackageJson(
+	isLinkWorkspaceSdkEnabled() ? null : SANDBOX_SDK_VERSION,
 );
+
+/**
+ * Return the absolute on-disk path of a host-installed package, or `null`
+ * if it can't be resolved. Used by the local provider to point the sandbox
+ * at the workspace SDK via a `file:` reference instead of the npm registry.
+ */
+function resolveHostDepPath(name: string): string | null {
+	try {
+		const pkgPath = hostRequire.resolve(`${name}/package.json`);
+		return pkgPath.slice(0, pkgPath.length - '/package.json'.length);
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Build a PACKAGE_JSON that points `@n8n/workflow-sdk` at its host-resolved
+ * location via `file:` — so the local provider picks up workspace SDK
+ * changes after `pnpm build` without needing a publish.
+ *
+ * Falls back to the registry-pinned PACKAGE_JSON if the SDK can't be
+ * resolved on disk (e.g. a stripped-down test harness).
+ */
+function buildLocalProviderPackageJson(): string {
+	const sdkPath = resolveHostDepPath('@n8n/workflow-sdk');
+	if (!sdkPath) return PACKAGE_JSON;
+	return buildPackageJson(`file:${sdkPath}`);
+}
 
 /**
  * Runner script that executes a workflow TS file via tsx, calls validate() + toJSON(),
@@ -194,8 +285,11 @@ export async function setupSandboxWorkspace(
 
 	const files = new Map<string, string>();
 
-	// Config files
-	files.set('package.json', PACKAGE_JSON);
+	// Config files. Local provider runs on the dev host, so point the SDK at
+	// its workspace location via `file:` — this makes SDK changes visible in
+	// the sandbox after `pnpm build`, without a publish. Daytona/n8n-sandbox
+	// stay on the registry-pinned PACKAGE_JSON (they can't see the host FS).
+	files.set('package.json', buildLocalProviderPackageJson());
 	files.set('tsconfig.json', TSCONFIG_JSON);
 	files.set('build.mjs', BUILD_MJS);
 

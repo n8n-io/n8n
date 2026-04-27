@@ -27,6 +27,15 @@ import type { IDependency, IJsonSchema } from '../../../types';
 
 export class CredentialsIsNotUpdatableError extends BaseError {}
 
+function isNodePropertyOptions(options: unknown): options is INodePropertyOptions[] {
+	return (
+		Array.isArray(options) &&
+		options.every(
+			(item) => typeof item === 'object' && item !== null && 'value' in item && 'name' in item,
+		)
+	);
+}
+
 /**
  * Shared entry for credential list: project id/name plus sharing role and timestamps.
  * Derived from credential.shared (SharedCredentials + Project), limited to these fields.
@@ -294,7 +303,9 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		.filter((property) => property.type === 'options')
 		.forEach((property) => {
 			Object.assign(optionsValues, {
-				[property.name]: property.options?.map((option: INodePropertyOptions) => option.value),
+				[property.name]: isNodePropertyOptions(property.options)
+					? property.options.map((option) => option.value)
+					: undefined,
 			});
 		});
 
@@ -317,7 +328,9 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			Object.assign(jsonSchema.properties, {
 				[property.name]: {
 					type: 'string',
-					enum: property.options?.map((data: INodePropertyOptions) => data.value),
+					enum: isNodePropertyOptions(property.options)
+						? property.options.map((data) => data.value)
+						: undefined,
 				},
 			});
 		} else {
