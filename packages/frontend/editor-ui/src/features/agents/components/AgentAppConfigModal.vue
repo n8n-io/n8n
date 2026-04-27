@@ -1,36 +1,30 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nBadge, N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import {
-	buildOperationsFromDescription,
-	findAppDefinition,
-	type AppDefinition,
-	type AppOperationStatus,
-	type OperationEntry,
-} from '../utils/appToolsets';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { N8nButton, N8nText } from '@n8n/design-system';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { findAppDefinition, type AppDefinition } from '../utils/appToolsets';
 import type { AgentJsonAppRef } from '../types';
-import { useCredentialScopes } from '../composables/useCredentialScopes';
+import type { AgentAppOperationDto } from '@n8n/api-types';
+import { listAppOperations } from '../composables/useAgentApi';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		app: AgentJsonAppRef;
+		projectId: string;
 		onRemove: () => void;
 	};
 }>();
 
 const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
+const rootStore = useRootStore();
 
 const appDef = computed<AppDefinition | null>(() => findAppDefinition(props.data.app.kind) ?? null);
-
-onMounted(() => {
-	void nodeTypesStore.loadNodeTypesIfNotLoaded();
-});
 
 const nodeType = computed(() => {
 	const def = appDef.value;
@@ -38,20 +32,39 @@ const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(def.nodeType, def.nodeTypeVersion);
 });
 
-const {
-	scopes,
-	loading: scopesLoading,
-	error: scopesError,
-} = useCredentialScopes(computed(() => props.data.app.credentialId));
+const operations = ref<AgentAppOperationDto[]>([]);
+const loading = ref(false);
+const error = ref<Error | null>(null);
 
-const operations = computed<OperationEntry[]>(() => {
+async function loadOperations() {
 	const def = appDef.value;
-	if (!def) return [];
-	return buildOperationsFromDescription(nodeType.value, def, scopes.value);
+	if (!def) return;
+	loading.value = true;
+	error.value = null;
+	try {
+		const response = await listAppOperations(
+			rootStore.restApiContext,
+			props.data.projectId,
+			def.kind,
+		);
+		operations.value = response.operations;
+	} catch (e) {
+		error.value = e instanceof Error ? e : new Error(String(e));
+	} finally {
+		loading.value = false;
+	}
+}
+
+onMounted(async () => {
+	const def = appDef.value;
+	if (!def) return;
+	// NodeIcon needs the loaded node type for its display source.
+	await nodeTypesStore.loadNodeTypesIfNotLoaded();
+	await loadOperations();
 });
 
 const operationsByResource = computed(() => {
-	const groups = new Map<string, OperationEntry[]>();
+	const groups = new Map<string, AgentAppOperationDto[]>();
 	for (const op of operations.value) {
 		const list = groups.get(op.resource) ?? [];
 		list.push(op);
@@ -60,8 +73,7 @@ const operationsByResource = computed(() => {
 	return [...groups.entries()].map(([resource, ops]) => ({ resource, ops }));
 });
 
-const appLabel = computed(() => appDef.value?.label ?? props.data.app.kind);
-const appIcon = computed<IconName>(() => (appDef.value?.icon ?? 'help-circle') as IconName);
+const appLabel = computed(() => nodeType.value?.displayName ?? props.data.app.kind);
 
 function close() {
 	uiStore.closeModal(props.modalName);
@@ -71,29 +83,13 @@ function handleRemove() {
 	props.data.onRemove();
 	close();
 }
-
-function statusBadgeTheme(
-	status: AppOperationStatus | undefined,
-): 'success' | 'warning' | 'danger' | undefined {
-	if (status === 'available') return 'success';
-	if (status === 'caution') return 'warning';
-	if (status === 'missing-scope') return 'danger';
-	return undefined;
-}
-
-function statusBadgeLabel(status: AppOperationStatus | undefined): string {
-	if (status === 'available') return 'Available';
-	if (status === 'caution') return 'Caution';
-	if (status === 'missing-scope') return 'Missing scope';
-	return '';
-}
 </script>
 
 <template>
 	<Modal :name="modalName" width="640px" data-test-id="agent-app-config-modal">
 		<template #header>
 			<div :class="$style.header">
-				<N8nIcon :icon="appIcon" :size="22" :class="$style.headerIcon" />
+				<NodeIcon :node-type="nodeType" :size="22" :class="$style.headerIcon" />
 				<div :class="$style.headerText">
 					<N8nText size="medium" :bold="true">{{ appLabel }}</N8nText>
 					<N8nText size="small" color="text-light">
@@ -114,11 +110,11 @@ function statusBadgeLabel(status: AppOperationStatus | undefined): string {
 						<N8nText :bold="true">Available operations</N8nText>
 						<N8nText size="small" color="text-light">{{ operations.length }} total</N8nText>
 					</div>
-					<N8nText v-if="scopesError" size="small" color="danger" :class="$style.note">
-						Couldn't read credential scopes. Status badges are unavailable.
+					<N8nText v-if="error" size="small" color="danger" :class="$style.note">
+						Couldn't load operations.
 					</N8nText>
-					<N8nText v-else-if="scopesLoading" size="small" color="text-light" :class="$style.note">
-						Loading credential scopes…
+					<N8nText v-else-if="loading" size="small" color="text-light" :class="$style.note">
+						Loading operations…
 					</N8nText>
 
 					<div v-for="group in operationsByResource" :key="group.resource" :class="$style.group">
@@ -131,7 +127,6 @@ function statusBadgeLabel(status: AppOperationStatus | undefined): string {
 								:key="op.name"
 								:class="$style.opRow"
 								data-testid="agent-app-operation-row"
-								:data-status="op.status"
 							>
 								<div :class="$style.opLabels">
 									<N8nText :bold="true" :class="$style.opName">{{ op.displayName }}</N8nText>
@@ -140,11 +135,6 @@ function statusBadgeLabel(status: AppOperationStatus | undefined): string {
 									</N8nText>
 								</div>
 								<code :class="$style.opCode">{{ op.name }}</code>
-								<N8nTooltip v-if="op.status" :content="op.statusReason" placement="top">
-									<N8nBadge :theme="statusBadgeTheme(op.status)">
-										{{ statusBadgeLabel(op.status) }}
-									</N8nBadge>
-								</N8nTooltip>
 							</div>
 						</div>
 					</div>

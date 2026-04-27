@@ -1,13 +1,10 @@
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
-import type { AppDefinition, AppOperationStatus, OperationCuration, OperationEntry } from './types';
-
-const EMPTY_CURATION: OperationCuration = {};
+import type { AppDefinition, OperationEntry } from './types';
 
 export function buildOperationsFromDescription(
 	description: INodeTypeDescription | null | undefined,
-	appDef: AppDefinition,
-	grantedScopes?: string[],
+	_appDef: AppDefinition,
 ): OperationEntry[] {
 	if (!description) return [];
 	const properties = description.properties ?? [];
@@ -37,11 +34,8 @@ export function buildOperationsFromDescription(
 				seen.add(name);
 
 				const fields = filterFieldsForOperation(properties, resource, operation);
-				const curation = appDef.operations?.[name] ?? EMPTY_CURATION;
-				const requiredScopes = curation.requiredScopes ?? [];
-				const destructive = curation.destructive ?? false;
 
-				const entry: OperationEntry = {
+				entries.push({
 					name,
 					resource,
 					operation,
@@ -51,17 +45,7 @@ export function buildOperationsFromDescription(
 						`${resource} ${operation}`,
 					properties: fields,
 					required: fields.filter((f) => f.required).map((f) => f.name),
-					requiredScopes,
-					destructive,
-				};
-
-				if (grantedScopes !== undefined) {
-					const classification = classify(requiredScopes, destructive, grantedScopes, appDef);
-					entry.status = classification.status;
-					if (classification.reason) entry.statusReason = classification.reason;
-				}
-
-				entries.push(entry);
+				});
 			}
 		}
 	}
@@ -84,44 +68,4 @@ function filterFieldsForOperation(
 			!show.operation || (Array.isArray(show.operation) && show.operation.includes(operation));
 		return matchesResource && matchesOperation;
 	});
-}
-
-function classify(
-	requiredScopes: string[],
-	destructive: boolean,
-	grantedScopes: string[],
-	appDef: AppDefinition,
-): { status: AppOperationStatus; reason: string } {
-	const granted = new Set(grantedScopes);
-	const missing = requiredScopes.filter(
-		(s) => !isScopeSatisfied(s, granted, appDef.scopes.fullAccessScope),
-	);
-
-	if (missing.length > 0) {
-		return {
-			status: 'missing-scope',
-			reason: `Credential is missing scope: ${missing.join(', ')}`,
-		};
-	}
-	if (destructive) {
-		return {
-			status: 'caution',
-			reason: 'Modifies state — agent can perform without explicit per-call confirmation.',
-		};
-	}
-	return { status: 'available', reason: '' };
-}
-
-function isScopeSatisfied(
-	required: string,
-	granted: Set<string>,
-	fullAccessScope?: string,
-): boolean {
-	if (granted.has(required)) return true;
-	if (!fullAccessScope) return false;
-	if (!granted.has(fullAccessScope)) return false;
-	// Wildcard: granted fullAccessScope satisfies any required scope. The
-	// semantic check ("does this wildcard actually cover that scope?") is the
-	// responsibility of whoever authored the AppDefinition.
-	return true;
 }

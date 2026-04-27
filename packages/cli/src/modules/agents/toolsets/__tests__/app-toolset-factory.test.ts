@@ -13,6 +13,8 @@ import { findAppDefinition } from '@n8n/agents';
 const GMAIL_APP = findAppDefinition('gmail')!;
 
 const FAKE_GMAIL_DESCRIPTION = {
+	displayName: 'Gmail',
+	description: 'Send and receive email',
 	properties: [
 		{
 			name: 'resource',

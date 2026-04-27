@@ -110,17 +110,6 @@ export class CredentialsController {
 		};
 	}
 
-	@Get('/:credentialId/oauth-scopes')
-	@ProjectScope('credential:read')
-	async getOAuthScopes(
-		req: AuthenticatedRequest,
-		_res: unknown,
-		@Param('credentialId') credentialId: string,
-	): Promise<{ scopes: string[] }> {
-		const scopes = await this.credentialsService.getOAuthGrantedScopes(req.user, credentialId);
-		return { scopes };
-	}
-
 	@Get('/:credentialId')
 	@ProjectScope('credential:read')
 	async getOne(

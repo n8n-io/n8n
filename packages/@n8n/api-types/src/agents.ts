@@ -178,6 +178,25 @@ export interface AgentBuilderOpenSuspension {
 }
 
 /**
+ * One operation surfaced by an app toolset, ready for FE rendering. Auto-
+ * discovered from the underlying node description.
+ */
+export interface AgentAppOperationDto {
+	name: string;
+	resource: string;
+	operation: string;
+	displayName: string;
+	description: string;
+}
+
+/**
+ * Response body of `GET /projects/:projectId/agents/v2/catalog/apps/:kind/operations`.
+ */
+export interface AgentAppOperationsResponse {
+	operations: AgentAppOperationDto[];
+}
+
+/**
  * Response body of `GET /projects/:projectId/agents/v2/:agentId/build/messages`.
  *
  * `messages` is the merged history (persisted memory + any in-flight checkpoint

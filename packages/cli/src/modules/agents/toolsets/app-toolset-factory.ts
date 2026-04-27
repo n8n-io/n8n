@@ -9,6 +9,7 @@ import {
 } from '@n8n/agents';
 import {
 	generateZodSchema,
+	NodeHelpers,
 	type FromAIArgument,
 	type FromAIArgumentType,
 	type INodeProperties,
@@ -49,8 +50,23 @@ export function buildAppToolset(params: BuildAppToolsetParams): BuiltTool {
 
 	const nodeType = nodeTypes.getByNameAndVersion(appDef.nodeType, appDef.nodeTypeVersion);
 	const operations = buildOperationsFromDescription(nodeType.description, appDef);
-	const manifest = buildManifest(appDef, nodeType.description, operations);
+	const manifest = buildManifest(nodeType.description, operations);
 	const byName = new Map<string, OperationEntry>(operations.map((o) => [o.name, o]));
+
+	// Pre-resolve top-level parameter defaults from the node description (e.g.
+	// `authentication: 'oAuth2'` for Google nodes). Some nodes branch on these
+	// defaults to pick which credential to bind, so omitting them leads to the
+	// wrong credential type being requested at execution time.
+	const baseNode = { typeVersion: appDef.nodeTypeVersion, parameters: {} };
+	const defaultParameters =
+		NodeHelpers.getNodeParameters(
+			nodeType.description.properties ?? [],
+			{},
+			true,
+			false,
+			baseNode,
+			nodeType.description,
+		) ?? {};
 
 	return new Tool(appDef.kind)
 		.description(manifest)
@@ -109,6 +125,7 @@ export function buildAppToolset(params: BuildAppToolsetParams): BuiltTool {
 					nodeType: appDef.nodeType,
 					nodeTypeVersion: appDef.nodeTypeVersion,
 					nodeParameters: {
+						...defaultParameters,
 						resource: entry.resource,
 						operation: entry.operation,
 						...parsed.data,
@@ -121,7 +138,10 @@ export function buildAppToolset(params: BuildAppToolsetParams): BuiltTool {
 				});
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
-				return { status: 'error', message: `${appDef.label} invocation failed: ${message}` };
+				return {
+					status: 'error',
+					message: `${nodeType.description.displayName} invocation failed: ${message}`,
+				};
 			}
 		})
 		.build();

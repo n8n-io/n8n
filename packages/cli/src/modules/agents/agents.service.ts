@@ -6,8 +6,12 @@ import type {
 	ToolDescriptor,
 } from '@n8n/agents';
 import * as agents from '@n8n/agents';
-import { findAppDefinition } from '@n8n/agents';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
+import { buildOperationsFromDescription, findAppDefinition } from '@n8n/agents';
+import type {
+	AgentAppOperationDto,
+	AgentAppOperationsResponse,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import {
@@ -531,6 +535,31 @@ export class AgentsService {
 				});
 			}
 		}
+	}
+
+	/**
+	 * Resolve the operation surface of an app for the FE config modal. Operations
+	 * are auto-discovered from the underlying node's description — the registry
+	 * intentionally carries no per-op curation.
+	 */
+	listAppOperations(kind: string): AgentAppOperationsResponse {
+		const appDef = findAppDefinition(kind);
+		if (!appDef) {
+			throw new NotFoundError(`Unknown app "${kind}"`);
+		}
+
+		const nodeType = this.nodeTypes.getByNameAndVersion(appDef.nodeType, appDef.nodeTypeVersion);
+		const entries = buildOperationsFromDescription(nodeType.description, appDef);
+
+		const operations: AgentAppOperationDto[] = entries.map((entry) => ({
+			name: entry.name,
+			resource: entry.resource,
+			operation: entry.operation,
+			displayName: entry.displayName,
+			description: entry.description,
+		}));
+
+		return { operations };
 	}
 
 	/**

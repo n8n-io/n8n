@@ -53,12 +53,7 @@ export { evaluate } from './sdk/evaluate';
 export type { DatasetRow, EvaluateConfig } from './sdk/evaluate';
 export * as evals from './evals/index';
 export * as toolsets from './toolsets';
-export type {
-	AppDefinition,
-	AppOperationStatus,
-	OperationCuration,
-	OperationEntry,
-} from './toolsets';
+export type { AppDefinition, OperationEntry } from './toolsets';
 export {
 	APP_REGISTRY,
 	buildManifest,

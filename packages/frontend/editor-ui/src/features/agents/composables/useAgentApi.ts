@@ -1,4 +1,5 @@
 import type {
+	AgentAppOperationsResponse,
 	AgentBuilderMessagesResponse,
 	AgentPersistedMessageDto,
 	ChatIntegrationDescriptor,
@@ -294,6 +295,18 @@ export const deleteCustomTool = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/tools/${toolId}`,
+	);
+};
+
+export const listAppOperations = async (
+	context: IRestApiContext,
+	projectId: string,
+	kind: string,
+): Promise<AgentAppOperationsResponse> => {
+	return await makeRestApiRequest<AgentAppOperationsResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/catalog/apps/${encodeURIComponent(kind)}/operations`,
 	);
 };
 

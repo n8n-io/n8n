@@ -2,19 +2,12 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { buildManifest } from '../manifest';
-import type { AppDefinition, OperationEntry } from '../types';
+import type { OperationEntry } from '../types';
 
-const BASE_DEF: AppDefinition = {
-	kind: 'demo',
-	label: 'Demo',
-	icon: 'mail',
-	nodeType: 'demo',
-	nodeTypeVersion: 1,
-	credentialType: 'demoApi',
-	scopes: {},
-};
-
-const DESCRIPTION = { description: 'A demo node' } as INodeTypeDescription;
+const DESCRIPTION = {
+	displayName: 'Demo',
+	description: 'A demo node',
+} as INodeTypeDescription;
 
 const OPS: OperationEntry[] = [
 	{
@@ -25,8 +18,6 @@ const OPS: OperationEntry[] = [
 		description: 'Send a message',
 		properties: [],
 		required: [],
-		requiredScopes: [],
-		destructive: true,
 	},
 	{
 		name: 'message:get',
@@ -36,27 +27,12 @@ const OPS: OperationEntry[] = [
 		description: 'Get a message',
 		properties: [],
 		required: [],
-		requiredScopes: [],
-		destructive: false,
 	},
 ];
 
 describe('buildManifest', () => {
-	it('returns the string when manifest is a string', () => {
-		const def = { ...BASE_DEF, manifest: 'hand-written blob' };
-		expect(buildManifest(def, DESCRIPTION, OPS)).toBe('hand-written blob');
-	});
-
-	it('calls the function when manifest is a function', () => {
-		const def: AppDefinition = {
-			...BASE_DEF,
-			manifest: (d) => `derived: ${d.description}`,
-		};
-		expect(buildManifest(def, DESCRIPTION, OPS)).toBe('derived: A demo node');
-	});
-
-	it('uses the default deriver when manifest is undefined', () => {
-		const out = buildManifest(BASE_DEF, DESCRIPTION, OPS);
+	it('derives the manifest from displayName + description + grouped ops', () => {
+		const out = buildManifest(DESCRIPTION, OPS);
 		expect(out).toContain('Demo');
 		expect(out).toContain('A demo node');
 		// Per-resource summary line

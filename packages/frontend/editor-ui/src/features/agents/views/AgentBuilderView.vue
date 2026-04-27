@@ -645,6 +645,7 @@ function onOpenAppFromList(index: number) {
 		name: AGENT_APP_CONFIG_MODAL_KEY,
 		data: {
 			app,
+			projectId: projectId.value,
 			onRemove: () => onRemoveApp(index),
 		},
 	});

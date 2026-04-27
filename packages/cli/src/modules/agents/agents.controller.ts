@@ -145,6 +145,16 @@ export class AgentsController {
 		return this.agentsService.listChatIntegrations();
 	}
 
+	/**
+	 * Resolve the operation surface of a registered app for the FE config modal.
+	 * Operations are auto-discovered from the node description; the registry
+	 * carries no per-op curation, so this endpoint takes no credential input.
+	 */
+	@Get('/catalog/apps/:kind/operations')
+	listAppOperations(req: AuthenticatedRequest<{ projectId: string; kind: string }>) {
+		return this.agentsService.listAppOperations(req.params.kind);
+	}
+
 	@Get('/threads')
 	async listThreads(
 		req: AuthenticatedRequest<

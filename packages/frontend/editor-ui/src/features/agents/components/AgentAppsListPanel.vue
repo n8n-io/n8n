@@ -3,9 +3,10 @@
  * Apps panel — POC. Mirrors AgentToolsListPanel's structure but for the new
  * "apps" (toolset) abstraction. One row per attached app.
  */
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { findAppDefinition } from '../utils/appToolsets';
 import shared from '../styles/agent-panel.module.scss';
 import type { AgentJsonAppRef } from '../types';
@@ -25,13 +26,22 @@ const emit = defineEmits<{
 }>();
 
 const totalCount = computed(() => props.apps.length);
+const nodeTypesStore = useNodeTypesStore();
 
-function appIcon(kind: string): IconName {
-	return (findAppDefinition(kind)?.icon ?? 'help-circle') as IconName;
+onMounted(() => {
+	void nodeTypesStore.loadNodeTypesIfNotLoaded();
+});
+
+function appNodeType(kind: string) {
+	const def = findAppDefinition(kind);
+	if (!def) return null;
+	return nodeTypesStore.getNodeType(def.nodeType, def.nodeTypeVersion);
 }
 
 function appLabel(kind: string): string {
-	return findAppDefinition(kind)?.label ?? kind;
+	const def = findAppDefinition(kind);
+	if (!def) return kind;
+	return nodeTypesStore.getNodeType(def.nodeType, def.nodeTypeVersion)?.displayName ?? kind;
 }
 </script>
 
@@ -76,7 +86,7 @@ function appLabel(kind: string): string {
 				@keydown.enter.prevent="emit('open-app', index)"
 				@keydown.space.prevent="emit('open-app', index)"
 			>
-				<N8nIcon :icon="appIcon(app.kind)" :size="18" :class="$style.appIcon" />
+				<NodeIcon :node-type="appNodeType(app.kind)" :size="18" :class="$style.appIcon" />
 				<div :class="$style.appLabels">
 					<N8nText :bold="true">{{ appLabel(app.kind) }}</N8nText>
 					<N8nText size="small" color="text-light"> Credential: {{ app.credentialName }} </N8nText>

@@ -141,18 +141,6 @@ export async function oAuth2CredentialAuthorize(
 	);
 }
 
-export async function getOAuthGrantedScopes(
-	context: IRestApiContext,
-	id: string,
-): Promise<string[]> {
-	const response = await makeRestApiRequest<{ scopes: string[] }>(
-		context,
-		'GET',
-		`/credentials/${encodeURIComponent(id)}/oauth-scopes`,
-	);
-	return response.scopes;
-}
-
 export async function testCredential(
 	context: IRestApiContext,
 	data: INodeCredentialTestRequest,

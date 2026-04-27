@@ -1,41 +1,32 @@
 // packages/@n8n/agents/src/toolsets/manifest.ts
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { AppDefinition, OperationEntry } from './types';
+import type { OperationEntry } from './types';
 
 /**
- * Resolve the LLM-facing description for an app's dispatcher tool.
- * - String manifest → returned verbatim.
- * - Function manifest → invoked with the loaded node description.
- * - Undefined manifest → derived from the app label, node description, and
- *   per-resource operation summary.
+ * Build the LLM-facing description for an app's dispatcher tool from the node
+ * description and the auto-discovered operations. No hand-rolled manifest text
+ * lives in the registry — `displayName` + `description` + grouped op listing
+ * is enough for the agent to know what surface it has.
  */
 export function buildManifest(
-	appDef: AppDefinition,
 	description: INodeTypeDescription,
 	operations: OperationEntry[],
 ): string {
-	if (typeof appDef.manifest === 'string') return appDef.manifest;
-	if (typeof appDef.manifest === 'function') return appDef.manifest(description);
-	return defaultManifest(appDef, description, operations);
-}
+	const header = `${description.displayName} — ${description.description ?? ''}`.trim();
 
-function defaultManifest(
-	appDef: AppDefinition,
-	description: INodeTypeDescription,
-	operations: OperationEntry[],
-): string {
-	const header = `${appDef.label} — ${description.description ?? ''}`.trim();
 	const groups = new Map<string, string[]>();
 	for (const op of operations) {
 		const list = groups.get(op.resource) ?? [];
 		list.push(op.operation);
 		groups.set(op.resource, list);
 	}
+
 	const lines: string[] = [];
 	for (const [resource, ops] of groups) {
 		lines.push(`- ${capitalize(resource)}: ${ops.join(', ')}`);
 	}
+
 	return [
 		header,
 		'',
