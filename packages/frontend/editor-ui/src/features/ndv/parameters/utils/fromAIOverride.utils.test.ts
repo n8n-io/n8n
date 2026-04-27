@@ -259,6 +259,43 @@ describe('FromAiOverride', () => {
 			`={{ $fromAI('${DISPLAY_NAME}', \`${description}\`, 'string') }}`,
 		);
 	});
+
+	// Regression test for GHC-7825: duplicate Field_Value keys in assignment paths
+	it('should create unique keys for assignment-style paths with dot-separated indices', () => {
+		const override: FromAIOverride = {
+			type: 'fromAI',
+			extraProps: fromAIExtraProps,
+			extraPropValues: {},
+		};
+
+		// Test assignment paths like .assignments.0.value and .assignments.1.value
+		const value1 = buildValueFromOverride(
+			override,
+			makeContext('', 'parameters.fields.assignments.0.value'),
+			true,
+		);
+		const value2 = buildValueFromOverride(
+			override,
+			makeContext('', 'parameters.fields.assignments.1.value'),
+			true,
+		);
+
+		// Extract the key names from the generated expressions
+		const key1Match = value1.match(/\$fromAI\('([^']+)'/);
+		const key2Match = value2.match(/\$fromAI\('([^']+)'/);
+
+		expect(key1Match).not.toBeNull();
+		expect(key2Match).not.toBeNull();
+
+		const key1 = key1Match?.[1];
+		const key2 = key2Match?.[1];
+
+		// Keys should be different to avoid duplicate key errors
+		expect(key1).not.toEqual(key2);
+		// Keys should include the assignment index for uniqueness
+		expect(key1).toContain('assignments0');
+		expect(key2).toContain('assignments1');
+	});
 });
 
 describe('buildUniqueName', () => {
@@ -291,6 +328,22 @@ describe('buildUniqueName', () => {
 			'path with multiple long segments and truncation',
 			'parameters.someExtremelyLongListNameThatExceedsTheLimit.anotherLongSegmentName.finalParameter',
 			DISPLAY_NAME,
+		],
+		// Regression test for GHC-7825: assignment-style paths with dot-separated indices
+		[
+			'dot-separated list indices (assignments.0)',
+			'parameters.fields.assignments.0.value',
+			'assignments0_' + DISPLAY_NAME,
+		],
+		[
+			'dot-separated list indices (assignments.1)',
+			'parameters.fields.assignments.1.value',
+			'assignments1_' + DISPLAY_NAME,
+		],
+		[
+			'multiple dot-separated list indices',
+			'parameters.myList.0.nested.1.field',
+			'myList0_nested1_' + DISPLAY_NAME,
 		],
 	])('should build a unique name with %s', (_description, path, expected) => {
 		const context = makeContext('value', path);
