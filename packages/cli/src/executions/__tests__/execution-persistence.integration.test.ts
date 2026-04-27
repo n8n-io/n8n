@@ -43,6 +43,7 @@ describe('ExecutionPersistence', () => {
 			expect(executionEntity?.workflowId).toEqual(workflow.id);
 			expect(executionEntity?.status).toEqual('new');
 			expect(executionEntity?.storedAt).toEqual('db');
+			expect(executionEntity?.workflowVersionId).toEqual(workflow.versionId);
 
 			const executionDataRepository = Container.get(ExecutionDataRepository);
 			const executionData = await executionDataRepository.findOneBy({ executionId });

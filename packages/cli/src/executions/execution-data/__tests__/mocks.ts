@@ -21,7 +21,6 @@ export const workflowData: IWorkflowBase = {
 export const payload: ExecutionDataPayload = {
 	data: '[[{"json":{"key":"value"}},null]]',
 	workflowData,
-	workflowVersionId: 'version-789',
 };
 
 export const ref = createExecutionRef(workflowId, executionId);

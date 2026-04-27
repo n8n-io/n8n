@@ -39,9 +39,9 @@ export class ExecutionPersistence {
 		const { connections, nodes, name, settings, id } = workflowData;
 		const workflowSnapshot: WorkflowSnapshot = { connections, nodes, name, settings, id };
 		const storedAt = this.storageConfig.modeTag;
-		const executionEntity = { ...rest, createdAt: new Date(), storedAt };
-		const data = stringify(rawData);
 		const workflowVersionId = workflowData.versionId ?? null;
+		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
+		const data = stringify(rawData);
 
 		return await this.executionRepository.manager.transaction(async (tx) => {
 			const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
@@ -52,14 +52,13 @@ export class ExecutionPersistence {
 					executionId,
 					workflowData: workflowSnapshot,
 					data,
-					workflowVersionId,
 				});
 				return executionId;
 			}
 
 			await this.fsStore.write(
 				{ workflowId: id, executionId },
-				{ data, workflowData: workflowSnapshot, workflowVersionId },
+				{ data, workflowData: workflowSnapshot },
 			);
 			return executionId;
 		});

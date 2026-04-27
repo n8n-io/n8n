@@ -20,7 +20,7 @@ export class DbStore implements ExecutionDataStore {
 	async read({ executionId }: ExecutionRef): Promise<ExecutionDataBundle | null> {
 		const result = await this.repository.findOne({
 			where: { executionId },
-			select: ['data', 'workflowData', 'workflowVersionId'],
+			select: ['data', 'workflowData'],
 		});
 
 		if (!result) return null;

@@ -91,6 +91,7 @@ describe('ExecutionPersistence', () => {
 						finished: false,
 						status: 'new',
 						workflowId: 'workflow-123',
+						workflowVersionId: 'version-abc',
 						createdAt: expect.any(Date) as Date,
 					}),
 				);
@@ -98,7 +99,6 @@ describe('ExecutionPersistence', () => {
 					ExecutionData,
 					expect.objectContaining({
 						executionId: 'exec-1',
-						workflowVersionId: 'version-abc',
 					}),
 				);
 				expect(mockTx.insert).toHaveBeenCalledTimes(2);
@@ -125,6 +125,7 @@ describe('ExecutionPersistence', () => {
 					ExecutionEntity,
 					expect.objectContaining({
 						storedAt: 'fs',
+						workflowVersionId: 'version-abc',
 					}),
 				);
 				expect(mockTx.insert).toHaveBeenCalledTimes(1);
@@ -139,7 +140,6 @@ describe('ExecutionPersistence', () => {
 					{ workflowId: 'workflow-123', executionId: 'exec-2' },
 					expect.objectContaining({
 						workflowData: expectedWorkflowSnapshot,
-						workflowVersionId: 'version-abc',
 					}),
 				);
 			});

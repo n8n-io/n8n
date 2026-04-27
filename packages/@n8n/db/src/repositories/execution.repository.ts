@@ -343,7 +343,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			...rest,
 			data,
 			workflowData: executionData.workflowData,
-			workflowVersionId: executionData.workflowVersionId ?? null,
 			customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),
@@ -1052,12 +1051,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		if (workflowVersionId) {
-			qb.innerJoin(
-				'execution.executionData',
-				'executionData',
-				'executionData.workflowVersionId = :workflowVersionId',
-			);
-			qb.setParameter('workflowVersionId', workflowVersionId);
+			qb.andWhere('execution.workflowVersionId = :workflowVersionId', { workflowVersionId });
 		}
 
 		if (annotationTags?.length || vote) {
@@ -1143,10 +1137,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async getDistinctVersionIds(workflowId: string): Promise<string[]> {
 		const result = await this.createQueryBuilder('execution')
-			.innerJoin('execution.executionData', 'ed')
-			.select('DISTINCT ed.workflowVersionId', 'workflowVersionId')
+			.select('DISTINCT execution.workflowVersionId', 'workflowVersionId')
 			.where('execution.workflowId = :workflowId', { workflowId })
-			.andWhere('ed.workflowVersionId IS NOT NULL')
+			.andWhere('execution.workflowVersionId IS NOT NULL')
 			.getRawMany<{ workflowVersionId: string }>();
 
 		return result.map((r) => r.workflowVersionId);
