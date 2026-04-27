@@ -70,6 +70,11 @@ class TaskExecutor:
             else TaskExecutor._per_item
         )
 
+        # Pre-serialize items to JSON bytes so that multiprocessing pickles a single
+        # bytes object (O(1)) instead of recursively pickling nested dict structures
+        # (O(n*m)), which is significantly faster for large datasets.
+        items_json = json.dumps(items, default=str, ensure_ascii=False).encode("utf-8")
+
         # thread in runner process reads, subprocess writes
         read_conn, write_conn = MULTIPROCESSING_CONTEXT.Pipe(duplex=False)
 
@@ -77,7 +82,7 @@ class TaskExecutor:
             target=fn,
             args=(
                 code,
-                items,
+                items_json,
                 write_conn,
                 security_config,
                 query,
@@ -185,7 +190,7 @@ class TaskExecutor:
     @staticmethod
     def _all_items(
         raw_code: str,
-        items: Items,
+        items_json: bytes,
         write_conn,
         security_config: SecurityConfig,
         query: Query = None,
@@ -201,6 +206,8 @@ class TaskExecutor:
         sys.stderr = stderr_capture = io.StringIO()
 
         try:
+            items = json.loads(items_json)
+
             wrapped_code = TaskExecutor._wrap_code(raw_code)
             compiled_code = compile(wrapped_code, EXECUTOR_ALL_ITEMS_FILENAME, "exec")
 
@@ -224,7 +231,7 @@ class TaskExecutor:
     @staticmethod
     def _per_item(
         raw_code: str,
-        items: Items,
+        items_json: bytes,
         write_conn,
         security_config: SecurityConfig,
         _query: Query = None,  # unused, only to keep signatures consistent across modes
@@ -240,6 +247,8 @@ class TaskExecutor:
         sys.stderr = stderr_capture = io.StringIO()
 
         try:
+            items = json.loads(items_json)
+
             wrapped_code = TaskExecutor._wrap_code(raw_code)
             compiled_code = compile(wrapped_code, EXECUTOR_PER_ITEM_FILENAME, "exec")
 
@@ -498,9 +507,10 @@ class TaskExecutor:
 
     @staticmethod
     def _write_bytes(fd: int, data: bytes):
+        view = memoryview(data)
         total_written = 0
         while total_written < len(data):
-            written = os.write(fd, data[total_written:])
+            written = os.write(fd, view[total_written:])
             if written == 0:
                 raise OSError("Write failed")
             total_written += written

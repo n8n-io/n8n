@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 
 from src.task_executor import TaskExecutor
 from src.pipe_reader import PipeReader
+from src.message_serde import MessageSerde
+from src.message_types.runner import RunnerTaskDone, RunnerTaskError, RunnerInfo
 from src.errors import TaskCancelledError, TaskKilledError, TaskSubprocessFailedError
 from src.constants import SIGTERM_EXIT_CODE, SIGKILL_EXIT_CODE, PIPE_MSG_PREFIX_LENGTH
 from src.config.security_config import SecurityConfig
@@ -198,6 +200,58 @@ class TestTaskExecutorLowLevelIO:
 
         with pytest.raises(OSError, match="Write failed"):
             TaskExecutor._write_bytes(999, b"test data")
+
+    @patch("os.write")
+    def test_write_bytes_multiple_chunks(self, mock_os_write):
+        data = b"hello world"
+        # Simulate partial writes (e.g. pipe buffer full)
+        mock_os_write.side_effect = [5, 6]
+
+        TaskExecutor._write_bytes(999, data)
+
+        assert mock_os_write.call_count == 2
+        # Verify memoryview slices are passed (no bytes copies)
+        first_arg = mock_os_write.call_args_list[0][0][1]
+        second_arg = mock_os_write.call_args_list[1][0][1]
+        assert bytes(first_arg) == b"hello world"
+        assert bytes(second_arg) == b" world"
+
+
+class TestSerializeRunnerMessage:
+    def test_task_done_serializes_without_deep_copy(self):
+        items = [{"json": {"key": "value"}}]
+        message = RunnerTaskDone(task_id="t1", data={"result": items})
+
+        serialized = MessageSerde.serialize_runner_message(message)
+        parsed = json.loads(serialized)
+
+        assert parsed["taskId"] == "t1"
+        assert parsed["data"]["result"] == items
+        assert parsed["type"] == "runner:taskdone"
+        # Verify that the original items list was not deep-copied (same object)
+        assert message.data["result"] is items
+
+    def test_task_error_serializes_correctly(self):
+        message = RunnerTaskError(
+            task_id="t2", error={"message": "fail", "description": ""}
+        )
+
+        serialized = MessageSerde.serialize_runner_message(message)
+        parsed = json.loads(serialized)
+
+        assert parsed["taskId"] == "t2"
+        assert parsed["error"]["message"] == "fail"
+        assert parsed["type"] == "runner:taskerror"
+
+    def test_runner_info_serializes_correctly(self):
+        message = RunnerInfo(name="test", types=["python"])
+
+        serialized = MessageSerde.serialize_runner_message(message)
+        parsed = json.loads(serialized)
+
+        assert parsed["name"] == "test"
+        assert parsed["types"] == ["python"]
+        assert parsed["type"] == "runner:info"
 
 
 class TestFilterBuiltins:

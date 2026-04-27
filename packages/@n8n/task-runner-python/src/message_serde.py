@@ -1,5 +1,4 @@
 import json
-from dataclasses import asdict
 from typing import cast
 
 from src.message_types.broker import NodeMode, TaskSettings
@@ -129,7 +128,10 @@ class MessageSerde:
 
     @staticmethod
     def serialize_runner_message(message: RunnerMessage) -> str:
-        data = asdict(message)
+        # Use vars() instead of asdict() to avoid deep-copying nested data
+        # structures (e.g. 10,000+ result items). This is safe because none of
+        # the RunnerMessage types have nested dataclass fields.
+        data = vars(message)
         camel_case_data = {
             MessageSerde._snake_to_camel_case(k): v for k, v in data.items()
         }
