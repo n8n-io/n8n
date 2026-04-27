@@ -171,7 +171,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				await workflowSaving.saveCurrentWorkflow();
 			}
 
-			const workflowData = await workflowHelpers.getWorkflowDataToSave();
+			const workflowData = workflowDocumentStore.value.serialize();
 
 			if (
 				rootStore.binaryDataMode === 'default' &&
@@ -586,21 +586,20 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	async function runEntireWorkflow(source: 'node' | 'main', triggerNode?: string) {
-		void workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
-			const telemetryPayload = {
-				workflow_id: workflowDocumentStore.value.workflowId,
-				node_graph_string: JSON.stringify(
-					TelemetryHelpers.generateNodesGraph(
-						workflowData as IWorkflowBase,
-						workflowHelpers.getNodeTypes(),
-						{ isCloudDeployment: settingsStore.isCloudDeployment },
-					).nodeGraph,
-				),
-				button_type: source,
-			};
-			telemetry.track('User clicked execute workflow button', telemetryPayload);
-			void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
-		});
+		const workflowData = workflowDocumentStore.value.serialize();
+		const telemetryPayload = {
+			workflow_id: workflowDocumentStore.value.workflowId,
+			node_graph_string: JSON.stringify(
+				TelemetryHelpers.generateNodesGraph(
+					workflowData as IWorkflowBase,
+					workflowHelpers.getNodeTypes(),
+					{ isCloudDeployment: settingsStore.isCloudDeployment },
+				).nodeGraph,
+			),
+			button_type: source,
+		};
+		telemetry.track('User clicked execute workflow button', telemetryPayload);
+		void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 
 		let resolvedTriggerNode = triggerNode ?? workflowsStore.selectedTriggerNodeName;
 

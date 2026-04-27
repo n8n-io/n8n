@@ -20,7 +20,6 @@ interface VueComponentInstance {
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: vi.fn().mockReturnValue({
 		saveCurrentWorkflow: vi.fn(),
-		getWorkflowDataToSave: vi.fn(),
 		executeData: vi.fn(),
 		getNodeTypes: vi.fn().mockReturnValue([]),
 	}),

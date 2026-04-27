@@ -242,8 +242,7 @@ CALLER                             REUSABLE WORKFLOW
 ci-pull-requests.yml
     ├──────────────────────────▶  test-unit-reusable.yml
     ├──────────────────────────▶  test-linting-reusable.yml
-    ├──────────────────────────▶  test-e2e-ci-reusable.yml
-    │                                 └──────────▶  test-e2e-reusable.yml
+    ├──────────────────────────▶  test-e2e-reusable.yml
     └──────────────────────────▶  sec-ci-reusable.yml
                                       └──────────▶  sec-poutine-reusable.yml
 
@@ -260,8 +259,7 @@ test-workflows-nightly.yml
     └──────────────────────────▶  test-workflows-callable.yml
 
 test-e2e-vm-expressions-nightly.yml
-    └──────────────────────────▶  test-e2e-ci-reusable.yml
-                                      └──────────▶  test-e2e-reusable.yml
+    └──────────────────────────▶  test-e2e-reusable.yml
 
 PR Comment Dispatchers (triggered by /command in PR comments):
 test-workflows-pr-comment.yml
@@ -421,8 +419,6 @@ Workflows with `workflow_call` trigger:
 | `test-unit-reusable.yml`           | `ref`, `nodeVersion`, `collectCoverage`       | Unit tests            |
 | `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
-| `test-e2e-ci-reusable.yml`         | `branch`                                      | E2E orchestrator      |
-| `test-e2e-docker-pull-reusable.yml`| `branch`, `n8n_version`                       | E2E with pulled image |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled` | Docker build          |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
