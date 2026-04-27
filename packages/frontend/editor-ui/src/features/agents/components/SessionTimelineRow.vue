@@ -3,11 +3,10 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils';
-import { N8nIcon } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
-import { kindColorToken } from '../session-timeline.utils';
+import { builtinToolLabelKey, kindColorToken } from '../session-timeline.utils';
 
 const props = defineProps<{
 	item: TimelineItem;
@@ -35,14 +34,16 @@ const infoText = computed((): string => {
 		case 'user':
 		case 'agent':
 			return truncate(it.content ?? '', 120);
-		case 'tool':
-			return it.toolName ?? '';
+		case 'tool': {
+			const key = builtinToolLabelKey(it.toolName);
+			return key ? i18n.baseText(key) : (it.toolName ?? '');
+		}
 		case 'workflow':
 			return it.workflowName ?? it.toolName ?? '';
 		case 'working-memory':
 			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
-			return it.toolName ?? '';
+			return i18n.baseText('agentSessions.timeline.waitingForUser');
 		default:
 			return '';
 	}
@@ -98,10 +99,6 @@ const rowBorderColor = computed(() => {
 					@click.stop
 					>{{ infoText }}</a
 				>
-			</template>
-			<template v-else-if="item.kind === 'tool'">
-				<N8nIcon icon="wrench" :size="12" />
-				<span>{{ infoText }}</span>
 			</template>
 			<template v-else>
 				<span>{{ infoText }}</span>

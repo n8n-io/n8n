@@ -54,6 +54,22 @@ export function kindColorToken(kind: EventKind): string {
 	return COLOR_MAP[kind];
 }
 
+/**
+ * i18n keys for built-in tools that should render as a friendly label rather
+ * than their raw machine name. Returns `null` for any tool not in the map so
+ * callers fall back to the raw `toolName`.
+ */
+export type BuiltinToolLabelKey = 'agentSessions.timeline.tool.richInteraction';
+
+export function builtinToolLabelKey(toolName: string | undefined): BuiltinToolLabelKey | null {
+	switch (toolName) {
+		case 'rich_interaction':
+			return 'agentSessions.timeline.tool.richInteraction';
+		default:
+			return null;
+	}
+}
+
 export function formatDuration(ms: number): string {
 	if (!ms || ms <= 0) return '';
 	if (ms < 1000) return `${ms}ms`;

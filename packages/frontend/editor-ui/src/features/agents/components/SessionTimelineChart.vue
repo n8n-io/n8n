@@ -5,7 +5,12 @@ import { useI18n } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
-import { formatDuration, itemFilterKey, kindColorToken } from '../session-timeline.utils';
+import {
+	builtinToolLabelKey,
+	formatDuration,
+	itemFilterKey,
+	kindColorToken,
+} from '../session-timeline.utils';
 
 const props = defineProps<{
 	items: TimelineItem[];
@@ -100,14 +105,16 @@ function popoverName(item: TimelineItem): string {
 		case 'user':
 		case 'agent':
 			return truncate(item.content ?? '', 80);
-		case 'tool':
-			return item.toolName ?? '';
+		case 'tool': {
+			const key = builtinToolLabelKey(item.toolName);
+			return key ? i18n.baseText(key) : (item.toolName ?? '');
+		}
 		case 'workflow':
 			return item.workflowName ?? item.toolName ?? '';
 		case 'working-memory':
 			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
-			return item.toolName ?? '';
+			return i18n.baseText('agentSessions.timeline.waitingForUser');
 		default:
 			return '';
 	}

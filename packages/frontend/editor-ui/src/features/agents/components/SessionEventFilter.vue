@@ -36,7 +36,7 @@ function clearAll(): void {
 			@click="open = !open"
 		>
 			<N8nIcon icon="funnel" :size="12" />
-			<span>{{ i18n.baseText('agentSessions.timeline.filter') }}</span>
+			<span>{{ i18n.baseText('agentSessions.timeline.events') }}</span>
 			<span v-if="props.selected.size > 0">&nbsp;({{ props.selected.size }})</span>
 		</button>
 		<div v-if="open" :class="$style.panel">
@@ -92,20 +92,20 @@ function clearAll(): void {
 }
 .panel {
 	position: absolute;
-	right: 0;
+	left: 0;
 	top: calc(100% + var(--spacing--3xs));
-	background-color: var(--color--background);
+	background-color: var(--color--foreground--tint-2);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius);
-	padding: var(--spacing--2xs);
-	min-width: 200px;
+	padding: var(--spacing--sm) var(--spacing--md);
+	min-width: 280px;
 	z-index: 10;
 }
 .option {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--4xs) 0;
+	padding: var(--spacing--3xs) 0;
 	font-size: var(--font-size--2xs);
 	cursor: pointer;
 }

@@ -7,6 +7,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import type { TimelineItem } from '../session-timeline.types';
+import { builtinToolLabelKey } from '../session-timeline.utils';
 
 const i18n = useI18n();
 
@@ -63,6 +64,12 @@ function highlightJson(value: unknown, indent = 0): string {
 	return escapeHtml(String(value));
 }
 
+const toolDisplayName = computed((): string => {
+	if (!props.item || (props.item.kind !== 'tool' && props.item.kind !== 'suspension')) return '';
+	const key = builtinToolLabelKey(props.item.toolName);
+	return key ? i18n.baseText(key) : (props.item.toolName ?? '');
+});
+
 const workflowFormOutput = computed((): { formUrl: string; message: string } | null => {
 	const o = props.item?.toolOutput;
 	if (typeof o !== 'object' || o === null) return null;
@@ -85,7 +92,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					}}</template>
 					<template v-else-if="item.kind === 'tool'">
 						<N8nIcon icon="wrench" :size="14" />
-						<span>{{ item.toolName }}</span>
+						<span>{{ toolDisplayName }}</span>
 					</template>
 					<template v-else-if="item.kind === 'working-memory'">{{
 						i18n.baseText('agentSessions.timeline.memory')
@@ -94,7 +101,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						i18n.baseText('agentSessions.timeline.user')
 					}}</template>
 					<template v-else-if="item.kind === 'agent'">{{
-						agentName ?? i18n.baseText('agentSessions.timeline.assistant')
+						agentName ?? i18n.baseText('agentSessions.timeline.agent')
 					}}</template>
 					<template v-else>{{ i18n.baseText('agentSessions.timeline.suspended') }}</template>
 				</span>

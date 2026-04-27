@@ -17,10 +17,11 @@ import {
 	sessionBounds,
 	itemFilterKey,
 	kindColorToken,
+	builtinToolLabelKey,
 } from '@/features/agents/session-timeline.utils';
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nInput } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -39,18 +40,23 @@ const executions = ref<ThreadExecution[]>([]);
 const loading = ref(true);
 const selectedIndex = ref<number | null>(null);
 const selectedFilters = ref<Set<string>>(new Set());
+const searchQuery = ref('');
 
 const items = computed<TimelineItem[]>(() => flattenExecutionsToTimelineItems(executions.value));
 const idleRanges = computed(() => computeIdleRanges(items.value));
 const bounds = computed(() => sessionBounds(items.value));
 
 function labelForKey(key: string): string {
-	if (key.startsWith('tool:')) return key.slice('tool:'.length);
+	if (key.startsWith('tool:')) {
+		const toolName = key.slice('tool:'.length);
+		const builtinKey = builtinToolLabelKey(toolName);
+		return builtinKey ? i18n.baseText(builtinKey) : toolName;
+	}
 	switch (key) {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
-			return i18n.baseText('agentSessions.timeline.assistant');
+			return i18n.baseText('agentSessions.timeline.agent');
 		case 'workflow':
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'working-memory':
@@ -83,6 +89,17 @@ const triggerSource = computed((): string | null => {
 	const first = executions.value[0];
 	const source = first.metadata.find((m) => m.key === 'source')?.value;
 	return source ?? 'chat';
+});
+
+const triggerIcon = computed((): 'slack' | 'bolt-filled' => {
+	return triggerSource.value === 'slack' ? 'slack' : 'bolt-filled';
+});
+
+const triggerLabel = computed((): string => {
+	const source = triggerSource.value;
+	if (!source) return '';
+	const name = source.charAt(0).toUpperCase() + source.slice(1);
+	return i18n.baseText('agentSessions.timeline.triggeredVia', { interpolate: { source: name } });
 });
 
 const sessionTitle = computed(() => {
@@ -151,11 +168,6 @@ function continueChat() {
 				<span>${{ thread.totalCost.toFixed(4) }}</span>
 				<span :class="$style.sep">·</span>
 				<span>{{ formatDuration(thread.totalDuration) }}</span>
-				<SessionEventFilter
-					:available="filterOptions"
-					:selected="selectedFilters"
-					@update="(next) => (selectedFilters = next)"
-				/>
 				<button
 					v-if="triggerSource === 'chat'"
 					:class="$style.continueButton"
@@ -164,6 +176,31 @@ function continueChat() {
 					<N8nIcon icon="message-square" :size="12" />
 					{{ i18n.baseText('agentSessions.timeline.continueChat') }}
 				</button>
+			</div>
+		</div>
+
+		<div v-if="!loading" :class="$style.subHeader">
+			<div v-if="triggerSource" :class="$style.triggerInfo">
+				<N8nIcon :icon="triggerIcon" :size="12" />
+				<span>{{ triggerLabel }}</span>
+			</div>
+			<span v-if="triggerSource" :class="$style.divider" aria-hidden="true" />
+			<SessionEventFilter
+				:available="filterOptions"
+				:selected="selectedFilters"
+				@update="(next) => (selectedFilters = next)"
+			/>
+			<div :class="$style.search">
+				<N8nInput
+					v-model="searchQuery"
+					size="mini"
+					:placeholder="i18n.baseText('agentSessions.timeline.searchPlaceholder')"
+					clearable
+				>
+					<template #prefix>
+						<N8nIcon icon="search" :size="12" />
+					</template>
+				</N8nInput>
 			</div>
 		</div>
 
@@ -187,6 +224,7 @@ function continueChat() {
 					:items="items"
 					:selected-index="selectedIndex"
 					:visible-kinds="selectedFilters"
+					:search-query="searchQuery"
 					@select="(idx) => (selectedIndex = idx)"
 				/>
 			</div>
@@ -213,7 +251,6 @@ function continueChat() {
 	align-items: center;
 	justify-content: space-between;
 	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-bottom: var(--border);
 	background-color: var(--color--foreground--tint-2);
 	flex-shrink: 0;
 }
@@ -267,6 +304,31 @@ function continueChat() {
 	&:hover {
 		background-color: var(--color--foreground--tint-1);
 	}
+}
+.subHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	background-color: var(--color--foreground--tint-2);
+	flex-shrink: 0;
+}
+.triggerInfo {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	white-space: nowrap;
+}
+.divider {
+	width: 1px;
+	height: 16px;
+	background-color: var(--color--foreground);
+	flex-shrink: 0;
+}
+.search {
+	width: 220px;
 }
 .chartRow {
 	padding: var(--spacing--sm) var(--spacing--lg);
