@@ -43,6 +43,7 @@ export async function quickBooksApiRequest(
 	const credentials = await this.getCredentials<QuickBooksOAuth2Credentials>('quickBooksOAuth2Api');
 
 	const options: IRequestOptions = {
+		headers: {},
 		method,
 		uri: `${credentials.environment === 'sandbox' ? sandboxUrl : productionUrl}${endpoint}`,
 		qs,
@@ -58,7 +59,7 @@ export async function quickBooksApiRequest(
 		delete options.qs;
 	}
 
-	if (Object.keys(option)) {
+	if (Object.keys(option).length) {
 		Object.assign(options, option);
 	}
 
