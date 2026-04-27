@@ -705,14 +705,14 @@ export class WorkflowsController {
 				return data;
 			}
 
-			const config: AxiosRequestConfig = {};
 			const result = await this.ssrfProtectionService.validateUrl(url);
 			if (!result.ok) throw result.error;
 
-			config.lookup =
-				this.ssrfProtectionService.createSecureLookup() as AxiosRequestConfig['lookup'];
-			config.beforeRedirect = (redirectedRequest: Record<string, string>) => {
-				this.ssrfProtectionService.validateRedirectSync(redirectedRequest.href);
+			const config: AxiosRequestConfig = {
+				lookup: this.ssrfProtectionService.createSecureLookup() as AxiosRequestConfig['lookup'],
+				beforeRedirect: (redirectedRequest: Record<string, string>) => {
+					this.ssrfProtectionService.validateRedirectSync(redirectedRequest.href);
+				},
 			};
 
 			const { data } = await axios.get<IWorkflowResponse>(url, config);
