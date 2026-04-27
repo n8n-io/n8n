@@ -92,7 +92,11 @@ describe('EvaluationsView', () => {
 
 			await userEvent.click(getByTestId('run-test-button'));
 
-			expect(evaluationStore.startTestRun).toHaveBeenCalledWith('workflow-id');
+			// Second arg is the options object — concurrency comes from the
+			// always-mounted N8nInputNumber (default value 3).
+			expect(evaluationStore.startTestRun).toHaveBeenCalledWith('workflow-id', {
+				concurrency: 3,
+			});
 			expect(evaluationStore.fetchTestRuns).toHaveBeenCalledWith('workflow-id');
 		});
 

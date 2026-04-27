@@ -129,7 +129,6 @@ function onTidyUp() {
 			/>
 		</KeyboardShortcutTooltip>
 		<N8nTooltip
-			v-if="evalModeStore.isFeatureEnabled"
 			placement="top"
 			:content="
 				i18n.baseText(

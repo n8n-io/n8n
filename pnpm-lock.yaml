@@ -2571,6 +2571,9 @@ importers:
       csrf:
         specifier: 3.1.0
         version: 3.1.0
+      csv-parse:
+        specifier: 5.5.0
+        version: 5.5.0
       dotenv:
         specifier: 17.2.3
         version: 17.2.3

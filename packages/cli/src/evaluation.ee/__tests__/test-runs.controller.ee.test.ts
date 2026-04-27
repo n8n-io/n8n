@@ -4,7 +4,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsController } from '@/evaluation.ee/test-runs.controller.ee';
 import type { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
-import type { PostHogClient } from '@/posthog';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -17,7 +16,6 @@ describe('TestRunsController', () => {
 	let mockTestCaseExecutionRepository: jest.Mocked<TestCaseExecutionRepository>;
 	let mockTestRunnerService: jest.Mocked<TestRunnerService>;
 	let mockTelemetry: jest.Mocked<Telemetry>;
-	let mockPostHogClient: jest.Mocked<PostHogClient>;
 	let mockUser: User;
 	let mockWorkflowId: string;
 	let mockTestRunId: string;
@@ -49,17 +47,12 @@ describe('TestRunsController', () => {
 			track: jest.fn(),
 		} as unknown as jest.Mocked<Telemetry>;
 
-		mockPostHogClient = {
-			getFeatureFlags: jest.fn().mockResolvedValue({}),
-		} as unknown as jest.Mocked<PostHogClient>;
-
 		testRunsController = new TestRunsController(
 			mockTestRunRepository,
 			mockWorkflowFinderService,
 			mockTestCaseExecutionRepository,
 			mockTestRunnerService,
 			mockTelemetry,
-			mockPostHogClient,
 		);
 
 		mockUser = { id: 'user123' } as User;

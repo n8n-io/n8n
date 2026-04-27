@@ -8,11 +8,13 @@ import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
 import SetupWizard from '../components/SetupWizard/SetupWizard.vue';
+import EvalWizardModal from '../components/EvalWizardModal.vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
-import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	name: string;
 }>();
@@ -23,6 +25,14 @@ const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
+const settingsStore = useSettingsStore();
+
+const isAiAssistantEnabled = computed(() => settingsStore.settings.aiAssistant?.enabled === true);
+const wizardOpen = ref(false);
+
+function openWizard() {
+	wizardOpen.value = true;
+}
 
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
@@ -123,24 +133,37 @@ watch(
 				<N8nCallout v-if="isProtectedEnvironment" theme="info" icon="info">
 					{{ locale.baseText('evaluations.readOnlyNotice') }}
 				</N8nCallout>
-				<div v-else :class="$style.config">
-					<iframe
-						style="min-width: 500px"
-						width="500"
-						height="280"
-						src="https://www.youtube.com/embed/5LlF196PKaE"
-						title="n8n Evaluation quickstart"
-						frameborder="0"
-						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-						referrerpolicy="strict-origin-when-cross-origin"
-						allowfullscreen
-					></iframe>
-					<SetupWizard v-if="evaluationsLicensed" @run-test="runTest" />
-					<EvaluationsPaywall v-else />
-				</div>
+				<template v-else>
+					<N8nButton
+						v-if="isAiAssistantEnabled && evaluationsLicensed"
+						variant="solid"
+						size="medium"
+						icon="sparkles"
+						:class="$style.autoGenerateCta"
+						:label="locale.baseText('evaluation.wizard.cta')"
+						data-test-id="eval-auto-generate-cta"
+						@click="openWizard"
+					/>
+					<div :class="$style.config">
+						<iframe
+							style="min-width: 500px"
+							width="500"
+							height="280"
+							src="https://www.youtube.com/embed/5LlF196PKaE"
+							title="n8n Evaluation quickstart"
+							frameborder="0"
+							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+							referrerpolicy="strict-origin-when-cross-origin"
+							allowfullscreen
+						></iframe>
+						<SetupWizard v-if="evaluationsLicensed" @run-test="runTest" />
+						<EvaluationsPaywall v-else />
+					</div>
+				</template>
 			</div>
 		</template>
 		<RouterView v-else-if="isReady" />
+		<EvalWizardModal v-model:open="wizardOpen" :workflow-id="props.name" />
 	</div>
 </template>
 
@@ -159,6 +182,10 @@ watch(
 	max-width: 1024px;
 	margin-top: var(--spacing--2xl);
 	padding: 0;
+}
+
+.autoGenerateCta {
+	align-self: flex-start;
 }
 
 .description {

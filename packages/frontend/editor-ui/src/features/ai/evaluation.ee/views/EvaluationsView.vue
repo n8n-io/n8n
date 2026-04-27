@@ -4,7 +4,6 @@ import { computed, ref, watch } from 'vue';
 
 import RunsSection from '../components/ListRuns/RunsSection.vue';
 import { useEvaluationStore } from '../evaluation.store';
-import { useEvalModeStore } from '../evalMode.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';
 
@@ -21,7 +20,6 @@ const locale = useI18n();
 const toast = useToast();
 
 const evaluationStore = useEvaluationStore();
-const evalModeStore = useEvalModeStore();
 
 const selectedMetric = ref<string>('');
 const cancellingTestRun = ref<boolean>(false);
@@ -31,8 +29,7 @@ const runningTestRun = computed(() => runs.value.find((run) => run.status === 'r
 
 async function runTest() {
 	try {
-		const options = evalModeStore.isFeatureEnabled ? { concurrency: concurrency.value } : undefined;
-		await evaluationStore.startTestRun(props.name, options);
+		await evaluationStore.startTestRun(props.name, { concurrency: concurrency.value });
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 	}
@@ -83,7 +80,7 @@ watch(runningTestRun, (run) => {
 	<div :class="$style.evaluationsView">
 		<div :class="$style.header">
 			<div
-				v-if="evalModeStore.isFeatureEnabled && !runningTestRun"
+				v-if="!runningTestRun"
 				:class="$style.concurrencyControl"
 				data-test-id="eval-concurrency-control"
 			>

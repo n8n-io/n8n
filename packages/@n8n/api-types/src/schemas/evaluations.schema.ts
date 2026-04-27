@@ -5,19 +5,27 @@ import { Z } from '../zod-class';
 // Named WorkflowEvalDatasetRow to avoid a name collision with `DatasetRow`
 // exported from `@n8n/agents`, which has different semantics (narrower shape
 // for agent-level evals vs. free-form workflow test rows).
-export const workflowEvalDatasetRowSchema = z.record(z.unknown());
+//
+// Values are constrained to strings: the AI wizard's eval-planner is required
+// to stringify any structured value (a JSON array, an object, a number) into
+// a single string cell, so the data table holds purely flat string rows. This
+// avoids `[object Object]` rendering bugs when nested values reach the table
+// and forces the LLM to make the structural choice explicitly.
+export const workflowEvalDatasetRowSchema = z.record(z.string());
 export type WorkflowEvalDatasetRow = z.infer<typeof workflowEvalDatasetRowSchema>;
 
-export const evalNodePlacementSchema = z.object({
-	kind: z.enum(['trigger', 'setInputs', 'setMetrics']),
-	afterNodeName: z.string().optional(),
-	config: z.record(z.unknown()),
+// A single metric the AI wizard wants to compute against the LLM node's
+// output. The wizard apply step is responsible for *where* the metric lives
+// in the graph; the agent only proposes *what* to measure.
+export const evalMetricSchema = z.object({
+	name: z.string(),
+	description: z.string().optional(),
 });
-export type EvalNodePlacement = z.infer<typeof evalNodePlacementSchema>;
+export type EvalMetric = z.infer<typeof evalMetricSchema>;
 
 export const evalPlanSchema = z.object({
 	datasetRows: z.array(workflowEvalDatasetRowSchema),
-	nodePlacements: z.array(evalNodePlacementSchema),
+	metrics: z.array(evalMetricSchema),
 });
 export type EvalPlan = z.infer<typeof evalPlanSchema>;
 
@@ -35,8 +43,11 @@ export type StartTestRunPayload = z.infer<typeof startTestRunPayloadSchema>;
 export class StartTestRunRequestDto extends Z.class(startTestRunPayloadShape) {}
 
 // Request body for POST /instance-ai/eval-plan — the AI-wizard bootstrap
-// endpoint. Response shape is `EvalPlan` above.
+// endpoint. Response shape is `EvalPlan` above. `userIntent` is optional in
+// this shape because the wizard auto-derives most context from the named
+// LLM node; the user only contributes intent if they want to bias the plan.
 export class EvalPlanRequestDto extends Z.class({
 	workflowId: z.string().min(1),
-	userIntent: z.string().min(1).max(2000),
+	llmNodeName: z.string().min(1),
+	userIntent: z.string().max(2000).optional(),
 }) {}

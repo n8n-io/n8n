@@ -134,6 +134,19 @@ export const useEvaluationStore = defineStore(
 			return result;
 		};
 
+		const fetchEvalPlan = async (
+			workflowId: string,
+			llmNodeName: string,
+			userIntent: string | undefined,
+		) => {
+			return await evaluationsApi.postEvalPlan(
+				rootStore.restApiContext,
+				workflowId,
+				llmNodeName,
+				userIntent,
+			);
+		};
+
 		const cancelTestRun = async (workflowId: string, testRunId: string) => {
 			const result = await evaluationsApi.cancelTestRun(
 				rootStore.restApiContext,
@@ -198,6 +211,7 @@ export const useEvaluationStore = defineStore(
 			startTestRun,
 			cancelTestRun,
 			deleteTestRun,
+			fetchEvalPlan,
 			cleanupPolling,
 		};
 	},

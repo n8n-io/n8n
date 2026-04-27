@@ -1,10 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { jsonParse } from 'n8n-workflow';
 import { useEvalModeStore } from './evalMode.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { EVAL_MODE_EXPERIMENT, LOCAL_STORAGE_EVAL_MODE_BY_WORKFLOW } from '@/app/constants';
-import { mockedStore } from '@/__tests__/utils';
+import { LOCAL_STORAGE_EVAL_MODE_BY_WORKFLOW } from '@/app/constants';
 
 describe('evalMode.store', () => {
 	beforeEach(() => {
@@ -12,44 +10,12 @@ describe('evalMode.store', () => {
 		localStorage.clear();
 	});
 
-	function givenFlagEnabled(enabled: boolean) {
-		const postHog = mockedStore(usePostHog);
-		postHog.getVariant = vi.fn((experiment: string | number) =>
-			experiment === EVAL_MODE_EXPERIMENT.name && enabled
-				? EVAL_MODE_EXPERIMENT.variant
-				: undefined,
-		);
-	}
-
 	function givenWorkflowId(id: string) {
 		const workflows = useWorkflowsStore();
 		workflows.setWorkflowId(id);
 	}
 
-	it('reports the feature disabled when PostHog does not return the variant', () => {
-		givenFlagEnabled(false);
-		givenWorkflowId('abc');
-		const store = useEvalModeStore();
-		expect(store.isFeatureEnabled).toBe(false);
-	});
-
-	it('reports the feature enabled when PostHog returns the variant', () => {
-		givenFlagEnabled(true);
-		givenWorkflowId('abc');
-		const store = useEvalModeStore();
-		expect(store.isFeatureEnabled).toBe(true);
-	});
-
-	it('does not dim anything when the flag is off, even for eval-type nodes', () => {
-		givenFlagEnabled(false);
-		givenWorkflowId('abc');
-		const store = useEvalModeStore();
-		expect(store.shouldDim('n8n-nodes-base.evaluation')).toBe(false);
-		expect(store.shouldDim('n8n-nodes-base.evaluationTrigger')).toBe(false);
-	});
-
-	it('dims eval-type nodes when the flag is on and eval mode is off', () => {
-		givenFlagEnabled(true);
+	it('dims eval-type nodes when eval mode is off', () => {
 		givenWorkflowId('abc');
 		const store = useEvalModeStore();
 		expect(store.isEvalMode).toBe(false);
@@ -58,7 +24,6 @@ describe('evalMode.store', () => {
 	});
 
 	it('does not dim non-eval nodes', () => {
-		givenFlagEnabled(true);
 		givenWorkflowId('abc');
 		const store = useEvalModeStore();
 		expect(store.shouldDim('n8n-nodes-base.httpRequest')).toBe(false);
@@ -66,7 +31,6 @@ describe('evalMode.store', () => {
 	});
 
 	it('stops dimming once eval mode is toggled on', () => {
-		givenFlagEnabled(true);
 		givenWorkflowId('abc');
 		const store = useEvalModeStore();
 		store.toggle();
@@ -75,7 +39,6 @@ describe('evalMode.store', () => {
 	});
 
 	it('persists per workflow id in localStorage', () => {
-		givenFlagEnabled(true);
 		givenWorkflowId('workflow-one');
 		const store = useEvalModeStore();
 		store.toggle();
@@ -85,7 +48,6 @@ describe('evalMode.store', () => {
 	});
 
 	it('routes every unsaved workflow through the "new" sentinel key', () => {
-		givenFlagEnabled(true);
 		givenWorkflowId('');
 		const store = useEvalModeStore();
 		store.toggle();
@@ -97,7 +59,6 @@ describe('evalMode.store', () => {
 	});
 
 	it('does not inherit the "new" sentinel state after a workflow is saved', () => {
-		givenFlagEnabled(true);
 		givenWorkflowId('');
 		const store = useEvalModeStore();
 		store.toggle();
@@ -110,7 +71,6 @@ describe('evalMode.store', () => {
 	});
 
 	it('keeps independent state per saved workflow id', () => {
-		givenFlagEnabled(true);
 		const workflows = useWorkflowsStore();
 		workflows.setWorkflowId('one');
 		const store = useEvalModeStore();

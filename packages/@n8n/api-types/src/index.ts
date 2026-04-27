@@ -393,13 +393,13 @@ export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 
 export {
 	workflowEvalDatasetRowSchema,
-	evalNodePlacementSchema,
+	evalMetricSchema,
 	evalPlanSchema,
 	startTestRunPayloadSchema,
 	StartTestRunRequestDto,
 	EvalPlanRequestDto,
 	type WorkflowEvalDatasetRow,
-	type EvalNodePlacement,
+	type EvalMetric,
 	type EvalPlan,
 	type StartTestRunPayload,
 } from './schemas/evaluations.schema';

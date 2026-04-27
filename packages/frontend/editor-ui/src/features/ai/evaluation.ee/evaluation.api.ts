@@ -1,3 +1,4 @@
+import type { EvalPlan } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, request } from '@n8n/rest-api-client';
 import type { JsonObject } from 'n8n-workflow';
@@ -90,6 +91,23 @@ export const cancelTestRun = async (
 	});
 	// CLI is returning the response without wrapping it in `data` key
 	return response as { success: boolean };
+};
+
+// Ask the AI wizard for an evaluation plan (dataset rows + metrics) for a
+// specific LLM node. The backend falls back to an empty plan on LLM failure,
+// so this call always resolves; an empty `datasetRows` array is the signal
+// to retry.
+export const postEvalPlan = async (
+	context: IRestApiContext,
+	workflowId: string,
+	llmNodeName: string,
+	userIntent: string | undefined,
+) => {
+	return await makeRestApiRequest<EvalPlan>(context, 'POST', '/instance-ai/eval-plan', {
+		workflowId,
+		llmNodeName,
+		...(userIntent ? { userIntent } : {}),
+	});
 };
 
 // Delete a test run

@@ -73,7 +73,7 @@ const edgeStyle = computed(() => ({
 const evalModeStore = useEvalModeStore();
 const workflowsStore = useWorkflowsStore();
 const isDimmedForEvalMode = computed(() => {
-	if (!evalModeStore.isFeatureEnabled || evalModeStore.isEvalMode) return false;
+	if (evalModeStore.isEvalMode) return false;
 	const sourceName = data.value?.source?.node;
 	const targetName = data.value?.target?.node;
 	const sourceType = sourceName ? workflowsStore.getNodeByName(sourceName)?.type : undefined;
