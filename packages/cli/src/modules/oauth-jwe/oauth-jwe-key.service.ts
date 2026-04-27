@@ -9,8 +9,6 @@ import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { CacheService } from '@/services/cache/cache.service';
-
 import {
 	JWE_KEY_ALGORITHMS,
 	JWE_KEY_CACHE_KEY,
@@ -18,6 +16,8 @@ import {
 	JWE_PRIVATE_KEY_TYPE,
 	type JweKeyAlgorithm,
 } from './oauth-jwe.constants';
+
+import { CacheService } from '@/services/cache/cache.service';
 
 type OAuthJweKeyEntry = {
 	algorithm: JweKeyAlgorithm;
