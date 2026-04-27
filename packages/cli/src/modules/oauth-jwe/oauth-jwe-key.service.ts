@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { DeploymentKey, DeploymentKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
+import { generateNanoId } from '@n8n/utils';
 import type { CryptoKey, JWK } from 'jose';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher } from 'n8n-core';
@@ -171,12 +172,14 @@ export class OAuthJweKeyService {
 		try {
 			await this.deploymentKeyRepository.manager.transaction(async (tx) => {
 				await tx.insert(DeploymentKey, {
+					id: generateNanoId(),
 					type: JWE_PUBLIC_KEY_TYPE,
 					value: JSON.stringify(publicJwk),
 					algorithm: JWE_KEY_ALGORITHM,
 					status: 'active',
 				});
 				await tx.insert(DeploymentKey, {
+					id: generateNanoId(),
 					type: JWE_PRIVATE_KEY_TYPE,
 					value: encryptedPrivate,
 					algorithm: JWE_KEY_ALGORITHM,
