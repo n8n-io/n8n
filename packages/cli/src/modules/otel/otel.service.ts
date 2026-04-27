@@ -1,12 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { DiagLogger } from '@opentelemetry/api';
-import { DiagLogLevel, diag } from '@opentelemetry/api';
+import { DiagLogLevel, diag, trace } from '@opentelemetry/api';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
+import type { TransformableInfo } from 'logform';
 import { InstanceSettings } from 'n8n-core';
+import winston from 'winston';
 
 import { N8N_VERSION } from '@/constants';
 
@@ -51,7 +53,30 @@ export class OtelService {
 		});
 
 		this.sdk.start();
+		this.injectTraceContextIntoLogs();
 		void this.checkEndpointReachability(otlpTracesUrl);
+	}
+
+	/**
+	 * Prepend a Winston format that reads the active OpenTelemetry span and
+	 * adds `traceId` / `spanId` to every log record so log lines can be
+	 * correlated with traces in observability platforms.
+	 *
+	 * Must be called after `sdk.start()` so the OTEL context propagator is
+	 * already installed when the format runs.
+	 */
+	private injectTraceContextIntoLogs() {
+		const traceContextFormat = winston.format((info: TransformableInfo) => {
+			const span = trace.getActiveSpan();
+			if (span) {
+				const { traceId, spanId } = span.spanContext();
+				(info as TransformableInfo & { traceId?: string; spanId?: string }).traceId = traceId;
+				(info as TransformableInfo & { traceId?: string; spanId?: string }).spanId = spanId;
+			}
+			return info;
+		})();
+
+		this.logger.prependFormat(traceContextFormat);
 	}
 
 	async shutdown(): Promise<void> {

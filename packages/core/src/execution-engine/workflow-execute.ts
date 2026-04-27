@@ -81,6 +81,7 @@ import {
 import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
+import { consumeOtelExecutionWrapper } from './otel-execution-context';
 import { convertBinaryData } from '../utils/convert-binary-data';
 
 interface RunWorkflowOptions {
@@ -1505,7 +1506,11 @@ export class WorkflowExecute {
 					throw error;
 				}
 
-				executionLoop: while (
+				// Wrap the execution loop in the OTEL context so that trace.getActiveSpan()
+				// returns the active workflow span during log writes and node executions.
+				// eslint-disable-next-line complexity
+				const runExecutionLoop = async () => {
+				while (
 					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
 				) {
 					if (
@@ -1608,7 +1613,7 @@ export class WorkflowExecute {
 					const hasInputData = this.ensureInputData(workflow, executionNode, executionData);
 					if (!hasInputData) {
 						lastExecutionTry = currentExecutionTry;
-						continue executionLoop;
+						continue;
 					}
 
 					Logger.debug(`Start executing node "${executionNode.name}"`, {
@@ -1729,7 +1734,7 @@ export class WorkflowExecute {
 										runData: this.runExecutionData.resultData.runData,
 									});
 
-									continue executionLoop;
+									continue;
 								}
 
 								runNodeData = await convertBinaryData(
@@ -1798,7 +1803,7 @@ export class WorkflowExecute {
 								// If null gets returned it means that the node did succeed
 								// but did not have any data. So the branch should end
 								// (meaning the nodes afterwards should not be processed)
-								continue executionLoop;
+								continue;
 							}
 
 							break;
@@ -2266,6 +2271,20 @@ export class WorkflowExecute {
 							}
 						}
 					}
+				}
+				}; // end runExecutionLoop
+
+				// Activate the workflow's OTEL span context for the duration of the execution
+				// loop so that trace.getActiveSpan() returns the correct span during log writes
+				// and node executions. The wrapper is registered by WorkflowStartHandler in the
+				// OTEL module (packages/cli); when OTEL is disabled it is simply undefined.
+				const otelWrapper = consumeOtelExecutionWrapper(
+					this.additionalData.executionId ?? '',
+				);
+				if (otelWrapper) {
+					await otelWrapper(runExecutionLoop);
+				} else {
+					await runExecutionLoop();
 				}
 
 				return;

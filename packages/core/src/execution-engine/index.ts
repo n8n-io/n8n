@@ -88,6 +88,7 @@ export * from './partial-execution-utils';
 export * from './node-execution-context/utils/execution-metadata';
 export * from './workflow-execute';
 export * from './execution-context-hook-registry.service';
+export * from './otel-execution-context';
 export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';
 export { ExecutionContextService } from './execution-context.service';
