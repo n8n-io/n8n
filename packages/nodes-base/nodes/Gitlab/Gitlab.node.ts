@@ -1527,10 +1527,10 @@ export class Gitlab implements INodeType {
 
 						qs = this.getNodeParameter('additionalFields', i, {});
 
-						returnAll = this.getNodeParameter('returnAll', 0);
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							qs.per_page = this.getNodeParameter('limit', 0);
+							qs.per_page = this.getNodeParameter('limit', i);
 						}
 
 						endpoint = `/projects/${id}/releases`;
@@ -1571,10 +1571,10 @@ export class Gitlab implements INodeType {
 
 						qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
 
-						returnAll = this.getNodeParameter('returnAll', 0);
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							qs.per_page = this.getNodeParameter('limit', 0);
+							qs.per_page = this.getNodeParameter('limit', i);
 						}
 
 						endpoint = `${baseEndpoint}/issues`;
