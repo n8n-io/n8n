@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { ref, computed, onMounted, watch } from 'vue';
 import { N8nButton, N8nCard, N8nDialog, N8nIcon, N8nText } from '@n8n/design-system';
 import N8nSelect from '@n8n/design-system/components/N8nSelect';
@@ -7,7 +8,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 

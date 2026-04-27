@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
-import { type AgentIntegration } from '@n8n/api-types';
+import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT, type AgentIntegration } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
@@ -12,8 +12,6 @@ import type { AgentsService } from '../../agents.service';
 import type { Agent } from '../../entities/agent.entity';
 import { AgentScheduleService } from '../agent-schedule.service';
 
-const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT = 'Automated message: you were triggered on schedule.';
-
 jest.mock('cron', () => {
 	const jobs: Array<{
 		cronTime: string;
@@ -22,7 +20,7 @@ jest.mock('cron', () => {
 		start: jest.Mock;
 		stop: jest.Mock;
 	}> = [];
-	const sendAt = jest.fn();
+	const validateCronExpression = jest.fn();
 
 	class CronJob {
 		cronTime: string;
@@ -45,11 +43,11 @@ jest.mock('cron', () => {
 		}
 	}
 
-	return { CronJob, sendAt, __jobs: jobs };
+	return { CronJob, validateCronExpression, __jobs: jobs };
 });
 
 const cronModule: {
-	sendAt: jest.Mock;
+	validateCronExpression: jest.Mock;
 	__jobs: Array<{
 		cronTime: string;
 		onTick: () => void;
@@ -91,8 +89,8 @@ describe('AgentScheduleService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		cronModule.__jobs.length = 0;
-		cronModule.sendAt.mockReset();
-		cronModule.sendAt.mockReturnValue(new Date());
+		cronModule.validateCronExpression.mockReset();
+		cronModule.validateCronExpression.mockReturnValue({ valid: true });
 		jest.useFakeTimers().setSystemTime(new Date('2026-04-24T13:00:00Z'));
 
 		agentRepository = {
@@ -148,8 +146,9 @@ describe('AgentScheduleService', () => {
 	});
 
 	it('rejects invalid cron expressions on save and activation', async () => {
-		cronModule.sendAt.mockImplementation(() => {
-			throw new Error('bad cron');
+		cronModule.validateCronExpression.mockReturnValue({
+			valid: false,
+			error: new Error('bad cron'),
 		});
 
 		await expect(service.saveConfig(makePublishedAgent(), 'not-a-cron')).rejects.toBeInstanceOf(

@@ -1,10 +1,10 @@
 import {
+	AGENT_SCHEDULE_TRIGGER_TYPE,
 	type AgentBuilderMessagesResponse,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
 	type AgentScheduleConfig,
 	type AgentSseEvent,
-	AGENT_SCHEDULE_TRIGGER_TYPE,
 	type ChatIntegrationDescriptor,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
@@ -574,8 +574,7 @@ export class AgentsController {
 		// Persist the integration reference on the agent
 		const existing = agent.integrations ?? [];
 		const alreadyExists = existing.some(
-			(i) =>
-				isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
+			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
 		);
 		if (!alreadyExists) {
 			agent.integrations = [...existing, { type, credentialId }];
@@ -601,8 +600,7 @@ export class AgentsController {
 
 		// Remove the integration reference from the agent
 		agent.integrations = (agent.integrations ?? []).filter(
-			(i) =>
-				!isAgentCredentialIntegration(i) || i.type !== type || i.credentialId !== credentialId,
+			(i) => !isAgentCredentialIntegration(i) || i.type !== type || i.credentialId !== credentialId,
 		);
 		await this.agentRepository.save(agent);
 
@@ -674,14 +672,12 @@ export class AgentsController {
 
 		const chatStatus = this.chatIntegrationService.getStatus(agentId);
 		const schedule = this.agentScheduleService.getConfig(agent);
-		const scheduleIntegrations: AgentIntegrationStatusResponse['integrations'] = schedule.active
-			? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }]
-			: [];
-		const integrations = [...chatStatus.integrations, ...scheduleIntegrations];
+		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];
+		const connectedIntegrations = [...chatStatus.integrations, ...scheduleIntegrations];
 
 		return {
-			status: integrations.length > 0 ? 'connected' : 'disconnected',
-			integrations,
+			status: connectedIntegrations.length > 0 ? 'connected' : 'disconnected',
+			integrations: connectedIntegrations,
 		};
 	}
 

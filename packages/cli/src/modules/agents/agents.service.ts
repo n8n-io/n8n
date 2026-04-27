@@ -7,6 +7,7 @@ import type {
 } from '@n8n/agents';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import * as agents from '@n8n/agents';
+import { AGENT_SCHEDULE_TRIGGER_TYPE, isAgentScheduleIntegration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import {
@@ -54,17 +55,6 @@ import { AgentPublishedVersionRepository } from './repositories/agent-published-
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
-
-const SCHEDULE_INTEGRATION_TYPE = 'schedule';
-
-function isScheduleIntegration(
-	integration: Agent['integrations'][number] | null | undefined,
-): integration is Agent['integrations'][number] & {
-	type: 'schedule';
-	active: boolean;
-} {
-	return integration !== null && integration !== undefined && integration.type === 'schedule';
-}
 
 interface InjectRuntimeDependenciesParams {
 	agent: agents.Agent;
@@ -311,12 +301,12 @@ export class AgentsService {
 			agent.publishedVersion = null;
 
 			const hasActiveSchedule = (agent.integrations ?? []).some(
-				(integration) => isScheduleIntegration(integration) && integration.active,
+				(integration) => isAgentScheduleIntegration(integration) && integration.active,
 			);
 
 			if (hasActiveSchedule) {
 				agent.integrations = (agent.integrations ?? []).map((integration) =>
-					isScheduleIntegration(integration) ? { ...integration, active: false } : integration,
+					isAgentScheduleIntegration(integration) ? { ...integration, active: false } : integration,
 				);
 				await trx.save(agent);
 			}
@@ -785,7 +775,7 @@ export class AgentsService {
 			throw new NotFoundError(`Agent ${agentId} is not published`);
 		}
 
-		const key = this.runtimeKey(agentId, userId, SCHEDULE_INTEGRATION_TYPE);
+		const key = this.runtimeKey(agentId, userId, AGENT_SCHEDULE_TRIGGER_TYPE);
 		let runtime = this.runtimes.get(key);
 		if (!runtime) {
 			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
@@ -793,7 +783,7 @@ export class AgentsService {
 				publishedAgentData,
 				credentialProvider,
 				userId,
-				SCHEDULE_INTEGRATION_TYPE,
+				AGENT_SCHEDULE_TRIGGER_TYPE,
 			);
 			this.runtimes.set(key, { agent: agentInstance, agentId, userId });
 			runtime = this.runtimes.get(key);
@@ -801,7 +791,7 @@ export class AgentsService {
 		}
 
 		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId, projectId, {
-			source: SCHEDULE_INTEGRATION_TYPE,
+			source: AGENT_SCHEDULE_TRIGGER_TYPE,
 			resourceId,
 		});
 	}

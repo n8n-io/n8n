@@ -1,19 +1,8 @@
+import { isAgentCredentialIntegration } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
-
-function isCredentialBackedIntegration(
-	integration: Agent['integrations'][number] | null | undefined,
-): integration is { type: string; credentialId: string } {
-	return (
-		integration !== null &&
-		integration !== undefined &&
-		integration.type !== 'schedule' &&
-		'credentialId' in integration &&
-		typeof integration.credentialId === 'string'
-	);
-}
 
 @Service()
 export class AgentRepository extends Repository<Agent> {
@@ -75,7 +64,7 @@ export class AgentRepository extends Repository<Agent> {
 				agent.id !== excludeAgentId &&
 				(agent.integrations ?? []).some(
 					(i) =>
-						isCredentialBackedIntegration(i) && i.type === type && i.credentialId === credentialId,
+						isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
 				),
 		);
 	}

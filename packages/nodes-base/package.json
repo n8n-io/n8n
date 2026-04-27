@@ -908,7 +908,7 @@
     "change-case": "4.1.2",
     "cheerio": "1.0.0-rc.6",
     "chokidar": "catalog:",
-    "cron": "4.4.0",
+    "cron": "catalog:",
     "csv-parse": "5.5.0",
     "currency-codes": "2.1.0",
     "eventsource": "2.0.2",

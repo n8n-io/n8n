@@ -1,10 +1,16 @@
-import { type AgentScheduleConfig, type AgentScheduleIntegration } from '@n8n/api-types';
+import {
+	AGENT_SCHEDULE_TRIGGER_TYPE,
+	DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+	type AgentScheduleConfig,
+	type AgentScheduleIntegration,
+	isAgentScheduleIntegration,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { CronJob, sendAt } from 'cron';
+import { CronJob, validateCronExpression } from 'cron';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 
@@ -16,19 +22,6 @@ import { AgentsCredentialProvider } from '../adapters/agents-credential-provider
 import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
-
-const SCHEDULE_INTEGRATION_TYPE = 'schedule';
-const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT = 'Automated message: you were triggered on schedule.';
-
-function isScheduleIntegration(
-	integration: Agent['integrations'][number] | null | undefined,
-): integration is AgentScheduleIntegration {
-	return (
-		integration !== null &&
-		integration !== undefined &&
-		integration.type === SCHEDULE_INTEGRATION_TYPE
-	);
-}
 
 @Service()
 export class AgentScheduleService {
@@ -64,13 +57,13 @@ export class AgentScheduleService {
 			wakeUpPrompt ?? existing?.wakeUpPrompt ?? DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT;
 
 		if (normalizedCronExpression !== '') {
-			this.validateCronExpression(normalizedCronExpression);
+			this.assertCronExpressionIsValid(normalizedCronExpression);
 		} else if (existing?.active) {
 			throw new BadRequestError('Cron expression is required while the schedule is active');
 		}
 
 		const saved = await this.saveScheduleIntegration(agent, {
-			type: SCHEDULE_INTEGRATION_TYPE,
+			type: AGENT_SCHEDULE_TRIGGER_TYPE,
 			active: existing?.active ?? false,
 			cronExpression: normalizedCronExpression,
 			wakeUpPrompt: nextWakeUpPrompt,
@@ -83,7 +76,7 @@ export class AgentScheduleService {
 		this.logger.debug('[AgentScheduleService] Saved schedule config', {
 			agentId: agent.id,
 			projectId: agent.projectId,
-			active: saved.integrations.find(isScheduleIntegration)?.active ?? false,
+			active: saved.integrations.find(isAgentScheduleIntegration)?.active ?? false,
 			cronExpression: normalizedCronExpression || null,
 		});
 
@@ -103,10 +96,10 @@ export class AgentScheduleService {
 			throw new BadRequestError('Cron expression is required before activation');
 		}
 
-		this.validateCronExpression(cronExpression);
+		this.assertCronExpressionIsValid(cronExpression);
 
 		const saved = await this.saveScheduleIntegration(agent, {
-			type: SCHEDULE_INTEGRATION_TYPE,
+			type: AGENT_SCHEDULE_TRIGGER_TYPE,
 			active: true,
 			cronExpression,
 			wakeUpPrompt: existing?.wakeUpPrompt ?? DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
@@ -192,7 +185,7 @@ export class AgentScheduleService {
 			return;
 		}
 
-		this.validateCronExpression(schedule.cronExpression);
+		this.assertCronExpressionIsValid(schedule.cronExpression);
 
 		this.deregister(agent.id);
 
@@ -236,7 +229,7 @@ export class AgentScheduleService {
 	}
 
 	private getScheduleIntegration(agent: Agent): AgentScheduleIntegration | undefined {
-		return (agent.integrations ?? []).find(isScheduleIntegration);
+		return (agent.integrations ?? []).find(isAgentScheduleIntegration);
 	}
 
 	private async saveScheduleIntegration(
@@ -244,17 +237,19 @@ export class AgentScheduleService {
 		schedule: AgentScheduleIntegration,
 	): Promise<Agent> {
 		agent.integrations = [
-			...(agent.integrations ?? []).filter((integration) => !isScheduleIntegration(integration)),
+			...(agent.integrations ?? []).filter(
+				(integration) => !isAgentScheduleIntegration(integration),
+			),
 			schedule,
 		];
 
 		return await this.agentRepository.save(agent);
 	}
 
-	private validateCronExpression(cronExpression: string): void {
-		try {
-			sendAt(cronExpression);
-		} catch {
+	private assertCronExpressionIsValid(cronExpression: string): void {
+		const validation = validateCronExpression(cronExpression);
+
+		if (!validation.valid) {
 			throw new BadRequestError('Invalid cron expression');
 		}
 	}

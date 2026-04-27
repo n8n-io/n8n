@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 import { Container } from '@n8n/di';
-import type { AgentIntegration } from '@n8n/api-types';
+import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT, type AgentIntegration } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
@@ -20,8 +20,6 @@ import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { AgentPublishedVersionRepository } from '../repositories/agent-published-version.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
-
-const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT = 'Automated message: you were triggered on schedule.';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

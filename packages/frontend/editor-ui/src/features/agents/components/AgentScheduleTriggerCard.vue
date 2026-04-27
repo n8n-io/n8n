@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -11,8 +12,6 @@ import {
 	getScheduleIntegration,
 	updateScheduleIntegration,
 } from '../composables/useAgentApi';
-
-const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT = 'Automated message: you were triggered on schedule.';
 
 const props = defineProps<{
 	projectId: string;
