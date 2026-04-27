@@ -17,6 +17,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -537,7 +538,7 @@ async function initialize() {
 		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 		// will correct it once the user expands the Triggers section.
 		const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-		const triggerTypes = integrations.map((i) => i.type);
+		const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
 		const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 		if (connected) connectedTriggers.value = connected;
 	})();
@@ -1064,6 +1065,7 @@ function onSwitchAgent(nextAgentId: string) {
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
+							:is-published="Boolean(agent?.publishedVersion)"
 							:focus-type="selectedTriggerType"
 							@update:connected-triggers="onConnectedTriggersUpdate"
 							@trigger-added="onTriggerAdded"
@@ -1098,6 +1100,7 @@ function onSwitchAgent(nextAgentId: string) {
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
+							:is-published="Boolean(agent?.publishedVersion)"
 							:only-connected="true"
 							@update:connected-triggers="onConnectedTriggersUpdate"
 							@trigger-added="onTriggerAdded"

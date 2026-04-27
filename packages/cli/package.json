@@ -151,6 +151,7 @@
     "class-validator": "0.14.0",
     "compression": "1.8.1",
     "convict": "6.2.5",
+    "cron": "4.4.0",
     "cookie-parser": "1.4.7",
     "csrf": "3.1.0",
     "dotenv": "17.2.3",

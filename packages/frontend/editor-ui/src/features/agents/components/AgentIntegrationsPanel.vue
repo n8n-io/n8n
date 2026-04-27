@@ -7,12 +7,16 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
+import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
+
 const props = withDefaults(
 	defineProps<{
 		projectId: string;
 		agentId: string;
 		agentName: string;
+		isPublished?: boolean;
 		focusType?: string | null;
 		/**
 		 * When true, hide integrations that aren't currently connected. The
@@ -21,7 +25,7 @@ const props = withDefaults(
 		 */
 		onlyConnected?: boolean;
 	}>(),
-	{ focusType: null, onlyConnected: false },
+	{ focusType: null, isPublished: false, onlyConnected: false },
 );
 
 const visibleConfigs = computed(() => {
@@ -30,6 +34,10 @@ const visibleConfigs = computed(() => {
 	if (props.onlyConnected) list = list.filter((c) => isConnected(c.type));
 	return list;
 });
+
+const showScheduleCard = computed(
+	() => !props.focusType || props.focusType === AGENT_SCHEDULE_TRIGGER_TYPE,
+);
 
 const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
@@ -222,8 +230,21 @@ function emitConnectedTriggers() {
 }
 
 async function fetchStatus() {
-	await fetchStatusShared(integrationConfigs.map((c) => c.type));
+	await fetchStatusShared([...integrationConfigs.map((c) => c.type), AGENT_SCHEDULE_TRIGGER_TYPE]);
 	emitConnectedTriggers();
+}
+
+function onScheduleStatusChange(active: boolean) {
+	statuses.value[AGENT_SCHEDULE_TRIGGER_TYPE] = active ? 'connected' : 'disconnected';
+	connectedCredentials.value[AGENT_SCHEDULE_TRIGGER_TYPE] = '';
+	emitConnectedTriggers();
+}
+
+function onScheduleTriggerAdded() {
+	emit('trigger-added', {
+		triggerType: AGENT_SCHEDULE_TRIGGER_TYPE,
+		triggers: computeConnectedTriggers(),
+	});
 }
 
 async function fetchCredentials() {
@@ -300,6 +321,14 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.panel">
+		<AgentScheduleTriggerCard
+			v-if="showScheduleCard"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:is-published="isPublished"
+			@status-change="onScheduleStatusChange"
+			@trigger-added="onScheduleTriggerAdded"
+		/>
 		<N8nCard v-for="config in visibleConfigs" :key="config.type" :class="$style.card">
 			<template #header>
 				<div :class="$style.cardHeader">

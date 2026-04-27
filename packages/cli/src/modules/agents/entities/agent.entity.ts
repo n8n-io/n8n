@@ -1,3 +1,4 @@
+import type { AgentIntegration } from '@n8n/api-types';
 import type { ToolDescriptor } from '@n8n/agents';
 import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, OneToOne, type Relation } from '@n8n/typeorm';
@@ -33,10 +34,7 @@ export class Agent extends WithTimestampsAndStringId {
 	schema: AgentJsonConfig | null;
 
 	@JsonColumn({ default: '[]' })
-	integrations: Array<{
-		type: string;
-		credentialId: string;
-	}>;
+	integrations: AgentIntegration[];
 
 	@JsonColumn({ default: '{}' })
 	tools: Record<

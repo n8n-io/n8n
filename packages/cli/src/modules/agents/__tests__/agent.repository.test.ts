@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
+import type { AgentIntegration } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
@@ -65,7 +66,7 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findByIntegrationCredential', () => {
-		const makeAgent = (id: string, integrations: Array<{ type: string; credentialId: string }>) =>
+		const makeAgent = (id: string, integrations: AgentIntegration[]) =>
 			({ id, integrations }) as Agent;
 
 		it('returns agents that have a matching type + credentialId, excluding the given agentId', async () => {
@@ -121,6 +122,30 @@ describe('AgentRepository', () => {
 			);
 
 			expect(result.map((a) => a.id)).toEqual(['agent-a']);
+		});
+
+		it('ignores schedule integrations when matching on credentialId', async () => {
+			const agents = [
+				makeAgent('agent-schedule', [
+					{
+						type: 'schedule',
+						active: true,
+						cronExpression: '* * * * *',
+						wakeUpPrompt: 'Automated message',
+					},
+				]),
+				makeAgent('agent-match', [{ type: 'telegram', credentialId: 'cred-1' }]),
+			];
+			jest.spyOn(repository, 'find').mockResolvedValue(agents);
+
+			const result = await repository.findByIntegrationCredential(
+				'telegram',
+				'cred-1',
+				'project-1',
+				'agent-self',
+			);
+
+			expect(result.map((a) => a.id)).toEqual(['agent-match']);
 		});
 	});
 });

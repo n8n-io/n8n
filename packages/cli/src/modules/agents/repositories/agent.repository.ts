@@ -3,6 +3,18 @@ import { DataSource, Repository } from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
 
+function isCredentialBackedIntegration(
+	integration: Agent['integrations'][number] | null | undefined,
+): integration is { type: string; credentialId: string } {
+	return (
+		integration !== null &&
+		integration !== undefined &&
+		integration.type !== 'schedule' &&
+		'credentialId' in integration &&
+		typeof integration.credentialId === 'string'
+	);
+}
+
 @Service()
 export class AgentRepository extends Repository<Agent> {
 	constructor(dataSource: DataSource) {
@@ -61,7 +73,10 @@ export class AgentRepository extends Repository<Agent> {
 		return agents.filter(
 			(agent) =>
 				agent.id !== excludeAgentId &&
-				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
+				(agent.integrations ?? []).some(
+					(i) =>
+						isCredentialBackedIntegration(i) && i.type === type && i.credentialId === credentialId,
+				),
 		);
 	}
 }
