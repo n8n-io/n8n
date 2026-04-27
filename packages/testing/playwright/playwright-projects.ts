@@ -192,6 +192,17 @@ export function getProjects(): Project[] {
 			);
 		}
 
+		// Dedicated project for instrumented coverage runs. Equivalent to
+		// `sqlite:e2e` but with a colon-free name so Currents writes
+		// `.nyc_output/coverage/` (no path-validation issue on artifact upload).
+		projects.push({
+			name: 'coverage',
+			testDir: './tests/e2e',
+			timeout: 60000,
+			fullyParallel: true,
+			use: { containerConfig: {} },
+		});
+
 		for (const { name, config } of CI_BENCHMARK_PROFILES) {
 			projects.push({
 				name: `benchmark-${name}:infrastructure`,

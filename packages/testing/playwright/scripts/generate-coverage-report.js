@@ -15,8 +15,9 @@ const NYC_CONFIG = path.join(__dirname, '..', 'nyc.config.ts');
 // Coverage directories to look for - Currents writes to .nyc_output/{projectName}/
 // Project names come from playwright-projects.ts
 const COVERAGE_PROJECT_PATTERNS = [
+	'coverage', // Dedicated container coverage project (canonical for CI runs)
 	'e2e', // Local mode project
-	'sqlite:e2e', // Container mode projects
+	'sqlite:e2e', // Other container projects retained for ad-hoc local coverage runs
 	'postgres:e2e',
 	'queue:e2e',
 	'multi-main:e2e',
@@ -58,7 +59,7 @@ function main() {
 			'1. Build editor-ui with coverage: BUILD_WITH_COVERAGE=true pnpm --filter n8n-editor-ui build',
 		);
 		console.log(
-			'2. Run Playwright tests with coverage: BUILD_WITH_COVERAGE=true pnpm test:container:sqlite',
+			'2. Run Playwright tests with coverage: BUILD_WITH_COVERAGE=true pnpm test:container:coverage',
 		);
 		process.exit(1);
 	}

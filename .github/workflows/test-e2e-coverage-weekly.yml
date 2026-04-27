@@ -54,7 +54,7 @@ jobs:
         run: npx tsx packages/testing/containers/pull-test-images.ts || true
 
       - name: Run Tests
-        run: pnpm --filter=n8n-playwright test:container:sqlite --workers=1 --shard=${{ matrix.shard }}/4
+        run: pnpm --filter=n8n-playwright test:container:coverage --workers=1 --shard=${{ matrix.shard }}/4
         env:
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
@@ -62,27 +62,12 @@ jobs:
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           BUILD_WITH_COVERAGE: 'true'
 
-      # Currents writes per-project subdirs (e.g. `sqlite:e2e/`), and the colon
-      # is rejected by upload-artifact. Tar sidesteps the path validation
-      # without forcing a rename in currents.config.ts / generate-coverage-report.js.
-      - name: Archive and upload .nyc_output
-        if: always()
-        shell: bash
-        run: |
-          cd packages/testing/playwright
-          if [ -d .nyc_output ] && [ -n "$(ls -A .nyc_output 2>/dev/null)" ]; then
-            tar -czf nyc-output.tar.gz .nyc_output/
-            ls -lh nyc-output.tar.gz
-          else
-            echo "No .nyc_output produced; skipping archive."
-          fi
-
       - name: Upload .nyc_output (per shard)
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: nyc-output-shard-${{ matrix.shard }}
-          path: packages/testing/playwright/nyc-output.tar.gz
+          path: packages/testing/playwright/.nyc_output/coverage/
           retention-days: 1
           if-no-files-found: ignore
 
@@ -111,23 +96,23 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
 
-      - name: Download .nyc_output tars from all shards
+      - name: Download .nyc_output from all shards
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: nyc-output-shard-*
-          path: /tmp/nyc-tars/
+          path: /tmp/nyc-shards/
 
-      - name: Extract all shard archives
+      - name: Merge shard outputs into .nyc_output/coverage
         shell: bash
         run: |
-          mkdir -p packages/testing/playwright/.nyc_output
+          mkdir -p packages/testing/playwright/.nyc_output/coverage
           shopt -s nullglob
-          for tar in /tmp/nyc-tars/*/nyc-output.tar.gz; do
-            echo "Extracting $tar"
-            tar -xzf "$tar" -C packages/testing/playwright/
+          for shard in /tmp/nyc-shards/nyc-output-shard-*/; do
+            echo "Merging from $shard"
+            cp "$shard"*.json packages/testing/playwright/.nyc_output/coverage/ 2>/dev/null || true
           done
-          echo "--- Combined .nyc_output contents:"
-          ls -la packages/testing/playwright/.nyc_output/
+          echo "--- Combined .nyc_output/coverage file count:"
+          find packages/testing/playwright/.nyc_output/coverage/ -maxdepth 1 -type f -name '*.json' | wc -l
 
       - name: Generate Coverage Report
         run: pnpm --filter n8n-playwright coverage:report

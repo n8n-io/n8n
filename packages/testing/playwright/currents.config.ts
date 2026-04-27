@@ -5,7 +5,7 @@ const config: CurrentsConfig = {
 	projectId: process.env.CURRENTS_PROJECT_ID ?? 'LRxcNt',
 	...(process.env.BUILD_WITH_COVERAGE === 'true' && {
 		coverage: {
-			projects: true,
+			projects: ['coverage'],
 		},
 	}),
 };
