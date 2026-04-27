@@ -615,6 +615,7 @@ describe('CredentialsHelper', () => {
 				userId: undefined,
 				workflowId: 'workflow-123',
 				projectId: 'project-456',
+				executionId: undefined,
 			});
 			const nodeCredentials: INodeCredentialsDetails = {
 				id: null,
@@ -634,6 +635,7 @@ describe('CredentialsHelper', () => {
 				userId: undefined,
 				workflowId: 'workflow-123',
 				projectId: 'project-456',
+				executionId: undefined,
 			});
 			expect(result).toEqual(syntheticCred);
 		});
@@ -658,6 +660,7 @@ describe('CredentialsHelper', () => {
 				userId: 'user-123',
 				workflowId: undefined,
 				projectId: undefined,
+				executionId: undefined,
 			});
 			const nodeCredentials: INodeCredentialsDetails = {
 				id: null,
@@ -677,10 +680,59 @@ describe('CredentialsHelper', () => {
 				userId: 'user-123',
 				workflowId: undefined,
 				projectId: undefined,
+				executionId: undefined,
 			});
 			expect(result).toEqual(syntheticCred);
 			// Should NOT attempt to look up a DB credential
 			expect(credentialsRepository.findOneByOrFail).not.toHaveBeenCalled();
+		});
+
+		it('should forward executionId from additionalData to getSyntheticCredential', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+			);
+
+			const syntheticCred = {
+				apiKey: 'mock-jwt',
+				host: 'http://gateway/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google',
+			};
+			aiGatewayService.getSyntheticCredential.mockResolvedValue(syntheticCred);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-123',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: undefined,
+				executionId: '29021',
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+
+			const result = await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'googlePalmApi',
+				'manual',
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'googlePalmApi',
+				userId: 'user-123',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: undefined,
+				executionId: '29021',
+			});
+			expect(result).toEqual(syntheticCred);
 		});
 	});
 
