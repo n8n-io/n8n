@@ -72,9 +72,6 @@ catalogs:
     '@mastra/memory':
       specifier: 1.10.0
       version: 1.10.0
-    '@n8n/tournament':
-      specifier: 1.0.7
-      version: 1.0.7
     '@n8n/typeorm':
       specifier: 0.3.20-16
       version: 0.3.20-16
@@ -1456,7 +1453,7 @@ importers:
         specifier: workspace:*
         version: link:../errors
       '@n8n/tournament':
-        specifier: 'catalog:'
+        specifier: workspace:*
         version: link:../tournament
       isolated-vm:
         specifier: ^6.0.2
@@ -4566,7 +4563,7 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/expression-runtime
       '@n8n/tournament':
-        specifier: 'catalog:'
+        specifier: workspace:*
         version: link:../@n8n/tournament
       ast-types:
         specifier: 0.16.1
