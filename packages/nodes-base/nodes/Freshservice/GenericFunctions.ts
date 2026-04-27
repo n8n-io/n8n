@@ -81,6 +81,7 @@ export async function freshserviceApiRequestAllItems(
 ) {
 	const returnData: IDataObject[] = [];
 	qs.page = 1;
+	qs.per_page = 100;
 	let items;
 
 	do {
@@ -90,7 +91,7 @@ export async function freshserviceApiRequestAllItems(
 		if (!items.length) return returnData;
 		returnData.push(...(items as IDataObject[]));
 		qs.page++;
-	} while (items.length >= 30);
+	} while (items.length >= (qs.per_page as number));
 
 	return returnData;
 }
