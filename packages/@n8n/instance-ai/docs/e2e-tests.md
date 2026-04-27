@@ -217,10 +217,11 @@ expectations/instance-ai/should-send-message-and-receive-assistant-response/
 
 ### File Naming
 
-`<timestamp>-<host>-<method>-<path_slugified>-<8char_sha256>.json`
+`<sequence>-<timestamp>-<host>-<method>-<path_slugified>-<8char_sha256>.json`
 
 - `unknown-host` = Anthropic API (CONNECT tunneling hides the real host)
 - `api-staging.n8n.io` = n8n community nodes API
+- `sequence` = zero-padded write order within the recording, used to keep replay deterministic even when multiple matching requests are recorded in the same millisecond
 
 ### Sequential Loading
 

@@ -1,39 +1,19 @@
 import { ref, watch, onUnmounted, type Ref } from 'vue';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
-import type { INodeUi } from '@/Interface';
 import type { useInstanceAiStore } from '../../instanceAi.store';
 import type { TerminalState } from '../workflowSetup.types';
-
-type ServerNode = {
-	id?: string;
-	name?: string;
-	type?: string;
-	typeVersion?: number;
-	position?: [number, number];
-	parameters?: Record<string, unknown>;
-	credentials?: Record<string, { id?: string; name: string }>;
-};
 
 const APPLY_TIMEOUT_MS = 60_000;
 
 export function useWorkflowSetupApply(deps: {
 	requestId: Ref<string>;
-	workflowId: Ref<string>;
 	store: ReturnType<typeof useInstanceAiStore>;
 }): {
 	terminalState: Ref<TerminalState | null>;
 	apply: (nodeCredentials: Record<string, Record<string, string>>) => Promise<void>;
 	defer: () => Promise<void>;
 } {
-	const workflowsStore = useWorkflowsStore();
-	const nodeHelpers = useNodeHelpers();
 	const toast = useToast();
 
 	const terminalState = ref<TerminalState | null>(null);
@@ -96,43 +76,6 @@ export function useWorkflowSetupApply(deps: {
 		return { promise, cancel: cleanup };
 	}
 
-	function applyServerResultToCanvas(result: Record<string, unknown>) {
-		// Guard: only mutate the canvas when the user is actually viewing the
-		// target workflow. If not, the server already persisted the update;
-		// the user sees it on next open. Writing here would misroute the update
-		// (updateNodeProperties finds nodes by name against whatever workflow is
-		// hydrated) and refresh credential issues on the wrong workflow
-		// (useNodeHelpers scopes off workflowsStore.workflowId).
-		if (workflowsStore.workflowId !== deps.workflowId.value) return;
-
-		const updatedNodes = result.updatedNodes;
-		if (!Array.isArray(updatedNodes)) return;
-
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(deps.workflowId.value),
-		);
-
-		for (const raw of updatedNodes as ServerNode[]) {
-			const name = raw.name;
-			if (!name) continue;
-
-			const properties: Partial<Pick<INodeUi, 'credentials' | 'parameters'>> = {};
-			if (raw.credentials !== undefined) {
-				properties.credentials = raw.credentials as INodeUi['credentials'];
-			}
-			if (raw.parameters !== undefined) {
-				properties.parameters = raw.parameters as INodeUi['parameters'];
-			}
-			if (Object.keys(properties).length === 0) continue;
-
-			workflowDocumentStore.updateNodeProperties({
-				name,
-				properties,
-			});
-			nodeHelpers.updateNodeCredentialIssuesByName(name);
-		}
-	}
-
 	async function apply(nodeCredentials: Record<string, Record<string, string>>): Promise<void> {
 		if (terminalState.value === 'applying') return;
 		terminalState.value = 'applying';
@@ -171,7 +114,6 @@ export function useWorkflowSetupApply(deps: {
 		}
 
 		if (result.success === true) {
-			applyServerResultToCanvas(result);
 			terminalState.value = result.partial === true ? 'partial' : 'applied';
 			deps.store.resolveConfirmation(deps.requestId.value, 'approved');
 			return;

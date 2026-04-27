@@ -33,12 +33,14 @@ export interface WorkflowSetupContext {
 	credentialFlow: ComputedRef<InstanceAiCredentialFlow | undefined>;
 	setSelection: (nodeName: string, credType: string, credId: string | null) => void;
 	isCardComplete: (card: WorkflowSetupCard) => boolean;
+	isCredentialTestFailed: (card: WorkflowSetupCard) => boolean;
 	goToStep: (index: number) => void;
 	goToNext: () => void;
 	goToPrev: () => void;
+	goToNextIncomplete: () => void;
 	apply: () => Promise<void>;
-	runPrimaryAction: () => Promise<void>;
 	defer: () => Promise<void>;
+	showContinueButton: ComputedRef<boolean>;
 }
 
 const WorkflowSetupContextKey: InjectionKey<WorkflowSetupContext> = Symbol('WorkflowSetupContext');
@@ -46,7 +48,6 @@ const WorkflowSetupContextKey: InjectionKey<WorkflowSetupContext> = Symbol('Work
 interface ProvideOptions {
 	requestId: Ref<string>;
 	setupRequests: Ref<InstanceAiWorkflowSetupNode[]>;
-	workflowId: Ref<string>;
 	projectId: Ref<string | undefined>;
 	credentialFlow: Ref<InstanceAiCredentialFlow | undefined>;
 }
@@ -57,10 +58,9 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 	const store = useInstanceAiStore();
 
 	const { cards } = useWorkflowSetupCards(opts.setupRequests);
-	const bootstrap = useWorkflowSetupBootstrap();
+	const bootstrap = useWorkflowSetupBootstrap(opts.projectId);
 	const applyMachine = useWorkflowSetupApply({
 		requestId: opts.requestId,
-		workflowId: opts.workflowId,
 		store,
 	});
 
@@ -81,6 +81,9 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		return (
 			card !== undefined && selectionsState.isCardComplete(card) && nextIncompleteIndex.value >= 0
 		);
+	});
+	const showContinueButton = computed(() => {
+		return nextIncompleteIndex.value >= 0;
 	});
 
 	// Track manual navigation so the auto-advance watcher below doesn't
@@ -104,6 +107,12 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		if (currentStepIndex.value > 0) {
 			userNavigated.value = true;
 			currentStepIndex.value--;
+		}
+	}
+
+	function goToNextIncomplete() {
+		if (canAdvanceToNextIncomplete.value) {
+			goToStep(nextIncompleteIndex.value);
 		}
 	}
 
@@ -157,15 +166,6 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		await applyMachine.apply(selectionsState.buildNodeCredentials());
 	}
 
-	async function runPrimaryAction() {
-		if (canAdvanceToNextIncomplete.value) {
-			goToStep(nextIncompleteIndex.value);
-			return;
-		}
-
-		await apply();
-	}
-
 	async function defer() {
 		trackSetupInput();
 		await applyMachine.defer();
@@ -173,8 +173,8 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 
 	onMounted(async () => {
 		await bootstrap.bootstrap();
-		if (opts.setupRequests.value.length > 0 && cards.value.length === 0) {
-			await applyMachine.apply({});
+		if (opts.setupRequests.value.length > 0 && selectionsState.allCardsComplete()) {
+			await applyMachine.apply(selectionsState.buildNodeCredentials());
 		}
 	});
 
@@ -190,12 +190,14 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		credentialFlow,
 		setSelection: selectionsState.setSelection,
 		isCardComplete: selectionsState.isCardComplete,
+		isCredentialTestFailed: selectionsState.isCredentialTestFailed,
 		goToStep,
 		goToNext,
 		goToPrev,
+		goToNextIncomplete,
 		apply,
-		runPrimaryAction,
 		defer,
+		showContinueButton,
 	};
 
 	provide(WorkflowSetupContextKey, context);

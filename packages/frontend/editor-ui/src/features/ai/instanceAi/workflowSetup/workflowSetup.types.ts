@@ -5,7 +5,6 @@ export interface WorkflowSetupCard {
 	credentialType: string;
 	targetNodeName: string;
 	node: InstanceAiWorkflowSetupNode['node'];
-	existingCredentials: Array<{ id: string; name: string }>;
 	currentCredentialId: string | null;
 }
 

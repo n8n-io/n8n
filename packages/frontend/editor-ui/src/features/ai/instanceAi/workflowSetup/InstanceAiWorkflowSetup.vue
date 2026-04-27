@@ -8,7 +8,6 @@ import { provideWorkflowSetupContext } from './composables/useWorkflowSetupConte
 const props = defineProps<{
 	requestId: string;
 	setupRequests: InstanceAiWorkflowSetupNode[];
-	workflowId: string;
 	message: string;
 	projectId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
@@ -17,7 +16,6 @@ const props = defineProps<{
 const ctx = provideWorkflowSetupContext({
 	requestId: toRef(props, 'requestId'),
 	setupRequests: toRef(props, 'setupRequests'),
-	workflowId: toRef(props, 'workflowId'),
 	projectId: toRef(props, 'projectId'),
 	credentialFlow: toRef(props, 'credentialFlow'),
 });

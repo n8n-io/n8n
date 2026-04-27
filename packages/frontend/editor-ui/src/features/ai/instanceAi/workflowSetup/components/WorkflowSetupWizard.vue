@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ConfirmationFooter from '../../components/ConfirmationFooter.vue';
 import WorkflowSetupCard from './WorkflowSetupCard.vue';
@@ -13,6 +13,15 @@ const totalSteps = computed(() => ctx.cards.value.length);
 const showArrows = computed(() => totalSteps.value > 1);
 const isPrevDisabled = computed(() => ctx.currentStepIndex.value === 0);
 const isNextDisabled = computed(() => ctx.currentStepIndex.value >= totalSteps.value - 1);
+const isActiveCardComplete = computed(() =>
+	ctx.activeCard.value ? ctx.isCardComplete(ctx.activeCard.value) : false,
+);
+const isPrimaryActionDisabled = computed(
+	() => ctx.activeCard.value !== undefined && !isActiveCardComplete.value,
+);
+const isPrimaryActionBlockedByCredentialTest = computed(
+	() => ctx.activeCard.value !== undefined && ctx.isCredentialTestFailed(ctx.activeCard.value),
+);
 
 const isFinalize = computed(() => ctx.credentialFlow.value?.stage === 'finalize');
 
@@ -28,11 +37,6 @@ const applyLabel = computed(() =>
 			? 'instanceAi.credential.finalize.applyCredentials'
 			: 'instanceAi.workflowSetup.apply',
 	),
-);
-
-const anySelected = computed(() => ctx.cards.value.some((c) => ctx.isCardComplete(c)));
-const primaryActionLabel = computed(() =>
-	ctx.canAdvanceToNextIncomplete.value ? i18n.baseText('generic.next') : applyLabel.value,
 );
 </script>
 
@@ -77,6 +81,7 @@ const primaryActionLabel = computed(() =>
 
 				<div :class="$style.actions">
 					<N8nButton
+						v-if="!isActiveCardComplete"
 						variant="outline"
 						size="medium"
 						:class="$style.actionButton"
@@ -84,14 +89,34 @@ const primaryActionLabel = computed(() =>
 						data-test-id="instance-ai-workflow-setup-later"
 						@click="ctx.defer"
 					/>
-					<N8nButton
-						size="medium"
-						:class="$style.actionButton"
-						:label="primaryActionLabel"
-						:disabled="!anySelected"
-						data-test-id="instance-ai-workflow-setup-apply"
-						@click="ctx.runPrimaryAction"
-					/>
+					<N8nTooltip
+						v-if="ctx.showContinueButton.value"
+						:disabled="!isPrimaryActionBlockedByCredentialTest"
+						:content="i18n.baseText('instanceAi.workflowSetup.credentialTestFailedTooltip')"
+					>
+						<N8nButton
+							size="medium"
+							:class="$style.actionButton"
+							:label="i18n.baseText('instanceAi.credential.continueButton')"
+							:disabled="isPrimaryActionDisabled"
+							data-test-id="instance-ai-workflow-setup-continue"
+							@click="ctx.goToNextIncomplete"
+						/>
+					</N8nTooltip>
+					<N8nTooltip
+						v-else
+						:disabled="!isPrimaryActionBlockedByCredentialTest"
+						:content="i18n.baseText('instanceAi.workflowSetup.credentialTestFailedTooltip')"
+					>
+						<N8nButton
+							size="medium"
+							:class="$style.actionButton"
+							:label="applyLabel"
+							:disabled="isPrimaryActionDisabled"
+							data-test-id="instance-ai-workflow-setup-apply"
+							@click="ctx.apply"
+						/>
+					</N8nTooltip>
 				</div>
 			</ConfirmationFooter>
 		</template>

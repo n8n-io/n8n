@@ -1,14 +1,26 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { CredentialModal } from './components/CredentialModal';
 import { InstanceAiSidebar } from './components/InstanceAiSidebar';
+import { InstanceAiWorkflowSetup } from './components/InstanceAiWorkflowSetup';
 
 export class InstanceAiPage extends BasePage {
 	readonly sidebar: InstanceAiSidebar;
+	readonly workflowSetup: InstanceAiWorkflowSetup;
+	readonly credentialModal: CredentialModal;
 
 	constructor(page: Page) {
 		super(page);
 		this.sidebar = new InstanceAiSidebar(page.getByTestId('instance-ai-thread-list'));
+		this.workflowSetup = new InstanceAiWorkflowSetup(
+			page
+				.locator(
+					'[data-test-id="instance-ai-workflow-setup"], [data-test-id="instance-ai-workflow-setup-wizard"], [data-test-id="instance-ai-workflow-setup-card"]',
+				)
+				.first(),
+		);
+		this.credentialModal = new CredentialModal(page.getByTestId('editCredential-modal'));
 	}
 
 	async goto(): Promise<void> {

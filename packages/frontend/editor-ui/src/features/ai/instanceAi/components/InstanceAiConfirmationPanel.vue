@@ -294,7 +294,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
-					:workflow-id="chunk.item.toolCall.confirmation.workflowId ?? ''"
 					:message="chunk.item.toolCall.confirmation.message"
 					:project-id="chunk.item.toolCall.confirmation.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"

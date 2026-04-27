@@ -2,7 +2,7 @@ import { ref, type Ref } from 'vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
-export function useWorkflowSetupBootstrap(): {
+export function useWorkflowSetupBootstrap(projectId: Ref<string | undefined>): {
 	isReady: Ref<boolean>;
 	bootstrap: () => Promise<void>;
 } {
@@ -13,9 +13,13 @@ export function useWorkflowSetupBootstrap(): {
 
 	async function bootstrap() {
 		isReady.value = false;
+		const pid = projectId.value;
+		if (!pid) {
+			throw new Error('useWorkflowSetupBootstrap: projectId is required');
+		}
 		try {
 			await Promise.all([
-				credentialsStore.fetchAllCredentials(),
+				credentialsStore.fetchAllCredentialsForWorkflow({ projectId: pid }),
 				credentialsStore.fetchCredentialTypes(false),
 				nodeTypesStore.loadNodeTypesIfNotLoaded(),
 			]);

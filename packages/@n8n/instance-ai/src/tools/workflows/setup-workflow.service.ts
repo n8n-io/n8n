@@ -350,8 +350,10 @@ export async function buildSetupRequests(
 		let needsAction = false;
 		if (credentialType) {
 			const existingOnNode = node.credentials?.[credentialType];
+			const selectedCredentialId =
+				existingOnNode?.id ?? (isAutoApplied ? existingCredentials[0]?.id : undefined);
 			const hasValidCredential =
-				existingOnNode?.id !== undefined &&
+				selectedCredentialId !== undefined &&
 				(credentialTestResult === undefined || credentialTestResult.success);
 			needsAction = !hasValidCredential;
 		}
@@ -775,7 +777,10 @@ export async function analyzeWorkflow(
 		// tested, no parameter issues, not a trigger awaiting testing. Trigger
 		// steps are always kept — triggers require user testing regardless of
 		// credential state.
-		.filter((req) => !!req.needsAction || (req.isTrigger && !!req.isTestable));
+		.filter(
+			(req) =>
+				req.isAutoApplied === true || !!req.needsAction || (req.isTrigger && !!req.isTestable),
+		);
 
 	sortByExecutionOrder(
 		setupRequests,

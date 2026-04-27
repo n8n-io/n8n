@@ -41,9 +41,7 @@ const displayNode = computed<INodeUi>(() => {
 		const { credentials: _drop, ...rest } = props.card.node;
 		return rest as INodeUi;
 	}
-	const cred =
-		props.card.existingCredentials.find((c) => c.id === selectedCredentialId.value) ??
-		credentialsStore.getCredentialById(selectedCredentialId.value);
+	const cred = credentialsStore.getCredentialById(selectedCredentialId.value);
 	return {
 		...props.card.node,
 		credentials: cred ? { [credentialType.value]: { id: cred.id, name: cred.name } } : {},
@@ -52,11 +50,11 @@ const displayNode = computed<INodeUi>(() => {
 
 function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	const data = update.properties.credentials?.[credentialType.value];
-	const credentialId =
-		typeof data === 'object' && data !== null && 'id' in data && typeof data.id === 'string'
-			? data.id
-			: null;
-	ctx.setSelection(props.card.targetNodeName, credentialType.value, credentialId);
+	if (!data) {
+		ctx.setSelection(props.card.targetNodeName, credentialType.value, null);
+		return;
+	}
+	ctx.setSelection(props.card.targetNodeName, credentialType.value, data.id);
 }
 </script>
 
