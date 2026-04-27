@@ -400,7 +400,7 @@ function extractNodesFromTarget(
 	}
 	// Handle IfElseBuilder (fluent API)
 	if (isIfElseBuilder(target)) {
-		const builder = target as IfElseBuilder<unknown>;
+		const builder = target;
 		const nodes: Array<NodeInstance<string, string, unknown>> = [builder.ifNode];
 		nodes.push(...extractNodesFromTarget(builder.trueBranch as BranchTarget));
 		nodes.push(...extractNodesFromTarget(builder.falseBranch as BranchTarget));
@@ -408,7 +408,7 @@ function extractNodesFromTarget(
 	}
 	// Handle SwitchCaseBuilder (fluent API)
 	if (isSwitchCaseBuilder(target)) {
-		const builder = target as SwitchCaseBuilder<unknown>;
+		const builder = target;
 		const nodes: Array<NodeInstance<string, string, unknown>> = [builder.switchNode];
 		for (const caseTarget of builder.caseMapping.values()) {
 			nodes.push(...extractNodesFromTarget(caseTarget as BranchTarget));
@@ -425,10 +425,10 @@ function extractNodesFromTarget(
 			nodes.push(...extractNodesFromTarget(eachBatch as BranchTarget));
 		}
 		if (target._doneTarget !== undefined) {
-			nodes.push(...extractNodesFromTarget(target._doneTarget as BranchTarget));
+			nodes.push(...extractNodesFromTarget(target._doneTarget));
 		}
 		if (target._eachTarget !== undefined) {
-			nodes.push(...extractNodesFromTarget(target._eachTarget as BranchTarget));
+			nodes.push(...extractNodesFromTarget(target._eachTarget));
 		}
 		return nodes;
 	}
