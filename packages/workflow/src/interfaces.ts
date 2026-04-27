@@ -3136,9 +3136,8 @@ export interface WorkflowFEMeta {
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
 	/**
-	 * Set on workflows the AI builder creates so they can be hidden from the
-	 * workflows list while a build is in progress and reaped at run-finish if
-	 * not promoted to the main deliverable. Cleared on the main workflow.
+	 * Legacy marker used to hide AI-builder temporary workflows while a build is
+	 * in progress. New writes use a dedicated marker table.
 	 */
 	aiTemporary?: boolean;
 }

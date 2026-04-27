@@ -63,7 +63,7 @@ function triggerLabel(nodeType: string): string {
 }
 
 /**
- * Clear the `aiTemporary` stamp from the build's main workflow so the
+ * Clear the AI-builder temporary marker from the build's main workflow so the
  * run-finish reap leaves it alone. Best-effort: a failure here means the
  * main workflow gets archived at run-finish, which the user can recover
  * from the archive view.
@@ -78,7 +78,7 @@ async function promoteMainWorkflow(
 		await context.workflowService.clearAiTemporary(workflowId);
 	} catch (error) {
 		logger.warn(
-			`Failed to clear aiTemporary stamp on main workflow ${workflowId}: ${
+			`Failed to clear AI-builder temporary marker on main workflow ${workflowId}: ${
 				error instanceof Error ? error.message : String(error)
 			}`,
 		);

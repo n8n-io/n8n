@@ -163,6 +163,8 @@ import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-Cre
 import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
 import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
 import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
+import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
+import { BackfillAiBuilderTemporaryWorkflows1777281990044 } from '../common/1777281990044-BackfillAiBuilderTemporaryWorkflows';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -331,4 +333,6 @@ export const postgresMigrations: Migration[] = [
 	CreateFavoritesTable1776150756000,
 	CreateDeploymentKeyTable1777000000000,
 	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
+	CreateAiBuilderTemporaryWorkflowTable1777281990043,
+	BackfillAiBuilderTemporaryWorkflows1777281990044,
 ];

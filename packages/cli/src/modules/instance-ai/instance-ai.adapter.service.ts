@@ -39,7 +39,7 @@ import { wrapUntrustedData } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { User, WorkflowEntity, ExecutionSummaries } from '@n8n/db';
+import type { User, ExecutionSummaries } from '@n8n/db';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
@@ -55,9 +55,11 @@ import {
 	LRUCache,
 } from './web-research';
 import {
+	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
+	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
@@ -86,6 +88,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	UnexpectedError,
 	jsonParse,
 } from 'n8n-workflow';
 
@@ -179,6 +182,7 @@ export class InstanceAiAdapterService {
 		private readonly eventService: EventService,
 		private readonly roleService: RoleService,
 		private readonly telemetry: Telemetry,
+		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -263,6 +267,7 @@ export class InstanceAiAdapterService {
 			workflowFinderService,
 			workflowRepository,
 			sharedWorkflowRepository,
+			aiBuilderTemporaryWorkflowRepository,
 			workflowHistoryService,
 			enterpriseWorkflowService,
 			license,
@@ -272,6 +277,14 @@ export class InstanceAiAdapterService {
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 		const redactParameters = !allowSendingParameterValues;
+		const clearLegacyAiTemporaryMeta = async (workflow: WorkflowEntity) => {
+			if (!workflow.meta || workflow.meta.aiTemporary === undefined) return;
+
+			const { aiTemporary: _aiTemporary, ...rest } = workflow.meta;
+			await workflowRepository.update(workflow.id, {
+				meta: Object.keys(rest).length > 0 ? rest : {},
+			});
+		};
 
 		return {
 			async list(options) {
@@ -324,11 +337,15 @@ export class InstanceAiAdapterService {
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:update',
 				]);
-				if (!workflow?.meta?.aiTemporary) return;
-				const { aiTemporary: _aiTemporary, ...rest } = workflow.meta;
-				await workflowRepository.update(workflowId, {
-					meta: Object.keys(rest).length > 0 ? rest : undefined,
-				});
+				if (!workflow) return;
+
+				const isMarked =
+					(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId)) ||
+					workflow.meta?.aiTemporary === true;
+				if (!isMarked) return;
+
+				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+				await clearLegacyAiTemporaryMeta(workflow);
 			},
 
 			async archiveIfAiTemporary(workflowId: string) {
@@ -336,8 +353,21 @@ export class InstanceAiAdapterService {
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:update',
 				]);
-				if (!workflow?.meta?.aiTemporary || workflow.isArchived) return false;
+				if (!workflow) return false;
+
+				const isMarked =
+					(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId)) ||
+					workflow.meta?.aiTemporary === true;
+				if (!isMarked) return false;
+				if (workflow.isArchived) {
+					await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+					await clearLegacyAiTemporaryMeta(workflow);
+					return false;
+				}
+
 				await workflowService.archive(user, workflowId, { skipArchived: true });
+				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+				await clearLegacyAiTemporaryMeta(workflow);
 				return true;
 			},
 
@@ -412,18 +442,25 @@ export class InstanceAiAdapterService {
 					settings,
 					active: false,
 					versionId: randomUUID(),
-					...(options?.markAsAiTemporary ? { meta: { aiTemporary: true } } : {}),
 				} as Partial<WorkflowEntity>);
 
-				const saved = await workflowRepository.save(newWorkflow);
-
-				await sharedWorkflowRepository.save(
-					sharedWorkflowRepository.create({
-						role: 'workflow:owner',
-						projectId,
-						workflow: saved,
-					}),
-				);
+				const saved = await workflowRepository.manager.transaction(async (transactionManager) => {
+					const workflow = await transactionManager.save(WorkflowEntity, newWorkflow);
+					await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
+					if (options?.markAsAiTemporary) {
+						if (!threadId) {
+							throw new UnexpectedError(
+								'Cannot mark AI-builder temporary workflow without a thread ID',
+							);
+						}
+						await aiBuilderTemporaryWorkflowRepository.mark(
+							workflow.id,
+							threadId,
+							transactionManager,
+						);
+					}
+					return workflow;
+				});
 
 				// Now update with actual nodes — this creates the WorkflowHistory entry
 				// needed for activation and publishing.

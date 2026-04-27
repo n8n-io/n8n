@@ -164,14 +164,14 @@ export interface InstanceAiWorkflowService {
 	archive(workflowId: string): Promise<void>;
 	delete(workflowId: string): Promise<void>;
 	/**
-	 * Clear the `meta.aiTemporary` stamp on a workflow — used to promote the
+	 * Clear the AI-builder temporary marker on a workflow — used to promote the
 	 * main deliverable so the run-finish reap leaves it alone.
 	 */
 	clearAiTemporary(workflowId: string): Promise<void>;
 	/**
-	 * Archive the workflow only if it still carries the `meta.aiTemporary`
-	 * stamp. Atomic check-and-archive used by the run-finish reap so a main
-	 * workflow whose stamp was cleared survives even if its id is still in
+	 * Archive the workflow only if it still carries the AI-builder temporary
+	 * marker. Check-and-archive used by the run-finish reap so a main
+	 * workflow whose marker was cleared survives even if its id is still in
 	 * the orchestrator's in-memory created-set.
 	 */
 	archiveIfAiTemporary(workflowId: string): Promise<boolean>;

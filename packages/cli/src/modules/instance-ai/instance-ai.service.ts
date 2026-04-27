@@ -13,7 +13,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UrlService } from '@/services/url.service';
 import {
@@ -214,6 +214,8 @@ export class InstanceAiService {
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly telemetry: Telemetry,
+		private readonly userRepository: UserRepository,
+		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -484,7 +486,17 @@ export class InstanceAiService {
 		// Fast in-memory check — prevents the read-then-write race within a single process.
 		if (this.creditedThreads.has(threadId)) return;
 
-		const thread = await this.threadRepo.findOneBy({ id: threadId });
+		let thread: Awaited<ReturnType<InstanceAiThreadRepository['findOneBy']>>;
+		try {
+			thread = await this.threadRepo.findOneBy({ id: threadId });
+		} catch (error) {
+			this.logger.warn('Failed to check Instance AI credit status', {
+				threadId,
+				runId,
+				error: getErrorMessage(error),
+			});
+			return;
+		}
 		if (!thread) return;
 		if (thread.metadata?.creditCounted) {
 			this.creditedThreads.add(threadId); // Sync in-memory with DB state
@@ -1105,6 +1117,7 @@ export class InstanceAiService {
 		this.threadPushRef.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
 		await this.destroySandbox(threadId);
+		await this.reapAiTemporaryForThreadCleanup(threadId);
 		this.eventBus.clearThread(threadId);
 	}
 
@@ -2512,13 +2525,12 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Archive any workflow the agent created during this run that still
-	 * carries the `meta.aiTemporary` stamp. The orchestrator clears the stamp
-	 * on the main deliverable before run-finish, so anything still stamped is
-	 * a stepping-stone — chunk, scratch, or sub-workflow the user never sees
-	 * in the workflows list (the default list query filters stamped rows
-	 * out). Soft delete: a mistaken reap is recoverable from the archive
-	 * view.
+	 * Archive any workflow the agent created for this thread that still carries
+	 * the AI-builder temporary marker. The orchestrator clears the marker on the
+	 * main deliverable before run-finish, so anything still marked is a
+	 * stepping-stone — chunk, scratch, or sub-workflow the user never sees in
+	 * the workflows list. Soft delete: a mistaken reap is recoverable from the
+	 * archive view.
 	 *
 	 * Best-effort. Individual archive failures are logged but do not block
 	 * the run-finish emit.
@@ -2528,15 +2540,29 @@ export class InstanceAiService {
 		user: User,
 		createdWorkflowIds: Set<string> | undefined,
 	): Promise<string[]> {
-		if (!createdWorkflowIds || createdWorkflowIds.size === 0) return [];
+		const markedWorkflows = await this.aiBuilderTemporaryWorkflowRepository.findByThread(threadId);
+		const workflowIds = new Set([
+			...markedWorkflows.map(({ workflowId }) => workflowId),
+			...(createdWorkflowIds ?? []),
+		]);
+		if (workflowIds.size === 0) return [];
+
+		return await this.archiveAiTemporaryWorkflows(threadId, user, workflowIds);
+	}
+
+	private async archiveAiTemporaryWorkflows(
+		threadId: string,
+		user: User,
+		workflowIds: Set<string>,
+	): Promise<string[]> {
 		const adapter = this.adapterService.createContext(user, { threadId });
 		const archived: string[] = [];
-		for (const workflowId of createdWorkflowIds) {
+		for (const workflowId of workflowIds) {
 			try {
 				const didArchive = await adapter.workflowService.archiveIfAiTemporary(workflowId);
 				if (didArchive) archived.push(workflowId);
 			} catch (error) {
-				this.logger.warn('Failed to reap aiTemporary workflow', {
+				this.logger.warn('Failed to reap AI-builder temporary workflow', {
 					threadId,
 					workflowId,
 					error: getErrorMessage(error),
@@ -2544,6 +2570,67 @@ export class InstanceAiService {
 			}
 		}
 		return archived;
+	}
+
+	private async reapAiTemporaryForThreadCleanup(threadId: string): Promise<void> {
+		let markedWorkflows: Array<{ workflowId: string }>;
+		try {
+			markedWorkflows = await this.aiBuilderTemporaryWorkflowRepository.findByThread(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to inspect AI-builder temporary workflows during thread cleanup', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+			return;
+		}
+
+		if (markedWorkflows.length === 0) return;
+
+		let thread: Awaited<ReturnType<InstanceAiThreadRepository['findOneBy']>>;
+		try {
+			thread = await this.threadRepo.findOneBy({ id: threadId });
+		} catch (error) {
+			this.logger.warn('Failed to load thread owner for AI-builder temporary workflow cleanup', {
+				threadId,
+				markedWorkflowCount: markedWorkflows.length,
+				error: getErrorMessage(error),
+			});
+			return;
+		}
+		if (!thread?.resourceId) {
+			this.logger.warn('Skipping AI-builder temporary workflow cleanup for thread without owner', {
+				threadId,
+				markedWorkflowCount: markedWorkflows.length,
+			});
+			return;
+		}
+
+		let user: User | null;
+		try {
+			user = await this.userRepository.findOneBy({ id: thread.resourceId });
+		} catch (error) {
+			this.logger.warn('Failed to load user for AI-builder temporary workflow cleanup', {
+				threadId,
+				userId: thread.resourceId,
+				markedWorkflowCount: markedWorkflows.length,
+				error: getErrorMessage(error),
+			});
+			return;
+		}
+		if (!user) {
+			this.logger.warn('Skipping AI-builder temporary workflow cleanup for missing thread owner', {
+				threadId,
+				userId: thread.resourceId,
+				markedWorkflowCount: markedWorkflows.length,
+			});
+			return;
+		}
+
+		await this.archiveAiTemporaryWorkflows(
+			threadId,
+			user,
+			new Set(markedWorkflows.map(({ workflowId }) => workflowId)),
+		);
 	}
 
 	private publishRunFinish(

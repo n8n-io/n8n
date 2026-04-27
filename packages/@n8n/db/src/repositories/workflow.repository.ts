@@ -18,6 +18,7 @@ import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
+	AiBuilderTemporaryWorkflow,
 	TagEntity,
 	WorkflowEntity,
 	WorkflowTagMapping,
@@ -882,16 +883,26 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyParentFolderFilter(qb, filter);
 		this.applyNodeTypesFilter(qb, filter);
 		this.applyAvailableInMCPFilter(qb, filter);
-		this.applyAiTemporaryFilter(qb);
+		this.applyAiBuilderTemporaryFilter(qb);
 	}
 
 	/**
-	 * Hide workflows the AI builder created and hasn't yet promoted to the
-	 * main deliverable. The orchestrator clears the stamp on the main at
-	 * build-time and reaps the rest at run-finish — but in the window between
-	 * create and reap, stamped rows must not surface in the workflows list.
+	 * Hide workflows the AI builder created and has not yet promoted to the
+	 * main deliverable. The orchestrator clears the marker on the main at
+	 * build-time and reaps the rest at run-finish, but in the window between
+	 * create and reap, marked rows must not surface in the workflows list.
 	 */
-	private applyAiTemporaryFilter(qb: SelectQueryBuilder<WorkflowEntity>): void {
+	private applyAiBuilderTemporaryFilter(qb: SelectQueryBuilder<WorkflowEntity>): void {
+		const markerSubquery = qb
+			.subQuery()
+			.select('1')
+			.from(AiBuilderTemporaryWorkflow, 'aitw')
+			.where('aitw."workflowId" = workflow.id')
+			.getQuery();
+		qb.andWhere(`NOT EXISTS ${markerSubquery}`);
+
+		// Compatibility path for rolling deploys: old code can still write the
+		// legacy JSON flag until every process has crossed this migration.
 		const dbType = this.globalConfig.database.type;
 		if (dbType === 'postgresdb') {
 			qb.andWhere(
