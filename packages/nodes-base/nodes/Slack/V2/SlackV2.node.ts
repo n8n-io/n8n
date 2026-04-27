@@ -629,8 +629,8 @@ export class SlackV2 implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.members
 					if (operation === 'member') {
-						const returnAll = this.getNodeParameter('returnAll', 0);
-						const resolveData = this.getNodeParameter('resolveData', 0);
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const resolveData = this.getNodeParameter('resolveData', i);
 						qs.channel = this.getNodeParameter(
 							'channelId',
 							i,
