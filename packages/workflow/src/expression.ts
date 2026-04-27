@@ -1,5 +1,5 @@
 import { ApplicationError } from '@n8n/errors';
-import type { IExpressionEvaluator } from '@n8n/expression-runtime';
+import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
 import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
@@ -250,6 +250,7 @@ export class Expression {
 		bridgeMemoryLimit: number;
 		poolSize: number;
 		maxCodeCacheSize: number;
+		observability?: ObservabilityProvider;
 		idleTimeoutMs?: number;
 	}): Promise<void> {
 		if (options.engine !== 'vm' || IS_FRONTEND) return;
@@ -273,6 +274,7 @@ export class Expression {
 					after: [PrototypeSanitizer, DollarSignValidator],
 				},
 				logger: LoggerProxy,
+				observability: options.observability,
 			});
 			await this.vmEvaluator.initialize();
 		}
