@@ -252,7 +252,7 @@ export const useWorkflowSetupState = (
 	};
 
 	const hasTriggerExecutedSuccessfully = (nodeName: string): boolean => {
-		const runData = workflowsStore.getWorkflowResultDataByNodeName(nodeName);
+		const runData = workflowDocumentStore.value.getExecutionRunDataByNodeName(nodeName);
 		return runData !== null && runData.length > 0;
 	};
 

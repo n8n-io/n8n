@@ -55,7 +55,7 @@ export function useTriggerExecution(
 		return (
 			nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE &&
 			logsStore.isOpen &&
-			workflowsStore.chatPartialExecutionDestinationNode === nodeValue.value?.name
+			workflowDocumentStore.value.chatPartialExecutionDestinationNode === nodeValue.value?.name
 		);
 	});
 

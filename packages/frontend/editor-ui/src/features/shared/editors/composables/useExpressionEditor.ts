@@ -45,12 +45,12 @@ import { EditorView, type ViewUpdate } from '@codemirror/view';
 import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAutocompleteTelemetry } from '@/app/composables/useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import { TARGET_NODE_PARAMETER_FACET } from '../plugins/codemirror/completions/constants';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { isEventTargetContainedBy } from '@/app/utils/htmlUtils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export const useExpressionEditor = ({
 	editorRef,
@@ -76,7 +76,7 @@ export const useExpressionEditor = ({
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
 	const ndvStore = useNDVStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const { isMacOs } = useDeviceSupport();
 	const i18n = useI18n();
@@ -385,7 +385,7 @@ export const useExpressionEditor = ({
 			}
 		} catch (error) {
 			const hasRunData =
-				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
+				!!workflowDocumentStore?.value?.execution?.data?.resultData?.runData[
 					ndvStore.activeNode?.name ?? ''
 				];
 			result.resolved = `[${getExpressionErrorMessage(error, hasRunData)}]`;
@@ -490,7 +490,10 @@ export const useExpressionEditor = ({
 	});
 
 	watch(
-		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
+		[
+			() => workflowDocumentStore?.value?.execution,
+			() => workflowDocumentStore?.value?.executionRunData,
+		],
 		debouncedUpdateSegments,
 	);
 

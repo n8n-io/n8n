@@ -106,7 +106,7 @@ export async function resolveParameter<T = IDataObject>(
 		workflowDocumentStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
-		workflowsStore.workflowExecutionData,
+		workflowDocumentStore.execution,
 		workflowDocumentStore.getPinDataSnapshot(),
 		opts,
 	);
@@ -401,7 +401,7 @@ export function executeData(
 		inputName,
 		runIndex,
 		workflowDocumentStore.getPinDataSnapshot(),
-		workflowsStore.getWorkflowRunData,
+		workflowDocumentStore.executionRunData,
 		parentRunIndex,
 	);
 }

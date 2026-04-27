@@ -1366,7 +1366,7 @@ describe('RunData', () => {
 					workflow: {
 						workflowNodes,
 					},
-					workflowExecutionData: {
+					execution: {
 						id: '1',
 						finished: true,
 						mode: 'trigger',

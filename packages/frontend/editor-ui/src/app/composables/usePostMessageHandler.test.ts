@@ -93,7 +93,7 @@ vi.mock('vue-router', async (importOriginal) => {
 
 function createMockWorkflowState(): WorkflowState {
 	return {
-		setWorkflowExecutionData: vi.fn(),
+		setExecution: vi.fn(),
 	} as unknown as WorkflowState;
 }
 
@@ -462,7 +462,7 @@ describe('usePostMessageHandler', () => {
 				expect(mockImportWorkflowExact).toHaveBeenCalled();
 			});
 
-			expect(workflowState.setWorkflowExecutionData).toHaveBeenCalledWith(mockExecutionData);
+			expect(workflowState.setExecution).toHaveBeenCalledWith(mockExecutionData);
 			expect(mockSetPinData).toHaveBeenCalledWith({});
 
 			cleanup();

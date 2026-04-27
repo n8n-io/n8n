@@ -9,6 +9,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INode } from 'n8n-workflow';
 import * as useRunWorkflowModule from '@/app/composables/useRunWorkflow';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { attachWorkflowExecutionToDocumentStore } from '@/__tests__/utils';
 
 vi.mock('@/app/composables/useRunWorkflow');
 vi.mock('@/app/stores/pushConnection.store', () => ({
@@ -31,7 +36,7 @@ vi.mock('@/app/composables/useWorkflowHelpers', async (importOriginal) => {
 });
 vi.mock('@/app/composables/useWorkflowState', () => ({
 	injectWorkflowState: vi.fn(() => ({
-		setWorkflowExecutionData: vi.fn(),
+		setExecution: vi.fn(),
 		setActiveExecutionId: vi.fn(),
 	})),
 }));
@@ -64,7 +69,9 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 describe('useChatState', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowsStore: ReturnType<typeof useWorkflowsStore> & {
+		chatPartialExecutionDestinationNode: string | null;
+	};
 	let logsStore: ReturnType<typeof useLogsStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let mockRunWorkflow: Mock;
@@ -163,7 +170,10 @@ describe('useChatState', () => {
 			},
 		});
 		setActivePinia(pinia);
-		workflowsStore = useWorkflowsStore();
+		workflowsStore = attachWorkflowExecutionToDocumentStore(
+			useWorkflowsStore(),
+			useWorkflowDocumentStore(createWorkflowDocumentId('workflow-123')),
+		);
 		logsStore = useLogsStore();
 		const rootStore = useRootStore();
 		nodeTypesStore = useNodeTypesStore();

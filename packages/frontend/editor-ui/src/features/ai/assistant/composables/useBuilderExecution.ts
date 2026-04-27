@@ -45,8 +45,10 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		!isReady.value ? i18n.baseText('aiAssistant.builder.executeMessage.validationTooltip') : '',
 	);
 
-	const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
-	const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+	const isWorkflowRunning = computed(() => workflowDocumentStore.value.isWorkflowRunning);
+	const isExecutionWaitingForWebhook = computed(
+		() => workflowDocumentStore.value.executionWaitingForWebhook,
+	);
 
 	// --- Execution watcher ---
 	let executionWatcherStop: (() => void) | undefined;
@@ -62,7 +64,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		stopExecutionWatcher();
 
 		executionWatcherStop = watch(
-			() => workflowsStore.workflowExecutionData?.status,
+			() => workflowDocumentStore.value.execution?.status,
 			async (status) => {
 				await nextTick();
 				if (!status || RUNNING_STATES.includes(status)) return;
@@ -83,7 +85,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 		if (!isReady.value) return false;
 
 		const selectedTriggerNode =
-			workflowsStore.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
+			workflowDocumentStore.value.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
 		const selectedTriggerNodeType = selectedTriggerNode
 			? workflowDocumentStore.value?.getNodeByName(selectedTriggerNode)
 			: null;

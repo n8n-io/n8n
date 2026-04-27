@@ -20,6 +20,10 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -28,6 +32,16 @@ const opts = {
 	workflowState: mock<WorkflowState>(),
 	router: mock<Router>(),
 };
+
+function createWorkflowDocumentStoreForTest(
+	workflowId: string,
+	activeExecutionId: string | null | undefined = '123',
+) {
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+	workflowDocumentStore.name = 'Test Workflow';
+	workflowDocumentStore.activeExecutionId = activeExecutionId;
+	return workflowDocumentStore;
+}
 
 const mockShowMessage = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
@@ -273,11 +287,9 @@ describe('executionFinished', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
-
-			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -290,6 +302,7 @@ describe('executionFinished', () => {
 			);
 
 			const workflowState = mock<WorkflowState>({
+				getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
 				executingNode: {
 					lastAddedExecutingNode: null,
 				},
@@ -317,11 +330,9 @@ describe('executionFinished', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
-
-			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -331,6 +342,7 @@ describe('executionFinished', () => {
 			const trackExecuteAiWorkflow = vi.spyOn(readyToRunStore, 'trackExecuteAiWorkflow');
 
 			const workflowState = mock<WorkflowState>({
+				getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
 				executingNode: {
 					lastAddedExecutingNode: null,
 				},
@@ -358,11 +370,9 @@ describe('executionFinished', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
-
-			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -375,6 +385,7 @@ describe('executionFinished', () => {
 			);
 
 			const workflowState = mock<WorkflowState>({
+				getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
 				executingNode: {
 					lastAddedExecutingNode: null,
 				},
@@ -402,11 +413,9 @@ describe('executionFinished', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
-
-			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -416,6 +425,7 @@ describe('executionFinished', () => {
 			const trackExecuteAiWorkflow = vi.spyOn(readyToRunStore, 'trackExecuteAiWorkflow');
 
 			const workflowState = mock<WorkflowState>({
+				getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
 				executingNode: {
 					lastAddedExecutingNode: null,
 				},
@@ -443,11 +453,9 @@ describe('executionFinished', () => {
 			const pinia = createTestingPinia();
 			setActivePinia(pinia);
 
-			const workflowsStore = useWorkflowsStore();
 			const workflowsListStore = useWorkflowsListStore();
 			const readyToRunStore = useReadyToRunStore();
-
-			vi.spyOn(workflowsStore, 'activeExecutionId', 'get').mockReturnValue('123');
+			const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 				id: '1',
 				name: 'Test Workflow',
@@ -461,6 +469,7 @@ describe('executionFinished', () => {
 			const trackExecuteAiWorkflow = vi.spyOn(readyToRunStore, 'trackExecuteAiWorkflow');
 
 			const workflowState = mock<WorkflowState>({
+				getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
 				executingNode: {
 					lastAddedExecutingNode: null,
 				},
@@ -487,22 +496,14 @@ describe('executionFinished', () => {
 	});
 
 	it('should return early and clear active execution when fetchExecutionData returns undefined', async () => {
-		const pinia = createTestingPinia({
-			initialState: {
-				workflows: {
-					activeExecutionId: '123',
-				},
-			},
-		});
+		const pinia = createTestingPinia();
 
 		setActivePinia(pinia);
 
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		const workflowsListStore = mockedStore(useWorkflowsListStore);
 		const uiStore = mockedStore(useUIStore);
-
-		// Set activeExecutionId directly on the store
-		workflowsStore.activeExecutionId = '123';
+		const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 
 		// Mock getWorkflowById to return a workflow
 		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
@@ -519,6 +520,7 @@ describe('executionFinished', () => {
 		const setProcessingExecutionResultsSpy = vi.spyOn(uiStore, 'setProcessingExecutionResults');
 
 		const workflowState = mock<WorkflowState>({
+			getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
 			executingNode: {
 				lastAddedExecutingNode: 'test-node',
 			},
@@ -550,20 +552,13 @@ describe('executionFinished', () => {
 	});
 
 	it('should clear executing node queue even when fetchExecutionData returns undefined', async () => {
-		const pinia = createTestingPinia({
-			initialState: {
-				workflows: {
-					activeExecutionId: '123',
-				},
-			},
-		});
+		const pinia = createTestingPinia();
 
 		setActivePinia(pinia);
 
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		const workflowsListStore = mockedStore(useWorkflowsListStore);
-
-		workflowsStore.activeExecutionId = '123';
+		const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 
 		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
 			id: '1',
@@ -579,6 +574,7 @@ describe('executionFinished', () => {
 
 		const clearNodeExecutionQueue = vi.fn();
 		const workflowState = mock<WorkflowState>({
+			getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
 			executingNode: {
 				lastAddedExecutingNode: 'LastNode',
 				clearNodeExecutionQueue,
@@ -610,12 +606,11 @@ describe('executionFinished', () => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		// In iframe preview after resetWorkspace, activeExecutionId can be undefined
-		workflowsStore.activeExecutionId = undefined;
+		const workflowDocumentStore = createWorkflowDocumentStoreForTest('1', undefined);
 
 		const clearNodeExecutionQueue = vi.fn();
 		const workflowState = mock<WorkflowState>({
+			getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
 			executingNode: {
 				lastAddedExecutingNode: 'LastNode',
 				clearNodeExecutionQueue,
@@ -696,10 +691,12 @@ describe('manual execution stats tracking', () => {
 			setActivePinia(pinia);
 
 			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflow.id = '1';
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 
 			const nodeName = 'Send Telegram';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowDocumentStore, 'execution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -710,7 +707,7 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
+			vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 				mock<INodeUi>({ type: 'n8n-nodes-base.telegram', typeVersion: 1 }),
 			);
 
@@ -726,10 +723,12 @@ describe('manual execution stats tracking', () => {
 			setActivePinia(pinia);
 
 			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflow.id = '1';
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowDocumentStore, 'execution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -738,7 +737,7 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
+			vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
 			);
 
@@ -754,10 +753,12 @@ describe('manual execution stats tracking', () => {
 			setActivePinia(pinia);
 
 			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflow.id = '1';
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const workflowDocumentStore = createWorkflowDocumentStoreForTest('1');
 
 			const nodeName = 'Send a text message';
-			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+			vi.spyOn(workflowDocumentStore, 'execution', 'get').mockReturnValue({
 				executedNode: nodeName,
 				data: {
 					resultData: {
@@ -766,7 +767,7 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
+			vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
 				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
 			);
 

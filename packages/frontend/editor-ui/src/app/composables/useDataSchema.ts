@@ -180,15 +180,18 @@ export function useDataSchema() {
 		runIndex = 0,
 		outputIndex = 0,
 	): INodeExecutionData[] {
-		const { getWorkflowExecution } = useWorkflowsStore();
+		const workflowsStore = useWorkflowsStore();
+		const { execution } = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 		if (node === null) {
 			return [];
 		}
 
-		if (getWorkflowExecution === null) {
+		if (execution === null) {
 			return [];
 		}
-		const executionData = getWorkflowExecution.data;
+		const executionData = execution.data;
 		if (!executionData?.resultData) {
 			// unknown status
 			return [];

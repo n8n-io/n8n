@@ -68,7 +68,7 @@ export function useChatState(
 	// Use provided sessionId or fall back to logsStore sessionId
 	const effectiveSessionId = computed(() => toValue(sessionId) ?? currentSessionId.value);
 
-	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
+	const previousChatMessages = computed(() => workflowDocumentStore.value.getPastChatMessages);
 	const chatTriggerNode = computed(
 		() => workflowDocumentStore.value.allNodes.find(isChatNode) ?? null,
 	);
@@ -201,7 +201,7 @@ export function useChatState(
 			}
 
 			// Clear any existing execution to allow fresh webhook registration
-			workflowState.setWorkflowExecutionData(null);
+			workflowState.setExecution(null);
 			workflowState.setActiveExecutionId(undefined);
 
 			// Use the useRunWorkflow composable to properly register the webhook
@@ -212,13 +212,13 @@ export function useChatState(
 				sessionId: effectiveSessionId.value,
 			};
 
-			if (workflowsStore.chatPartialExecutionDestinationNode) {
+			if (workflowDocumentStore.value.chatPartialExecutionDestinationNode) {
 				runWorkflowOptions.destinationNode = {
-					nodeName: workflowsStore.chatPartialExecutionDestinationNode,
+					nodeName: workflowDocumentStore.value.chatPartialExecutionDestinationNode,
 					mode: 'inclusive',
 				};
 				// Clear after use so subsequent messages run full workflow
-				workflowsStore.chatPartialExecutionDestinationNode = null;
+				workflowDocumentStore.value.setChatPartialExecutionDestinationNode(null);
 			}
 
 			const response = await runWorkflow(runWorkflowOptions);
@@ -326,19 +326,19 @@ export function useChatState(
 
 	const restoredChatMessages = computed(() =>
 		restoreChatHistory(
-			workflowsStore.workflowExecutionData,
+			workflowDocumentStore.value.execution,
 			locale.baseText('chat.window.chat.response.empty'),
 			locale.baseText('chat.window.chat.response.redacted'),
 		),
 	);
 
 	function refreshSession() {
-		workflowState.setWorkflowExecutionData(null);
+		workflowState.setExecution(null);
 		nodeHelpers.updateNodesExecutionIssues();
 		logsStore.resetChatSessionId();
 		logsStore.resetMessages();
 		// Clear partial execution destination to allow full workflow execution
-		workflowsStore.chatPartialExecutionDestinationNode = null;
+		workflowDocumentStore.value.setChatPartialExecutionDestinationNode(null);
 
 		if (logsStore.isOpen) {
 			chatEventBus.emit('focusInput');

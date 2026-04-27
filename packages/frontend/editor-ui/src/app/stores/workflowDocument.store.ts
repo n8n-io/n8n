@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia, type StoreGeneric } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { inject } from 'vue';
+import { computed, inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -28,6 +28,7 @@ import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
+import { useWorkflowDocumentExecution } from './workflowDocument/useWorkflowDocumentExecution';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -76,6 +77,7 @@ type MetaReturn = ReturnType<typeof useWorkflowDocumentMeta>;
 type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
 type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
+type ExecutionReturn = ReturnType<typeof useWorkflowDocumentExecution>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -98,6 +100,14 @@ void (0 as unknown as [
 	AssertNoOverlap<NodeMetadataReturn, PinDataReturn>,
 	AssertNoOverlap<NodeMetadataReturn, MetaReturn>,
 	AssertNoOverlap<NodeMetadataReturn, SettingsReturn>,
+	AssertNoOverlap<ExecutionReturn, NodesReturn>,
+	AssertNoOverlap<ExecutionReturn, ConnectionsReturn>,
+	AssertNoOverlap<ExecutionReturn, GraphReturn>,
+	AssertNoOverlap<ExecutionReturn, ExpressionReturn>,
+	AssertNoOverlap<ExecutionReturn, MetaReturn>,
+	AssertNoOverlap<ExecutionReturn, PinDataReturn>,
+	AssertNoOverlap<ExecutionReturn, SettingsReturn>,
+	AssertNoOverlap<ExecutionReturn, NodeMetadataReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -179,6 +189,12 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			});
 		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
 		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
+		const workflowDocumentExecution = useWorkflowDocumentExecution({
+			workflowId,
+			workflowTriggerNodes: computed(() => workflowsStore.workflowTriggerNodes),
+			getNodeById: (nodeId) => workflowDocumentNodes.getNodeById(nodeId),
+			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
+		});
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
@@ -271,6 +287,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentConnections.setConnections({});
 			workflowDocumentPinData.setPinData({});
 			workflowDocumentViewport.setViewport(null);
+			workflowDocumentExecution.resetExecutionState();
 
 			workflowDocumentWorkflowObject.initWorkflowObject({
 				id: workflowId,
@@ -322,6 +339,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
+			...workflowDocumentExecution,
 			removeAllNodes,
 			hydrate,
 			reset,

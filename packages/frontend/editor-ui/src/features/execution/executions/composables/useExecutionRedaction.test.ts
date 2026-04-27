@@ -32,7 +32,7 @@ describe('useExecutionRedaction()', () => {
 
 	describe('computed properties', () => {
 		it('should return isRedacted=false when no execution', () => {
-			workflowsStore.getWorkflowExecution = null;
+			workflowsStore.execution = null;
 			const { isRedacted, canReveal, isDynamicCredentials } = useExecutionRedaction();
 
 			expect(isRedacted.value).toBe(false);
@@ -41,7 +41,7 @@ describe('useExecutionRedaction()', () => {
 		});
 
 		it('should return isRedacted=true when redactionInfo.isRedacted is true', () => {
-			workflowsStore.getWorkflowExecution = {
+			workflowsStore.execution = {
 				data: {
 					redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
 				},
@@ -55,7 +55,7 @@ describe('useExecutionRedaction()', () => {
 		});
 
 		it('should detect dynamic credentials reason', () => {
-			workflowsStore.getWorkflowExecution = {
+			workflowsStore.execution = {
 				data: {
 					redactionInfo: {
 						isRedacted: true,
@@ -74,7 +74,7 @@ describe('useExecutionRedaction()', () => {
 
 	describe('revealData', () => {
 		it('should not fetch when user cancels confirmation', async () => {
-			workflowsStore.getWorkflowExecution = {
+			workflowsStore.execution = {
 				id: 'exec-123',
 				data: {
 					redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
@@ -91,7 +91,7 @@ describe('useExecutionRedaction()', () => {
 
 		it('should fetch with redactExecutionData=false on confirm', async () => {
 			const revealedData = { resultData: { runData: { Node: [] } } };
-			workflowsStore.getWorkflowExecution = {
+			workflowsStore.execution = {
 				id: 'exec-123',
 				data: {
 					redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
@@ -109,11 +109,11 @@ describe('useExecutionRedaction()', () => {
 			expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledWith('exec-123', {
 				redactExecutionData: false,
 			});
-			expect(workflowsStore.setWorkflowExecutionRunData).toHaveBeenCalledWith(revealedData);
+			expect(workflowsStore.setExecutionRunData).toHaveBeenCalledWith(revealedData);
 		});
 
 		it('should show error toast when fetch fails', async () => {
-			workflowsStore.getWorkflowExecution = {
+			workflowsStore.execution = {
 				id: 'exec-123',
 				data: {
 					redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
@@ -131,7 +131,7 @@ describe('useExecutionRedaction()', () => {
 		});
 
 		it('should not fetch when execution id is missing', async () => {
-			workflowsStore.getWorkflowExecution = {
+			workflowsStore.execution = {
 				data: {
 					redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
 				},

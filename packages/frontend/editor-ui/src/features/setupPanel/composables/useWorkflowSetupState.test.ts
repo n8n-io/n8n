@@ -130,7 +130,7 @@ describe('useWorkflowSetupState', () => {
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
 		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue([]);
 		nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
-		workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+		workflowsStore.getExecutionRunDataByNodeName = vi.fn().mockReturnValue(null);
 
 		mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
 		mockWorkflowDocumentStore.allNodes = [];
@@ -456,7 +456,7 @@ describe('useWorkflowSetupState', () => {
 				displayName: 'Slack API',
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			workflowsStore.getExecutionRunDataByNodeName = vi.fn().mockReturnValue(null);
 
 			const { credentialTypeStates } = useWorkflowSetupState();
 
@@ -480,7 +480,7 @@ describe('useWorkflowSetupState', () => {
 				displayName: 'Slack API',
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
+			workflowsStore.getExecutionRunDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
 
 			const { credentialTypeStates } = useWorkflowSetupState();
 
@@ -561,7 +561,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
+			workflowsStore.getExecutionRunDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -581,7 +581,7 @@ describe('useWorkflowSetupState', () => {
 				displayName: 'Slack API',
 			});
 			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			workflowsStore.getExecutionRunDataByNodeName = vi.fn().mockReturnValue(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -596,7 +596,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			workflowsStore.getExecutionRunDataByNodeName = vi.fn().mockReturnValue(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -611,7 +611,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({});
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			workflowsStore.getExecutionRunDataByNodeName = vi.fn().mockReturnValue(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -626,7 +626,7 @@ describe('useWorkflowSetupState', () => {
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ polling: true });
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			workflowsStore.getExecutionRunDataByNodeName = vi.fn().mockReturnValue(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -643,7 +643,7 @@ describe('useWorkflowSetupState', () => {
 			nodeTypesStore.getNodeType = vi
 				.fn()
 				.mockReturnValue({ triggerPanel: { header: 'Listening' } });
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			workflowsStore.getExecutionRunDataByNodeName = vi.fn().mockReturnValue(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
@@ -1061,7 +1061,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
-			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+			workflowsStore.getExecutionRunDataByNodeName = vi.fn().mockReturnValue(null);
 
 			const { isAllComplete } = useWorkflowSetupState();
 

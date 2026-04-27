@@ -145,8 +145,10 @@ export function useNodeExecution(
 	const isWebhookNode = computed(() => nodeType.value?.name === WEBHOOK_NODE_TYPE);
 
 	const isNodeRunning = computed(() => {
-		if (!workflowsStore.isWorkflowRunning || codeGenerationInProgress.value) return false;
-		const triggeredNode = workflowsStore.executedNode;
+		if (!workflowDocumentStore.value.isWorkflowRunning || codeGenerationInProgress.value) {
+			return false;
+		}
+		const triggeredNode = workflowDocumentStore.value.executedNode;
 		return (
 			workflowState.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
 			triggeredNode === nodeRef.value?.name
@@ -154,8 +156,8 @@ export function useNodeExecution(
 	});
 
 	const isListening = computed(() => {
-		const waitingOnWebhook = workflowsStore.executionWaitingForWebhook;
-		const executedNode = workflowsStore.executedNode;
+		const waitingOnWebhook = workflowDocumentStore.value.executionWaitingForWebhook;
+		const executedNode = workflowDocumentStore.value.executedNode;
 
 		return (
 			!!nodeRef.value &&
@@ -204,7 +206,7 @@ export function useNodeExecution(
 			return i18n.baseText('ndv.execute.requiredFieldsMissing');
 		}
 
-		if (workflowsStore.isWorkflowRunning && !isNodeRunning.value) {
+		if (workflowDocumentStore.value.isWorkflowRunning && !isNodeRunning.value) {
 			return i18n.baseText('ndv.execute.workflowAlreadyRunning');
 		}
 

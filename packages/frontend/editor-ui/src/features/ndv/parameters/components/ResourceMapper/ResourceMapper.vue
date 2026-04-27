@@ -29,6 +29,7 @@ import { i18n as locale } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import isEqual from 'lodash/isEqual';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ParameterInputFull from '../ParameterInputFull.vue';
@@ -49,6 +50,7 @@ type Props = {
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const projectsStore = useProjectsStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -138,7 +140,7 @@ async function checkStaleFields(): Promise<void> {
 
 // Reload fields to map when node is executed
 watch(
-	() => workflowsStore.getWorkflowExecution,
+	() => workflowDocumentStore?.value?.execution,
 	async (data) => {
 		if (
 			data &&

@@ -304,9 +304,9 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 					size="medium"
 					:trigger-nodes="availableTriggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+					:selected-trigger-node-name="workflowDocumentStore.selectedTriggerNodeName"
 					@execute="onExecute"
-					@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
+					@select-trigger-node="workflowDocumentStore.setSelectedTriggerNodeName"
 				/>
 			</N8nTooltip>
 

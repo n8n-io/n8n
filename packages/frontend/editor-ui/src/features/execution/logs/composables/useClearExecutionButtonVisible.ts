@@ -1,5 +1,9 @@
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useRoute } from 'vue-router';
@@ -9,8 +13,11 @@ export function useClearExecutionButtonVisible() {
 	const route = useRoute();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
-	const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+	const execution = computed(() => workflowDocumentStore.value.execution);
+	const isWorkflowRunning = computed(() => workflowDocumentStore.value.isWorkflowRunning);
 	const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 	const { editableWorkflow } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
@@ -27,6 +34,6 @@ export function useClearExecutionButtonVisible() {
 			!isReadOnlyEnvironment.value &&
 			!isWorkflowRunning.value &&
 			!allTriggerNodesDisabled.value &&
-			!!workflowExecutionData.value,
+			!!execution.value,
 	);
 }

@@ -24,7 +24,7 @@ const workflowTodosRef = ref<Array<{ node: string; type: string; value: string |
 const executionWaitingForWebhookRef = ref(false);
 const selectedTriggerNodeNameRef = ref<string | undefined>(undefined);
 const hasNoCreditsRemainingRef = ref(false);
-const workflowExecutionDataRef = reactive<{ status?: string }>({});
+const executionRef = reactive<{ status?: string }>({});
 const workflowNodes = reactive<INodeUi[]>([
 	{
 		id: '1',
@@ -106,7 +106,7 @@ describe('ExecuteMessage', () => {
 		executionWaitingForWebhookRef.value = false;
 		selectedTriggerNodeNameRef.value = undefined;
 		hasNoCreditsRemainingRef.value = false;
-		workflowExecutionDataRef.status = undefined;
+		executionRef.status = undefined;
 		workflowNodes.splice(0, workflowNodes.length, {
 			id: '1',
 			name: 'Start Trigger',
@@ -135,8 +135,8 @@ describe('ExecuteMessage', () => {
 		workflowsStore.formatIssueMessage = vi.fn((value: string | string[]) =>
 			Array.isArray(value) ? value.join(', ') : String(value),
 		);
-		Object.defineProperty(workflowsStore, 'workflowExecutionData', {
-			get: () => workflowExecutionDataRef,
+		Object.defineProperty(workflowsStore, 'execution', {
+			get: () => executionRef,
 		});
 		Object.defineProperty(workflowsStore, 'executionWaitingForWebhook', {
 			get: () => executionWaitingForWebhookRef.value,
@@ -194,7 +194,7 @@ describe('ExecuteMessage', () => {
 
 	it('runs workflow and emits completion event when execution finishes', async () => {
 		runWorkflowMock.mockImplementation(async () => {
-			workflowExecutionDataRef.status = 'running';
+			executionRef.status = 'running';
 		});
 
 		const { getAllByTestId, emitted } = renderExecuteMessage();
@@ -204,7 +204,7 @@ describe('ExecuteMessage', () => {
 		await fireEvent.click(button);
 		await flushPromises();
 		await nextTick();
-		workflowExecutionDataRef.status = 'success';
+		executionRef.status = 'success';
 		await nextTick();
 		await flushPromises();
 
@@ -239,10 +239,10 @@ describe('ExecuteMessage', () => {
 		expect(emitted().workflowExecuted).toBeUndefined();
 
 		// Simulate workflow execution externally (e.g., via chat panel)
-		workflowExecutionDataRef.status = 'running';
+		executionRef.status = 'running';
 		await nextTick();
 		await nextTick();
-		workflowExecutionDataRef.status = 'success';
+		executionRef.status = 'success';
 		await nextTick();
 		await flushPromises();
 
@@ -251,9 +251,9 @@ describe('ExecuteMessage', () => {
 
 	it('emits completion after multiple run state toggles', async () => {
 		runWorkflowMock.mockImplementation(async () => {
-			workflowExecutionDataRef.status = 'running';
+			executionRef.status = 'running';
 			await nextTick();
-			workflowExecutionDataRef.status = 'success';
+			executionRef.status = 'success';
 		});
 
 		const { getAllByTestId, emitted } = renderExecuteMessage();
@@ -264,7 +264,7 @@ describe('ExecuteMessage', () => {
 		await nextTick();
 
 		// Toggle again manually to ensure watcher was cleaned up
-		workflowExecutionDataRef.status = 'success';
+		executionRef.status = 'success';
 		await nextTick();
 
 		expect(emitted().workflowExecuted).toHaveLength(1);
@@ -272,9 +272,9 @@ describe('ExecuteMessage', () => {
 
 	it('supports consecutive manual executions', async () => {
 		runWorkflowMock.mockImplementation(async () => {
-			workflowExecutionDataRef.status = 'running';
+			executionRef.status = 'running';
 			await nextTick();
-			workflowExecutionDataRef.status = 'success';
+			executionRef.status = 'success';
 			await nextTick();
 		});
 

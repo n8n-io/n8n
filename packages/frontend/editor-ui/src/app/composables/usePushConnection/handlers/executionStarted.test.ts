@@ -40,12 +40,12 @@ describe('executionStarted', () => {
 		await executionStarted(makeEvent(), mockOptions);
 
 		expect(mockOptions.workflowState.setActiveExecutionId).not.toHaveBeenCalled();
-		expect(mockOptions.workflowState.setWorkflowExecutionData).not.toHaveBeenCalled();
+		expect(mockOptions.workflowState.setExecution).not.toHaveBeenCalled();
 	});
 
 	it('should accept execution when activeExecutionId is null and populate workflowData from store', async () => {
 		workflowsStore.activeExecutionId = null;
-		workflowsStore.workflowExecutionData = null;
+		workflowsStore.execution = null;
 		workflowsStore.workflow.id = 'wf-123';
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
 		workflowDocumentStore.setName('My Workflow');
@@ -53,7 +53,7 @@ describe('executionStarted', () => {
 		await executionStarted(makeEvent('exec-1'), mockOptions);
 
 		expect(mockOptions.workflowState.setActiveExecutionId).toHaveBeenCalledWith('exec-1');
-		expect(mockOptions.workflowState.setWorkflowExecutionData).toHaveBeenCalledWith(
+		expect(mockOptions.workflowState.setExecution).toHaveBeenCalledWith(
 			expect.objectContaining({
 				id: 'exec-1',
 				status: 'running',
@@ -64,7 +64,7 @@ describe('executionStarted', () => {
 
 	it('should not reinitialize when same execution ID arrives', async () => {
 		workflowsStore.activeExecutionId = 'exec-1';
-		workflowsStore.workflowExecutionData = {
+		workflowsStore.execution = {
 			id: 'exec-1',
 			data: { resultData: { runData: {} } },
 		} as never;
@@ -72,7 +72,7 @@ describe('executionStarted', () => {
 		await executionStarted(makeEvent('exec-1'), mockOptions);
 
 		expect(mockOptions.workflowState.setActiveExecutionId).not.toHaveBeenCalled();
-		expect(mockOptions.workflowState.setWorkflowExecutionData).not.toHaveBeenCalled();
+		expect(mockOptions.workflowState.setExecution).not.toHaveBeenCalled();
 	});
 
 	describe('iframe re-execution', () => {
@@ -97,7 +97,7 @@ describe('executionStarted', () => {
 
 		it('should accept execution when activeExecutionId is undefined in iframe (post-executionFinished)', async () => {
 			workflowsStore.activeExecutionId = undefined;
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.execution = {
 				id: 'old-exec',
 				data: { resultData: { runData: { Node1: [{ executionTime: 100 }] } } },
 			} as never;
@@ -105,14 +105,14 @@ describe('executionStarted', () => {
 			await executionStarted(makeEvent('exec-2'), mockOptions);
 
 			expect(mockOptions.workflowState.setActiveExecutionId).toHaveBeenCalledWith('exec-2');
-			expect(mockOptions.workflowState.setWorkflowExecutionData).toHaveBeenCalledWith(
+			expect(mockOptions.workflowState.setExecution).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'exec-2', status: 'running' }),
 			);
 		});
 
 		it('should accept new execution and reset state when re-executing in iframe', async () => {
 			workflowsStore.activeExecutionId = 'exec-1';
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.execution = {
 				id: 'exec-1',
 				data: { resultData: { runData: { Node1: [{ executionTime: 100 }] } } },
 			} as never;
@@ -120,14 +120,14 @@ describe('executionStarted', () => {
 			await executionStarted(makeEvent('exec-2'), mockOptions);
 
 			expect(mockOptions.workflowState.setActiveExecutionId).toHaveBeenCalledWith('exec-2');
-			expect(mockOptions.workflowState.setWorkflowExecutionData).toHaveBeenCalledWith(
+			expect(mockOptions.workflowState.setExecution).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'exec-2', status: 'running' }),
 			);
 		});
 
 		it('should not reset when same execution ID arrives in iframe', async () => {
 			workflowsStore.activeExecutionId = 'exec-1';
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.execution = {
 				id: 'exec-1',
 				data: { resultData: { runData: {} } },
 			} as never;
@@ -135,7 +135,7 @@ describe('executionStarted', () => {
 			await executionStarted(makeEvent('exec-1'), mockOptions);
 
 			expect(mockOptions.workflowState.setActiveExecutionId).not.toHaveBeenCalled();
-			expect(mockOptions.workflowState.setWorkflowExecutionData).not.toHaveBeenCalled();
+			expect(mockOptions.workflowState.setExecution).not.toHaveBeenCalled();
 		});
 	});
 });

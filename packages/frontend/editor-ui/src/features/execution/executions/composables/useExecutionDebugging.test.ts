@@ -187,11 +187,11 @@ describe('useExecutionDebugging()', () => {
 		mockWorkflowDocumentStore.getNodes.mockReturnValue([{ name: 'testNode2' }] as INodeUi[]);
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 
-		const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+		const setExecution = vi.spyOn(workflowState, 'setExecution');
 
 		await executionDebugging.applyExecutionData('1');
 
-		expect(setWorkflowExecutionData).toHaveBeenCalledWith(mockExecution);
+		expect(setExecution).toHaveBeenCalledWith(mockExecution);
 		expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
 		expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
 	});
@@ -215,11 +215,11 @@ describe('useExecutionDebugging()', () => {
 		mockWorkflowDocumentStore.getNodes.mockReturnValue([{ name: 'testNode' }] as INodeUi[]);
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 
-		const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+		const setExecution = vi.spyOn(workflowState, 'setExecution');
 
 		await executionDebugging.applyExecutionData('1');
 
-		expect(setWorkflowExecutionData).toHaveBeenCalledWith(mockExecution);
+		expect(setExecution).toHaveBeenCalledWith(mockExecution);
 		expect(toast.showToast).toHaveBeenCalledTimes(1);
 	});
 });

@@ -125,7 +125,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
 		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue([]);
 		nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
-		workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+		workflowsStore.getExecutionRunDataByNodeName = vi.fn().mockReturnValue(null);
 
 		mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
 		mockWorkflowDocumentStore.allNodes = [];

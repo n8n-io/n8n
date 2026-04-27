@@ -45,8 +45,8 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 	const nodeRunData = computed(() => {
 		if (!node.value) return undefined;
 
-		const workflowExecutionData = workflowsStore.getWorkflowExecution;
-		const lastRunData = workflowExecutionData?.data?.resultData.runData[node.value?.name];
+		const execution = workflowDocumentStore.value.execution;
+		const lastRunData = execution?.data?.resultData.runData[node.value?.name];
 		if (!lastRunData) return undefined;
 		return lastRunData[0];
 	});

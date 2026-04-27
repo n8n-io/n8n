@@ -612,20 +612,17 @@ function extractResponseText(responseData?: IDataObject): string | undefined {
 }
 
 export function restoreChatHistory(
-	workflowExecutionData: IExecutionResponse | null,
+	execution: IExecutionResponse | null,
 	emptyText?: string,
 	redactedText?: string,
 ): ChatMessage[] {
-	if (!workflowExecutionData?.data) {
+	if (!execution?.data) {
 		return [];
 	}
 
-	const isRedacted = workflowExecutionData.data.redactionInfo?.isRedacted === true;
+	const isRedacted = execution.data.redactionInfo?.isRedacted === true;
 
-	const userMessage = extractChatInput(
-		workflowExecutionData.workflowData,
-		workflowExecutionData.data.resultData,
-	);
+	const userMessage = extractChatInput(execution.workflowData, execution.data.resultData);
 
 	if (isRedacted) {
 		const messages: ChatMessage[] = userMessage ? [userMessage] : [];
@@ -633,17 +630,13 @@ export function restoreChatHistory(
 			messages.push({
 				text: redactedText,
 				sender: 'bot',
-				id: workflowExecutionData.id ?? uuid(),
+				id: execution.id ?? uuid(),
 			});
 		}
 		return messages;
 	}
 
-	const botMessage = extractBotResponse(
-		workflowExecutionData.data.resultData,
-		workflowExecutionData.id,
-		emptyText,
-	);
+	const botMessage = extractBotResponse(execution.data.resultData, execution.id, emptyText);
 
 	return [...(userMessage ? [userMessage] : []), ...(botMessage ? [botMessage] : [])];
 }

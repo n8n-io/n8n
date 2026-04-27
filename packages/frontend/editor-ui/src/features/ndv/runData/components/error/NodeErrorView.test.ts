@@ -224,7 +224,7 @@ describe('NodeErrorView.vue', () => {
 
 		it('opens new window when error has different workflow and execution IDs', async () => {
 			mockWorkflowsStore.workflowId = 'current-workflow-id';
-			mockWorkflowsStore.getWorkflowExecution = {
+			mockWorkflowsStore.execution = {
 				id: 'current-execution-id',
 			} as IExecutionResponse;
 
@@ -258,7 +258,7 @@ describe('NodeErrorView.vue', () => {
 
 		it('sets active node name when error is in current workflow/execution', async () => {
 			mockWorkflowsStore.workflowId = 'current-workflow-id';
-			mockWorkflowsStore.getWorkflowExecution = {
+			mockWorkflowsStore.execution = {
 				id: 'current-execution-id',
 			} as IExecutionResponse;
 

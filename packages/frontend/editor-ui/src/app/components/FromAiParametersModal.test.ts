@@ -127,7 +127,7 @@ describe('FromAiParametersModal', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: mockWorkflow,
-					workflowExecutionData: mockRunData,
+					execution: mockRunData,
 				},
 			},
 		});

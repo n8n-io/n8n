@@ -44,13 +44,12 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		| undefined
 	>();
 	const updateInterval = computed(() =>
-		workflowsStore.workflowExecutionData?.status === 'running' &&
-		Object.keys(workflowsStore.workflowExecutionData.data?.resultData.runData ?? {}).length > 1
+		workflowDocumentStore.value.execution?.status === 'running' &&
+		Object.keys(workflowDocumentStore.value.execution.data?.resultData.runData ?? {}).length > 1
 			? LOGS_EXECUTION_DATA_THROTTLE_DURATION
 			: 0,
 	);
 	const throttledState = useThrottleWithReactiveDelay(state, updateInterval);
-	const throttledWorkflowData = computed(() => throttledState.value?.response.workflowData);
 
 	const subWorkflowExecData = ref<Record<string, IRunExecutionData>>({});
 	const subWorkflows = ref<Record<string, Workflow>>({});
@@ -108,11 +107,11 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 
 	function resetExecutionData() {
 		state.value = undefined;
-		workflowState.setWorkflowExecutionData(null);
+		workflowState.setExecution(null);
 		nodeHelpers.updateNodesExecutionIssues();
 		// Clear partial execution destination to allow full workflow execution
-		workflowsStore.chatPartialExecutionDestinationNode = null;
-		void workflowsStore.fetchLastSuccessfulExecution();
+		workflowDocumentStore.value.setChatPartialExecutionDestinationNode(null);
+		void workflowState.fetchLastSuccessfulExecution();
 	}
 
 	async function loadSubExecution(logEntry: LogEntry) {
@@ -143,20 +142,20 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	watch(
 		// Fields that should trigger update
 		[
-			() => workflowsStore.workflowExecutionData?.id,
-			() => workflowsStore.workflowExecutionData?.workflowData.id,
-			() => workflowsStore.workflowExecutionData?.status,
-			() => workflowsStore.workflowExecutionResultDataLastUpdate,
-			() => workflowsStore.workflowExecutionStartedData,
+			() => workflowDocumentStore.value.execution?.id,
+			() => workflowDocumentStore.value.execution?.workflowData.id,
+			() => workflowDocumentStore.value.execution?.status,
+			() => workflowDocumentStore.value.executionResultDataLastUpdate,
+			() => workflowDocumentStore.value.executionStartedData,
 		],
 		useThrottleFn(
 			([executionId], [previousExecutionId]) => {
 				state.value =
-					workflowsStore.workflowExecutionData === null
+					workflowDocumentStore.value.execution === null
 						? undefined
 						: {
-								response: copyExecutionData(workflowsStore.workflowExecutionData),
-								startData: workflowsStore.workflowExecutionStartedData?.[1] ?? {},
+								response: copyExecutionData(workflowDocumentStore.value.execution),
+								startData: workflowDocumentStore.value.executionStartedData?.[1] ?? {},
 							};
 
 				if (executionId !== previousExecutionId) {
@@ -182,10 +181,13 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	// Update workflow object on throttled state changes
 	// NOTE: don't turn the workflow object into a computed! It causes infinite update loop
 	watch(
-		throttledWorkflowData,
-		(data) => {
-			workflow.value = data
-				? new Workflow({ ...data, nodeTypes: workflowsStore.getNodeTypes() })
+		throttledState,
+		(nextState) => {
+			workflow.value = nextState?.response.workflowData
+				? new Workflow({
+						...nextState.response.workflowData,
+						nodeTypes: workflowsStore.getNodeTypes(),
+					})
 				: undefined;
 		},
 		{ immediate: true },

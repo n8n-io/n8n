@@ -75,7 +75,7 @@ export function usePushConnection({
 			case 'nodeExecuteAfter':
 				return await nodeExecuteAfter(event, options);
 			case 'nodeExecuteAfterData':
-				return await nodeExecuteAfterData(event);
+				return await nodeExecuteAfterData(event, options);
 			case 'executionStarted':
 				return await executionStarted(event, options);
 			case 'sendWorkerStatusMessage':

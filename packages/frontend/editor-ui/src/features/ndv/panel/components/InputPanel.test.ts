@@ -80,7 +80,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	}
 
 	if (runData) {
-		workflowState.setWorkflowExecutionData({
+		workflowState.setExecution({
 			id: '',
 			workflowData: {
 				id: '',

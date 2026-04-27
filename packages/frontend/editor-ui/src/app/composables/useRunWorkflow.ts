@@ -127,14 +127,15 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			throw error;
 		}
 
-		const workflowExecutionIdIsNew = workflowsStore.previousExecutionId !== response.executionId;
-		const workflowExecutionIdIsPending = workflowsStore.activeExecutionId === null;
+		const workflowExecutionIdIsNew =
+			workflowDocumentStore.value.previousExecutionId !== response.executionId;
+		const workflowExecutionIdIsPending = workflowDocumentStore.value.activeExecutionId === null;
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
 			workflowState.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true) {
-			workflowsStore.executionWaitingForWebhook = true;
+			workflowDocumentStore.value.setExecutionWaitingForWebhook(true);
 		}
 
 		return response;
@@ -148,7 +149,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		source?: string;
 		sessionId?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		if (workflowsStore.activeExecutionId) {
+		if (workflowDocumentStore.value.activeExecutionId) {
 			return;
 		}
 
@@ -165,7 +166,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				);
 			}
 
-			const runData = workflowsStore.getWorkflowRunData;
+			const runData = workflowDocumentStore.value.executionRunData;
 
 			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 				await workflowSaving.saveCurrentWorkflow();
@@ -250,7 +251,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					// If the chat node has no input data or pin data, open the chat modal
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
-						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode.nodeName;
+						workflowDocumentStore.value.setChatPartialExecutionDestinationNode(
+							options.destinationNode.nodeName,
+						);
 						startChat();
 						return;
 					}
@@ -408,7 +411,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					...workflowData,
 				} as IWorkflowDb,
 			};
-			workflowState.setWorkflowExecutionData(executionData);
+			workflowState.setExecution(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
 			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name, 'EXECUTING');
@@ -438,7 +441,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			try {
 				await displayForm({
 					nodes: workflowData.nodes,
-					runData: workflowsStore.getWorkflowExecution?.data?.resultData?.runData,
+					runData: workflowDocumentStore.value.execution?.data?.resultData?.runData,
 					destinationNode: options.destinationNode?.nodeName,
 					triggerNode: options.triggerNode,
 					pinData,
@@ -456,7 +459,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			return runWorkflowApiResponse;
 		} catch (error) {
 			console.error(error);
-			workflowState.setWorkflowExecutionData(null);
+			workflowState.setExecution(null);
 			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
@@ -515,7 +518,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	async function stopCurrentExecution() {
-		const executionId = workflowsStore.activeExecutionId;
+		const executionId = workflowDocumentStore.value.activeExecutionId;
 		let stopData: IExecutionsStopData | undefined;
 
 		if (!executionId) {
@@ -545,7 +548,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					startedAt: execution.startedAt,
 					stoppedAt: execution.stoppedAt,
 				} as IExecutionResponse;
-				workflowState.setWorkflowExecutionData(executedData);
+				workflowState.setExecution(executedData);
 				toast.showMessage({
 					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),
 					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.message'),
@@ -602,7 +605,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 		});
 
-		let resolvedTriggerNode = triggerNode ?? workflowsStore.selectedTriggerNodeName;
+		let resolvedTriggerNode = triggerNode ?? workflowDocumentStore.value.selectedTriggerNodeName;
 
 		// When no trigger is explicitly selected (e.g. chat trigger is the only trigger
 		// and the Run button doesn't offer it for selection), resolve it from the workflow.

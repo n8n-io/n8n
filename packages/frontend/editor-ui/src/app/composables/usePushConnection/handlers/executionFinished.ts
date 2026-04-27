@@ -65,7 +65,7 @@ export async function executionFinished(
 	{ data }: ExecutionFinished,
 	options: ExecutionFinishedOptions,
 ) {
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = options.workflowState.getCurrentWorkflowDocumentStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
@@ -75,7 +75,7 @@ export async function executionFinished(
 	options.workflowState.executingNode.clearNodeExecutionQueue();
 
 	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowsStore.activeExecutionId === 'undefined') {
+	if (typeof workflowDocumentStore?.activeExecutionId === 'undefined') {
 		return;
 	}
 
@@ -213,13 +213,17 @@ export async function fetchExecutionData(
 			return;
 		}
 
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(executionResponse.workflowId ?? workflowsStore.workflowId),
+		);
+
 		return {
 			id: executionId,
 			workflowId: executionResponse.workflowId,
 			workflowData: workflowsStore.workflow,
 			data: executionResponse.data,
 			status: executionResponse.status,
-			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
+			startedAt: workflowDocumentStore.execution?.startedAt as Date,
 			stoppedAt: new Date(),
 		};
 	} catch {
@@ -250,9 +254,12 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
 		return i18n.baseText('pushConnection.executionFailed.message');
 	} else if (execution.status === 'canceled') {
 		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 
 		return i18n.baseText('executionsList.showMessage.stopExecution.message', {
-			interpolate: { activeExecutionId: workflowsStore.activeExecutionId ?? '' },
+			interpolate: { activeExecutionId: workflowDocumentStore.activeExecutionId ?? '' },
 		});
 	}
 
@@ -420,12 +427,11 @@ export function handleExecutionFinishedWithSuccessOrOther(
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
-	const workflowExecution = workflowsStore.getWorkflowExecution;
-	if (workflowExecution?.executedNode) {
-		const node = workflowDocumentStore.getNodeByName(workflowExecution.executedNode) ?? null;
+	const currentExecution = workflowDocumentStore.execution;
+	if (currentExecution?.executedNode) {
+		const node = workflowDocumentStore.getNodeByName(currentExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		const nodeOutput =
-			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];
+		const nodeOutput = currentExecution.data?.resultData?.runData?.[currentExecution.executedNode];
 
 		if (nodeType?.polling && !nodeOutput) {
 			toast.showMessage({
@@ -474,24 +480,24 @@ export function setRunExecutionData(
 	runExecutionData: IRunExecutionData,
 	workflowState: WorkflowState,
 ) {
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = workflowState.getCurrentWorkflowDocumentStore();
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
-	const workflowExecution = workflowsStore.getWorkflowExecution;
+	const currentExecution = workflowDocumentStore?.execution;
 
 	workflowState.executingNode.clearNodeExecutionQueue();
 
-	if (workflowExecution === null) {
+	if (!workflowDocumentStore || currentExecution === null || currentExecution === undefined) {
 		return;
 	}
 
-	workflowState.setWorkflowExecutionData({
-		...workflowExecution,
+	workflowState.setExecution({
+		...currentExecution,
 		status: execution.status,
 		id: execution.id,
 		stoppedAt: execution.stoppedAt,
 	});
-	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
+	workflowDocumentStore.setExecutionRunData(runExecutionData);
 	workflowState.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that

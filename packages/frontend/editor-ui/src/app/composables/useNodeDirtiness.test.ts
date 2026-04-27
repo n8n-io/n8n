@@ -158,7 +158,7 @@ describe(useNodeDirtiness, () => {
 			const runAt = new Date(+WORKFLOW_UPDATED_AT + 1000);
 
 			const workflowState = useWorkflowState();
-			workflowState.setWorkflowExecutionData({
+			workflowState.setExecution({
 				id: workflowsStore.workflow.id,
 				finished: true,
 				mode: 'manual',
@@ -475,7 +475,7 @@ describe(useNodeDirtiness, () => {
 		}
 
 		const workflowState = useWorkflowState();
-		workflowState.setWorkflowExecutionData({
+		workflowState.setExecution({
 			id: workflow.id,
 			finished: true,
 			mode: 'manual',

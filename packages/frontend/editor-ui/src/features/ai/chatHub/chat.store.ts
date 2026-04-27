@@ -94,6 +94,10 @@ import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { createRunExecutionData, deepCopy, type INode } from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores/constants';
@@ -551,13 +555,20 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	}
 
 	/**
-	 * Initialize workflowExecutionData scaffold so canvas push handlers can write
+	 * Initialize execution scaffold so canvas push handlers can write
 	 * node results (makes nodes turn green during manual execution).
 	 */
 	function initManualExecutionScaffold() {
 		const workflowsStore = useWorkflowsStore();
+		if (!workflowsStore.workflowId) {
+			return;
+		}
 
-		workflowsStore.workflowExecutionData = {
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+
+		workflowDocumentStore.setExecution({
 			id: IN_PROGRESS_EXECUTION_ID,
 			finished: false,
 			mode: 'manual',
@@ -570,10 +581,10 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 				resultData: { runData: {} },
 			}),
 			workflowData: workflowsStore.workflow,
-		};
+		});
 
 		// Signal canvas that an execution is pending (null = waiting for execution ID)
-		workflowsStore.private.setActiveExecutionId(null);
+		workflowDocumentStore.setActiveExecutionId(null);
 	}
 
 	async function sendMessage(
@@ -1282,7 +1293,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			// For manual mode (canvas execution), do NOT clear activeExecutionId here.
 			// The standard `executionFinished` push handler (sent via pushRef) will:
 			// 1. Fetch the complete execution data from the API
-			// 2. Update workflowExecutionData with full results
+			// 2. Update execution with full results
 			// 3. Clear activeExecutionId
 			// Clearing it here would cause executionFinished to skip processing.
 

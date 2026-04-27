@@ -241,7 +241,7 @@ export function useNodeDirtiness() {
 
 	const dirtinessByName = computed(() => {
 		const dirtiness: Record<string, CanvasNodeDirtinessType | undefined> = {};
-		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
+		const runDataByNode = workflowDocumentStore.value.executionRunData ?? {};
 
 		function setDirtiness(nodeName: string, value: CanvasNodeDirtinessType) {
 			dirtiness[nodeName] = dirtiness[nodeName] ?? value;

@@ -22,7 +22,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 		}
 
 		const runIndex = 0; // not changeable for now
-		const execution = workflowsStore.workflowExecutionData;
+		const execution = workflowDocumentStore.value.execution;
 		const nodeName = node.value.name;
 
 		function findInputNode(): ExpressionLocalResolveContext['inputNode'] {

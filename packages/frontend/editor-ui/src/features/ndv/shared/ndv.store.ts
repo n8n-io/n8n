@@ -104,7 +104,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	});
 
 	const ndvInputData = computed(() => {
-		const executionData = workflowsStore.getWorkflowExecution;
+		const executionData = workflowDocumentStore.value.execution;
 		const inputNodeName: string | undefined = input.value.nodeName;
 		const inputRunIndex: number = input.value.run ?? 0;
 		const inputBranchIndex: number = input.value.branch ?? 0;

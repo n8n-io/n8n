@@ -4,7 +4,6 @@ import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
 import { storeToRefs } from 'pinia';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -29,6 +28,7 @@ import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-syste
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -81,8 +81,8 @@ const emit = defineEmits<{
 const workflowId = useInjectWorkflowId();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
@@ -128,7 +128,9 @@ const hasAiMetadata = computed(() => {
 
 	if (node.value) {
 		const connectedSubNodes = props.workflowObject.getParentNodes(node.value.name, 'ALL_NON_MAIN');
-		const resultData = connectedSubNodes.map(workflowsStore.getWorkflowResultDataByNodeName);
+		const resultData = connectedSubNodes.map(
+			(nodeName) => workflowDocumentStore?.value?.getExecutionRunDataByNodeName(nodeName) ?? null,
+		);
 
 		return resultData && Array.isArray(resultData) && resultData.length > 0;
 	}
@@ -156,7 +158,7 @@ const isNodeRunning = computed(() => {
 	);
 });
 
-const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+const workflowRunning = computed(() => workflowDocumentStore?.value?.isWorkflowRunning ?? false);
 
 const runTaskData = computed(() => {
 	if (!node.value || workflowExecution.value === null) {

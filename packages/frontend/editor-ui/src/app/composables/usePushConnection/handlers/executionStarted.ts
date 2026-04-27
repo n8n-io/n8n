@@ -1,9 +1,5 @@
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
@@ -16,33 +12,31 @@ export async function executionStarted(
 	options: { workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = options.workflowState.getCurrentWorkflowDocumentStore();
 	const isIframe = window !== window.parent;
 
 	// In non-iframe context, undefined means "not tracking executions" → skip.
 	// In iframe context, executionFinished resets activeExecutionId to undefined,
 	// but we still want to accept new executions (re-execution scenario).
-	if (typeof workflowsStore.activeExecutionId === 'undefined' && !isIframe) {
+	if (typeof workflowDocumentStore?.activeExecutionId === 'undefined' && !isIframe) {
 		return;
 	}
 
 	// Determine if we need to (re)initialize execution tracking state
 	const needsInit =
-		workflowsStore.activeExecutionId === null ||
-		typeof workflowsStore.activeExecutionId === 'undefined' ||
-		(isIframe && workflowsStore.activeExecutionId !== data.executionId);
+		workflowDocumentStore?.activeExecutionId === null ||
+		typeof workflowDocumentStore?.activeExecutionId === 'undefined' ||
+		(isIframe && workflowDocumentStore.activeExecutionId !== data.executionId);
 
 	if (needsInit) {
 		options.workflowState.setActiveExecutionId(data.executionId);
 	}
 
-	// Initialize or reinitialize workflowExecutionData to clear previous execution's
+	// Initialize or reinitialize execution to clear previous execution's
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
-	if (!workflowsStore.workflowExecutionData?.data || needsInit) {
+	if (!workflowDocumentStore?.execution?.data || needsInit) {
 		const wf = workflowsStore.workflow;
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-		options.workflowState.setWorkflowExecutionData({
+		options.workflowState.setExecution({
 			id: data.executionId,
 			finished: false,
 			mode: 'manual',
@@ -50,7 +44,7 @@ export async function executionStarted(
 			createdAt: new Date(),
 			startedAt: new Date(),
 			workflowData: {
-				id: wf.id,
+				id: workflowDocumentStore?.workflowId ?? wf.id,
 				name: workflowDocumentStore?.name ?? '',
 				active: wf.active,
 				isArchived: wf.isArchived,
@@ -65,7 +59,13 @@ export async function executionStarted(
 		});
 	}
 
-	if (workflowsStore.workflowExecutionData?.data && data.flattedRunData) {
-		workflowsStore.workflowExecutionData.data.resultData.runData = parse(data.flattedRunData);
+	if (workflowDocumentStore?.execution?.data && data.flattedRunData) {
+		workflowDocumentStore.setExecutionRunData({
+			...workflowDocumentStore.execution.data,
+			resultData: {
+				...workflowDocumentStore.execution.data.resultData,
+				runData: parse(data.flattedRunData),
+			},
+		});
 	}
 }

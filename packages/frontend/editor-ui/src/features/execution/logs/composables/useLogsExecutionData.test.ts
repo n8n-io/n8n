@@ -54,7 +54,7 @@ describe(useLogsExecutionData, () => {
 
 	describe('isEnabled', () => {
 		beforeEach(() => {
-			workflowState.setWorkflowExecutionData(
+			workflowState.setExecution(
 				createTestWorkflowExecutionResponse({
 					data: createRunExecutionData({ resultData: { runData: { n0: [createTestTaskData()] } } }),
 					workflowData: createTestWorkflow({ nodes: [createTestNode({ name: 'n0' })] }),
@@ -81,7 +81,7 @@ describe(useLogsExecutionData, () => {
 		beforeEach(() => {
 			vi.useFakeTimers({ shouldAdvanceTime: true });
 
-			workflowState.setWorkflowExecutionData(
+			workflowState.setExecution(
 				createTestWorkflowExecutionResponse({
 					id: 'e0',
 					workflowData: createTestWorkflow({

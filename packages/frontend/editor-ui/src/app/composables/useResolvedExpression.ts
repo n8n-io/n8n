@@ -58,7 +58,9 @@ export function useResolvedExpression({
 	const activeNode = computed(() => ndvStore.activeNode);
 	const hasRunData = computed(() =>
 		Boolean(
-			workflowsStore.workflowExecutionData?.data?.resultData?.runData[activeNode.value?.name ?? ''],
+			workflowDocumentStore.value.execution?.data?.resultData?.runData[
+				activeNode.value?.name ?? ''
+			],
 		),
 	);
 	const isExpression = computed(() => isExpressionUtil(toValue(expression)));
@@ -124,8 +126,8 @@ export function useResolvedExpression({
 			expressionLocalResolveCtx,
 			toRef(expression),
 			toRef(additionalData),
-			() => workflowsStore.getWorkflowExecution,
-			() => workflowsStore.getWorkflowRunData,
+			() => workflowDocumentStore.value.execution,
+			() => workflowDocumentStore.value.executionRunData,
 			() => workflowDocumentStore.value.name,
 			targetItem,
 		],

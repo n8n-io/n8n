@@ -105,7 +105,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 		// Set execution data
 		workflowDocumentStore.value.resetAllNodesIssues();
-		workflowState.setWorkflowExecutionData(execution);
+		workflowState.setExecution(execution);
 
 		// Pin data of all nodes which do not have a parent node
 		const pinnableNodes = workflowNodes.filter(
@@ -170,7 +170,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			event.stopPropagation();
 			return;
 		}
-		workflowsStore.isInDebugMode = false;
+		workflowDocumentStore.value.setDebugMode(false);
 	};
 
 	return {

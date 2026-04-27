@@ -46,7 +46,7 @@ describe('useToolParameters', () => {
 		mockWorkflowDocumentStore.getNodeByName.mockReset();
 		projectsStore.currentProjectId = 'test-project';
 		workflowsStore.workflowId = 'test-workflow';
-		workflowsStore.getWorkflowExecution = null;
+		workflowsStore.execution = null;
 		agentRequestStore.getQueryValue = vi.fn().mockReturnValue(null);
 	});
 
@@ -155,7 +155,7 @@ describe('useToolParameters', () => {
 				},
 			};
 
-			workflowsStore.getWorkflowExecution = {
+			workflowsStore.execution = {
 				data: {
 					resultData: {
 						runData: {

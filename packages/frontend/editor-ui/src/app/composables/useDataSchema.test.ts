@@ -11,6 +11,10 @@ import {
 	type ITaskDataConnections,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
 
@@ -835,16 +839,14 @@ describe('useDataSchema', () => {
 				],
 				mockExecutionDataMarker,
 			],
-		])(
-			'should return correct output %s',
-			([node, runIndex, outputIndex, getWorkflowExecution], output) => {
-				vi.mocked(useWorkflowsStore).mockReturnValue({
-					...useWorkflowsStore(),
-					getWorkflowExecution: getWorkflowExecution as IExecutionResponse,
-				});
-				expect(getNodeInputData(node as INodeUi, runIndex, outputIndex)).toEqual(output);
-			},
-		);
+		])('should return correct output %s', ([node, runIndex, outputIndex, execution], output) => {
+			const workflowsStore = useWorkflowsStore();
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setExecution(execution as IExecutionResponse);
+			expect(getNodeInputData(node as INodeUi, runIndex, outputIndex)).toEqual(output);
+		});
 	});
 
 	describe('getSchemaForJsonSchema', () => {

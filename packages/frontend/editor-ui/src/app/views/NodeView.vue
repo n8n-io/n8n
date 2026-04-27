@@ -409,7 +409,10 @@ const isRunButtonSplit = computed(() => {
 	const selectableTriggerNodes = triggerNodes.value.filter(
 		(node) => !node.disabled && !isChatNode(node),
 	);
-	return selectableTriggerNodes.length > 1 && workflowsStore.selectedTriggerNodeName !== undefined;
+	return (
+		selectableTriggerNodes.length > 1 &&
+		workflowDocumentStore?.value?.selectedTriggerNodeName !== undefined
+	);
 });
 
 function onTidyUp(
@@ -1023,8 +1026,10 @@ const projectPermissions = computed(() => {
 
 const isStoppingExecution = ref(false);
 
-const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isWorkflowRunning = computed(() => workflowDocumentStore?.value?.isWorkflowRunning ?? false);
+const isExecutionWaitingForWebhook = computed(
+	() => workflowDocumentStore?.value?.executionWaitingForWebhook ?? false,
+);
 
 const isExecutionDisabled = computed(() => {
 	if (
@@ -1844,11 +1849,11 @@ onBeforeUnmount(() => {
 					:executing="isWorkflowRunning"
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+					:selected-trigger-node-name="workflowDocumentStore?.selectedTriggerNodeName"
 					@mouseenter="onRunWorkflowButtonMouseEnter"
 					@mouseleave="onRunWorkflowButtonMouseLeave"
 					@execute="runEntireWorkflow('main')"
-					@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
+					@select-trigger-node="workflowDocumentStore?.setSelectedTriggerNodeName"
 				/>
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton

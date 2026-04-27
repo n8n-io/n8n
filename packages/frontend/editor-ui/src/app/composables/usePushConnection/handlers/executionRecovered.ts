@@ -8,7 +8,6 @@ import {
 	handleExecutionFinishedWithWaitTill,
 	setRunExecutionData,
 } from './executionFinished';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { useRouter } from 'vue-router';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
@@ -16,11 +15,11 @@ export async function executionRecovered(
 	{ data }: ExecutionRecovered,
 	options: { router: ReturnType<typeof useRouter>; workflowState: WorkflowState },
 ) {
-	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
+	const workflowDocumentStore = options.workflowState.getCurrentWorkflowDocumentStore();
 
 	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowsStore.activeExecutionId === 'undefined') {
+	if (typeof workflowDocumentStore?.activeExecutionId === 'undefined') {
 		return;
 	}
 

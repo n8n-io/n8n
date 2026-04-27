@@ -791,7 +791,7 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.execution = {
 				data: {
 					resultData: {
 						runData: {
@@ -865,7 +865,7 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.execution = {
 				data: {
 					resultData: {
 						runData: {
@@ -950,7 +950,7 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
+			workflowsStore.execution = {
 				data: {
 					resultData: {
 						runData: {
@@ -1041,7 +1041,7 @@ describe('useWorkflowHelpers', () => {
 			expect(result.source).toEqual({ main: [{ previousNode: 'ParentNode' }] });
 		});
 
-		it('should return data from getWorkflowRunData if pinnedWorkflowData is not available', () => {
+		it('should return data from executionRunData if pinnedWorkflowData is not available', () => {
 			const { executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['ParentNode'];
@@ -1049,7 +1049,7 @@ describe('useWorkflowHelpers', () => {
 			const inputName = 'main';
 			const runIndex = 0;
 
-			workflowsStore.getWorkflowRunData = {
+			workflowsStore.executionRunData = {
 				ParentNode: [
 					{
 						data: { main: [[{ json: { key: 'valueFromRunData' } }]] },
@@ -1088,7 +1088,7 @@ describe('useWorkflowHelpers', () => {
 			const runIndex = 0;
 			const parentRunIndex = 1;
 
-			workflowsStore.getWorkflowRunData = {
+			workflowsStore.executionRunData = {
 				ParentNode: [
 					{ data: {} } as never,
 					{
@@ -1121,7 +1121,7 @@ describe('useWorkflowHelpers', () => {
 			});
 		});
 
-		it('should return empty data if neither pinnedWorkflowData nor getWorkflowRunData is available', () => {
+		it('should return empty data if neither pinnedWorkflowData nor executionRunData is available', () => {
 			const { executeData } = useWorkflowHelpers();
 
 			const parentNodes = ['ParentNode'];
@@ -1129,7 +1129,7 @@ describe('useWorkflowHelpers', () => {
 			const inputName = 'main';
 			const runIndex = 0;
 
-			workflowsStore.getWorkflowRunData = null;
+			workflowsStore.executionRunData = null;
 
 			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
 

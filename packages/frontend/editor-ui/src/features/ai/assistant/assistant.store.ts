@@ -71,7 +71,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatSessionTask = ref<'error' | 'support' | 'credentials' | undefined>();
 	// Indicate if last sent workflow and execution data is stale
 	const workflowDataStale = ref<boolean>(true);
-	const workflowExecutionDataStale = ref<boolean>(true);
+	const executionStale = ref<boolean>(true);
 
 	const assistantMessages = computed(() =>
 		chatMessages.value.filter((msg) => msg.role === 'assistant'),
@@ -198,7 +198,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		return (
 			chatSessionTask.value === 'error' &&
-			workflowsStore.activeExecutionId === currentSessionActiveExecutionId.value &&
+			workflowDocumentStore.value.activeExecutionId === currentSessionActiveExecutionId.value &&
 			targetNode === chatSessionError.value?.node.name
 		);
 	}
@@ -293,7 +293,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function onDoneStreaming(id: string) {
 		stopStreaming();
 		workflowDataStale.value = false;
-		workflowExecutionDataStale.value = false;
+		executionStale.value = false;
 		lastUnread.value = chatMessages.value.find(
 			(msg) =>
 				msg.id === id && !msg.read && msg.role === 'assistant' && READABLE_TYPES.includes(msg.type),
@@ -349,7 +349,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const activeCredential = isCredentialModalActive
 			? useCredentialsStore().getCredentialTypeByName(uiStore.activeCredentialType ?? '')
 			: undefined;
-		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const executionResult = workflowDocumentStore.value.execution?.data?.resultData;
 		const isCurrentNodeExecuted = Boolean(
 			executionResult?.runData?.hasOwnProperty(activeNode?.name ?? ''),
 		);
@@ -393,7 +393,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					})
 				: undefined,
 			executionData:
-				workflowExecutionDataStale.value && executionResult
+				executionStale.value && executionResult
 					? assistantHelpers.simplifyResultData(executionResult, {
 							removeParameterValues: !allowSendingParameterValues.value,
 						})
@@ -488,8 +488,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionError.value = context;
 		currentSessionWorkflowId.value = workflowId;
 
-		if (workflowsStore.activeExecutionId) {
-			currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
+		if (workflowDocumentStore.value.activeExecutionId) {
+			currentSessionActiveExecutionId.value = workflowDocumentStore.value.activeExecutionId;
 		}
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
@@ -741,9 +741,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	);
 
 	watch(
-		() => workflowsStore.workflowExecutionResultDataLastUpdate,
+		() => workflowDocumentStore.value.executionResultDataLastUpdate,
 		() => {
-			workflowExecutionDataStale.value = true;
+			executionStale.value = true;
 		},
 		{ immediate: true },
 	);

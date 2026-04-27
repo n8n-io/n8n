@@ -10,7 +10,6 @@ import { computed, watch, ref, nextTick, useSlots, provide } from 'vue';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -85,7 +84,6 @@ const workflowAutosaveStore = useWorkflowSaveStore();
 const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const slots = useSlots();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
@@ -453,7 +451,7 @@ async function onWorkflowExecuted() {
 		return;
 	}
 
-	const executionData = workflowsStore.workflowExecutionData;
+	const executionData = workflowDocumentStore.value.execution;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
 	const errorNodeType = errorNodeName
@@ -533,7 +531,7 @@ async function onExecuteWithMockData() {
 	});
 
 	await runWorkflow({
-		triggerNode: workflowsStore.selectedTriggerNodeName ?? triggerNode?.name,
+		triggerNode: workflowDocumentStore.value.selectedTriggerNodeName ?? triggerNode?.name,
 	});
 }
 

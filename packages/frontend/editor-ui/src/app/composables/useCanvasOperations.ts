@@ -376,8 +376,12 @@ export function useCanvasOperations() {
 			historyStore.pushCommandToUndo(new RenameNodeCommand(currentName, newName, Date.now()));
 		}
 
-		// Update also last selected node and execution data
-		workflowsStore.renameNodeSelectedAndExecution({ old: currentName, new: newName });
+		if (uiStore.lastSelectedNode === currentName) {
+			uiStore.lastSelectedNode = newName;
+		}
+		workflowDocumentStore.value.renameNodeMetadata(currentName, newName);
+		workflowDocumentStore.value.renamePinDataNode(currentName, newName);
+		workflowDocumentStore.value.renameExecutionDataNode(currentName, newName);
 
 		workflowDocumentStore.value.setNodes(Object.values(workflow.nodes));
 		workflowDocumentStore.value.setConnections(workflow.connectionsBySourceNode);
@@ -488,7 +492,7 @@ export function useCanvasOperations() {
 		connectAdjacentNodes(id, { trackHistory });
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
-		workflowsStore.removeNodeExecutionDataById(id);
+		workflowDocumentStore.value.removeNodeExecutionDataById(id);
 		workflowDocumentStore.value.removeNodeById(id);
 
 		if (trackHistory) {
@@ -2302,11 +2306,15 @@ export function useCanvasOperations() {
 	 */
 
 	function resetWorkspace() {
+		const currentWorkflowDocumentStore = workflowsStore.workflowId
+			? workflowDocumentStore.value
+			: null;
+
 		// Reset node creator
 		nodeCreatorStore.setNodeCreatorState({ createNodeActive: false });
 
 		// Make sure that if there is a waiting test-webhook, it gets removed
-		if (workflowsStore.executionWaitingForWebhook) {
+		if (currentWorkflowDocumentStore?.executionWaitingForWebhook) {
 			try {
 				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
 			} catch (error) {}
@@ -2315,9 +2323,7 @@ export function useCanvasOperations() {
 		// Reset editable workflow state
 		workflowsStore.resetWorkflow();
 		workflowState.resetState();
-		workflowsStore.currentWorkflowExecutions = [];
 		workflowState.setActiveExecutionId(undefined);
-		workflowsStore.lastSuccessfulExecution = null;
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
@@ -2944,7 +2950,7 @@ export function useCanvasOperations() {
 
 		await initializeWorkspace(data.workflowData);
 
-		workflowState.setWorkflowExecutionData(data);
+		workflowState.setExecution(data);
 
 		if (!['manual', 'evaluation'].includes(data.mode)) {
 			workflowDocumentStore.value.setPinData({});
@@ -3149,7 +3155,6 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.currentWorkflowExecutions = [];
 		executionsStore.activeExecution = null;
 
 		let data: IWorkflowTemplate | undefined;
@@ -3212,7 +3217,6 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.currentWorkflowExecutions = [];
 		executionsStore.activeExecution = null;
 
 		uiStore.isBlankRedirect = true;

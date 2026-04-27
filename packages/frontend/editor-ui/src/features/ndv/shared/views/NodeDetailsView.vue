@@ -23,7 +23,6 @@ import {
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -71,7 +70,6 @@ const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
 const workflowId = useInjectWorkflowId();
@@ -112,8 +110,8 @@ const showTriggerWaitingWarning = computed(
 		triggerWaitingWarningEnabled.value &&
 		!!activeNodeType.value &&
 		!activeNodeType.value.group.includes('trigger') &&
-		workflowsStore.isWorkflowRunning &&
-		workflowsStore.executionWaitingForWebhook,
+		workflowDocumentStore?.value?.isWorkflowRunning &&
+		workflowDocumentStore?.value?.executionWaitingForWebhook,
 );
 
 const workflowRunData = computed(() => {
@@ -214,7 +212,7 @@ const isActiveStickyNode = computed(
 	() => !!ndvStore.activeNode && ndvStore.activeNode.type === STICKY_NODE_TYPE,
 );
 
-const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+const workflowExecution = computed(() => workflowDocumentStore?.value?.execution ?? null);
 
 const maxOutputRun = computed(() => {
 	if (activeNode.value === null) {
@@ -313,10 +311,14 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(
+	() => workflowDocumentStore?.value?.executionWaitingForWebhook ?? false,
+);
 
 const blockUi = computed(
-	() => workflowsStore.isWorkflowRunning || isExecutionWaitingForWebhook.value,
+	() =>
+		(workflowDocumentStore?.value?.isWorkflowRunning ?? false) ||
+		isExecutionWaitingForWebhook.value,
 );
 
 const foreignCredentials = computed(() =>
@@ -429,7 +431,7 @@ const onUnlinkRun = (pane: string) => {
 
 const onNodeExecute = () => {
 	setTimeout(() => {
-		if (!activeNode.value || !workflowsStore.isWorkflowRunning) {
+		if (!activeNode.value || !workflowDocumentStore?.value?.isWorkflowRunning) {
 			return;
 		}
 		triggerWaitingWarningEnabled.value = true;

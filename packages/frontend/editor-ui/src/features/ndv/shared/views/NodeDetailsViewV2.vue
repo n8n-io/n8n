@@ -32,7 +32,6 @@ import { ndvEventBus } from '../ndv.eventBus';
 import { useNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
@@ -73,7 +72,6 @@ const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
 const workflowId = useInjectWorkflowId();
@@ -218,7 +216,7 @@ const isActiveStickyNode = computed(
 	() => !!ndvStore.activeNode && ndvStore.activeNode.type === STICKY_NODE_TYPE,
 );
 
-const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+const workflowExecution = computed(() => workflowDocumentStore?.value?.execution ?? null);
 
 const maxOutputRun = computed(() => {
 	if (activeNode.value === null) {
@@ -301,7 +299,9 @@ const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(
+	() => workflowDocumentStore?.value?.executionWaitingForWebhook ?? false,
+);
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 

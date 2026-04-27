@@ -179,11 +179,11 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
-		if (!workflowsStore.isInDebugMode) {
+		if (!currentWorkflowDocumentStore.value?.isInDebugMode) {
 			const executionId = route.params.executionId;
 			if (typeof executionId === 'string') {
 				await applyExecutionData(executionId);
-				workflowsStore.isInDebugMode = true;
+				currentWorkflowDocumentStore.value?.setDebugMode(true);
 			}
 		}
 	}
@@ -318,7 +318,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 				workflowData.homeProject,
 				workflowData.sharedWithProjects,
 			);
-			void workflowsStore.fetchLastSuccessfulExecution();
+			void workflowState.fetchLastSuccessfulExecution();
 		} catch (error) {
 			if ((error as { httpStatusCode?: number }).httpStatusCode === 404) {
 				return await router.replace({

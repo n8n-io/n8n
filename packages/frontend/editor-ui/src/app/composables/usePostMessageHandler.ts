@@ -201,7 +201,7 @@ export function usePostMessageHandler({
 
 		await importWorkflowExact(json);
 
-		workflowState.setWorkflowExecutionData(data);
+		workflowState.setExecution(data);
 		currentWorkflowDocumentStore.value?.setPinData({});
 
 		canvasStore.stopLoading();

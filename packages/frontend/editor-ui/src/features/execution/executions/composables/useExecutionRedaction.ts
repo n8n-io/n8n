@@ -1,5 +1,9 @@
 import { computed, h } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -9,12 +13,15 @@ import RevealDataWarning from '../components/RevealDataWarning.vue';
 
 export function useExecutionRedaction() {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	const message = useMessage();
 	const telemetry = useTelemetry();
 	const { showError } = useToast();
 	const i18n = useI18n();
 
-	const redactionInfo = computed(() => workflowsStore.getWorkflowExecution?.data?.redactionInfo);
+	const redactionInfo = computed(() => workflowDocumentStore.execution?.data?.redactionInfo);
 
 	const isRedacted = computed(() => redactionInfo.value?.isRedacted === true);
 
@@ -27,7 +34,7 @@ export function useExecutionRedaction() {
 	async function revealData() {
 		telemetry.track('User clicked reveal data', {
 			workflow_id: workflowsStore.workflowId,
-			execution_id: workflowsStore.getWorkflowExecution?.id,
+			execution_id: workflowDocumentStore.execution?.id,
 		});
 
 		const warningContent = h(RevealDataWarning, {
@@ -49,7 +56,7 @@ export function useExecutionRedaction() {
 
 		if (confirmed !== MODAL_CONFIRM) return;
 
-		const executionId = workflowsStore.getWorkflowExecution?.id;
+		const executionId = workflowDocumentStore.execution?.id;
 		if (!executionId) return;
 
 		try {
@@ -57,7 +64,7 @@ export function useExecutionRedaction() {
 				redactExecutionData: false,
 			});
 			if (revealed?.data) {
-				workflowsStore.setWorkflowExecutionRunData(revealed.data);
+				workflowDocumentStore.setExecutionRunData(revealed.data);
 			}
 		} catch (error) {
 			showError(error, i18n.baseText('ndv.redacted.revealError'));

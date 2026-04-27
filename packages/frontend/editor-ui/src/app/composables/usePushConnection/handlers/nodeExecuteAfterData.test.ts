@@ -1,9 +1,13 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { nodeExecuteAfterData } from './nodeExecuteAfterData';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { mockedStore } from '@/__tests__/utils';
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import { mock } from 'vitest-mock-extended';
 
 describe('nodeExecuteAfterData', () => {
 	beforeEach(() => {
@@ -14,7 +18,13 @@ describe('nodeExecuteAfterData', () => {
 	});
 
 	it('should update node execution data with incoming payload', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
+		vi.spyOn(workflowDocumentStore, 'updateNodeExecutionRunData');
+		const workflowState = mock<WorkflowState>({
+			getCurrentWorkflowDocumentStore: vi.fn(() => workflowDocumentStore),
+		});
 
 		const event: NodeExecuteAfterData = {
 			type: 'nodeExecuteAfterData',
@@ -34,9 +44,9 @@ describe('nodeExecuteAfterData', () => {
 			},
 		};
 
-		await nodeExecuteAfterData(event);
+		await nodeExecuteAfterData(event, { workflowState });
 
-		expect(workflowsStore.updateNodeExecutionRunData).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.updateNodeExecutionRunData).toHaveBeenCalledWith(event.data);
+		expect(workflowDocumentStore.updateNodeExecutionRunData).toHaveBeenCalledTimes(1);
+		expect(workflowDocumentStore.updateNodeExecutionRunData).toHaveBeenCalledWith(event.data);
 	});
 });

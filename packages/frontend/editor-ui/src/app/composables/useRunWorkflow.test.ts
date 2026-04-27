@@ -44,11 +44,27 @@ import {
 } from '../constants';
 import type { WorkflowObjectAccessors } from '../types';
 
+type MockWorkflowsStore = ReturnType<typeof useWorkflowsStore> & {
+	executionRunData: IRunData | null;
+	execution: IExecutionResponse | null;
+	activeExecutionId: string | null | undefined;
+	previousExecutionId: string | null | undefined;
+	executionWaitingForWebhook: boolean;
+	selectedTriggerNodeName: string | undefined;
+};
+
 const { mockDocumentStore } = vi.hoisted(() => {
 	const store = {
 		workflowId: '123',
 		name: 'Test Workflow',
 		allNodes: [] as unknown[],
+		executionRunData: null as IRunData | null,
+		execution: null as IExecutionResponse | null,
+		activeExecutionId: undefined as string | null | undefined,
+		previousExecutionId: undefined as string | null | undefined,
+		executionWaitingForWebhook: false,
+		selectedTriggerNodeName: undefined as string | undefined,
+		chatPartialExecutionDestinationNode: null as string | null,
 		getNodeByName: vi.fn(),
 		getParentNodes: vi.fn().mockReturnValue([]),
 		getChildNodes: vi.fn().mockReturnValue([]),
@@ -63,6 +79,24 @@ const { mockDocumentStore } = vi.hoisted(() => {
 		getPinnedDataLastUpdate: vi.fn(),
 		getPinnedDataLastRemovedAt: vi.fn(),
 		getSnapshot: vi.fn(),
+		clearExecutionStartedData: vi.fn(),
+		setExecutionWaitingForWebhook: vi.fn((value: boolean) => {
+			store.executionWaitingForWebhook = value;
+		}),
+		setSelectedTriggerNodeName: vi.fn((value: string | undefined) => {
+			store.selectedTriggerNodeName = value;
+		}),
+		setActiveExecutionId: vi.fn((value: string | null | undefined) => {
+			store.previousExecutionId = store.activeExecutionId;
+			store.activeExecutionId = value;
+		}),
+		setExecution: vi.fn((value: IExecutionResponse | null) => {
+			store.execution = value;
+			store.executionRunData = value?.data?.resultData?.runData ?? null;
+		}),
+		setChatPartialExecutionDestinationNode: vi.fn((value: string | null) => {
+			store.chatPartialExecutionDestinationNode = value;
+		}),
 	};
 	store.getSnapshot.mockReturnValue({
 		id: store.workflowId,
@@ -81,17 +115,25 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 }));
 
 vi.mock('@/app/stores/workflows.store', () => {
-	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
+	type MockWorkflowsStore = Partial<ReturnType<typeof useWorkflowsStore>> & {
+		executionRunData: IRunData | null;
+		execution: IExecutionResponse | null;
 		activeExecutionId: string | null | undefined;
-	} = {
+		previousExecutionId: string | null | undefined;
+		executionWaitingForWebhook: boolean;
+		selectedTriggerNodeName: string | undefined;
+	};
+
+	const storeState: MockWorkflowsStore = {
 		allNodes: [],
 		runWorkflow: vi.fn(),
-		getWorkflowRunData: null,
-		workflowExecutionData: null,
-		activeExecutionId: undefined,
-		previousExecutionId: undefined,
+		executionRunData: mockDocumentStore.executionRunData,
+		execution: mockDocumentStore.execution,
+		activeExecutionId: mockDocumentStore.activeExecutionId,
+		previousExecutionId: mockDocumentStore.previousExecutionId,
 		nodesIssuesExist: false,
-		executionWaitingForWebhook: false,
+		executionWaitingForWebhook: mockDocumentStore.executionWaitingForWebhook,
+		selectedTriggerNodeName: mockDocumentStore.selectedTriggerNodeName,
 		workflowValidationIssues: [],
 		workflow: {
 			nodes: [],
@@ -117,12 +159,52 @@ vi.mock('@/app/stores/workflows.store', () => {
 		getExecution: vi.fn(),
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
-		private: {
-			setActiveExecutionId: vi.fn((id: string | null | undefined) => {
-				storeState.activeExecutionId = id;
-			}),
-		},
 	};
+
+	Object.defineProperties(storeState, {
+		executionRunData: {
+			get: () => mockDocumentStore.executionRunData,
+			set: (value: IRunData | null) => {
+				mockDocumentStore.executionRunData = value;
+			},
+			configurable: true,
+		},
+		execution: {
+			get: () => mockDocumentStore.execution,
+			set: (value: IExecutionResponse | null) => {
+				mockDocumentStore.setExecution(value);
+			},
+			configurable: true,
+		},
+		activeExecutionId: {
+			get: () => mockDocumentStore.activeExecutionId,
+			set: (value: string | null | undefined) => {
+				mockDocumentStore.activeExecutionId = value;
+			},
+			configurable: true,
+		},
+		previousExecutionId: {
+			get: () => mockDocumentStore.previousExecutionId,
+			set: (value: string | null | undefined) => {
+				mockDocumentStore.previousExecutionId = value;
+			},
+			configurable: true,
+		},
+		executionWaitingForWebhook: {
+			get: () => mockDocumentStore.executionWaitingForWebhook,
+			set: (value: boolean) => {
+				mockDocumentStore.executionWaitingForWebhook = value;
+			},
+			configurable: true,
+		},
+		selectedTriggerNodeName: {
+			get: () => mockDocumentStore.selectedTriggerNodeName,
+			set: (value: string | undefined) => {
+				mockDocumentStore.selectedTriggerNodeName = value;
+			},
+			configurable: true,
+		},
+	});
 
 	return {
 		useWorkflowsStore: vi.fn().mockReturnValue(storeState),
@@ -246,7 +328,7 @@ let workflowState: WorkflowState;
 describe('useRunWorkflow({ router })', () => {
 	let pushConnectionStore: ReturnType<typeof usePushConnectionStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowsStore: MockWorkflowsStore;
 	let router: ReturnType<typeof useRouter>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
 	let agentRequestStore: ReturnType<typeof useAgentRequestStore>;
@@ -258,7 +340,7 @@ describe('useRunWorkflow({ router })', () => {
 
 		pushConnectionStore = usePushConnectionStore();
 		uiStore = useUIStore();
-		workflowsStore = useWorkflowsStore();
+		workflowsStore = useWorkflowsStore() as MockWorkflowsStore;
 		agentRequestStore = useAgentRequestStore();
 
 		workflowState = vi.mocked(useWorkflowState());
@@ -279,6 +361,14 @@ describe('useRunWorkflow({ router })', () => {
 		mockDocumentStore.getStartNode = vi.fn();
 		mockDocumentStore.incomingConnectionsByNodeName = vi.fn().mockReturnValue({});
 		mockDocumentStore.outgoingConnectionsByNodeName = vi.fn().mockReturnValue({});
+		mockDocumentStore.executionRunData = null;
+		mockDocumentStore.execution = null;
+		mockDocumentStore.activeExecutionId = undefined;
+		mockDocumentStore.previousExecutionId = undefined;
+		mockDocumentStore.executionWaitingForWebhook = false;
+		mockDocumentStore.selectedTriggerNodeName = undefined;
+		mockDocumentStore.chatPartialExecutionDestinationNode = null;
+		mockDocumentStore.clearExecutionStartedData.mockClear();
 	});
 
 	afterEach(() => {
@@ -371,7 +461,7 @@ describe('useRunWorkflow({ router })', () => {
 				id: 'workflowId',
 				nodes: [],
 			} as unknown as WorkflowData);
-			vi.mocked(workflowsStore).getWorkflowRunData = {
+			vi.mocked(workflowsStore).executionRunData = {
 				NodeName: [],
 			};
 
@@ -390,7 +480,7 @@ describe('useRunWorkflow({ router })', () => {
 				id: 'workflowId',
 				nodes: [],
 			} as unknown as WorkflowData);
-			vi.mocked(workflowsStore).getWorkflowRunData = {
+			vi.mocked(workflowsStore).executionRunData = {
 				NodeName: [],
 			};
 
@@ -455,7 +545,7 @@ describe('useRunWorkflow({ router })', () => {
 				nodes: [],
 			} as unknown as WorkflowData);
 
-			vi.mocked(workflowsStore).getWorkflowRunData = {
+			vi.mocked(workflowsStore).executionRunData = {
 				[parentNodeName]: [
 					{
 						startTime: 1,
@@ -497,7 +587,7 @@ describe('useRunWorkflow({ router })', () => {
 					? { main: [[{ node: parentName, type: NodeConnectionTypes.Main, index: 0 }]] }
 					: ({} as INodeConnections),
 			);
-			vi.mocked(workflowsStore).getWorkflowRunData = {
+			vi.mocked(workflowsStore).executionRunData = {
 				[parentName]: [
 					{
 						startTime: 1,
@@ -692,10 +782,10 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(workflowData);
-			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
+			vi.mocked(workflowsStore).executionRunData = mockRunData;
 			vi.mocked(agentRequestStore).getAgentRequest.mockReturnValue(agentRequest);
 
-			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setExecution = vi.spyOn(workflowState, 'setExecution');
 
 			// ACT
 			const result = await runWorkflow({
@@ -724,8 +814,8 @@ describe('useRunWorkflow({ router })', () => {
 				workflowId: workflowData.id,
 			});
 			expect(result).toEqual(mockExecutionResponse);
-			expect(setWorkflowExecutionData).toHaveBeenCalledTimes(1);
-			expect(setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
+			expect(setExecution).toHaveBeenCalledTimes(1);
+			expect(setExecution).toHaveBeenCalledWith(dataCaptor);
 			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
 		});
 
@@ -742,9 +832,9 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
 				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
 			);
-			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
+			vi.mocked(workflowsStore).executionRunData = mockRunData;
 
-			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setExecution = vi.spyOn(workflowState, 'setExecution');
 
 			// ACT
 			const result = await runWorkflow({
@@ -753,8 +843,8 @@ describe('useRunWorkflow({ router })', () => {
 
 			// ASSERT
 			expect(result).toEqual(mockExecutionResponse);
-			expect(setWorkflowExecutionData).toHaveBeenCalledTimes(1);
-			expect(setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
+			expect(setExecution).toHaveBeenCalledTimes(1);
+			expect(setExecution).toHaveBeenCalledWith(dataCaptor);
 			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
 		});
 
@@ -771,7 +861,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
 				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
 			);
-			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
+			vi.mocked(workflowsStore).executionRunData = mockRunData;
 
 			// ACT
 			const result = await runWorkflow({});
@@ -791,7 +881,7 @@ describe('useRunWorkflow({ router })', () => {
 				nodes: [],
 			} as unknown as WorkflowData);
 
-			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setExecution = vi.spyOn(workflowState, 'setExecution');
 
 			// Simulate failed execution start
 			vi.mocked(workflowsStore).runWorkflow.mockRejectedValueOnce(new Error());
@@ -799,7 +889,7 @@ describe('useRunWorkflow({ router })', () => {
 			await runWorkflow({});
 
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledTimes(1);
-			expect(setWorkflowExecutionData).lastCalledWith(null);
+			expect(setExecution).lastCalledWith(null);
 		});
 
 		describe('setupWebsocket for partial chat execution', () => {
@@ -891,7 +981,7 @@ describe('useRunWorkflow({ router })', () => {
 				vi.mocked(pushConnectionStore).isConnected = true;
 				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 				vi.mocked(workflowsStore).nodesIssuesExist = false;
-				vi.mocked(workflowsStore).getWorkflowRunData = {
+				vi.mocked(workflowsStore).executionRunData = {
 					NodeName: [],
 				};
 			});

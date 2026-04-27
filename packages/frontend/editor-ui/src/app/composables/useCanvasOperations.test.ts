@@ -4086,7 +4086,7 @@ describe('useCanvasOperations', () => {
 		it('should initialize workspace and set execution data when execution is found', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const uiStore = mockedStore(useUIStore);
-			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+			const setExecution = vi.spyOn(workflowState, 'setExecution');
 
 			const { openExecution } = useCanvasOperations();
 
@@ -4105,7 +4105,7 @@ describe('useCanvasOperations', () => {
 
 			const result = await openExecution(executionId);
 
-			expect(setWorkflowExecutionData).toHaveBeenCalledWith(executionData);
+			expect(setExecution).toHaveBeenCalledWith(executionData);
 			expect(uiStore.markStateClean).toHaveBeenCalled();
 			expect(result).toEqual(executionData);
 		});
