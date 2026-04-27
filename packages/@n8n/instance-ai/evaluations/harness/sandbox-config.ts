@@ -1,0 +1,93 @@
+// ---------------------------------------------------------------------------
+// Sandbox config resolution for evaluations.
+//
+// Reads the same env vars production reads (N8N_INSTANCE_AI_SANDBOX_*,
+// DAYTONA_*, N8N_SANDBOX_SERVICE_*) and produces a SandboxConfig the
+// in-process eval harness can hand to BuilderSandboxFactory.
+//
+// The CLI controls whether sandbox is enabled (default ON for evals);
+// missing required env vars raise clear errors so misconfiguration shows
+// up at startup, not mid-run.
+// ---------------------------------------------------------------------------
+
+import type { SandboxConfig, SandboxProvider } from '../../src/workspace/create-workspace';
+
+const DEFAULT_TIMEOUT_MS = 300_000;
+const VALID_PROVIDERS: SandboxProvider[] = ['daytona', 'local', 'n8n-sandbox'];
+
+export interface ResolveSandboxOptions {
+	/** Whether the eval run wants the sandbox at all. False returns a disabled config. */
+	sandbox: boolean;
+}
+
+export function resolveSandboxConfig(
+	env: NodeJS.ProcessEnv,
+	options: ResolveSandboxOptions,
+): SandboxConfig {
+	if (!options.sandbox) {
+		return { enabled: false, provider: 'daytona' };
+	}
+
+	const providerRaw = env.N8N_INSTANCE_AI_SANDBOX_PROVIDER ?? 'daytona';
+	if (!VALID_PROVIDERS.includes(providerRaw as SandboxProvider)) {
+		throw new Error(
+			`Invalid sandbox provider "${providerRaw}". Set N8N_INSTANCE_AI_SANDBOX_PROVIDER to one of: ${VALID_PROVIDERS.join(', ')}.`,
+		);
+	}
+	const provider = providerRaw as SandboxProvider;
+	const timeout = parseTimeout(env.N8N_INSTANCE_AI_SANDBOX_TIMEOUT) ?? DEFAULT_TIMEOUT_MS;
+
+	if (provider === 'daytona') {
+		const daytonaApiUrl = env.DAYTONA_API_URL;
+		const daytonaApiKey = env.DAYTONA_API_KEY;
+		if (!daytonaApiUrl) {
+			throw new Error(
+				'DAYTONA_API_URL is required for sandbox provider "daytona". Set it to e.g. https://app.daytona.io/api, or pass --no-sandbox to opt out.',
+			);
+		}
+		if (!daytonaApiKey) {
+			throw new Error(
+				'DAYTONA_API_KEY is required for sandbox provider "daytona". Set the Daytona API key, or pass --no-sandbox to opt out.',
+			);
+		}
+		const image = env.N8N_INSTANCE_AI_SANDBOX_IMAGE;
+		return {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl,
+			daytonaApiKey,
+			timeout,
+			...(image ? { image } : {}),
+		};
+	}
+
+	if (provider === 'n8n-sandbox') {
+		const serviceUrl = env.N8N_SANDBOX_SERVICE_URL;
+		if (!serviceUrl) {
+			throw new Error(
+				'N8N_SANDBOX_SERVICE_URL is required for sandbox provider "n8n-sandbox". Set it to the service URL, or pick a different provider via N8N_INSTANCE_AI_SANDBOX_PROVIDER.',
+			);
+		}
+		const apiKey = env.N8N_SANDBOX_SERVICE_API_KEY;
+		return {
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl,
+			...(apiKey ? { apiKey } : {}),
+			timeout,
+		};
+	}
+
+	return { enabled: true, provider: 'local', timeout };
+}
+
+function parseTimeout(raw: string | undefined): number | undefined {
+	if (raw === undefined || raw === '') return undefined;
+	const n = Number(raw);
+	if (!Number.isFinite(n) || n <= 0) {
+		throw new Error(
+			`N8N_INSTANCE_AI_SANDBOX_TIMEOUT must be a positive number of ms, got "${raw}".`,
+		);
+	}
+	return n;
+}
