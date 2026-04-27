@@ -33,7 +33,7 @@ export class GmailTrigger implements INodeType {
 		name: 'gmailTrigger',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description:
 			'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
 		subtitle: '={{"Gmail Trigger"}}',
@@ -299,6 +299,14 @@ export class GmailTrigger implements INodeType {
 			}
 
 			Object.assign(qs, prepareQuery.call(this, allFilters, 0), options);
+
+			if (node.typeVersion > 1.3) {
+				if (qs.q) {
+					qs.q += ' -in:scheduled';
+				} else {
+					qs.q = '-in:scheduled';
+				}
+			}
 
 			const messagesResponse: MessageListResponse = await googleApiRequest.call(
 				this,
