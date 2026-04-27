@@ -267,6 +267,34 @@ describe('McpServerMiddlewareService', () => {
 			expect(res.status).not.toHaveBeenCalled();
 		});
 
+		it('should authenticate with a delegated scoped JWT and set req.user to the actor', async () => {
+			const actor = mock<User>({ id: 'actor-1' });
+			const scopedJwt = jwtService.sign({
+				iss: 'n8n-token-exchange',
+				sub: 'subject-1',
+				act: { sub: 'actor-1' },
+				jti: 'test-jti',
+			});
+
+			const req = mockReqWith(`Bearer ${scopedJwt}`);
+			const res = mockDeep<Response>();
+			const next = jest.fn() as NextFunction;
+
+			// verifyApiKey returns the acting principal as `user` and keeps the actor field populated.
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: actor, actor });
+
+			const middleware = service.getAuthMiddleware();
+
+			await middleware(req, res, next);
+
+			expect((req as any).user).toEqual(actor);
+			expect(next).toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalled();
+			// Scoped JWTs flow through verifyApiKey (no meta.isOAuth), not the OAuth path.
+			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(scopedJwt);
+			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
+		});
+
 		it('should return 401 with WWW-Authenticate header when token validation fails', async () => {
 			const invalidToken = jwtService.sign({
 				sub: 'user-123',

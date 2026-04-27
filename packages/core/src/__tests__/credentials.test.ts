@@ -7,6 +7,7 @@ import { CREDENTIAL_ERRORS } from '@/constants';
 import { CipherAes256CBC } from '@/encryption/aes-256-cbc';
 import { CipherAes256GCM } from '@/encryption/aes-256-gcm';
 import { Cipher } from '@/encryption/cipher';
+import { EncryptionKeyProxy } from '@/encryption/encryption-key-proxy';
 import type { InstanceSettings } from '@/instance-settings';
 
 import { Credentials } from '../credentials';
@@ -19,6 +20,7 @@ describe('Credentials', () => {
 		mock<InstanceSettings>({ encryptionKey: 'password' }),
 		new CipherAes256GCM(),
 		new CipherAes256CBC(),
+		new EncryptionKeyProxy(),
 	);
 	Container.set(Cipher, cipher);
 

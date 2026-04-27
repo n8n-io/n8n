@@ -120,4 +120,39 @@ describe('generateTitleFromMessage', () => {
 		const call = mockGenerateText.mock.calls[0][0];
 		expect(call.messages[0].content).toBe('Custom system prompt');
 	});
+
+	it('wraps the user message in a title-generation instruction so the model does not answer it', async () => {
+		mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert' });
+		await generateTitleFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow');
+		const call = mockGenerateText.mock.calls[0][0];
+		expect(call.messages[1].role).toBe('user');
+		expect(call.messages[1].content).toContain('Generate a title');
+		expect(call.messages[1].content).toContain('<message>');
+		expect(call.messages[1].content).toContain('Build a daily Berlin rain alert workflow');
+		expect(call.messages[1].content).toContain('</message>');
+	});
+
+	it('drops a streamed code fence and everything after it', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: 'Here\'s your chat workflow with the requested configuration:\n\n```json\n{\n  "nodes": []\n}\n```',
+		});
+		const result = await generateTitleFromMessage(
+			fakeModel,
+			'build me a chat workflow with openai',
+		);
+		expect(result).toBe("Here's your chat workflow with the requested configuration");
+		expect(result).not.toContain('```');
+		expect(result).not.toContain('\n');
+	});
+
+	it('collapses embedded newlines and stray backticks into a single-line title', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: 'Scryfall\nrandom `card` workflow',
+		});
+		const result = await generateTitleFromMessage(
+			fakeModel,
+			'build a workflow that queries Scryfall for a random card',
+		);
+		expect(result).toBe('Scryfall random card workflow');
+	});
 });

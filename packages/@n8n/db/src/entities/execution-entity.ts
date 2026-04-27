@@ -13,7 +13,7 @@ import {
 import type { SimpleColumnType } from '@n8n/typeorm/driver/types/ColumnTypes';
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
-import { DateTimeColumn, datetimeColumnType } from './abstract-entity';
+import { DateTimeColumn, datetimeColumnType, jsonColumnType } from './abstract-entity';
 import type { ExecutionAnnotation } from './execution-annotation.ee';
 import type { ExecutionData } from './execution-data';
 import type { ExecutionMetadata } from './execution-metadata';
@@ -85,6 +85,8 @@ export class ExecutionEntity {
 	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
 	storedAt: ExecutionDataStorageLocation;
 
+	@Column({ type: jsonColumnType, nullable: true })
+	tracingContext: { traceparent: string; tracestate?: string } | null;
 	/**
 	 * Optional caller-supplied key that uniquely identifies this logical
 	 * execution. Enforced unique via an index, so concurrent attempts

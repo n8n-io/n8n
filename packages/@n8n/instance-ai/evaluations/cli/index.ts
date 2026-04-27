@@ -240,6 +240,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 				execArgs.scenario,
 				execArgs.workflowJsons,
 				logger,
+				args.timeoutMs,
 			),
 		{ name: 'scenario_execution', run_type: 'chain', client: lsClient },
 	);

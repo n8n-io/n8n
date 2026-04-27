@@ -24,6 +24,7 @@ import {
 	filterPropertiesForVersion,
 	buildDiscriminatorTree,
 	extractAIInputTypesFromBuilderHint,
+	narrowDisplayOptionsByDisabled,
 } from './generate-types';
 
 // =============================================================================
@@ -879,6 +880,12 @@ export function mergeDisplayOptions(
  * When multiple properties have the same name (e.g., multiple 'options' collections
  * with different displayOptions), their displayOptions and nested options are merged.
  *
+ * Properties whose displayOptions are fully covered by disabledOptions (the field
+ * is rendered read-only in all its visible states, e.g. the expression-prefilled
+ * variant of a sessionKey) contribute no settable states and are skipped, so the
+ * generated schema only accepts values in states where the field is actually
+ * user-editable.
+ *
  * @param properties - Array of node properties, possibly with duplicates
  * @returns Map of property name to merged property
  */
@@ -891,24 +898,35 @@ export function mergePropertiesByName(properties: NodeProperty[]): Map<string, N
 			continue;
 		}
 
-		const existing = propsByName.get(prop.name);
+		const { displayOptions: narrowedDisplayOptions, fullyDisabled } =
+			narrowDisplayOptionsByDisabled(prop);
+		if (fullyDisabled) {
+			continue;
+		}
+
+		const normalizedProp: NodeProperty = { ...prop, displayOptions: narrowedDisplayOptions };
+
+		const existing = propsByName.get(normalizedProp.name);
 		if (existing) {
 			// Merge displayOptions from duplicate property
-			if (prop.displayOptions && existing.displayOptions) {
-				existing.displayOptions = mergeDisplayOptions(existing.displayOptions, prop.displayOptions);
-			} else if (prop.displayOptions && !existing.displayOptions) {
+			if (normalizedProp.displayOptions && existing.displayOptions) {
+				existing.displayOptions = mergeDisplayOptions(
+					existing.displayOptions,
+					normalizedProp.displayOptions,
+				);
+			} else if (normalizedProp.displayOptions && !existing.displayOptions) {
 				// If only the new one has displayOptions, the existing one has no condition
 				// which means it's always visible - keep existing as-is (no condition)
 			}
 
 			// For collection/fixedCollection types, merge nested options
 			if (
-				(prop.type === 'collection' || prop.type === 'fixedCollection') &&
-				prop.options &&
+				(normalizedProp.type === 'collection' || normalizedProp.type === 'fixedCollection') &&
+				normalizedProp.options &&
 				existing.options
 			) {
 				const existingOptionNames = new Set(existing.options.map((o) => o.name));
-				for (const opt of prop.options) {
+				for (const opt of normalizedProp.options) {
 					if (!existingOptionNames.has(opt.name)) {
 						existing.options.push(opt);
 					}
@@ -917,9 +935,9 @@ export function mergePropertiesByName(properties: NodeProperty[]): Map<string, N
 			// Keep the first property's other attributes (type, required, etc.)
 		} else {
 			// Create a shallow copy to avoid mutating the original when merging
-			propsByName.set(prop.name, {
-				...prop,
-				options: prop.options ? [...prop.options] : undefined,
+			propsByName.set(normalizedProp.name, {
+				...normalizedProp,
+				options: normalizedProp.options ? [...normalizedProp.options] : undefined,
 			});
 		}
 	}
