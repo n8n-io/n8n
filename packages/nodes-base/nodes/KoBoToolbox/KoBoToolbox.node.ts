@@ -415,8 +415,6 @@ export class KoBoToolbox implements INodeType {
 							encoding: 'arraybuffer',
 						});
 
-						console.dir(response);
-
 						binaryItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 							response as Buffer,
 							responseData[0].metadata.filename as string,
