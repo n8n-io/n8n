@@ -733,6 +733,20 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
+		// Extract W3C trace context from webhook headers for OTEL propagation.
+		const traceparent = req.headers.traceparent;
+		if (
+			typeof traceparent === 'string' &&
+			/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
+		) {
+			const tracestate = req.headers.tracestate;
+			runData.tracingContext = {
+				traceparent,
+				tracestate:
+					typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined,
+			};
+		}
+
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,

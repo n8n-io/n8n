@@ -14,6 +14,7 @@ import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 import { createWorkflow } from './mock.utils';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -84,6 +85,7 @@ describe('McpSettingsController', () => {
 	const mcpServerApiKeyService = mockDeep<McpServerApiKeyService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowService = mock<WorkflowService>();
+	const collaborationService = mock<CollaborationService>();
 
 	let controller: McpSettingsController;
 
@@ -95,6 +97,12 @@ describe('McpSettingsController', () => {
 		Container.set(McpServerApiKeyService, mcpServerApiKeyService);
 		Container.set(WorkflowFinderService, workflowFinderService);
 		Container.set(WorkflowService, workflowService);
+		Container.set(CollaborationService, collaborationService);
+		// Default resolved broadcast — the controller fires this without
+		// awaiting and attaches a `.catch(...)`, so the mock must return a
+		// real Promise. Tests that exercise the failure path override this
+		// with `mockRejectedValueOnce`.
+		collaborationService.broadcastWorkflowSettingsUpdated.mockResolvedValue(undefined);
 		controller = Container.get(McpSettingsController);
 	});
 
@@ -456,6 +464,73 @@ describe('McpSettingsController', () => {
 				settings: { saveManualExecutions: true, availableInMCP: true },
 				versionId: 'updated-version-id',
 			});
+		});
+
+		test('broadcasts a settings update with a post-update checksum to open collaborators', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				createWorkflow({ activeVersionId: null }),
+			);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				name: 'wf',
+				nodes: [],
+				connections: {},
+				settings: { availableInMCP: true },
+				versionId: 'updated-version-id',
+			} as unknown as WorkflowEntity);
+
+			await controller.toggleWorkflowMCPAccess(
+				createReq({}, { user }),
+				mock<Response>(),
+				workflowId,
+				{
+					availableInMCP: true,
+				},
+			);
+
+			expect(collaborationService.broadcastWorkflowSettingsUpdated).toHaveBeenCalledTimes(1);
+			const [broadcastWorkflowId, broadcastSettings, broadcastChecksum] =
+				collaborationService.broadcastWorkflowSettingsUpdated.mock.calls[0];
+			expect(broadcastWorkflowId).toBe(workflowId);
+			expect(broadcastSettings).toEqual({ availableInMCP: true });
+			expect(typeof broadcastChecksum).toBe('string');
+			expect(broadcastChecksum).toMatch(/^[a-f0-9]{64}$/);
+		});
+
+		test('does not fail the request when the broadcast throws', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				createWorkflow({ activeVersionId: null }),
+			);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				settings: { availableInMCP: false },
+				versionId: 'updated-version-id',
+			} as unknown as WorkflowEntity);
+			collaborationService.broadcastWorkflowSettingsUpdated.mockRejectedValueOnce(
+				new Error('push down'),
+			);
+
+			await expect(
+				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
+					availableInMCP: false,
+				}),
+			).resolves.toEqual({
+				id: workflowId,
+				settings: { availableInMCP: false },
+				versionId: 'updated-version-id',
+			});
+		});
+
+		test('does not broadcast when the workflow cannot be accessed', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(
+				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
+					availableInMCP: true,
+				}),
+			).rejects.toThrow(NotFoundError);
+
+			expect(collaborationService.broadcastWorkflowSettingsUpdated).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -269,6 +269,10 @@ export interface NodeProperty {
 		show?: Record<string, unknown[]>;
 		hide?: Record<string, unknown[]>;
 	};
+	disabledOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
 	typeOptions?: Record<string, unknown>;
 	noDataExpression?: boolean;
 	modes?: Array<{
@@ -1079,6 +1083,75 @@ function generateFixedCollectionType(
 }
 
 /**
+ * Translate a property's disabledOptions into effective displayOptions that
+ * exclude the disabled states from the generated type. Returns
+ * { displayOptions, fullyDisabled } where fullyDisabled is true when every
+ * visible state is read-only.
+ *
+ * - For keys present in both displayOptions.show and disabledOptions.show, the
+ *   disabled values are subtracted from the show list. If any key is left with
+ *   no settable values, the property is fully disabled.
+ * - For keys in disabledOptions.show that aren't covered by displayOptions.show,
+ *   they are merged into displayOptions.hide — "disabled" is equivalent to
+ *   "unsettable" for schema purposes, so the field is excluded from those
+ *   states.
+ */
+export function narrowDisplayOptionsByDisabled(prop: NodeProperty): {
+	displayOptions: NodeProperty['displayOptions'];
+	fullyDisabled: boolean;
+} {
+	const { displayOptions, disabledOptions } = prop;
+	if (!disabledOptions?.show) {
+		return { displayOptions, fullyDisabled: false };
+	}
+
+	const currentShow = displayOptions?.show;
+	const narrowedShow: Record<string, unknown[]> = {};
+	const mergedHide: Record<string, unknown[]> = {};
+	for (const [key, values] of Object.entries(displayOptions?.hide ?? {})) {
+		mergedHide[key] = [...values];
+	}
+
+	if (currentShow) {
+		for (const [key, values] of Object.entries(currentShow)) {
+			const disabledValues = disabledOptions.show[key];
+			if (!disabledValues) {
+				narrowedShow[key] = values;
+				continue;
+			}
+			const remaining = values.filter(
+				(v) => !disabledValues.some((d) => JSON.stringify(d) === JSON.stringify(v)),
+			);
+			if (remaining.length === 0) {
+				return { displayOptions: undefined, fullyDisabled: true };
+			}
+			narrowedShow[key] = remaining;
+		}
+	}
+
+	for (const [key, values] of Object.entries(disabledOptions.show)) {
+		if (currentShow && key in currentShow) continue;
+		const existing = mergedHide[key] ?? [];
+		const seen = new Set(existing.map((v) => JSON.stringify(v)));
+		for (const v of values) {
+			if (!seen.has(JSON.stringify(v))) {
+				existing.push(v);
+			}
+		}
+		mergedHide[key] = existing;
+	}
+
+	const result: NonNullable<NodeProperty['displayOptions']> = {};
+	if (Object.keys(narrowedShow).length > 0) result.show = narrowedShow;
+	if (Object.keys(mergedHide).length > 0) result.hide = mergedHide;
+
+	return {
+		displayOptions: Object.keys(result).length > 0 ? result : undefined,
+		fullyDisabled: false,
+	};
+}
+
+/**
  * Merge properties with the same name for collection/fixedCollection types.
  * When multiple properties have the same name (e.g., multiple 'options' collections
  * with different displayOptions), their nested options should be merged.
@@ -1095,18 +1168,29 @@ function mergeCollectionProperties(properties: NodeProperty[]): NodeProperty[] {
 			continue;
 		}
 
-		if (seenProps.has(prop.name)) {
-			const existingProp = seenProps.get(prop.name)!;
+		// Narrow displayOptions so the emitted type reflects the actually-settable
+		// states: drop the property entirely if every visible state is read-only
+		// (e.g. the expression-prefilled sessionKey variant of the memory nodes,
+		// which lives only to render a disabled UI field in 'fromInput' mode).
+		const { displayOptions: narrowedDisplayOptions, fullyDisabled } =
+			narrowDisplayOptionsByDisabled(prop);
+		if (fullyDisabled) {
+			continue;
+		}
+		const normalizedProp: NodeProperty = { ...prop, displayOptions: narrowedDisplayOptions };
+
+		if (seenProps.has(normalizedProp.name)) {
+			const existingProp = seenProps.get(normalizedProp.name)!;
 
 			// For collection/fixedCollection types, merge nested options
 			if (
-				(prop.type === 'collection' || prop.type === 'fixedCollection') &&
-				prop.options &&
+				(normalizedProp.type === 'collection' || normalizedProp.type === 'fixedCollection') &&
+				normalizedProp.options &&
 				existingProp.options
 			) {
 				// Merge options, avoiding duplicates by name
 				const existingOptionNames = new Set(existingProp.options.map((o) => o.name));
-				for (const opt of prop.options) {
+				for (const opt of normalizedProp.options) {
 					if (!existingOptionNames.has(opt.name)) {
 						existingProp.options.push(opt);
 					}
@@ -1117,9 +1201,9 @@ function mergeCollectionProperties(properties: NodeProperty[]): NodeProperty[] {
 		}
 
 		// Create a shallow copy to avoid mutating the original when merging
-		seenProps.set(prop.name, {
-			...prop,
-			options: prop.options ? [...prop.options] : undefined,
+		seenProps.set(normalizedProp.name, {
+			...normalizedProp,
+			options: normalizedProp.options ? [...normalizedProp.options] : undefined,
 		});
 	}
 
