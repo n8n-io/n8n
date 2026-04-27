@@ -1,6 +1,9 @@
 import { VIEWS } from '@/app/constants';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { render } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { computed, defineComponent, h } from 'vue';
 
 const route = vi.hoisted(() => ({
 	name: '' as string | symbol,
@@ -38,5 +41,26 @@ describe('useWorkflowId', () => {
 		route.params = { workflowId: 'workflow-123' };
 
 		expect(useWorkflowId().value).toBe('demo');
+	});
+
+	it('uses an injected workflow ID when provided', () => {
+		route.params = { workflowId: 'route-workflow-id' };
+
+		const TestComponent = defineComponent({
+			setup() {
+				const workflowId = useWorkflowId();
+				return () => h('span', { 'data-test-id': 'workflow-id' }, workflowId.value);
+			},
+		});
+
+		const { getByTestId } = render(TestComponent, {
+			global: {
+				provide: {
+					[WorkflowIdKey as symbol]: computed(() => 'injected-workflow-id'),
+				},
+			},
+		});
+
+		expect(getByTestId('workflow-id')).toHaveTextContent('injected-workflow-id');
 	});
 });

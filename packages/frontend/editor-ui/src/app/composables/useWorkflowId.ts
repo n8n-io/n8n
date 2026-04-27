@@ -1,8 +1,12 @@
-import { computed } from 'vue';
+import { computed, hasInjectionContext, inject } from 'vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 export function useWorkflowId() {
+	const injectedWorkflowId = hasInjectionContext() ? inject(WorkflowIdKey, null) : null;
+	if (injectedWorkflowId) return injectedWorkflowId;
+
 	const route = useRoute();
 
 	return computed(() => {
