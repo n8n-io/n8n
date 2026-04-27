@@ -200,6 +200,7 @@ export class GitlabTrigger implements INodeType {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
+						delete webhookData.webhookSecret;
 
 						return false;
 					}
