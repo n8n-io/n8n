@@ -38,7 +38,7 @@ export async function pagerDutyApiRequest(
 	};
 
 	if (!Object.keys(body as IDataObject).length) {
-		delete options.form;
+		delete options.body;
 	}
 	if (!Object.keys(query).length) {
 		delete options.qs;
