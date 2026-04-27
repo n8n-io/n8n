@@ -14,6 +14,7 @@ export async function sendGridApiRequest(
 
 	body: any = {},
 	qs: IDataObject = {},
+	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
 	const host = 'api.sendgrid.com/v3';
@@ -22,7 +23,7 @@ export async function sendGridApiRequest(
 		method,
 		qs,
 		body,
-		uri: `https://${host}${endpoint}`,
+		uri: uri ?? `https://${host}${endpoint}`,
 		json: true,
 	};
 
@@ -50,10 +51,10 @@ export async function sendGridApiRequestAllItems(
 
 	let responseData;
 
-	let uri;
+	let uri: string | undefined;
 
 	do {
-		responseData = await sendGridApiRequest.call(this, endpoint, method, body, query, uri); // possible bug, as function does not have uri parameter
+		responseData = await sendGridApiRequest.call(this, endpoint, method, body, query, uri);
 		uri = responseData._metadata.next;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		const limit = query.limit as number | undefined;

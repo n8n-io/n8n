@@ -638,7 +638,7 @@ export class SendGrid implements INodeType {
 								.map((entry) => ({ email: entry.trim() }));
 						}
 
-						const data = await sendGridApiRequest.call(this, '/mail/send', 'POST', body, qs, {
+						const data = await sendGridApiRequest.call(this, '/mail/send', 'POST', body, qs, undefined, {
 							resolveWithFullResponse: true,
 						});
 
