@@ -3,7 +3,12 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
-import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import {
+	MessageEventBusDestinationSentryOptionsSchema,
+	MessageEventBusDestinationSyslogOptionsSchema,
+	MessageEventBusDestinationTypeNames,
+	MessageEventBusDestinationWebhookOptionsSchema,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -12,119 +17,38 @@ import { EventDestinations } from '@/modules/log-streaming.ee/database/entities'
 
 import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 
-const circuitBreakerSchema = z
-	.object({
-		maxFailures: z.number().int().positive().optional(),
-		failureWindow: z.number().int().min(100).optional(),
-	})
-	.strict()
-	.optional();
-
-const webhookParameterItemSchema = z
-	.object({
-		parameters: z.array(
-			z
-				.object({
-					name: z.string(),
-					value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
-				})
-				.strict(),
-		),
-	})
-	.strict();
-
-const webhookOptionsSchema = z
-	.object({
-		allowUnauthorizedCerts: z.boolean().optional(),
-		queryParameterArrays: z.enum(['indices', 'brackets', 'repeat']).optional(),
-		redirect: z
-			.object({
-				redirect: z
-					.object({
-						followRedirects: z.boolean().optional(),
-						maxRedirects: z.number().int().positive().optional(),
-					})
-					.strict(),
-			})
-			.strict()
-			.optional(),
-		proxy: z
-			.object({
-				proxy: z
-					.object({
-						protocol: z.enum(['https', 'http']),
-						host: z.string().min(1),
-						port: z.number().int().positive(),
-					})
-					.strict(),
-			})
-			.strict()
-			.optional(),
-		timeout: z.number().int().positive().optional(),
-		socket: z
-			.object({
-				keepAlive: z.boolean().optional(),
-				maxSockets: z.number().int().positive().optional(),
-				maxFreeSockets: z.number().int().positive().optional(),
-			})
-			.strict()
-			.optional(),
-	})
-	.strict()
-	.optional();
-
-const commonFields = {
-	id: z.string().uuid().optional(),
-	label: z.string().min(1).optional(),
-	enabled: z.boolean().optional(),
-	subscribedEvents: z.array(z.string().min(1)).optional(),
-	anonymizeAuditMessages: z.boolean().optional(),
-	circuitBreaker: circuitBreakerSchema,
-} as const;
-
-const webhookEnvSchema = z
-	.object({
-		...commonFields,
+// Env var format reuses the canonical destination DTOs from `n8n-workflow`,
+// with three deliberate adjustments per variant:
+//  1. Replace the internal `__type: '$$MessageEventBusDestination…'` discriminator
+//     with a friendlier `type: 'webhook' | 'syslog' | 'sentry'`.
+//  2. Tighten `id` to a UUID (the DTO only requires a non-empty string).
+//  3. Switch to strict mode so unknown keys in the env JSON fail loudly
+//     rather than being silently dropped on insert.
+const envWebhookSchema = MessageEventBusDestinationWebhookOptionsSchema.omit({ __type: true })
+	.extend({
 		type: z.literal('webhook'),
-		url: z.string().url(),
-		method: z.enum(['GET', 'POST', 'PUT']).optional(),
-		sendQuery: z.boolean().optional(),
-		specifyQuery: z.enum(['keypair', 'json']).optional(),
-		queryParameters: webhookParameterItemSchema.optional(),
-		jsonQuery: z.string().optional(),
-		sendHeaders: z.boolean().optional(),
-		specifyHeaders: z.enum(['keypair', 'json']).optional(),
-		headerParameters: webhookParameterItemSchema.optional(),
-		jsonHeaders: z.string().optional(),
-		options: webhookOptionsSchema,
+		id: z.string().uuid().optional(),
 	})
 	.strict();
 
-const syslogEnvSchema = z
-	.object({
-		...commonFields,
+const envSyslogSchema = MessageEventBusDestinationSyslogOptionsSchema.omit({ __type: true })
+	.extend({
 		type: z.literal('syslog'),
-		host: z.string().min(1),
-		port: z.number().int().positive().optional(),
-		protocol: z.enum(['udp', 'tcp', 'tls']).optional(),
-		facility: z.number().int().min(0).max(23).optional(),
-		app_name: z.string().min(1).optional(),
-		tlsCa: z.string().min(1).optional(),
+		id: z.string().uuid().optional(),
 	})
 	.strict();
 
-const sentryEnvSchema = z
-	.object({
-		...commonFields,
+const envSentrySchema = MessageEventBusDestinationSentryOptionsSchema.omit({ __type: true })
+	.extend({
 		type: z.literal('sentry'),
-		dsn: z.string().url(),
+		id: z.string().uuid().optional(),
 	})
 	.strict();
 
 const envDestinationSchema = z.discriminatedUnion('type', [
-	webhookEnvSchema,
-	syslogEnvSchema,
-	sentryEnvSchema,
+	envWebhookSchema,
+	envSyslogSchema,
+	envSentrySchema,
 ]);
 
 const envDestinationsSchema = z.array(envDestinationSchema);

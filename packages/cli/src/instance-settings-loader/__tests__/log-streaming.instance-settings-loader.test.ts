@@ -129,16 +129,6 @@ describe('LogStreamingInstanceSettingsLoader', () => {
 			await expectRejectsWithBootstrappingError(loader, /validation failed/);
 		});
 
-		it('rejects webhook method values outside GET/POST/PUT', async () => {
-			const loader = createLoader({
-				logStreamingDestinations: JSON.stringify([
-					{ type: 'webhook', label: 'W', url: 'https://w.test', method: 'DELETE' },
-				]),
-			});
-
-			await expectRejectsWithBootstrappingError(loader, /validation failed/);
-		});
-
 		it('rejects syslog facility outside the 0–23 range', async () => {
 			const loader = createLoader({
 				logStreamingDestinations: JSON.stringify([
