@@ -138,32 +138,43 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			},
 		};
 
-		// Step 1: Start services (parallel by dependency level)
+		// Step 1: Start services (parallel within a dependency level by default)
 		const allServiceNames = Object.keys(SERVICE_REGISTRY) as ServiceName[];
 		const servicesToStart = allServiceNames.filter((name) =>
 			shouldServiceStart(name, SERVICE_REGISTRY[name], ctx),
 		);
 		const dependencyLevels = groupByDependencyLevel(servicesToStart);
+		// Set STACK_SEQUENTIAL_START=1 to start services within each dependency level one at a time.
+		// Trades total startup time for lower peak CPU on contended (2-vCPU CI) runners.
+		const sequentialStart = process.env.STACK_SEQUENTIAL_START === '1';
+
+		const startService = async (name: ServiceName) => {
+			const service = SERVICE_REGISTRY[name];
+			const options = service.getOptions?.(ctx);
+			const serviceStart = performance.now();
+			try {
+				const result = await service.start(network, uniqueProjectName, options, ctx);
+				telemetry.recordService(name, Math.round(performance.now() - serviceStart));
+				return { name, service, result };
+			} catch (error) {
+				telemetry.recordService(name, Math.round(performance.now() - serviceStart));
+				const message = error instanceof Error ? error.message : String(error);
+				throw new Error(`Service "${service.description}" (${name}) failed to start: ${message}`);
+			}
+		};
 
 		for (const level of dependencyLevels) {
 			const levelNames = level.map((name) => SERVICE_REGISTRY[name].description).join(', ');
 
-			const levelPromises = level.map(async (name) => {
-				const service = SERVICE_REGISTRY[name];
-				const options = service.getOptions?.(ctx);
-				const serviceStart = performance.now();
-				try {
-					const result = await service.start(network, uniqueProjectName, options, ctx);
-					telemetry.recordService(name, Math.round(performance.now() - serviceStart));
-					return { name, service, result };
-				} catch (error) {
-					telemetry.recordService(name, Math.round(performance.now() - serviceStart));
-					const message = error instanceof Error ? error.message : String(error);
-					throw new Error(`Service "${service.description}" (${name}) failed to start: ${message}`);
+			let results: Array<Awaited<ReturnType<typeof startService>>>;
+			if (sequentialStart) {
+				results = [];
+				for (const name of level) {
+					results.push(await startService(name));
 				}
-			});
-
-			const results = await Promise.all(levelPromises);
+			} else {
+				results = await Promise.all(level.map(startService));
+			}
 
 			for (const { name, service, result } of results) {
 				// Some services (e.g., tracing) return multiple containers
