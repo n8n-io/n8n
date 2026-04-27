@@ -217,6 +217,9 @@
 		"POST /projects/{projectId}/folders": {
 			"status": "gap"
 		},
+		"DELETE /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
 		"GET /projects/{projectId}/users": {
 			"status": "gap"
 		},
@@ -227,6 +230,21 @@
 			"status": "gap"
 		},
 		"PATCH /projects/{projectId}/users/{userId}": {
+			"status": "gap"
+		},
+		"DELETE /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"POST /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"PATCH /projects/{projectId}/folders/{folderId}": {
 			"status": "gap"
 		}
 	}

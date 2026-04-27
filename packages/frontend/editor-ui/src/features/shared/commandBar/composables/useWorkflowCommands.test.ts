@@ -16,6 +16,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
+import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { shallowRef, type Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -56,11 +57,8 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	}),
 }));
 
-const getWorkflowDataToSaveMock = vi.fn();
 vi.mock('@/app/composables/useWorkflowHelpers', () => ({
-	useWorkflowHelpers: () => ({
-		getWorkflowDataToSave: getWorkflowDataToSaveMock,
-	}),
+	useWorkflowHelpers: () => ({}),
 }));
 
 const saveCurrentWorkflowMock = vi.fn();
@@ -101,7 +99,6 @@ describe('useWorkflowCommands', () => {
 		mockWorkflowsListStore = useWorkflowsListStore();
 		mockSourceControlStore = useSourceControlStore();
 
-		getWorkflowDataToSaveMock.mockResolvedValue(mockWorkflow.value);
 		saveCurrentWorkflowMock.mockResolvedValue(true);
 
 		mockWorkflowsStore.workflow = mockWorkflow.value;
@@ -112,6 +109,9 @@ describe('useWorkflowCommands', () => {
 			createWorkflowDocumentId(mockWorkflow.value.id),
 		);
 		mockWorkflowDocumentStore.setScopes(mockWorkflow.value.scopes ?? []);
+		vi.spyOn(mockWorkflowDocumentStore, 'serialize').mockReturnValue(
+			mockWorkflow.value as unknown as WorkflowData,
+		);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(mockWorkflowDocumentStore));
 
 		Object.defineProperty(mockUIStore, 'isActionActive', {
@@ -365,7 +365,7 @@ describe('useWorkflowCommands', () => {
 
 			await downloadCommand?.handler?.();
 
-			expect(getWorkflowDataToSaveMock).toHaveBeenCalled();
+			expect(mockWorkflowDocumentStore.serialize).toHaveBeenCalled();
 			expect(mockTelemetryTrack).toHaveBeenCalledWith('User exported workflow', {
 				workflow_id: 'workflow-123',
 			});

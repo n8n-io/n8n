@@ -170,6 +170,8 @@ export function runFilter() {
 	}
 
 	setOutput('results', JSON.stringify(results));
+	setOutput('changed-files', changedFiles.join('\n'));
+	setOutput('base-ref', baseRef);
 }
 
 // --- Mode: validate ---

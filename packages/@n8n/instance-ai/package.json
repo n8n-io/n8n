@@ -10,7 +10,8 @@
     "test": "jest",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "eval:instance-ai": "tsx evaluations/cli/index.ts"
+    "eval:instance-ai": "tsx evaluations/cli/index.ts",
+    "eval:subagent": "tsx evaluations/subagent/cli.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

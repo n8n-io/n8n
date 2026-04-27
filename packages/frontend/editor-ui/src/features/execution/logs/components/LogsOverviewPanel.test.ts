@@ -26,6 +26,8 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 		getParentNodes: vi.fn().mockReturnValue([]),
 		getChildNodes: vi.fn().mockReturnValue([]),
 		getStartNode: vi.fn(),
+		checkIfNodeHasChatParent: vi.fn().mockReturnValue(false),
+		checkIfToolNodeHasChatParent: vi.fn().mockReturnValue(false),
 		getExpressionHandler: vi.fn().mockReturnValue(null),
 		getSnapshot: vi.fn().mockReturnValue({
 			id: 'test-workflow-id',
@@ -45,6 +47,18 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		settings: {},
 		getPinDataSnapshot: vi.fn().mockReturnValue({}),
+		serialize: vi.fn().mockReturnValue({
+			id: 'test-workflow-id',
+			name: 'Test Workflow',
+			nodes: [],
+			connections: {},
+			pinData: {},
+			active: false,
+			settings: {},
+			tags: [],
+			versionId: '',
+			meta: {},
+		}),
 	},
 }));
 

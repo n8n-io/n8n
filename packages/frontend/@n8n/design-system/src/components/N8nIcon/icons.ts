@@ -23,6 +23,7 @@ import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
 import Schema from './custom/schema.svg';
 import Spinner from './custom/spinner.svg';
+import StarFilled from './custom/star-filled.svg';
 import StatusCanceled from './custom/status-canceled.svg';
 import StatusCompleted from './custom/status-completed.svg';
 import StatusError from './custom/status-error.svg';
@@ -71,6 +72,7 @@ import IconLucideChevronRight from '~icons/lucide/chevron-right';
 import IconLucideChevronUp from '~icons/lucide/chevron-up';
 import IconLucideChevronsDownUp from '~icons/lucide/chevrons-down-up';
 import IconLucideChevronsLeft from '~icons/lucide/chevrons-left';
+import IconLucideChevronsRight from '~icons/lucide/chevrons-right';
 import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
 import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
@@ -481,6 +483,7 @@ export const updatedIconSet = {
 	'status-new': StatusNew,
 	'status-unknown': StatusUnknown,
 	'status-warning': StatusWarning,
+	'star-filled': StarFilled,
 	'vector-square': VectorSquare,
 	'continue-on-error': Continue,
 	'always-output-data': EmptyOutput,
@@ -540,6 +543,7 @@ export const updatedIconSet = {
 	'chevron-right': IconLucideChevronRight,
 	'chevron-up': IconLucideChevronUp,
 	'chevrons-left': IconLucideChevronsLeft,
+	'chevrons-right': IconLucideChevronsRight,
 	'chevrons-down-up': IconLucideChevronsDownUp,
 	'chevrons-up-down': IconLucideChevronsUpDown,
 	circle: IconLucideCircle,
@@ -682,6 +686,7 @@ export const updatedIconSet = {
 	'square-minus': IconLucideSquareMinus,
 	'square-pen': IconLucideSquarePen,
 	'square-plus': IconLucideSquarePlus,
+	star: IconLucideStar,
 	'sticky-note': IconLucideStickyNote,
 	sun: IconLucideSun,
 	table: IconLucideTable,
@@ -719,7 +724,6 @@ export const updatedIconSet = {
 	loader: IconLucideLoader2,
 	'loader-circle': IconLucideLoaderCircle,
 	'quick-connect': IconLucideFlame,
-	star: IconLucideStar,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward

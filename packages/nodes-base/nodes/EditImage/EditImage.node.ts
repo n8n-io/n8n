@@ -1082,6 +1082,8 @@ export class EditImage implements INodeType {
 					);
 					gmInstance = gm(binaryDataBuffer);
 					gmInstance = gmInstance.background('transparent');
+					gmInstance = gmInstance.autoOrient();
+					gmInstance = gmInstance.out('-orient', 'TopLeft');
 				}
 
 				const newItem: INodeExecutionData = {
