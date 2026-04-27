@@ -10,7 +10,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	dropboxApiRequest,
-	dropboxpiRequestAllItems,
+	dropboxApiRequestAllItems,
 	getCredentials,
 	getRootDirectory,
 	simplify,
@@ -893,7 +893,7 @@ export class Dropbox implements INodeType {
 				let responseData;
 
 				if (returnAll) {
-					responseData = await dropboxpiRequestAllItems.call(
+					responseData = await dropboxApiRequestAllItems.call(
 						this,
 						property,
 						requestMethod,

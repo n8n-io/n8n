@@ -49,7 +49,7 @@ export async function dropboxApiRequest(
 	}
 }
 
-export async function dropboxpiRequestAllItems(
+export async function dropboxApiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
