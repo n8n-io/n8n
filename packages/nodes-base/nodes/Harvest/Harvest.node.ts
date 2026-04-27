@@ -196,9 +196,6 @@ export class Harvest implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
-
 		let endpoint = '';
 		let requestMethod: IHttpRequestMethods;
 		let body: IDataObject | Buffer;
@@ -208,6 +205,9 @@ export class Harvest implements INodeType {
 			try {
 				body = {};
 				qs = {};
+
+				const resource = this.getNodeParameter('resource', i) as string;
+				const operation = this.getNodeParameter('operation', i) as string;
 
 				if (resource === 'timeEntry') {
 					if (operation === 'get') {
