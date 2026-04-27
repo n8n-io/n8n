@@ -141,6 +141,7 @@ import {
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
+import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -2796,6 +2797,10 @@ export function useCanvasOperations() {
 	}
 
 	function getNodesToSave(nodes: INode[]): WorkflowData {
+		if (!workflowDocumentStore.value) {
+			throw new Error('Cannot serialize nodes: workflow document store is unavailable');
+		}
+
 		const data = {
 			nodes: [] as INodeUi[],
 			connections: {} as IConnections,
@@ -2805,10 +2810,8 @@ export function useCanvasOperations() {
 		const exportedNodeNames = new Set<string>();
 
 		for (const node of nodes) {
-			const nodeSaveData = workflowHelpers.getNodeDataToSave(node);
-			const pinDataForNode = workflowDocumentStore.value
-				? pinDataToExecutionData(workflowDocumentStore.value.pinData)[node.name]
-				: undefined;
+			const nodeSaveData = serializeNode(nodeTypesStore, node);
+			const pinDataForNode = pinDataToExecutionData(workflowDocumentStore.value.pinData)[node.name];
 
 			if (pinDataForNode) {
 				data.pinData[node.name] = pinDataForNode as IPinData[string];

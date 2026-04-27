@@ -232,12 +232,16 @@ export abstract class AbstractServer {
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
-			const liveWebhooksRequestHandler = createWebhookHandlerFor(Container.get(LiveWebhooks));
+			const liveWebhooks = Container.get(LiveWebhooks);
+
 			// Register a handler for live forms
-			this.app.all(`/${this.endpointForm}/*path`, liveWebhooksRequestHandler);
+			this.app.all(`/${this.endpointForm}/*path`, createWebhookHandlerFor(liveWebhooks, 'form'));
 
 			// Register a handler for live webhooks
-			this.app.all(`/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
+			this.app.all(
+				`/${this.endpointWebhook}/*path`,
+				createWebhookHandlerFor(liveWebhooks, 'webhook'),
+			);
 
 			// Register a handler for waiting forms
 			this.app.all(
@@ -252,18 +256,23 @@ export abstract class AbstractServer {
 			);
 
 			// Register a handler for live MCP servers
-			this.app.all(`/${this.endpointMcp}/*path`, liveWebhooksRequestHandler);
+			this.app.all(`/${this.endpointMcp}/*path`, createWebhookHandlerFor(liveWebhooks, 'mcp'));
 		}
 
 		if (this.testWebhooksEnabled) {
-			const testWebhooksRequestHandler = createWebhookHandlerFor(Container.get(TestWebhooks));
+			const testWebhooks = Container.get(TestWebhooks);
 
-			// Register a handler
-			this.app.all(`/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
-			this.app.all(`/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(
+				`/${this.endpointFormTest}/*path`,
+				createWebhookHandlerFor(testWebhooks, 'form'),
+			);
+			this.app.all(
+				`/${this.endpointWebhookTest}/*path`,
+				createWebhookHandlerFor(testWebhooks, 'webhook'),
+			);
 
 			// Register a handler for test MCP servers
-			this.app.all(`/${this.endpointMcpTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(`/${this.endpointMcpTest}/*path`, createWebhookHandlerFor(testWebhooks, 'mcp'));
 		}
 
 		// Block bots from scanning the application

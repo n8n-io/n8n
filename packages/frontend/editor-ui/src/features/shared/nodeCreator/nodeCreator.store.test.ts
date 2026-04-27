@@ -17,10 +17,13 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 const workflow_id = 'workflow-id';
 const category_name = 'category-name';
@@ -72,6 +75,7 @@ describe('useNodeCreatorStore', () => {
 	let nodeCreatorStore: ReturnType<typeof useNodeCreatorStore>;
 	let mockUseNodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 	let mockUseWorkflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let mockUseWorkflowDocumentStore: MockedStore<() => ReturnType<typeof useWorkflowDocumentStore>>;
 	let mockUseNDVStore: MockedStore<() => ReturnType<typeof useNDVStore>>;
 	let mockUseViewStacks: MockedStore<typeof useViewStacks>;
 
@@ -81,7 +85,10 @@ describe('useNodeCreatorStore', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		mockUseNodeTypesStore = mockedStore(useNodeTypesStore);
 		mockUseWorkflowsStore = mockedStore(useWorkflowsStore);
-		mockUseWorkflowsStore.workflowId = 'dummy-workflow-id';
+		mockUseWorkflowsStore.workflowId = 'test-wf-id';
+		mockUseWorkflowDocumentStore = mockedStore(() =>
+			useWorkflowDocumentStore(createWorkflowDocumentId(mockUseWorkflowsStore.workflowId)),
+		);
 		mockUseNDVStore = mockedStore(() =>
 			useNDVStore(createWorkflowDocumentId(mockUseWorkflowsStore.workflowId)),
 		);
@@ -91,7 +98,7 @@ describe('useNodeCreatorStore', () => {
 		mockUseWorkflowsStore.getNodeByName = vi.fn((name?: string) => {
 			return name ? ({ id: 'Test Node', name, type: name } as INodeUi) : null;
 		});
-		mockUseWorkflowsStore.getNodeById = vi.fn((id?: string) => {
+		mockUseWorkflowDocumentStore.getNodeById = vi.fn((id?: string) => {
 			return id ? ({ id, name: 'Test Node', type: 'test-type' } as INodeUi) : undefined;
 		});
 

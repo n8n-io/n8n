@@ -4,7 +4,7 @@ import { UserRepository } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { Workflow } from 'n8n-workflow';
+import type { IWorkflowSettings, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type {
@@ -256,6 +256,31 @@ export class CollaborationService {
 		};
 
 		this.push.sendToUsers({ type: 'workflowUpdated', data: msgData }, userIds);
+	}
+
+	/**
+	 * Notifies open collaborators of a workflow that (a subset of) its
+	 * `settings` were updated out-of-band (e.g. via the MCP toggle endpoint),
+	 */
+	async broadcastWorkflowSettingsUpdated(
+		workflowId: Workflow['id'],
+		settings: Partial<IWorkflowSettings>,
+		checksum?: string,
+	) {
+		const collaborators = await this.state.getCollaborators(workflowId);
+		const userIds = collaborators.map((user) => user.userId);
+
+		if (userIds.length === 0) {
+			return;
+		}
+
+		const msgData: PushPayload<'workflowSettingsUpdated'> = {
+			workflowId,
+			settings,
+			...(checksum !== undefined ? { checksum } : {}),
+		};
+
+		this.push.sendToUsers({ type: 'workflowSettingsUpdated', data: msgData }, userIds);
 	}
 
 	/**

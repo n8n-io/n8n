@@ -932,6 +932,32 @@ describe('AST Interpreter', () => {
 		});
 	});
 
+	describe('String.trim', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		it('should allow "  abc  ".trim()', () => {
+			const code = 'export default "  abc  ".trim();';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toBe('abc');
+		});
+
+		it('should allow trim on a template literal', () => {
+			const code = 'export default `\n  hello\n`.trim();';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toBe('hello');
+		});
+
+		it('should allow trim on a variable holding a string', () => {
+			const code = 'const padded = "  x  "; export default padded.trim();';
+			const result = interpretSDKCode(code, sdkFunctions);
+			expect(result).toBe('x');
+		});
+	});
+
 	describe('expr(placeholder(...)) error', () => {
 		it('should throw clear error when expr receives a PlaceholderValue', () => {
 			const funcs: SDKFunctions = {

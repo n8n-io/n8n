@@ -47,6 +47,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		smtpSetup: false,
 		authenticationMethod: UserManagementAuthenticationMethod.Email,
 		quota: defaultSettings.userManagement.quota,
+		passwordMinLength: 8,
 	},
 	templatesEndpointHealthy: false,
 	api: {

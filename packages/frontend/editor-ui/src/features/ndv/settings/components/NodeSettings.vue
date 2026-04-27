@@ -863,7 +863,7 @@ function handleSelectAction(params: INodeParameters) {
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
-			:show-manage="useUsersStore().isInstanceOwner"
+			:show-manage="useUsersStore().isAdminOrOwner"
 		/>
 	</div>
 </template>
