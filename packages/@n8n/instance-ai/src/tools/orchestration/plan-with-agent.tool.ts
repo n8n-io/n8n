@@ -426,10 +426,15 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 				// Clear draft checklist and persisted graph on error — same reason
 				// as the non-approval path: an error-aborted plan must not later be
-				// auto-dispatched by the post-run reschedule.
-				publishClearingEvent(context);
-				await clearDraftChecklist(context);
-				await clearPlannedTaskGraph(context);
+				// auto-dispatched by the post-run reschedule. Skip both when the user
+				// already approved this plan: the failure is downstream of approval
+				// (e.g. approvePlan/schedulePlannedTasks threw), and clearing would
+				// drop a plan the user explicitly accepted.
+				if (!accumulator.isApproved()) {
+					publishClearingEvent(context);
+					await clearDraftChecklist(context);
+					await clearPlannedTaskGraph(context);
+				}
 
 				return { result: `Planner error: ${errorMessage}` };
 			}

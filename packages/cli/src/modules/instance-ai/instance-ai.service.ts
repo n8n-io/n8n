@@ -1621,6 +1621,43 @@ export class InstanceAiService {
 		};
 	}
 
+	/**
+	 * Resolve the workflow IDs the checkpoint task is verifying so the runWorkflow
+	 * permission override can be scoped. Walks the checkpoint's `dependsOn` to find
+	 * the build-workflow tasks it depends on and reads their `outcome.workflowId`.
+	 * Returns an empty set when the graph is missing or the checkpoint has no
+	 * resolved workflow deps (in which case the override applies broadly via the
+	 * `allowList === undefined` short-circuit only if we don't set the field).
+	 */
+	private async getCheckpointAllowedWorkflowIds(
+		threadId: string,
+		checkpointTaskId: string,
+	): Promise<ReadonlySet<string>> {
+		try {
+			const { plannedTaskService } = await this.createPlannedTaskState();
+			const graph = await plannedTaskService.getGraph(threadId);
+			const checkpoint = graph?.tasks.find((t) => t.id === checkpointTaskId);
+			if (!graph || !checkpoint) return new Set();
+			const deps = new Set(checkpoint.deps);
+			const allowed = new Set<string>();
+			for (const task of graph.tasks) {
+				if (!deps.has(task.id)) continue;
+				const workflowId = task.outcome?.workflowId;
+				if (typeof workflowId === 'string' && workflowId.length > 0) {
+					allowed.add(workflowId);
+				}
+			}
+			return allowed;
+		} catch (error) {
+			this.logger.warn('Failed to resolve checkpoint allowed workflow IDs', {
+				threadId,
+				checkpointTaskId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return new Set();
+		}
+	}
+
 	private async handlePlannedTaskSettlement(
 		user: User,
 		task: ManagedBackgroundTask,
@@ -1897,6 +1934,13 @@ export class InstanceAiService {
 					...context.permissions,
 					...(PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint ?? {}),
 				} as typeof context.permissions;
+				// Scope the runWorkflow override to the workflows this checkpoint is verifying:
+				// the orchestrator can call `executions(action="run")` on a depended-on workflow
+				// without HITL, but any other workflow id still requires user approval.
+				context.allowedRunWorkflowIds = await this.getCheckpointAllowedWorkflowIds(
+					threadId,
+					checkpoint.checkpointTaskId,
+				);
 			}
 
 			// Thread attachments into the domain context so parse-file can access them

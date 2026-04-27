@@ -129,22 +129,6 @@ export async function startDetachedDelegateTask(
 	const subAgentId = input.agentId ?? `agent-delegate-${nanoid(6)}`;
 	const taskId = input.taskId ?? `delegate-${nanoid(8)}`;
 
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role,
-			tools: input.tools,
-			taskId,
-			kind: 'delegate',
-			title: input.title,
-			subtitle: truncateLabel(input.spec),
-			goal: input.spec,
-		},
-	});
-
 	const briefingMessage = await buildDelegateBriefing(
 		context,
 		role,
@@ -244,6 +228,24 @@ export async function startDetachedDelegateTask(
 			agentId: '',
 		};
 	}
+
+	// Spawn confirmed — publish the UI event now so duplicate/limit-reached
+	// rejections above don't leave a phantom card on the chat surface.
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role,
+			tools: input.tools,
+			taskId,
+			kind: 'delegate',
+			title: input.title,
+			subtitle: truncateLabel(input.spec),
+			goal: input.spec,
+		},
+	});
 
 	return {
 		result: `Delegation started (task: ${taskId}). Do NOT summarize the plan or list details.`,

@@ -72,22 +72,6 @@ export async function startDataTableAgentTask(
 	const subAgentId = input.agentId ?? `agent-datatable-${nanoid(6)}`;
 	const taskId = input.taskId ?? `datatable-${nanoid(8)}`;
 
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'data-table-manager',
-			tools: Object.keys(dataTableTools),
-			taskId,
-			kind: 'data-table',
-			title: 'Managing data table',
-			subtitle: truncateLabel(input.task),
-			goal: input.task,
-			targetResource: { type: 'data-table' as const },
-		},
-	});
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'data-table-manager',
@@ -193,6 +177,25 @@ export async function startDataTableAgentTask(
 			agentId: '',
 		};
 	}
+
+	// Spawn confirmed — publish the UI event now so duplicate/limit-reached
+	// rejections above don't leave a phantom card on the chat surface.
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'data-table-manager',
+			tools: Object.keys(dataTableTools),
+			taskId,
+			kind: 'data-table',
+			title: 'Managing data table',
+			subtitle: truncateLabel(input.task),
+			goal: input.task,
+			targetResource: { type: 'data-table' as const },
+		},
+	});
 
 	return {
 		result: `Data table operation started (task: ${taskId}). Do NOT summarize the plan or list details.`,

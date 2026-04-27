@@ -257,25 +257,6 @@ export async function startBuildWorkflowAgentTask(
 	const taskId = input.taskId ?? `build-${nanoid(8)}`;
 	const workItemId = `wi_${nanoid(8)}`;
 
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'workflow-builder',
-			tools: Object.keys(builderTools),
-			taskId,
-			kind: 'builder',
-			title: 'Building workflow',
-			subtitle: truncateLabel(input.task),
-			goal: input.task,
-			targetResource: input.workflowId
-				? { type: 'workflow' as const, id: input.workflowId }
-				: { type: 'workflow' as const },
-		},
-	});
-
 	const { workflowId } = input;
 
 	// Build additional context based on sandbox mode and existing workflow
@@ -623,6 +604,27 @@ export async function startBuildWorkflowAgentTask(
 			agentId: '',
 		};
 	}
+
+	// Spawn confirmed — publish the UI event now so duplicate/limit-reached
+	// rejections above don't leave a phantom builder card on the chat surface.
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'workflow-builder',
+			tools: Object.keys(builderTools),
+			taskId,
+			kind: 'builder',
+			title: 'Building workflow',
+			subtitle: truncateLabel(input.task),
+			goal: input.task,
+			targetResource: input.workflowId
+				? { type: 'workflow' as const, id: input.workflowId }
+				: { type: 'workflow' as const },
+		},
+	});
 
 	return {
 		result: `Workflow build started (task: ${taskId}). Reply with one short sentence — e.g. name what's being built. Do NOT summarize the plan or list details.`,

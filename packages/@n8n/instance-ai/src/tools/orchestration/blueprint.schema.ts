@@ -82,6 +82,7 @@ export const planningBlueprintSchema = z.object({
 	dataTables: z.array(blueprintDataTableItemSchema).default([]),
 	researchItems: z.array(blueprintResearchItemSchema).default([]),
 	delegateItems: z.array(blueprintDelegateItemSchema).default([]),
+	checkpointItems: z.array(blueprintCheckpointItemSchema).default([]),
 	assumptions: z.array(z.string()).default([]).describe('Assumptions the plan relies on'),
 	openQuestions: z
 		.array(z.string())

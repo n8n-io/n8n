@@ -552,6 +552,10 @@ export interface InstanceAiContext {
 	localGatewayStatus?: LocalGatewayStatus;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.
+	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
+	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */
+	allowedRunWorkflowIds?: ReadonlySet<string>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance.

@@ -148,5 +148,46 @@ describe('research-with-agent tool', () => {
 
 			expect(result.result).toBe('Error: background task support not available.');
 		});
+
+		it('does not publish agent-spawned when spawn returns duplicate', async () => {
+			// The single-flight dedupe path used to emit a phantom `agent-spawned`
+			// before checking the spawn outcome — leaving an orphan card in the UI.
+			const context = createMockContext({
+				spawnBackgroundTask: jest.fn(() => ({
+					status: 'duplicate' as const,
+					existing: {
+						taskId: 'task-existing',
+						agentId: 'agent-existing',
+						role: 'web-researcher',
+					},
+				})),
+			});
+			const tool = createResearchWithAgentTool(context);
+
+			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as {
+				result: string;
+				taskId: string;
+			};
+
+			expect(result.result).toContain('Research already in progress');
+			expect(result.taskId).toBe('task-existing');
+			expect(context.eventBus.publish).not.toHaveBeenCalled();
+		});
+
+		it('does not publish agent-spawned when spawn returns limit-reached', async () => {
+			const context = createMockContext({
+				spawnBackgroundTask: jest.fn(() => ({ status: 'limit-reached' as const })),
+			});
+			const tool = createResearchWithAgentTool(context);
+
+			const result = (await tool.execute!({ goal: 'test' }, {} as never)) as {
+				result: string;
+				taskId: string;
+			};
+
+			expect(result.result).toContain('limit reached');
+			expect(result.taskId).toBe('');
+			expect(context.eventBus.publish).not.toHaveBeenCalled();
+		});
 	});
 });

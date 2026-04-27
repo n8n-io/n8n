@@ -54,17 +54,22 @@ function isReplanContext(context: OrchestrationContext): boolean {
  * `cancelled`) must not bypass the guard — a fresh user request on a long-
  * lived thread needs to go through `plan` for discovery, same as any first
  * request.
+ *
+ * `awaiting_approval` is treated as "existing" only within the run that
+ * created it. The rejection path leaves the graph in `awaiting_approval` so a
+ * same-turn revision can call `create-tasks` again, but an orphaned
+ * `awaiting_approval` graph from a previous turn (the LLM never revised after
+ * a rejection) must not bypass planner discovery for a fresh user request.
  */
 async function threadHasExistingPlan(context: OrchestrationContext): Promise<boolean> {
 	if (!context.plannedTaskService) return false;
 	try {
 		const graph = await context.plannedTaskService.getGraph(context.threadId);
 		if (!graph) return false;
-		return (
-			graph.status === 'awaiting_approval' ||
-			graph.status === 'active' ||
-			graph.status === 'awaiting_replan'
-		);
+		if (graph.status === 'awaiting_approval') {
+			return graph.planRunId === context.runId;
+		}
+		return graph.status === 'active' || graph.status === 'awaiting_replan';
 	} catch {
 		return false;
 	}
@@ -204,14 +209,14 @@ export function createPlanTool(context: OrchestrationContext) {
 				};
 			}
 
-			// User rejected or requested changes. Clear the persisted graph so a
-			// later schedulePlannedTasks() (post-run reschedule, or a background
-			// task settlement mid-revision) can't dispatch the rejected plan.
-			// If the LLM decides to revise, its next create-tasks call will
-			// createPlan a fresh graph anyway. Mirror plan-with-agent.tool.ts and
-			// cancelAwaitingApprovalPlan: also reset the UI checklist so the
-			// rejected plan's "todo" items don't linger on screen (or in the
-			// persisted snapshot) if the LLM doesn't immediately retry.
+			// User rejected or requested changes. Reset the UI checklist so the
+			// rejected plan's "todo" items don't linger on screen, but keep the
+			// persisted graph in `awaiting_approval` so the LLM's next
+			// `create-tasks` revision passes the replan guard via
+			// `threadHasExistingPlan` (scoped to the current runId). The
+			// scheduler ignores `awaiting_approval` graphs, so leaving the graph
+			// in place can't dispatch the rejected plan; the next createPlan
+			// call overwrites it with the revised tasks.
 			await context.taskStorage.save(context.threadId, { tasks: [] });
 			context.eventBus.publish(context.threadId, {
 				type: 'tasks-update',
@@ -219,7 +224,6 @@ export function createPlanTool(context: OrchestrationContext) {
 				agentId: context.orchestratorAgentId,
 				payload: { tasks: { tasks: [] }, planItems: [] },
 			});
-			await context.plannedTaskService.clear(context.threadId);
 			return {
 				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks and call create-tasks again.`,
 				taskCount: 0,

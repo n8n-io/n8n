@@ -66,22 +66,6 @@ export async function startResearchAgentTask(
 	const subAgentId = input.agentId ?? `agent-researcher-${nanoid(6)}`;
 	const taskId = input.taskId ?? `research-${nanoid(8)}`;
 
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'web-researcher',
-			tools: Object.keys(researchTools),
-			taskId,
-			kind: 'researcher',
-			title: 'Researching',
-			subtitle: truncateLabel(input.goal),
-			goal: input.goal,
-		},
-	});
-
 	const briefing = await buildSubAgentBriefing({
 		task: input.goal,
 		conversationContext: input.conversationContext,
@@ -186,6 +170,24 @@ export async function startResearchAgentTask(
 			agentId: '',
 		};
 	}
+
+	// Spawn confirmed — publish the UI event now so duplicate/limit-reached
+	// rejections above don't leave a phantom card on the chat surface.
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'web-researcher',
+			tools: Object.keys(researchTools),
+			taskId,
+			kind: 'researcher',
+			title: 'Researching',
+			subtitle: truncateLabel(input.goal),
+			goal: input.goal,
+		},
+	});
 
 	return {
 		result: `Research started (task: ${taskId}). Do NOT summarize the plan or list details.`,
