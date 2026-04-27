@@ -4,28 +4,57 @@ import type {
 	InsightsSummary,
 	RestrictedInsightsByTime,
 } from '@n8n/api-types';
-import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-types';
+import { InsightsProjectDateFilterDto, ListInsightsProjectWorkflowQueryDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, Licensed, Param, ProjectScope, Query, RestController } from '@n8n/decorators';
+import {
+	Get,
+	Licensed,
+	Middleware,
+	Param,
+	ProjectScope,
+	Query,
+	RestController,
+} from '@n8n/decorators';
+import type { NextFunction, Response } from 'express';
 
-import { InsightsBaseController } from './insights-base.controller';
+import { ProjectService } from '@/services/project.service.ee';
+
+import { InsightsDateFilterService } from './insights-date-filter.service';
 import { InsightsService } from './insights.service';
 
-@RestController('/insights/projects')
-export class InsightsProjectController extends InsightsBaseController {
-	constructor(protected readonly insightsService: InsightsService) {
-		super();
+@RestController('/projects/:projectId/insights')
+export class InsightsProjectController {
+	constructor(
+		private readonly insightsService: InsightsService,
+		private readonly dateFilterService: InsightsDateFilterService,
+		private readonly projectService: ProjectService,
+	) {}
+
+	@Middleware()
+	async validateProjectExists(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		next: NextFunction,
+	) {
+		try {
+			const { projectId } = req.params;
+			await this.projectService.getProject(projectId);
+			next();
+		} catch {
+			res.status(404).send('Project not found');
+			return;
+		}
 	}
 
-	@Get('/:projectId/summary')
+	@Get('/summary')
 	@ProjectScope('insights:list')
 	async getProjectInsightsSummary(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
-		@Query query: InsightsDateFilterDto = {},
+		@Query query: InsightsProjectDateFilterDto = {},
 	): Promise<InsightsSummary> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate } = this.dateFilterService.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsSummary({
 			startDate,
@@ -34,16 +63,16 @@ export class InsightsProjectController extends InsightsBaseController {
 		});
 	}
 
-	@Get('/:projectId/by-workflow')
+	@Get('/by-workflow')
 	@ProjectScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
 	async getProjectInsightsByWorkflow(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
-		@Query query: ListInsightsWorkflowQueryDto,
+		@Query query: ListInsightsProjectWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate } = this.dateFilterService.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsByWorkflow({
 			skip: query.skip,
@@ -55,16 +84,16 @@ export class InsightsProjectController extends InsightsBaseController {
 		});
 	}
 
-	@Get('/:projectId/by-time')
+	@Get('/by-time')
 	@ProjectScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
 	async getProjectInsightsByTime(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
-		@Query query: InsightsDateFilterDto,
+		@Query query: InsightsProjectDateFilterDto,
 	): Promise<InsightsByTime[]> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate } = this.dateFilterService.prepareDateFilters(query);
 
 		return (await this.insightsService.getInsightsByTime({
 			projectId,
@@ -73,15 +102,15 @@ export class InsightsProjectController extends InsightsBaseController {
 		})) as InsightsByTime[];
 	}
 
-	@Get('/:projectId/by-time/time-saved')
+	@Get('/by-time/time-saved')
 	@ProjectScope('insights:list')
 	async getProjectTimeSavedInsightsByTime(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
-		@Query query: InsightsDateFilterDto,
+		@Query query: InsightsProjectDateFilterDto,
 	): Promise<RestrictedInsightsByTime[]> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate } = this.dateFilterService.prepareDateFilters(query);
 
 		return (await this.insightsService.getInsightsByTime({
 			insightTypes: ['time_saved_min'],

@@ -2,13 +2,14 @@ import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsService } from '../insights.service';
 import { InsightsProjectController } from '../insights-project.controller';
 
 beforeAll(async () => {
@@ -20,7 +21,7 @@ afterAll(async () => {
 });
 
 describe('InsightsProjectController', () => {
-	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
+	const insightsService = mockInstance(InsightsService);
 	let controller: InsightsProjectController;
 	const licenseState = mock<LicenseState>();
 	const projectId = 'test-project-123';
@@ -39,57 +40,42 @@ describe('InsightsProjectController', () => {
 
 	describe('getProjectInsightsSummary', () => {
 		it('should pass projectId from route param to service', async () => {
-			insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([]);
-
-			await controller.getProjectInsightsSummary(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-				projectId,
-			);
-
-			expect(
-				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
-			).toHaveBeenCalledWith(
-				expect.objectContaining({
-					projectId,
-				}),
-			);
-		});
-
-		it('should return default insights if no data', async () => {
-			insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([]);
-
-			const response = await controller.getProjectInsightsSummary(
-				mock<AuthenticatedRequest>(),
-				mock<Response>(),
-				projectId,
-			);
-
-			expect(response).toEqual({
+			insightsService.getInsightsSummary.mockResolvedValue({
 				total: { deviation: null, unit: 'count', value: 0 },
 				failed: { deviation: null, unit: 'count', value: 0 },
 				failureRate: { deviation: null, unit: 'ratio', value: 0 },
 				averageRunTime: { deviation: null, unit: 'millisecond', value: 0 },
 				timeSaved: { deviation: null, unit: 'minute', value: 0 },
 			});
+
+			await controller.getProjectInsightsSummary(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+				projectId,
+			);
+
+			expect(insightsService.getInsightsSummary).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId }),
+			);
 		});
 
 		it('should use route param projectId, ignoring query projectId', async () => {
-			insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([]);
+			insightsService.getInsightsSummary.mockResolvedValue({
+				total: { deviation: null, unit: 'count', value: 0 },
+				failed: { deviation: null, unit: 'count', value: 0 },
+				failureRate: { deviation: null, unit: 'ratio', value: 0 },
+				averageRunTime: { deviation: null, unit: 'millisecond', value: 0 },
+				timeSaved: { deviation: null, unit: 'minute', value: 0 },
+			});
 
 			await controller.getProjectInsightsSummary(
 				mock<AuthenticatedRequest>(),
 				mock<Response>(),
 				'route-project-id',
-				{ projectId: 'query-project-id' },
 			);
 
-			expect(
-				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
-			).toHaveBeenCalledWith(
-				expect.objectContaining({
-					projectId: 'route-project-id',
-				}),
+			expect(insightsService.getInsightsSummary).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'route-project-id' }),
 			);
 		});
 
@@ -110,9 +96,9 @@ describe('InsightsProjectController', () => {
 
 	describe('getProjectInsightsByWorkflow', () => {
 		it('should pass projectId from route param to service', async () => {
-			insightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+			insightsService.getInsightsByWorkflow.mockResolvedValue({
 				count: 0,
-				rows: [],
+				data: [],
 			});
 
 			await controller.getProjectInsightsByWorkflow(
@@ -122,17 +108,15 @@ describe('InsightsProjectController', () => {
 				{ skip: 0, take: 5, sortBy: 'total:desc' },
 			);
 
-			expect(insightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith(
-				expect.objectContaining({
-					projectId,
-				}),
+			expect(insightsService.getInsightsByWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId }),
 			);
 		});
 	});
 
 	describe('getProjectInsightsByTime', () => {
 		it('should pass projectId from route param to service', async () => {
-			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+			insightsService.getInsightsByTime.mockResolvedValue([]);
 
 			await controller.getProjectInsightsByTime(
 				mock<AuthenticatedRequest>(),
@@ -141,17 +125,15 @@ describe('InsightsProjectController', () => {
 				{},
 			);
 
-			expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
-				expect.objectContaining({
-					projectId,
-				}),
+			expect(insightsService.getInsightsByTime).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId }),
 			);
 		});
 	});
 
 	describe('getProjectTimeSavedInsightsByTime', () => {
 		it('should pass projectId from route param to service', async () => {
-			insightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+			insightsService.getInsightsByTime.mockResolvedValue([]);
 
 			await controller.getProjectTimeSavedInsightsByTime(
 				mock<AuthenticatedRequest>(),
@@ -160,7 +142,7 @@ describe('InsightsProjectController', () => {
 				{},
 			);
 
-			expect(insightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
+			expect(insightsService.getInsightsByTime).toHaveBeenCalledWith(
 				expect.objectContaining({
 					projectId,
 					insightTypes: ['time_saved_min'],
@@ -173,6 +155,11 @@ describe('InsightsProjectController', () => {
 		it('should throw a forbidden error when hourly data is requested without a license', async () => {
 			licenseState.getInsightsMaxHistory.mockReturnValue(-1);
 			licenseState.isInsightsHourlyDataLicensed.mockReturnValue(false);
+			insightsService.validateDateFiltersLicense.mockImplementation(() => {
+				throw new (require('n8n-workflow').UserError)(
+					'Hourly data is not available with your current license',
+				);
+			});
 
 			await expect(
 				controller.getProjectInsightsSummary(
@@ -195,6 +182,11 @@ describe('InsightsProjectController', () => {
 
 			licenseState.getInsightsMaxHistory.mockReturnValue(14);
 			licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
+			insightsService.validateDateFiltersLicense.mockImplementation(() => {
+				throw new (require('n8n-workflow').UserError)(
+					'The selected date range exceeds the maximum history allowed by your license',
+				);
+			});
 
 			await expect(
 				controller.getProjectInsightsSummary(

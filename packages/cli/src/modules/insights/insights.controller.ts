@@ -8,14 +8,15 @@ import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-ty
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
 
-import { InsightsBaseController } from './insights-base.controller';
+import { InsightsDateFilterService } from './insights-date-filter.service';
 import { InsightsService } from './insights.service';
 
 @RestController('/insights')
-export class InsightsController extends InsightsBaseController {
-	constructor(protected readonly insightsService: InsightsService) {
-		super();
-	}
+export class InsightsController {
+	constructor(
+		private readonly insightsService: InsightsService,
+		private readonly dateFilterService: InsightsDateFilterService,
+	) {}
 
 	@Get('/summary')
 	@GlobalScope('insights:list')
@@ -24,7 +25,7 @@ export class InsightsController extends InsightsBaseController {
 		_res: Response,
 		@Query query: InsightsDateFilterDto = {},
 	): Promise<InsightsSummary> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate } = this.dateFilterService.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsSummary({
 			startDate,
@@ -41,7 +42,7 @@ export class InsightsController extends InsightsBaseController {
 		_res: Response,
 		@Query query: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate } = this.dateFilterService.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsByWorkflow({
 			skip: query.skip,
@@ -61,10 +62,8 @@ export class InsightsController extends InsightsBaseController {
 		_res: Response,
 		@Query query: InsightsDateFilterDto,
 	): Promise<InsightsByTime[]> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate } = this.dateFilterService.prepareDateFilters(query);
 
-		// Cast to full insights by time type
-		// as the service returns all types by default
 		return (await this.insightsService.getInsightsByTime({
 			projectId: query.projectId,
 			startDate,
@@ -83,10 +82,8 @@ export class InsightsController extends InsightsBaseController {
 		_res: Response,
 		@Query query: InsightsDateFilterDto,
 	): Promise<RestrictedInsightsByTime[]> {
-		const { startDate, endDate } = this.prepareDateFilters(query);
+		const { startDate, endDate } = this.dateFilterService.prepareDateFilters(query);
 
-		// Cast to restricted insights by time type
-		// as the service returns only time saved data
 		return (await this.insightsService.getInsightsByTime({
 			insightTypes: ['time_saved_min'],
 			projectId: query.projectId,

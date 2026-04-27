@@ -119,7 +119,9 @@ export { ListFolderQueryDto } from './folders/list-folder-query.dto';
 export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
+export { ListInsightsProjectWorkflowQueryDto } from './insights/list-project-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
+export { InsightsProjectDateFilterDto } from './insights/project-date-filter.dto';
 
 export { GetDestinationQueryDto } from './log-streaming/get-destination-query.dto';
 export {
