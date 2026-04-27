@@ -56,12 +56,11 @@ Expected: no errors in the tail. If errors appear, fix before proceeding (do not
 - Create: `packages/cli/src/modules/frontend-builder/frontend-builder.service.ts`
 - Create: `packages/cli/src/modules/frontend-builder/v0-client.interface.ts`
 - Create: `packages/cli/src/modules/frontend-builder/v0-client.fake.ts`
-- Create: `packages/cli/src/modules/frontend-builder/v0-client.token.ts`
+- Create: `packages/cli/src/modules/frontend-builder/v0-client.ts` (stub; filled in Slice 2)
 - Create: `packages/cli/src/modules/frontend-builder/index.ts`
-- Create: `packages/cli/src/modules/frontend-builder/__tests__/frontend-builder.integration.test.ts`
-- Modify: `packages/cli/src/config/index.ts` (register modules list — if required for loading)
-- Modify: `packages/@n8n/api-types/src/frontend-settings.ts` (add `frontendBuilderEnabled`)
-- Modify: `packages/cli/src/services/frontend.service.ts` (set `frontendBuilderEnabled`)
+- Create: `packages/cli/test/integration/frontend-builder.controller.test.ts`
+- Modify: `packages/@n8n/backend-common/src/modules/modules.config.ts` (add `'frontend-builder'` to `MODULE_NAMES`)
+- Modify: `packages/cli/test/integration/shared/types.ts` and `test-server.ts` (`'frontend-builder'` endpointGroup loader)
 - Create: `packages/frontend/editor-ui/src/features/frontend-builder/api/frontend-builder.api.ts`
 - Create: `packages/frontend/editor-ui/src/features/frontend-builder/composables/useFrontendBuilder.ts`
 - Create: `packages/frontend/editor-ui/src/features/frontend-builder/components/FrontendBuilderDrawer.vue`
@@ -146,15 +145,27 @@ export interface IV0Client {
 }
 ```
 
-Create `packages/cli/src/modules/frontend-builder/v0-client.token.ts`:
+Create `packages/cli/src/modules/frontend-builder/v0-client.ts` (stub — Slice 2 fills in real v0-sdk calls):
 ```ts
-import type { IV0Client } from './v0-client.interface';
+import { Service } from '@n8n/di';
 
-export const V0_CLIENT_TOKEN = Symbol('V0_CLIENT_TOKEN');
+import type { IV0Client, V0ChatResult } from './v0-client.interface';
 
-// Lets consumers type-check the resolved token.
-export type V0ClientToken = IV0Client;
+@Service()
+export class V0Client implements IV0Client {
+	async create(_input: { message: string }): Promise<V0ChatResult> {
+		throw new Error('V0Client not configured (expected an override via Container.set)');
+	}
+	async sendMessage(_input: { chatId: string; message: string }): Promise<V0ChatResult> {
+		throw new Error('V0Client not configured (expected an override via Container.set)');
+	}
+	async getChat(_chatId: string): Promise<V0ChatResult> {
+		throw new Error('V0Client not configured (expected an override via Container.set)');
+	}
+}
 ```
+
+The service depends on `V0Client` directly. Tests and the module swap in the fake via `Container.set(V0Client, Container.get(FakeV0Client))` — no separate DI token needed.
 
 Create `packages/cli/src/modules/frontend-builder/v0-client.fake.ts`:
 ```ts
@@ -228,10 +239,10 @@ Create `packages/cli/src/modules/frontend-builder/frontend-builder.service.ts`:
 ```ts
 import type { FrontendBuilderMessageRequestDto } from '@n8n/api-types';
 import { WorkflowRepository } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 
-import type { IV0Client, V0ChatResult } from './v0-client.interface';
-import { V0_CLIENT_TOKEN } from './v0-client.token';
+import { V0Client } from './v0-client';
+import type { V0ChatResult } from './v0-client.interface';
 
 type WorkflowStaticData = {
 	global?: { v0Chat?: { chatId: string } };
@@ -239,11 +250,10 @@ type WorkflowStaticData = {
 
 @Service()
 export class FrontendBuilderService {
-	constructor(private readonly workflowRepository: WorkflowRepository) {}
-
-	private get v0Client(): IV0Client {
-		return Container.get<IV0Client>(V0_CLIENT_TOKEN);
-	}
+	constructor(
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly v0Client: V0Client,
+	) {}
 
 	async sendMessage(
 		workflowId: string,
@@ -258,7 +268,7 @@ export class FrontendBuilderService {
 		const staticData = (workflow.staticData ?? {}) as WorkflowStaticData;
 		const existingChatId = staticData.global?.v0Chat?.chatId;
 
-		// Slice 1: prompt is just the raw user prompt. Slice 5 upgrades this.
+		// Slice 1: prompt is just the raw user prompt. Slice 4 upgrades this.
 		const message = body.prompt;
 
 		const result = existingChatId
@@ -324,13 +334,14 @@ import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import { FakeV0Client } from './v0-client.fake';
-import { V0_CLIENT_TOKEN } from './v0-client.token';
+import { V0Client } from './v0-client';
 
 @BackendModule({ name: 'frontend-builder', instanceTypes: ['main'] })
 export class FrontendBuilderModule implements ModuleInterface {
 	async init() {
-		// Slice 1: only the fake client is wired. Slice 2 swaps in the real one.
-		Container.set(V0_CLIENT_TOKEN, Container.get(FakeV0Client));
+		// Slice 1: always override V0Client with the fake.
+		// Slice 2 makes this conditional on whether V0_API_KEY is set.
+		Container.set(V0Client, Container.get(FakeV0Client));
 
 		await import('./frontend-builder.controller');
 	}
@@ -465,18 +476,16 @@ popd
 ```
 Expected: the first test PASSES. Fix any wiring issues surfaced.
 
-- [ ] **Step 10: Expose `frontendBuilderEnabled` to the frontend**
+- [ ] **Step 10: (skipped — gating is via module load state)**
 
-In `packages/@n8n/api-types/src/frontend-settings.ts`, inside the `FrontendSettings` interface, add:
-```ts
-	frontendBuilderEnabled: boolean;
-```
+The button gates on `settingsStore.isModuleActive('frontend-builder')`. The
+module is loaded when its name is in `MODULE_NAMES` and either appears in
+`defaultModules` or in `N8N_ENABLED_MODULES`. For the spike we do not add
+to `defaultModules`, so users must run with
+`N8N_ENABLED_MODULES=frontend-builder` to opt in.
 
-In `packages/cli/src/services/frontend.service.ts`, where the settings object is assembled, add:
-```ts
-frontendBuilderEnabled: process.env.N8N_FRONTEND_BUILDER_ENABLED === 'true',
-```
-(exact placement: next to other `Enabled` flags. Grep for `workflowBuilderEnabled` or similar if present, and place there.)
+No `FrontendSettings.frontendBuilderEnabled` flag — the existing
+`activeModules`/`isModuleActive` mechanism is sufficient.
 
 - [ ] **Step 11: Write the frontend API client**
 
@@ -749,7 +758,7 @@ In `packages/frontend/editor-ui/src/app/views/NodeView.vue`:
   	workflowsStore.allNodes.some((n) => n.type === 'n8n-nodes-base.webhook'),
   );
   const frontendBuilderButtonVisible = computed(
-  	() => settingsStore.settings.frontendBuilderEnabled && hasWebhookTrigger.value,
+  	() => settingsStore.isModuleActive('frontend-builder') && hasWebhookTrigger.value,
   );
   ```
 - Inside `<div :class="$style.executionButtons">`, as a sibling of `CanvasRunWorkflowButton`, add:
@@ -781,7 +790,7 @@ Expected: no errors. Fix any type/import issues.
 
 Run:
 ```bash
-N8N_FRONTEND_BUILDER_ENABLED=true pnpm start
+N8N_ENABLED_MODULES=frontend-builder pnpm start
 ```
 Open `http://localhost:5678`. Create a workflow, add a Webhook Trigger, activate it. Expect the "Frontend" button to appear next to Execute Workflow at the bottom of the canvas. Click it; drawer opens. Type "a hello form" and send. Expect the iframe src to be set to the fake URL (content will be "unable to reach example.invalid" — that's fine for Slice 1; it proves plumbing).
 
@@ -813,14 +822,23 @@ EOF
 
 ## Slice 2: Real v0-sdk wiring behind config
 
+> **Open assumption to validate:** the controller in Slice 1 returns a single
+> `assistantMessage` (the last message from `result.messages`). The fake always
+> produces exactly one. The real v0 API may return zero or multiple assistant
+> messages per call (e.g. a partial/thinking message + a final message, or
+> async generation that requires polling). When we see real responses in this
+> slice, decide whether to keep `assistantMessage` or change the contract to
+> `newMessages: FrontendBuilderMessage[]` / a full message list. Update the
+> FE composable to match.
+
 **Goal:** Replace the fake client in production with `v0-sdk`. Integration tests still use the fake. `N8N_FRONTEND_BUILDER_ENABLED=true` + `V0_API_KEY=sk-...` → real v0 calls.
 
 **Files:**
 - Modify: `packages/cli/package.json` (add `v0-sdk` dep)
 - Create: `packages/cli/src/modules/frontend-builder/frontend-builder.config.ts`
-- Create: `packages/cli/src/modules/frontend-builder/v0-client.ts`
-- Modify: `packages/cli/src/modules/frontend-builder/frontend-builder.module.ts` (choose real vs fake)
-- Modify: `packages/cli/src/modules/frontend-builder/__tests__/frontend-builder.integration.test.ts` (explicitly wire FakeV0Client in tests)
+- Modify: `packages/cli/src/modules/frontend-builder/v0-client.ts` (fill in the stub from Slice 1 with real SDK calls)
+- Modify: `packages/cli/src/modules/frontend-builder/frontend-builder.module.ts` (conditionally override with fake only when apiKey is missing)
+- Modify: `packages/cli/src/modules/frontend-builder/__tests__/frontend-builder.integration.test.ts` (ensure fake stays in place for tests)
 
 - [ ] **Step 1: Add the v0-sdk dependency**
 
@@ -838,19 +856,22 @@ import { Config, Env } from '@n8n/config';
 
 @Config
 export class FrontendBuilderConfig {
-	@Env('N8N_FRONTEND_BUILDER_ENABLED')
-	enabled: boolean = false;
-
+	/**
+	 * v0 Platform API key. When unset (the default), the module wires
+	 * `FakeV0Client` so dev can click through the UI without credentials.
+	 * The module being loaded at all is gated by `N8N_ENABLED_MODULES`,
+	 * not by this config.
+	 */
 	@Env('V0_API_KEY')
 	apiKey: string = '';
 }
 ```
 
-- [ ] **Step 3: Write the real V0Client**
+- [ ] **Step 3: Replace the stub V0Client with the real implementation**
 
-Create `packages/cli/src/modules/frontend-builder/v0-client.ts`:
+Replace `packages/cli/src/modules/frontend-builder/v0-client.ts`:
 ```ts
-import type { FrontendBuilderMessage } from '@n8n/api-types';
+import { frontendBuilderMessageSchema, type FrontendBuilderMessage } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { v0 as v0Factory } from 'v0-sdk';
 
@@ -920,6 +941,11 @@ export class V0Client implements IV0Client {
 	}
 }
 
+/**
+ * Normalise a raw message from v0-sdk into our shape, then validate against
+ * `frontendBuilderMessageSchema`. Throws if v0's shape has drifted — we want
+ * to see that loudly rather than silently forward garbage.
+ */
 function toMessage(raw: unknown): FrontendBuilderMessage {
 	const m = raw as {
 		role?: string;
@@ -927,11 +953,11 @@ function toMessage(raw: unknown): FrontendBuilderMessage {
 		text?: string;
 		createdAt?: string;
 	};
-	return {
+	return frontendBuilderMessageSchema.parse({
 		role: m.role === 'user' ? 'user' : 'assistant',
 		content: m.content ?? m.text ?? '',
 		createdAt: m.createdAt ?? new Date().toISOString(),
-	};
+	});
 }
 ```
 Note: the SDK surface is not fully documented; the `getChat` branch adapts to whatever is present at runtime. We will harden this in Slice 4 once we have it in our hands.
@@ -947,49 +973,38 @@ import { Container } from '@n8n/di';
 import { FrontendBuilderConfig } from './frontend-builder.config';
 import { FakeV0Client } from './v0-client.fake';
 import { V0Client } from './v0-client';
-import { V0_CLIENT_TOKEN } from './v0-client.token';
 
 @BackendModule({ name: 'frontend-builder', instanceTypes: ['main'] })
 export class FrontendBuilderModule implements ModuleInterface {
 	async init() {
 		const config = Container.get(FrontendBuilderConfig);
-		if (!config.enabled) return;
 
-		if (config.apiKey) {
-			Container.set(V0_CLIENT_TOKEN, Container.get(V0Client));
-		} else {
-			// No key configured — fall back to the fake so dev can click through the UI.
-			Container.set(V0_CLIENT_TOKEN, Container.get(FakeV0Client));
+		// With a real key, Container.get(V0Client) resolves to the real class.
+		// Without a key, keep the fake active so dev can click through the UI.
+		if (!config.apiKey) {
+			Container.set(V0Client, Container.get(FakeV0Client));
 		}
 
 		await import('./frontend-builder.controller');
 	}
 
 	async settings() {
-		const { FrontendBuilderConfig: Cfg } = await import('./frontend-builder.config');
-		const config = Container.get(Cfg);
-		return { enabled: config.enabled };
+		return { enabled: true };
 	}
 }
 ```
 
-- [ ] **Step 5: Force the fake in integration tests**
+- [ ] **Step 5: Tests stay on the fake**
 
-At the top of `frontend-builder.integration.test.ts`, before `testModules.loadModules`, add:
-```ts
-process.env.N8N_FRONTEND_BUILDER_ENABLED = 'true';
-// V0_API_KEY intentionally unset → module wires FakeV0Client.
-```
-And replace any previous direct `Container.set` for the fake (if it existed) — the module's own `init()` now handles it.
+The integration test's `setupTestServer({ modules: ['frontend-builder'] })` already loads
+the module. With `V0_API_KEY` unset in CI, the module's `init()` overrides
+`V0Client` with `FakeV0Client` automatically. No test-specific `Container.set`
+needed.
 
-- [ ] **Step 6: Update `frontendBuilderEnabled` in `frontend.service.ts` to read from config**
+- [ ] **Step 6: (skipped — no FrontendSettings entry)**
 
-Replace the hardcoded `process.env` read with:
-```ts
-import { FrontendBuilderConfig } from '@/modules/frontend-builder/frontend-builder.config';
-// ...
-frontendBuilderEnabled: Container.get(FrontendBuilderConfig).enabled,
-```
+We rely on `activeModules` / `isModuleActive` instead of a dedicated flag in
+`FrontendSettings`. Nothing to update in `frontend.service.ts`.
 
 - [ ] **Step 7: Run integration tests — still green**
 
@@ -1005,7 +1020,7 @@ Expected: PASS. Fix if wiring broke.
 
 If you have a `V0_API_KEY`, run locally:
 ```bash
-N8N_FRONTEND_BUILDER_ENABLED=true V0_API_KEY=sk-... pnpm start
+N8N_ENABLED_MODULES=frontend-builder V0_API_KEY=sk-... pnpm start
 ```
 Open a workflow with an activated webhook, open the drawer, send "a form with one input". Expect a real v0 `demoUrl` to render in the iframe. Note: each call costs v0 credits.
 
@@ -1504,9 +1519,9 @@ it('returns 400 when the workflow is not activated', async () => {
 
 it('returns 502 when the v0 client throws', async () => {
 	// Override the bound V0 client to always throw, scoped to this test.
-	const { V0_CLIENT_TOKEN } = await import('@/modules/frontend-builder/v0-client.token');
-	const prev = Container.get(V0_CLIENT_TOKEN);
-	Container.set(V0_CLIENT_TOKEN, {
+	const { V0Client } = await import('@/modules/frontend-builder/v0-client');
+	const prev = Container.get(V0Client);
+	Container.set(V0Client, {
 		create: async () => { throw new Error('upstream down'); },
 		sendMessage: async () => { throw new Error('upstream down'); },
 		getChat: async () => { throw new Error('upstream down'); },
@@ -1525,7 +1540,7 @@ it('returns 502 when the v0 client throws', async () => {
 		});
 		expect(response.status).toBe(502);
 	} finally {
-		Container.set(V0_CLIENT_TOKEN, prev);
+		Container.set(V0Client, prev);
 	}
 });
 ```

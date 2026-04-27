@@ -17,6 +17,9 @@ import FocusSidebar from '@/app/components/FocusSidebar.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
+import CanvasCreateFrontendButton from '@/features/workflows/canvas/components/elements/buttons/CanvasCreateFrontendButton.vue';
+import FrontendBuilderDrawer from '@/features/frontend-builder/components/FrontendBuilderDrawer.vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -1051,6 +1054,15 @@ const isStopWaitingForWebhookButtonVisible = computed(
 	() => isWorkflowRunning.value && isExecutionWaitingForWebhook.value,
 );
 
+const settingsStore = useSettingsStore();
+const frontendBuilderOpen = ref(false);
+const hasWebhookTriggerNode = computed(() =>
+	workflowsStore.allNodes.some((node) => node.type === 'n8n-nodes-base.webhook'),
+);
+const frontendBuilderButtonVisible = computed(
+	() => settingsStore.isModuleActive('frontend-builder') && hasWebhookTriggerNode.value,
+);
+
 async function onRunWorkflowToNode(id: string) {
 	const node = workflowDocumentStore?.value?.getNodeById(id);
 	if (!node) return;
@@ -1885,7 +1897,12 @@ onBeforeUnmount(() => {
 					:size="isRunButtonSplit ? 'xlarge' : 'large'"
 					@click="onStopWaitingForWebhook"
 				/>
+				<CanvasCreateFrontendButton
+					v-if="frontendBuilderButtonVisible"
+					@click="frontendBuilderOpen = true"
+				/>
 			</div>
+			<FrontendBuilderDrawer :open="frontendBuilderOpen" @close="frontendBuilderOpen = false" />
 
 			<N8nCallout
 				v-if="isReadOnlyEnvironment"

@@ -49,7 +49,8 @@ type EndpointGroup =
 	| 'data-table'
 	| 'third-party-licenses'
 	| 'mcp'
-	| 'workflowDependencies';
+	| 'workflowDependencies'
+	| 'frontend-builder';
 
 type ModuleName =
 	| 'insights'
@@ -62,7 +63,8 @@ type ModuleName =
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
-	| 'token-exchange';
+	| 'token-exchange'
+	| 'frontend-builder';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

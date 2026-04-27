@@ -329,6 +329,11 @@ export const setupTestServer = ({
 						await import('@/modules/mcp/mcp.module');
 						break;
 
+					case 'frontend-builder':
+						await import('@/modules/frontend-builder/frontend-builder.module');
+						await import('@/modules/frontend-builder/frontend-builder.controller');
+						break;
+
 					case 'module-settings':
 						await import('@/controllers/module-settings.controller');
 						break;

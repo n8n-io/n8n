@@ -218,3 +218,11 @@ export {
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
+
+export {
+	FrontendBuilderMessageRequestDto,
+	frontendBuilderMessageSchema,
+	type FrontendBuilderMessage,
+	type FrontendBuilderMessageResponse,
+	type FrontendBuilderStateResponse,
+} from './frontend-builder';
