@@ -134,6 +134,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const lastEventIdByThread = ref<Record<string, number>>({});
 	const activeRunId = ref<string | null>(null);
 	const messages = ref<InstanceAiMessage[]>([]);
+	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
 	const hydratingThreadId = ref<string | null>(null);
 	const pendingMessageCount = ref(0);
@@ -168,6 +169,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
+		() => archivedWorkflowIds.value,
 	);
 
 	// Response feedback — rateability selector + submission
@@ -342,6 +344,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 					thread.title = parsed.data.payload.title;
 				}
 			}
+			if (parsed.data.type === 'run-finish') {
+				const ids = parsed.data.payload.archivedWorkflowIds;
+				if (ids && ids.length > 0) {
+					// Reassign instead of mutating: Set.add() on a ref doesn't trigger reactivity.
+					const next = new Set(archivedWorkflowIds.value);
+					for (const id of ids) next.add(id);
+					archivedWorkflowIds.value = next;
+				}
+			}
 			// Force Vue reactivity when streaming state changes (run-start can
 			// re-activate a completed message for auto-follow-up runs, run-finish
 			// marks it done). In-place mutation of message properties may not
@@ -507,6 +518,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	function resetThreadRuntimeState(nextHydratingThreadId: string | null): void {
 		hydratingThreadId.value = nextHydratingThreadId;
 		messages.value = [];
+		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];

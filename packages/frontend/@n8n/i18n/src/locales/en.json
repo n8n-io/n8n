@@ -5148,6 +5148,13 @@
 	"instanceAi.artifactsPanel.noArtifacts": "No artifacts yet",
 	"instanceAi.artifactsPanel.tasks": "Tasks",
 	"instanceAi.artifactsPanel.openWorkflow": "Open",
+<<<<<<< HEAD
+=======
+	"instanceAi.artifactsPanel.archived": "Archived",
+	"instanceAi.previewTabBar.collapse": "Collapse panel",
+	"instanceAi.previewTabBar.openInEditor": "Open in editor",
+	"instanceAi.previewTabBar.copyLink": "Copy link",
+>>>>>>> 632ae67de3 (fix(ai-builder): Hide and reap intermediate AI-created workflows (#29066))
 	"instanceAi.delegateCard.implementsStep": "Step {step}",
 	"instanceAi.delegateCard.delegatingTo": "Delegating to",
 	"instanceAi.delegateCard.briefing": "Briefing",

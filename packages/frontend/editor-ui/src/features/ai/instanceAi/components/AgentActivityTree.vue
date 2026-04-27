@@ -91,6 +91,11 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 					:name="resolveArtifactName(artifact)"
 					:resource-id="artifact.resourceId"
 					:project-id="artifact.projectId"
+<<<<<<< HEAD
+=======
+					:archived="store.producedArtifacts.get(artifact.resourceId)?.archived"
+					:class="$style.artifactCard"
+>>>>>>> 632ae67de3 (fix(ai-builder): Hide and reap intermediate AI-created workflows (#29066))
 				/>
 			</template>
 
