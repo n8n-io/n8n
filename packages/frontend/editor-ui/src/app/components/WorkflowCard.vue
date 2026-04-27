@@ -532,7 +532,7 @@ async function archiveWorkflow() {
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
 			interpolate: { workflowName: archivedWorkflowName },
 		}),
-		message: `<a href="#" data-test-id="archive-toast-delete-permaently-link">${locale.baseText('mainSidebar.showMessage.handleArchive.message')}</a>`,
+		message: `<a href="#" data-test-id="archive-toast-delete-permanently-link">${locale.baseText('mainSidebar.showMessage.handleArchive.message')}</a>`,
 		onClick: (event) => {
 			if (event?.target instanceof HTMLAnchorElement) {
 				event.preventDefault();
