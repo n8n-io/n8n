@@ -74,7 +74,7 @@ export async function mailjetApiRequestAllItems(
 		});
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 		query.Offset = query.Offset + query.Limit;
-	} while (responseData.length !== 0);
+	} while (responseData.body.length !== 0);
 	return returnData;
 }
 
