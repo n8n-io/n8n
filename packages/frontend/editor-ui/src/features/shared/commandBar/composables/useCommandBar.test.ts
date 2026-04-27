@@ -39,6 +39,19 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 }));
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: () => ref({ name: 'WF' }),
+	useWorkflowDocumentStore: () => ({
+		name: 'WF',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
+		scopes: [],
+		isArchived: false,
+		versionData: null,
+		checksum: null,
+	}),
+	createWorkflowDocumentId: (id: string) => `${id}@latest`,
+}));
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
 // Command groups
@@ -91,6 +104,15 @@ vi.mock('./useExecutionCommands', () => ({
 }));
 vi.mock('./useGenericCommands', () => ({
 	useGenericCommands: () => mkGroup('gen'),
+}));
+vi.mock('./useRecentResources', () => ({
+	useRecentResources: () => mkGroup('recent'),
+}));
+vi.mock('./useChatHubCommands', () => ({
+	useChatHubCommands: () => mkGroup('chathub'),
+}));
+vi.mock('./useInstanceAiCommands', () => ({
+	useInstanceAiCommands: () => mkGroup('instanceai'),
 }));
 
 describe('useCommandBar', () => {

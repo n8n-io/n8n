@@ -196,6 +196,13 @@ export class LocalGatewayRegistry {
 		state.disconnectTimer = null;
 	}
 
+	/** Return IDs of users with an active gateway connection. */
+	getConnectedUserIds(): string[] {
+		return [...this.userGateways.entries()]
+			.filter(([, state]) => state.gateway.getStatus().connected)
+			.map(([userId]) => userId);
+	}
+
 	/** Disconnect all gateways and clear all state (called on service shutdown). */
 	disconnectAll(): void {
 		for (const state of this.userGateways.values()) {

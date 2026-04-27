@@ -46,10 +46,8 @@ const lastGroupIdx = computed(() => {
 });
 
 function resolveArtifactName(artifact: ArtifactInfo): string {
-	for (const entry of store.resourceRegistry.values()) {
-		if (entry.id === artifact.resourceId) return entry.name;
-	}
-	return artifact.name;
+	const entry = store.producedArtifacts.get(artifact.resourceId);
+	return entry?.name ?? artifact.name;
 }
 </script>
 
@@ -93,6 +91,7 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 					:name="resolveArtifactName(artifact)"
 					:resource-id="artifact.resourceId"
 					:project-id="artifact.projectId"
+					:class="$style.artifactCard"
 				/>
 			</template>
 
@@ -109,7 +108,12 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 
 <style lang="scss" module>
 .reasoningTrigger {
+	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
 	color: var(--text-color--subtler);
+}
+
+.artifactCard {
+	max-width: 90%;
 }
 
 .reasoningContent {

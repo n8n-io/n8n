@@ -703,6 +703,106 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = jest.mocked(userHasScopes);
 
+function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	const service = new InstanceAiAdapterService(
+		{ error: jest.fn(), scoped: jest.fn().mockReturnThis() } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[0],
+		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[1],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[5],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[6],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[8],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
+		{ staticCacheDir: '/tmp' } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[13],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
+		{
+			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
+		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[24],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
+	);
+
+	(
+		service as unknown as {
+			nodesCache: { promise: Promise<Array<Record<string, unknown>>>; expiresAt: number };
+		}
+	).nodesCache = {
+		promise: Promise.resolve(nodes),
+		expiresAt: Date.now() + 60_000,
+	};
+
+	return service.createContext(mockUser).nodeService;
+}
+
+describe('createNodeAdapter', () => {
+	it('preserves credential displayOptions in getDescription()', async () => {
+		const adapter = createNodeAdapterForTests([
+			{
+				name: 'n8n-nodes-base.webhook',
+				displayName: 'Webhook',
+				description: 'Starts the workflow when a webhook is called',
+				group: ['trigger'],
+				version: [1, 2.1],
+				properties: [],
+				credentials: [
+					{
+						name: 'httpBasicAuth',
+						required: true,
+						displayOptions: {
+							show: {
+								authentication: ['basicAuth'],
+							},
+						},
+					},
+				],
+				inputs: [],
+				outputs: [],
+				webhooks: [{}],
+			},
+		]);
+
+		const result = await adapter.getDescription('n8n-nodes-base.webhook', 2.1);
+
+		expect(result.credentials).toEqual([
+			{
+				name: 'httpBasicAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['basicAuth'],
+					},
+				},
+			},
+		]);
+	});
+});
+
 function createDataTableAdapterForTests(overrides?: {
 	branchReadOnly?: boolean;
 }) {

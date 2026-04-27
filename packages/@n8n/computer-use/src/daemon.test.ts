@@ -20,11 +20,15 @@ jest.mock('node:os', () => {
 	return { ...actual, homedir: jest.fn(() => actual.homedir()) };
 });
 
-// Prevent GatewayClient.start() from making real network calls
+// Prevent GatewayClient.start() from making real network calls. Mirror the
+// real contract: disconnect() invokes the onDisconnected hook so the daemon
+// can clear its state.
 jest.mock('./gateway-client', () => ({
-	['GatewayClient']: jest.fn().mockImplementation(() => ({
+	['GatewayClient']: jest.fn().mockImplementation((options: { onDisconnected?: () => void }) => ({
 		start: jest.fn().mockResolvedValue(undefined),
-		disconnect: jest.fn().mockResolvedValue(undefined),
+		disconnect: jest.fn().mockImplementation(() => {
+			options.onDisconnected?.();
+		}),
 		tools: [],
 	})),
 }));
@@ -327,6 +331,70 @@ describe('POST /connect — origin allowlist', () => {
 });
 
 // ---------------------------------------------------------------------------
+// POST /connect — concurrent confirmation
+// ---------------------------------------------------------------------------
+
+describe('POST /connect — concurrent confirmation', () => {
+	it('returns 409 when a confirmation prompt is already in progress', async () => {
+		let resolveConfirm!: (value: boolean) => void;
+		const confirmConnect = jest
+			.fn()
+			.mockImplementation(
+				async () => await new Promise<boolean>((resolve) => (resolveConfirm = resolve)),
+			);
+		const { port, close } = await startTestDaemon(
+			{ filesystem: { dir: tmpDir } },
+			{ confirmConnect },
+		);
+		try {
+			// First connection — hangs waiting for user confirmation
+			const first = post(port, '/connect', { url: 'http://localhost:5678', token: 'tok' });
+
+			// Wait for the first request to reach confirmConnect
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			// Second connection attempt while confirmation is pending
+			const second = await post(port, '/connect', { url: 'http://localhost:5679', token: 'tok' });
+			expect(second.status).toBe(409);
+			expect(second.body.error).toMatch(/confirmation is already in progress/);
+
+			// Resolve the first confirmation and await its response
+			resolveConfirm(false);
+			await first;
+		} finally {
+			await close();
+		}
+	});
+
+	it('accepts a new connection after a pending confirmation completes', async () => {
+		let resolveConfirm!: (value: boolean) => void;
+		const confirmConnect = jest
+			.fn()
+			.mockImplementationOnce(
+				async () => await new Promise<boolean>((resolve) => (resolveConfirm = resolve)),
+			)
+			.mockResolvedValue(true);
+		const { port, close } = await startTestDaemon(
+			{ filesystem: { dir: tmpDir } },
+			{ confirmConnect },
+		);
+		try {
+			// First connection — hangs then gets rejected
+			const first = post(port, '/connect', { url: 'http://localhost:5678', token: 'tok' });
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			resolveConfirm(false);
+			await first;
+
+			// Second connection after confirmation cleared — should succeed
+			const second = await post(port, '/connect', { url: 'http://localhost:5678', token: 'tok' });
+			expect(second.status).toBe(200);
+		} finally {
+			await close();
+		}
+	});
+});
+
+// ---------------------------------------------------------------------------
 // POST /connect — already connected
 // ---------------------------------------------------------------------------
 
@@ -377,6 +445,28 @@ describe('POST /disconnect', () => {
 			await post(port, '/disconnect');
 			const healthAfter = await get(port, '/health');
 			expect(healthAfter.body.connected).toBe(false);
+		} finally {
+			await close();
+		}
+	});
+
+	it('is idempotent and fires onStatusChange("disconnected") exactly once', async () => {
+		const onStatusChange = jest.fn();
+		const { port, close } = await startTestDaemon(
+			{ filesystem: { dir: tmpDir } },
+			{ confirmConnect: jest.fn().mockResolvedValue(true), onStatusChange },
+		);
+		try {
+			await post(port, '/connect', { url: 'http://localhost:5678', token: 'tok' });
+			onStatusChange.mockClear();
+
+			const first = await post(port, '/disconnect');
+			const second = await post(port, '/disconnect');
+
+			expect(first.status).toBe(200);
+			expect(second.status).toBe(200);
+			expect(onStatusChange).toHaveBeenCalledTimes(1);
+			expect(onStatusChange).toHaveBeenCalledWith('disconnected');
 		} finally {
 			await close();
 		}

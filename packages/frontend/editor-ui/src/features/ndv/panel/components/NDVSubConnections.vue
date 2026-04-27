@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed, ref, watch } from 'vue';
 import { NodeHelpers } from 'n8n-workflow';
@@ -12,7 +11,6 @@ import type {
 	NodeConnectionType,
 	INodeInputConfiguration,
 	INodeTypeDescription,
-	Workflow,
 } from 'n8n-workflow';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
@@ -25,7 +23,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
@@ -66,15 +63,19 @@ const nodeData = computed(
 );
 const ndvStore = useNDVStore();
 
-const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+const workflowObjectAccessors = computed(() =>
+	workflowDocumentStore?.value ? workflowDocumentStore.value.getSnapshot() : undefined,
+);
 
 const nodeInputIssues = computed(() => {
-	const issues = nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflowObject.value, [
-		'typeUnknown',
-		'parameters',
-		'credentials',
-		'execution',
-	]);
+	const issues = workflowObjectAccessors.value
+		? nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflowObjectAccessors.value, [
+				'typeUnknown',
+				'parameters',
+				'credentials',
+				'execution',
+			])
+		: undefined;
 	return issues?.input ?? {};
 });
 
@@ -168,7 +169,9 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 			if (node) {
 				const matchedNodeType = nodeTypesStore.getNodeType(node.type);
 				if (matchedNodeType) {
-					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflowObject.value);
+					const issues = workflowObjectAccessors.value
+						? nodeHelpers.getNodeIssues(matchedNodeType, node, workflowObjectAccessors.value)
+						: null;
 					const stringifiedIssues = issues ? nodeHelpers.nodeIssuesToString(issues, node) : '';
 					return { node, nodeType: matchedNodeType, issues: stringifiedIssues };
 				}
@@ -194,9 +197,13 @@ function isNodeInputConfiguration(
 }
 
 function getPossibleSubInputConnections(): INodeInputConfiguration[] {
-	if (!nodeType.value || !props.rootNode) return [];
+	if (!nodeType.value || !props.rootNode || !workflowDocumentStore?.value) return [];
 
-	const inputs = NodeHelpers.getNodeInputs(workflowObject.value, props.rootNode, nodeType.value);
+	const inputs = NodeHelpers.getNodeInputs(
+		{ expression: workflowDocumentStore.value.getExpressionHandler() },
+		props.rootNode,
+		nodeType.value,
+	);
 
 	const nonMainInputs = inputs.filter((input): input is INodeInputConfiguration => {
 		if (!isNodeInputConfiguration(input)) return false;

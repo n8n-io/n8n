@@ -3,6 +3,7 @@ import { generateWorkflowCode, layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
+import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
@@ -14,13 +15,25 @@ const patchSchema = z.object({
 	new_str: z.string().describe('Replacement string'),
 });
 
+// Coerce JSON-stringified arrays into arrays. The model sometimes sends `patches`
+// as a JSON string because the payload contains escaped code. Leave non-strings
+// untouched so Zod can validate them normally.
+function coercePatches(value: unknown): unknown {
+	if (typeof value !== 'string') return value;
+	try {
+		return JSON.parse(value);
+	} catch {
+		return value;
+	}
+}
+
 export const buildWorkflowInputSchema = z.object({
 	code: z
 		.string()
 		.optional()
 		.describe('Full TypeScript workflow code using @n8n/workflow-sdk. Required for new workflows.'),
 	patches: z
-		.array(patchSchema)
+		.preprocess(coercePatches, z.array(patchSchema))
 		.optional()
 		.describe(
 			'Array of {old_str, new_str} replacements to apply to existing workflow code. ' +
@@ -152,6 +165,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// newCredential() produces NewCredentialImpl which serializes to undefined.
 			const credentialMap = await buildCredentialMap(context.credentialService);
 			await resolveCredentials(json, workflowId, context, credentialMap);
+
+			// Strip credential entries that are no longer valid for the current
+			// parameters. Resolution above (and the LLM itself) can re-emit stale
+			// references between turns; without this, setup analysis would surface
+			// a credential request for a node that no longer needs one.
+			await stripStaleCredentialsFromWorkflow(context, json);
 
 			// Ensure webhook nodes have a webhookId so n8n registers clean paths
 			await ensureWebhookIds(json, workflowId, context);

@@ -154,6 +154,11 @@ import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-Cre
 import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
 import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
 import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
+import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
+import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
+import { AddTracingContextToExecution1777045000000 } from '../common/1777045000000-AddTracingContextToExecution';
+import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
+import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -313,6 +318,11 @@ const sqliteMigrations: Migration[] = [
 	CreateTokenExchangeJtiTable1775116241000,
 	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
 	CreateTrustedKeyTables1776000000000,
+	CreateFavoritesTable1776150756000,
+	CreateDeploymentKeyTable1777000000000,
+	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
+	AddExecutionDeduplicationKey1778000000000,
+	AddTracingContextToExecution1777045000000,
 ];
 
 export { sqliteMigrations };

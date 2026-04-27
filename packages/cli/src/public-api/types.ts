@@ -1,8 +1,9 @@
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type {
+	AddDataTableColumnDto,
 	AddDataTableRowsDto,
-	CreateDataTableDto,
+	PublicApiCreateDataTableDto,
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -171,6 +172,8 @@ export declare namespace CredentialRequest {
 		{ limit?: number; cursor?: string; offset?: number }
 	>;
 
+	type Get = AuthenticatedRequest<{ id: string }>;
+
 	type Create = AuthenticatedRequest<
 		{},
 		{},
@@ -191,6 +194,8 @@ export declare namespace CredentialRequest {
 		},
 		{}
 	>;
+
+	type Test = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 
 	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
@@ -257,7 +262,7 @@ export declare namespace DataTableRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, CreateDataTableDto, {}>;
+	type Create = AuthenticatedRequest<{}, {}, PublicApiCreateDataTableDto, {}>;
 
 	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
@@ -295,6 +300,12 @@ export declare namespace DataTableRequest {
 			dryRun?: string | boolean;
 		}
 	>;
+
+	type ListColumns = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
+	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;
+
+	type DeleteColumn = AuthenticatedRequest<{ dataTableId: string; columnId: string }, {}, {}, {}>;
 }
 
 // ----------------------------------

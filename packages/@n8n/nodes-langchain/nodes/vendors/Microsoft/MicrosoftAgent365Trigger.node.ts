@@ -124,7 +124,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Enable Microsoft MCP Tools',
+				displayName: 'Enable Microsoft Work IQ Tools for A365',
 				name: 'useMcpTools',
 				type: 'boolean',
 				default: false,

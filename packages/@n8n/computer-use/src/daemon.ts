@@ -43,6 +43,7 @@ interface DaemonState {
 	session: GatewaySession | null;
 	connectedAt: string | null;
 	connectedUrl: string | null;
+	confirmingConnection: boolean;
 }
 
 const state: DaemonState = {
@@ -51,6 +52,7 @@ const state: DaemonState = {
 	session: null,
 	connectedAt: null,
 	connectedUrl: null,
+	confirmingConnection: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -180,6 +182,12 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		return;
 	}
 
+	// Reject concurrent connection attempts while a confirmation prompt is active
+	if (state.confirmingConnection) {
+		jsonResponse(req, res, 409, { error: 'A connection confirmation is already in progress.' });
+		return;
+	}
+
 	let parsedOrigin: string;
 	try {
 		parsedOrigin = new URL(url).origin;
@@ -206,7 +214,13 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		const defaults = store.getDefaults(state.config);
 		const session = new GatewaySession(defaults, store);
 
-		const approved = await daemonOptions.confirmConnect(url, session);
+		state.confirmingConnection = true;
+		let approved: boolean;
+		try {
+			approved = await daemonOptions.confirmConnect(url, session);
+		} finally {
+			state.confirmingConnection = false;
+		}
 		if (!approved) {
 			jsonResponse(req, res, 403, { error: 'Connection rejected by user.' });
 			return;
@@ -233,12 +247,11 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 			session,
 			confirmResourceAccess: daemonOptions.confirmResourceAccess,
 			onPersistentFailure: () => {
-				state.client = null;
-				state.session = null;
-				state.connectedAt = null;
-				state.connectedUrl = null;
+				clearConnectionState();
 				printDisconnected();
-				daemonOptions.onStatusChange?.('disconnected');
+			},
+			onDisconnected: () => {
+				clearConnectionState();
 			},
 		});
 
@@ -261,19 +274,27 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 	}
 }
 
+/**
+ * Reset all per-connection daemon state. Invoked by the GatewayClient via its
+ * onDisconnected hook, so every teardown path (HTTP /disconnect, SSE
+ * gateway-disconnect event, persistent auth failure) converges here.
+ */
+function clearConnectionState(): void {
+	if (!state.client && !state.session && !state.connectedAt && !state.connectedUrl) return;
+	state.client = null;
+	state.session = null;
+	state.connectedAt = null;
+	state.connectedUrl = null;
+	logger.debug('Disconnected');
+	daemonOptions.onStatusChange?.('disconnected');
+}
+
 async function handleDisconnect(
 	req: http.IncomingMessage,
 	res: http.ServerResponse,
 ): Promise<void> {
 	if (state.client) {
 		await state.client.disconnect();
-		state.client = null;
-		state.session = null;
-		state.connectedAt = null;
-		state.connectedUrl = null;
-		logger.debug('Disconnected');
-		printDisconnected();
-		daemonOptions.onStatusChange?.('disconnected');
 	}
 	jsonResponse(req, res, 200, { status: 'disconnected' });
 }

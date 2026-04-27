@@ -45,7 +45,7 @@ export function buildContext(
 	}
 	Settings.defaultZone = timezone ?? 'system';
 
-	const ctx: Record<string, unknown> = {};
+	const target: Record<string, unknown> = {};
 
 	// Callback bundle passed to createDeepLazyProxy so proxies don't touch globalThis
 	const callbacks = { getValueAtPath, getArrayElement, callFunctionAtPath };
@@ -53,7 +53,7 @@ export function buildContext(
 	// __sanitize must be on the context because PrototypeSanitizer generates:
 	// obj[this.__sanitize(expr)] where 'this' is the context (via .call(ctx) wrapping)
 	// Use a non-writable property descriptor so override attempts throw instead of silently succeeding.
-	Object.defineProperty(ctx, '__sanitize', {
+	Object.defineProperty(target, '__sanitize', {
 		get: () => __sanitize,
 		set: () => {
 			throw new ExpressionError('Cannot override "__sanitize" due to security concerns');
@@ -63,118 +63,40 @@ export function buildContext(
 	});
 
 	// -------------------------------------------------------------------------
-	// Create lazy proxies for complex workflow properties
-	// -------------------------------------------------------------------------
-
-	ctx.$json = createDeepLazyProxy(['$json'], undefined, callbacks);
-	ctx.$binary = createDeepLazyProxy(['$binary'], undefined, callbacks);
-	ctx.$input = createDeepLazyProxy(['$input'], undefined, callbacks);
-	ctx.$node = createDeepLazyProxy(['$node'], undefined, callbacks);
-	ctx.$parameter = createDeepLazyProxy(['$parameter'], undefined, callbacks);
-	ctx.$workflow = createDeepLazyProxy(['$workflow'], undefined, callbacks);
-	ctx.$prevNode = createDeepLazyProxy(['$prevNode'], undefined, callbacks);
-	ctx.$data = createDeepLazyProxy(['$data'], undefined, callbacks);
-	ctx.$env = createDeepLazyProxy(['$env'], undefined, callbacks);
-	ctx.process = createDeepLazyProxy(['process'], undefined, callbacks);
-	ctx.$execution = createDeepLazyProxy(['$execution'], undefined, callbacks);
-	ctx.$vars = createDeepLazyProxy(['$vars'], undefined, callbacks);
-	ctx.$secrets = createDeepLazyProxy(['$secrets'], undefined, callbacks);
-
-	// -------------------------------------------------------------------------
 	// Create DateTime values inside the isolate (not lazy-loaded from host,
 	// because host-side DateTime objects lose their prototype crossing the
 	// boundary). The isolate has its own luxon with the correct timezone
 	// already set via Settings.defaultZone above.
 	// -------------------------------------------------------------------------
 
-	ctx.$now = DateTime.now();
-	ctx.$today = DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-
-	// -------------------------------------------------------------------------
-	// Fetch primitives directly (no lazy loading needed for simple values)
-	// -------------------------------------------------------------------------
-
-	function fetchPrimitive(key: string): unknown {
-		try {
-			return getValueAtPath.applySync(null, [[key]], {
-				arguments: { copy: true },
-				result: { copy: true },
-			});
-		} catch {
-			return undefined;
-		}
-	}
-
-	ctx.$runIndex = fetchPrimitive('$runIndex');
-	ctx.$itemIndex = fetchPrimitive('$itemIndex');
-	ctx.$executionId = fetchPrimitive('$executionId');
-	ctx.$resumeWebhookUrl = fetchPrimitive('$resumeWebhookUrl');
-	ctx.$webhookId = fetchPrimitive('$webhookId');
-	ctx.$nodeId = fetchPrimitive('$nodeId');
-	ctx.$nodeVersion = fetchPrimitive('$nodeVersion');
+	target.$now = DateTime.now();
+	target.$today = DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
 
 	// -------------------------------------------------------------------------
 	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
 	// -------------------------------------------------------------------------
 
-	Object.assign(ctx, extendedFunctions);
+	Object.assign(target, extendedFunctions);
 
 	// -------------------------------------------------------------------------
-	// Handle function properties (check if value is function metadata)
-	// -------------------------------------------------------------------------
-
-	// Probe a host-side property: if it is a function, create an isolate
-	// wrapper that forwards calls via callFunctionAtPath; otherwise copy
-	// the value as-is.
-	function exposeHostFunction(name: string): void {
-		if (!callFunctionAtPath) return;
-		try {
-			const value = getValueAtPath.applySync(null, [[name]], {
-				arguments: { copy: true },
-				result: { copy: true },
-			});
-
-			if (value && typeof value === 'object' && value.__isFunction) {
-				ctx[name] = function (...args: unknown[]) {
-					const result = callFunctionAtPath.applySync(null, [[name], ...args], {
-						arguments: { copy: true },
-						result: { copy: true },
-					});
-					throwIfErrorSentinel(result);
-					return result;
-				};
-			} else {
-				ctx[name] = value;
-			}
-		} catch {
-			ctx[name] = undefined;
-		}
-	}
-
-	exposeHostFunction('$items');
-	exposeHostFunction('$fromAI');
-	exposeHostFunction('$fromai');
-	exposeHostFunction('$fromAi');
-
-	// -------------------------------------------------------------------------
-	// Expose globals on ctx so tournament's "x in this ? this.x : global.x"
+	// Expose globals on target so tournament's "x in this ? this.x : global.x"
 	// pattern resolves them correctly (tournament checks ctx before global)
 	// -------------------------------------------------------------------------
 
-	ctx.DateTime = globalThis.DateTime;
-	ctx.Duration = globalThis.Duration;
-	ctx.Interval = globalThis.Interval;
+	target.DateTime = globalThis.DateTime;
+	target.Duration = globalThis.Duration;
+	target.Interval = globalThis.Interval;
 
-	// Expose extend/extendOptional on ctx so tournament's "x in this ? this.x : global.x"
+	// Expose extend/extendOptional on target so tournament's "x in this ? this.x : global.x"
 	// pattern resolves them correctly when the VM checks ctx first
-	ctx.extend = extend;
-	ctx.extendOptional = extendOptional;
+	target.extend = extend;
+	target.extendOptional = extendOptional;
 
 	// Wire builtins so tournament's VariablePolyfill resolves them from ctx
-	initializeBuiltins(ctx);
+	initializeBuiltins(target);
 
 	// $item(itemIndex) returns a sub-proxy for the specified item (legacy syntax)
-	ctx.$item = function (itemIndex: number) {
+	target.$item = function (itemIndex: number) {
 		const indexStr = String(itemIndex);
 		return {
 			$json: createDeepLazyProxy(['$item', indexStr, '$json'], undefined, callbacks),
@@ -183,11 +105,92 @@ export function buildContext(
 	};
 
 	// $() function for accessing other nodes
-	ctx.$ = function (nodeName: string) {
+	target.$ = function (nodeName: string) {
 		return createDeepLazyProxy(['$', nodeName], undefined, callbacks);
 	};
 
-	return ctx;
+	// -------------------------------------------------------------------------
+	// Resolve an unknown key from the host. Called by the proxy's has/get traps
+	// for keys not already on the target. The resolved value is cached on target
+	// so each key is fetched at most once per evaluation.
+	// -------------------------------------------------------------------------
+
+	// Track keys we've already probed so we never call applySync twice
+	// for the same key — even if the host returned undefined.
+	const probedKeys = new Set<string>();
+
+	function resolveFromHost(key: string): boolean {
+		if (probedKeys.has(key)) return false;
+
+		let value: unknown;
+		try {
+			value = getValueAtPath.applySync(null, [[key]], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+		} catch {
+			// Don't mark as probed — the throw may be transient
+			// (e.g. host data not yet available) and a retry should be allowed.
+			return false;
+		}
+
+		// Mark as probed only after a definitive answer from the host.
+		probedKeys.add(key);
+
+		if (value === undefined) return false;
+
+		throwIfErrorSentinel(value);
+
+		// Function metadata — create a callable wrapper
+		if (value && typeof value === 'object' && (value as any).__isFunction) {
+			target[key] = function (...args: unknown[]) {
+				const result = callFunctionAtPath.applySync(null, [[key], ...args], {
+					arguments: { copy: true },
+					result: { copy: true },
+				});
+				throwIfErrorSentinel(result);
+				return result;
+			};
+			return true;
+		}
+
+		// Object metadata — create a lazy proxy for deep access
+		if (
+			value &&
+			typeof value === 'object' &&
+			('__isObject' in (value as any) || '__isArray' in (value as any))
+		) {
+			target[key] = createDeepLazyProxy([key], undefined, callbacks);
+			return true;
+		}
+
+		// Primitive or null — store directly
+		target[key] = value;
+		return true;
+	}
+
+	// -------------------------------------------------------------------------
+	// Wrap target in a Proxy so unknown keys are resolved lazily from the host.
+	// Tournament's VariablePolyfill transforms identifiers to:
+	//   ("x" in this ? this : global).x
+	// The has trap intercepts the "in" check, resolves the key on demand, and
+	// caches it on target. The get trap then finds it cached.
+	// -------------------------------------------------------------------------
+
+	return new Proxy(target, {
+		has(_target, prop) {
+			if (typeof prop === 'symbol') return prop in target;
+			if (prop in target) return true;
+			return resolveFromHost(prop);
+		},
+		get(_target, prop) {
+			if (typeof prop === 'symbol') return undefined;
+			if (prop in target) return target[prop as string];
+			// has() should have resolved it, but handle direct get() too
+			resolveFromHost(prop as string);
+			return target[prop as string];
+		},
+	});
 }
 
 // Matches initializeGlobalContext() lines 262-318 in packages/workflow/src/expression.ts
