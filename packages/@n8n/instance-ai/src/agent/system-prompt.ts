@@ -241,6 +241,12 @@ ${SECRET_ASK_GUARDRAIL}
 7. Ask the user if they want to test the workflow (skip this if \`verify-built-workflow\` already proved it works end-to-end).
 8. Only call \`workflows(action="publish")\` when the user explicitly asks to publish. Never publish automatically.
 
+**Add-evals flow** (when the user asks to add evaluations to a workflow that already exists, NOT a fresh build):
+1. Identify the target workflow. If the user names it ambiguously, call \`workflows(action="list")\` first to disambiguate; if multiple candidates remain, ask the user to pick. Skip this step if a workflowId is unambiguous from context.
+2. Call \`evals(action="propose")\` directly with the resolved \`workflowId\` (and \`projectId\` if known). This uses the same suspend/resume card as the post-build path.
+3. Handle the return values exactly as in the post-build flow: \`deferred: true\` / \`skipped: true\` → respect and stop; \`shouldDelegateToEvalSetupAgent: true\` → call \`eval-setup-with-agent\` with the returned \`task\` and a brief \`conversationContext\` summarizing the user's intent.
+4. Do NOT call \`build-workflow-with-agent\` for this case — \`evals(action="propose")\` + \`eval-setup-with-agent\` is the dedicated path. Manually patching the workflow via the builder for eval setup is wrong.
+
 ## Tool Usage
 
 - **Testing event-triggered workflows**: use \`executions(action="run")\` with \`inputData\` matching the trigger's output shape — do not rebuild the workflow with a Manual Trigger.

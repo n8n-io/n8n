@@ -31,7 +31,7 @@ export function createEvalsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'evals',
 		description:
-			'Propose an evaluation setup for workflows containing AI/LLM nodes. Call after `workflows(action="setup")` for AI workflows only. When approved, returns a task for the orchestrator to pass to `eval-setup-with-agent`.',
+			'Propose an evaluation setup for any workflow containing AI/LLM nodes. Call this either (a) right after a fresh build via `build-workflow-with-agent` (the standard post-build flow), OR (b) when the user explicitly asks to add evaluations to an existing workflow. When approved, returns a task for the orchestrator to pass to `eval-setup-with-agent`.',
 		inputSchema,
 		suspendSchema: instanceAiEvalsProposeSuspendSchema,
 		resumeSchema: instanceAiEvalsProposeResumeSchema,
