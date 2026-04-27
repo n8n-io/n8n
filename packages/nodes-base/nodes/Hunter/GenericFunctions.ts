@@ -60,11 +60,11 @@ export async function hunterApiRequestAllItems(
 
 	do {
 		responseData = await hunterApiRequest.call(this, method, resource, body, query);
-		returnData.push(responseData[propertyName] as IDataObject);
-		query.offset += query.limit;
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		query.offset = (query.offset as number) + (query.limit as number);
 	} while (
 		responseData.meta?.results !== undefined &&
-		responseData.meta.offset <= responseData.meta.results
+		(query.offset as number) <= responseData.meta.results
 	);
 	return returnData;
 }
