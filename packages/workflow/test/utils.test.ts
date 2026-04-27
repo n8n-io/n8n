@@ -16,6 +16,7 @@ import {
 	sleepWithAbort,
 	isCommunityPackageName,
 	sanitizeFilename,
+	sanitizeXmlName,
 } from '../src/utils';
 
 describe('isObjectEmpty', () => {
@@ -579,6 +580,22 @@ describe('setSafeObjectProperty', () => {
 		setSafeObjectProperty(obj, key, value);
 		expect(obj).toEqual(expected);
 	});
+});
+
+describe('sanitizeXmlName', () => {
+	it.each(['__proto__', 'constructor', 'prototype'])(
+		'should prefix dangerous name "%s"',
+		(name) => {
+			expect(sanitizeXmlName(name)).toBe(`sanitized_${name}`);
+		},
+	);
+
+	it.each(['name', 'id', 'root', '__custom__', 'Constructor', 'PROTOTYPE'])(
+		'should pass through safe name "%s" unchanged',
+		(name) => {
+			expect(sanitizeXmlName(name)).toBe(name);
+		},
+	);
 });
 
 describe('sleepWithAbort', () => {

@@ -6,7 +6,7 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sanitizeXmlName, sleep } from 'n8n-workflow';
 import { parseString } from 'xml2js';
 
 import {
@@ -91,9 +91,17 @@ export function formatSearch(responseData: SplunkSearchResponse) {
 
 export async function parseXml(xml: string) {
 	return await new Promise((resolve, reject) => {
-		parseString(xml, { explicitArray: false }, (error, result) => {
-			error ? reject(error) : resolve(result);
-		});
+		parseString(
+			xml,
+			{
+				explicitArray: false,
+				tagNameProcessors: [sanitizeXmlName],
+				attrNameProcessors: [sanitizeXmlName],
+			},
+			(error, result) => {
+				error ? reject(error) : resolve(result);
+			},
+		);
 	});
 }
 

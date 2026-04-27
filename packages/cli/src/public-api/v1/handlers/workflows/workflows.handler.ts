@@ -19,21 +19,21 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service';
 import type { WorkflowRequest } from '../../../types';
 import {
-	apiKeyHasScope,
+	publicApiScope,
 	projectScope,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 export = {
 	createWorkflow: [
-		apiKeyHasScope('workflow:create'),
+		publicApiScope('workflow:create'),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
 			const createdWorkflow = await createWorkflow(req.user, req.body);
 			return res.json(createdWorkflow);
 		},
 	],
 	transferWorkflow: [
-		apiKeyHasScope('workflow:move'),
+		publicApiScope('workflow:move'),
 		projectScope('workflow:move', 'workflow'),
 		async (req: WorkflowRequest.Transfer, res: express.Response) => {
 			const { id: workflowId } = req.params;
@@ -50,7 +50,7 @@ export = {
 		},
 	],
 	deleteWorkflow: [
-		apiKeyHasScope('workflow:delete'),
+		publicApiScope('workflow:delete'),
 		projectScope('workflow:delete', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
@@ -66,7 +66,7 @@ export = {
 		},
 	],
 	getWorkflow: [
-		apiKeyHasScope('workflow:read'),
+		publicApiScope('workflow:read'),
 		projectScope('workflow:read', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
@@ -102,7 +102,7 @@ export = {
 		},
 	],
 	getWorkflowVersion: [
-		apiKeyHasScope('workflow:read'),
+		publicApiScope('workflow:read'),
 		projectScope('workflow:read', 'workflow'),
 		async (req: WorkflowRequest.GetVersion, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId, versionId } = req.params;
@@ -129,7 +129,7 @@ export = {
 		},
 	],
 	getWorkflows: [
-		apiKeyHasScope('workflow:list'),
+		publicApiScope('workflow:list'),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const {
@@ -266,7 +266,7 @@ export = {
 		},
 	],
 	updateWorkflow: [
-		apiKeyHasScope('workflow:update'),
+		publicApiScope('workflow:update'),
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
@@ -282,6 +282,7 @@ export = {
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
 						publishIfActive: true,
+						source: 'api',
 					},
 				);
 
@@ -298,19 +299,19 @@ export = {
 		},
 	],
 	activateWorkflow: [
-		apiKeyHasScope('workflow:activate'),
+		publicApiScope('workflow:activate'),
 		projectScope('workflow:publish', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const { versionId, name, description } = req.body;
 
 			try {
-				const workflow = await Container.get(WorkflowService).activateWorkflow(
-					req.user,
-					id,
-					{ versionId, name, description },
-					true,
-				);
+				const workflow = await Container.get(WorkflowService).activateWorkflow(req.user, id, {
+					versionId,
+					name,
+					description,
+					source: 'api',
+				});
 
 				return res.json(workflow);
 			} catch (error) {
@@ -325,14 +326,14 @@ export = {
 		},
 	],
 	deactivateWorkflow: [
-		apiKeyHasScope('workflow:deactivate'),
+		publicApiScope('workflow:deactivate'),
 		projectScope('workflow:unpublish', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
 			try {
 				const workflow = await Container.get(WorkflowService).deactivateWorkflow(req.user, id, {
-					publicApi: true,
+					source: 'api',
 				});
 
 				return res.json(workflow);
@@ -348,7 +349,7 @@ export = {
 		},
 	],
 	getWorkflowTags: [
-		apiKeyHasScope('workflowTags:list'),
+		publicApiScope('workflowTags:list'),
 		projectScope('workflow:read', 'workflow'),
 		async (req: WorkflowRequest.GetTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
@@ -375,7 +376,7 @@ export = {
 		},
 	],
 	updateWorkflowTags: [
-		apiKeyHasScope('workflowTags:update'),
+		publicApiScope('workflowTags:update'),
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
@@ -414,7 +415,7 @@ export = {
 		},
 	],
 	archiveWorkflow: [
-		apiKeyHasScope('workflow:delete'),
+		publicApiScope('workflow:delete'),
 		projectScope('workflow:delete', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
@@ -433,7 +434,7 @@ export = {
 		},
 	],
 	unarchiveWorkflow: [
-		apiKeyHasScope('workflow:delete'),
+		publicApiScope('workflow:delete'),
 		projectScope('workflow:delete', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;

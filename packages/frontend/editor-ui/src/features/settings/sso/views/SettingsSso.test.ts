@@ -61,6 +61,14 @@ vi.mock('../provisioning/composables/userRoleProvisioning.store', () => ({
 	})),
 }));
 
+vi.mock('@n8n/rest-api-client/api/roleMappingRule', () => ({
+	listRoleMappingRules: vi.fn().mockResolvedValue([]),
+	createRoleMappingRule: vi.fn(),
+	updateRoleMappingRule: vi.fn(),
+	deleteRoleMappingRule: vi.fn(),
+	moveRoleMappingRule: vi.fn(),
+}));
+
 // Mock window.open to avoid JSDOM "Not implemented" error
 Object.defineProperty(window, 'open', {
 	writable: true,
@@ -565,6 +573,23 @@ describe('SettingsSso View', () => {
 
 			expect(telemetryTrack).not.toBeCalled();
 			expect(showError).toHaveBeenCalledWith(error, 'Error saving OIDC SSO configuration');
+		});
+	});
+
+	describe('Env-managed readonly mode', () => {
+		it('should hide save button but keep test button when SAML is managed by env', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.ssoManagedByEnv = true;
+
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(queryByTestId('sso-save')).not.toBeInTheDocument();
+				expect(queryByTestId('sso-test')).toBeInTheDocument();
+			});
 		});
 	});
 

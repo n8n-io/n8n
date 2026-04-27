@@ -119,9 +119,10 @@ export function handleHostedChatResponse(
 	responseMode: WebhookResponseMode,
 	didSendResponse: boolean,
 	executionId: string,
+	resumeToken?: string,
 ): boolean {
 	if (responseMode === 'hostedChat' && !didSendResponse) {
-		res.send({ executionStarted: true, executionId });
+		res.send({ executionStarted: true, executionId, resumeToken });
 		process.nextTick(() => res.end());
 		return true;
 	}
@@ -732,6 +733,20 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
+		// Extract W3C trace context from webhook headers for OTEL propagation.
+		const traceparent = req.headers.traceparent;
+		if (
+			typeof traceparent === 'string' &&
+			/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
+		) {
+			const tracestate = req.headers.tracestate;
+			runData.tracingContext = {
+				traceparent,
+				tracestate:
+					typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined,
+			};
+		}
+
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,
@@ -787,7 +802,13 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
-		didSendResponse = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+		didSendResponse = handleHostedChatResponse(
+			res,
+			responseMode,
+			didSendResponse,
+			executionId,
+			runExecutionData?.resumeToken,
+		);
 
 		Container.get(Logger).debug(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,

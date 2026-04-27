@@ -1,10 +1,3 @@
-jest.mock('@mastra/core/agent', () => {
-	const MockAgent = jest.fn();
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-	MockAgent.prototype.generate = jest.fn().mockResolvedValue({ text: '' });
-	return { Agent: MockAgent };
-});
-
 import { truncateToTitle } from '../title-utils';
 
 describe('truncateToTitle', () => {

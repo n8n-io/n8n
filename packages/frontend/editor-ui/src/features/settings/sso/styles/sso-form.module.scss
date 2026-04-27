@@ -21,7 +21,12 @@
 }
 
 .group {
-	padding: var(--spacing--xl) 0 0;
+	padding: var(--spacing--sm) 0;
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+
+	&:last-child {
+		border-bottom: none;
+	}
 
 	> label {
 		display: inline-block;
@@ -54,6 +59,17 @@
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--4xs) var(--spacing--sm);
 	margin-bottom: var(--spacing--lg);
+}
+
+.firstCard {
+	border-top: none;
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
+	padding-top: 0;
+
+	> :first-child {
+		border-top: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	}
 }
 
 .settingsItem {
@@ -93,7 +109,7 @@
 }
 
 .settingsItemControl {
-	width: 250px;
+	width: 280px;
 	flex-shrink: 0;
 	display: flex;
 	justify-content: flex-end;

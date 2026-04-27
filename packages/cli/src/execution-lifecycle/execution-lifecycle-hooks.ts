@@ -12,6 +12,7 @@ import {
 	ExecutionLifecycleHooks,
 } from 'n8n-core';
 import type {
+	ExecutionStatus,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -137,14 +138,41 @@ type HooksSetupParameters = {
 	parentExecution?: RelatedExecution;
 };
 
-function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: string) {
+function hookFunctionsWorkflowEvents(
+	hooks: ExecutionLifecycleHooks,
+	userId?: string,
+	projectId?: string,
+	projectName?: string,
+) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('workflowExecuteBefore', function () {
 		const { executionId, workflowData, mode } = this;
-		eventService.emit('workflow-pre-execute', { executionId, data: workflowData, mode });
+		eventService.emit('workflow-pre-execute', {
+			executionId,
+			data: workflowData,
+			mode,
+			projectId,
+			projectName,
+		});
 	});
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
-		if (runData.status === 'waiting') return;
+		if (runData.status === 'waiting') {
+			const { executionId, workflowData: workflow } = this;
+			const lastNodeName = runData.data.resultData.lastNodeExecuted;
+			const lastNodeTaskData = lastNodeName
+				? runData.data.resultData.runData[lastNodeName]
+				: undefined;
+			const latestTask = lastNodeTaskData?.at(-1);
+			const isWaitingForWebhook = latestTask?.metadata?.resumeUrl;
+			if (isWaitingForWebhook) {
+				// As of today we only emit the execution-waiting event for webhook wait nodes.
+				eventService.emit('execution-waiting', {
+					executionId,
+					workflowId: workflow.id,
+				});
+			}
+			return;
+		}
 
 		const { executionId, workflowData: workflow } = this;
 
@@ -156,7 +184,14 @@ function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: st
 			}
 		}
 
-		eventService.emit('workflow-post-execute', { executionId, runData, workflow, userId });
+		eventService.emit('workflow-post-execute', {
+			executionId,
+			runData,
+			workflow,
+			userId,
+			projectId,
+			projectName,
+		});
 	});
 }
 
@@ -663,16 +698,19 @@ export function getLifecycleHooksForSubExecutions(
 	workflowData: IWorkflowBase,
 	userId?: string,
 	parentExecution?: RelatedExecution,
+	projectId?: string,
+	projectName?: string,
 ): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
-	hookFunctionsWorkflowEvents(hooks, userId);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, { saveSettings, parentExecution });
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }
 
@@ -715,7 +753,7 @@ export function getLifecycleHooksForScalingMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
-	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
+	const { pushRef, retryOf, executionMode, workflowData, userId, projectId, projectName } = data;
 	const hooks = new ExecutionLifecycleHooks(
 		executionMode,
 		executionId,
@@ -727,14 +765,17 @@ export function getLifecycleHooksForScalingMain(
 	const executionRepository = Container.get(ExecutionRepository);
 	const executionPersistence = Container.get(ExecutionPersistence);
 
-	hookFunctionsWorkflowEvents(hooks, userId);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsExternalHooks(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 
 	hooks.addHandler('workflowExecuteAfter', async function (fullRunData) {
-		// Don't delete executions before they are finished
-		if (!fullRunData.finished) return;
+		// Only process executions that have reached a terminal status.
+		// We check `status` (not the deprecated `finished` field) because
+		// errored executions have `finished = false` but a terminal `status`.
+		const terminalStatuses: ExecutionStatus[] = ['success', 'error', 'crashed', 'canceled'];
+		if (!terminalStatuses.includes(fullRunData.status) && !fullRunData.waitTill) return;
 
 		const isManualMode = this.mode === 'manual';
 
@@ -790,7 +831,7 @@ export function getLifecycleHooksForRegularMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
 ): ExecutionLifecycleHooks {
-	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
+	const { pushRef, retryOf, executionMode, workflowData, userId, projectId, projectName } = data;
 	const hooks = new ExecutionLifecycleHooks(
 		executionMode,
 		executionId,
@@ -799,7 +840,7 @@ export function getLifecycleHooksForRegularMain(
 	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
-	hookFunctionsWorkflowEvents(hooks, userId);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);

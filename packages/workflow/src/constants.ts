@@ -118,6 +118,8 @@ export const ANTHROPIC_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.anthropic
 export const OLLAMA_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.ollama';
 export const GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.googleGemini';
 export const ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.alibabaCloud';
+export const MOONSHOT_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.moonshot';
+export const MINIMAX_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.minimax';
 
 export const AI_VENDOR_NODE_TYPES = [
 	OPENAI_LANGCHAIN_NODE_TYPE,
@@ -125,6 +127,8 @@ export const AI_VENDOR_NODE_TYPES = [
 	OLLAMA_LANGCHAIN_NODE_TYPE,
 	GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE,
 	ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE,
+	MOONSHOT_LANGCHAIN_NODE_TYPE,
+	MINIMAX_LANGCHAIN_NODE_TYPE,
 ];
 
 export const LANGCHAIN_LM_NODE_TYPE_PREFIX = '@n8n/n8n-nodes-langchain.lm';

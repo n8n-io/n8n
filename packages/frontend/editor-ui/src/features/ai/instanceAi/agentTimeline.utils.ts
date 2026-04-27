@@ -1,5 +1,8 @@
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 
+/** Tool calls that are internal bookkeeping and should not be shown to the user. */
+export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
+
 export interface ArtifactInfo {
 	type: 'workflow' | 'data-table';
 	resourceId: string;

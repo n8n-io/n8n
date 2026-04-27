@@ -9,7 +9,6 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
@@ -101,16 +100,37 @@ function tagMiddleware(
 	return tagged;
 }
 
-export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
-	const middleware = Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope);
-	return tagMiddleware(middleware, apiKeyScope);
-};
+function makePublicApiScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
+	return async (
+		req: AuthenticatedRequest,
+		res: express.Response,
+		next: express.NextFunction,
+	): Promise<void> => {
+		const { tokenGrant } = req;
+
+		if (!tokenGrant) {
+			res.status(403).json({ message: 'Forbidden' });
+			return;
+		}
+
+		if (!tokenGrant.apiKeyScopes?.includes(endpointScope)) {
+			res.status(403).json({ message: 'Forbidden' });
+			return;
+		}
+
+		next();
+		return;
+	};
+}
+
+export const publicApiScope = (apiKeyScope: ApiKeyScope) =>
+	tagMiddleware(makePublicApiScopeEnforcementMiddleware(apiKeyScope), apiKeyScope);
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
 	const scope = 'scope' in config ? config.scope : config.apiKeyScope;
-	return tagMiddleware(Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(scope), scope);
+	return tagMiddleware(makePublicApiScopeEnforcementMiddleware(scope), scope);
 };
 
 export const validLicenseWithUserQuota = (

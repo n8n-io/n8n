@@ -60,28 +60,6 @@ export class ContextEstablishmentHookMetadata {
 	}
 
 	/**
-	 * Retrieves all registered hook entries.
-	 *
-	 * Returns an array of [index, entry] tuples compatible with Set.entries().
-	 * Primarily used for debugging or low-level iteration.
-	 *
-	 * **Prefer getClasses()** for most use cases as it returns just the classes.
-	 *
-	 * @returns Array of [index, entry] tuples from the internal Set
-	 *
-	 * @example
-	 * ```typescript
-	 * const entries = metadata.getEntries();
-	 * for (const [index, entry] of entries) {
-	 *   console.log(`Hook ${index}:`, entry.class.name);
-	 * }
-	 * ```
-	 */
-	getEntries() {
-		return [...this.contextEstablishmentHooks.entries()];
-	}
-
-	/**
 	 * Retrieves all registered hook classes.
 	 *
 	 * This is the primary method used by the Hook Registry to obtain hook classes

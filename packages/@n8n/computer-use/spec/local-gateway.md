@@ -130,8 +130,14 @@ No prompts are shown.
 
 ### 2. Connect command
 
-The user runs the connect command (URL + token provided via CLI arguments or
-served automatically via daemon mode).
+The user starts the daemon with their n8n instance URL:
+
+```
+npx @n8n/computer-use <instance-url>
+```
+
+The start command is displayed inside n8n AI. Only connections from the
+specified URL are accepted; requests from any other origin are silently refused.
 
 ### 3. Confirmation prompt
 

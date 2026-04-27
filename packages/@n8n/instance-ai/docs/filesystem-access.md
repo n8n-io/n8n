@@ -1,7 +1,7 @@
 # Filesystem Access for Instance AI
 
-> **ADR**: ADR-024 (local filesystem), ADR-025 (gateway protocol), ADR-026 (auto-detect), ADR-027 (auto-connect UX)
-> **Status**: Implemented — two modes: local filesystem + gateway (auto-detected)
+> **ADR**: ADR-025 (gateway protocol), ADR-027 (auto-connect UX)
+> **Status**: Implemented — gateway-only architecture via `@n8n/computer-use` daemon
 > **Depends on**: ADR-002 (interface boundary)
 
 ## Problem
@@ -13,55 +13,28 @@ the project precisely.
 
 ## Architecture Overview
 
-Two modes provide filesystem access depending on where n8n runs:
+Filesystem access is provided exclusively through the **gateway protocol** —
+a lightweight daemon (`@n8n/computer-use`) runs on the user's machine and
+bridges file access to the n8n server via SSE.
 
 ```
 ┌─────────────────────────────────┐
 │         AI Agent Tools          │
-│  list-files · read-file · ...   │
+│  (created from MCP server)      │
 └──────────────┬──────────────────┘
                │ calls
 ┌──────────────▼──────────────────┐
-│  InstanceAiFilesystemService    │  ← interface boundary
-│  (listFiles, readFile, ...)     │
+│  LocalMcpServer                 │  ← interface boundary
+│  (getAvailableTools, callTool)  │
 └──────────────┬──────────────────┘
                │ implemented by
-       ┌───────┴────────┐
-       ▼                ▼
- LocalFsProvider   LocalGateway
- (bare metal)      (any remote client)
+               ▼
+         LocalGateway
+         (@n8n/computer-use daemon)
 ```
 
-The agent never knows which path is active. It calls service interfaces, and
-the transport is invisible.
-
-**Provider priority**: `Gateway > Local Filesystem > None` — when both are
-available, gateway wins so the daemon's targeted project directory is preferred
-over unrestricted local FS.
-
-### 1. Local Filesystem (auto-detected)
-
-`LocalFilesystemProvider` reads files directly from disk using Node.js
-`fs/promises`. **Auto-detected** — no boolean flag needed.
-
-Detection heuristic:
-1. `N8N_INSTANCE_AI_FILESYSTEM_PATH` explicitly set → local FS (restricted to that path)
-2. Container detected (Docker, Kubernetes, systemd-nspawn) → gateway only
-3. Bare metal (default) → local FS (unrestricted)
-
-Container detection checks: `/.dockerenv` exists, `KUBERNETES_SERVICE_HOST`
-env var, or `container` env var (systemd-nspawn/podman).
-
-- **Zero configuration** — works out of the box when n8n runs on bare metal
-- Optional `N8N_INSTANCE_AI_FILESYSTEM_PATH` to restrict access to a
-  specific directory (with symlink escape protection)
-- Entry count cap of **200** in tree walks to prevent large responses
-
-### 2. Gateway Protocol (cloud/Docker/remote)
-
-For n8n running on a remote server or in Docker, the **gateway protocol**
-provides filesystem access via a lightweight daemon running on the user's
-machine.
+The gateway protocol provides filesystem access via a lightweight daemon
+running on the user's machine.
 
 The protocol is simple:
 1. **Daemon connects** to `GET /instance-ai/gateway/events` (SSE)
@@ -92,102 +65,32 @@ upgraded to a session key on init (see [Authentication](#authentication) below).
 Defined in `packages/@n8n/instance-ai/src/types.ts`:
 
 ```typescript
-interface InstanceAiFilesystemService {
-  listFiles(
-    dirPath: string,
-    opts?: {
-      pattern?: string;
-      maxResults?: number;
-      type?: 'file' | 'directory' | 'all';
-      recursive?: boolean;
-    },
-  ): Promise<FileEntry[]>;
-
-  readFile(
-    filePath: string,
-    opts?: { maxLines?: number; startLine?: number },
-  ): Promise<FileContent>;
-
-  searchFiles(
-    dirPath: string,
-    opts: {
-      query: string;
-      filePattern?: string;
-      ignoreCase?: boolean;
-      maxResults?: number;
-    },
-  ): Promise<FileSearchResult>;
-
-  getFileTree(
-    dirPath: string,
-    opts?: { maxDepth?: number; exclude?: string[] },
-  ): Promise<string>;
+interface LocalMcpServer {
+  getAvailableTools(): McpTool[];
+  getToolsByCategory(category: string): McpTool[];
+  callTool(req: McpToolCallRequest): Promise<McpToolCallResult>;
 }
 ```
 
-The `filesystemService` field in `InstanceAiContext` is **optional** — when no
-filesystem is available, the filesystem tools are not registered with the agent.
+The `localMcpServer` field in `InstanceAiContext` is **optional** — when no
+gateway is connected, filesystem tools are not registered with the agent.
 
 ---
 
 ## Tools
 
-Tools are **conditionally registered** — only when `filesystemService` is
-present on the context. Each tool throws a clear error if the service is missing.
-
-### get-file-tree
-
-Get a shallow directory tree as indented text. Start low and drill into
-subdirectories for deeper exploration.
-
-| Parameter | Type | Default | Max | Description |
-|-----------|------|---------|-----|-------------|
-| `dirPath` | string | — | — | Absolute path or `~/relative` |
-| `maxDepth` | number | 2 | 5 | Directory depth to show |
-
-### list-files
-
-List files and/or directories matching optional filters.
-
-| Parameter | Type | Default | Max | Description |
-|-----------|------|---------|-----|-------------|
-| `dirPath` | string | — | — | Absolute path or `~/relative` |
-| `pattern` | string | — | — | Glob pattern (e.g. `**/*.ts`) |
-| `type` | enum | `all` | — | `file`, `directory`, or `all` |
-| `recursive` | boolean | `true` | — | Recurse into subdirectories |
-| `maxResults` | number | 200 | 1000 | Maximum entries to return |
-
-### read-file
-
-Read the contents of a file with optional line range.
-
-| Parameter | Type | Default | Max | Description |
-|-----------|------|---------|-----|-------------|
-| `filePath` | string | — | — | Absolute path or `~/relative` |
-| `startLine` | number | 1 | — | 1-indexed start line |
-| `maxLines` | number | 200 | 500 | Lines to read |
-
-### search-files
-
-Search file contents for a text pattern or regex.
-
-| Parameter | Type | Default | Max | Description |
-|-----------|------|---------|-----|-------------|
-| `dirPath` | string | — | — | Absolute path or `~/relative` |
-| `query` | string | — | — | Regex pattern |
-| `filePattern` | string | — | — | File filter (e.g. `*.ts`) |
-| `ignoreCase` | boolean | `true` | — | Case-insensitive search |
-| `maxResults` | number | 50 | 100 | Maximum matching lines |
+Tools are **dynamically created** from the MCP server's advertised capabilities
+when a gateway is connected. See `create-tools-from-mcp-server.ts`.
 
 ---
 
 ## Frontend UX (ADR-027)
 
-The `InstanceAiDirectoryShare` component has 3 states:
+The `LocalGatewaySection` component has 3 states:
 
 | State | Condition | UI |
 |-------|-----------|-----|
-| **Connected** | `isGatewayConnected \|\| isLocalFilesystemEnabled` | Green indicator: "Files connected" |
+| **Connected** | `isGatewayConnected` | Green indicator with connected host and capabilities |
 | **Connecting** | `isDaemonConnecting` | Spinner: "Connecting..." |
 | **Setup needed** | Default | `npx @n8n/computer-use` command + copy button + waiting spinner |
 
@@ -220,25 +123,10 @@ subsequent communication uses a session key.
 
 ### Auto-connect by deployment scenario
 
-#### Bare metal / self-hosted on the same machine
+#### Self-hosted (bare metal / Docker / Kubernetes)
 
-This is the **zero-config** path. When n8n runs directly on the user's machine
-(not in a container), the system auto-detects this and uses **direct access** —
-the agent reads the filesystem through local providers without any gateway,
-daemon, or pairing.
-
-- The UI immediately shows **"Connected"** (green indicator).
-- No `npx @n8n/computer-use` needed.
-- If `N8N_INSTANCE_AI_FILESYSTEM_PATH` is set, access is sandboxed to that
-  directory. Otherwise it is unrestricted.
-
-**Detection logic:** if no container markers are found (Docker, K8s), the
-system assumes bare metal and enables direct access automatically.
-
-#### Self-hosted in Docker / Kubernetes
-
-n8n runs inside a container and **cannot** directly read files on the host
-machine. The gateway bridge is required.
+Whether n8n runs on bare metal or inside a container, it **cannot** directly
+read files from the user's project directory. The gateway bridge is required.
 
 ```mermaid
 sequenceDiagram
@@ -299,8 +187,7 @@ firewall rules — SSE is a regular outbound connection.
 
 | Deployment | Access path | Daemon needed? | User action |
 |------------|-------------|----------------|-------------|
-| Bare metal | Direct (local providers) | No | None — auto-detected |
-| Docker / K8s | Gateway bridge | Yes | `npx @n8n/computer-use` on host |
+| Self-hosted | Gateway bridge | Yes | `npx @n8n/computer-use` on host |
 | n8n Cloud | Gateway bridge | Yes | `npx @n8n/computer-use` on local machine |
 
 Alternatively, setting `N8N_INSTANCE_AI_GATEWAY_API_KEY` on both the n8n
@@ -461,26 +348,20 @@ are client-agnostic.
 
 ### Directory exclusions
 
-Excluded directories differ slightly between server-side and daemon-side:
+The daemon excludes common non-essential directories from the tree scan:
 
-**LocalFilesystemProvider** (server, 12 dirs):
-`node_modules`, `.git`, `dist`, `.next`, `__pycache__`, `.cache`, `.turbo`,
-`coverage`, `.venv`, `venv`, `.idea`, `.vscode`
-
-**Tree scanner & local reader** (daemon, 16 dirs — adds 4 more):
-All of the above plus: `build`, `.nuxt`, `.output`, `.svelte-kit`
+`node_modules`, `.git`, `dist`, `build`, `.next`, `.nuxt`, `__pycache__`,
+`.cache`, `.turbo`, `coverage`, `.venv`, `venv`, `.idea`, `.vscode`,
+`.output`, `.svelte-kit`
 
 ### Entry count caps
 
 | Component | Max entries | Default depth |
 |-----------|-------------|---------------|
-| LocalFilesystemProvider (server) | 200 | 2 |
 | Tree scanner (daemon) | 10,000 | 8 |
-| `get-file-tree` tool | — | 2 (max 5) |
 
-The daemon scans more broadly (10,000 entries, depth 8) because it uploads
-the full tree on init for cached queries. The server-side provider uses a
-smaller cap (200) because it builds tree text on-the-fly per tool call.
+The daemon scans broadly (10,000 entries, depth 8) because it uploads
+the full tree on init for cached queries.
 
 ---
 
@@ -488,11 +369,10 @@ smaller cap (200) because it builds tree text on-the-fly per tool call.
 
 | Env var | Default | Purpose |
 |---------|---------|---------|
-| `N8N_INSTANCE_AI_FILESYSTEM_PATH` | none | Restrict direct filesystem access to this directory |
 | `N8N_INSTANCE_AI_GATEWAY_API_KEY` | none | Static auth key for gateway (skips pairing flow) |
 
-No env vars needed for most deployments. Bare metal auto-detects direct access.
-Cloud/Docker auto-connects via the pairing flow.
+No env vars needed for most deployments. The browser auto-connects the daemon
+via the pairing flow.
 
 See `docs/configuration.md` for the full configuration reference.
 
@@ -503,7 +383,7 @@ See `docs/configuration.md` for the full configuration reference.
 | Package | Responsibility |
 |---------|----------------|
 | `@n8n/instance-ai` | Agent core: service interfaces, tool definitions, data shapes. Framework-agnostic, zero n8n dependencies. |
-| `packages/cli/.../instance-ai/` | n8n backend: HTTP endpoints, gateway singleton, local providers, auto-detect logic, event bus. |
+| `packages/cli/.../instance-ai/` | n8n backend: HTTP endpoints, gateway singleton, event bus. |
 | `@n8n/computer-use` | Reference gateway client: standalone CLI daemon. HTTP server, SSE client, local file reader, directory scanner. Independently installable via npx. |
 
 ### Tree scanner behavior

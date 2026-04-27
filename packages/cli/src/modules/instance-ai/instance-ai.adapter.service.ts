@@ -9,7 +9,6 @@ import type {
 	InstanceAiNodeService,
 	InstanceAiDataTableService,
 	InstanceAiWebResearchService,
-	InstanceAiFilesystemService,
 	FetchedPage,
 	WebSearchResponse,
 	DataTableSummary,
@@ -71,6 +70,10 @@ import {
 	type IDataObject,
 	type INode,
 	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyMode,
+	type INodePropertyOptions,
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
@@ -188,13 +191,12 @@ export class InstanceAiAdapterService {
 	createContext(
 		user: User,
 		options?: {
-			filesystemService?: InstanceAiFilesystemService;
 			searchProxyConfig?: ServiceProxyConfig;
 			pushRef?: string;
 			threadId?: string;
 		},
 	): InstanceAiContext {
-		const { filesystemService, searchProxyConfig, pushRef, threadId } = options ?? {};
+		const { searchProxyConfig, pushRef, threadId } = options ?? {};
 		return {
 			userId: user.id,
 			workflowService: this.createWorkflowAdapter(user, threadId),
@@ -205,7 +207,7 @@ export class InstanceAiAdapterService {
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
-			...(filesystemService ? { filesystemService } : {}),
+			logger: this.logger,
 		};
 	}
 
@@ -329,6 +331,7 @@ export class InstanceAiAdapterService {
 					versionId: options?.versionId,
 					name: options?.name,
 					description: options?.description,
+					source: 'n8n-ai',
 				});
 				if (!wf.activeVersionId) {
 					throw new Error(`Workflow ${workflowId} was not activated — no active version set`);
@@ -345,7 +348,9 @@ export class InstanceAiAdapterService {
 			},
 
 			async unpublish(workflowId: string) {
-				await workflowService.deactivateWorkflow(user, workflowId);
+				await workflowService.deactivateWorkflow(user, workflowId, {
+					source: 'n8n-ai',
+				});
 			},
 
 			async getAsWorkflowJSON(workflowId: string) {
@@ -414,7 +419,9 @@ export class InstanceAiAdapterService {
 					updateData = await enterpriseWorkflowService.preventTampering(updateData, saved.id, user);
 				}
 
-				const updated = await workflowService.update(user, updateData, saved.id);
+				const updated = await workflowService.update(user, updateData, saved.id, {
+					source: 'n8n-ai',
+				});
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
@@ -465,7 +472,9 @@ export class InstanceAiAdapterService {
 					);
 				}
 
-				const updated = await workflowService.update(user, updateData, workflowId);
+				const updated = await workflowService.update(user, updateData, workflowId, {
+					source: 'n8n-ai',
+				});
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
@@ -542,7 +551,9 @@ export class InstanceAiAdapterService {
 					connections: version.connections,
 				} as Partial<WorkflowEntity>);
 
-				await workflowService.update(user, updateData, workflowId);
+				await workflowService.update(user, updateData, workflowId, {
+					source: 'n8n-ai',
+				});
 			},
 
 			...(this.license.isLicensed('feat:namedVersions')
@@ -1130,6 +1141,16 @@ export class InstanceAiAdapterService {
 			return table.projectId;
 		};
 
+		// Like resolveProjectIdForTable but also returns the table name for artifact display
+		const resolveTableMeta = async (scopes: Scope[], dataTableId: string) => {
+			const allowed = await userHasScopes(user, scopes, false, { dataTableId });
+			if (!allowed) {
+				throw new Error(`Data table "${dataTableId}" not found`);
+			}
+			const table = await dataTableRepository.findOneByOrFail({ id: dataTableId });
+			return { projectId: table.projectId, tableName: table.name };
+		};
+
 		return {
 			async list(options) {
 				const projectId = await resolveProjectId(['dataTable:listProject'], options?.projectId);
@@ -1220,38 +1241,62 @@ export class InstanceAiAdapterService {
 
 			async insertRows(dataTableId, rows) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
+				const { projectId, tableName } = await resolveTableMeta(
+					['dataTable:writeRow'],
+					dataTableId,
+				);
 				const result = await dataTableService.insertRows(
 					dataTableId,
 					projectId,
 					rows as DataTableRows,
 					'count',
 				);
-				return { insertedCount: typeof result === 'number' ? result : rows.length };
+				return {
+					insertedCount: typeof result === 'number' ? result : rows.length,
+					dataTableId,
+					tableName,
+					projectId,
+				};
 			},
 
 			async updateRows(dataTableId, filter, data) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
+				const { projectId, tableName } = await resolveTableMeta(
+					['dataTable:writeRow'],
+					dataTableId,
+				);
 				const result = await dataTableService.updateRows(
 					dataTableId,
 					projectId,
 					{ filter: filter as DataTableFilter, data: data as DataTableRow },
 					true,
 				);
-				return { updatedCount: Array.isArray(result) ? result.length : 0 };
+				return {
+					updatedCount: Array.isArray(result) ? result.length : 0,
+					dataTableId,
+					tableName,
+					projectId,
+				};
 			},
 
 			async deleteRows(dataTableId, filter) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
+				const { projectId, tableName } = await resolveTableMeta(
+					['dataTable:writeRow'],
+					dataTableId,
+				);
 				const result = await dataTableService.deleteRows(
 					dataTableId,
 					projectId,
 					{ filter: filter as DataTableFilter },
 					true,
 				);
-				return { deletedCount: Array.isArray(result) ? result.length : 0 };
+				return {
+					deletedCount: Array.isArray(result) ? result.length : 0,
+					dataTableId,
+					tableName,
+					projectId,
+				};
 			},
 		};
 	}
@@ -1566,6 +1611,9 @@ export class InstanceAiAdapterService {
 					credentials: desc.credentials?.map((c) => ({
 						name: c.name,
 						required: c.required,
+						...(c.displayOptions
+							? { displayOptions: c.displayOptions as Record<string, unknown> }
+							: {}),
 					})),
 					inputs: Array.isArray(desc.inputs) ? desc.inputs.map(String) : [],
 					outputs: Array.isArray(desc.outputs) ? desc.outputs.map(String) : [],
@@ -1658,7 +1706,7 @@ export class InstanceAiAdapterService {
 				return filteredIssues;
 			},
 
-			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, existingCredentials) => {
+			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, _existingCredentials) => {
 				const nodes = await getNodes();
 				const desc = findNodeByVersion(nodes, nodeType, typeVersion);
 				if (!desc) return [];
@@ -1724,11 +1772,16 @@ export class InstanceAiAdapterService {
 					credentialTypes.add(credType);
 				}
 
-				// 3. Already-assigned credentials
-				if (existingCredentials) {
-					for (const credType of Object.keys(existingCredentials)) {
-						credentialTypes.add(credType);
-					}
+				// 3. Dynamic credential resolution for nodes that use genericCredentialType
+				// or predefinedCredentialType (e.g. HTTP Request). The credential type name
+				// is stored in the node parameters rather than the description's credentials array.
+				if (parameters.authentication === 'genericCredentialType' && parameters.genericAuthType) {
+					credentialTypes.add(parameters.genericAuthType as string);
+				} else if (
+					parameters.authentication === 'predefinedCredentialType' &&
+					parameters.nodeCredentialType
+				) {
+					credentialTypes.add(parameters.nodeCredentialType as string);
 				}
 
 				return Array.from(credentialTypes);
@@ -1791,6 +1844,18 @@ export class InstanceAiAdapterService {
 					projectId: personalProject.id,
 					currentNodeParameters,
 				});
+				// Look up the property's builderHint so the agent sees selection guidance
+				// alongside the raw list. This makes the hint reachable even when the
+				// agent jumps straight to explore-resources without reading type-definition.
+				let builderHint: string | undefined;
+				{
+					const nodes = await getNodes();
+					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
+					if (nodeDesc) {
+						builderHint = findBuilderHintForMethod(nodeDesc, params.methodName, params.methodType);
+					}
+				}
+
 				try {
 					if (params.methodType === 'listSearch') {
 						const result = await dynamicNodeParametersService.getResourceLocatorResults(
@@ -1810,6 +1875,7 @@ export class InstanceAiAdapterService {
 								url: r.url,
 							})),
 							paginationToken: result.paginationToken,
+							...(builderHint ? { builderHint } : {}),
 						};
 					}
 
@@ -1827,6 +1893,7 @@ export class InstanceAiAdapterService {
 							value: o.value,
 							description: o.description,
 						})),
+						...(builderHint ? { builderHint } : {}),
 					};
 				} catch (error) {
 					this.logger.error('Failed to load options for explore-resources', {
@@ -1922,6 +1989,7 @@ export class InstanceAiAdapterService {
 							}
 							await workflowService.update(user, workflow, workflowId, {
 								parentFolderId: folderId,
+								source: 'n8n-ai',
 							});
 						},
 					}
@@ -1958,7 +2026,7 @@ export class InstanceAiAdapterService {
 					}
 				}
 
-				await workflowService.update(user, workflow, workflowId, { tagIds });
+				await workflowService.update(user, workflow, workflowId, { tagIds, source: 'n8n-ai' });
 				return tagNames;
 			},
 
@@ -2043,6 +2111,62 @@ const MAX_RESULT_CHARS = 20_000;
 
 /** Maximum characters for a single node's output preview when truncating. */
 const MAX_NODE_OUTPUT_CHARS = 1_000;
+
+/**
+ * Find the `builderHint.message` of the property that references a given
+ * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
+ * Returns undefined if no matching property is found.
+ *
+ * Used to surface a node's per-parameter hint alongside explore-resources
+ * results so agents that skip `type-definition` still see selection guidance.
+ */
+function findBuilderHintForMethod(
+	nodeDesc: INodeTypeDescription,
+	methodName: string,
+	methodType: 'listSearch' | 'loadOptions',
+): string | undefined {
+	const referencesMethod = (prop: INodeProperties): boolean => {
+		switch (methodType) {
+			case 'loadOptions':
+				return prop.typeOptions?.loadOptionsMethod === methodName;
+			case 'listSearch': {
+				const modes: INodePropertyMode[] = prop.modes ?? [];
+				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
+			}
+		}
+	};
+
+	// `options` on INodeProperties is a three-way union: enum values (no nested
+	// params), INodeProperties (nested params), or INodePropertyCollection
+	// (nested params under `.values`). Discriminate instead of blind-casting.
+	const isCollection = (
+		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+	): item is INodePropertyCollection => 'values' in item;
+	const isProperty = (
+		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+	): item is INodeProperties => 'type' in item;
+
+	const searchProps = (
+		items?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+	): string | undefined => {
+		for (const item of items ?? []) {
+			if (isCollection(item)) {
+				const nested = searchProps(item.values);
+				if (nested) return nested;
+				continue;
+			}
+			if (!isProperty(item)) continue; // plain enum value — skip
+			if (referencesMethod(item) && item.builderHint?.message) {
+				return item.builderHint.message;
+			}
+			const nested = searchProps(item.options);
+			if (nested) return nested;
+		}
+		return undefined;
+	};
+
+	return searchProps(nodeDesc.properties);
+}
 
 /**
  * Truncate execution result data to stay within context budget.

@@ -2,14 +2,25 @@ import { createPinia, setActivePinia } from 'pinia';
 import { describe, it, vi, beforeEach, expect } from 'vitest';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { useRouter } from 'vue-router';
+import type * as VueRouter from 'vue-router';
 import SettingsAiGatewayView from './SettingsAiGatewayView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY, VIEWS } from '@/app/constants';
+
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal<typeof VueRouter>();
+	return { ...actual, useRouter: vi.fn() };
+});
 
 const mockGetGatewayUsage = vi.fn();
+const mockGetGatewayWallet = vi.fn();
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	getGatewayConfig: vi.fn(),
-	getGatewayCredits: vi.fn(),
+	getGatewayWallet: (...args: unknown[]) => mockGetGatewayWallet(...args),
 	getGatewayUsage: (...args: unknown[]) => mockGetGatewayUsage(...args),
 }));
 
@@ -30,7 +41,7 @@ const MOCK_ENTRIES = [
 		timestamp: new Date('2024-01-15T10:30:00Z').getTime(),
 		inputTokens: 100,
 		outputTokens: 50,
-		creditsDeducted: 2,
+		cost: 2,
 	},
 	{
 		provider: 'anthropic',
@@ -38,17 +49,59 @@ const MOCK_ENTRIES = [
 		timestamp: new Date('2024-01-16T14:00:00Z').getTime(),
 		inputTokens: undefined,
 		outputTokens: undefined,
-		creditsDeducted: 5,
+		cost: 5,
 	},
 ];
 
 const renderComponent = createComponentRenderer(SettingsAiGatewayView);
+
+const mockRouterPush = vi.fn();
 
 describe('SettingsAiGatewayView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
 		mockGetGatewayUsage.mockResolvedValue({ entries: [], total: 0 });
+		mockGetGatewayWallet.mockResolvedValue({ balance: 42, budget: 100 });
+		(useRouter as ReturnType<typeof vi.fn>).mockReturnValue({ push: mockRouterPush });
+	});
+
+	describe('balance card', () => {
+		it('should display balance after fetching', async () => {
+			renderComponent();
+
+			await waitFor(() => expect(screen.getByTestId('settings-ai-gateway')).toBeInTheDocument());
+			const store = useAiGatewayStore();
+			await waitFor(() => expect(store.balance).toBe(42));
+			expect(screen.getByText('$42.00 remaining')).toBeInTheDocument();
+		});
+
+		it('should not render the balance before data loads', () => {
+			mockGetGatewayWallet.mockReturnValue(new Promise(() => {})); // never resolves
+			renderComponent();
+
+			expect(screen.queryByTestId('ai-gateway-topup-button')).not.toBeNull(); // button present
+			// number not yet visible (balance undefined)
+			expect(screen.queryByText('$42.00 remaining')).not.toBeInTheDocument();
+		});
+
+		it('should open top-up modal when "Top up credits" button is clicked', async () => {
+			renderComponent();
+
+			await waitFor(() =>
+				expect(screen.getByTestId('ai-gateway-topup-button')).toBeInTheDocument(),
+			);
+
+			const uiStore = useUIStore();
+			vi.spyOn(uiStore, 'openModalWithData');
+
+			await userEvent.click(screen.getByTestId('ai-gateway-topup-button'));
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+				data: {},
+			});
+		});
 	});
 
 	describe('on mount', () => {
@@ -98,13 +151,27 @@ describe('SettingsAiGatewayView', () => {
 		it('should re-fetch from offset=0 when refresh is clicked', async () => {
 			mockGetGatewayUsage.mockResolvedValue({ entries: MOCK_ENTRIES, total: 100 });
 			renderComponent();
-			await waitFor(() => expect(mockGetGatewayUsage).toHaveBeenCalledOnce());
+			await waitFor(() => expect(screen.getByText('gemini-pro')).toBeInTheDocument());
 
 			mockGetGatewayUsage.mockClear();
 			await userEvent.click(screen.getByRole('button', { name: /refresh/i }));
 
 			await waitFor(() => expect(mockGetGatewayUsage).toHaveBeenCalledOnce());
 			expect(mockGetGatewayUsage).toHaveBeenCalledWith(expect.anything(), 0, 50);
+		});
+
+		it('should re-fetch wallet balance when refresh is clicked', async () => {
+			mockGetGatewayUsage.mockResolvedValue({ entries: MOCK_ENTRIES, total: 100 });
+			renderComponent();
+			await waitFor(() => expect(screen.getByText('gemini-pro')).toBeInTheDocument());
+			await waitFor(() => expect(screen.getByText('$42.00 remaining')).toBeInTheDocument());
+
+			mockGetGatewayWallet.mockClear();
+			mockGetGatewayWallet.mockResolvedValue({ balance: 35, budget: 100 });
+			await userEvent.click(screen.getByRole('button', { name: /refresh/i }));
+
+			await waitFor(() => expect(mockGetGatewayWallet).toHaveBeenCalledOnce());
+			await waitFor(() => expect(screen.getByText('$35.00 remaining')).toBeInTheDocument());
 		});
 	});
 
@@ -169,6 +236,78 @@ describe('SettingsAiGatewayView', () => {
 			// Original entries still present (appended, not replaced)
 			expect(screen.getByText('gemini-pro')).toBeInTheDocument();
 			expect(mockGetGatewayUsage).toHaveBeenLastCalledWith(expect.anything(), 50, 50);
+		});
+	});
+
+	describe('row click navigation', () => {
+		const entryWithExecution = {
+			provider: 'google',
+			model: 'gemini-pro',
+			timestamp: new Date('2024-01-15T10:30:00Z').getTime(),
+			cost: 2,
+			metadata: { executionId: '29021', workflowId: 'R9JFXwkUCL1jZBuw' },
+		};
+
+		const entryWithoutMetadata = {
+			provider: 'anthropic',
+			model: 'claude-3',
+			timestamp: new Date('2024-01-16T14:00:00Z').getTime(),
+			cost: 5,
+		};
+
+		it('navigates to execution preview when row has metadata.executionId and metadata.workflowId', async () => {
+			mockGetGatewayUsage.mockResolvedValue({ entries: [entryWithExecution], total: 1 });
+			renderComponent();
+
+			await waitFor(() => expect(screen.getByText('gemini-pro')).toBeInTheDocument());
+
+			await userEvent.click(screen.getByText('gemini-pro'));
+
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { name: 'R9JFXwkUCL1jZBuw', executionId: '29021' },
+			});
+		});
+
+		it('does not navigate when row has no execution metadata', async () => {
+			mockGetGatewayUsage.mockResolvedValue({ entries: [entryWithoutMetadata], total: 1 });
+			renderComponent();
+
+			await waitFor(() => expect(screen.getByText('claude-3')).toBeInTheDocument());
+
+			await userEvent.click(screen.getByText('claude-3'));
+
+			expect(mockRouterPush).not.toHaveBeenCalled();
+		});
+
+		it('does not navigate when row has executionId but no workflowId', async () => {
+			const entryWithExecutionOnly = {
+				...entryWithExecution,
+				metadata: { executionId: '29021' },
+			};
+			mockGetGatewayUsage.mockResolvedValue({ entries: [entryWithExecutionOnly], total: 1 });
+			renderComponent();
+
+			await waitFor(() => expect(screen.getByText('gemini-pro')).toBeInTheDocument());
+
+			await userEvent.click(screen.getByText('gemini-pro'));
+
+			expect(mockRouterPush).not.toHaveBeenCalled();
+		});
+
+		it('does not navigate when row has workflowId but no executionId', async () => {
+			const entryWithWorkflowOnly = {
+				...entryWithExecution,
+				metadata: { workflowId: 'R9JFXwkUCL1jZBuw' },
+			};
+			mockGetGatewayUsage.mockResolvedValue({ entries: [entryWithWorkflowOnly], total: 1 });
+			renderComponent();
+
+			await waitFor(() => expect(screen.getByText('gemini-pro')).toBeInTheDocument());
+
+			await userEvent.click(screen.getByText('gemini-pro'));
+
+			expect(mockRouterPush).not.toHaveBeenCalled();
 		});
 	});
 });
