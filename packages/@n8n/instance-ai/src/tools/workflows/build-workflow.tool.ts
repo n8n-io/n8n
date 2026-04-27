@@ -15,13 +15,25 @@ const patchSchema = z.object({
 	new_str: z.string().describe('Replacement string'),
 });
 
+// Coerce JSON-stringified arrays into arrays. The model sometimes sends `patches`
+// as a JSON string because the payload contains escaped code. Leave non-strings
+// untouched so Zod can validate them normally.
+function coercePatches(value: unknown): unknown {
+	if (typeof value !== 'string') return value;
+	try {
+		return JSON.parse(value);
+	} catch {
+		return value;
+	}
+}
+
 export const buildWorkflowInputSchema = z.object({
 	code: z
 		.string()
 		.optional()
 		.describe('Full TypeScript workflow code using @n8n/workflow-sdk. Required for new workflows.'),
 	patches: z
-		.array(patchSchema)
+		.preprocess(coercePatches, z.array(patchSchema))
 		.optional()
 		.describe(
 			'Array of {old_str, new_str} replacements to apply to existing workflow code. ' +
