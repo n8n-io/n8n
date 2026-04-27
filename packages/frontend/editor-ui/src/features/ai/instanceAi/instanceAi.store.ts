@@ -354,6 +354,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			if (parsed.data.type === 'run-finish') {
 				const ids = parsed.data.payload.archivedWorkflowIds;
 				if (ids && ids.length > 0) {
+					// Reassign instead of mutating: Set.add() on a ref doesn't trigger reactivity.
 					const next = new Set(archivedWorkflowIds.value);
 					for (const id of ids) next.add(id);
 					archivedWorkflowIds.value = next;

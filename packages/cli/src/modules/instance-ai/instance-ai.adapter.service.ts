@@ -320,6 +320,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async clearAiTemporary(workflowId: string) {
+				assertNotReadOnly();
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:update',
 				]);
