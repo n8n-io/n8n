@@ -26,9 +26,13 @@ import type { ProjectSharingData } from '@/features/collaboration/projects/proje
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { createRunExecutionData } from 'n8n-workflow';
 
+const { getNodeTypeMock } = vi.hoisted(() => ({
+	getNodeTypeMock: vi.fn().mockReturnValue(null),
+}));
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
-		getNodeType: vi.fn().mockReturnValue(null),
+		getNodeType: getNodeTypeMock,
 		communityNodeType: vi.fn().mockReturnValue(null),
 	})),
 }));
@@ -40,6 +44,7 @@ function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 describe('workflowDocument.store orchestration', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		getNodeTypeMock.mockReturnValue(null);
 	});
 
 	it('removeAllNodes clears nodes, connections, and pin data', () => {
@@ -98,6 +103,47 @@ describe('workflowDocument.store orchestration', () => {
 		});
 
 		expect(uiStore.stateIsDirty).toBe(true);
+	});
+
+	describe('serialize', () => {
+		it('assembles every doc field into WorkflowData', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-42'));
+
+			workflowDocumentStore.setName('My Workflow');
+			workflowDocumentStore.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+			workflowDocumentStore.setConnections({
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+			workflowDocumentStore.setPinData({ A: [{ json: { value: 1 } }] });
+			workflowDocumentStore.setTags(['tag-1', 'tag-2']);
+
+			const data = workflowDocumentStore.serialize();
+
+			expect(data.name).toBe('My Workflow');
+			expect(data.nodes).toHaveLength(2);
+			expect(data.connections).toHaveProperty('A');
+			expect(data.pinData).toHaveProperty('A');
+			expect(data.tags).toEqual(['tag-1', 'tag-2']);
+			expect(data.id).toBe('wf-42');
+		});
+
+		it('deep-copies connections so later store mutations do not affect saved data', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+
+			workflowDocumentStore.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+			workflowDocumentStore.setConnections({
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+
+			const data = workflowDocumentStore.serialize();
+
+			workflowDocumentStore.setConnections({
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				C: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+
+			expect(data.connections).not.toHaveProperty('C');
+		});
 	});
 
 	describe('hydrate', () => {

@@ -1,6 +1,6 @@
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import type { INodeExecutionData, ITaskData } from 'n8n-workflow';
+import type { INodeExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
 import { TelemetryHelpers, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
@@ -9,11 +9,14 @@ import { openFormPopupWindow } from '@/features/execution/executions/executions.
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { INodeUi } from '@/Interface';
+
+type WorkflowDocumentStore = ReturnType<typeof useWorkflowDocumentStore>;
 
 async function trackNodeExecution(
 	pushData: PushPayload<'nodeExecuteAfter'>,
-	workflowId: string,
+	workflowDocumentStore: WorkflowDocumentStore,
 	node: INodeUi | null | undefined,
 ) {
 	if (!pushData.data.error) {
@@ -31,14 +34,14 @@ async function trackNodeExecution(
 		node_id: node?.id,
 		node_graph_string: JSON.stringify(
 			TelemetryHelpers.generateNodesGraph(
-				await workflowHelpers.getWorkflowDataToSave(),
+				workflowDocumentStore.serialize() as IWorkflowBase,
 				workflowHelpers.getNodeTypes(),
 				{
 					isCloudDeployment: settingsStore.isCloudDeployment,
 				},
 			).nodeGraph,
 		),
-		workflow_id: workflowId,
+		workflow_id: workflowDocumentStore.workflowId,
 	});
 }
 
@@ -97,7 +100,7 @@ export async function nodeExecuteAfter(
 
 	await trackNodeExecution(
 		pushData,
-		workflowDocumentStore.workflowId,
+		workflowDocumentStore,
 		workflowDocumentStore.getNodeByName(pushData.nodeName),
 	);
 	workflowState.executingNode.removeExecutingNode(pushData.nodeName);
