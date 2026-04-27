@@ -1,6 +1,7 @@
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type {
+	AddDataTableColumnDto,
 	AddDataTableRowsDto,
 	PublicApiCreateDataTableDto,
 	UpdateDataTableDto,
@@ -299,6 +300,12 @@ export declare namespace DataTableRequest {
 			dryRun?: string | boolean;
 		}
 	>;
+
+	type ListColumns = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
+	type CreateColumn = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableColumnDto, {}>;
+
+	type DeleteColumn = AuthenticatedRequest<{ dataTableId: string; columnId: string }, {}, {}, {}>;
 }
 
 // ----------------------------------

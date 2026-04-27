@@ -15,14 +15,14 @@ import { ProjectService } from '@/services/project.service.ee';
 export async function getProjectIdForDataTable(dataTableId: string): Promise<string> {
 	const dataTable = await Container.get(DataTableRepository).findOne({
 		where: { id: dataTableId },
-		relations: ['project'],
+		select: ['projectId'],
 	});
 
 	if (!dataTable) {
 		throw new DataTableNotFoundError(dataTableId);
 	}
 
-	return dataTable.project.id;
+	return dataTable.projectId;
 }
 
 export async function getDataTableListFilter(

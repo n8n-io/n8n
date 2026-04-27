@@ -48,7 +48,14 @@ export const RESOURCES = {
 	insights: ['list', 'read'] as const,
 	oidc: ['manage'] as const,
 	provisioning: ['manage'] as const,
-	dataTable: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
+	dataTable: [
+		...DEFAULT_OPERATIONS,
+		'readRow',
+		'writeRow',
+		'readColumn',
+		'writeColumn',
+		'listProject',
+	] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage'] as const,
@@ -80,6 +87,7 @@ export const API_KEY_RESOURCES = {
 	dataTable: ['create', 'read', 'update', 'delete', 'list'] as const,
 	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
+	dataTableColumn: ['create', 'read', 'delete'] as const,
 	insights: ['read'] as const,
 } as const;
 

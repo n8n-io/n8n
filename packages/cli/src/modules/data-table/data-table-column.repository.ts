@@ -72,15 +72,30 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 		return columns;
 	}
 
+	/**
+	 * Insertion index must be in [0, currentColumnCount] (append == currentColumnCount).
+	 * Values above that would create empty columns in between.
+	 */
+	private normalizeAddColumnIndex(index: number | undefined, currentColumnCount: number): number {
+		if (index === undefined || index > currentColumnCount) {
+			return currentColumnCount;
+		}
+		if (index < 0) {
+			throw new DataTableValidationError('tried to add column at a negative index');
+		}
+		return index;
+	}
+
 	async addColumn(dataTableId: string, schema: DataTableCreateColumnSchema, trx?: EntityManager) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			this.validateNotSystemColumn(schema.name);
 			await this.validateUniqueColumnName(schema.name, dataTableId, em);
 
-			if (schema.index === undefined) {
-				const columns = await this.getColumns(dataTableId, em);
-				schema.index = columns.length;
-			} else {
+			const columns = await this.getColumns(dataTableId, em);
+			const columnCount = columns.length;
+			schema.index = this.normalizeAddColumnIndex(schema.index, columnCount);
+
+			if (schema.index < columnCount) {
 				await this.shiftColumns(dataTableId, schema.index, 1, em);
 			}
 
