@@ -23,6 +23,14 @@ class LogWriterConfig {
 	 */
 	@Env('N8N_EVENTBUS_LOGWRITER_MAXMESSAGESPERPARSE')
 	maxMessagesPerParse: number = 10_000;
+
+	/**
+	 * Absolute ceiling on total lines processed from a single event log file during
+	 * parsing, across all return modes (including 'all'). Skipped/invalid lines count
+	 * toward this total, bounding worst-case memory on malformed files.
+	 */
+	@Env('N8N_EVENTBUS_LOGWRITER_MAXTOTALMESSAGESPERFILE')
+	maxTotalMessagesPerFile: number = 500_000;
 }
 
 const recoveryModeSchema = z.enum(['simple', 'extensive']);

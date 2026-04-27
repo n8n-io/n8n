@@ -3,6 +3,12 @@ import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
 export class AiGatewayUsageQueryDto extends Z.class(publicApiPaginationSchema) {}
 
+export interface AiGatewayUsageMetadata {
+	executionId?: string;
+	workflowId?: string;
+	[key: string]: unknown;
+}
+
 export interface AiGatewayUsageEntry {
 	provider: string;
 	model: string;
@@ -10,6 +16,7 @@ export interface AiGatewayUsageEntry {
 	cost: number;
 	inputTokens?: number;
 	outputTokens?: number;
+	metadata?: AiGatewayUsageMetadata;
 }
 
 export interface AiGatewayUsageResponse {
