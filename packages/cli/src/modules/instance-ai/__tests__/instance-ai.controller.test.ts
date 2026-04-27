@@ -21,6 +21,10 @@ jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
 }));
 
+jest.mock('../eval/sub-agent-eval.service', () => ({
+	SubAgentEvalService: jest.fn(),
+}));
+
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
@@ -35,6 +39,8 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
+	InstanceAiEvalSubAgentRequest,
+	InstanceAiEvalSubAgentResponse,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
@@ -52,6 +58,7 @@ import type { Push } from '@/push';
 import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
+import type { SubAgentEvalService } from '../eval/sub-agent-eval.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
@@ -87,11 +94,14 @@ describe('InstanceAiController', () => {
 		port: 5678,
 	});
 
+	const subAgentEvalService = mock<SubAgentEvalService>();
+
 	const controller = new InstanceAiController(
 		instanceAiService,
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		subAgentEvalService,
 		eventBus,
 		moduleRegistry,
 		push,
@@ -386,6 +396,62 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
 
 			await expect(controller.cancel(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('feedback', () => {
+		const RESPONSE_ID = 'mg-1';
+
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('feedback')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+		});
+
+		it('should forward the payload to the service and return { ok: true }', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.submitLangsmithFeedback.mockResolvedValue(undefined);
+
+			const payload = { rating: 'up' as const, comment: 'great' };
+			const result = await controller.feedback(req, res, THREAD_ID, RESPONSE_ID, payload);
+
+			expect(result).toEqual({ ok: true });
+			expect(instanceAiService.submitLangsmithFeedback).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				RESPONSE_ID,
+				payload,
+			);
+		});
+
+		it('should not await the service call so LangSmith latency never blocks the response', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			let resolveService: () => void = () => {};
+			instanceAiService.submitLangsmithFeedback.mockReturnValue(
+				new Promise<void>((resolve) => {
+					resolveService = resolve;
+				}),
+			);
+
+			const start = Date.now();
+			await controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'down' });
+			expect(Date.now() - start).toBeLessThan(50);
+			resolveService();
+		});
+
+		it('should throw ForbiddenError for other user thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'up' }),
+			).rejects.toThrow(ForbiddenError);
+			expect(instanceAiService.submitLangsmithFeedback).not.toHaveBeenCalled();
+		});
+
+		it('should throw NotFoundError for missing thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'up' }),
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 
@@ -732,6 +798,55 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('runSubAgentEval', () => {
+		const originalNodeEnv = process.env.NODE_ENV;
+		const originalE2ETests = process.env.E2E_TESTS;
+
+		afterEach(() => {
+			process.env.NODE_ENV = originalNodeEnv;
+			if (originalE2ETests === undefined) {
+				delete process.env.E2E_TESTS;
+			} else {
+				process.env.E2E_TESTS = originalE2ETests;
+			}
+		});
+
+		it('should delegate to SubAgentEvalService.run and return the response', async () => {
+			process.env.NODE_ENV = 'test';
+			process.env.E2E_TESTS = 'true';
+			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
+			const expectedResponse = mock<InstanceAiEvalSubAgentResponse>({
+				text: 'done',
+				toolCalls: [],
+				toolResults: [],
+				capturedWorkflowIds: [],
+				durationMs: 100,
+			});
+			subAgentEvalService.run.mockResolvedValue(expectedResponse);
+
+			const result = await controller.runSubAgentEval(req, res, payload);
+
+			expect(subAgentEvalService.run).toHaveBeenCalledWith(req.user, payload);
+			expect(result).toBe(expectedResponse);
+		});
+
+		it('should throw ForbiddenError when E2E_TESTS is not set', async () => {
+			process.env.NODE_ENV = 'test';
+			delete process.env.E2E_TESTS;
+			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
+
+			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should throw ForbiddenError when NODE_ENV is production', async () => {
+			process.env.NODE_ENV = 'production';
+			process.env.E2E_TESTS = 'true';
+			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
+
+			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);
+		});
+	});
+
 	describe('createGatewayLink', () => {
 		it('should require instanceAi:gateway scope', () => {
 			expect(scopeOf('createGatewayLink')).toEqual({
@@ -958,6 +1073,32 @@ describe('InstanceAiController', () => {
 				scope: 'instanceAi:gateway',
 				globalOnly: true,
 			});
+		});
+	});
+
+	describe('gatewayDisconnectSession', () => {
+		it('should require instanceAi:gateway scope', () => {
+			expect(scopeOf('gatewayDisconnectSession')).toEqual({
+				scope: 'instanceAi:gateway',
+				globalOnly: true,
+			});
+		});
+
+		it('should tear down the session and push state change without flipping preferences', async () => {
+			const result = await controller.gatewayDisconnectSession(req);
+
+			expect(result).toEqual({ ok: true });
+			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
+			expect(instanceAiService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
+			expect(instanceAiService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiGatewayStateChanged',
+					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+				},
+				[USER_ID],
+			);
+			expect(settingsService.updateUserPreferences).not.toHaveBeenCalled();
 		});
 	});
 

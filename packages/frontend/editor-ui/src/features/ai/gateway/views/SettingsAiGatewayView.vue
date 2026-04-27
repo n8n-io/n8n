@@ -119,7 +119,7 @@ async function load(): Promise<void> {
 }
 
 async function refresh(): Promise<void> {
-	await load();
+	await Promise.all([aiGatewayStore.fetchWallet(), load()]);
 }
 
 async function loadMore(): Promise<void> {
@@ -137,7 +137,7 @@ async function loadMore(): Promise<void> {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.n8nConnect.title'));
-	await Promise.all([aiGatewayStore.fetchWallet(), load()]);
+	await refresh();
 });
 </script>
 

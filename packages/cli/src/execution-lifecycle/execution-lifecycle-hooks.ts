@@ -155,7 +155,23 @@ function hookFunctionsWorkflowEvents(
 		});
 	});
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
-		if (runData.status === 'waiting') return;
+		if (runData.status === 'waiting') {
+			const { executionId, workflowData: workflow } = this;
+			const lastNodeName = runData.data.resultData.lastNodeExecuted;
+			const lastNodeTaskData = lastNodeName
+				? runData.data.resultData.runData[lastNodeName]
+				: undefined;
+			const latestTask = lastNodeTaskData?.at(-1);
+			const isWaitingForWebhook = latestTask?.metadata?.resumeUrl;
+			if (isWaitingForWebhook) {
+				// As of today we only emit the execution-waiting event for webhook wait nodes.
+				eventService.emit('execution-waiting', {
+					executionId,
+					workflowId: workflow.id,
+				});
+			}
+			return;
+		}
 
 		const { executionId, workflowData: workflow } = this;
 
@@ -693,6 +709,7 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }
 

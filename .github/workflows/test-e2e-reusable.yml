@@ -8,7 +8,7 @@ on:
         required: false
         type: string
       test-mode:
-        description: 'Test mode: local (pnpm start from local), docker-build, or docker-pull'
+        description: 'Test mode: local or docker-artifact'
         required: false
         default: 'local'
         type: string
@@ -16,16 +16,6 @@ on:
         description: 'Test command to run'
         required: false
         default: 'pnpm --filter=n8n-playwright test:local'
-        type: string
-      shards:
-        description: 'Number of parallel shards'
-        required: false
-        default: 8
-        type: number
-      docker-image:
-        description: 'Docker image to use (for docker-pull mode). The runners image is derived automatically from the n8n image.'
-        required: false
-        default: 'n8nio/n8n:nightly'
         type: string
       workers:
         description: 'Number of parallel workers'
@@ -37,11 +27,6 @@ on:
         required: false
         default: 'blacksmith-2vcpu-ubuntu-2204'
         type: string
-      use-custom-orchestration:
-        description: 'Use duration-based custom orchestration instead of Playwright sharding'
-        required: false
-        default: false
-        type: boolean
       timeout-minutes:
         description: 'Job timeout in minutes'
         required: false
@@ -58,9 +43,9 @@ on:
         default: 'LRxcNt'
         type: string
       pre-generated-matrix:
-        description: 'Pre-generated shard matrix JSON (skips matrix job if provided)'
+        description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own.'
         required: false
-        default: ''
+        default: '[{"shard":1,"images":""}]'
         type: string
       n8n-env:
         description: 'JSON string of n8n env vars to inject into test containers, e.g. {"N8N_EXPRESSION_ENGINE":"vm"}'
@@ -73,44 +58,22 @@ env:
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
   # Browser cache location - must match install-browsers script
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
-  TEST_IMAGE_N8N: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
+  # docker-artifact loads the image locally as n8nio/n8n:local; unused in local mode.
+  TEST_IMAGE_N8N: 'n8nio/n8n:local'
   N8N_SKIP_LICENSES: 'true'
   CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
   CURRENTS_PROJECT_ID: ${{ inputs.currents-project-id }}
 
 jobs:
-  matrix:
-    if: ${{ inputs.pre-generated-matrix == '' }}
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
-    outputs:
-      matrix: ${{ steps.generate.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ inputs.branch || github.ref }}
-          fetch-depth: 1
-
-      - name: Setup Environment
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
-
-      - name: Generate shard matrix
-        id: generate
-        run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix ${{ inputs.shards }} ${{ inputs.use-custom-orchestration && '--orchestrate' || '' }})" >> "$GITHUB_OUTPUT"
-
   test:
-    needs: matrix
-    if: ${{ !cancelled() }}
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
-      packages: read
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.pre-generated-matrix || needs.matrix.outputs.matrix) }}
+        include: ${{ fromJSON(inputs.pre-generated-matrix) }}
     name: Shard ${{ matrix.shard }}
 
     steps:
@@ -122,14 +85,7 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
-        with:
-          # docker-build: build app + docker image locally
-          # docker-pull: no build needed, image is pre-built
-          # local: build app for local server
-          build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || 'pnpm build' }}
-          enable-docker-cache: ${{ inputs.test-mode == 'docker-build' }}
         env:
-          INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
@@ -137,9 +93,9 @@ jobs:
       - name: Install Browsers
         run: pnpm turbo run install-browsers --filter=n8n-playwright
 
-      - name: Login to GHCR
-        if: ${{ inputs.test-mode == 'docker-pull' }}
-        uses: ./.github/actions/docker-registry-login
+      - name: Load n8n image from cache
+        if: ${{ inputs.test-mode == 'docker-artifact' }}
+        uses: ./.github/actions/load-n8n-docker
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
@@ -167,13 +123,6 @@ jobs:
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
           retention-days: 7
-
-      - name: Cleanup cached CI images
-        if: ${{ inputs.test-mode == 'docker-pull' }}
-        continue-on-error: true
-        run: |
-          docker images --format '{{.Repository}}:{{.Tag}}' | grep -E 'ghcr\.io/n8n-io/(n8n|runners):(ci|pr)-' | xargs -r docker rmi || true
-          docker system prune -f || true
 
       - name: Cancel Currents run if workflow is cancelled
         if: ${{ cancelled() }}
