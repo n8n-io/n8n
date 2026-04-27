@@ -138,15 +138,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			},
 		};
 
-		// Step 1: Start services (parallel within a dependency level by default)
+		// Step 1: Start services sequentially within each dependency level.
+		// Sequential is intentional: parallel start on 2-vCPU CI runners thrashes CPU during
+		// each container's JIT/init spike and pushes services past their startup timeouts.
+		// Local benchmarks showed individual containers booting 2-4× faster sequentially under
+		// contention, with only modest wall-clock cost on uncontended hardware.
 		const allServiceNames = Object.keys(SERVICE_REGISTRY) as ServiceName[];
 		const servicesToStart = allServiceNames.filter((name) =>
 			shouldServiceStart(name, SERVICE_REGISTRY[name], ctx),
 		);
 		const dependencyLevels = groupByDependencyLevel(servicesToStart);
-		// Set STACK_SEQUENTIAL_START=1 to start services within each dependency level one at a time.
-		// Trades total startup time for lower peak CPU on contended (2-vCPU CI) runners.
-		const sequentialStart = process.env.STACK_SEQUENTIAL_START === '1';
 
 		const startService = async (name: ServiceName) => {
 			const service = SERVICE_REGISTRY[name];
@@ -166,14 +167,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		for (const level of dependencyLevels) {
 			const levelNames = level.map((name) => SERVICE_REGISTRY[name].description).join(', ');
 
-			let results: Array<Awaited<ReturnType<typeof startService>>>;
-			if (sequentialStart) {
-				results = [];
-				for (const name of level) {
-					results.push(await startService(name));
-				}
-			} else {
-				results = await Promise.all(level.map(startService));
+			const results: Array<Awaited<ReturnType<typeof startService>>> = [];
+			for (const name of level) {
+				results.push(await startService(name));
 			}
 
 			for (const { name, service, result } of results) {
