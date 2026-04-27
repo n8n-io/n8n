@@ -389,7 +389,16 @@ export class Zoom implements INodeType {
 						}
 
 						if (updateFields.startTime) {
-							body.start_time = updateFields.startTime as string;
+							if (updateFields.timeZone) {
+								body.start_time = moment(updateFields.startTime as string).format(
+									'YYYY-MM-DDTHH:mm:ss',
+								);
+							} else {
+								// if no timezone is defined use n8n timezone
+								body.start_time = moment
+									.tz(updateFields.startTime as string, this.getTimezone())
+									.format();
+							}
 						}
 
 						if (updateFields.duration) {
