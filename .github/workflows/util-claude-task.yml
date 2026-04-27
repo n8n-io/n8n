@@ -131,6 +131,8 @@ jobs:
           prompt: ${{ env.CLAUDE_PROMPT }}
           show_full_output: ${{ inputs.suppress_output != true }}
           display_report: false
+          plugin_marketplaces: "./.claude/plugins/n8n"
+          plugins: "n8n@n8n"
           settings: |
             {
               "permissions": {
