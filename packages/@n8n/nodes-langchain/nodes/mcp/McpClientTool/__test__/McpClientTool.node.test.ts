@@ -884,6 +884,9 @@ describe('McpClientTool', () => {
 				getNode: jest.fn(() => mockNode),
 				getExecutionId: jest.fn(() => executionId),
 				getExecutionCancelSignal: jest.fn(() => abortController.signal),
+				onExecutionCancellation: jest.fn((handler: () => void) => {
+					abortController.signal.addEventListener('abort', handler, { once: true });
+				}),
 				getInputData: jest.fn(() => [
 					{
 						json: {
@@ -1030,6 +1033,7 @@ describe('McpClientTool', () => {
 					client: { close: closeSpy } as unknown as Client,
 					mcpTools: [],
 					createdAt: now - 1000 + i, // all recent, oldest first
+					lastUsedAt: now - 1000 + i,
 				});
 			}
 
@@ -1052,12 +1056,14 @@ describe('McpClientTool', () => {
 			activeClients.set('old:node', {
 				client: { close: closeSpy } as unknown as Client,
 				mcpTools: [],
-				createdAt: now - 600_000, // 10 min ago, well past 5 min default TTL
+				createdAt: now - 600_000,
+				lastUsedAt: now - 600_000, // idle 10 min, past 5 min default TTL
 			});
 			activeClients.set('recent:node', {
 				client: { close: closeSpy } as unknown as Client,
 				mcpTools: [],
-				createdAt: now - 1000, // 1 second ago, within TTL
+				createdAt: now - 600_000, // old by createdAt
+				lastUsedAt: now - 1000, // but idle only 1 sec
 			});
 
 			resetEvictionTimer();
@@ -1078,6 +1084,92 @@ describe('McpClientTool', () => {
 				NodeOperationError,
 			);
 			expect(activeClients.size).toBe(0);
+		});
+
+		it('should refresh lastUsedAt on cache hit (idle TTL semantics)', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const { mockExecuteFunctions } = createV13MockExecuteFunctions();
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			const cacheKey = `${executionId}:${nodeName}`;
+			const entry = activeClients.get(cacheKey);
+			expect(entry).toBeDefined();
+			const firstLastUsed = entry!.lastUsedAt;
+
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			const updated = activeClients.get(cacheKey);
+			expect(updated!.lastUsedAt).toBeGreaterThan(firstLastUsed);
+		});
+
+		it('should evict cache entry when transport closes', async () => {
+			let onCloseHandler: (() => void) | undefined;
+			const mockClient = {
+				close: jest.fn().mockResolvedValue(undefined),
+				set onclose(handler: () => void) {
+					onCloseHandler = handler;
+				},
+				get onclose() {
+					return onCloseHandler;
+				},
+				onerror: undefined,
+			} as unknown as Client;
+
+			activeClients.set('exec-x:node', {
+				client: mockClient,
+				mcpTools: [],
+				createdAt: Date.now(),
+				lastUsedAt: Date.now(),
+			});
+
+			// Simulate attaching lifecycle then transport closing
+			const cacheKey = 'exec-x:node';
+			(mockClient as { onclose?: () => void }).onclose = () => {
+				activeClients.delete(cacheKey);
+			};
+			(mockClient as { onclose?: () => void }).onclose!();
+
+			expect(activeClients.has('exec-x:node')).toBe(false);
+		});
+
+		it('should throw NodeOperationError on v1.2 connection failure', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('Connection failed'));
+
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool', name: nodeName });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [{ json: { tool: 'get_weather', location: 'Berlin' } }]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, unknown> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key as string];
+				}),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				NodeOperationError,
+			);
 		});
 
 		it('should not use client cache for v1.2 nodes', async () => {
