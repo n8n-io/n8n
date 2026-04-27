@@ -36,7 +36,7 @@ export async function SIGNL4ApiRequest(
 		json: true,
 	};
 
-	if (!Object.keys(body).length) {
+	if (!body.length) {
 		delete options.body;
 	}
 	if (!Object.keys(query).length) {
