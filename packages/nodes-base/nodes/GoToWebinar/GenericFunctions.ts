@@ -58,7 +58,7 @@ export async function goToWebinarApiRequest(
 		delete options.qs;
 	}
 
-	if (Object.keys(option)) {
+	if (Object.keys(option).length) {
 		Object.assign(options, option);
 	}
 
