@@ -134,4 +134,71 @@ describe('useWebSocketClient', () => {
 
 		expect(MockWebSocket.getInstance().send).toHaveBeenCalledWith(message);
 	});
+
+	// Regression tests for GHC-7887: Overly aggressive onConnectionLost handler
+	describe('Close code 1005 handling', () => {
+		test('should not trigger reconnection on code 1005 (No Status Rcvd from proxy)', () => {
+			const { connect, isConnected } = useWebSocketClient({
+				url: 'ws://test.com',
+				onMessage: vi.fn(),
+			});
+			connect();
+			expect(MockWebSocket.init).toHaveBeenCalledTimes(1);
+
+			// Simulate successful connection
+			MockWebSocket.getInstance().simulateConnectionOpen();
+			expect(isConnected.value).toBe(true);
+
+			// Simulate code 1005 (common with Cloudflare/Traefik/Nginx proxies)
+			// This should NOT trigger a full disconnect/reconnect cycle
+			MockWebSocket.getInstance().simulateConnectionClose(1005);
+
+			// Connection should remain stable (no disconnect)
+			expect(isConnected.value).toBe(true);
+
+			// Should NOT attempt reconnection
+			vi.advanceTimersByTime(1_000);
+			expect(MockWebSocket.init).toHaveBeenCalledTimes(1); // Still only 1 connection
+		});
+
+		test('should maintain connection stability through transient 1005 events', () => {
+			const { connect, isConnected, sendMessage } = useWebSocketClient({
+				url: 'ws://test.com',
+				onMessage: vi.fn(),
+			});
+			connect();
+
+			MockWebSocket.getInstance().simulateConnectionOpen();
+			expect(isConnected.value).toBe(true);
+
+			// Simulate multiple transient 1005 events (proxy re-evaluations)
+			MockWebSocket.getInstance().simulateConnectionClose(1005);
+			vi.advanceTimersByTime(500);
+			MockWebSocket.getInstance().simulateConnectionClose(1005);
+			vi.advanceTimersByTime(500);
+
+			// Connection should still be usable
+			expect(isConnected.value).toBe(true);
+			expect(() => sendMessage('test')).not.toThrow();
+		});
+
+		test('should still handle fatal close codes (1006, 1011) with reconnection', () => {
+			const { connect, isConnected } = useWebSocketClient({
+				url: 'ws://test.com',
+				onMessage: vi.fn(),
+			});
+			connect();
+			expect(MockWebSocket.init).toHaveBeenCalledTimes(1);
+
+			MockWebSocket.getInstance().simulateConnectionOpen();
+			expect(isConnected.value).toBe(true);
+
+			// Code 1006 (Abnormal Closure) SHOULD trigger reconnection
+			MockWebSocket.getInstance().simulateConnectionClose(1006);
+
+			expect(isConnected.value).toBe(false);
+			vi.advanceTimersByTime(1_000);
+			expect(MockWebSocket.init).toHaveBeenCalledTimes(2); // Reconnected
+		});
+	});
 });
