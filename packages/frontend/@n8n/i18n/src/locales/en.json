@@ -4229,6 +4229,7 @@
 	"settings.n8nConnect.usage.col.cost": "Cost (USD)",
 	"settings.n8nConnect.usage.empty": "No usage records found.",
 	"settings.n8nConnect.usage.loadMore": "Load more",
+	"settings.n8nConnect.usage.openExecution": "Open execution",
 	"settings.n8nConnect.wallet.title": "Balance",
 	"settings.n8nConnect.wallet.remaining": "${remaining} / ${budget} remaining",
 	"settings.n8nConnect.wallet.quota": "budget",

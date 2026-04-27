@@ -38,6 +38,8 @@ export class AiGatewayService {
 	private configFetchedAt = 0;
 	private static readonly CONFIG_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
@@ -90,11 +92,13 @@ export class AiGatewayService {
 		userId,
 		workflowId,
 		projectId,
+		executionId,
 	}: {
 		credentialType: string;
 		userId: string | undefined;
 		workflowId?: string;
 		projectId?: string;
+		executionId?: string;
 	}): Promise<ICredentialDataDecryptedObject> {
 		if (!this.licenseState.isAiGatewayLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
@@ -116,9 +120,15 @@ export class AiGatewayService {
 		if (!jwt) {
 			throw new UserError('Failed to obtain a valid AI Gateway token.');
 		}
+
+		const gatewayUrl = this.buildGatewayUrl(baseUrl, providerConfig.gatewayPath, {
+			executionId,
+			workflowId,
+		});
+
 		return {
 			[providerConfig.apiKeyField]: jwt,
-			[providerConfig.urlField]: `${baseUrl}${providerConfig.gatewayPath}`,
+			[providerConfig.urlField]: gatewayUrl,
 		};
 	}
 
@@ -181,6 +191,33 @@ export class AiGatewayService {
 			throw new UserError('AI Gateway returned an invalid wallet response.');
 		}
 		return d;
+	}
+
+	/**
+	 * Builds the gateway URL for a provider credential.
+	 *
+	 * When both `executionId` and `workflowId` are provided, embeds them as an
+	 * `/exec/:executionId/:workflowId/` prefix inside the gateway path. The AI Gateway's
+	 * URL-rewriting middleware strips this prefix before proxying upstream, so all SDK
+	 * clients remain unaware of it while the gateway can record both IDs in usage metadata.
+	 *
+	 * Example (OpenAI):
+	 *   without context → `<base>/v1/gateway/openai/v1`
+	 *   with context    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/openai/v1`
+	 */
+	private buildGatewayUrl(
+		baseUrl: string,
+		gatewayPath: string,
+		context: { executionId?: string; workflowId?: string },
+	): string {
+		if (context.executionId && context.workflowId) {
+			if (!gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
+				return `${baseUrl}${gatewayPath}`;
+			}
+			const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
+			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${encodeURIComponent(context.workflowId)}${providerSuffix}`;
+		}
+		return `${baseUrl}${gatewayPath}`;
 	}
 
 	private requireBaseUrl(): string {
