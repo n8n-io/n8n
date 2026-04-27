@@ -45,7 +45,7 @@ describe('FigmaTrigger', () => {
 		it('should respond 200 to PING events without triggering workflow', async () => {
 			const bodyData: IDataObject = {
 				event_type: 'PING',
-				passcode: 'secretpasscode',
+				passcode: 'test-passcode',
 				timestamp: '2020-02-23T20:27:16Z',
 				webhook_id: '22',
 			};
@@ -61,9 +61,9 @@ describe('FigmaTrigger', () => {
 		it('should trigger workflow when verification passes', async () => {
 			const bodyData: IDataObject = {
 				event_type: 'FILE_UPDATE',
-				file_key: 'CL06nJNn5eZLQKDoARMND5',
-				file_name: 'Developer page mockup demo',
-				passcode: 'secretpasscode',
+				file_key: 'fake-file-key-1',
+				file_name: 'Test file',
+				passcode: 'test-passcode',
 				timestamp: '2020-02-23T20:27:16Z',
 				webhook_id: '22',
 			};
@@ -81,8 +81,8 @@ describe('FigmaTrigger', () => {
 
 			const bodyData: IDataObject = {
 				event_type: 'FILE_COMMENT',
-				file_key: 'zH44k2FUM629Fa4EMShiHL',
-				file_name: 'Mockup library',
+				file_key: 'fake-file-key-2',
+				file_name: 'Test file',
 				webhook_id: '22',
 			};
 
