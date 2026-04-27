@@ -5,14 +5,13 @@ const JWE_SEGMENT_COUNT = 5;
 
 /**
  * Returns true if the value is a compact-serialisation JWE token:
- * five non-empty dot-separated segments (header.encryptedKey.iv.ciphertext.tag).
- * Cheap prefilter; does not parse or validate the token.
+ * five dot-separated segments (header.encryptedKey.iv.ciphertext.tag).
+ * The `encryptedKey` segment may be empty for key-management algorithms
+ * such as `dir`. Cheap prefilter; does not parse or validate the token.
  */
 export function isJweToken(token: unknown): token is string {
 	if (typeof token !== 'string' || token.length === 0) return false;
-	const segments = token.split('.');
-	if (segments.length !== JWE_SEGMENT_COUNT) return false;
-	return segments.every((segment) => segment.length > 0);
+	return token.split('.').length === JWE_SEGMENT_COUNT;
 }
 
 /**

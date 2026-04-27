@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { DeploymentKey, DeploymentKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { QueryFailedError } from '@n8n/typeorm';
 import type { CryptoKey, JWK } from 'jose';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher } from 'n8n-core';
@@ -185,10 +186,23 @@ export class OAuthJweKeyService {
 
 			this.logger.info('Generated new instance OAuth JWE key pair', { kid });
 		} catch (error) {
+			if (!isUniqueConstraintViolation(error)) throw error;
+
 			this.logger.debug(
 				'OAuth JWE key pair insert raced with another main; re-reading winner',
 				error instanceof Error ? { message: error.message } : {},
 			);
 		}
 	}
+}
+
+function isUniqueConstraintViolation(error: unknown): boolean {
+	if (!(error instanceof QueryFailedError)) return false;
+	const driverError = error.driverError as { code?: string };
+	const code = driverError?.code;
+	return (
+		code === '23505' || // postgres
+		code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+		code === 'ER_DUP_ENTRY' // mysql / mariadb
+	);
 }
