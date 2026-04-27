@@ -1957,8 +1957,8 @@ export const getTaskMetadata = (meta: IDataObject) => {
 export const getMeetingMetadata = (meta: IDataObject) => {
 	return {
 		...(meta.body && { body: meta.body }),
-		...(meta.startTime && { startTime: moment(meta.startTime as string).unix() }),
-		...(meta.endTime && { endTime: moment(meta.endTime as string).unix() }),
+		...(meta.startTime && { startTime: moment(meta.startTime as string).valueOf() }),
+		...(meta.endTime && { endTime: moment(meta.endTime as string).valueOf() }),
 		...(meta.title && { title: meta.title }),
 		...(meta.internalMeetingNotes && { internalMeetingNotes: meta.internalMeetingNotes }),
 	};
