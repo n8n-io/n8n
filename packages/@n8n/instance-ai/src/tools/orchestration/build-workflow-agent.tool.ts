@@ -69,11 +69,11 @@ function triggerLabel(nodeType: string): string {
  * from the archive view.
  */
 async function promoteMainWorkflow(
-	context: InstanceAiContext,
+	context: InstanceAiContext | undefined,
 	logger: Logger,
 	workflowId: string | undefined,
 ): Promise<void> {
-	if (!workflowId) return;
+	if (!workflowId || !context) return;
 	try {
 		await context.workflowService.clearAiTemporary(workflowId);
 	} catch (error) {
@@ -83,6 +83,34 @@ async function promoteMainWorkflow(
 			}`,
 		);
 	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+type ExecutableTool = Record<string, unknown> & {
+	execute: (...args: unknown[]) => unknown;
+};
+
+function isExecutableTool(tool: unknown): tool is ExecutableTool {
+	return isRecord(tool) && typeof tool.execute === 'function';
+}
+
+export function recordSuccessfulWorkflowBuilds(
+	tool: unknown,
+	onWorkflowId: (workflowId: string) => void,
+): void {
+	if (!isExecutableTool(tool)) return;
+
+	const execute = tool.execute.bind(tool);
+	tool.execute = async (...args: unknown[]) => {
+		const result = await execute(...args);
+		if (isRecord(result) && result.success === true && typeof result.workflowId === 'string') {
+			onWorkflowId(result.workflowId);
+		}
+		return result;
+	};
 }
 
 const UNTESTABLE_TRIGGER_LABELS = [...UNTESTABLE_TRIGGERS].map(triggerLabel).join(', ');
@@ -567,6 +595,11 @@ export async function startBuildWorkflowAgentTask(
 						};
 					}
 
+					let fallbackMainWorkflowId: string | undefined;
+					recordSuccessfulWorkflowBuilds(builderTools['build-workflow'], (workflowId) => {
+						fallbackMainWorkflowId = workflowId;
+					});
+
 					const tracedBuilderTools = traceSubAgentTools(context, builderTools, 'workflow-builder');
 
 					const subAgent = new Agent({
@@ -626,6 +659,7 @@ export async function startBuildWorkflowAgentTask(
 					});
 
 					const toolFinalText = await hitlResult.text;
+					await promoteMainWorkflow(domainContext, context.logger, fallbackMainWorkflowId);
 					return { text: toolFinalText };
 				} finally {
 					await builderWs?.cleanup();

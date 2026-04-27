@@ -64,6 +64,7 @@ import {
 	type SpawnBackgroundTaskOptions,
 	type ServiceProxyConfig,
 	type StreamableAgent,
+	type SuspendedRunState,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 } from '@n8n/instance-ai';
@@ -943,27 +944,7 @@ export class InstanceAiService {
 
 		if (suspended) {
 			suspended.abortController.abort();
-			void this.finalizeRunTracing(suspended.runId, suspended.tracing, {
-				status: 'cancelled',
-				reason: 'user_cancelled',
-			});
-			this.eventBus.publish(threadId, {
-				type: 'run-finish',
-				runId: suspended.runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				payload: { status: 'cancelled', reason: 'user_cancelled' },
-			});
-			// Persist the snapshot so the run-finish event (which clears
-			// in-flight tool calls) is reflected in the stored tree.
-			void this.saveAgentTreeSnapshot(threadId, suspended.runId, this.dbSnapshotStorage, true);
-			if (suspended.mastraRunId) {
-				void this.cleanupMastraSnapshots(suspended.mastraRunId);
-			}
-			void this.maybeFinalizeRunTraceRoot(suspended.runId, {
-				status: 'cancelled',
-				reason: 'user_cancelled',
-				metadata: { completion_source: 'orchestrator' },
-			});
+			void this.finalizeCancelledSuspendedRun(suspended);
 		}
 	}
 
@@ -2344,7 +2325,14 @@ export class InstanceAiService {
 				outputText,
 				metadata: { completion_source: 'orchestrator' },
 			};
-			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage);
+			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+				opts.threadId,
+				opts.user,
+				undefined,
+			);
+			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
+				archivedWorkflowIds,
+			});
 
 			if (result.status === 'completed') {
 				this.telemetry.track('Builder sent message', {
@@ -2366,7 +2354,18 @@ export class InstanceAiService {
 					reason: 'user_cancelled',
 					metadata: { completion_source: 'orchestrator' },
 				};
-				this.publishRunFinish(opts.threadId, opts.runId, 'cancelled', 'user_cancelled');
+				const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+					opts.threadId,
+					opts.user,
+					undefined,
+				);
+				this.publishRunFinish(
+					opts.threadId,
+					opts.runId,
+					'cancelled',
+					'user_cancelled',
+					archivedWorkflowIds,
+				);
 				return;
 			}
 
@@ -2387,6 +2386,11 @@ export class InstanceAiService {
 				metadata: { completion_source: 'orchestrator' },
 			};
 
+			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+				opts.threadId,
+				opts.user,
+				undefined,
+			);
 			this.eventBus.publish(opts.threadId, {
 				type: 'run-finish',
 				runId: opts.runId,
@@ -2394,6 +2398,7 @@ export class InstanceAiService {
 				payload: {
 					status: 'error',
 					reason: errorMessage,
+					...(archivedWorkflowIds.length > 0 ? { archivedWorkflowIds } : {}),
 				},
 			});
 		} finally {
@@ -2623,6 +2628,43 @@ export class InstanceAiService {
 			}
 		}
 		return archived;
+	}
+
+	private async finalizeCancelledSuspendedRun(suspended: SuspendedRunState<User>): Promise<void> {
+		await this.finalizeRunTracing(suspended.runId, suspended.tracing, {
+			status: 'cancelled',
+			reason: 'user_cancelled',
+		});
+
+		const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+			suspended.threadId,
+			suspended.user,
+			undefined,
+		);
+		this.publishRunFinish(
+			suspended.threadId,
+			suspended.runId,
+			'cancelled',
+			'user_cancelled',
+			archivedWorkflowIds,
+		);
+
+		// Persist the snapshot so the run-finish event (which clears
+		// in-flight tool calls) is reflected in the stored tree.
+		await this.saveAgentTreeSnapshot(
+			suspended.threadId,
+			suspended.runId,
+			this.dbSnapshotStorage,
+			true,
+		);
+		if (suspended.mastraRunId) {
+			void this.cleanupMastraSnapshots(suspended.mastraRunId);
+		}
+		await this.maybeFinalizeRunTraceRoot(suspended.runId, {
+			status: 'cancelled',
+			reason: 'user_cancelled',
+			metadata: { completion_source: 'orchestrator' },
+		});
 	}
 
 	private async reapAiTemporaryForThreadCleanup(threadId: string): Promise<void> {
