@@ -19,7 +19,7 @@ describe('NocoDB Transport API', () => {
 
 	describe('apiRequest', () => {
 		it('should make a successful API request with authentication', async () => {
-			mockThis.getNodeParameter.mockReturnValue('nocodbApi');
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
 			mockThis.getCredentials.mockResolvedValue({
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
@@ -34,18 +34,21 @@ describe('NocoDB Transport API', () => {
 			const result = await apiRequest.call(mockThis, method, endpoint, body, query);
 
 			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('authentication', 0);
-			expect(mockThis.getCredentials).toHaveBeenCalledWith('nocodbApi');
-			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
-				method: 'GET',
-				qs: { param: 'value' },
-				url: 'http://localhost:8080/api/v2/test',
-				json: true,
-			});
+			expect(mockThis.getCredentials).toHaveBeenCalledWith('nocoDbApiToken');
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'nocoDbApiToken',
+				{
+					method: 'GET',
+					qs: { param: 'value' },
+					url: 'http://localhost:8080/api/v2/test',
+					json: true,
+				},
+			);
 			expect(result).toEqual({ success: true });
 		});
 
 		it('should handle empty body correctly', async () => {
-			mockThis.getNodeParameter.mockReturnValue('nocodbApi');
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
 			mockThis.getCredentials.mockResolvedValue({
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
@@ -59,16 +62,19 @@ describe('NocoDB Transport API', () => {
 
 			await apiRequest.call(mockThis, method, endpoint, body, query);
 
-			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
-				method: 'POST',
-				qs: {},
-				url: 'http://localhost:8080/api/v2/test',
-				json: true,
-			});
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'nocoDbApiToken',
+				{
+					method: 'POST',
+					qs: {},
+					url: 'http://localhost:8080/api/v2/test',
+					json: true,
+				},
+			);
 		});
 
 		it('should use provided URI if available', async () => {
-			mockThis.getNodeParameter.mockReturnValue('nocodbApi');
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
 			mockThis.getCredentials.mockResolvedValue({
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
@@ -83,16 +89,19 @@ describe('NocoDB Transport API', () => {
 
 			await apiRequest.call(mockThis, method, endpoint, body, query, customUri);
 
-			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
-				method: 'GET',
-				qs: {},
-				url: customUri,
-				json: true,
-			});
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'nocoDbApiToken',
+				{
+					method: 'GET',
+					qs: {},
+					url: customUri,
+					json: true,
+				},
+			);
 		});
 
 		it('should merge additional options', async () => {
-			mockThis.getNodeParameter.mockReturnValue('nocodbApi');
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
 			mockThis.getCredentials.mockResolvedValue({
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
@@ -107,19 +116,22 @@ describe('NocoDB Transport API', () => {
 
 			await apiRequest.call(mockThis, method, endpoint, body, query, undefined, option);
 
-			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
-				method: 'GET',
-				qs: {},
-				url: 'http://localhost:8080/api/v2/test',
-				json: true,
-				timeout: 5000,
-			});
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'nocoDbApiToken',
+				{
+					method: 'GET',
+					qs: {},
+					url: 'http://localhost:8080/api/v2/test',
+					json: true,
+					timeout: 5000,
+				},
+			);
 		});
 	});
 
 	describe('apiRequestAllItems', () => {
 		it('should fetch all items from a paginated endpoint', async () => {
-			mockThis.getNodeParameter.mockReturnValue('nocodbApi');
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
 			mockThis.getCredentials.mockResolvedValue({
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
@@ -144,7 +156,7 @@ describe('NocoDB Transport API', () => {
 
 	describe('downloadRecordAttachments', () => {
 		it('should download attachments for records', async () => {
-			mockThis.getNodeParameter.mockReturnValue('nocodbApi');
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
 			mockThis.getCredentials.mockResolvedValue({
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
@@ -177,13 +189,16 @@ describe('NocoDB Transport API', () => {
 
 			const result = await downloadRecordAttachments.call(mockThis, records, fieldNames);
 
-			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
-				method: 'GET',
-				url: 'http://localhost:8080/file1.jpg',
-				json: false,
-				qs: {},
-				encoding: 'arraybuffer',
-			});
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'nocoDbApiToken',
+				{
+					method: 'GET',
+					url: 'http://localhost:8080/file1.jpg',
+					json: false,
+					qs: {},
+					encoding: 'arraybuffer',
+				},
+			);
 			expect(mockThis.helpers.prepareBinaryData).toHaveBeenCalledWith(
 				mockFileBuffer,
 				'image.jpg',
@@ -216,7 +231,7 @@ describe('NocoDB Transport API', () => {
 		});
 
 		it('should handle attachments as string (json parsed)', async () => {
-			mockThis.getNodeParameter.mockReturnValue('nocodbApi');
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
 			mockThis.getCredentials.mockResolvedValue({
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
@@ -249,13 +264,16 @@ describe('NocoDB Transport API', () => {
 
 			const result = await downloadRecordAttachments.call(mockThis, records, fieldNames);
 
-			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
-				method: 'GET',
-				url: 'http://localhost:8080/file3.pdf',
-				json: false,
-				qs: {},
-				encoding: 'arraybuffer',
-			});
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'nocoDbApiToken',
+				{
+					method: 'GET',
+					url: 'http://localhost:8080/file3.pdf',
+					json: false,
+					qs: {},
+					encoding: 'arraybuffer',
+				},
+			);
 			expect(mockThis.helpers.prepareBinaryData).toHaveBeenCalledWith(
 				mockFileBuffer,
 				'doc.pdf',
@@ -288,7 +306,7 @@ describe('NocoDB Transport API', () => {
 		});
 
 		it('should handle records without attachments', async () => {
-			mockThis.getNodeParameter.mockReturnValue('nocodbApi');
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
 			mockThis.getCredentials.mockResolvedValue({
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
