@@ -1363,6 +1363,8 @@
 	"agentSessions.timeline.filter": "Filter",
 	"agentSessions.timeline.clearFilter": "Clear",
 	"agentSessions.timeline.suspended": "Suspended",
+	"agentSessions.timeline.idle": "Idle",
+	"agentSessions.timeline.agent": "Agent",
 	"agentSessions.workflowLog.loading": "Loading execution...",
 	"agentSessions.workflowLog.stillRunning": "Still running",
 	"agentSessions.workflowLog.waiting": "Waiting",

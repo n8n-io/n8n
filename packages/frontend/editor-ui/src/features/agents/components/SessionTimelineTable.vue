@@ -8,7 +8,6 @@ const props = defineProps<{
 	items: TimelineItem[];
 	selectedIndex: number | null;
 	visibleKinds: Set<string>;
-	agentName?: string;
 }>();
 
 const emit = defineEmits<{ select: [index: number] }>();
@@ -30,11 +29,7 @@ const rows = computed(() =>
 			data-test-id="timeline-row"
 			@click="emit('select', index)"
 		>
-			<SessionTimelineRow
-				:item="item"
-				:selected="props.selectedIndex === index"
-				:agent-name="props.agentName"
-			/>
+			<SessionTimelineRow :item="item" :selected="props.selectedIndex === index" />
 		</div>
 	</div>
 </template>

@@ -54,6 +54,18 @@ export function kindColorToken(kind: EventKind): string {
 	return COLOR_MAP[kind];
 }
 
+export function formatDuration(ms: number): string {
+	if (!ms || ms <= 0) return '';
+	if (ms < 1000) return `${ms}ms`;
+	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+	const minutes = Math.floor(ms / 60_000);
+	const seconds = Math.floor((ms % 60_000) / 1000);
+	if (minutes < 60) return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+	const hours = Math.floor(minutes / 60);
+	const remMinutes = minutes % 60;
+	return remMinutes > 0 ? `${hours}h ${remMinutes}m` : `${hours}h`;
+}
+
 interface RawToolCallEvent {
 	type: 'tool-call';
 	kind?: 'tool' | 'workflow';

@@ -109,9 +109,9 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 			</div>
 
 			<div :class="$style.info">
-				<div v-if="item.timestamp">
+				<div v-if="item.timestamp" :class="$style.infoRow">
 					<span :class="$style.label">{{ i18n.baseText('agentSessions.timeline.created') }}</span>
-					<span>{{ formatTimestamp(item.timestamp) }}</span>
+					<span :class="$style.value">{{ formatTimestamp(item.timestamp) }}</span>
 				</div>
 			</div>
 
@@ -211,9 +211,22 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	border-bottom: var(--border);
 }
 
+.infoRow {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
 .label {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
+}
+
+.value {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	font-variant-numeric: tabular-nums;
 }
 
 .json {

@@ -187,7 +187,6 @@ function continueChat() {
 					:items="items"
 					:selected-index="selectedIndex"
 					:visible-kinds="selectedFilters"
-					:agent-name="thread?.agentName"
 					@select="(idx) => (selectedIndex = idx)"
 				/>
 			</div>

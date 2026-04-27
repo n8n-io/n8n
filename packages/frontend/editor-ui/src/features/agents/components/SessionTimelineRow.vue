@@ -12,7 +12,6 @@ import { kindColorToken } from '../session-timeline.utils';
 const props = defineProps<{
 	item: TimelineItem;
 	selected: boolean;
-	agentName?: string;
 }>();
 
 const emit = defineEmits<{ select: [] }>();
@@ -54,7 +53,7 @@ const label = computed((): string => {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
-			return props.agentName ?? i18n.baseText('agentSessions.timeline.assistant');
+			return i18n.baseText('agentSessions.timeline.agent');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -71,7 +70,7 @@ const label = computed((): string => {
 const pillStyle = computed(() => {
 	const color = kindColorToken(props.item.kind);
 	return {
-		backgroundColor: `color-mix(in srgb, ${color} 25%, transparent)`,
+		backgroundColor: `color-mix(in srgb, ${color} 40%, transparent)`,
 		color,
 	};
 });
@@ -115,13 +114,16 @@ const rowBorderColor = computed(() => {
 <style module lang="scss">
 .row {
 	display: grid;
-	grid-template-columns: auto 1fr auto;
+	/* Fixed pill column wide enough to fit the widest label ("Workflow",
+	   "Suspended", "Assistant") at 3xs/bold with horizontal padding. */
+	grid-template-columns: 88px 1fr auto;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-left: 3px solid transparent;
 	cursor: pointer;
 	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 
 	&:hover {
 		background-color: var(--color--foreground--tint-2);
@@ -135,6 +137,11 @@ const rowBorderColor = computed(() => {
 }
 
 .pill {
+	/* justify-self: start keeps the pill anchored to the left of the fixed
+	   pill column; the inline-flex sizes the pill to its text content only. */
+	justify-self: start;
+	display: inline-flex;
+	align-items: center;
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
@@ -149,8 +156,14 @@ const rowBorderColor = computed(() => {
 	min-width: 0;
 	color: var(--color--text);
 	overflow: hidden;
-	text-overflow: ellipsis;
 	white-space: nowrap;
+
+	/* Apply ellipsis to text spans, not the flex container — the container's
+	   overflow:hidden combined with a tight line-box was clipping descenders. */
+	> span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
 }
 
 .workflowLink {
@@ -160,7 +173,7 @@ const rowBorderColor = computed(() => {
 
 .time {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }

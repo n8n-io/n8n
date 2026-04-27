@@ -33,12 +33,24 @@ describe('SessionTimelineChart', () => {
 		expect(w.findAll('[data-test-id="timeline-block"]')).toHaveLength(3);
 	});
 
-	it('positions blocks proportionally to duration within the session window', () => {
+	it('sizes cells proportionally to event duration via flex-grow', () => {
+		// Durations: user=100ms (point default), tool=500ms, workflow=1000ms
 		const w = mountChart();
-		const blocks = w.findAll('[data-test-id="timeline-block"]');
-		// Second block starts at 1000/3000 ≈ 33.3% with width 500/3000 ≈ 16.7%
-		const style = blocks[1].attributes('style') ?? '';
-		expect(style).toMatch(/left:\s*33\./);
+		const cells = w.findAll('[data-test-id="timeline-cell"]');
+		const flex0 = cells[0].attributes('style') ?? '';
+		const flex1 = cells[1].attributes('style') ?? '';
+		const flex2 = cells[2].attributes('style') ?? '';
+		expect(flex0).toMatch(/flex:\s*100\s+1\s+0/);
+		expect(flex1).toMatch(/flex:\s*500\s+1\s+0/);
+		expect(flex2).toMatch(/flex:\s*1000\s+1\s+0/);
+	});
+
+	it('renders idle cells as fixed-width 56px segments', () => {
+		const w = mountChart({ idleRanges: [{ start: 1500, end: 2000 }] });
+		const cells = w.findAll('[data-test-id="timeline-cell"]');
+		// Cell at index 2 contains the idle segment.
+		const idleCellStyle = cells[2].attributes('style') ?? '';
+		expect(idleCellStyle).toMatch(/flex:\s*0\s+0\s+56px/);
 	});
 
 	it('emits select with the block index on click', async () => {
@@ -50,7 +62,6 @@ describe('SessionTimelineChart', () => {
 	it('dims items outside visibleKinds when the filter set is non-empty', () => {
 		const w = mountChart({ visibleKinds: new Set(['workflow']) });
 		const blocks = w.findAll('[data-test-id="timeline-block"]');
-		// index 0 (user) dimmed, index 2 (workflow) visible
 		const style0 = blocks[0].attributes('style') ?? '';
 		const style2 = blocks[2].attributes('style') ?? '';
 		expect(style0).toMatch(/opacity:\s*0\.15/);
@@ -63,19 +74,28 @@ describe('SessionTimelineChart', () => {
 		expect(w.emitted('select')).toBeUndefined();
 	});
 
-	it('renders one idle element per idle range', () => {
+	it('renders idle blobs interleaved with events in chronological order', () => {
 		const w = mountChart({ idleRanges: [{ start: 1500, end: 2000 }] });
 		expect(w.findAll('[data-test-id="timeline-idle"]')).toHaveLength(1);
+		const all = w.findAll('[data-test-id="timeline-block"], [data-test-id="timeline-idle"]');
+		expect(all.map((el) => el.attributes('data-test-id'))).toEqual([
+			'timeline-block',
+			'timeline-block',
+			'timeline-idle',
+			'timeline-block',
+		]);
 	});
 
 	it('applies a selected marker when selectedIndex matches', () => {
 		const w = mountChart({ selectedIndex: 2 });
 		const blocks = w.findAll('[data-test-id="timeline-block"]');
-		// Selected block should carry some distinguishing attribute — check classes
-		const classes = blocks[2].classes().join(' ');
-		expect(classes.length).toBeGreaterThan(0);
-		// Other blocks should NOT have that selected marker
 		expect(blocks[0].element.getAttribute('data-selected')).not.toBe('true');
 		expect(blocks[2].element.getAttribute('data-selected')).toBe('true');
+	});
+
+	it('renders the localized "Idle" pill text inside each idle segment', () => {
+		const w = mountChart({ idleRanges: [{ start: 1500, end: 2000 }] });
+		const idle = w.find('[data-test-id="timeline-idle"]');
+		expect(idle.text()).toContain('Idle');
 	});
 });

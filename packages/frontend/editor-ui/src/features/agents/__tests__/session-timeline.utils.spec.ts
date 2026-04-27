@@ -4,6 +4,7 @@ import {
 	itemFilterKey,
 	sessionBounds,
 	kindColorToken,
+	formatDuration,
 	IDLE_THRESHOLD_MS,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
@@ -106,6 +107,29 @@ describe('kindColorToken', () => {
 		expect(kindColorToken('workflow')).toBe('var(--color--primary)');
 		expect(kindColorToken('working-memory')).toBe('var(--color--foreground--shade-1)');
 		expect(kindColorToken('suspension')).toBe('var(--color--warning)');
+	});
+});
+
+describe('formatDuration', () => {
+	it('returns empty string for zero or negative input', () => {
+		expect(formatDuration(0)).toBe('');
+		expect(formatDuration(-100)).toBe('');
+	});
+	it('formats sub-second durations as ms', () => {
+		expect(formatDuration(450)).toBe('450ms');
+	});
+	it('formats sub-minute durations with one decimal of seconds', () => {
+		expect(formatDuration(1500)).toBe('1.5s');
+		expect(formatDuration(3400)).toBe('3.4s');
+	});
+	it('formats sub-hour durations as minutes and seconds', () => {
+		expect(formatDuration(60_000)).toBe('1m');
+		expect(formatDuration(90_000)).toBe('1m 30s');
+		expect(formatDuration(15 * 60_000 + 5_000)).toBe('15m 5s');
+	});
+	it('formats multi-hour durations as hours and minutes', () => {
+		expect(formatDuration(60 * 60_000)).toBe('1h');
+		expect(formatDuration(2 * 60 * 60_000 + 30 * 60_000)).toBe('2h 30m');
 	});
 });
 
