@@ -90,8 +90,7 @@ export async function postCancelTask(
 /**
  * POST /instance-ai/confirm/:requestId -> 200 OK
  * Resolve a confirmation request (HITL). The request body is a discriminated
- * union on `kind` — each kind carries only the fields the backend needs for
- * that flow, and the backend rejects any other shape.
+ * union on `kind`.
  */
 export async function postConfirmation(
 	context: IRestApiContext,
