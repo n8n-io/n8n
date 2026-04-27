@@ -89,7 +89,7 @@ export async function hubspotApiRequestAllItems(
 		query.offset = responseData.offset;
 		query.vidOffset = responseData['vid-offset'];
 		//Used by Search endpoints
-		if (responseData.paging) {
+		if (responseData.paging?.next) {
 			body.after = responseData.paging.next.after;
 		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
@@ -98,7 +98,7 @@ export async function hubspotApiRequestAllItems(
 		if (limit && limit <= returnData.length && endpoint.includes('/tickets/paged')) {
 			return returnData;
 		}
-	} while (responseData.hasMore || responseData['has-more'] || responseData.paging);
+	} while (responseData.hasMore || responseData['has-more'] || responseData.paging?.next);
 	return returnData;
 }
 
