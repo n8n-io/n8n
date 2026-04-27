@@ -95,12 +95,12 @@ export async function nodeExecuteAfter(
 		openFormPopupWindow(pushData.data.metadata.resumeFormUrl);
 	}
 
-	await trackNodeExecution(
-		pushData,
-		workflowDocumentStore.workflowId,
-		workflowDocumentStore.getNodeByName(pushData.nodeName),
-	);
 	workflowState.executingNode.removeExecutingNode(pushData.nodeName);
 
 	void assistantStore.onNodeExecution(pushData);
+	void trackNodeExecution(
+		pushData,
+		workflowDocumentStore.workflowId,
+		workflowDocumentStore.getNodeByName(pushData.nodeName),
+	).catch(() => {});
 }

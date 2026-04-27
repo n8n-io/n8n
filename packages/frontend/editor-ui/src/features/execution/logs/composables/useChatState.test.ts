@@ -13,7 +13,6 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { attachWorkflowExecutionToDocumentStore } from '@/__tests__/utils';
 
 vi.mock('@/app/composables/useRunWorkflow');
 vi.mock('@/app/stores/pushConnection.store', () => ({
@@ -69,10 +68,9 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 describe('useChatState', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore> & {
-		chatPartialExecutionDestinationNode: string | null;
-	};
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let logsStore: ReturnType<typeof useLogsStore>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let mockRunWorkflow: Mock;
 
@@ -170,10 +168,8 @@ describe('useChatState', () => {
 			},
 		});
 		setActivePinia(pinia);
-		workflowsStore = attachWorkflowExecutionToDocumentStore(
-			useWorkflowsStore(),
-			useWorkflowDocumentStore(createWorkflowDocumentId('workflow-123')),
-		);
+		workflowsStore = useWorkflowsStore();
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-123'));
 		logsStore = useLogsStore();
 		const rootStore = useRootStore();
 		nodeTypesStore = useNodeTypesStore();
@@ -406,7 +402,7 @@ describe('useChatState', () => {
 		});
 
 		it('should include destinationNode when set in workflowsStore', async () => {
-			workflowsStore.chatPartialExecutionDestinationNode = 'DestinationNode';
+			workflowDocumentStore.setChatPartialExecutionDestinationNode('DestinationNode');
 
 			const chatState = useChatState(false);
 			await chatState.registerChatWebhook();
@@ -420,7 +416,7 @@ describe('useChatState', () => {
 					mode: 'inclusive',
 				},
 			});
-			expect(workflowsStore.chatPartialExecutionDestinationNode).toBeNull();
+			expect(workflowDocumentStore.chatPartialExecutionDestinationNode).toBeNull();
 		});
 
 		it('should not register if already registering', async () => {
@@ -533,12 +529,12 @@ describe('useChatState', () => {
 		});
 
 		it('should clear partial execution destination node', () => {
-			workflowsStore.chatPartialExecutionDestinationNode = 'SomeNode';
+			workflowDocumentStore.setChatPartialExecutionDestinationNode('SomeNode');
 
 			const chatState = useChatState(false);
 			chatState.refreshSession();
 
-			expect(workflowsStore.chatPartialExecutionDestinationNode).toBeNull();
+			expect(workflowDocumentStore.chatPartialExecutionDestinationNode).toBeNull();
 		});
 	});
 

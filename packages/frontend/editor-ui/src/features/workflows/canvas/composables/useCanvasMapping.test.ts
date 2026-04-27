@@ -1,21 +1,18 @@
-import type { INode, NodeApiError, Workflow } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import type { INode, IPinData, IRunData, NodeApiError, Workflow } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import type { Ref } from 'vue';
 import { ref } from 'vue';
 
 import {
 	createTestNode,
+	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
 	mockNode,
 	mockNodes,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
-import {
-	attachWorkflowExecutionToDocumentStore,
-	type ExecutionAwareWorkflowsStore,
-	mockedStore,
-} from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
 import {
 	FORM_TRIGGER_NODE_TYPE,
@@ -29,7 +26,6 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import type { IPinData } from 'n8n-workflow';
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
@@ -119,6 +115,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	vi.clearAllMocks();
 });
 
@@ -130,14 +127,23 @@ function setPinData(pinData: IPinData) {
 	workflowDocumentStore.setPinData(pinData);
 }
 
-function getExecutionAwareWorkflowsStore(): ExecutionAwareWorkflowsStore<
-	ReturnType<typeof mockedStore<typeof useWorkflowsStore>>
-> {
-	const workflowsStore = mockedStore(useWorkflowsStore);
-	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflow.id),
+function getWorkflowDocumentStore() {
+	const workflowsStore = useWorkflowsStore();
+	return useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id));
+}
+
+function setExecutionRunData(runData: IRunData) {
+	const workflowsStore = useWorkflowsStore();
+	getWorkflowDocumentStore().setExecution(
+		createTestWorkflowExecutionResponse({
+			workflowData: workflowsStore.workflow,
+			data: createRunExecutionData({
+				resultData: {
+					runData,
+				},
+			}),
+		}),
 	);
-	return attachWorkflowExecutionToDocumentStore(workflowsStore, workflowDocumentStore);
 }
 
 describe('useCanvasMapping', () => {
@@ -302,7 +308,7 @@ describe('useCanvasMapping', () => {
 		});
 
 		it('should handle input and output connections', () => {
-			const workflowsStore = getExecutionAwareWorkflowsStore();
+			const workflowsStore = useWorkflowsStore();
 
 			const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 			const nodes = [manualTriggerNode, setNode];
@@ -462,7 +468,6 @@ describe('useCanvasMapping', () => {
 	describe('runData', () => {
 		describe('nodeExecutionRunDataOutputMapById', () => {
 			it('should return an empty object when there is no run data', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const nodes: INodeUi[] = [];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({
@@ -470,7 +475,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue(null);
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -482,7 +487,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should calculate iterations and total correctly for single node', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const nodes = [createTestNode({ name: 'Node 1' })];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({
@@ -490,7 +494,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue([
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -521,7 +525,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle multiple nodes with different connection types', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const nodes = [
 					createTestNode({ id: 'node1', name: 'Node 1' }),
 					createTestNode({ id: 'node2', name: 'Node 2' }),
@@ -532,36 +535,38 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === 'Node 1') {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
-									[NodeConnectionTypes.AiAgent]: [[{ json: {} }, { json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === 'Node 1') {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+										[NodeConnectionTypes.AiAgent]: [[{ json: {} }, { json: {} }]],
+									},
 								},
-							},
-						];
-					} else if (nodeName === 'Node 2') {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+							];
+						} else if (nodeName === 'Node 2') {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+									},
 								},
-							},
-						];
-					}
+							];
+						}
 
-					return null;
-				});
+						return null;
+					},
+				);
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -597,7 +602,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('handles multiple iterations correctly', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const nodes = [createTestNode({ name: 'Node 1' })];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({
@@ -605,7 +609,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue([
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -654,7 +658,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should not count canceled iterations but still count their data', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const nodes = [createTestNode({ name: 'Node 1' })];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({
@@ -662,7 +665,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue([
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -714,7 +717,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle all canceled iterations correctly', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const nodes = [createTestNode({ name: 'Node 1' })];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({
@@ -722,7 +724,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue([
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -764,7 +766,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should populate byTarget field for non-main connections with per-target counts', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const modelNode = createTestNode({ name: 'OpenAI Chat Model' });
 				const agent1Node = createTestNode({ name: 'AI Agent 1' });
 				const agent2Node = createTestNode({ name: 'AI Agent 2' });
@@ -785,45 +786,47 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Model node has multiple executions from different sources
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === modelNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: agent1Node.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }, { json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === modelNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [{ previousNode: agent1Node.name }],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }, { json: {} }]],
+									},
 								},
-							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 1,
-								source: [{ previousNode: agent2Node.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }]],
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 1,
+									source: [{ previousNode: agent2Node.name }],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }]],
+									},
 								},
-							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 2,
-								source: [{ previousNode: agent1Node.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiLanguageModel]: [
-										[{ json: {} }, { json: {} }, { json: {} }],
-									],
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 2,
+									source: [{ previousNode: agent1Node.name }],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.AiLanguageModel]: [
+											[{ json: {} }, { json: {} }, { json: {} }],
+										],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -860,7 +863,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should count items inside response field when aggregating for non-main connections', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const embeddingNode = createTestNode({ name: 'Embeddings OpenAI' });
 				const vectorStoreNode = createTestNode({ name: 'Vector Store' });
 				const nodes = [embeddingNode, vectorStoreNode];
@@ -877,35 +879,37 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Embedding node returns data wrapped in response field
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === embeddingNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: vectorStoreNode.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiEmbedding]: [
-										[
-											{
-												json: {
-													response: [
-														{ embedding: [0.1, 0.2] },
-														{ embedding: [0.3, 0.4] },
-														{ embedding: [0.5, 0.6] },
-													],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === embeddingNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [{ previousNode: vectorStoreNode.name }],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.AiEmbedding]: [
+											[
+												{
+													json: {
+														response: [
+															{ embedding: [0.1, 0.2] },
+															{ embedding: [0.3, 0.4] },
+															{ embedding: [0.5, 0.6] },
+														],
+													},
 												},
-											},
+											],
 										],
-									],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1072,13 +1076,12 @@ describe('useCanvasMapping', () => {
 
 		describe('node issues', () => {
 			it('should return empty arrays when node has no issues', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {};
+				setExecutionRunData({});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1094,7 +1097,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle execution errors', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
@@ -1102,7 +1104,7 @@ describe('useCanvasMapping', () => {
 
 				const errorMessage = 'Test error message';
 				const errorDescription = 'Test error description';
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Test Node': [
 						{
 							startTime: 0,
@@ -1115,7 +1117,7 @@ describe('useCanvasMapping', () => {
 							}),
 						},
 					],
-				};
+				});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1131,14 +1133,13 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle execution error without description', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
 				const errorMessage = 'Test error message';
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Test Node': [
 						{
 							startTime: 0,
@@ -1151,7 +1152,7 @@ describe('useCanvasMapping', () => {
 							}),
 						},
 					],
-				};
+				});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1167,13 +1168,12 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle multiple execution errors', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Test Node': [
 						{
 							startTime: 0,
@@ -1196,7 +1196,7 @@ describe('useCanvasMapping', () => {
 							}),
 						},
 					],
-				};
+				});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1212,7 +1212,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle node issues', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({
 					name: 'Test Node',
 					issues: {
@@ -1223,7 +1222,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {};
+				setExecutionRunData({});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1239,7 +1238,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should combine execution errors and node issues', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({
 					name: 'Test Node',
 					issues: {
@@ -1250,7 +1248,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Test Node': [
 						{
 							startTime: 0,
@@ -1263,7 +1261,7 @@ describe('useCanvasMapping', () => {
 							}),
 						},
 					],
-				};
+				});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1279,7 +1277,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle multiple nodes with different issues', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node1 = createTestNode({
 					name: 'Node 1',
 					issues: {
@@ -1291,7 +1288,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Node 2': [
 						{
 							startTime: 0,
@@ -1304,7 +1301,7 @@ describe('useCanvasMapping', () => {
 							}),
 						},
 					],
-				};
+				});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1327,12 +1324,11 @@ describe('useCanvasMapping', () => {
 
 		describe('filterOutCanceled helper function', () => {
 			it('should return null for null input', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const nodes = [createTestNode({ name: 'Node 1' })];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue(null);
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1344,12 +1340,11 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should filter out canceled tasks and return correct iteration count', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const nodes = [createTestNode({ name: 'Node 1' })];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue([
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -1393,12 +1388,11 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return 0 iterations when all tasks are canceled', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const nodes = [createTestNode({ name: 'Node 1' })];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue([
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -1432,12 +1426,11 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return correct count when no canceled tasks', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const nodes = [createTestNode({ name: 'Node 1' })];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue([
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue([
 					{
 						startTime: 0,
 						executionTime: 0,
@@ -1472,13 +1465,12 @@ describe('useCanvasMapping', () => {
 
 		describe('nodeExecutionStatusById', () => {
 			it('should return last execution status when not canceled', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Test Node': [
 						{
 							startTime: 0,
@@ -1488,7 +1480,7 @@ describe('useCanvasMapping', () => {
 							executionStatus: 'success',
 						},
 					],
-				};
+				});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1500,13 +1492,12 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return second-to-last status when last execution is canceled and multiple tasks exist', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Test Node': [
 						{
 							startTime: 0,
@@ -1523,7 +1514,7 @@ describe('useCanvasMapping', () => {
 							executionStatus: 'canceled',
 						},
 					],
-				};
+				});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1535,13 +1526,12 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return canceled status when only one task exists and it is canceled', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Test Node': [
 						{
 							startTime: 0,
@@ -1551,7 +1541,7 @@ describe('useCanvasMapping', () => {
 							executionStatus: 'canceled',
 						},
 					],
-				};
+				});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1563,13 +1553,12 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return new status when no tasks exist', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {};
+				setExecutionRunData({});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1583,13 +1572,12 @@ describe('useCanvasMapping', () => {
 
 		describe('nodeHasIssuesById', () => {
 			it('should return false when node has no issues or errors', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {};
+				setExecutionRunData({});
 				setPinData({});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
@@ -1602,13 +1590,12 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return true when execution status is crashed', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Test Node': [
 						{
 							startTime: 0,
@@ -1618,7 +1605,7 @@ describe('useCanvasMapping', () => {
 							executionStatus: 'crashed',
 						},
 					],
-				};
+				});
 				setPinData({});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
@@ -1631,13 +1618,12 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return true when execution status is error', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({ name: 'Test Node' });
 				const nodes = [node];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Test Node': [
 						{
 							startTime: 0,
@@ -1647,7 +1633,7 @@ describe('useCanvasMapping', () => {
 							executionStatus: 'error',
 						},
 					],
-				};
+				});
 				setPinData({});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
@@ -1660,7 +1646,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return false when node has pinned data regardless of issues', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({
 					name: 'Test Node',
 					issues: {
@@ -1671,7 +1656,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {};
+				setExecutionRunData({});
 				setPinData({ 'Test Node': [{ json: {} }] });
 
 				const { nodeHasIssuesById } = useCanvasMapping({
@@ -1684,7 +1669,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return true when node has issues and no pinned data', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({
 					name: 'Test Node',
 					issues: {
@@ -1695,7 +1679,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {};
+				setExecutionRunData({});
 				setPinData({});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
@@ -1708,7 +1692,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return true for execution errors even with other issues', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({
 					name: 'Test Node',
 					issues: {
@@ -1719,7 +1702,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Test Node': [
 						{
 							startTime: 0,
@@ -1733,7 +1716,7 @@ describe('useCanvasMapping', () => {
 							}),
 						},
 					],
-				};
+				});
 				setPinData({});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
@@ -1746,7 +1729,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle multiple nodes with different issue states', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node1 = createTestNode({
 					name: 'Node 1',
 					issues: {
@@ -1759,7 +1741,7 @@ describe('useCanvasMapping', () => {
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Node 2': [
 						{
 							startTime: 0,
@@ -1778,7 +1760,7 @@ describe('useCanvasMapping', () => {
 							executionStatus: 'success',
 						},
 					],
-				};
+				});
 				setPinData({ 'Node 1': [{ json: {} }] });
 
 				const { nodeHasIssuesById } = useCanvasMapping({
@@ -1814,13 +1796,12 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle successful executions after errors', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node1 = createTestNode({ name: 'Node 2' });
 				const nodes = [node1];
 				const connections = {};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {
+				setExecutionRunData({
 					'Node 2': [
 						{
 							startTime: 0,
@@ -1837,7 +1818,7 @@ describe('useCanvasMapping', () => {
 							executionStatus: 'success',
 						},
 					],
-				};
+				});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1852,7 +1833,6 @@ describe('useCanvasMapping', () => {
 
 	describe('nodeExecutionWaitingForNextById', () => {
 		it('should be true when already executed node is waiting for next', () => {
-			const workflowsStore = getExecutionAwareWorkflowsStore();
 			const node1 = createTestNode({
 				name: 'Node 1',
 			});
@@ -1869,7 +1849,7 @@ describe('useCanvasMapping', () => {
 
 			workflowState.executingNode.executingNode = [];
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
-			workflowsStore.activeExecutionId = null;
+			getWorkflowDocumentStore().setActiveExecutionId(null);
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
 				nodes: ref(nodes),
@@ -1882,7 +1862,6 @@ describe('useCanvasMapping', () => {
 		});
 
 		it('should be false when workflow is not executing', () => {
-			const workflowsStore = getExecutionAwareWorkflowsStore();
 			const node1 = createTestNode({
 				name: 'Node 1',
 			});
@@ -1899,7 +1878,7 @@ describe('useCanvasMapping', () => {
 
 			workflowState.executingNode.executingNode = [];
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
-			workflowsStore.activeExecutionId = undefined;
+			getWorkflowDocumentStore().setActiveExecutionId(undefined);
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
 				nodes: ref(nodes),
@@ -1912,7 +1891,6 @@ describe('useCanvasMapping', () => {
 		});
 
 		it('should be false when there are nodes that are executing', () => {
-			const workflowsStore = getExecutionAwareWorkflowsStore();
 			const node1 = createTestNode({
 				name: 'Node 1',
 			});
@@ -1929,7 +1907,7 @@ describe('useCanvasMapping', () => {
 
 			workflowState.executingNode.executingNode = [node2.name];
 			workflowState.executingNode.lastAddedExecutingNode = node1.name;
-			workflowsStore.activeExecutionId = undefined;
+			getWorkflowDocumentStore().setActiveExecutionId(undefined);
 
 			const { nodeExecutionWaitingForNextById } = useCanvasMapping({
 				nodes: ref(nodes),
@@ -1944,7 +1922,6 @@ describe('useCanvasMapping', () => {
 
 	describe('trigger tooltip behavior with pinned data', () => {
 		it('should show tooltip for trigger node with no pinned data when workflow is running', () => {
-			const workflowsStore = getExecutionAwareWorkflowsStore();
 			const triggerNode = mockNode({
 				name: 'Manual Trigger',
 				type: MANUAL_TRIGGER_NODE_TYPE,
@@ -1957,8 +1934,8 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			workflowsStore.activeExecutionId = null;
-			workflowsStore.executionRunData = {};
+			getWorkflowDocumentStore().setActiveExecutionId(null);
+			setExecutionRunData({});
 			setPinData({});
 
 			const { nodes: mappedNodes } = useCanvasMapping({
@@ -1973,7 +1950,6 @@ describe('useCanvasMapping', () => {
 
 		describe('when the node has a custom eventTriggerDescription', () => {
 			it('should show tooltip for trigger node with no pinned data when workflow is running', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const triggerNode = mockNode({
 					name: 'Form Trigger',
 					type: FORM_TRIGGER_NODE_TYPE,
@@ -1986,8 +1962,8 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.activeExecutionId = null;
-				workflowsStore.executionRunData = {};
+				getWorkflowDocumentStore().setActiveExecutionId(null);
+				setExecutionRunData({});
 				setPinData({});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
@@ -2002,7 +1978,6 @@ describe('useCanvasMapping', () => {
 		});
 
 		it('should not show tooltip for trigger node with pinned data when workflow is running', () => {
-			const workflowsStore = getExecutionAwareWorkflowsStore();
 			const triggerNode = mockNode({
 				name: 'Manual Trigger',
 				type: MANUAL_TRIGGER_NODE_TYPE,
@@ -2015,8 +1990,8 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			workflowsStore.activeExecutionId = null;
-			workflowsStore.executionRunData = {};
+			getWorkflowDocumentStore().setActiveExecutionId(null);
+			setExecutionRunData({});
 			setPinData({ 'Manual Trigger': [{ json: {} }] }); // Node has pinned data
 
 			const { nodes: mappedNodes } = useCanvasMapping({
@@ -2030,7 +2005,6 @@ describe('useCanvasMapping', () => {
 		});
 
 		it('should not show tooltip when workflow is not running', () => {
-			const workflowsStore = getExecutionAwareWorkflowsStore();
 			const triggerNode = mockNode({
 				name: 'Manual Trigger',
 				type: MANUAL_TRIGGER_NODE_TYPE,
@@ -2043,8 +2017,8 @@ describe('useCanvasMapping', () => {
 				connections,
 			});
 
-			workflowsStore.activeExecutionId = undefined;
-			workflowsStore.executionRunData = {};
+			getWorkflowDocumentStore().setActiveExecutionId(undefined);
+			setExecutionRunData({});
 			setPinData({});
 
 			const { nodes: mappedNodes } = useCanvasMapping({
@@ -2240,7 +2214,6 @@ describe('useCanvasMapping', () => {
 
 		describe('connection status with canceled tasks', () => {
 			it('should not set success status when last task is canceled', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2255,23 +2228,25 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'canceled',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'canceled',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2283,7 +2258,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should set success status when last task is canceled but previous is success', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2298,33 +2272,35 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 1,
-								source: [],
-								executionStatus: 'canceled',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 1,
+									source: [],
+									executionStatus: 'canceled',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2336,7 +2312,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle connection with only canceled tasks', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2351,33 +2326,35 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'canceled',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'canceled',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 1,
-								source: [],
-								executionStatus: 'canceled',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 1,
+									source: [],
+									executionStatus: 'canceled',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2389,7 +2366,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should prioritize running status over canceled task handling', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2410,23 +2386,25 @@ describe('useCanvasMapping', () => {
 						return nodeName === manualTriggerNode.name;
 					});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'canceled',
-								data: {
-									[NodeConnectionTypes.Main]: [[]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'canceled',
+									data: {
+										[NodeConnectionTypes.Main]: [[]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2551,7 +2529,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return execution data count when node has run data and no pinned data', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2567,22 +2544,24 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2594,7 +2573,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return singular item label for execution data with 1 item', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2610,22 +2588,24 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2637,7 +2617,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return empty string when execution data total is 0', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2653,22 +2632,24 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: {
+										[NodeConnectionTypes.Main]: [[]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2680,7 +2661,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle multiple iterations with single execution data label', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2696,22 +2676,24 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2723,7 +2705,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle multiple iterations with total items label', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2739,31 +2720,33 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 1,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 1,
+									source: [],
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2775,7 +2758,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle different connection types correctly', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2791,37 +2773,39 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: setNode.name }],
-								data: {
-									[NodeConnectionTypes.AiTool]: [[{ json: {} }, { json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [{ previousNode: setNode.name }],
+									data: {
+										[NodeConnectionTypes.AiTool]: [[{ json: {} }, { json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					// Add execution data for target node so connection shows as executed
-					if (nodeName === setNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							];
+						}
+						// Add execution data for target node so connection shows as executed
+						if (nodeName === setNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2833,7 +2817,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should prioritize pinned data over execution data', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2852,22 +2835,24 @@ describe('useCanvasMapping', () => {
 				setPinData({
 					[manualTriggerNode.name]: [{ json: { id: 1 } }, { json: { id: 2 } }],
 				});
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2880,7 +2865,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return empty string when no data is available', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2896,7 +2880,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue(null);
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2908,7 +2892,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle connection with specific output index', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2925,25 +2908,27 @@ describe('useCanvasMapping', () => {
 				});
 
 				setPinData({});
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [
-										[{ json: {} }], // index 0 - 1 item
-										[{ json: {} }, { json: {} }, { json: {} }], // index 1 - 3 items
-									],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: {
+										[NodeConnectionTypes.Main]: [
+											[{ json: {} }], // index 0 - 1 item
+											[{ json: {} }, { json: {} }, { json: {} }], // index 1 - 3 items
+										],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2958,7 +2943,6 @@ describe('useCanvasMapping', () => {
 
 		describe('getConnectionData', () => {
 			it('should return running status when source node is executing and has no run data', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2978,7 +2962,7 @@ describe('useCanvasMapping', () => {
 					.mockImplementation((nodeName: string) => {
 						return nodeName === manualTriggerNode.name;
 					});
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue(null);
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -2990,7 +2974,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return pinned status when source has both pinned data and execution data', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -3008,22 +2991,24 @@ describe('useCanvasMapping', () => {
 				setPinData({
 					[manualTriggerNode.name]: [{ json: {} }],
 				});
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3035,7 +3020,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return error status when source node has issues', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const node = createTestNode({
 					name: 'Test Node',
 					issues: { typeUnknown: true },
@@ -3051,7 +3035,7 @@ describe('useCanvasMapping', () => {
 				};
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
-				workflowsStore.executionRunData = {};
+				setExecutionRunData({});
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3063,7 +3047,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return success status when node has run data and no issues', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -3078,23 +3061,25 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3106,7 +3091,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return undefined status when no conditions are met', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -3121,7 +3105,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockReturnValue(null);
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockReturnValue(null);
 				setPinData({});
 
 				const { connections: mappedConnections } = useCanvasMapping({
@@ -3304,7 +3288,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle connections with different output indices correctly', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -3320,26 +3303,28 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [
-										[{ json: {} }], // index 0
-										[{ json: {} }, { json: {} }], // index 1
-									],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.Main]: [
+											[{ json: {} }], // index 0
+											[{ json: {} }, { json: {} }], // index 1
+										],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3351,7 +3336,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should handle different connection types', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -3366,38 +3350,40 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === manualTriggerNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiTool]: [[{ json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === manualTriggerNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.AiTool]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					// Add execution data for target node so connection shows as executed
-					if (nodeName === setNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: manualTriggerNode.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							];
+						}
+						// Add execution data for target node so connection shows as executed
+						if (nodeName === setNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [{ previousNode: manualTriggerNode.name }],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3409,7 +3395,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should not mark non-main connections as executed when only source has run data', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const embeddingNode = createTestNode({ name: 'Embeddings OpenAI' });
 				const vectorStoreNode = createTestNode({ name: 'Vector Store' });
 				const nodes = [embeddingNode, vectorStoreNode];
@@ -3426,23 +3411,25 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Only source node has execution data, target does not
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === embeddingNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiEmbedding]: [[{ json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === embeddingNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.AiEmbedding]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3456,7 +3443,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should mark non-main connections as executed when both source and target have run data', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const embeddingNode = createTestNode({ name: 'Embeddings OpenAI' });
 				const vectorStoreNode = createTestNode({ name: 'Vector Store' });
 				const nodes = [embeddingNode, vectorStoreNode];
@@ -3473,37 +3459,39 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Both source and target have execution data
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === embeddingNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: vectorStoreNode.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiEmbedding]: [[{ json: {} }, { json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === embeddingNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [{ previousNode: vectorStoreNode.name }],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.AiEmbedding]: [[{ json: {} }, { json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					if (nodeName === vectorStoreNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							];
+						}
+						if (nodeName === vectorStoreNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3517,7 +3505,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should show per-target counts when multiple agents share a model', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const modelNode = createTestNode({ name: 'OpenAI Chat Model' });
 				const agent1Node = createTestNode({ name: 'AI Agent 1' });
 				const agent2Node = createTestNode({ name: 'AI Agent 2' });
@@ -3538,61 +3525,63 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Model node has execution data with source tracking
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === modelNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: agent1Node.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }, { json: {} }]],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === modelNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [{ previousNode: agent1Node.name }],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }, { json: {} }]],
+									},
 								},
-							},
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 1,
-								source: [{ previousNode: agent2Node.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }]],
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 1,
+									source: [{ previousNode: agent2Node.name }],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					if (nodeName === agent1Node.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							];
+						}
+						if (nodeName === agent1Node.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					if (nodeName === agent2Node.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							];
+						}
+						if (nodeName === agent2Node.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -3615,7 +3604,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should count items inside response field for non-main connections', () => {
-				const workflowsStore = getExecutionAwareWorkflowsStore();
 				const embeddingNode = createTestNode({ name: 'Embeddings OpenAI' });
 				const vectorStoreNode = createTestNode({ name: 'Vector Store' });
 				const nodes = [embeddingNode, vectorStoreNode];
@@ -3632,52 +3620,54 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Embedding node returns data with response array containing 6 items
-				workflowsStore.getExecutionRunDataByNodeName.mockImplementation((nodeName: string) => {
-					if (nodeName === embeddingNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [{ previousNode: vectorStoreNode.name }],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.AiEmbedding]: [
-										[
-											{
-												json: {
-													response: [
-														{ embedding: [0.1, 0.2] },
-														{ embedding: [0.3, 0.4] },
-														{ embedding: [0.5, 0.6] },
-														{ embedding: [0.7, 0.8] },
-														{ embedding: [0.9, 1.0] },
-														{ embedding: [1.1, 1.2] },
-													],
+				vi.spyOn(getWorkflowDocumentStore(), 'getExecutionRunDataByNodeName').mockImplementation(
+					(nodeName: string) => {
+						if (nodeName === embeddingNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [{ previousNode: vectorStoreNode.name }],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.AiEmbedding]: [
+											[
+												{
+													json: {
+														response: [
+															{ embedding: [0.1, 0.2] },
+															{ embedding: [0.3, 0.4] },
+															{ embedding: [0.5, 0.6] },
+															{ embedding: [0.7, 0.8] },
+															{ embedding: [0.9, 1.0] },
+															{ embedding: [1.1, 1.2] },
+														],
+													},
 												},
-											},
+											],
 										],
-									],
+									},
 								},
-							},
-						];
-					}
-					if (nodeName === vectorStoreNode.name) {
-						return [
-							{
-								startTime: 0,
-								executionTime: 0,
-								executionIndex: 0,
-								source: [],
-								executionStatus: 'success',
-								data: {
-									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+							];
+						}
+						if (nodeName === vectorStoreNode.name) {
+							return [
+								{
+									startTime: 0,
+									executionTime: 0,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: {} }]],
+									},
 								},
-							},
-						];
-					}
-					return null;
-				});
+							];
+						}
+						return null;
+					},
+				);
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),

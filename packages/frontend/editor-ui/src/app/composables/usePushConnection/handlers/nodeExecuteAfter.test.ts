@@ -13,6 +13,15 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 
+const workflowHelpersMock = vi.hoisted(() => ({
+	getWorkflowDataToSave: vi.fn(),
+	getNodeTypes: vi.fn(),
+}));
+
+vi.mock('@/app/composables/useWorkflowHelpers', () => ({
+	useWorkflowHelpers: () => workflowHelpersMock,
+}));
+
 describe('nodeExecuteAfter', () => {
 	let mockOptions: { workflowState: Mocked<WorkflowState> };
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
@@ -198,5 +207,36 @@ describe('nodeExecuteAfter', () => {
 			],
 		});
 		expect(updateCall.data.data?.invalid_connection).toBeUndefined();
+	});
+
+	it('should not block cleanup when telemetry tracking fails', async () => {
+		const assistantStore = mockedStore(useAssistantStore);
+		workflowHelpersMock.getWorkflowDataToSave.mockRejectedValueOnce(
+			new Error('telemetry snapshot failed'),
+		);
+
+		const event: NodeExecuteAfter = {
+			type: 'nodeExecuteAfter',
+			data: {
+				executionId: 'exec-1',
+				nodeName: 'Test Node',
+				itemCountByConnectionType: { main: [1] },
+				data: {
+					executionTime: 100,
+					startTime: 1234567890,
+					executionIndex: 0,
+					source: [],
+					error: new Error('Node failed') as never,
+				},
+			},
+		};
+
+		await expect(nodeExecuteAfter(event, mockOptions)).resolves.toBeUndefined();
+
+		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledWith(
+			'Test Node',
+		);
+		expect(assistantStore.onNodeExecution).toHaveBeenCalledWith(event.data);
+		expect(workflowHelpersMock.getWorkflowDataToSave).toHaveBeenCalled();
 	});
 });

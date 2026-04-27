@@ -1,11 +1,7 @@
 import { renderComponent } from '@/__tests__/render';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
-import {
-	attachWorkflowExecutionToDocumentStore,
-	type ExecutionAwareWorkflowsStore,
-	mockedStore,
-} from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -79,9 +75,7 @@ describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
 
 	let pinia: TestingPinia;
-	let workflowsStore: ExecutionAwareWorkflowsStore<
-		ReturnType<typeof mockedStore<typeof useWorkflowsStore>>
-	>;
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
@@ -131,10 +125,7 @@ describe('LogsPanel', () => {
 		setActivePinia(pinia);
 
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WORKFLOW_ID));
-		workflowsStore = attachWorkflowExecutionToDocumentStore(
-			mockedStore(useWorkflowsStore),
-			workflowDocumentStore,
-		);
+		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowState = useWorkflowState();
 		workflowState.setExecution(null);
 
@@ -395,7 +386,7 @@ describe('LogsPanel', () => {
 		expect(lastTreeItem.getByText('in 33ms')).toBeInTheDocument();
 
 		workflowState.setExecution({
-			...workflowsStore.execution!,
+			...workflowDocumentStore.execution!,
 			id: '1234',
 			status: 'success',
 			finished: true,
