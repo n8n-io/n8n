@@ -2585,7 +2585,15 @@ export class InstanceAiService {
 		user: User,
 		createdWorkflowIds: Set<string> | undefined,
 	): Promise<string[]> {
-		const markedWorkflows = await this.aiBuilderTemporaryWorkflowRepository.findByThread(threadId);
+		let markedWorkflows: Array<{ workflowId: string }> = [];
+		try {
+			markedWorkflows = await this.aiBuilderTemporaryWorkflowRepository.findByThread(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to inspect AI-builder temporary workflows during run finish', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
 		const workflowIds = new Set([
 			...markedWorkflows.map(({ workflowId }) => workflowId),
 			...(createdWorkflowIds ?? []),
