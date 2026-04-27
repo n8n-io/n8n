@@ -3995,6 +3995,8 @@
 	"workflows.publishModal.noChanges": "No changes to publish",
 	"workflows.publishModal.changes": "New changes to publish",
 	"workflows.publishModal.lastPublished": "Last published by {author}, {date} at {time}",
+	"workflows.publishModal.aiGatewayWarning.header": "The node | The nodes",
+	"workflows.publishModal.aiGatewayWarning.body": "uses an n8n Connect credential. Once your n8n Connect balance is depleted, this workflow will stop working. | use n8n Connect credentials. Once your n8n Connect balance is depleted, this workflow will stop working.",
 	"importCurlModal.title": "Import cURL command",
 	"importCurlModal.input.label": "cURL Command",
 	"importCurlModal.input.placeholder": "Paste the cURL command here",
