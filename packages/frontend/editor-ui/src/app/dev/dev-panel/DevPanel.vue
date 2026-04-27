@@ -334,6 +334,16 @@ function toggleFlags() {
 	flagsOpen.value = !flagsOpen.value;
 }
 
+watch(flagsOpen, (open) => {
+	if (open) {
+		stop();
+		clearSelection();
+		pendingMulti.value = [];
+	} else if (expanded.value) {
+		startPicker();
+	}
+});
+
 function togglePicking() {
 	if (isPicking.value) {
 		stop();

@@ -268,7 +268,7 @@ watch(filter, () => {
 	right: var(--spacing--sm);
 	bottom: calc(var(--spacing--sm) + 56px);
 	width: min(520px, calc(100vw - var(--spacing--md)));
-	max-height: min(560px, calc(100vh - 120px));
+	height: min(480px, calc(100vh - 120px));
 	display: flex;
 	flex-direction: column;
 	background: var(--color--neutral-900);
@@ -279,6 +279,9 @@ watch(filter, () => {
 	font-size: var(--font-size--sm);
 	overflow: visible;
 	z-index: 2147483645;
+	color-scheme: dark;
+	scrollbar-width: thin;
+	scrollbar-color: gray transparent;
 }
 
 .flag-panel-header {
