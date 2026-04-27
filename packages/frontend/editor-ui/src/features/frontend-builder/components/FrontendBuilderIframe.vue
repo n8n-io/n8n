@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ demoUrl: string | null }>();
+defineProps<{ demoUrl: string | null; hasMessages: boolean }>();
 </script>
 
 <template>
@@ -11,6 +11,9 @@ defineProps<{ demoUrl: string | null }>();
 			sandbox="allow-scripts allow-forms allow-same-origin"
 			title="Generated frontend preview"
 		/>
+		<div v-else-if="hasMessages" :class="$style.placeholder">
+			v0 hasn't produced a preview yet. Try giving more detail or sending another message.
+		</div>
 		<div v-else :class="$style.placeholder">Send a prompt to generate a frontend.</div>
 	</div>
 </template>

@@ -30,7 +30,7 @@ const showActivationWarning = computed(() => workflowDocumentStore?.value?.activ
 			</p>
 			<FrontendBuilderMessageList :messages="messages" />
 			<p v-if="error" :class="$style.error">{{ error }}</p>
-			<FrontendBuilderIframe :demo-url="demoUrl" />
+			<FrontendBuilderIframe :demo-url="demoUrl" :has-messages="messages.length > 0" />
 			<FrontendBuilderPromptInput :disabled="sending" @send="send" />
 		</section>
 	</aside>

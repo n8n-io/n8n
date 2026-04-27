@@ -49,7 +49,10 @@ export function useFrontendBuilder() {
 				{ role: 'user', content: prompt, createdAt: new Date().toISOString() },
 				response.assistantMessage,
 			);
-			demoUrl.value = response.demoUrl;
+			// Preserve the prior demo URL across responses that don't carry one
+			// (e.g. v0 asked a clarifying question instead of regenerating). It
+			// only changes when v0 produced a new version.
+			if (response.demoUrl) demoUrl.value = response.demoUrl;
 		} catch (err) {
 			error.value = err instanceof Error ? err.message : String(err);
 		} finally {

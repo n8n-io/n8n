@@ -199,6 +199,7 @@
     "swagger-ui-express": "5.0.1",
     "undici": "^7.16.0",
     "uuid": "catalog:",
+    "v0-sdk": "catalog:",
     "validator": "13.15.22",
     "ws": "8.17.1",
     "xml2js": "catalog:",
