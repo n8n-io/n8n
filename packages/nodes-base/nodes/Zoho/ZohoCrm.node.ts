@@ -331,12 +331,11 @@ export class ZohoCrm implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as CamelCaseResource;
-		const operation = this.getNodeParameter('operation', 0);
-
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
+			const resource = this.getNodeParameter('resource', i) as CamelCaseResource;
+			const operation = this.getNodeParameter('operation', i);
 			// https://www.zoho.com/crm/developer/docs/api/insert-records.html
 			// https://www.zoho.com/crm/developer/docs/api/get-records.html
 			// https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
